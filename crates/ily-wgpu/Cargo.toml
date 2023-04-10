@@ -1,0 +1,15 @@
+[package]
+name = "ily-wgpu"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ily-core = { path = "../ily-core", version = "0.1.0" }
+ily-graphics = { path = "../ily-graphics", version = "0.1.0" }
+
+bytemuck = { version = "1.13", features = ["derive"] }
+pollster = "0.3.0"
+raw-window-handle = "0.5.0"
+wgpu = "0.15.0"

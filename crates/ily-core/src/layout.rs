@@ -19,6 +19,13 @@ impl BoxConstraints {
         }
     }
 
+    pub fn window(width: u32, height: u32) -> Self {
+        Self {
+            min: Vec2::ZERO,
+            max: Vec2::new(width as f32, height as f32),
+        }
+    }
+
     pub fn loose(self) -> Self {
         Self {
             min: Vec2::ZERO,

@@ -213,7 +213,7 @@ impl<'a> Scope<'a> {
             raw: unsafe { &*raw },
             marker: PhantomData,
         };
-        crate::effect::untrack(|| f(scope));
+        super::effect::untrack(|| f(scope));
         ScopeDisposer::root(raw)
     }
 
@@ -282,7 +282,7 @@ impl<'a> Scope<'a> {
 
     /// Runs a scope without tracking any dependencies.
     pub fn untrack<T>(self, f: impl FnOnce() -> T) -> T {
-        crate::effect::untrack(f)
+        super::effect::untrack(f)
     }
 
     /// Creates an effect.
@@ -304,7 +304,7 @@ impl<'a> Scope<'a> {
     /// # });
     /// ```
     pub fn effect(self, f: impl FnMut() + 'a) {
-        crate::effect::create_effect(self, f);
+        super::effect::create_effect(self, f);
     }
 
     /// Creates an effect in a child scope. See [`Scope::effect`].

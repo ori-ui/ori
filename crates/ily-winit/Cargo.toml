@@ -7,12 +7,11 @@ edition = "2021"
 
 [dependencies]
 ily-core = { path = "../ily-core", version = "0.1.0" }
-ily-reactive = { path = "../ily-reactive", version = "0.1.0" }
 ily-graphics = { path = "../ily-graphics", version = "0.1.0" }
 ily-wgpu = { path = "../ily-wgpu", version = "0.1.0", optional = true }
 
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 winit = "0.28.0"
 
 [features]

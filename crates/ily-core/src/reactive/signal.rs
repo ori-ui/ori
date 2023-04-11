@@ -3,6 +3,7 @@ use std::{
     fmt::{Debug, Formatter},
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
+    panic::Location,
     sync::{Arc, Mutex},
 };
 
@@ -58,6 +59,7 @@ impl<T> Signal<T> {
         Self(ReadSignal::new(value))
     }
 
+    #[track_caller]
     pub fn set(&self, value: T) {
         self.set_arc(Arc::new(value));
     }
@@ -72,6 +74,7 @@ impl<T: ?Sized> Signal<T> {
         Self(ReadSignal::new_arc(value))
     }
 
+    #[track_caller]
     pub fn set_arc(&self, value: Arc<T>) {
         self.set_arc_silent(value.clone());
         self.emit();
@@ -81,7 +84,11 @@ impl<T: ?Sized> Signal<T> {
         *self.value.lock().unwrap() = value;
     }
 
+    #[track_caller]
     pub fn emit(&self) {
+        let location = Location::caller();
+        tracing::trace!("Signal emitted at {}", location);
+
         self.emitter.emit();
     }
 }

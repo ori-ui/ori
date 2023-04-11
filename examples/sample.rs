@@ -1,26 +1,18 @@
-use ily::*;
+use ily::prelude::*;
 
-fn ui<'a>(cx: Scope<'a>, color: &'a Signal<Color>) -> impl View {
-    Div::new()
-        .child(cx, move |cx| {
-            Button::new().on_press(cx, move |_| {
-                color.set(Color::CYAN);
-            })
-        })
-        .child(cx, move |cx| {
-            Button::new().on_press(cx, move |_| {
-                color.set(Color::WHITE);
-            })
-        })
-        .padding(10.0)
-        .gap(10.0)
-        .background(*color.get())
+fn ui<'a>(cx: Scope<'a>) -> impl View {
+    let counter = cx.signal(1);
+
+    view! {
+        <Div>
+            <Button on:press=|_| *counter.modify() += 1>
+                <Text text=format!("Counter: {}", counter.get()) />
+            </Button>
+            <!-- "Counter: 1" -->
+        </Div>
+    }
 }
 
 fn main() {
-    App::new(|cx| {
-        let color = cx.signal(Color::WHITE);
-        cx.dynamic(|cx| ui(cx, color))
-    })
-    .run();
+    App::new(|cx| ui(cx)).run();
 }

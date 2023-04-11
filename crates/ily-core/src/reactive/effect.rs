@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{Scope, WeakCallbackEmitter};
+use crate::{Scope, WeakCallback, WeakCallbackEmitter};
 
 thread_local! {
     static EFFECTS: RefCell<Vec<*mut EffectState<'static>>> = Default::default();
@@ -28,7 +28,7 @@ impl<'a> EffectState<'a> {
         for dependency in &self.dependencies {
             if let Some(dependency) = dependency.upgrade() {
                 let ptr = Arc::as_ptr(&self.callback);
-                dependency.unsubscribe(ptr as _);
+                dependency.unsubscribe(unsafe { mem::transmute(ptr) });
             }
         }
 
@@ -87,7 +87,8 @@ pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
             for emitter in &effect.dependencies {
                 if let Some(emitter) = emitter.upgrade() {
                     let callback = unsafe { mem::transmute(&effect.callback) };
-                    emitter.subscribe_weak(Arc::downgrade(callback));
+                    let callback = WeakCallback::new(Arc::downgrade(callback));
+                    emitter.subscribe_weak(callback);
                 }
             }
 

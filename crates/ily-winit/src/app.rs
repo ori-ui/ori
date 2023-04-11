@@ -1,35 +1,45 @@
-use std::sync::{Arc, Mutex};
+use std::{error::Error, sync::Arc};
 
-use ily_core::{AnyView, BoxConstraints, Event, Modifiers, PaintContext, PointerPress, Vec2, View};
-use ily_graphics::{Frame, Rect};
-use ily_reactive::{Callback, Scope};
-
+use ily_core::{
+    BoxConstraints, Callback, Child, Event, Modifiers, PointerEvent, Scope, Vec2, View,
+};
+use ily_graphics::Frame;
 use winit::{
-    event::{Event as WinitEvent, WindowEvent},
+    event::{Event as WinitEvent, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+    window::WindowBuilder,
 };
 
 use crate::convert::{convert_mouse_button, is_pressed};
 
 pub struct App {
-    builder: Option<Box<dyn FnOnce() -> AnyView>>,
+    builder: Option<Box<dyn FnOnce() -> Child>>,
+}
+
+fn init_tracing() -> Result<(), Box<dyn Error>> {
+    let filter = tracing_subscriber::EnvFilter::from_default_env()
+        .add_directive("wgpu=warn".parse()?)
+        .add_directive("naga=warn".parse()?)
+        .add_directive("winit=warn".parse()?)
+        .add_directive("mio=warn".parse()?);
+
+    tracing_subscriber::fmt().with_env_filter(filter).init();
+
+    Ok(())
 }
 
 impl App {
-    pub fn new<T: View>(mut content: impl FnMut(Scope) -> T + 'static) -> Self {
-        tracing_subscriber::FmtSubscriber::builder()
-            .with_max_level(tracing::Level::TRACE)
-            .init();
+    pub fn new<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
+        init_tracing().unwrap();
 
         let builder = Box::new(move || {
             let mut view = None;
 
             let _disposer = Scope::new(|cx| {
-                view = Some(AnyView::new_static(content(cx)));
+                view = Some(content(cx));
             });
 
-            view.unwrap()
+            Child::new(view.unwrap())
         });
 
         Self {
@@ -45,16 +55,22 @@ impl App {
             .unwrap();
         let window = Arc::new(window);
 
-        let request_redraw = Arc::new(Mutex::new({
+        let request_redraw = Callback::new({
             let window = window.clone();
             move || {
                 tracing::trace!("redraw requested");
                 window.request_redraw()
             }
-        })) as Callback;
+        });
+        let request_redraw = request_redraw.downgrade();
 
         let mut mouse_position = Vec2::ZERO;
         let mut modifiers = Modifiers::default();
+
+        let builder = self.builder.take().unwrap();
+        let view = builder();
+
+        let mut frame = Frame::new();
 
         #[cfg(feature = "wgpu")]
         let mut renderer = {
@@ -62,67 +78,83 @@ impl App {
             unsafe { ily_wgpu::Renderer::new(window.as_ref(), size.width, size.height) }
         };
 
-        let builder = self.builder.take().unwrap();
-        let view = builder();
+        event_loop.run(move |event, _, control_flow| {
+            *control_flow = ControlFlow::Wait;
 
-        let window_size = |window: &Window| {
-            Vec2::new(
-                window.inner_size().width as f32,
-                window.inner_size().height as f32,
-            )
-        };
+            match event {
+                WinitEvent::RedrawRequested(_) => {
+                    let size = window.inner_size();
+                    let bc = BoxConstraints::window(size.width, size.height);
+                    view.layout(&renderer.text_layout(), bc);
 
-        let window_constraints =
-            move |window: &Window| BoxConstraints::new(Vec2::ZERO, window_size(window));
+                    frame.clear();
+                    view.draw(&mut frame, &request_redraw);
 
-        let layout = move |view: &AnyView, window: &Window| -> Vec2 {
-            let size = view.layout(window_constraints(window));
-            view.set_rect(Rect::new(Vec2::ZERO, size));
-            size
-        };
-
-        event_loop.run(move |event, _, control_flow| match event {
-            WinitEvent::RedrawRequested(_) => {
-                let size = layout(&view, &window);
-
-                let mut frame = Frame::new();
-                let rect = Rect::new(Vec2::ZERO, size);
-                let mut cx = PaintContext {
-                    frame: &mut frame,
-                    request_redraw: Arc::downgrade(&request_redraw),
-                    rect,
-                };
-                view.paint(&mut cx);
-
-                renderer.render_frame(&frame);
-            }
-            WinitEvent::WindowEvent { event, .. } => match event {
-                WindowEvent::Resized(size)
-                | WindowEvent::ScaleFactorChanged {
-                    new_inner_size: &mut size,
-                    ..
-                } => {
-                    renderer.resize(size.width, size.height);
+                    #[cfg(feature = "wgpu")]
+                    renderer.render_frame(&frame);
                 }
-                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                WindowEvent::CursorMoved { position, .. } => {
-                    mouse_position.x = position.x as f32;
-                    mouse_position.y = position.y as f32;
-                }
-                WindowEvent::MouseInput { button, state, .. } => {
-                    let event = PointerPress {
-                        position: mouse_position,
-                        button: convert_mouse_button(button),
-                        pressed: is_pressed(state),
-                        modifiers,
-                    };
+                WinitEvent::WindowEvent { event, .. } => match event {
+                    WindowEvent::Resized(size)
+                    | WindowEvent::ScaleFactorChanged {
+                        new_inner_size: &mut size,
+                        ..
+                    } => {
+                        #[cfg(feature = "wgpu")]
+                        renderer.resize(size.width, size.height);
+                    }
+                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::CursorMoved { position, .. } => {
+                        mouse_position.x = position.x as f32;
+                        mouse_position.y = position.y as f32;
 
-                    layout(&view, &window);
-                    view.event(&Event::new(event));
-                }
+                        let event = PointerEvent {
+                            position: mouse_position,
+                            modifiers,
+                            ..Default::default()
+                        };
+
+                        let size = window.inner_size();
+                        let bc = BoxConstraints::window(size.width, size.height);
+                        view.layout(&renderer.text_layout(), bc);
+
+                        view.event(&Event::new(event), &request_redraw);
+                    }
+                    WindowEvent::MouseInput { button, state, .. } => {
+                        let event = PointerEvent {
+                            position: mouse_position,
+                            button: Some(convert_mouse_button(button)),
+                            pressed: is_pressed(state),
+                            modifiers,
+                            ..Default::default()
+                        };
+
+                        let size = window.inner_size();
+                        let bc = BoxConstraints::window(size.width, size.height);
+                        view.layout(&renderer.text_layout(), bc);
+
+                        view.event(&Event::new(event), &request_redraw);
+                    }
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state,
+                                virtual_keycode,
+                                ..
+                            },
+                        ..
+                    } => {}
+                    WindowEvent::ModifiersChanged(new_modifiers) => {
+                        modifiers = Modifiers {
+                            shift: new_modifiers.shift(),
+                            ctrl: new_modifiers.ctrl(),
+                            alt: new_modifiers.alt(),
+                            meta: new_modifiers.logo(),
+                        };
+                    }
+                    _ => {}
+                },
                 _ => {}
-            },
-            _ => {}
+            }
         });
     }
 }

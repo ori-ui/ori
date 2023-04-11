@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ily-reactive = { path = "../ily-reactive", version = "0.1.0" }
 ily-graphics = { path = "../ily-graphics", version = "0.1.0" }
 
 glam = "0.23"
 tracing = { version = "0.1", default-features = false }
+uuid = { version = "1.3", features = ["v4"] }

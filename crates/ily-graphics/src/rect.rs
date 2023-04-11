@@ -49,4 +49,22 @@ impl Rect {
     pub fn bottom_right(self) -> Vec2 {
         self.max
     }
+
+    pub fn translate(self, offset: impl Into<Vec2>) -> Self {
+        let offset = offset.into();
+
+        Self {
+            min: self.min + offset,
+            max: self.max + offset,
+        }
+    }
+
+    pub fn pad(self, padding: impl Into<Vec2>) -> Self {
+        let padding = padding.into();
+
+        Self {
+            min: self.min - padding,
+            max: self.max + padding,
+        }
+    }
 }

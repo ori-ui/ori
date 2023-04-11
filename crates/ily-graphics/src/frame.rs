@@ -1,8 +1,9 @@
-use crate::{Mesh, Quad, Rect};
+use crate::{Mesh, Quad, Rect, TextSection};
 
 #[derive(Clone, Debug)]
 pub enum Primitive {
     Group(Vec<Primitive>),
+    Text(TextSection),
     Quad(Quad),
     Mesh(Mesh),
     Clip { rect: Rect, content: Box<Primitive> },
@@ -23,6 +24,12 @@ impl Primitive {
             }
             _ => {}
         }
+    }
+}
+
+impl From<TextSection> for Primitive {
+    fn from(text: TextSection) -> Self {
+        Self::Text(text)
     }
 }
 
@@ -47,6 +54,10 @@ impl Frame {
         Self {
             primitives: Vec::new(),
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.primitives.clear();
     }
 
     pub fn layer(&mut self, f: impl FnOnce(&mut Self)) {

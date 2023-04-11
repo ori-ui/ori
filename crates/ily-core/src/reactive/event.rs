@@ -19,7 +19,9 @@ impl<T> EventSignal<T> {
         let signal = self.signal.clone();
         cx.effect(move || {
             if let Some(event) = signal.get().as_ref() {
-                callback(event);
+                cx.untrack(|| {
+                    callback(event);
+                });
             }
         });
     }

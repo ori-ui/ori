@@ -15,25 +15,15 @@ impl Default for Quad {
     fn default() -> Self {
         Self {
             rect: Rect::default(),
-            background: Color::TRANSPARENT,
+            background: Color::WHITE,
             border_radius: [0.0; 4],
-            border_width: 5.0,
+            border_width: 0.0,
             border_color: Color::BLACK,
         }
     }
 }
 
 impl Quad {
-    pub const fn new(rect: Rect, background: Color) -> Self {
-        Self {
-            rect,
-            background,
-            border_radius: [0.0; 4],
-            border_width: 0.0,
-            border_color: Color::TRANSPARENT,
-        }
-    }
-
     pub fn mesh(self) -> Mesh {
         let mut mesh = Mesh::new();
 

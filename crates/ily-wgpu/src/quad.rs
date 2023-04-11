@@ -2,7 +2,7 @@ use std::mem;
 
 use bytemuck::{Pod, Zeroable};
 use ily_core::Vec2;
-use ily_graphics::{Mesh, Vertex};
+use ily_graphics::{Color, Quad};
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
@@ -16,21 +16,32 @@ use wgpu::{
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-struct MeshUniforms {
+struct QuadUniforms {
     resolution: Vec2,
 }
 
-struct MeshInstance {
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+struct QuadVertex {
+    position: Vec2,
+    min: Vec2,
+    max: Vec2,
+    color: Color,
+    border_color: Color,
+    border_radius: [f32; 4],
+    border_width: f32,
+}
+
+struct QuadInstance {
     bind_group: BindGroup,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
-    index_count: u32,
 }
 
-impl MeshInstance {
-    pub fn new(device: &Device, pipeline: &MeshPipeline, mesh: &Mesh) -> Self {
+impl QuadInstance {
+    pub fn new(device: &Device, pipeline: &QuadPipeline, quad: &Quad) -> Self {
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Mesh Bind Group"),
+            label: Some("Quad Bind Group"),
             layout: &pipeline.bind_group_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
@@ -38,25 +49,65 @@ impl MeshInstance {
             }],
         });
 
-        let vertex_buffer = Self::create_vertex_buffer(device, mesh.vertex_bytes());
-        let index_buffer = Self::create_index_buffer(device, mesh.index_bytes());
+        let mesh = Self::quad_mesh(quad);
+        let vertex_buffer = Self::create_vertex_buffer(device, bytemuck::cast_slice(&mesh));
+        let index_buffer = Self::create_index_buffer(device);
 
         Self {
             bind_group,
             vertex_buffer,
             index_buffer,
-            index_count: mesh.indices.len() as u32,
         }
     }
 
-    pub fn update(&mut self, device: &Device, queue: &Queue, mesh: &Mesh) {
-        self.update_vertex_buffer(device, queue, mesh);
-        self.update_index_buffer(device, queue, mesh);
-        self.index_count = mesh.indices.len() as u32;
+    fn quad_mesh(quad: &Quad) -> [QuadVertex; 4] {
+        [
+            QuadVertex {
+                position: quad.rect.top_left(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+            QuadVertex {
+                position: quad.rect.top_right(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+            QuadVertex {
+                position: quad.rect.bottom_right(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+            QuadVertex {
+                position: quad.rect.bottom_left(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+        ]
     }
 
-    fn update_vertex_buffer(&mut self, device: &Device, queue: &Queue, mesh: &Mesh) {
-        let data = mesh.vertex_bytes();
+    pub fn update(&mut self, device: &Device, queue: &Queue, quad: &Quad) {
+        self.update_vertex_buffer(device, queue, quad);
+    }
+
+    fn update_vertex_buffer(&mut self, device: &Device, queue: &Queue, quad: &Quad) {
+        let mesh = Self::quad_mesh(quad);
+        let data = bytemuck::cast_slice(&mesh);
 
         if self.vertex_buffer.size() < data.len() as u64 {
             self.vertex_buffer = Self::create_vertex_buffer(device, data);
@@ -65,53 +116,43 @@ impl MeshInstance {
         }
     }
 
-    fn update_index_buffer(&mut self, device: &Device, queue: &Queue, mesh: &Mesh) {
-        let data = mesh.index_bytes();
-
-        if self.index_buffer.size() < data.len() as u64 {
-            self.index_buffer = Self::create_index_buffer(device, data);
-        } else {
-            queue.write_buffer(&self.index_buffer, 0, data);
-        }
-    }
-
     fn create_vertex_buffer(device: &Device, contents: &[u8]) -> Buffer {
         device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Mesh Vertex Buffer"),
+            label: Some("Quad Vertex Buffer"),
             contents,
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
         })
     }
 
-    fn create_index_buffer(device: &Device, contents: &[u8]) -> Buffer {
+    fn create_index_buffer(device: &Device) -> Buffer {
         device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Mesh Index Buffer"),
-            contents,
-            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
+            label: Some("Quad Index Buffer"),
+            contents: bytemuck::cast_slice::<u32, _>(&[0, 1, 2, 2, 3, 0]),
+            usage: BufferUsages::INDEX,
         })
     }
 }
 
-pub struct MeshPipeline {
+pub struct QuadPipeline {
     pub bind_group_layout: BindGroupLayout,
     pub uniform_buffer: Buffer,
     pub pipeline: RenderPipeline,
-    instances: Vec<MeshInstance>,
+    instances: Vec<QuadInstance>,
 }
 
-impl MeshPipeline {
+impl QuadPipeline {
     pub fn new(device: &Device, format: TextureFormat) -> Self {
-        let shader = device.create_shader_module(include_wgsl!("mesh.wgsl"));
+        let shader = device.create_shader_module(include_wgsl!("quad.wgsl"));
 
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("Mesh Uniform Buffer"),
-            size: mem::size_of::<MeshUniforms>() as u64,
+            label: Some("Quad Uniform Buffer"),
+            size: mem::size_of::<QuadUniforms>() as u64,
             usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-            label: Some("Mesh Bind Group Layout"),
+            label: Some("Quad Bind Group Layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
                 visibility: ShaderStages::VERTEX_FRAGMENT,
@@ -125,21 +166,29 @@ impl MeshPipeline {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Mesh Pipeline Layout"),
+            label: Some("Quad Pipeline Layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Mesh Pipeline"),
+            label: Some("Quad Pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vertex",
                 buffers: &[VertexBufferLayout {
-                    array_stride: mem::size_of::<Vertex>() as u64,
+                    array_stride: mem::size_of::<QuadVertex>() as u64,
                     step_mode: VertexStepMode::Vertex,
-                    attributes: &vertex_attr_array![0 => Float32x2, 1 => Float32x2, 2 => Float32x4],
+                    attributes: &vertex_attr_array![
+                        0 => Float32x2,
+                        1 => Float32x2,
+                        2 => Float32x2,
+                        3 => Float32x4,
+                        4 => Float32x4,
+                        5 => Float32x4,
+                        6 => Float32,
+                    ],
                 }],
             },
             fragment: Some(FragmentState {
@@ -168,17 +217,17 @@ impl MeshPipeline {
         }
     }
 
-    pub fn prepare_mesh(&mut self, device: &Device, queue: &Queue, mesh: &Mesh, index: usize) {
+    pub fn prepare_quad(&mut self, device: &Device, queue: &Queue, quad: &Quad, index: usize) {
         if let Some(instance) = self.instances.get_mut(index) {
-            instance.update(device, queue, mesh);
+            instance.update(device, queue, quad);
         } else {
-            let instance = MeshInstance::new(device, self, mesh);
+            let instance = QuadInstance::new(device, self, quad);
             self.instances.push(instance);
         }
     }
 
     pub fn set_size(&self, queue: &Queue, width: u32, height: u32) {
-        let uniforms = MeshUniforms {
+        let uniforms = QuadUniforms {
             resolution: Vec2::new(width as f32, height as f32),
         };
 
@@ -191,6 +240,6 @@ impl MeshPipeline {
         pass.set_bind_group(0, &instance.bind_group, &[]);
         pass.set_vertex_buffer(0, instance.vertex_buffer.slice(..));
         pass.set_index_buffer(instance.index_buffer.slice(..), IndexFormat::Uint32);
-        pass.draw_indexed(0..instance.index_count, 0, 0..1);
+        pass.draw_indexed(0..6, 0, 0..1);
     }
 }

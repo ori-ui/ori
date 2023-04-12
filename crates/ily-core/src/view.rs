@@ -19,6 +19,26 @@ impl<'a> EventContext<'a> {
     pub fn request_redraw(&self) {
         self.request_redraw.emit(&());
     }
+
+    pub fn active(&self) -> bool {
+        self.state.active
+    }
+
+    pub fn hovered(&self) -> bool {
+        self.state.hovered
+    }
+
+    pub fn focused(&self) -> bool {
+        self.state.focused
+    }
+
+    pub fn local_rect(&self) -> Rect {
+        self.state.local_rect
+    }
+
+    pub fn rect(&self) -> Rect {
+        self.state.global_rect
+    }
 }
 
 pub struct LayoutContext<'a> {

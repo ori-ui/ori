@@ -152,6 +152,24 @@ impl Div {
         self.border_color = border_color;
         self
     }
+
+    fn handle_pointer_event(&self, cx: &mut EventContext, event: &PointerEvent) -> bool {
+        if !cx.hovered() {
+            return false;
+        }
+
+        if event.pressed {
+            if let Some(on_press) = &self.on_press {
+                on_press.emit(event.clone());
+            }
+        } else {
+            if let Some(on_release) = &self.on_release {
+                on_release.emit(event.clone());
+            }
+        }
+
+        true
+    }
 }
 
 impl Parent for Div {
@@ -265,16 +283,8 @@ impl View for Div {
         }
 
         if let Some(pointer_event) = event.get::<PointerEvent>() {
-            if pointer_event.pressed {
-                if let Some(on_press) = &self.on_press {
-                    on_press.emit(pointer_event.clone());
-                    event.handle();
-                }
-            } else {
-                if let Some(on_release) = &self.on_release {
-                    on_release.emit(pointer_event.clone());
-                    event.handle();
-                }
+            if self.handle_pointer_event(cx, pointer_event) {
+                event.handle();
             }
         }
     }
@@ -294,6 +304,11 @@ impl View for Div {
             let child_size = child.layout(cx, child_bc);
             let child_major = self.direction.major(child_size);
             child.set_offset(self.direction.pack(major, self.padding));
+
+            // skip children that are too small
+            if child_size.min_element() <= 0.0 {
+                continue;
+            }
 
             major += child_major;
             minor = minor.max(self.direction.minor(child_size + self.padding * 2.0));

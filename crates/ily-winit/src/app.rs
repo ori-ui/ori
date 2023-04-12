@@ -2,18 +2,19 @@ use std::{error::Error, sync::Arc};
 
 use ily_core::{
     BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, Modifiers, Node,
-    NodeState, PointerEvent, Scope, Vec2, View,
+    NodeState, PointerEvent, Scope, Style, Vec2, View, WeakCallback,
 };
 use ily_graphics::Frame;
 use winit::{
     event::{Event as WinitEvent, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{Window, WindowBuilder},
 };
 
 use crate::convert::{convert_mouse_button, is_pressed};
 
 pub struct App {
+    style: Style,
     builder: Option<Box<dyn FnOnce() -> Node>>,
 }
 

@@ -14,5 +14,7 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
 }
 
 fn main() {
-    App::new(|cx| ui(cx)).run();
+    App::new(|cx| ui(cx))
+        .style(Style::load("examples/sample.css").unwrap())
+        .run();
 }

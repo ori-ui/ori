@@ -4,25 +4,25 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 
 // atoms
-identifier = @{ (ASCII_ALPHA | "-" | "_") ~ (ASCII_ALPHANUMERIC | "-" | "_")* }
-number = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("-" | "-") ~ ASCII_DIGIT+)? }
+Identifier = @{ (ASCII_ALPHA | "-" | "_") ~ (ASCII_ALPHANUMERIC | "-" | "_")* }
+Number = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("-" | "-") ~ ASCII_DIGIT+)? }
 
 // values
-px = ${ number ~ "px" }
-pt = ${ number ~ "pt" }
-hex_color = @{ "#" ~ ASCII_HEX_DIGIT{6} }
-color = { hex_color }
-string = { identifier }
+Px = ${ Number ~ "px" }
+Pt = ${ Number ~ "pt" }
+HexColor = @{ "#" ~ ASCII_HEX_DIGIT{6} }
+Color = { HexColor }
+String = { Identifier }
 
 // attribute
-value = _{ px | pt | color | string }
-attribute = { identifier ~ ":" ~ value ~ ";" }
+AttributeValue = _{ Px | Pt | Color | String }
+Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 
 // selector
-element = { identifier }
-class = { "." ~ identifier }
-selector = { element? ~ class* }
+Element = { Identifier }
+Class = { "." ~ Identifier }
+Selector = { Element? ~ Class* }
 
 // stylesheet
-style_rule = { selector ~ "{" ~ attribute* ~ "}" }
-stylesheet = { SOI ~ style_rule* ~ EOI }
+StyleRule = { Selector ~ "{" ~ Attribute* ~ "}" }
+Style = { SOI ~ StyleRule* ~ EOI }

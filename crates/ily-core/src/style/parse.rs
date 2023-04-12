@@ -10,13 +10,15 @@ use crate::{Attribute, AttributeValue, Length, Pt, Px, Selector, Style, StyleRul
 #[grammar = "style/grammar.pest"]
 pub struct StyleParser;
 
+pub type StyleParseError = Error<Rule>;
+
 fn parse_length(pair: Pair<'_, Rule>) -> Length {
     let number_pair = pair.clone().into_inner().next().unwrap();
     let number = number_pair.as_str().parse().unwrap();
 
     match pair.as_rule() {
-        Rule::px => Length::Px(Px(number)),
-        Rule::pt => Length::Pt(Pt(number)),
+        Rule::Px => Length::Px(Px(number)),
+        Rule::Pt => Length::Pt(Pt(number)),
         _ => unreachable!(),
     }
 }
@@ -25,16 +27,16 @@ fn parse_color(pair: Pair<'_, Rule>) -> Color {
     let pair = pair.into_inner().next().unwrap();
 
     match pair.as_rule() {
-        Rule::hex_color => Color::hex(pair.as_str()),
+        Rule::HexColor => Color::hex(pair.as_str()),
         _ => unreachable!(),
     }
 }
 
 fn parse_value(pair: Pair<'_, Rule>) -> AttributeValue {
     match pair.as_rule() {
-        Rule::string => AttributeValue::String(pair.as_str().to_string()),
-        Rule::px | Rule::pt => AttributeValue::Length(parse_length(pair)),
-        Rule::color => AttributeValue::Color(parse_color(pair)),
+        Rule::String => AttributeValue::String(pair.as_str().to_string()),
+        Rule::Px | Rule::Pt => AttributeValue::Length(parse_length(pair)),
+        Rule::Color => AttributeValue::Color(parse_color(pair)),
         _ => unreachable!(),
     }
 }
@@ -48,10 +50,10 @@ fn parse_selector(pair: Pair<'_, Rule>) -> Selector {
 
     for pair in pair.into_inner() {
         match pair.as_rule() {
-            Rule::element => {
+            Rule::Element => {
                 selector.element = Some(pair.as_str().to_string());
             }
-            Rule::class => {
+            Rule::Class => {
                 selector.classes.push(parse_class(pair));
             }
             _ => unreachable!(),
@@ -78,7 +80,7 @@ fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {
 
     for pair in iter {
         match pair.as_rule() {
-            Rule::attribute => {
+            Rule::Attribute => {
                 rule.attributes.push(parse_attribute(pair));
             }
             _ => unreachable!(),
@@ -88,13 +90,13 @@ fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {
     rule
 }
 
-fn parse_stylesheet(input: &str) -> Result<Style, Error<Rule>> {
-    let pairs = StyleParser::parse(Rule::stylesheet, input)?.next().unwrap();
+fn parse_style(input: &str) -> Result<Style, Error<Rule>> {
+    let pairs = StyleParser::parse(Rule::Style, input)?.next().unwrap();
     let mut style = Style::new();
 
     for pair in pairs.into_inner() {
         match pair.as_rule() {
-            Rule::style_rule => {
+            Rule::StyleRule => {
                 style.add_rule(parse_style_rule(pair));
             }
             Rule::EOI => break,
@@ -106,10 +108,10 @@ fn parse_stylesheet(input: &str) -> Result<Style, Error<Rule>> {
 }
 
 impl FromStr for Style {
-    type Err = Error<Rule>;
+    type Err = StyleParseError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        parse_stylesheet(input)
+        parse_style(input)
     }
 }
 
@@ -119,6 +121,6 @@ mod tests {
 
     #[test]
     fn it_works() {
-        parse_stylesheet(include_str!("test.css")).unwrap();
+        parse_style(include_str!("test.css")).unwrap();
     }
 }

@@ -1,4 +1,4 @@
 mod parse;
-mod stylesheet;
+mod style;
 
-pub use stylesheet::*;
+pub use style::*;

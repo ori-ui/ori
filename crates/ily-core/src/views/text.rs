@@ -17,7 +17,7 @@ impl Default for Text {
             text: String::new(),
             scale: 24.0,
             font: None,
-            color: Color::hex("#333333"),
+            color: Color::hex("#444444"),
         }
     }
 }
@@ -103,7 +103,7 @@ impl View for Text {
             color: self.color,
         };
 
-        let bounds = cx.text_layout.bounds(&section).unwrap_or_default();
+        let bounds = cx.text_bounds(&section).unwrap_or_default();
         bounds.size()
     }
 

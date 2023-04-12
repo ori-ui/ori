@@ -11,7 +11,8 @@ use crate::{Attribute, AttributeValue, Length, Pt, Px, Selector, Style, StyleRul
 pub struct StyleParser;
 
 fn parse_length(pair: Pair<'_, Rule>) -> Length {
-    let number = pair.clone().into_inner().as_str().parse().unwrap();
+    let number_pair = pair.clone().into_inner().next().unwrap();
+    let number = number_pair.as_str().parse().unwrap();
 
     match pair.as_rule() {
         Rule::px => Length::Px(Px(number)),
@@ -21,6 +22,8 @@ fn parse_length(pair: Pair<'_, Rule>) -> Length {
 }
 
 fn parse_color(pair: Pair<'_, Rule>) -> Color {
+    let pair = pair.into_inner().next().unwrap();
+
     match pair.as_rule() {
         Rule::hex_color => Color::hex(pair.as_str()),
         _ => unreachable!(),
@@ -32,7 +35,7 @@ fn parse_value(pair: Pair<'_, Rule>) -> AttributeValue {
         Rule::string => AttributeValue::String(pair.as_str().to_string()),
         Rule::px | Rule::pt => AttributeValue::Length(parse_length(pair)),
         Rule::color => AttributeValue::Color(parse_color(pair)),
-        _ => unreachable!("unhandled value: {:#?}", pair),
+        _ => unreachable!(),
     }
 }
 

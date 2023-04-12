@@ -168,7 +168,7 @@ impl Renderer {
         *index += 1;
     }
 
-    pub fn render_text<'a>(&self, pass: &mut RenderPass<'a>, text: &TextSection) {
+    pub fn render_text<'a>(&self, text: &TextSection) {
         let section = self.fonts.convert_section(text);
         self.glyph_brush.borrow_mut().queue(section);
     }
@@ -181,7 +181,7 @@ impl Renderer {
         quad_index: &mut usize,
     ) {
         match primitive {
-            Primitive::Text(text) => self.render_text(pass, text),
+            Primitive::Text(text) => self.render_text(text),
             Primitive::Quad(_) => self.render_quad(pass, quad_index),
             Primitive::Mesh(_) => self.render_mesh(pass, mesh_index),
             _ => {}

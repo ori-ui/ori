@@ -8,6 +8,7 @@ use crate::{
     PointerEvent, View,
 };
 
+/// A node in the [`View`] tree.
 pub struct Node {
     state: RefCell<Box<dyn Any>>,
     node_state: RefCell<NodeState>,
@@ -43,6 +44,7 @@ impl Node {
         }
 
         let mut cx = EventContext {
+            style: cx.style,
             state: &mut node_state,
             request_redraw: cx.request_redraw,
         };
@@ -53,6 +55,7 @@ impl Node {
 
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut cx = LayoutContext {
+            style: cx.style,
             text_layout: cx.text_layout,
         };
 
@@ -71,6 +74,7 @@ impl Node {
         node_state.propagate_parent(cx.state);
 
         let mut cx = DrawContext {
+            style: cx.style,
             frame: cx.frame,
             state: &mut node_state,
             request_redraw: cx.request_redraw,

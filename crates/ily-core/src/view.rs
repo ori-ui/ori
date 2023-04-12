@@ -7,9 +7,10 @@ use glam::Vec2;
 use ily_graphics::{Frame, Rect, TextLayout, TextSection};
 use uuid::Uuid;
 
-use crate::{BoxConstraints, Event, SharedSignal, WeakCallback};
+use crate::{BoxConstraints, Event, SharedSignal, Style, WeakCallback};
 
 pub struct EventContext<'a> {
+    pub style: &'a Style,
     pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
 }
@@ -41,6 +42,7 @@ impl<'a> EventContext<'a> {
 }
 
 pub struct LayoutContext<'a> {
+    pub style: &'a Style,
     pub text_layout: &'a dyn TextLayout,
 }
 
@@ -51,6 +53,7 @@ impl<'a> LayoutContext<'a> {
 }
 
 pub struct DrawContext<'a> {
+    pub style: &'a Style,
     pub frame: &'a mut Frame,
     pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
@@ -88,6 +91,7 @@ impl<'a> DrawContext<'a> {
     pub fn layer(&mut self, callback: impl FnOnce(&mut DrawContext)) {
         self.frame.layer(|frame| {
             let mut child = DrawContext {
+                style: self.style,
                 frame,
                 state: self.state,
                 request_redraw: self.request_redraw,

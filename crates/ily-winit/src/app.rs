@@ -45,10 +45,78 @@ impl App {
         });
 
         Self {
+            style: Style::default(),
             builder: Some(builder),
         }
     }
 
+    pub fn style(mut self, style: Style) -> Self {
+        self.style = style;
+        self
+    }
+}
+
+struct AppState {
+    window: Arc<Window>,
+    style: Style,
+    request_redraw: WeakCallback,
+    mouse_position: Vec2,
+    modifiers: Modifiers,
+    root: Node,
+    root_state: NodeState,
+    frame: Frame,
+    #[cfg(feature = "wgpu")]
+    renderer: ily_wgpu::Renderer,
+}
+
+impl AppState {
+    fn window_size(&self) -> Vec2 {
+        let size = self.window.inner_size();
+        Vec2::new(size.width as f32, size.height as f32)
+    }
+
+    fn event(&mut self, event: &Event) {
+        let mut cx = EventContext {
+            style: &self.style,
+            state: &mut self.root_state,
+            request_redraw: &self.request_redraw,
+        };
+
+        self.root.event(&mut cx, event);
+    }
+
+    fn layout(&mut self) {
+        let size = self.window_size();
+        let bc = BoxConstraints::new(Vec2::ZERO, size);
+
+        let mut cx = LayoutContext {
+            style: &self.style,
+            text_layout: &mut self.renderer.text_layout(),
+        };
+
+        self.root.layout(&mut cx, bc);
+    }
+
+    fn draw(&mut self) {
+        self.layout();
+
+        self.frame.clear();
+
+        let mut cx = DrawContext {
+            style: &self.style,
+            frame: &mut self.frame,
+            state: &mut self.root_state,
+            request_redraw: &self.request_redraw,
+        };
+
+        self.root.draw(&mut cx);
+
+        #[cfg(feature = "wgpu")]
+        self.renderer.render_frame(&self.frame);
+    }
+}
+
+impl App {
     pub fn run(mut self) {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
@@ -66,19 +134,24 @@ impl App {
         });
         let request_redraw = request_redraw.downgrade();
 
-        let mut mouse_position = Vec2::ZERO;
-        let mut modifiers = Modifiers::default();
-
-        let builder = self.builder.take().unwrap();
-        let root = builder();
-        let mut root_state = NodeState::default();
-
-        let mut frame = Frame::new();
-
         #[cfg(feature = "wgpu")]
-        let mut renderer = {
+        let renderer = {
             let size = window.inner_size();
             unsafe { ily_wgpu::Renderer::new(window.as_ref(), size.width, size.height) }
+        };
+
+        let builder = self.builder.take().unwrap();
+        let mut state = AppState {
+            window,
+            style: self.style,
+            request_redraw,
+            mouse_position: Vec2::ZERO,
+            modifiers: Modifiers::default(),
+            root: builder(),
+            root_state: NodeState::default(),
+            frame: Frame::new(),
+            #[cfg(feature = "wgpu")]
+            renderer,
         };
 
         event_loop.run(move |event, _, control_flow| {
@@ -86,29 +159,8 @@ impl App {
 
             match event {
                 WinitEvent::RedrawRequested(_) => {
-                    let size = window.inner_size();
-                    let bc = BoxConstraints::window(size.width, size.height);
-
-                    {
-                        let mut cx = LayoutContext {
-                            text_layout: &renderer.text_layout(),
-                        };
-
-                        root.layout(&mut cx, bc);
-                    }
-
-                    frame.clear();
-
-                    let mut cx = DrawContext {
-                        frame: &mut frame,
-                        state: &mut root_state,
-                        request_redraw: &request_redraw,
-                    };
-
-                    root.draw(&mut cx);
-
-                    #[cfg(feature = "wgpu")]
-                    renderer.render_frame(&frame);
+                    state.layout();
+                    state.draw();
                 }
                 WinitEvent::WindowEvent { event, .. } => match event {
                     WindowEvent::Resized(size)
@@ -117,71 +169,43 @@ impl App {
                         ..
                     } => {
                         #[cfg(feature = "wgpu")]
-                        renderer.resize(size.width, size.height);
+                        state.renderer.resize(size.width, size.height);
                     }
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                     WindowEvent::CursorMoved { position, .. } => {
-                        mouse_position.x = position.x as f32;
-                        mouse_position.y = position.y as f32;
+                        state.mouse_position.x = position.x as f32;
+                        state.mouse_position.y = position.y as f32;
 
                         let event = PointerEvent {
-                            position: mouse_position,
-                            modifiers,
+                            position: state.mouse_position,
+                            modifiers: state.modifiers,
                             ..Default::default()
                         };
 
-                        let size = window.inner_size();
-                        let bc = BoxConstraints::window(size.width, size.height);
-
-                        let mut cx = LayoutContext {
-                            text_layout: &renderer.text_layout(),
-                        };
-
-                        root.layout(&mut cx, bc);
-
-                        let mut cx = EventContext {
-                            state: &mut root_state,
-                            request_redraw: &request_redraw,
-                        };
-
-                        root.event(&mut cx, &Event::new(event));
+                        state.layout();
+                        state.event(&Event::new(event));
                     }
-                    WindowEvent::MouseInput { button, state, .. } => {
+                    WindowEvent::MouseInput {
+                        button,
+                        state: element_state,
+                        ..
+                    } => {
                         let event = PointerEvent {
-                            position: mouse_position,
+                            position: state.mouse_position,
                             button: Some(convert_mouse_button(button)),
-                            pressed: is_pressed(state),
-                            modifiers,
+                            pressed: is_pressed(element_state),
+                            modifiers: state.modifiers,
                             ..Default::default()
                         };
 
-                        let size = window.inner_size();
-                        let bc = BoxConstraints::window(size.width, size.height);
-
-                        let mut cx = LayoutContext {
-                            text_layout: &renderer.text_layout(),
-                        };
-
-                        root.layout(&mut cx, bc);
-
-                        let mut cx = EventContext {
-                            state: &mut root_state,
-                            request_redraw: &request_redraw,
-                        };
-
-                        root.event(&mut cx, &Event::new(event));
+                        state.event(&Event::new(event));
                     }
                     WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state,
-                                virtual_keycode,
-                                ..
-                            },
+                        input: KeyboardInput { .. },
                         ..
                     } => {}
                     WindowEvent::ModifiersChanged(new_modifiers) => {
-                        modifiers = Modifiers {
+                        state.modifiers = Modifiers {
                             shift: new_modifiers.shift(),
                             ctrl: new_modifiers.ctrl(),
                             alt: new_modifiers.alt(),

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 macro_rules! unit {
     (
         $(#[$meta:meta])*
@@ -151,19 +153,34 @@ unit! {
     Px,
     /// A unit of length in points.
     Pt,
-    /// A unit of length in font units.
-    Em,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Length {
     Px(Px),
     Pt(Pt),
-    Em(Em),
+}
+
+impl Length {
+    pub fn pixels(&self) -> f32 {
+        match self {
+            Self::Px(value) => value.0,
+            Self::Pt(value) => value.0 * 96.0 / 72.0,
+        }
+    }
 }
 
 impl From<f32> for Length {
     fn from(value: f32) -> Self {
         Self::Px(Px(value))
+    }
+}
+
+impl Display for Length {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Px(value) => write!(f, "{}", value),
+            Self::Pt(value) => write!(f, "{}", value),
+        }
     }
 }

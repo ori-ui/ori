@@ -9,18 +9,21 @@ use std::{
 
 use crate::CallbackEmitter;
 
+/// A read-only [`Signal`].
 pub struct ReadSignal<T: ?Sized> {
     value: Mutex<Arc<T>>,
     emitter: CallbackEmitter,
 }
 
 impl<T> ReadSignal<T> {
+    /// Creates a new [`ReadSignal`] from a value.
     pub fn new(value: T) -> Self {
         Self::new_arc(Arc::new(value))
     }
 }
 
 impl<T: ?Sized> ReadSignal<T> {
+    /// Creates a new [`ReadSignal`] from an [`Arc`].
     pub fn new_arc(value: Arc<T>) -> Self {
         Self {
             value: Mutex::new(value),
@@ -28,66 +31,116 @@ impl<T: ?Sized> ReadSignal<T> {
         }
     }
 
+    /// Gets the [`CallbackEmitter`] for this [`ReadSignal`].
     pub fn emitter(&self) -> &CallbackEmitter {
         &self.emitter
     }
 
+    /// Tracks `self` in the currently running `effect`.
     pub fn track(&self) {
         self.emitter.track();
     }
 
+    /// Gets the current value of `self`.
+    ///
+    /// This will track `self` in the currently running `effect`.
     pub fn get(&self) -> Arc<T> {
         self.emitter.track();
         self.get_untracked()
     }
 
+    /// Gets the current value of `self` without tracking it.
     pub fn get_untracked(&self) -> Arc<T> {
         self.value.lock().unwrap().clone()
     }
 }
 
 impl<T: Clone> ReadSignal<T> {
+    /// Returns a clone of the current value of `self`.
+    ///
+    /// This will track `self` in the currently running `effect`.
     pub fn cloned(&self) -> T {
         self.get().as_ref().clone()
     }
+
+    /// Returns a clone of the current value of `self` without tracking it.
+    pub fn cloned_untracked(&self) -> T {
+        self.get_untracked().as_ref().clone()
+    }
 }
 
+/// A [`Signal`] that can be written to.
+///
+/// This is a wrapper around [`ReadSignal`].
+///
+/// Signals are used to store state that can be read from and written to.
+/// Using [`Signal::get`] and [`Signal::set`]. Getting the value of a signal
+/// will track the signal in the currently running `effect`, and setting the
+/// value of a signal will trigger all the callbacks and effects, that are subscribed to
+/// the signal.
+///
+/// # Example
+/// ```
+/// # use ily_core::*;
+/// # Scope::immediate(|cx| {
+/// // create a new signal
+/// let signal = cx.signal(0);
+///
+/// // create a new effect
+/// cx.effect(|| {
+///     // this will be called when it's created
+///     // and every time the signal is set
+///     println!("signal value: {}", signal.get());
+/// });
+///
+/// // set the signal to 1
+/// // this will trigger the effect
+/// signal.set(1);
+/// # });
+/// ```
 pub struct Signal<T: ?Sized>(ReadSignal<T>);
 
 impl<T> Signal<T> {
+    /// Creates a new [`Signal`] from a value.
     pub fn new(value: T) -> Self {
         Self(ReadSignal::new(value))
     }
 
+    /// Sets the value of `self`.
     #[track_caller]
     pub fn set(&self, value: T) {
         self.set_arc(Arc::new(value));
     }
 
+    /// Sets the value of `self` without triggering the callbacks.
     pub fn set_silent(&self, value: T) {
         self.set_arc_silent(Arc::new(value));
     }
 }
 
 impl<T: ?Sized> Signal<T> {
+    /// Creates a new [`Signal`] from an [`Arc`].
     pub fn new_arc(value: Arc<T>) -> Self {
         Self(ReadSignal::new_arc(value))
     }
 
+    /// Sets the value of `self` to an [`Arc`].
     #[track_caller]
     pub fn set_arc(&self, value: Arc<T>) {
         self.set_arc_silent(value.clone());
         self.emit();
     }
 
+    /// Sets the value of `self` to an [`Arc`] without triggering the callbacks.
     pub fn set_arc_silent(&self, value: Arc<T>) {
         *self.value.lock().unwrap() = value;
     }
 
+    /// Emits the [`CallbackEmitter`] for this [`Signal`].
     #[track_caller]
     pub fn emit(&self) {
         let location = Location::caller();
-        tracing::trace!("Signal emitted at {}", location);
+        tracing::trace!("emitting signal at {}", location);
 
         self.emitter.emit(&());
     }
@@ -139,6 +192,7 @@ impl<T: Clone> Signal<T> {
     }
 }
 
+/// A [`Signal`] that can be cloned.
 pub struct SharedSignal<T: ?Sized>(Arc<Signal<T>>);
 
 impl<T> SharedSignal<T> {

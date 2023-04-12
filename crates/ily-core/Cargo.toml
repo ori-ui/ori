@@ -9,5 +9,7 @@ edition = "2021"
 ily-graphics = { path = "../ily-graphics", version = "0.1.0" }
 
 glam = "0.23"
+pest = "2.5"
+pest_derive = "2.5"
 tracing = { version = "0.1", default-features = false }
 uuid = { version = "1.3", features = ["v4"] }

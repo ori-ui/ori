@@ -292,7 +292,7 @@ impl<'a> Scope<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use ily_reactive::*;
+    /// # use ily_core::*;
     /// # Scope::immediate(|cx| {
     /// let signal = cx.signal(0);
     ///
@@ -332,7 +332,7 @@ impl<'a> Scope<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use ily_reactive::*;
+    /// # use ily_core::*;
     /// # Scope::immediate(|cx| {
     /// let signal = cx.signal(0);
     ///

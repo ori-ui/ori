@@ -94,7 +94,7 @@ impl View for Text {
         Some("text")
     }
 
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let section = TextSection {
             bounds: Rect::min_size(Vec2::ZERO, bc.max),
             text: self.text.clone(),
@@ -107,7 +107,7 @@ impl View for Text {
         bounds.size()
     }
 
-    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
         let section = TextSection {
             bounds: cx.rect(),
             text: self.text.clone(),

@@ -5,10 +5,10 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
 
     view! {
         <Div>
+            <!-- "Counter" -->
             <Button on:press=|_| *counter.modify() += 1>
                 <Text text=format!("Counter: {}", counter.get()) />
             </Button>
-            <!-- "Counter: 1" -->
         </Div>
     }
 }

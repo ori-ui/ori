@@ -2,7 +2,7 @@ use glam::Vec2;
 use ily_graphics::{Color, Quad};
 
 use crate::{
-    BoxConstraints, Child, DrawContext, Event, EventContext, EventSignal, Events, LayoutContext,
+    BoxConstraints, DrawContext, Event, EventContext, EventSignal, Events, LayoutContext, Node,
     Parent, PointerEvent, Properties, Scope, View,
 };
 
@@ -53,7 +53,7 @@ pub struct Div {
     pub border_color: Color,
     pub on_press: Option<EventSignal<PointerEvent>>,
     pub on_release: Option<EventSignal<PointerEvent>>,
-    pub children: Vec<Child>,
+    pub children: Vec<Node>,
 }
 
 impl Default for Div {
@@ -156,7 +156,7 @@ impl Div {
 
 impl Parent for Div {
     fn add_child(&mut self, child: impl View) {
-        self.children.push(Child::new(child));
+        self.children.push(Node::new(child));
     }
 }
 
@@ -247,13 +247,17 @@ impl Events for Div {
 }
 
 impl View for Div {
+    type State = ();
+
+    fn build(&self) -> Self::State {}
+
     fn element(&self) -> Option<&'static str> {
         Some("div")
     }
 
-    fn event(&self, cx: &mut EventContext, event: &Event) {
+    fn event(&self, _state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         for child in &self.children {
-            View::event(child, cx, event);
+            child.event(cx, event);
         }
 
         if event.is_handled() {
@@ -275,7 +279,7 @@ impl View for Div {
         }
     }
 
-    fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut major = self.padding;
         let mut minor = self.direction.minor(bc.min);
 
@@ -287,7 +291,7 @@ impl View for Div {
                 max: self.direction.pack(f32::INFINITY, max_minor),
             };
 
-            let child_size = View::layout(child, cx, child_bc);
+            let child_size = child.layout(cx, child_bc);
             let child_major = self.direction.major(child_size);
             child.set_offset(self.direction.pack(major, self.padding));
 
@@ -307,7 +311,7 @@ impl View for Div {
         self.direction.pack(major, minor)
     }
 
-    fn draw(&self, cx: &mut DrawContext) {
+    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
         tracing::trace!("Div::draw: rect = {:?}", cx.rect());
 
         let quad = Quad {
@@ -326,7 +330,7 @@ impl View for Div {
 
         cx.layer(|cx| {
             for child in &self.children {
-                View::draw(child, cx);
+                child.draw(cx);
             }
         });
     }

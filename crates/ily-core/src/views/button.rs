@@ -12,8 +12,6 @@ pub struct Button {
 
 impl Default for Button {
     fn default() -> Self {
-        println!("Button::default");
-
         Self {
             content: Div::new()
                 .background(Color::hex("#b4f8c8"))
@@ -63,19 +61,25 @@ impl Events for Button {
 }
 
 impl View for Button {
+    type State = <Div as View>::State;
+
+    fn build(&self) -> Self::State {
+        self.content.build()
+    }
+
     fn element(&self) -> Option<&'static str> {
         Some("button")
     }
 
-    fn event(&self, cx: &mut EventContext, event: &Event) {
-        self.content.event(cx, event);
+    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+        self.content.event(state, cx, event);
     }
 
-    fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.content.layout(cx, bc)
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        self.content.layout(state, cx, bc)
     }
 
-    fn draw(&self, cx: &mut DrawContext) {
-        self.content.draw(cx);
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        self.content.draw(state, cx);
     }
 }

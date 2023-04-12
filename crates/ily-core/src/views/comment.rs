@@ -12,6 +12,10 @@ impl Comment {
 }
 
 impl View for Comment {
+    type State = ();
+
+    fn build(&self) -> Self::State {}
+
     fn element(&self) -> Option<&'static str> {
         Some("comment")
     }

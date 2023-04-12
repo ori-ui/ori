@@ -17,7 +17,7 @@ impl Default for Text {
             text: String::new(),
             scale: 24.0,
             font: None,
-            color: Color::BLACK,
+            color: Color::hex("#333333"),
         }
     }
 }
@@ -86,11 +86,15 @@ impl Properties for Text {
 }
 
 impl View for Text {
+    type State = ();
+
+    fn build(&self) -> Self::State {}
+
     fn element(&self) -> Option<&'static str> {
         Some("text")
     }
 
-    fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let section = TextSection {
             bounds: Rect::min_size(Vec2::ZERO, bc.max),
             text: self.text.clone(),
@@ -103,7 +107,7 @@ impl View for Text {
         bounds.size()
     }
 
-    fn draw(&self, cx: &mut DrawContext) {
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let section = TextSection {
             bounds: cx.rect(),
             text: self.text.clone(),

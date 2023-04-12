@@ -1,7 +1,8 @@
 use std::{error::Error, sync::Arc};
 
 use ily_core::{
-    BoxConstraints, Callback, Child, Event, Modifiers, PointerEvent, Scope, Vec2, View,
+    BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, Modifiers, Node,
+    NodeState, PointerEvent, Scope, Vec2, View,
 };
 use ily_graphics::Frame;
 use winit::{
@@ -13,7 +14,7 @@ use winit::{
 use crate::convert::{convert_mouse_button, is_pressed};
 
 pub struct App {
-    builder: Option<Box<dyn FnOnce() -> Child>>,
+    builder: Option<Box<dyn FnOnce() -> Node>>,
 }
 
 fn init_tracing() -> Result<(), Box<dyn Error>> {
@@ -39,7 +40,7 @@ impl App {
                 view = Some(content(cx));
             });
 
-            Child::new(view.unwrap())
+            Node::new(view.unwrap())
         });
 
         Self {
@@ -57,7 +58,7 @@ impl App {
 
         let request_redraw = Callback::new({
             let window = window.clone();
-            move || {
+            move |_| {
                 tracing::trace!("redraw requested");
                 window.request_redraw()
             }
@@ -68,7 +69,8 @@ impl App {
         let mut modifiers = Modifiers::default();
 
         let builder = self.builder.take().unwrap();
-        let view = builder();
+        let root = builder();
+        let mut root_state = NodeState::default();
 
         let mut frame = Frame::new();
 
@@ -85,10 +87,24 @@ impl App {
                 WinitEvent::RedrawRequested(_) => {
                     let size = window.inner_size();
                     let bc = BoxConstraints::window(size.width, size.height);
-                    view.layout(&renderer.text_layout(), bc);
+
+                    {
+                        let mut cx = LayoutContext {
+                            text_layout: &renderer.text_layout(),
+                        };
+
+                        root.layout(&mut cx, bc);
+                    }
 
                     frame.clear();
-                    view.draw(&mut frame, &request_redraw);
+
+                    let mut cx = DrawContext {
+                        frame: &mut frame,
+                        state: &mut root_state,
+                        request_redraw: &request_redraw,
+                    };
+
+                    root.draw(&mut cx);
 
                     #[cfg(feature = "wgpu")]
                     renderer.render_frame(&frame);
@@ -115,9 +131,19 @@ impl App {
 
                         let size = window.inner_size();
                         let bc = BoxConstraints::window(size.width, size.height);
-                        view.layout(&renderer.text_layout(), bc);
 
-                        view.event(&Event::new(event), &request_redraw);
+                        let mut cx = LayoutContext {
+                            text_layout: &renderer.text_layout(),
+                        };
+
+                        root.layout(&mut cx, bc);
+
+                        let mut cx = EventContext {
+                            state: &mut root_state,
+                            request_redraw: &request_redraw,
+                        };
+
+                        root.event(&mut cx, &Event::new(event));
                     }
                     WindowEvent::MouseInput { button, state, .. } => {
                         let event = PointerEvent {
@@ -130,9 +156,19 @@ impl App {
 
                         let size = window.inner_size();
                         let bc = BoxConstraints::window(size.width, size.height);
-                        view.layout(&renderer.text_layout(), bc);
 
-                        view.event(&Event::new(event), &request_redraw);
+                        let mut cx = LayoutContext {
+                            text_layout: &renderer.text_layout(),
+                        };
+
+                        root.layout(&mut cx, bc);
+
+                        let mut cx = EventContext {
+                            state: &mut root_state,
+                            request_redraw: &request_redraw,
+                        };
+
+                        root.event(&mut cx, &Event::new(event));
                     }
                     WindowEvent::KeyboardInput {
                         input:

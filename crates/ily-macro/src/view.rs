@@ -68,10 +68,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                 let child = view_node(context, node);
 
                 quote! {
-                    <#name as ily::core::Parent>::add_child(
-                        &mut view,
-                        ily::core::Child::new(#child)
-                    );
+                    <#name as ily::core::Parent>::add_child(&mut view, #child);
                 }
             });
 

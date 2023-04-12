@@ -1,4 +1,5 @@
 use std::{
+    any::{self, Any},
     cell::RefCell,
     ops::{Deref, DerefMut},
 };
@@ -10,8 +11,14 @@ use uuid::Uuid;
 use crate::{BoxConstraints, Event, PointerEvent, SharedSignal, WeakCallback};
 
 pub struct EventContext<'a> {
-    pub state: &'a mut ViewState,
+    pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
+}
+
+impl<'a> EventContext<'a> {
+    pub fn request_redraw(&self) {
+        self.request_redraw.emit(&());
+    }
 }
 
 pub struct LayoutContext<'a> {
@@ -26,11 +33,15 @@ impl<'a> LayoutContext<'a> {
 
 pub struct DrawContext<'a> {
     pub frame: &'a mut Frame,
-    pub state: &'a mut ViewState,
+    pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
 }
 
 impl<'a> DrawContext<'a> {
+    pub fn request_redraw(&self) {
+        self.request_redraw.emit(&());
+    }
+
     pub fn active(&self) -> bool {
         self.state.active
     }
@@ -45,6 +56,10 @@ impl<'a> DrawContext<'a> {
 
     pub fn frame(&mut self) -> &mut Frame {
         self.frame
+    }
+
+    pub fn local_rect(&self) -> Rect {
+        self.state.local_rect
     }
 
     pub fn rect(&self) -> Rect {
@@ -79,11 +94,11 @@ impl<'a> DerefMut for DrawContext<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ViewId {
+pub struct NodeId {
     uuid: Uuid,
 }
 
-impl ViewId {
+impl NodeId {
     pub fn new() -> Self {
         Self {
             uuid: Uuid::new_v4(),
@@ -91,15 +106,15 @@ impl ViewId {
     }
 }
 
-impl Default for ViewId {
+impl Default for NodeId {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct ViewState {
-    pub id: ViewId,
+pub struct NodeState {
+    pub id: NodeId,
     pub local_rect: Rect,
     pub global_rect: Rect,
     pub active: bool,
@@ -107,29 +122,76 @@ pub struct ViewState {
     pub hovered: bool,
 }
 
-impl ViewState {
-    pub fn propagate_parent(&mut self, parent: &ViewState) {
+impl NodeState {
+    pub fn propagate_parent(&mut self, parent: &NodeState) {
         self.global_rect = self.local_rect.translate(parent.global_rect.min);
     }
 }
 
 #[allow(unused_variables)]
 pub trait View: 'static {
-    fn build(&self) -> ViewState {
-        ViewState::default()
-    }
+    type State: 'static;
+
+    fn build(&self) -> Self::State;
 
     fn element(&self) -> Option<&'static str> {
         None
     }
 
-    fn event(&self, cx: &mut EventContext, event: &Event) {}
+    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {}
 
-    fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         bc.min
     }
 
-    fn draw(&self, cx: &mut DrawContext) {}
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {}
+}
+
+pub trait AnyView {
+    fn build(&self) -> Box<dyn Any>;
+
+    fn element(&self) -> Option<&'static str>;
+
+    fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event);
+
+    fn layout(&self, state: &mut dyn Any, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2;
+
+    fn draw(&self, state: &mut dyn Any, cx: &mut DrawContext);
+}
+
+impl<T: View> AnyView for T {
+    fn build(&self) -> Box<dyn Any> {
+        Box::new(self.build())
+    }
+
+    fn element(&self) -> Option<&'static str> {
+        self.element()
+    }
+
+    fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event) {
+        if let Some(state) = state.downcast_mut::<T::State>() {
+            self.event(state, cx, event);
+        } else {
+            tracing::warn!("invalid state type on {}", any::type_name::<T>());
+        }
+    }
+
+    fn layout(&self, state: &mut dyn Any, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        if let Some(state) = state.downcast_mut::<T::State>() {
+            self.layout(state, cx, bc)
+        } else {
+            tracing::warn!("invalid state type on {}", any::type_name::<T>());
+            bc.min
+        }
+    }
+
+    fn draw(&self, state: &mut dyn Any, cx: &mut DrawContext) {
+        if let Some(state) = state.downcast_mut::<T::State>() {
+            self.draw(state, cx);
+        } else {
+            tracing::warn!("invalid state type on {}", any::type_name::<T>());
+        }
+    }
 }
 
 pub trait Parent {
@@ -155,7 +217,9 @@ pub trait Events {
 /// When a view is wrapped in a signal, the view will be redrawn when the signal
 /// changes.
 impl<V: View> View for SharedSignal<V> {
-    fn build(&self) -> ViewState {
+    type State = V::State;
+
+    fn build(&self) -> Self::State {
         self.get_untracked().build()
     }
 
@@ -163,111 +227,90 @@ impl<V: View> View for SharedSignal<V> {
         self.get().element()
     }
 
-    fn event(&self, cx: &mut EventContext, event: &Event) {
-        self.get().event(cx, event)
+    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+        self.get().event(state, cx, event);
     }
 
-    fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.get().layout(cx, bc)
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        self.get().layout(state, cx, bc)
     }
 
-    fn draw(&self, cx: &mut DrawContext) {
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        // redraw when the signal changes
         self.emitter().subscribe_weak(cx.request_redraw.clone());
-        self.get().draw(cx)
+        self.get().draw(state, cx);
     }
 }
 
-pub struct Child {
-    pub view: Box<dyn View>,
-    pub state: RefCell<ViewState>,
+pub struct Node {
+    state: RefCell<Box<dyn Any>>,
+    node_state: RefCell<NodeState>,
+    view: Box<dyn AnyView>,
 }
 
-impl Child {
+impl Node {
     pub fn new(view: impl View) -> Self {
         Self {
-            state: RefCell::new(view.build()),
+            state: RefCell::new(Box::new(view.build())),
+            node_state: RefCell::new(NodeState::default()),
             view: Box::new(view),
         }
     }
 
     pub fn set_offset(&self, offset: Vec2) {
-        let mut state = self.state.borrow_mut();
+        let mut state = self.node_state.borrow_mut();
 
         let size = state.local_rect.size();
         state.local_rect = Rect::min_size(offset, size);
     }
 
-    pub fn event(&self, event: &Event, request_redraw: &WeakCallback) {
-        let mut state = self.state.borrow_mut();
+    pub fn event(&self, cx: &mut EventContext, event: &Event) {
+        let mut node_state = self.node_state.borrow_mut();
+        node_state.propagate_parent(cx.state);
 
         if let Some(event) = event.get::<PointerEvent>() {
-            let hovered = state.global_rect.contains(event.position);
-            if hovered != state.hovered {
-                state.hovered = hovered;
-                request_redraw.emit();
+            let hovered = node_state.global_rect.contains(event.position);
+            if hovered != node_state.hovered {
+                node_state.hovered = hovered;
+                cx.request_redraw();
             }
         }
 
         let mut cx = EventContext {
-            state: &mut state,
-            request_redraw,
+            state: &mut node_state,
+            request_redraw: cx.request_redraw,
         };
 
-        self.view.event(&mut cx, event);
+        let mut state = self.state.borrow_mut();
+        self.view.event(&mut **state, &mut cx, event);
     }
 
-    pub fn layout(&self, text_layout: &dyn TextLayout, bc: BoxConstraints) -> Vec2 {
-        let mut cx = LayoutContext { text_layout };
+    pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        let mut cx = LayoutContext {
+            text_layout: cx.text_layout,
+        };
 
-        let size = self.view.layout(&mut cx, bc);
+        let mut view_state = self.state.borrow_mut();
+        let size = self.view.layout(&mut **view_state, &mut cx, bc);
 
-        let mut state = self.state.borrow_mut();
-        state.local_rect = Rect::min_size(state.local_rect.min, size);
-        state.global_rect = Rect::min_size(state.global_rect.min, size);
+        let mut node_state = self.node_state.borrow_mut();
+        node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
+        node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
 
         size
     }
 
-    pub fn draw(&self, frame: &mut Frame, request_redraw: &WeakCallback) {
-        let mut cx = DrawContext {
-            frame,
-            state: &mut self.state.borrow_mut(),
-            request_redraw,
-        };
-
-        self.view.draw(&mut cx);
-    }
-}
-
-impl View for Child {
-    fn build(&self) -> ViewState {
-        self.view.build()
-    }
-
-    fn element(&self) -> Option<&'static str> {
-        None
-    }
-
-    fn event(&self, cx: &mut EventContext, event: &Event) {
-        self.state.borrow_mut().propagate_parent(cx.state);
-
-        self.event(event, cx.request_redraw);
-    }
-
-    fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.layout(cx.text_layout, bc)
-    }
-
-    fn draw(&self, cx: &mut DrawContext) {
-        let mut state = self.state.borrow_mut();
-        state.propagate_parent(cx.state);
+    pub fn draw(&self, cx: &mut DrawContext) {
+        let mut node_state = self.node_state.borrow_mut();
+        node_state.propagate_parent(cx.state);
 
         let mut cx = DrawContext {
             frame: cx.frame,
-            state: &mut state,
+            state: &mut node_state,
             request_redraw: cx.request_redraw,
         };
 
-        self.view.draw(&mut cx);
+        let mut state = self.state.borrow_mut();
+        self.view.draw(&mut **state, &mut cx);
     }
 }

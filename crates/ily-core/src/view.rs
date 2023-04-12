@@ -161,6 +161,10 @@ pub trait View: 'static {
         None
     }
 
+    fn classes(&self) -> Vec<String> {
+        Vec::new()
+    }
+
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {}
 
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
@@ -174,6 +178,8 @@ pub trait AnyView {
     fn build(&self) -> Box<dyn Any>;
 
     fn element(&self) -> Option<&'static str>;
+
+    fn classes(&self) -> Vec<String>;
 
     fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event);
 
@@ -189,6 +195,10 @@ impl<T: View> AnyView for T {
 
     fn element(&self) -> Option<&'static str> {
         self.element()
+    }
+
+    fn classes(&self) -> Vec<String> {
+        self.classes()
     }
 
     fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event) {
@@ -248,6 +258,10 @@ impl<V: View> View for SharedSignal<V> {
 
     fn element(&self) -> Option<&'static str> {
         self.get().element()
+    }
+
+    fn classes(&self) -> Vec<String> {
+        self.get().classes()
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {

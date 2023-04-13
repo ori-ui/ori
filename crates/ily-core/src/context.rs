@@ -81,7 +81,7 @@ macro_rules! context {
                 &self,
                 key: &str,
             ) -> (T, Option<Transition>) {
-                if let Some(result) = self.state.attributes.get().get_value_and_transition(key) {
+                if let Some(result) = self.state.attributes.get_value_and_transition(key) {
                     return result;
                 }
 

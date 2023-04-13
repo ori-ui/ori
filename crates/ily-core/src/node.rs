@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, Attributes, BoxConstraints, DrawContext, Event, EventContext, LayoutContext,
-    PointerEvent, SharedSignal, Style, StyleElement, StyleElements, StyleSelectors, StyleStates,
-    Styled, Transition, TransitionStates, View, WeakCallback,
+    PointerEvent, Style, StyleClasses, StyleElement, StyleElements, StyleSelectors, StyleStates,
+    Transition, TransitionStates, View, WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -37,9 +37,11 @@ pub struct NodeState {
     pub active: bool,
     pub focused: bool,
     pub hovered: bool,
-    pub transitions: TransitionStates,
     pub last_draw: Instant,
-    pub attributes: SharedSignal<Attributes>,
+    pub element: Option<&'static str>,
+    pub classes: StyleClasses,
+    pub attributes: Attributes,
+    pub transitions: TransitionStates,
 }
 
 impl Default for NodeState {
@@ -51,23 +53,27 @@ impl Default for NodeState {
             active: false,
             focused: false,
             hovered: false,
-            transitions: TransitionStates::new(),
             last_draw: Instant::now(),
-            attributes: SharedSignal::new(Attributes::new()),
+            element: None,
+            classes: StyleClasses::new(),
+            attributes: Attributes::new(),
+            transitions: TransitionStates::new(),
         }
     }
 }
 
 impl NodeState {
-    pub fn styled(attributes: Attributes) -> Self {
-        Self::styled_signal(SharedSignal::new(attributes))
-    }
+    pub fn build<T: View>(view: &T) -> (Self, T::State) {
+        let view_state = View::build(view);
 
-    pub fn styled_signal(attributes: SharedSignal<Attributes>) -> Self {
-        Self {
-            attributes,
+        let node_state = Self {
+            element: view_state.element,
+            classes: view_state.classes,
+            attributes: view_state.attributes,
             ..Self::default()
-        }
+        };
+
+        (node_state, view_state.state)
     }
 
     pub fn propagate_parent(&mut self, parent: &NodeState) {
@@ -90,6 +96,19 @@ impl NodeState {
         }
 
         states
+    }
+
+    pub fn selectors(&self, ancestors: &StyleElements) -> StyleSelectors {
+        let mut elements = ancestors.clone();
+
+        if let Some(element) = self.element {
+            elements.add(StyleElement::new(Some(element.into()), self.style_states()));
+        }
+
+        StyleSelectors {
+            elements,
+            classes: self.classes.clone(),
+        }
     }
 
     pub fn delta(&self) -> f32 {
@@ -124,20 +143,12 @@ impl NodeBuilder for Node {
 
 impl<T: View> NodeBuilder for T {
     fn build(self) -> Node {
-        Node {
-            state: RefCell::new(Box::new(View::build(&self))),
-            node_state: RefCell::new(NodeState::default()),
-            view: Box::new(self),
-        }
-    }
-}
+        let (node_state, state) = NodeState::build(&self);
 
-impl<T: View> NodeBuilder for Styled<T> {
-    fn build(self) -> Node {
         Node {
-            state: RefCell::new(Box::new(View::build(&self.value))),
-            node_state: RefCell::new(NodeState::styled(self.attributes)),
-            view: Box::new(self.value),
+            state: RefCell::new(Box::new(state)),
+            node_state: RefCell::new(node_state),
+            view: Box::new(self),
         }
     }
 }
@@ -163,19 +174,6 @@ impl Node {
 
     pub fn states(&self) -> StyleStates {
         self.node_state.borrow().style_states()
-    }
-
-    pub fn selectors(&self, ancestors: &StyleElements, states: StyleStates) -> StyleSelectors {
-        let mut elements = ancestors.clone();
-
-        if let Some(element) = self.view.element() {
-            elements.push(StyleElement::new(Some(element.into()), states));
-        }
-
-        StyleSelectors {
-            elements,
-            classes: self.view.classes(),
-        }
     }
 
     pub fn local_rect(&self) -> Rect {
@@ -210,7 +208,7 @@ impl Node {
 
         let mut cx = EventContext {
             style: cx.style,
-            selectors: &self.selectors(&cx.selectors.elements, node_state.style_states()),
+            selectors: &node_state.selectors(&cx.selectors.elements),
             state: &mut node_state,
             request_redraw: cx.request_redraw,
         };
@@ -221,7 +219,7 @@ impl Node {
 
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut node_state = self.node_state.borrow_mut();
-        let selectors = self.selectors(&cx.selectors.elements, node_state.style_states());
+        let selectors = node_state.selectors(&cx.selectors.elements);
         let mut cx = LayoutContext {
             style: cx.style,
             state: &mut node_state,
@@ -243,7 +241,7 @@ impl Node {
         let mut node_state = self.node_state.borrow_mut();
         node_state.propagate_parent(cx.state);
 
-        let selectors = self.selectors(&cx.selectors.elements, node_state.style_states());
+        let selectors = node_state.selectors(&cx.selectors.elements);
         let mut cx = DrawContext {
             style: cx.style,
             selectors: &selectors,
@@ -269,7 +267,7 @@ impl Node {
             }
         }
 
-        let selectors = self.selectors(&StyleElements::new(), node_state.style_states());
+        let selectors = node_state.selectors(&StyleElements::new());
         let mut cx = EventContext {
             style,
             selectors: &selectors,
@@ -289,7 +287,7 @@ impl Node {
         request_redraw: &WeakCallback,
     ) -> Vec2 {
         let mut node_state = self.node_state.borrow_mut();
-        let selectors = self.selectors(&StyleElements::new(), node_state.style_states());
+        let selectors = node_state.selectors(&StyleElements::new());
         let mut cx = LayoutContext {
             style,
             state: &mut node_state,
@@ -311,7 +309,7 @@ impl Node {
     pub fn draw_root(&self, style: &Style, frame: &mut Frame, request_redraw: &WeakCallback) {
         let mut node_state = self.node_state.borrow_mut();
 
-        let selectors = self.selectors(&StyleElements::new(), node_state.style_states());
+        let selectors = node_state.selectors(&StyleElements::new());
         let mut cx = DrawContext {
             style,
             selectors: &selectors,

@@ -109,10 +109,10 @@ fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelectors {
     for pair in pair.into_inner() {
         match pair.as_rule() {
             Rule::Element => {
-                selector.elements.push(parse_element(pair));
+                selector.elements.add(parse_element(pair));
             }
             Rule::Class => {
-                selector.classes.push(parse_class(pair));
+                selector.classes.add(parse_class(pair));
             }
             Rule::Wildcard => {}
             _ => unreachable!(),

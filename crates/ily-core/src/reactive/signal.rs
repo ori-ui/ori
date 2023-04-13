@@ -4,7 +4,7 @@ use std::{
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     panic::Location,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, Weak},
 };
 
 use crate::CallbackEmitter;
@@ -205,6 +205,10 @@ impl<T: ?Sized> SharedSignal<T> {
     pub fn new_arc(value: Arc<T>) -> Self {
         Self(Arc::new(Signal::new_arc(value)))
     }
+
+    pub fn downgrade(&self) -> WeakSignal<T> {
+        WeakSignal(Arc::downgrade(&self.0))
+    }
 }
 
 impl<T: ?Sized> Clone for SharedSignal<T> {
@@ -218,6 +222,57 @@ impl<T: ?Sized> Deref for SharedSignal<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// A weak reference to a [`Signal`].
+pub struct WeakSignal<T: ?Sized>(Weak<Signal<T>>);
+
+impl<T> WeakSignal<T> {
+    #[track_caller]
+    pub fn set(&self, value: T) {
+        if let Some(signal) = self.upgrade() {
+            signal.set(value);
+        }
+    }
+
+    pub fn set_silent(&self, value: T) {
+        if let Some(signal) = self.upgrade() {
+            signal.set_silent(value);
+        }
+    }
+}
+
+impl<T: ?Sized> WeakSignal<T> {
+    pub fn upgrade(&self) -> Option<SharedSignal<T>> {
+        self.0.upgrade().map(SharedSignal)
+    }
+
+    #[track_caller]
+    pub fn set_arc(&self, value: Arc<T>) {
+        if let Some(signal) = self.upgrade() {
+            signal.set_arc(value);
+        }
+    }
+
+    pub fn set_arc_silent(&self, value: Arc<T>) {
+        if let Some(signal) = self.upgrade() {
+            signal.set_arc_silent(value);
+        }
+    }
+
+    pub fn get(&self) -> Option<Arc<T>> {
+        Some(self.upgrade()?.get())
+    }
+
+    pub fn get_untracked(&self) -> Option<Arc<T>> {
+        Some(self.upgrade()?.get_untracked())
+    }
+}
+
+impl<T: ?Sized> Clone for WeakSignal<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
@@ -236,6 +291,12 @@ impl<T: Debug + ?Sized> Debug for Signal<T> {
 impl<T: Debug + ?Sized> Debug for SharedSignal<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("SharedSignal").field(&self.get()).finish()
+    }
+}
+
+impl<T: Debug + ?Sized> Debug for WeakSignal<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("WeakSignal").field(&self.get()).finish()
     }
 }
 
@@ -270,6 +331,12 @@ impl<T: PartialEq + ?Sized> PartialEq for Signal<T> {
 }
 
 impl<T: PartialEq + ?Sized> PartialEq for SharedSignal<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.get() == other.get()
+    }
+}
+
+impl<T: PartialEq + ?Sized> PartialEq for WeakSignal<T> {
     fn eq(&self, other: &Self) -> bool {
         self.get() == other.get()
     }
@@ -364,6 +431,12 @@ impl<T: Hash + ?Sized> Hash for Signal<T> {
 }
 
 impl<T: Hash + ?Sized> Hash for SharedSignal<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.get().hash(state);
+    }
+}
+
+impl<T: Hash + ?Sized> Hash for WeakSignal<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.get().hash(state);
     }

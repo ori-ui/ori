@@ -68,8 +68,12 @@ impl StyleElements {
         self.elements.is_empty()
     }
 
-    pub fn push(&mut self, element: StyleElement) {
+    pub fn add(&mut self, element: StyleElement) {
         self.elements.push(element);
+    }
+
+    pub fn extend(&mut self, elements: impl IntoIterator<Item = StyleElement>) {
+        self.elements.extend(elements);
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &StyleElement> {
@@ -115,7 +119,7 @@ pub type StyleClass = SmolStr;
 
 #[derive(Clone, Debug, Default)]
 pub struct StyleClasses {
-    classes: SmallVec<[SmolStr; 4]>,
+    classes: SmallVec<[StyleClass; 4]>,
 }
 
 impl StyleClasses {
@@ -133,8 +137,12 @@ impl StyleClasses {
         self.classes.is_empty()
     }
 
-    pub fn push(&mut self, class: impl Into<SmolStr>) {
+    pub fn add(&mut self, class: impl Into<SmolStr>) {
         self.classes.push(class.into());
+    }
+
+    pub fn extend(&mut self, classes: impl IntoIterator<Item = impl Into<StyleClass>>) {
+        self.classes.extend(classes.into_iter().map(Into::into));
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &SmolStr> {

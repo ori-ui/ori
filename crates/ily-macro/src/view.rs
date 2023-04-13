@@ -78,7 +78,9 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
 
             quote! {
                 ily::core::BoundedScope::dynamic(#context, |#context| {
-                    let mut view = <#name as ::std::default::Default>::default();
+                    let mut view = <#name as ily::core::Styleable<_>>::styled(
+                        <#name as ::std::default::Default>::default()
+                    );
 
                     #(#properties)*
                     #(#children)*
@@ -199,6 +201,12 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
 }
 
 fn property(name: &NodeName, key: &ExprPath, value: &Expr) -> TokenStream {
+    if key.path == parse_quote!(class) {
+        return quote_spanned! {value.span() =>
+            view = <ily::core::Styled<#name> as ily::core::Styleable<_>>::class(view, #value);
+        };
+    }
+
     let key = quote_spanned! {key.path.span() =>
         #key
     };

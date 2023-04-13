@@ -1,8 +1,8 @@
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Div, DivEvents, DivProperties, DrawContext, Event, EventContext, Events,
-    LayoutContext, Parent, PointerEvent, Properties, Scope, StyleClass, StyleClasses, View,
+    BoxConstraints, Div, DivEvents, DrawContext, Event, EventContext, Events, LayoutContext,
+    Parent, PointerEvent, Scope, View, ViewState,
 };
 
 pub struct Button {
@@ -27,11 +27,6 @@ impl Button {
         self
     }
 
-    pub fn class(mut self, class: impl Into<StyleClass>) -> Self {
-        self.content = self.content.class(class);
-        self
-    }
-
     pub fn on_press<'a>(mut self, cx: Scope<'a>, callback: impl FnMut(&PointerEvent) + 'a) -> Self {
         self.content = self.content.on_press(cx, callback);
         self
@@ -41,14 +36,6 @@ impl Button {
 impl Parent for Button {
     fn add_child(&mut self, view: impl View) {
         self.content.add_child(view);
-    }
-}
-
-impl Properties for Button {
-    type Setter<'a> = DivProperties<'a>;
-
-    fn setter(&mut self) -> Self::Setter<'_> {
-        Properties::setter(&mut self.content)
     }
 }
 
@@ -63,16 +50,8 @@ impl Events for Button {
 impl View for Button {
     type State = <Div as View>::State;
 
-    fn build(&self) -> Self::State {
-        self.content.build()
-    }
-
-    fn element(&self) -> Option<&'static str> {
-        Some("button")
-    }
-
-    fn classes(&self) -> StyleClasses {
-        self.content.classes()
+    fn build(&self) -> ViewState<Self::State> {
+        self.content.build().with_element("button")
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {

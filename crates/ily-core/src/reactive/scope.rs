@@ -3,6 +3,7 @@ use std::{
     iter::FilterMap,
     marker::PhantomData,
     mem,
+    ops::Index,
     rc::Rc,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -77,6 +78,10 @@ impl<T> Sparse<T> {
         }
     }
 
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.items.get(index)?.as_ref()
+    }
+
     pub fn insert(&mut self, item: T) -> usize {
         if let Some(index) = self.free.pop() {
             self.items[index] = Some(item);
@@ -102,6 +107,14 @@ impl<T> Sparse<T> {
 impl<T> Default for Sparse<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> Index<usize> for Sparse<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.items[index].as_ref().unwrap()
     }
 }
 
@@ -168,6 +181,16 @@ impl<'a> RawScope<'a> {
         self.is_child_scopes_drop_locked()
     }
 
+    fn is_child_scope_drop_locked(&self, index: usize) -> bool {
+        let children = self.children.lock().unwrap();
+        if let Some(&child) = children.get(index) {
+            let child = unsafe { &*child };
+            child.is_drop_locked()
+        } else {
+            false
+        }
+    }
+
     fn is_child_scopes_drop_locked(&self) -> bool {
         self.children.lock().unwrap().iter().any(|&child| {
             let child = unsafe { &*child };
@@ -223,10 +246,6 @@ impl<'a> Scope<'a> {
 
     pub(crate) fn release_drop_lock(&self) {
         self.raw.drop_lock.fetch_sub(1, Ordering::AcqRel);
-    }
-
-    pub(crate) fn is_child_scopes_drop_locked(&self) -> bool {
-        self.raw.is_child_scopes_drop_locked()
     }
 
     /// Creates a new scope and immediately disposes it.
@@ -313,7 +332,7 @@ impl<'a> Scope<'a> {
         let mut disposer = None::<ScopeDisposer<'a>>;
         self.effect(move || {
             if let Some(disposer) = disposer.take() {
-                if !self.is_child_scopes_drop_locked() {
+                if !disposer.is_drop_locked() {
                     // SAFETY: the scope is not accessed after this point.
                     unsafe { disposer.dispose() };
                 } else {
@@ -408,6 +427,13 @@ impl<'a> ScopeDisposer<'a> {
     fn child(parent: &'a RawScope<'a>, index: usize) -> Self {
         Self {
             inner: ScopeDisposerInner::Child { parent, index },
+        }
+    }
+
+    fn is_drop_locked(&self) -> bool {
+        match self.inner {
+            ScopeDisposerInner::Root { .. } => false,
+            ScopeDisposerInner::Child { parent, index } => parent.is_child_scope_drop_locked(index),
         }
     }
 

@@ -3,7 +3,7 @@ use ily_graphics::{Quad, TextAlign, TextSection};
 
 use crate::{
     Bindable, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Scope,
-    SharedSignal, Signal, View,
+    SharedSignal, Signal, View, ViewState,
 };
 
 #[derive(Default)]
@@ -26,11 +26,19 @@ impl Checkbox {
     pub fn bind_checked<'a>(self, cx: Scope<'a>, binding: &'a Signal<bool>) -> Self {
         let checked = self.checked.clone();
         cx.effect(move || {
+            if checked.get_untracked() == binding.get() {
+                return;
+            }
+
             checked.set(*binding.get());
         });
 
         let checked = self.checked.clone();
         cx.effect(move || {
+            if checked.get() == binding.get_untracked() {
+                return;
+            }
+
             binding.set(*checked.get());
         });
 
@@ -44,14 +52,24 @@ pub struct CheckboxBinding<'a> {
 
 impl<'a> CheckboxBinding<'a> {
     pub fn checked<'b>(&self, cx: Scope<'b>, binding: &'b Signal<bool>) {
-        let checked = self.checkbox.checked.clone();
+        let checked = self.checkbox.checked.downgrade();
         cx.effect(move || {
+            if checked.get_untracked() == Some(binding.get()) {
+                return;
+            }
+
             checked.set(*binding.get());
         });
 
-        let checked = self.checkbox.checked.clone();
+        let checked = self.checkbox.checked.downgrade();
         cx.effect(move || {
-            binding.set(*checked.get());
+            if checked.get() == Some(binding.get_untracked()) {
+                return;
+            }
+
+            if let Some(checked) = checked.get() {
+                binding.set(*checked);
+            }
         });
     }
 }
@@ -67,10 +85,8 @@ impl Bindable for Checkbox {
 impl View for Checkbox {
     type State = ();
 
-    fn build(&self) -> Self::State {}
-
-    fn element(&self) -> Option<&'static str> {
-        Some("checkbox")
+    fn build(&self) -> ViewState<Self::State> {
+        ViewState::new((), Some("checkbox"))
     }
 
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {

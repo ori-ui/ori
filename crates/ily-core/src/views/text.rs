@@ -1,7 +1,7 @@
 use glam::Vec2;
 use ily_graphics::{Color, TextAlign, TextSection};
 
-use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Unit, View};
+use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Unit, View, ViewState};
 
 #[derive(Clone)]
 pub struct Text {
@@ -112,10 +112,8 @@ impl Properties for Text {
 impl View for Text {
     type State = ();
 
-    fn build(&self) -> Self::State {}
-
-    fn element(&self) -> Option<&'static str> {
-        Some("text")
+    fn build(&self) -> ViewState<Self::State> {
+        ViewState::new((), Some("text"))
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {

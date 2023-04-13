@@ -3,13 +3,12 @@ use ily_graphics::Quad;
 
 use crate::{
     AlignItems, Axis, BoxConstraints, Children, DrawContext, Event, EventContext, EventSignal,
-    Events, JustifyContent, LayoutContext, NodeBuilder, Parent, PointerEvent, Properties, Scope,
-    StyleClass, StyleClasses, View,
+    Events, JustifyContent, LayoutContext, NodeBuilder, Parent, PointerEvent, Scope, View,
+    ViewState,
 };
 
 #[derive(Default)]
 pub struct Div {
-    pub classes: StyleClasses,
     pub on_press: Option<EventSignal<PointerEvent>>,
     pub on_release: Option<EventSignal<PointerEvent>>,
     pub children: Children,
@@ -22,11 +21,6 @@ impl Div {
 
     pub fn child(mut self, child: impl View) -> Self {
         self.add_child(child);
-        self
-    }
-
-    pub fn class(mut self, class: impl Into<StyleClass>) -> Self {
-        self.classes.push(class);
         self
     }
 
@@ -78,24 +72,6 @@ impl Parent for Div {
     }
 }
 
-pub struct DivProperties<'a> {
-    div: &'a mut Div,
-}
-
-impl<'a> DivProperties<'a> {
-    pub fn class(&mut self, class: impl Into<StyleClass>) {
-        self.div.classes.push(class);
-    }
-}
-
-impl Properties for Div {
-    type Setter<'a> = DivProperties<'a>;
-
-    fn setter(&mut self) -> Self::Setter<'_> {
-        Self::Setter { div: self }
-    }
-}
-
 pub struct DivEvents<'a> {
     div: &'a mut Div,
 }
@@ -139,14 +115,8 @@ impl Events for Div {
 impl View for Div {
     type State = ();
 
-    fn build(&self) -> Self::State {}
-
-    fn element(&self) -> Option<&'static str> {
-        Some("div")
-    }
-
-    fn classes(&self) -> StyleClasses {
-        self.classes.clone()
+    fn build(&self) -> ViewState<Self::State> {
+        ViewState::new((), Some("div"))
     }
 
     fn event(&self, _state: &mut Self::State, cx: &mut EventContext, event: &Event) {

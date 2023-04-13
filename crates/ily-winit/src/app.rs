@@ -28,6 +28,7 @@ const BUILTIN_STYLES: &[&str] = &[
 
 pub struct App {
     style_loader: StyleLoader,
+    title: String,
     builder: Option<Box<dyn FnOnce() -> Node>>,
 }
 
@@ -66,8 +67,14 @@ impl App {
 
         Self {
             style_loader: loader,
+            title: "Ily App".to_string(),
             builder: Some(builder),
         }
+    }
+
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = title.into();
+        self
     }
 
     pub fn style<T>(mut self, style: T) -> Self
@@ -130,7 +137,7 @@ impl App {
     pub fn run(mut self) {
         let event_loop = EventLoop::new();
         let window = WindowBuilder::new()
-            .with_title("Hello, world!")
+            .with_title(self.title)
             .build(&event_loop)
             .unwrap();
         let window = Arc::new(window);

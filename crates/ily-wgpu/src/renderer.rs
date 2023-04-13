@@ -12,6 +12,9 @@ use wgpu_glyph::{ab_glyph::FontArc, GlyphBrush, GlyphBrushBuilder};
 
 use crate::{Fonts, MeshPipeline, QuadPipeline};
 
+const TEXT_FONT: &[u8] = include_bytes!("../../../assets/NotoSans-Medium.ttf");
+const ICON_FONT: &[u8] = include_bytes!("../../../assets/MaterialIcons-Regular.ttf");
+
 pub struct Renderer {
     device: Device,
     queue: Queue,
@@ -57,10 +60,17 @@ impl Renderer {
         let mesh_pipeline = MeshPipeline::new(&device, config.format);
         let quad_pipeline = QuadPipeline::new(&device, config.format);
 
-        let fonts = Fonts::default();
-        let font = FontArc::try_from_slice(include_bytes!("../../../assets/NotoSans-Medium.ttf"));
-        let glyph_brush =
-            GlyphBrushBuilder::using_font(font.unwrap()).build(&device, config.format);
+        let mut fonts = Fonts::default();
+        let text_font = FontArc::try_from_slice(TEXT_FONT).unwrap();
+        let icon_font = FontArc::try_from_slice(ICON_FONT).unwrap();
+
+        fonts.add_font("NotoSans-Medium");
+        fonts.add_font("MaterialIcons-Regular");
+
+        let mut glyph_brush_builder = GlyphBrushBuilder::using_font(text_font);
+        glyph_brush_builder.add_font(icon_font);
+
+        let glyph_brush = glyph_brush_builder.build(&device, config.format);
 
         let staging_belt = StagingBelt::new(1024);
 

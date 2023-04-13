@@ -1,5 +1,5 @@
 use glam::Vec2;
-use ily_graphics::{Color, Rect, TextAlign, TextSection};
+use ily_graphics::{Color, TextAlign, TextSection};
 
 use crate::{attributes, BoxConstraints, DrawContext, LayoutContext, Length, Properties, View};
 
@@ -9,7 +9,8 @@ pub struct Text {
     font_size: Option<Length>,
     font: Option<String>,
     color: Option<Color>,
-    align: Option<TextAlign>,
+    h_align: Option<TextAlign>,
+    v_align: Option<TextAlign>,
 }
 
 impl Default for Text {
@@ -19,7 +20,8 @@ impl Default for Text {
             font_size: None,
             font: None,
             color: None,
-            align: None,
+            h_align: None,
+            v_align: None,
         }
     }
 }
@@ -56,9 +58,15 @@ impl Text {
         self
     }
 
-    /// Set the alignment of the text.
+    /// Set the horizontal alignment of the text.
     pub fn align(mut self, align: TextAlign) -> Self {
-        self.align = Some(align);
+        self.h_align = Some(align);
+        self
+    }
+
+    /// Set the vertical alignment of the text.
+    pub fn v_align(mut self, align: TextAlign) -> Self {
+        self.v_align = Some(align);
         self
     }
 }
@@ -85,7 +93,11 @@ impl<'a> TextProperties<'a> {
     }
 
     pub fn align(&mut self, align: TextAlign) {
-        self.text.align = Some(align);
+        self.text.h_align = Some(align);
+    }
+
+    pub fn v_align(&mut self, align: TextAlign) {
+        self.text.v_align = Some(align);
     }
 }
 
@@ -112,15 +124,18 @@ impl View for Text {
             font_size: "font-size",
             font: "font",
             color: "color",
-            align: "align",
+            h_align: "text-align",
+            v_align: "text-valign",
         }
 
         let font_size = font_size.pixels();
 
         let section = TextSection {
-            bounds: Rect::min_size(Vec2::ZERO, bc.max),
+            position: Vec2::ZERO,
+            bounds: bc.max,
             scale: font_size,
-            align,
+            h_align,
+            v_align,
             text: self.text.clone(),
             font: (font.is_empty()).then(|| font),
             color,
@@ -136,19 +151,23 @@ impl View for Text {
             font_size: "font-size",
             font: "font",
             color: "color",
-            align: "align",
+            h_align: "text-align",
+            v_align: "text-valign",
         }
 
         let font_size = font_size.pixels();
 
-        let section = TextSection {
-            bounds: cx.rect(),
-            align,
+        let mut section = TextSection {
+            h_align,
+            v_align,
             text: self.text.clone(),
             scale: font_size,
             font: (font.is_empty()).then(|| font),
             color,
+            ..Default::default()
         };
+
+        section.set_rect(cx.rect());
 
         cx.draw_primitive(section);
     }

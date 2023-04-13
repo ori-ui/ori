@@ -13,8 +13,8 @@ use crate::{
 
 pub struct EventContext<'a> {
     pub style: &'a Style,
-    pub selectors: &'a StyleSelectors,
     pub state: &'a mut NodeState,
+    pub selectors: &'a StyleSelectors,
     pub request_redraw: &'a WeakCallback,
 }
 
@@ -57,8 +57,10 @@ impl<'a> EventContext<'a> {
 
 pub struct LayoutContext<'a> {
     pub style: &'a Style,
+    pub state: &'a mut NodeState,
     pub selector: &'a StyleSelectors,
     pub text_layout: &'a dyn TextLayout,
+    pub request_redraw: &'a WeakCallback,
 }
 
 impl<'a> LayoutContext<'a> {
@@ -76,13 +78,17 @@ impl<'a> LayoutContext<'a> {
     pub fn text_bounds(&self, section: &TextSection) -> Option<Rect> {
         self.text_layout.bounds(section)
     }
+
+    pub fn request_redraw(&self) {
+        self.request_redraw.emit(&());
+    }
 }
 
 pub struct DrawContext<'a> {
     pub style: &'a Style,
-    pub selectors: &'a StyleSelectors,
-    pub frame: &'a mut Frame,
     pub state: &'a mut NodeState,
+    pub frame: &'a mut Frame,
+    pub selectors: &'a StyleSelectors,
     pub request_redraw: &'a WeakCallback,
 }
 
@@ -244,22 +250,6 @@ impl<T: View> AnyView for T {
             tracing::warn!("invalid state type on {}", any::type_name::<T>());
         }
     }
-}
-
-pub trait Properties {
-    type Setter<'a>
-    where
-        Self: 'a;
-
-    fn setter(&mut self) -> Self::Setter<'_>;
-}
-
-pub trait Events {
-    type Setter<'a>
-    where
-        Self: 'a;
-
-    fn setter(&mut self) -> Self::Setter<'_>;
 }
 
 /// When a view is wrapped in a signal, the view will be redrawn when the signal

@@ -3,11 +3,13 @@ use ily_graphics::{Color, Quad};
 
 use crate::{
     attributes, Axis, BoxConstraints, Children, DrawContext, Event, EventContext, EventSignal,
-    Events, LayoutContext, Length, Node, Parent, PointerEvent, Properties, Scope, View,
+    Events, LayoutContext, Length, Node, Parent, PointerEvent, Properties, Scope, StyleClass,
+    StyleClasses, TransitionState, View,
 };
 
 #[derive(Default)]
 pub struct Div {
+    pub classes: StyleClasses,
     pub direction: Option<Axis>,
     pub padding: Option<Length>,
     pub gap: Option<Length>,
@@ -31,12 +33,20 @@ impl Div {
             padding: Some(Length::ZERO),
             gap: Some(Length::ZERO),
             background: Some(Color::TRANSPARENT),
+            border_radius: Some(Length::ZERO),
+            border_width: Some(Length::ZERO),
+            border_color: Some(Color::TRANSPARENT),
             ..Default::default()
         }
     }
 
     pub fn child(mut self, child: impl View) -> Self {
         self.add_child(child);
+        self
+    }
+
+    pub fn class(mut self, class: impl Into<StyleClass>) -> Self {
+        self.classes.push(class);
         self
     }
 
@@ -128,6 +138,10 @@ pub struct DivProperties<'a> {
 }
 
 impl<'a> DivProperties<'a> {
+    pub fn class(&mut self, class: impl Into<StyleClass>) {
+        self.div.classes.push(class);
+    }
+
     pub fn direction(&mut self, direction: Axis) {
         self.div.direction = Some(direction);
     }
@@ -205,13 +219,29 @@ impl Events for Div {
     }
 }
 
-impl View for Div {
-    type State = ();
+#[derive(Default)]
+pub struct DivState {
+    padding: TransitionState<Length>,
+    gap: TransitionState<Length>,
+    background: TransitionState<Color>,
+    border_radius: TransitionState<Length>,
+    border_width: TransitionState<Length>,
+    border_color: TransitionState<Color>,
+}
 
-    fn build(&self) -> Self::State {}
+impl View for Div {
+    type State = DivState;
+
+    fn build(&self) -> Self::State {
+        DivState::default()
+    }
 
     fn element(&self) -> Option<&'static str> {
         Some("div")
+    }
+
+    fn classes(&self) -> StyleClasses {
+        self.classes.clone()
     }
 
     fn event(&self, _state: &mut Self::State, cx: &mut EventContext, event: &Event) {
@@ -230,12 +260,12 @@ impl View for Div {
         }
     }
 
-    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         attributes! {
             cx, self,
             direction: "direction",
-            padding: "padding",
-            gap: "gap",
+            padding: "padding" (state.padding),
+            gap: "gap" (state.gap),
         }
 
         let padding = padding.pixels();
@@ -244,11 +274,12 @@ impl View for Div {
         let mut major = padding;
         let mut minor = direction.minor(bc.min);
 
+        let min_minor = direction.minor(bc.min) - padding * 2.0;
         let max_minor = direction.minor(bc.max) - padding * 2.0;
 
         for (i, child) in self.children.iter().enumerate() {
             let child_bc = BoxConstraints {
-                min: direction.pack(0.0, minor),
+                min: direction.pack(0.0, min_minor),
                 max: direction.pack(f32::INFINITY, max_minor),
             };
 
@@ -277,15 +308,15 @@ impl View for Div {
         direction.pack(major, minor)
     }
 
-    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         tracing::trace!("Div::draw: rect = {:?}", cx.rect());
 
         attributes! {
             cx, self,
-            background: "background",
-            border_radius: "border-radius",
-            border_width: "border-width",
-            border_color: "border-color",
+            background: "background" (state.background),
+            border_radius: "border-radius" (state.border_radius),
+            border_width: "border-width" (state.border_width),
+            border_color: "border-color" (state.border_color),
         }
 
         let border_radius = border_radius.pixels();

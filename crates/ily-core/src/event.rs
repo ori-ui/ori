@@ -66,4 +66,12 @@ impl PointerEvent {
     pub fn released(&self, button: PointerButton) -> bool {
         !self.pressed && self.button == Some(button)
     }
+
+    pub fn is_press(&self) -> bool {
+        self.pressed && self.button.is_some()
+    }
+
+    pub fn is_release(&self) -> bool {
+        !self.pressed && self.button.is_some()
+    }
 }

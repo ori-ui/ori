@@ -35,6 +35,10 @@ impl BoxConstraints {
             max: self.max,
         }
     }
+
+    pub fn constrain(self, size: Vec2) -> Vec2 {
+        size.clamp(self.min, self.max)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -95,9 +99,9 @@ impl From<AttributeValue> for Option<TextAlign> {
     fn from(value: AttributeValue) -> Self {
         match value {
             AttributeValue::String(s) => match s.as_str() {
-                "left" | "start" => Some(TextAlign::Left),
+                "left" | "start" => Some(TextAlign::Start),
                 "center" => Some(TextAlign::Center),
-                "right" | "end" => Some(TextAlign::Right),
+                "right" | "end" => Some(TextAlign::End),
                 _ => {
                     tracing::warn!("Invalid text align: {}", s);
 

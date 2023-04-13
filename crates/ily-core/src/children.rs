@@ -1,10 +1,6 @@
 use deref_derive::{Deref, DerefMut};
 
-use crate::{Node, View};
-
-pub trait Parent {
-    fn add_child(&mut self, child: impl View);
-}
+use crate::Node;
 
 #[derive(Default, Deref, DerefMut)]
 pub struct Children {

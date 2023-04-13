@@ -1,4 +1,4 @@
-use std::{any::Any, cell::RefCell};
+use std::{any::Any, cell::RefCell, time::Instant};
 
 use glam::Vec2;
 use ily_graphics::{Frame, Rect, TextLayout};
@@ -28,7 +28,7 @@ impl Default for NodeId {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct NodeState {
     pub id: NodeId,
     pub local_rect: Rect,
@@ -36,6 +36,21 @@ pub struct NodeState {
     pub active: bool,
     pub focused: bool,
     pub hovered: bool,
+    pub last_draw: Instant,
+}
+
+impl Default for NodeState {
+    fn default() -> Self {
+        Self {
+            id: NodeId::new(),
+            local_rect: Rect::ZERO,
+            global_rect: Rect::ZERO,
+            active: false,
+            focused: false,
+            hovered: false,
+            last_draw: Instant::now(),
+        }
+    }
 }
 
 impl NodeState {
@@ -59,6 +74,14 @@ impl NodeState {
         }
 
         states
+    }
+
+    pub fn delta(&self) -> f32 {
+        self.last_draw.elapsed().as_secs_f32()
+    }
+
+    fn draw(&mut self) {
+        self.last_draw = Instant::now();
     }
 }
 
@@ -134,16 +157,19 @@ impl Node {
     }
 
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        let mut node_state = self.node_state.borrow_mut();
+        let selectors = self.selectors(&cx.selector.elements, node_state.style_states());
         let mut cx = LayoutContext {
             style: cx.style,
-            selector: &self.selectors(&cx.selector.elements, self.states()),
+            state: &mut node_state,
+            selector: &selectors,
             text_layout: cx.text_layout,
+            request_redraw: cx.request_redraw,
         };
 
         let mut view_state = self.state.borrow_mut();
         let size = self.view.layout(&mut **view_state, &mut cx, bc);
 
-        let mut node_state = self.node_state.borrow_mut();
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
         node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
 
@@ -165,6 +191,8 @@ impl Node {
 
         let mut state = self.state.borrow_mut();
         self.view.draw(&mut **state, &mut cx);
+
+        cx.state.draw();
     }
 
     pub fn event_root(&self, style: &Style, request_redraw: &WeakCallback, event: &Event) {
@@ -193,16 +221,26 @@ impl Node {
         style: &Style,
         text_layout: &mut dyn TextLayout,
         window_size: Vec2,
+        request_redraw: &WeakCallback,
     ) -> Vec2 {
-        let selectors = self.selectors(&StyleElements::new(), self.states());
+        let mut node_state = self.node_state.borrow_mut();
+        let selectors = self.selectors(&StyleElements::new(), node_state.style_states());
         let mut cx = LayoutContext {
             style,
+            state: &mut node_state,
             selector: &selectors,
             text_layout,
+            request_redraw,
         };
 
         let bc = BoxConstraints::new(Vec2::ZERO, window_size);
-        self.layout(&mut cx, bc)
+        let mut state = self.state.borrow_mut();
+        let size = self.view.layout(&mut **state, &mut cx, bc);
+
+        node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
+        node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
+
+        size
     }
 
     pub fn draw_root(&self, style: &Style, frame: &mut Frame, request_redraw: &WeakCallback) {
@@ -219,5 +257,7 @@ impl Node {
 
         let mut state = self.state.borrow_mut();
         self.view.draw(&mut **state, &mut cx);
+
+        cx.state.draw();
     }
 }

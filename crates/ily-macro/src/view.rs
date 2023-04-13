@@ -133,11 +133,12 @@ fn attribute(context: &Expr, name: &NodeName, attribute: &Node) -> TokenStream {
                 abort!(punct, "expected value");
             };
             
-            if *kind == "on" {
-                return event(context, name, key, value);
+            let kind = kind.to_string();
+            match kind.as_str() {
+                "on" => event(context, name, key, value),
+                "bind" => binding(context, name, key, value),
+                _ => abort!(kind, "expected 'on' or 'bind'"),
             }
-
-            abort!(kind, "expected 'on'");
         }
         _ => unimplemented!(),
     }
@@ -156,5 +157,11 @@ fn property(name: &NodeName, key: &ExprPath, value: &Expr) -> TokenStream {
 fn event(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStream {
     quote! {
         <#name as ily::core::Events>::setter(&mut view).#key(#context, #value);
+    }
+}
+
+fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStream {
+    quote! {
+        <#name as ily::core::Bindable>::setter(&mut view).#key(#context, #value);
     }
 }

@@ -2,7 +2,7 @@ use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
 use ily_graphics::Color;
 
-use crate::{Length, StyleSelectors};
+use crate::{Length, StyleSelectors, Transition};
 
 use super::parse::StyleParseError;
 
@@ -195,9 +195,9 @@ pub enum AttributeValue {
     /// A string value, eg. `red`.
     String(String),
     /// A length value, eg. `10px` or `10pt`.
-    Length(Length),
+    Length(Length, Option<Transition>),
     /// A color value, eg. `#ff0000`.
-    Color(Color),
+    Color(Color, Option<Transition>),
 }
 
 impl From<AttributeValue> for Option<String> {
@@ -216,7 +216,7 @@ impl From<AttributeValue> for Option<String> {
 impl From<AttributeValue> for Option<Length> {
     fn from(value: AttributeValue) -> Self {
         match value {
-            AttributeValue::Length(value) => Some(value),
+            AttributeValue::Length(value, _) => Some(value),
             _ => {
                 tracing::warn!("attribute is not a length");
 
@@ -229,7 +229,33 @@ impl From<AttributeValue> for Option<Length> {
 impl From<AttributeValue> for Option<Color> {
     fn from(value: AttributeValue) -> Self {
         match value {
-            AttributeValue::Color(value) => Some(value),
+            AttributeValue::Color(value, _) => Some(value),
+            _ => {
+                tracing::warn!("attribute is not a color");
+
+                None
+            }
+        }
+    }
+}
+
+impl From<AttributeValue> for Option<(Length, Option<Transition>)> {
+    fn from(value: AttributeValue) -> Self {
+        match value {
+            AttributeValue::Length(value, transition) => Some((value, transition)),
+            _ => {
+                tracing::warn!("attribute is not a length");
+
+                None
+            }
+        }
+    }
+}
+
+impl From<AttributeValue> for Option<(Color, Option<Transition>)> {
+    fn from(value: AttributeValue) -> Self {
+        match value {
+            AttributeValue::Color(value, transition) => Some((value, transition)),
             _ => {
                 tracing::warn!("attribute is not a color");
 

@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    ops::{Add, Mul},
+};
 
 macro_rules! unit {
     (
@@ -189,6 +192,25 @@ impl Length {
 impl From<f32> for Length {
     fn from(value: f32) -> Self {
         Self::Px(Px(value))
+    }
+}
+
+impl Add for Length {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::px(self.pixels() + rhs.pixels())
+    }
+}
+
+impl Mul<f32> for Length {
+    type Output = Self;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        match self {
+            Self::Px(value) => Self::px(*value * rhs),
+            Self::Pt(value) => Self::pt(*value * rhs),
+        }
     }
 }
 

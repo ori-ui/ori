@@ -1,4 +1,10 @@
-use std::{error::Error, fmt::Display, str::FromStr, sync::Arc};
+use std::{
+    error::Error,
+    fmt::Display,
+    str::FromStr,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use ily_core::{
     Callback, Event, LoadedStyleKind, Modifiers, Node, PointerEvent, Scope, Style, StyleLoader,
@@ -12,6 +18,13 @@ use winit::{
 };
 
 use crate::convert::{convert_mouse_button, is_pressed};
+
+const BUILTIN_STYLES: &[&str] = &[
+    include_str!("../../../style/default.css"),
+    include_str!("../../../style/text.css"),
+    include_str!("../../../style/button.css"),
+    include_str!("../../../style/checkbox.css"),
+];
 
 pub struct App {
     style_loader: StyleLoader,
@@ -46,8 +59,10 @@ impl App {
 
         let mut loader = StyleLoader::new();
 
-        let default_style = Style::from_str(include_str!("../../../assets/default.css")).unwrap();
-        let _ = loader.add_style(default_style);
+        for builtin in BUILTIN_STYLES {
+            let default_style = Style::from_str(builtin).unwrap();
+            let _ = loader.add_style(default_style);
+        }
 
         Self {
             style_loader: loader,
@@ -96,7 +111,7 @@ impl AppState {
         let style = self.style_loader.style();
         let size = self.window_size();
         let text_layout = &mut self.renderer.text_layout();
-        self.root.layout_root(style, text_layout, size);
+        (self.root).layout_root(style, text_layout, size, &self.request_redraw);
     }
 
     fn draw(&mut self) {
@@ -148,15 +163,20 @@ impl App {
             renderer,
         };
 
+        let update_time = Duration::from_secs_f32(1.0 / 2.0);
+
         event_loop.run(move |event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
+            *control_flow = ControlFlow::WaitUntil(Instant::now() + update_time);
 
             match event {
                 WinitEvent::RedrawRequested(_) => {
-                    state.layout();
                     state.draw();
                 }
                 WinitEvent::MainEventsCleared => match state.style_loader.reload() {
+                    Ok(reload) if reload => {
+                        tracing::info!("style reloaded");
+                        state.draw();
+                    }
                     Err(err) => tracing::error!("failed to reload style: {}", err),
                     _ => {}
                 },

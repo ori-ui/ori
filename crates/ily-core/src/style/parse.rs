@@ -6,6 +6,7 @@ use pest_derive::Parser;
 
 use crate::{
     Attribute, AttributeValue, Length, Pt, Px, Style, StyleElement, StyleRule, StyleSelectors,
+    Transition,
 };
 
 #[derive(Parser)]
@@ -15,9 +16,13 @@ pub struct StyleParser;
 pub type StyleParseError = Error<Rule>;
 pub type SelectorParseError = Error<Rule>;
 
+fn parse_number(pair: Pair<'_, Rule>) -> f32 {
+    pair.as_str().parse().unwrap()
+}
+
 fn parse_length(pair: Pair<'_, Rule>) -> Length {
     let number_pair = pair.clone().into_inner().next().unwrap();
-    let number = number_pair.as_str().parse().unwrap();
+    let number = parse_number(number_pair);
 
     match pair.as_rule() {
         Rule::Px => Length::Px(Px(number)),
@@ -54,11 +59,19 @@ fn parse_color(pair: Pair<'_, Rule>) -> Color {
     }
 }
 
+fn parse_transition(pair: Option<Pair<'_, Rule>>) -> Option<Transition> {
+    Some(Transition::new(parse_number(pair?)))
+}
+
 fn parse_value(pair: Pair<'_, Rule>) -> AttributeValue {
-    match pair.as_rule() {
-        Rule::String => AttributeValue::String(pair.as_str().to_string()),
-        Rule::Px | Rule::Pt => AttributeValue::Length(parse_length(pair)),
-        Rule::Color => AttributeValue::Color(parse_color(pair)),
+    let mut pairs = pair.into_inner();
+
+    let value = pairs.next().unwrap();
+    let transition = parse_transition(pairs.next());
+    match value.as_rule() {
+        Rule::String => AttributeValue::String(value.as_str().to_string()),
+        Rule::Px | Rule::Pt => AttributeValue::Length(parse_length(value), transition),
+        Rule::Color => AttributeValue::Color(parse_color(value), transition),
         _ => unreachable!(),
     }
 }

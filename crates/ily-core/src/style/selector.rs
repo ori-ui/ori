@@ -111,6 +111,8 @@ impl<T: Into<StyleElement>> FromIterator<T> for StyleElements {
     }
 }
 
+pub type StyleClass = SmolStr;
+
 #[derive(Clone, Debug, Default)]
 pub struct StyleClasses {
     classes: SmallVec<[SmolStr; 4]>,

@@ -11,6 +11,16 @@ pub struct Vertex {
     pub color: Color,
 }
 
+impl Vertex {
+    pub const fn new(position: Vec2) -> Self {
+        Self {
+            position,
+            uv: Vec2::ZERO,
+            color: Color::TRANSPARENT,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,

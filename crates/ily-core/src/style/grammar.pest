@@ -16,8 +16,12 @@ RgbaColor = @{ "rgba(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ "," ~ Number ~ "
 Color = { HexColor | RgbColor | RgbaColor }
 String = { Identifier }
 
+// transitions
+Transition = _{ Number ~ "s" }
+
 // attribute
-AttributeValue = _{ Px | Pt | Color | String }
+Transitionable = _{ Px | Pt | Color }
+AttributeValue = { Transitionable ~ Transition? | String }
 Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 
 // selector

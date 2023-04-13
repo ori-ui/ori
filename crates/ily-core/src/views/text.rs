@@ -1,12 +1,12 @@
 use glam::Vec2;
 use ily_graphics::{Color, TextAlign, TextSection};
 
-use crate::{attributes, BoxConstraints, DrawContext, LayoutContext, Length, Properties, View};
+use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Unit, View};
 
 #[derive(Clone)]
 pub struct Text {
     text: String,
-    font_size: Option<Length>,
+    font_size: Option<Unit>,
     font: Option<String>,
     color: Option<Color>,
     h_align: Option<TextAlign>,
@@ -41,7 +41,7 @@ impl Text {
     }
 
     /// Set the scale of the text.
-    pub fn scale(mut self, scale: impl Into<Length>) -> Self {
+    pub fn scale(mut self, scale: impl Into<Unit>) -> Self {
         self.font_size = Some(scale.into());
         self
     }
@@ -80,7 +80,7 @@ impl<'a> TextProperties<'a> {
         self.text.text = text.into();
     }
 
-    pub fn scale(&mut self, scale: impl Into<Length>) {
+    pub fn scale(&mut self, scale: impl Into<Unit>) {
         self.text.font_size = Some(scale.into());
     }
 
@@ -119,16 +119,11 @@ impl View for Text {
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        attributes! {
-            cx, self,
-            font_size: "font-size",
-            font: "font",
-            color: "color",
-            h_align: "text-align",
-            v_align: "text-valign",
-        }
-
-        let font_size = font_size.pixels();
+        let font: String = cx.style("font");
+        let font_size = cx.style_unit("font-size", 0.0..bc.max.y);
+        let color = cx.style("color");
+        let h_align = cx.style("text-align");
+        let v_align = cx.style("text-valign");
 
         let section = TextSection {
             position: Vec2::ZERO,
@@ -146,22 +141,16 @@ impl View for Text {
     }
 
     fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
-        attributes! {
-            cx, self,
-            font_size: "font-size",
-            font: "font",
-            color: "color",
-            h_align: "text-align",
-            v_align: "text-valign",
-        }
-
-        let font_size = font_size.pixels();
+        let font: String = cx.style("font");
+        let color = cx.style("color");
+        let h_align = cx.style("text-align");
+        let v_align = cx.style("text-valign");
 
         let mut section = TextSection {
             h_align,
             v_align,
             text: self.text.clone(),
-            scale: font_size,
+            scale: cx.rect().size().y,
             font: (font.is_empty()).then(|| font),
             color,
             ..Default::default()

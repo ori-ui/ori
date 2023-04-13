@@ -1,6 +1,11 @@
 button {
 	background: #b4f8c8;
 	border-radius: 5px;
+
+	padding: 6px;
+
+	justify-content: center;
+	align-items: center;
 }
 
 button:hover {

@@ -35,19 +35,50 @@ impl Color {
         Self { r, g, b, a: 1.0 }
     }
 
-    pub fn try_hex(hex: &str) -> Option<Self> {
-        let hex = hex.trim_start_matches('#');
-
-        let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-        let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-        let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-
-        Some(Self::rgba(
+    pub fn rgba8(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self::rgba(
             r as f32 / 255.0,
             g as f32 / 255.0,
             b as f32 / 255.0,
-            1.0,
-        ))
+            a as f32 / 255.0,
+        )
+    }
+
+    pub fn rgb8(r: u8, g: u8, b: u8) -> Self {
+        Self::rgba8(r, g, b, 255)
+    }
+
+    pub fn try_hex(hex: &str) -> Option<Self> {
+        let hex = hex.trim_start_matches('#');
+
+        let mut color = Self::BLACK;
+
+        match hex.len() {
+            2 => {
+                color.r = u8::from_str_radix(hex, 16).ok()? as f32 / 255.0;
+                color.g = color.r;
+                color.b = color.r;
+            }
+            3 => {
+                color.r = u8::from_str_radix(&hex[0..1], 16).ok()? as f32 / 15.0;
+                color.g = u8::from_str_radix(&hex[1..2], 16).ok()? as f32 / 15.0;
+                color.b = u8::from_str_radix(&hex[2..3], 16).ok()? as f32 / 15.0;
+            }
+            4 => {
+                color.r = u8::from_str_radix(&hex[0..1], 16).ok()? as f32 / 15.0;
+                color.g = u8::from_str_radix(&hex[1..2], 16).ok()? as f32 / 15.0;
+                color.b = u8::from_str_radix(&hex[2..3], 16).ok()? as f32 / 15.0;
+                color.a = u8::from_str_radix(&hex[3..4], 16).ok()? as f32 / 15.0;
+            }
+            6 => {
+                color.r = u8::from_str_radix(&hex[0..2], 16).ok()? as f32 / 255.0;
+                color.g = u8::from_str_radix(&hex[2..4], 16).ok()? as f32 / 255.0;
+                color.b = u8::from_str_radix(&hex[4..6], 16).ok()? as f32 / 255.0;
+            }
+            _ => return None,
+        }
+
+        Some(color)
     }
 
     pub fn hex(hex: &str) -> Self {

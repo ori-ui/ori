@@ -1,22 +1,15 @@
 use glam::Vec2;
-use ily_graphics::{Color, Quad};
+use ily_graphics::Quad;
 
 use crate::{
-    attributes, Axis, BoxConstraints, Children, DrawContext, Event, EventContext, EventSignal,
-    Events, LayoutContext, Length, Node, Parent, PointerEvent, Properties, Scope, StyleClass,
-    StyleClasses, TransitionState, View,
+    AlignItems, Axis, BoxConstraints, Children, DrawContext, Event, EventContext, EventSignal,
+    Events, JustifyContent, LayoutContext, Node, Parent, PointerEvent, Properties, Scope,
+    StyleClass, StyleClasses, View,
 };
 
 #[derive(Default)]
 pub struct Div {
     pub classes: StyleClasses,
-    pub direction: Option<Axis>,
-    pub padding: Option<Length>,
-    pub gap: Option<Length>,
-    pub background: Option<Color>,
-    pub border_radius: Option<Length>,
-    pub border_width: Option<Length>,
-    pub border_color: Option<Color>,
     pub on_press: Option<EventSignal<PointerEvent>>,
     pub on_release: Option<EventSignal<PointerEvent>>,
     pub children: Children,
@@ -25,19 +18,6 @@ pub struct Div {
 impl Div {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn zeroed() -> Self {
-        Self {
-            direction: Some(Axis::Vertical),
-            padding: Some(Length::ZERO),
-            gap: Some(Length::ZERO),
-            background: Some(Color::TRANSPARENT),
-            border_radius: Some(Length::ZERO),
-            border_width: Some(Length::ZERO),
-            border_color: Some(Color::TRANSPARENT),
-            ..Default::default()
-        }
     }
 
     pub fn child(mut self, child: impl View) -> Self {
@@ -67,41 +47,6 @@ impl Div {
             .get_or_insert_with(|| EventSignal::new())
             .subscribe(cx, callback);
 
-        self
-    }
-
-    pub fn direction(mut self, direction: Axis) -> Self {
-        self.direction = Some(direction);
-        self
-    }
-
-    pub fn padding(mut self, padding: impl Into<Length>) -> Self {
-        self.padding = Some(padding.into());
-        self
-    }
-
-    pub fn gap(mut self, gap: impl Into<Length>) -> Self {
-        self.gap = Some(gap.into());
-        self
-    }
-
-    pub fn background(mut self, background: Color) -> Self {
-        self.background = Some(background);
-        self
-    }
-
-    pub fn border_radius(mut self, border_radius: impl Into<Length>) -> Self {
-        self.border_radius = Some(border_radius.into());
-        self
-    }
-
-    pub fn border_width(mut self, border_width: impl Into<Length>) -> Self {
-        self.border_width = Some(border_width.into());
-        self
-    }
-
-    pub fn border_color(mut self, border_color: Color) -> Self {
-        self.border_color = Some(border_color);
         self
     }
 
@@ -140,34 +85,6 @@ pub struct DivProperties<'a> {
 impl<'a> DivProperties<'a> {
     pub fn class(&mut self, class: impl Into<StyleClass>) {
         self.div.classes.push(class);
-    }
-
-    pub fn direction(&mut self, direction: Axis) {
-        self.div.direction = Some(direction);
-    }
-
-    pub fn padding(&mut self, padding: impl Into<Length>) {
-        self.div.padding = Some(padding.into());
-    }
-
-    pub fn gap(&mut self, gap: impl Into<Length>) {
-        self.div.gap = Some(gap.into());
-    }
-
-    pub fn background(&mut self, background: Color) {
-        self.div.background = Some(background);
-    }
-
-    pub fn border_radius(&mut self, border_radius: impl Into<Length>) {
-        self.div.border_radius = Some(border_radius.into());
-    }
-
-    pub fn border_width(&mut self, border_width: impl Into<Length>) {
-        self.div.border_width = Some(border_width.into());
-    }
-
-    pub fn border_color(&mut self, border_color: Color) {
-        self.div.border_color = Some(border_color);
     }
 }
 
@@ -219,22 +136,10 @@ impl Events for Div {
     }
 }
 
-#[derive(Default)]
-pub struct DivState {
-    padding: TransitionState<Length>,
-    gap: TransitionState<Length>,
-    background: TransitionState<Color>,
-    border_radius: TransitionState<Length>,
-    border_width: TransitionState<Length>,
-    border_color: TransitionState<Color>,
-}
-
 impl View for Div {
-    type State = DivState;
+    type State = ();
 
-    fn build(&self) -> Self::State {
-        DivState::default()
-    }
+    fn build(&self) -> Self::State {}
 
     fn element(&self) -> Option<&'static str> {
         Some("div")
@@ -260,67 +165,99 @@ impl View for Div {
         }
     }
 
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        attributes! {
-            cx, self,
-            direction: "direction",
-            padding: "padding" (state.padding),
-            gap: "gap" (state.gap),
-        }
+    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        let axis = cx.style::<Axis>("direction");
+        let justify_content = cx.style::<JustifyContent>("justify-content");
+        let align_items = cx.style::<AlignItems>("align-items");
 
-        let padding = padding.pixels();
-        let gap = gap.pixels();
+        let min_width = cx.style_unit("min-width", bc.width());
+        let max_width = cx.style_unit("max-width", bc.width());
 
-        let mut major = padding;
-        let mut minor = direction.minor(bc.min);
+        let min_height = cx.style_unit("min-height", bc.height());
+        let max_height = cx.style_unit("max-height", bc.height());
 
-        let min_minor = direction.minor(bc.min) - padding * 2.0;
-        let max_minor = direction.minor(bc.max) - padding * 2.0;
+        let padding = cx.style_unit("padding", 0.0..bc.max.min_element() / 2.0);
+        let gap = cx.style_unit("gap", 0.0..axis.major(bc.max));
 
+        let min_size = bc.constrain(Vec2::new(min_width, min_height));
+        let max_size = bc.constrain(Vec2::new(max_width, max_height));
+
+        let max_minor = axis.minor(max_size) - padding * 2.0;
+        let min_minor = axis.minor(min_size) - padding * 2.0;
+
+        let max_major = axis.major(max_size) - padding * 2.0;
+        let min_major = axis.major(min_size) - padding * 2.0;
+
+        let mut minor = min_minor;
+        let mut major = 0.0f32;
+
+        let mut children = Vec::with_capacity(self.children.len());
+
+        // first we need to measure the children to determine their size
         for (i, child) in self.children.iter().enumerate() {
             let child_bc = BoxConstraints {
-                min: direction.pack(0.0, min_minor),
-                max: direction.pack(f32::INFINITY, max_minor),
+                min: axis.pack(0.0, 0.0),
+                max: axis.pack(max_major, max_minor),
             };
+            let size = child.layout(cx, child_bc);
 
-            let child_size = child.layout(cx, child_bc);
-            let child_major = direction.major(child_size);
-            child.set_offset(direction.pack(major, padding));
+            let child_minor = axis.minor(size);
+            let child_major = axis.major(size);
 
-            // skip children that are too small
-            if child_size.min_element() <= 0.0 {
-                continue;
-            }
+            children.push(child_major);
 
+            minor = minor.max(child_minor);
             major += child_major;
-            minor = minor.max(direction.minor(child_size + padding * 2.0));
 
-            if i < self.children.len() - 1 {
+            if i > 0 {
                 major += gap;
             }
         }
 
-        major += padding;
-        major = major.max(direction.major(bc.min));
+        major = major.clamp(min_major, max_major);
 
-        tracing::trace!("Div::layout: major = {}, minor = {}", major, minor);
+        tracing::trace!("Div::layout: minor = {}, major = {}", minor, major);
 
-        direction.pack(major, minor)
-    }
+        let child_offsets = justify_content.justify(&children, major, gap);
 
-    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        tracing::trace!("Div::draw: rect = {:?}", cx.rect());
+        // now we can layout the children
+        for (i, child) in self.children.iter().enumerate() {
+            let min_minor = if align_items == AlignItems::Stretch {
+                minor
+            } else {
+                0.0
+            };
 
-        attributes! {
-            cx, self,
-            background: "background" (state.background),
-            border_radius: "border-radius" (state.border_radius),
-            border_width: "border-width" (state.border_width),
-            border_color: "border-color" (state.border_color),
+            let child_bc = BoxConstraints {
+                min: axis.pack(0.0, min_minor),
+                max: axis.pack(max_major, max_minor),
+            };
+            let child_size = child.layout(cx, child_bc);
+
+            let child_minor = axis.minor(child_size);
+
+            let align_minor = align_items.align(0.0, minor, child_minor);
+            let align_major = child_offsets[i];
+
+            let offset = axis.pack(align_major, align_minor);
+            child.set_offset(offset + padding);
         }
 
-        let border_radius = border_radius.pixels();
-        let border_width = border_width.pixels();
+        let size = axis.pack(major, minor) + padding * 2.0;
+        tracing::trace!("Div::layout: size = {:?}", size);
+
+        size
+    }
+
+    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
+        tracing::trace!("Div::draw: rect = {:?}", cx.rect());
+
+        let range = 0.0..cx.rect().max.min_element() / 2.0;
+        let border_radius = cx.style_unit("border-radius", range.clone());
+        let border_width = cx.style_unit("border-width", range);
+
+        let background = cx.style("background");
+        let border_color = cx.style("border-color");
 
         let quad = Quad {
             rect: cx.rect(),

@@ -5,8 +5,7 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
     let checked = cx.signal(false);
 
     view! {
-        <Div>
-            <!-- "Counter" -->
+        <Div class="row">
             <Button on:press=|_| *counter.modify() += 1>
                 <Text text=format!("Counter: {}", counter.get()) />
             </Button>

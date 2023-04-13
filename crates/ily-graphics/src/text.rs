@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use glam::Vec2;
 
@@ -18,6 +18,19 @@ impl Display for TextAlign {
             TextAlign::Start => write!(f, "start"),
             TextAlign::Center => write!(f, "center"),
             TextAlign::End => write!(f, "end"),
+        }
+    }
+}
+
+impl FromStr for TextAlign {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "left" | "start" => Ok(TextAlign::Start),
+            "center" => Ok(TextAlign::Center),
+            "right" | "end" => Ok(TextAlign::End),
+            _ => Err(()),
         }
     }
 }

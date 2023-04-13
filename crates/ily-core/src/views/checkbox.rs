@@ -1,20 +1,13 @@
 use glam::Vec2;
-use ily_graphics::{Color, Quad, TextAlign, TextSection};
+use ily_graphics::{Quad, TextAlign, TextSection};
 
 use crate::{
-    attributes, Bindable, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, Length,
-    PointerEvent, Scope, SharedSignal, Signal, View,
+    Bindable, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Scope,
+    SharedSignal, Signal, View,
 };
 
 #[derive(Default)]
 pub struct Checkbox {
-    color: Option<Color>,
-    background: Option<Color>,
-    border_radius: Option<Length>,
-    border_width: Option<Length>,
-    border_color: Option<Color>,
-    width: Option<Length>,
-    height: Option<Length>,
     checked: SharedSignal<bool>,
 }
 
@@ -81,7 +74,9 @@ impl View for Checkbox {
     }
 
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        if event.is_handled() {
+        cx.state.active = self.checked.cloned_untracked();
+
+        if event.is_handled() || !cx.hovered() {
             return;
         }
 
@@ -95,34 +90,22 @@ impl View for Checkbox {
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        attributes! {
-            cx, self,
-            width: "width",
-            height: "height",
-        }
+        cx.state.active = self.checked.cloned_untracked();
 
-        let width = width.pixels();
-        let height = height.pixels();
-
+        let width = cx.style_unit("width", bc.width());
+        let height = cx.style_unit("height", bc.height());
         bc.constrain(Vec2::new(width, height))
     }
 
     fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
-        attributes! {
-            cx, self,
-            color: "color",
-            background: "background",
-            border_radius: "border-radius",
-            border_width: "border-width",
-            border_color: "border-color",
-            width: "width",
-            height: "height",
-        }
+        cx.state.active = self.checked.cloned_untracked();
 
-        let border_radius = border_radius.pixels();
-        let border_width = border_width.pixels();
-        let width = width.pixels();
-        let height = height.pixels();
+        let color = cx.style("color");
+        let background = cx.style("background");
+        let border_color = cx.style("border-color");
+
+        let border_radius = cx.style_unit("border-radius", 0.0..20.0);
+        let border_width = cx.style_unit("border-width", 0.0..20.0);
 
         let quad = Quad {
             rect: cx.rect(),
@@ -138,7 +121,7 @@ impl View for Checkbox {
             let section = TextSection {
                 position: cx.rect().center(),
                 bounds: cx.rect().size(),
-                scale: f32::min(width, height) * 0.8,
+                scale: cx.rect().size().min_element() * 0.8,
                 h_align: TextAlign::Center,
                 v_align: TextAlign::Center,
                 text: String::from(Self::CHECKMARK),

@@ -1,7 +1,8 @@
-use glam::Vec2;
-use ily_graphics::TextAlign;
+use std::ops::Range;
 
-use crate::AttributeValue;
+use glam::Vec2;
+
+use crate::AttributeEnum;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoxConstraints {
@@ -38,6 +39,14 @@ impl BoxConstraints {
 
     pub fn constrain(self, size: Vec2) -> Vec2 {
         size.clamp(self.min, self.max)
+    }
+
+    pub fn height(self) -> Range<f32> {
+        self.min.y..self.max.y
+    }
+
+    pub fn width(self) -> Range<f32> {
+        self.min.x..self.max.x
     }
 }
 
@@ -78,36 +87,146 @@ impl Axis {
     }
 }
 
-impl From<AttributeValue> for Option<Axis> {
-    fn from(value: AttributeValue) -> Self {
-        match value {
-            AttributeValue::String(s) => match s.as_str() {
-                "row" | "horizontal" => Some(Axis::Horizontal),
-                "column" | "vertical" => Some(Axis::Vertical),
-                _ => {
-                    tracing::warn!("Invalid axis: {}", s);
-
-                    None
-                }
-            },
+impl AttributeEnum for Axis {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "horizontal" | "row" => Some(Axis::Horizontal),
+            "vertical" | "column" => Some(Axis::Vertical),
             _ => None,
         }
     }
 }
 
-impl From<AttributeValue> for Option<TextAlign> {
-    fn from(value: AttributeValue) -> Self {
-        match value {
-            AttributeValue::String(s) => match s.as_str() {
-                "left" | "start" => Some(TextAlign::Start),
-                "center" => Some(TextAlign::Center),
-                "right" | "end" => Some(TextAlign::End),
-                _ => {
-                    tracing::warn!("Invalid text align: {}", s);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JustifyContent {
+    Start,
+    Center,
+    End,
+    SpaceBetween,
+    SpaceAround,
+    SpaceEvenly,
+}
 
-                    None
+impl JustifyContent {
+    pub fn justify(&self, children: &[f32], container_size: f32, gap: f32) -> Vec<f32> {
+        let mut positions = Vec::with_capacity(children.len());
+
+        let total_gap = gap * (children.len() - 1) as f32;
+        let total_size = children.iter().sum::<f32>() + total_gap;
+
+        match self {
+            JustifyContent::Start => {
+                let mut position = 0.0;
+
+                for &child in children {
+                    positions.push(position);
+                    position += child + gap;
                 }
-            },
+            }
+            JustifyContent::Center => {
+                let mut position = container_size / 2.0 - total_size / 2.0;
+
+                for &child in children {
+                    positions.push(position);
+                    position += child + gap;
+                }
+            }
+            JustifyContent::End => {
+                let mut position = container_size - total_size;
+
+                for &child in children {
+                    positions.push(position);
+                    position += child + gap;
+                }
+            }
+            JustifyContent::SpaceBetween => {
+                let gap = (container_size - total_size) / (children.len() - 1) as f32;
+
+                let mut position = 0.0;
+
+                for &child in children {
+                    positions.push(position);
+                    position += child + gap;
+                }
+            }
+            JustifyContent::SpaceAround => {
+                let gap = (container_size - total_size) / children.len() as f32;
+
+                let mut position = gap / 2.0;
+
+                for &child in children {
+                    positions.push(position);
+                    position += child + gap;
+                }
+            }
+            JustifyContent::SpaceEvenly => {
+                let gap = container_size / children.len() as f32;
+
+                let mut position = gap / 2.0;
+
+                for _ in children {
+                    positions.push(position);
+                    position += gap;
+                }
+            }
+        }
+
+        positions
+    }
+}
+
+impl Default for JustifyContent {
+    fn default() -> Self {
+        Self::Start
+    }
+}
+
+impl AttributeEnum for JustifyContent {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "start" => Some(JustifyContent::Start),
+            "center" => Some(JustifyContent::Center),
+            "end" => Some(JustifyContent::End),
+            "space-between" => Some(JustifyContent::SpaceBetween),
+            "space-around" => Some(JustifyContent::SpaceAround),
+            "space-evenly" => Some(JustifyContent::SpaceEvenly),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlignItems {
+    Start,
+    Center,
+    End,
+    Stretch,
+}
+
+impl Default for AlignItems {
+    fn default() -> Self {
+        Self::Start
+    }
+}
+
+impl AlignItems {
+    pub fn align(&self, start: f32, end: f32, size: f32) -> f32 {
+        match self {
+            AlignItems::Start => start,
+            AlignItems::Center => start + (end - start - size) / 2.0,
+            AlignItems::End => end - size,
+            AlignItems::Stretch => start,
+        }
+    }
+}
+
+impl AttributeEnum for AlignItems {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "start" => Some(AlignItems::Start),
+            "center" => Some(AlignItems::Center),
+            "end" => Some(AlignItems::End),
+            "stretch" => Some(AlignItems::Stretch),
             _ => None,
         }
     }

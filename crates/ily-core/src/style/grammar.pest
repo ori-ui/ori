@@ -8,11 +8,13 @@ Identifier = @{ (ASCII_ALPHA | "-" | "_") ~ (ASCII_ALPHANUMERIC | "-" | "_")* }
 Number = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("-" | "-") ~ ASCII_DIGIT+)? }
 
 // values
-Px = ${ Number ~ "px" }
-Pt = ${ Number ~ "pt" }
-HexColor = @{ "#" ~ ASCII_HEX_DIGIT{6} }
-RgbColor = @{ "rgb(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
-RgbaColor = @{ "rgba(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
+Px = { "px" }
+Pt = { "pt" }
+Pc = { "pc" | "%" }
+Unit = { Number ~ (Px | Pt | Pc)? }
+HexColor = @{ "#" ~ (ASCII_HEX_DIGIT{6} | ASCII_HEX_DIGIT{3, 4}) }
+RgbColor = { "rgb(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
+RgbaColor = { "rgba(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
 Color = { HexColor | RgbColor | RgbaColor }
 String = { Identifier }
 
@@ -20,7 +22,7 @@ String = { Identifier }
 Transition = _{ Number ~ "s" }
 
 // attribute
-Transitionable = _{ Px | Pt | Color }
+Transitionable = _{ Unit | Color }
 AttributeValue = { Transitionable ~ Transition? | String }
 Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 

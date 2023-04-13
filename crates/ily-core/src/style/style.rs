@@ -1,8 +1,6 @@
 use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
-use ily_graphics::Color;
-
-use crate::{Length, StyleSelectors, Transition};
+use crate::{Attribute, Attributes, FromAttribute, StyleSelectors, Transition};
 
 use super::parse::StyleParseError;
 
@@ -62,8 +60,8 @@ impl Style {
     }
 
     /// Gets the attributes that match the given selector.
-    pub fn get_attributes(&self, selector: &StyleSelectors) -> Vec<Attribute> {
-        let mut attributes = Vec::new();
+    pub fn get_attributes(&self, selector: &StyleSelectors) -> Attributes {
+        let mut attributes = Attributes::new();
 
         for rule in self.rules.iter() {
             if selector.select(&rule.selector) {
@@ -75,7 +73,7 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_attribute(&self, selector: &StyleSelectors, name: &str) -> Option<&AttributeValue> {
+    pub fn get_attribute(&self, selector: &StyleSelectors, name: &str) -> Option<&Attribute> {
         for rule in self.rules.iter().rev() {
             if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_attribute(name) {
@@ -88,13 +86,27 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_value<T>(&self, selector: &StyleSelectors, name: &str) -> Option<T>
-    where
-        Option<T>: From<AttributeValue>,
-    {
+    pub fn get_value<T: FromAttribute>(&self, selector: &StyleSelectors, name: &str) -> Option<T> {
         for rule in self.rules.iter().rev() {
             if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_value(name) {
+                    return Some(value);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Gets the value of an attribute that matches the given selector.
+    pub fn get_value_and_transition<T: FromAttribute>(
+        &self,
+        selector: &StyleSelectors,
+        name: &str,
+    ) -> Option<(T, Option<Transition>)> {
+        for rule in self.rules.iter().rev() {
+            if selector.select(&rule.selector) {
+                if let Some(value) = rule.get_value_and_transition(name) {
                     return Some(value);
                 }
             }
@@ -126,7 +138,7 @@ impl IntoIterator for Style {
 #[derive(Clone, Debug)]
 pub struct StyleRule {
     pub selector: StyleSelectors,
-    pub attributes: Vec<Attribute>,
+    pub attributes: Attributes,
 }
 
 impl StyleRule {
@@ -134,13 +146,13 @@ impl StyleRule {
     pub fn new(selector: StyleSelectors) -> Self {
         Self {
             selector,
-            attributes: Vec::new(),
+            attributes: Attributes::new(),
         }
     }
 
     /// Adds an [`Attribute`] to the rule.
     pub fn add_attribute(&mut self, attribute: Attribute) {
-        self.attributes.push(attribute);
+        self.attributes.add(attribute);
     }
 
     /// Adds a list of [`Attribute`]s to the rule.
@@ -149,118 +161,20 @@ impl StyleRule {
     }
 
     /// Gets the value of an attribute.
-    pub fn get_attribute(&self, name: &str) -> Option<&AttributeValue> {
-        for attribute in self.attributes.iter() {
-            if attribute.name == name {
-                return Some(&attribute.value);
-            }
-        }
-
-        None
+    pub fn get_attribute(&self, name: &str) -> Option<&Attribute> {
+        self.attributes.get(name)
     }
 
     /// Gets the value of an attribute.
-    pub fn get_value<T>(&self, name: &str) -> Option<T>
-    where
-        Option<T>: From<AttributeValue>,
-    {
-        for attribute in self.attributes.iter() {
-            if attribute.name != name {
-                continue;
-            }
-
-            if let Some(value) = Option::<T>::from(attribute.value.clone()) {
-                return Some(value);
-            }
-        }
-
-        None
+    pub fn get_value<T: FromAttribute>(&self, name: &str) -> Option<T> {
+        self.attributes.get_value(name)
     }
-}
 
-/// A [`Style`] attribute.
-///
-/// An attribute is a name and a value.
-#[derive(Clone, Debug)]
-pub struct Attribute {
-    /// The attribute name.
-    pub name: String,
-    /// The attribute value.
-    pub value: AttributeValue,
-}
-
-/// A [`Style`] attribute value.
-#[derive(Clone, Debug)]
-pub enum AttributeValue {
-    /// A string value, eg. `red`.
-    String(String),
-    /// A length value, eg. `10px` or `10pt`.
-    Length(Length, Option<Transition>),
-    /// A color value, eg. `#ff0000`.
-    Color(Color, Option<Transition>),
-}
-
-impl From<AttributeValue> for Option<String> {
-    fn from(value: AttributeValue) -> Self {
-        match value {
-            AttributeValue::String(value) => Some(value),
-            _ => {
-                tracing::warn!("attribute is not a string");
-
-                None
-            }
-        }
-    }
-}
-
-impl From<AttributeValue> for Option<Length> {
-    fn from(value: AttributeValue) -> Self {
-        match value {
-            AttributeValue::Length(value, _) => Some(value),
-            _ => {
-                tracing::warn!("attribute is not a length");
-
-                None
-            }
-        }
-    }
-}
-
-impl From<AttributeValue> for Option<Color> {
-    fn from(value: AttributeValue) -> Self {
-        match value {
-            AttributeValue::Color(value, _) => Some(value),
-            _ => {
-                tracing::warn!("attribute is not a color");
-
-                None
-            }
-        }
-    }
-}
-
-impl From<AttributeValue> for Option<(Length, Option<Transition>)> {
-    fn from(value: AttributeValue) -> Self {
-        match value {
-            AttributeValue::Length(value, transition) => Some((value, transition)),
-            _ => {
-                tracing::warn!("attribute is not a length");
-
-                None
-            }
-        }
-    }
-}
-
-impl From<AttributeValue> for Option<(Color, Option<Transition>)> {
-    fn from(value: AttributeValue) -> Self {
-        match value {
-            AttributeValue::Color(value, transition) => Some((value, transition)),
-            _ => {
-                tracing::warn!("attribute is not a color");
-
-                None
-            }
-        }
+    /// Gets the value of an attribute.
+    pub fn get_value_and_transition<T: FromAttribute>(
+        &self,
+        name: &str,
+    ) -> Option<(T, Option<Transition>)> {
+        self.attributes.get_value_and_transition(name)
     }
 }

@@ -1,4 +1,7 @@
 * {
-	padding: 6px;
+	padding: 0px;
 	margin: 0px;
+
+	max-width: 100%;
+	max-height: 100%;
 }

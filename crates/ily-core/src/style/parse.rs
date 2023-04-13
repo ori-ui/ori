@@ -5,8 +5,7 @@ use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
 
 use crate::{
-    Attribute, AttributeValue, Length, Pt, Px, Style, StyleElement, StyleRule, StyleSelectors,
-    Transition,
+    Attribute, AttributeValue, Style, StyleElement, StyleRule, StyleSelectors, Transition, Unit,
 };
 
 #[derive(Parser)]
@@ -20,13 +19,16 @@ fn parse_number(pair: Pair<'_, Rule>) -> f32 {
     pair.as_str().parse().unwrap()
 }
 
-fn parse_length(pair: Pair<'_, Rule>) -> Length {
-    let number_pair = pair.clone().into_inner().next().unwrap();
+fn parse_unit(pair: Pair<'_, Rule>) -> Unit {
+    let mut pairs = pair.into_inner();
+
+    let number_pair = pairs.next().unwrap();
     let number = parse_number(number_pair);
 
-    match pair.as_rule() {
-        Rule::Px => Length::Px(Px(number)),
-        Rule::Pt => Length::Pt(Pt(number)),
+    match pairs.next().as_ref().map(Pair::as_rule) {
+        Some(Rule::Px) | None => Unit::Px(number),
+        Some(Rule::Pt) => Unit::Pt(number),
+        Some(Rule::Pc) => Unit::Pc(number),
         _ => unreachable!(),
     }
 }
@@ -63,17 +65,19 @@ fn parse_transition(pair: Option<Pair<'_, Rule>>) -> Option<Transition> {
     Some(Transition::new(parse_number(pair?)))
 }
 
-fn parse_value(pair: Pair<'_, Rule>) -> AttributeValue {
+fn parse_value(pair: Pair<'_, Rule>) -> (AttributeValue, Option<Transition>) {
     let mut pairs = pair.into_inner();
 
     let value = pairs.next().unwrap();
     let transition = parse_transition(pairs.next());
-    match value.as_rule() {
+    let value = match value.as_rule() {
         Rule::String => AttributeValue::String(value.as_str().to_string()),
-        Rule::Px | Rule::Pt => AttributeValue::Length(parse_length(value), transition),
-        Rule::Color => AttributeValue::Color(parse_color(value), transition),
+        Rule::Unit => AttributeValue::Length(parse_unit(value)),
+        Rule::Color => AttributeValue::Color(parse_color(value)),
         _ => unreachable!(),
-    }
+    };
+
+    (value, transition)
 }
 
 fn parse_element(pair: Pair<'_, Rule>) -> StyleElement {
@@ -122,9 +126,13 @@ fn parse_attribute(pair: Pair<'_, Rule>) -> Attribute {
     let mut iter = pair.into_inner();
 
     let name = iter.next().unwrap().as_str().to_string();
-    let value = parse_value(iter.next().unwrap());
+    let (value, transition) = parse_value(iter.next().unwrap());
 
-    Attribute { name, value }
+    Attribute {
+        name,
+        value,
+        transition,
+    }
 }
 
 fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {
@@ -136,7 +144,7 @@ fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {
     for pair in iter {
         match pair.as_rule() {
             Rule::Attribute => {
-                rule.attributes.push(parse_attribute(pair));
+                rule.attributes.add(parse_attribute(pair));
             }
             _ => unreachable!(),
         }

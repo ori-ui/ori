@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     BoxConstraints, Div, DivEvents, DivProperties, DrawContext, Event, EventContext, Events,
-    LayoutContext, Parent, PointerEvent, Properties, Scope, View,
+    LayoutContext, Parent, PointerEvent, Properties, Scope, StyleClass, StyleClasses, View,
 };
 
 pub struct Button {
@@ -24,6 +24,11 @@ impl Button {
 
     pub fn child(mut self, view: impl View) -> Self {
         self.content = self.content.child(view);
+        self
+    }
+
+    pub fn class(mut self, class: impl Into<StyleClass>) -> Self {
+        self.content = self.content.class(class);
         self
     }
 
@@ -64,6 +69,10 @@ impl View for Button {
 
     fn element(&self) -> Option<&'static str> {
         Some("button")
+    }
+
+    fn classes(&self) -> StyleClasses {
+        self.content.classes()
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {

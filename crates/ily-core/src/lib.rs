@@ -1,5 +1,6 @@
 mod build;
 mod children;
+mod context;
 mod event;
 mod layout;
 mod node;
@@ -11,6 +12,7 @@ mod views;
 
 pub use build::*;
 pub use children::*;
+pub use context::*;
 pub use event::*;
 pub use layout::*;
 pub use node::*;

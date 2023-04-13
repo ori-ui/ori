@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Style,
-    StyleElement, StyleElements, StyleSelectors, StyleStates, View, WeakCallback,
+    StyleElement, StyleElements, StyleSelectors, StyleStates, Transition, TransitionStates, View,
+    WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -28,7 +29,7 @@ impl Default for NodeId {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct NodeState {
     pub id: NodeId,
     pub local_rect: Rect,
@@ -36,6 +37,7 @@ pub struct NodeState {
     pub active: bool,
     pub focused: bool,
     pub hovered: bool,
+    pub transitions: TransitionStates,
     pub last_draw: Instant,
 }
 
@@ -48,6 +50,7 @@ impl Default for NodeState {
             active: false,
             focused: false,
             hovered: false,
+            transitions: TransitionStates::new(),
             last_draw: Instant::now(),
         }
     }
@@ -78,6 +81,17 @@ impl NodeState {
 
     pub fn delta(&self) -> f32 {
         self.last_draw.elapsed().as_secs_f32()
+    }
+
+    pub fn transition<T: 'static>(
+        &mut self,
+        name: &str,
+        mut value: T,
+        transition: Option<Transition>,
+    ) -> (T, bool) {
+        let delta = self.delta();
+        let redraw = (self.transitions).transition_any(name, &mut value, transition, delta);
+        (value, redraw)
     }
 
     fn draw(&mut self) {
@@ -125,6 +139,16 @@ impl Node {
         }
     }
 
+    pub fn local_rect(&self) -> Rect {
+        self.node_state.borrow().local_rect
+    }
+
+    pub fn size(&self) -> Vec2 {
+        self.node_state.borrow().local_rect.size()
+    }
+}
+
+impl Node {
     fn handle_pointer_event(&self, node_state: &mut NodeState, event: &PointerEvent) -> bool {
         let hovered = node_state.global_rect.contains(event.position);
         if hovered != node_state.hovered {
@@ -158,11 +182,11 @@ impl Node {
 
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut node_state = self.node_state.borrow_mut();
-        let selectors = self.selectors(&cx.selector.elements, node_state.style_states());
+        let selectors = self.selectors(&cx.selectors.elements, node_state.style_states());
         let mut cx = LayoutContext {
             style: cx.style,
             state: &mut node_state,
-            selector: &selectors,
+            selectors: &selectors,
             text_layout: cx.text_layout,
             request_redraw: cx.request_redraw,
         };
@@ -194,7 +218,9 @@ impl Node {
 
         cx.state.draw();
     }
+}
 
+impl Node {
     pub fn event_root(&self, style: &Style, request_redraw: &WeakCallback, event: &Event) {
         let mut node_state = self.node_state.borrow_mut();
 
@@ -228,7 +254,7 @@ impl Node {
         let mut cx = LayoutContext {
             style,
             state: &mut node_state,
-            selector: &selectors,
+            selectors: &selectors,
             text_layout,
             request_redraw,
         };
@@ -259,5 +285,11 @@ impl Node {
         self.view.draw(&mut **state, &mut cx);
 
         cx.state.draw();
+    }
+}
+
+impl<T: View> From<T> for Node {
+    fn from(view: T) -> Self {
+        Self::new(view)
     }
 }

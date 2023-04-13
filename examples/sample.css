@@ -1,3 +1,11 @@
-div {
+div .row {
+	padding: 0;
+	gap: 6px;
+
+	min-width: 100%;
+	min-height: 100%;
+
 	direction: row;
+	justify-content: space-around;
+	align-items: center;
 }

@@ -7,14 +7,14 @@ use smol_str::SmolStr;
 ///
 /// A selector is a list of classes and an optional element.
 #[derive(Clone, Debug, Default)]
-pub struct StyleSelector {
+pub struct StyleSelectors {
     /// The element name.
     pub elements: StyleElements,
     /// The list of classes.
     pub classes: StyleClasses,
 }
 
-impl StyleSelector {
+impl StyleSelectors {
     /// Creates a new selector.
     pub fn new(elements: StyleElements, classes: StyleClasses) -> Self {
         Self { elements, classes }
@@ -26,7 +26,7 @@ impl StyleSelector {
     }
 }
 
-impl Display for StyleSelector {
+impl Display for StyleSelectors {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, element) in self.elements.iter().enumerate() {
             if i == 0 {
@@ -170,12 +170,12 @@ impl<T: Into<SmolStr>> FromIterator<T> for StyleClasses {
 
 #[derive(Clone, Debug, Default)]
 pub struct StyleElement {
-    pub name: SmolStr,
+    pub name: Option<SmolStr>,
     pub states: StyleStates,
 }
 
 impl StyleElement {
-    pub fn new(name: impl Into<SmolStr>, states: StyleStates) -> Self {
+    pub fn new(name: impl Into<Option<SmolStr>>, states: StyleStates) -> Self {
         Self {
             name: name.into(),
             states,
@@ -187,13 +187,16 @@ impl StyleElement {
     }
 
     pub fn select(&self, other: &Self) -> bool {
-        self.name == other.name && self.states.select(&other.states)
+        let name_matches = other.name.is_none() || self.name == other.name;
+        name_matches && self.states.select(&other.states)
     }
 }
 
 impl Display for StyleElement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)?;
+        if let Some(name) = &self.name {
+            write!(f, "{}", name)?;
+        }
 
         for state in self.states.iter() {
             write!(f, ":{}", state)?;
@@ -211,7 +214,7 @@ impl From<SmolStr> for StyleElement {
 
 impl From<&str> for StyleElement {
     fn from(name: &str) -> Self {
-        Self::new(name, StyleStates::new())
+        Self::new(Some(name.into()), StyleStates::new())
     }
 }
 
@@ -297,16 +300,16 @@ mod tests {
 
     #[test]
     fn selector_select() {
-        let selector = StyleSelector::from_str("a .b .c").unwrap();
-        let other = StyleSelector::from_str(".b .c").unwrap();
+        let selector = StyleSelectors::from_str("a .b .c").unwrap();
+        let other = StyleSelectors::from_str(".b .c").unwrap();
 
         assert!(selector.select(&other));
     }
 
     #[test]
     fn selector_select_not() {
-        let selector = StyleSelector::from_str("a .b .c").unwrap();
-        let other = StyleSelector::from_str(".b .c .d").unwrap();
+        let selector = StyleSelectors::from_str("a .b .c").unwrap();
+        let other = StyleSelectors::from_str(".b .c .d").unwrap();
 
         assert!(!selector.select(&other));
     }

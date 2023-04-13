@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Style,
-    StyleElement, StyleElements, StyleSelector, StyleStates, View, WeakCallback,
+    StyleElement, StyleElements, StyleSelectors, StyleStates, View, WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -89,14 +89,14 @@ impl Node {
         self.node_state.borrow().style_states()
     }
 
-    pub fn selector(&self, ancestors: &StyleElements, states: StyleStates) -> StyleSelector {
+    pub fn selectors(&self, ancestors: &StyleElements, states: StyleStates) -> StyleSelectors {
         let mut elements = ancestors.clone();
 
         if let Some(element) = self.view.element() {
-            elements.push(StyleElement::new(element, states));
+            elements.push(StyleElement::new(Some(element.into()), states));
         }
 
-        StyleSelector {
+        StyleSelectors {
             elements,
             classes: self.view.classes(),
         }
@@ -124,7 +124,7 @@ impl Node {
 
         let mut cx = EventContext {
             style: cx.style,
-            selector: &self.selector(&cx.selector.elements, node_state.style_states()),
+            selectors: &self.selectors(&cx.selectors.elements, node_state.style_states()),
             state: &mut node_state,
             request_redraw: cx.request_redraw,
         };
@@ -136,7 +136,7 @@ impl Node {
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut cx = LayoutContext {
             style: cx.style,
-            selector: &self.selector(&cx.selector.elements, self.states()),
+            selector: &self.selectors(&cx.selector.elements, self.states()),
             text_layout: cx.text_layout,
         };
 
@@ -154,10 +154,10 @@ impl Node {
         let mut node_state = self.node_state.borrow_mut();
         node_state.propagate_parent(cx.state);
 
-        let selector = self.selector(&cx.selector.elements, node_state.style_states());
+        let selectors = self.selectors(&cx.selectors.elements, node_state.style_states());
         let mut cx = DrawContext {
             style: cx.style,
-            selector: &selector,
+            selectors: &selectors,
             frame: cx.frame,
             state: &mut node_state,
             request_redraw: cx.request_redraw,
@@ -176,10 +176,10 @@ impl Node {
             }
         }
 
-        let selector = self.selector(&StyleElements::new(), node_state.style_states());
+        let selectors = self.selectors(&StyleElements::new(), node_state.style_states());
         let mut cx = EventContext {
             style,
-            selector: &selector,
+            selectors: &selectors,
             state: &mut node_state,
             request_redraw,
         };
@@ -194,10 +194,10 @@ impl Node {
         text_layout: &mut dyn TextLayout,
         window_size: Vec2,
     ) -> Vec2 {
-        let selector = self.selector(&StyleElements::new(), self.states());
+        let selectors = self.selectors(&StyleElements::new(), self.states());
         let mut cx = LayoutContext {
             style,
-            selector: &selector,
+            selector: &selectors,
             text_layout,
         };
 
@@ -208,10 +208,10 @@ impl Node {
     pub fn draw_root(&self, style: &Style, frame: &mut Frame, request_redraw: &WeakCallback) {
         let mut node_state = self.node_state.borrow_mut();
 
-        let selector = self.selector(&StyleElements::new(), node_state.style_states());
+        let selectors = self.selectors(&StyleElements::new(), node_state.style_states());
         let mut cx = DrawContext {
             style,
-            selector: &selector,
+            selectors: &selectors,
             frame,
             state: &mut node_state,
             request_redraw,

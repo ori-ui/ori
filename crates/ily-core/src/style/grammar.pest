@@ -11,7 +11,9 @@ Number = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("-" | "-") ~ ASCII_D
 Px = ${ Number ~ "px" }
 Pt = ${ Number ~ "pt" }
 HexColor = @{ "#" ~ ASCII_HEX_DIGIT{6} }
-Color = { HexColor }
+RgbColor = @{ "rgb(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
+RgbaColor = @{ "rgba(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
+Color = { HexColor | RgbColor | RgbaColor }
 String = { Identifier }
 
 // attribute
@@ -20,10 +22,10 @@ Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 
 // selector
 State = { ":" ~ Identifier }
-Element = { Identifier ~ State* }
+Element = { (Identifier | Wildcard) ~ State* }
 Class = { "." ~ Identifier }
 Wildcard = { "*" }
-Selector = { (Element+ ~ Class*) | (Element* ~ Class+) | Wildcard }
+Selector = { (Element+ ~ Class*) | (Element* ~ Class+) }
 
 // stylesheet
 StyleRule = { Selector ~ "{" ~ Attribute* ~ "}" }

@@ -8,12 +8,12 @@ use ily_graphics::{Frame, Rect, TextLayout, TextSection};
 
 use crate::{
     AttributeValue, BoxConstraints, Event, NodeState, SharedSignal, Style, StyleClasses,
-    StyleSelector, WeakCallback,
+    StyleSelectors, WeakCallback,
 };
 
 pub struct EventContext<'a> {
     pub style: &'a Style,
-    pub selector: &'a StyleSelector,
+    pub selectors: &'a StyleSelectors,
     pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
 }
@@ -23,11 +23,11 @@ impl<'a> EventContext<'a> {
     where
         Option<T>: From<AttributeValue>,
     {
-        self.style.get_value(self.selector, key)
+        self.style.get_value(self.selectors, key)
     }
 
     pub fn style_attribute(&self, key: &str) -> Option<&AttributeValue> {
-        self.style.get_attribute(self.selector, key)
+        self.style.get_attribute(self.selectors, key)
     }
 
     pub fn active(&self) -> bool {
@@ -57,7 +57,7 @@ impl<'a> EventContext<'a> {
 
 pub struct LayoutContext<'a> {
     pub style: &'a Style,
-    pub selector: &'a StyleSelector,
+    pub selector: &'a StyleSelectors,
     pub text_layout: &'a dyn TextLayout,
 }
 
@@ -80,7 +80,7 @@ impl<'a> LayoutContext<'a> {
 
 pub struct DrawContext<'a> {
     pub style: &'a Style,
-    pub selector: &'a StyleSelector,
+    pub selectors: &'a StyleSelectors,
     pub frame: &'a mut Frame,
     pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
@@ -91,11 +91,11 @@ impl<'a> DrawContext<'a> {
     where
         Option<T>: From<AttributeValue>,
     {
-        self.style.get_value(self.selector, key)
+        self.style.get_value(self.selectors, key)
     }
 
     pub fn style_attribute(&self, key: &str) -> Option<&AttributeValue> {
-        self.style.get_attribute(self.selector, key)
+        self.style.get_attribute(self.selectors, key)
     }
 
     pub fn active(&self) -> bool {
@@ -130,7 +130,7 @@ impl<'a> DrawContext<'a> {
         self.frame.layer(|frame| {
             let mut child = DrawContext {
                 style: self.style,
-                selector: self.selector,
+                selectors: self.selectors,
                 frame,
                 state: self.state,
                 request_redraw: self.request_redraw,

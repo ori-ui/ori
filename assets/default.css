@@ -24,4 +24,5 @@ button:active {
 button text {
 	font-size: 24px;
 	color: #444444;
+	text-align: center;
 }

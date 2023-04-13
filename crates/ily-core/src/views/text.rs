@@ -1,5 +1,5 @@
 use glam::Vec2;
-use ily_graphics::{Color, Rect, TextSection};
+use ily_graphics::{Color, Rect, TextAlign, TextSection};
 
 use crate::{attributes, BoxConstraints, DrawContext, LayoutContext, Length, Properties, View};
 
@@ -9,6 +9,7 @@ pub struct Text {
     font_size: Option<Length>,
     font: Option<String>,
     color: Option<Color>,
+    align: Option<TextAlign>,
 }
 
 impl Default for Text {
@@ -18,6 +19,7 @@ impl Default for Text {
             font_size: None,
             font: None,
             color: None,
+            align: None,
         }
     }
 }
@@ -53,6 +55,12 @@ impl Text {
         self.color = Some(color);
         self
     }
+
+    /// Set the alignment of the text.
+    pub fn align(mut self, align: TextAlign) -> Self {
+        self.align = Some(align);
+        self
+    }
 }
 
 pub struct TextProperties<'a> {
@@ -74,6 +82,10 @@ impl<'a> TextProperties<'a> {
 
     pub fn color(&mut self, color: Color) {
         self.text.color = Some(color);
+    }
+
+    pub fn align(&mut self, align: TextAlign) {
+        self.text.align = Some(align);
     }
 }
 
@@ -100,14 +112,16 @@ impl View for Text {
             font_size: "font-size",
             font: "font",
             color: "color",
+            align: "align",
         }
 
         let font_size = font_size.pixels();
 
         let section = TextSection {
             bounds: Rect::min_size(Vec2::ZERO, bc.max),
-            text: self.text.clone(),
             scale: font_size,
+            align,
+            text: self.text.clone(),
             font: (font.is_empty()).then(|| font),
             color,
         };
@@ -122,12 +136,14 @@ impl View for Text {
             font_size: "font-size",
             font: "font",
             color: "color",
+            align: "align",
         }
 
         let font_size = font_size.pixels();
 
         let section = TextSection {
             bounds: cx.rect(),
+            align,
             text: self.text.clone(),
             scale: font_size,
             font: (font.is_empty()).then(|| font),

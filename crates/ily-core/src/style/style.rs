@@ -2,7 +2,7 @@ use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
 use ily_graphics::Color;
 
-use crate::{Length, StyleSelector};
+use crate::{Length, StyleSelectors};
 
 use super::parse::StyleParseError;
 
@@ -62,7 +62,7 @@ impl Style {
     }
 
     /// Gets the attributes that match the given selector.
-    pub fn get_attributes(&self, selector: &StyleSelector) -> Vec<Attribute> {
+    pub fn get_attributes(&self, selector: &StyleSelectors) -> Vec<Attribute> {
         let mut attributes = Vec::new();
 
         for rule in self.rules.iter() {
@@ -75,7 +75,7 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_attribute(&self, selector: &StyleSelector, name: &str) -> Option<&AttributeValue> {
+    pub fn get_attribute(&self, selector: &StyleSelectors, name: &str) -> Option<&AttributeValue> {
         for rule in self.rules.iter().rev() {
             if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_attribute(name) {
@@ -88,7 +88,7 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_value<T>(&self, selector: &StyleSelector, name: &str) -> Option<T>
+    pub fn get_value<T>(&self, selector: &StyleSelectors, name: &str) -> Option<T>
     where
         Option<T>: From<AttributeValue>,
     {
@@ -125,13 +125,13 @@ impl IntoIterator for Style {
 /// The attributes are applied to the elements that match the selector.
 #[derive(Clone, Debug)]
 pub struct StyleRule {
-    pub selector: StyleSelector,
+    pub selector: StyleSelectors,
     pub attributes: Vec<Attribute>,
 }
 
 impl StyleRule {
     /// Creates a new style rule from a [`Selector`].
-    pub fn new(selector: StyleSelector) -> Self {
+    pub fn new(selector: StyleSelectors) -> Self {
         Self {
             selector,
             attributes: Vec::new(),

@@ -1,7 +1,8 @@
-use std::{error::Error, str::FromStr, sync::Arc};
+use std::{error::Error, fmt::Display, str::FromStr, sync::Arc};
 
 use ily_core::{
-    Callback, Event, Modifiers, Node, PointerEvent, Scope, Style, Vec2, View, WeakCallback,
+    Callback, Event, LoadedStyleKind, Modifiers, Node, PointerEvent, Scope, Style, StyleLoader,
+    Vec2, View, WeakCallback,
 };
 use ily_graphics::Frame;
 use winit::{
@@ -13,7 +14,7 @@ use winit::{
 use crate::convert::{convert_mouse_button, is_pressed};
 
 pub struct App {
-    style: Style,
+    style_loader: StyleLoader,
     builder: Option<Box<dyn FnOnce() -> Node>>,
 }
 
@@ -43,21 +44,35 @@ impl App {
             Node::new(view.unwrap())
         });
 
+        let mut loader = StyleLoader::new();
+
+        let default_style = Style::from_str(include_str!("../../../assets/default.css")).unwrap();
+        let _ = loader.add_style(default_style);
+
         Self {
-            style: Style::from_str(include_str!("../../../assets/default.css")).unwrap(),
+            style_loader: loader,
             builder: Some(builder),
         }
     }
 
-    pub fn style(mut self, style: Style) -> Self {
-        self.style.extend(style);
+    pub fn style<T>(mut self, style: T) -> Self
+    where
+        T: TryInto<LoadedStyleKind>,
+        T::Error: Display,
+    {
+        match self.style_loader.add_style(style) {
+            Err(err) => tracing::error!("failed to load style: {}", err),
+
+            _ => {}
+        };
+
         self
     }
 }
 
 struct AppState {
     window: Arc<Window>,
-    style: Style,
+    style_loader: StyleLoader,
     request_redraw: WeakCallback,
     mouse_position: Vec2,
     modifiers: Modifiers,
@@ -74,20 +89,22 @@ impl AppState {
     }
 
     fn event(&mut self, event: &Event) {
-        (self.root).event_root(&self.style, &self.request_redraw, event);
+        (self.root).event_root(self.style_loader.style(), &self.request_redraw, event);
     }
 
     fn layout(&mut self) {
+        let style = self.style_loader.style();
         let size = self.window_size();
         let text_layout = &mut self.renderer.text_layout();
-        self.root.layout_root(&self.style, text_layout, size);
+        self.root.layout_root(style, text_layout, size);
     }
 
     fn draw(&mut self) {
         self.layout();
 
         self.frame.clear();
-        (self.root).draw_root(&self.style, &mut self.frame, &self.request_redraw);
+        let style = self.style_loader.style();
+        (self.root).draw_root(style, &mut self.frame, &self.request_redraw);
 
         #[cfg(feature = "wgpu")]
         self.renderer.render_frame(&self.frame);
@@ -121,7 +138,7 @@ impl App {
         let builder = self.builder.take().unwrap();
         let mut state = AppState {
             window,
-            style: self.style,
+            style_loader: self.style_loader,
             request_redraw,
             mouse_position: Vec2::ZERO,
             modifiers: Modifiers::default(),
@@ -139,6 +156,10 @@ impl App {
                     state.layout();
                     state.draw();
                 }
+                WinitEvent::MainEventsCleared => match state.style_loader.reload() {
+                    Err(err) => tracing::error!("failed to reload style: {}", err),
+                    _ => {}
+                },
                 WinitEvent::WindowEvent { event, .. } => match event {
                     WindowEvent::Resized(size)
                     | WindowEvent::ScaleFactorChanged {

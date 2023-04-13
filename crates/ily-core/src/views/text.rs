@@ -120,7 +120,7 @@ impl View for Text {
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let font: String = cx.style("font");
-        let font_size = cx.style_unit("font-size", 0.0..bc.max.y);
+        let font_size = cx.style_range("font-size", 0.0..bc.max.y);
         let color = cx.style("color");
         let h_align = cx.style("text-align");
         let v_align = cx.style("text-valign");

@@ -75,6 +75,8 @@ impl<'a> DerefMut for DrawContext<'a> {
 macro_rules! context {
     ($name:ident) => {
         impl<'a> $name<'a> {
+            /// Get the value of a style attribute, if it has a transition, the value will be
+            /// interpolated between the current value and the new value.
             pub fn style<T: FromAttribute + Default + 'static>(&mut self, key: &str) -> T {
                 let result = self.style.get_value_and_transition(self.selectors, key);
                 let (value, transition) = result.unwrap_or_default();
@@ -87,7 +89,12 @@ macro_rules! context {
                 value
             }
 
-            pub fn style_unit(&mut self, key: &str, range: Range<f32>) -> f32 {
+            /// Get the value of a style attribute, if it has a transition, the value will be
+            /// interpolated between the current value and the new value.
+            ///
+            /// This is a convenience method for getting a value in pixels, as opposed to
+            /// `style` which returns a `Unit`.
+            pub fn style_range(&mut self, key: &str, range: Range<f32>) -> f32 {
                 let result = self.style.get_value_and_transition(self.selectors, key);
                 let (value, transition): (Unit, _) = result.unwrap_or_default();
 

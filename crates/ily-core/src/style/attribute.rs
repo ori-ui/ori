@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use ily_graphics::{Color, TextAlign};
 use smallvec::SmallVec;
 
@@ -38,7 +40,7 @@ impl Attributes {
 
     pub fn get(&self, name: &str) -> Option<&Attribute> {
         for attribute in self.attributes.iter() {
-            if attribute.name == name {
+            if attribute.key == name {
                 return Some(&attribute);
             }
         }
@@ -48,12 +50,19 @@ impl Attributes {
 
     pub fn get_value<T: FromAttribute>(&self, name: &str) -> Option<T> {
         for attribute in self.attributes.iter().rev() {
-            if attribute.name != name {
+            if attribute.key != name {
                 continue;
             }
 
             if let Some(value) = T::from_attribute(attribute.value.clone()) {
                 return Some(value);
+            } else {
+                tracing::warn!(
+                    "Invalid attribute value for attribute '{}': {:?}, expected '{}'.",
+                    name,
+                    attribute.value,
+                    std::any::type_name::<T>(),
+                );
             }
         }
 
@@ -65,12 +74,19 @@ impl Attributes {
         name: &str,
     ) -> Option<(T, Option<Transition>)> {
         for attribute in self.attributes.iter().rev() {
-            if attribute.name != name {
+            if attribute.key != name {
                 continue;
             }
 
             if let Some(value) = T::from_attribute(attribute.value.clone()) {
                 return Some((value, attribute.transition));
+            } else {
+                tracing::warn!(
+                    "Invalid attribute value for attribute '{}': {:?}, expected '{}'.",
+                    name,
+                    attribute.value,
+                    std::any::type_name::<T>(),
+                );
             }
         }
 
@@ -104,28 +120,90 @@ impl FromIterator<Attribute> for Attributes {
     }
 }
 
-/// A [`Style`] attribute.
+/// A [`Style`](super::Style) attribute.
 ///
 /// An attribute is a name and a value.
 #[derive(Clone, Debug)]
 pub struct Attribute {
-    /// The attribute name.
-    pub name: String,
+    /// The attribute key.
+    pub key: String,
     /// The attribute value.
     pub value: AttributeValue,
     /// The transition to use when animating the attribute.
     pub transition: Option<Transition>,
 }
 
-/// A [`Style`] attribute value.
+impl Attribute {
+    pub fn new(key: impl Into<String>, value: impl Into<AttributeValue>) -> Self {
+        Self {
+            key: key.into(),
+            value: value.into(),
+            transition: None,
+        }
+    }
+
+    pub fn with_transition(
+        key: impl Into<String>,
+        value: impl Into<AttributeValue>,
+        transition: impl Into<Transition>,
+    ) -> Self {
+        Self {
+            key: key.into(),
+            value: value.into(),
+            transition: Some(transition.into()),
+        }
+    }
+}
+
+/// A [`Style`](super::Style) attribute value.
 #[derive(Clone, Debug)]
 pub enum AttributeValue {
     /// A string value, eg. `red`.
     String(String),
     /// A length value, eg. `10px` or `10pt`.
-    Length(Unit),
+    Unit(Unit),
     /// A color value, eg. `#ff0000`.
     Color(Color),
+}
+
+impl Display for AttributeValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::String(value) => write!(f, "{}", value),
+            Self::Unit(value) => write!(f, "{}", value),
+            Self::Color(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+impl From<String> for AttributeValue {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<&str> for AttributeValue {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_string())
+    }
+}
+
+impl From<f32> for AttributeValue {
+    fn from(value: f32) -> Self {
+        Self::Unit(Unit::Px(value))
+    }
+}
+
+impl From<Unit> for AttributeValue {
+    fn from(value: Unit) -> Self {
+        Self::Unit(value)
+    }
+}
+
+impl From<Color> for AttributeValue {
+    fn from(value: Color) -> Self {
+        Self::Color(value)
+    }
 }
 
 pub trait FromAttribute: Sized {
@@ -153,7 +231,7 @@ impl FromAttribute for String {
 impl FromAttribute for Unit {
     fn from_attribute(value: AttributeValue) -> Option<Self> {
         match value {
-            AttributeValue::Length(value) => Some(value),
+            AttributeValue::Unit(value) => Some(value),
             _ => None,
         }
     }
@@ -179,6 +257,16 @@ impl AttributeEnum for TextAlign {
             "center" => Some(Self::Center),
             "right" | "end" => Some(Self::End),
             _ => None,
+        }
+    }
+}
+
+impl Into<AttributeValue> for TextAlign {
+    fn into(self) -> AttributeValue {
+        match self {
+            Self::Start => "start".into(),
+            Self::Center => "center".into(),
+            Self::End => "end".into(),
         }
     }
 }

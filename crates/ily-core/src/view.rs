@@ -43,7 +43,7 @@ pub trait View: 'static {
 
 /// A [`View`] that with an unknown state.
 ///
-/// This is used to store a [`View`] in a [`Node`].
+/// This is used to store a [`View`] in a [`Node`](crate::Node).
 pub trait AnyView {
     fn build(&self) -> Box<dyn Any>;
 

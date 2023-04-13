@@ -74,7 +74,7 @@ impl<T: Clone> ReadSignal<T> {
 /// This is a wrapper around [`ReadSignal`].
 ///
 /// Signals are used to store state that can be read from and written to.
-/// Using [`Signal::get`] and [`Signal::set`]. Getting the value of a signal
+/// Using [`ReadSignal::get()`] and [`Signal::set()`]. Getting the value of a signal
 /// will track the signal in the currently running `effect`, and setting the
 /// value of a signal will trigger all the callbacks and effects, that are subscribed to
 /// the signal.

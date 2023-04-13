@@ -92,8 +92,8 @@ impl View for Checkbox {
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         cx.state.active = self.checked.cloned_untracked();
 
-        let width = cx.style_unit("width", bc.width());
-        let height = cx.style_unit("height", bc.height());
+        let width = cx.style_range("width", bc.width());
+        let height = cx.style_range("height", bc.height());
         bc.constrain(Vec2::new(width, height))
     }
 
@@ -104,8 +104,8 @@ impl View for Checkbox {
         let background = cx.style("background");
         let border_color = cx.style("border-color");
 
-        let border_radius = cx.style_unit("border-radius", 0.0..20.0);
-        let border_width = cx.style_unit("border-width", 0.0..20.0);
+        let border_radius = cx.style_range("border-radius", 0.0..20.0);
+        let border_width = cx.style_range("border-width", 0.0..20.0);
 
         let quad = Quad {
             rect: cx.rect(),

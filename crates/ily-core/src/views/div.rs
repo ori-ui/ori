@@ -170,14 +170,14 @@ impl View for Div {
         let justify_content = cx.style::<JustifyContent>("justify-content");
         let align_items = cx.style::<AlignItems>("align-items");
 
-        let min_width = cx.style_unit("min-width", bc.width());
-        let max_width = cx.style_unit("max-width", bc.width());
+        let min_width = cx.style_range("min-width", bc.width());
+        let max_width = cx.style_range("max-width", bc.width());
 
-        let min_height = cx.style_unit("min-height", bc.height());
-        let max_height = cx.style_unit("max-height", bc.height());
+        let min_height = cx.style_range("min-height", bc.height());
+        let max_height = cx.style_range("max-height", bc.height());
 
-        let padding = cx.style_unit("padding", 0.0..bc.max.min_element() / 2.0);
-        let gap = cx.style_unit("gap", 0.0..axis.major(bc.max));
+        let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
+        let gap = cx.style_range("gap", 0.0..axis.major(bc.max));
 
         let min_size = bc.constrain(Vec2::new(min_width, min_height));
         let max_size = bc.constrain(Vec2::new(max_width, max_height));
@@ -253,8 +253,8 @@ impl View for Div {
         tracing::trace!("Div::draw: rect = {:?}", cx.rect());
 
         let range = 0.0..cx.rect().max.min_element() / 2.0;
-        let border_radius = cx.style_unit("border-radius", range.clone());
-        let border_width = cx.style_unit("border-width", range);
+        let border_radius = cx.style_range("border-radius", range.clone());
+        let border_width = cx.style_range("border-width", range);
 
         let background = cx.style("background");
         let border_color = cx.style("border-color");

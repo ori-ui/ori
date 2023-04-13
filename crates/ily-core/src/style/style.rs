@@ -142,7 +142,7 @@ pub struct StyleRule {
 }
 
 impl StyleRule {
-    /// Creates a new style rule from a [`Selector`].
+    /// Creates a new style rule from [`StyleSelectors`].
     pub fn new(selector: StyleSelectors) -> Self {
         Self {
             selector,

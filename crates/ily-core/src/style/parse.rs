@@ -72,7 +72,7 @@ fn parse_value(pair: Pair<'_, Rule>) -> (AttributeValue, Option<Transition>) {
     let transition = parse_transition(pairs.next());
     let value = match value.as_rule() {
         Rule::String => AttributeValue::String(value.as_str().to_string()),
-        Rule::Unit => AttributeValue::Length(parse_unit(value)),
+        Rule::Unit => AttributeValue::Unit(parse_unit(value)),
         Rule::Color => AttributeValue::Color(parse_color(value)),
         _ => unreachable!(),
     };
@@ -129,7 +129,7 @@ fn parse_attribute(pair: Pair<'_, Rule>) -> Attribute {
     let (value, transition) = parse_value(iter.next().unwrap());
 
     Attribute {
-        name,
+        key: name,
         value,
         transition,
     }

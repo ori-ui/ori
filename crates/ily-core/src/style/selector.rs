@@ -3,7 +3,7 @@ use std::fmt::Display;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 
-/// A [`Style`] selector.
+/// A [`Style`](super::Style) selector.
 ///
 /// A selector is a list of classes and an optional element.
 #[derive(Clone, Debug, Default)]

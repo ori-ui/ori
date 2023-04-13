@@ -5,9 +5,9 @@ use ily_graphics::{Frame, Rect, TextLayout};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Style,
-    StyleElement, StyleElements, StyleSelectors, StyleStates, Transition, TransitionStates, View,
-    WeakCallback,
+    AnyView, Attributes, BoxConstraints, DrawContext, Event, EventContext, LayoutContext,
+    PointerEvent, SharedSignal, Style, StyleElement, StyleElements, StyleSelectors, StyleStates,
+    Styleable, Transition, TransitionStates, View, WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -39,6 +39,7 @@ pub struct NodeState {
     pub hovered: bool,
     pub transitions: TransitionStates,
     pub last_draw: Instant,
+    pub attributes: SharedSignal<Attributes>,
 }
 
 impl Default for NodeState {
@@ -52,11 +53,23 @@ impl Default for NodeState {
             hovered: false,
             transitions: TransitionStates::new(),
             last_draw: Instant::now(),
+            attributes: SharedSignal::new(Attributes::new()),
         }
     }
 }
 
 impl NodeState {
+    pub fn styled(attributes: Attributes) -> Self {
+        Self::styled_signal(SharedSignal::new(attributes))
+    }
+
+    pub fn styled_signal(attributes: SharedSignal<Attributes>) -> Self {
+        Self {
+            attributes,
+            ..Self::default()
+        }
+    }
+
     pub fn propagate_parent(&mut self, parent: &NodeState) {
         self.global_rect = self.local_rect.translate(parent.global_rect.min);
     }
@@ -99,7 +112,7 @@ impl NodeState {
     }
 }
 
-/// A node in the [`View`] tree.
+/// A node in the [`View`](crate::View) tree.
 pub struct Node {
     state: RefCell<Box<dyn Any>>,
     node_state: RefCell<NodeState>,
@@ -111,6 +124,24 @@ impl Node {
         Self {
             state: RefCell::new(Box::new(view.build())),
             node_state: RefCell::new(NodeState::default()),
+            view: Box::new(view),
+        }
+    }
+
+    /// Creates a new [`Node`] from a [`Styleable`] view.
+    pub fn styled<T: View>(styleable: impl Styleable<T>) -> Self {
+        let styled = styleable.styled();
+        Self {
+            state: RefCell::new(Box::new(styled.build())),
+            node_state: RefCell::new(NodeState::styled(styled.attributes)),
+            view: Box::new(styled.value),
+        }
+    }
+
+    pub fn styled_signal(view: impl View, attributes: SharedSignal<Attributes>) -> Self {
+        Self {
+            state: RefCell::new(Box::new(view.build())),
+            node_state: RefCell::new(NodeState::styled_signal(attributes)),
             view: Box::new(view),
         }
     }

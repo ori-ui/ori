@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use glam::Vec2;
 
-use crate::AttributeEnum;
+use crate::{AttributeEnum, AttributeValue};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoxConstraints {
@@ -93,6 +93,15 @@ impl AttributeEnum for Axis {
             "horizontal" | "row" => Some(Axis::Horizontal),
             "vertical" | "column" => Some(Axis::Vertical),
             _ => None,
+        }
+    }
+}
+
+impl Into<AttributeValue> for Axis {
+    fn into(self) -> AttributeValue {
+        match self {
+            Axis::Horizontal => AttributeValue::String("horizontal".to_string()),
+            Axis::Vertical => AttributeValue::String("vertical".to_string()),
         }
     }
 }
@@ -195,6 +204,19 @@ impl AttributeEnum for JustifyContent {
     }
 }
 
+impl Into<AttributeValue> for JustifyContent {
+    fn into(self) -> AttributeValue {
+        match self {
+            JustifyContent::Start => AttributeValue::String("start".to_string()),
+            JustifyContent::Center => AttributeValue::String("center".to_string()),
+            JustifyContent::End => AttributeValue::String("end".to_string()),
+            JustifyContent::SpaceBetween => AttributeValue::String("space-between".to_string()),
+            JustifyContent::SpaceAround => AttributeValue::String("space-around".to_string()),
+            JustifyContent::SpaceEvenly => AttributeValue::String("space-evenly".to_string()),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AlignItems {
     Start,
@@ -228,6 +250,17 @@ impl AttributeEnum for AlignItems {
             "end" => Some(AlignItems::End),
             "stretch" => Some(AlignItems::Stretch),
             _ => None,
+        }
+    }
+}
+
+impl Into<AttributeValue> for AlignItems {
+    fn into(self) -> AttributeValue {
+        match self {
+            AlignItems::Start => AttributeValue::String("start".to_string()),
+            AlignItems::Center => AttributeValue::String("center".to_string()),
+            AlignItems::End => AttributeValue::String("end".to_string()),
+            AlignItems::Stretch => AttributeValue::String("stretch".to_string()),
         }
     }
 }

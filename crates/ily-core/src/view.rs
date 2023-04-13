@@ -3,7 +3,7 @@ use std::any::{self, Any};
 use glam::Vec2;
 
 use crate::{
-    Attributes, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, SharedSignal,
+    BoxConstraints, DrawContext, Event, EventContext, LayoutContext, SharedSignal, StyleAttributes,
     StyleClasses,
 };
 
@@ -11,7 +11,7 @@ pub struct ViewState<T> {
     pub state: T,
     pub element: Option<&'static str>,
     pub classes: StyleClasses,
-    pub attributes: Attributes,
+    pub attributes: StyleAttributes,
 }
 
 impl<T> ViewState<T> {
@@ -20,7 +20,7 @@ impl<T> ViewState<T> {
             state,
             element,
             classes: StyleClasses::new(),
-            attributes: Attributes::new(),
+            attributes: StyleAttributes::new(),
         }
     }
 

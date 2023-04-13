@@ -8,11 +8,11 @@ use smallvec::SmallVec;
 use smol_str::SmolStr;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Transition {
+pub struct StyleTransition {
     pub duration: f32,
 }
 
-impl Transition {
+impl StyleTransition {
     pub const fn new(duration: f32) -> Self {
         Self { duration }
     }
@@ -22,7 +22,7 @@ impl Transition {
     }
 }
 
-impl From<f32> for Transition {
+impl From<f32> for StyleTransition {
     fn from(duration: f32) -> Self {
         Self::new(duration)
     }
@@ -40,8 +40,8 @@ impl<T: Mul<f32, Output = T> + Add<Output = T> + PartialEq + Copy> Transitionabl
 pub struct TransitionState<T> {
     pub from: Option<T>,
     pub to: Option<T>,
-    pub prev_transition: Option<Transition>,
-    pub transition: Option<Transition>,
+    pub prev_transition: Option<StyleTransition>,
+    pub transition: Option<StyleTransition>,
     pub elapsed: f32,
 }
 
@@ -62,7 +62,7 @@ impl<T: Transitionable> TransitionState<T> {
         from * (1.0 - progress) + to * progress
     }
 
-    fn transition(&self) -> Option<Transition> {
+    fn transition(&self) -> Option<StyleTransition> {
         if let Some(transition) = self.transition {
             return Some(transition);
         }
@@ -78,7 +78,7 @@ impl<T: Transitionable> TransitionState<T> {
         true
     }
 
-    pub fn update(&mut self, to: T, transition: Option<Transition>, delta: f32) -> (T, bool) {
+    pub fn update(&mut self, to: T, transition: Option<StyleTransition>, delta: f32) -> (T, bool) {
         if self.from.is_none() {
             self.from = Some(to);
         }
@@ -152,7 +152,7 @@ impl TransitionStates {
         &mut self,
         name: &str,
         value: f32,
-        transition: Option<Transition>,
+        transition: Option<StyleTransition>,
         delta: f32,
     ) -> (f32, bool) {
         if let Some(state) = self.find_unit(name) {
@@ -171,7 +171,7 @@ impl TransitionStates {
         &mut self,
         name: &str,
         value: Color,
-        transition: Option<Transition>,
+        transition: Option<StyleTransition>,
         delta: f32,
     ) -> (Color, bool) {
         if let Some(state) = self.find_color(name) {
@@ -190,7 +190,7 @@ impl TransitionStates {
         &mut self,
         name: &str,
         value: &mut T,
-        transition: Option<Transition>,
+        transition: Option<StyleTransition>,
         delta: f32,
     ) -> bool {
         if let Some(value) = <dyn Any>::downcast_mut::<f32>(value) {

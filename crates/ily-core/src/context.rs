@@ -4,7 +4,8 @@ use glam::Vec2;
 use ily_graphics::{Frame, Rect, TextHit, TextLayout, TextSection};
 
 use crate::{
-    Attribute, FromAttribute, NodeState, Style, StyleSelectors, Transition, Unit, WeakCallback,
+    FromStyleAttribute, NodeState, Style, StyleAttribute, StyleSelectors, StyleTransition, Unit,
+    WeakCallback,
 };
 
 pub struct EventContext<'a> {
@@ -77,10 +78,10 @@ impl<'a> DerefMut for DrawContext<'a> {
 macro_rules! context {
     ($name:ident) => {
         impl<'a> $name<'a> {
-            pub fn get_style_value_and_transition<T: FromAttribute + Default + 'static>(
+            pub fn get_style_value_and_transition<T: FromStyleAttribute + Default + 'static>(
                 &self,
                 key: &str,
-            ) -> (T, Option<Transition>) {
+            ) -> (T, Option<StyleTransition>) {
                 if let Some(result) = self.state.attributes.get_value_and_transition(key) {
                     return result;
                 }
@@ -94,7 +95,7 @@ macro_rules! context {
 
             /// Get the value of a style attribute, if it has a transition, the value will be
             /// interpolated between the current value and the new value.
-            pub fn style<T: FromAttribute + Default + 'static>(&mut self, key: &str) -> T {
+            pub fn style<T: FromStyleAttribute + Default + 'static>(&mut self, key: &str) -> T {
                 let (value, transition) = self.get_style_value_and_transition(key);
                 let (value, redraw) = self.state.transition(key, value, transition);
 
@@ -123,7 +124,7 @@ macro_rules! context {
                 pixels
             }
 
-            pub fn style_attribute(&self, key: &str) -> Option<&Attribute> {
+            pub fn style_attribute(&self, key: &str) -> Option<&StyleAttribute> {
                 self.style.get_attribute(self.selectors, key)
             }
 

@@ -5,9 +5,9 @@ use ily_graphics::{Frame, Rect, TextLayout};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, Attributes, BoxConstraints, DrawContext, Event, EventContext, LayoutContext,
-    PointerEvent, Style, StyleClasses, StyleElement, StyleElements, StyleSelectors, StyleStates,
-    Transition, TransitionStates, View, WeakCallback,
+    AnyView, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Style,
+    StyleAttributes, StyleClasses, StyleElement, StyleElements, StyleSelectors, StyleStates,
+    StyleTransition, TransitionStates, View, WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -40,7 +40,7 @@ pub struct NodeState {
     pub last_draw: Instant,
     pub element: Option<&'static str>,
     pub classes: StyleClasses,
-    pub attributes: Attributes,
+    pub attributes: StyleAttributes,
     pub transitions: TransitionStates,
 }
 
@@ -56,7 +56,7 @@ impl Default for NodeState {
             last_draw: Instant::now(),
             element: None,
             classes: StyleClasses::new(),
-            attributes: Attributes::new(),
+            attributes: StyleAttributes::new(),
             transitions: TransitionStates::new(),
         }
     }
@@ -119,7 +119,7 @@ impl NodeState {
         &mut self,
         name: &str,
         mut value: T,
-        transition: Option<Transition>,
+        transition: Option<StyleTransition>,
     ) -> (T, bool) {
         let delta = self.delta();
         let redraw = (self.transitions).transition_any(name, &mut value, transition, delta);

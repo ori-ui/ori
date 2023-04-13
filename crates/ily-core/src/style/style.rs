@@ -1,6 +1,6 @@
 use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
-use crate::{Attribute, Attributes, FromAttribute, StyleSelectors, Transition};
+use crate::{FromStyleAttribute, StyleAttribute, StyleAttributes, StyleSelectors, StyleTransition};
 
 use super::parse::StyleParseError;
 
@@ -60,8 +60,8 @@ impl Style {
     }
 
     /// Gets the attributes that match the given selector.
-    pub fn get_attributes(&self, selector: &StyleSelectors) -> Attributes {
-        let mut attributes = Attributes::new();
+    pub fn get_attributes(&self, selector: &StyleSelectors) -> StyleAttributes {
+        let mut attributes = StyleAttributes::new();
 
         for rule in self.rules.iter() {
             if selector.select(&rule.selector) {
@@ -73,7 +73,7 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_attribute(&self, selector: &StyleSelectors, name: &str) -> Option<&Attribute> {
+    pub fn get_attribute(&self, selector: &StyleSelectors, name: &str) -> Option<&StyleAttribute> {
         for rule in self.rules.iter().rev() {
             if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_attribute(name) {
@@ -86,7 +86,11 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_value<T: FromAttribute>(&self, selector: &StyleSelectors, name: &str) -> Option<T> {
+    pub fn get_value<T: FromStyleAttribute>(
+        &self,
+        selector: &StyleSelectors,
+        name: &str,
+    ) -> Option<T> {
         for rule in self.rules.iter().rev() {
             if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_value(name) {
@@ -99,11 +103,11 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_value_and_transition<T: FromAttribute>(
+    pub fn get_value_and_transition<T: FromStyleAttribute>(
         &self,
         selector: &StyleSelectors,
         name: &str,
-    ) -> Option<(T, Option<Transition>)> {
+    ) -> Option<(T, Option<StyleTransition>)> {
         for rule in self.rules.iter().rev() {
             if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_value_and_transition(name) {
@@ -138,7 +142,7 @@ impl IntoIterator for Style {
 #[derive(Clone, Debug)]
 pub struct StyleRule {
     pub selector: StyleSelectors,
-    pub attributes: Attributes,
+    pub attributes: StyleAttributes,
 }
 
 impl StyleRule {
@@ -146,35 +150,35 @@ impl StyleRule {
     pub fn new(selector: StyleSelectors) -> Self {
         Self {
             selector,
-            attributes: Attributes::new(),
+            attributes: StyleAttributes::new(),
         }
     }
 
     /// Adds an [`Attribute`] to the rule.
-    pub fn add_attribute(&mut self, attribute: Attribute) {
+    pub fn add_attribute(&mut self, attribute: StyleAttribute) {
         self.attributes.add(attribute);
     }
 
     /// Adds a list of [`Attribute`]s to the rule.
-    pub fn add_attributes(&mut self, attributes: Vec<Attribute>) {
+    pub fn add_attributes(&mut self, attributes: Vec<StyleAttribute>) {
         self.attributes.extend(attributes);
     }
 
     /// Gets the value of an attribute.
-    pub fn get_attribute(&self, name: &str) -> Option<&Attribute> {
+    pub fn get_attribute(&self, name: &str) -> Option<&StyleAttribute> {
         self.attributes.get(name)
     }
 
     /// Gets the value of an attribute.
-    pub fn get_value<T: FromAttribute>(&self, name: &str) -> Option<T> {
+    pub fn get_value<T: FromStyleAttribute>(&self, name: &str) -> Option<T> {
         self.attributes.get_value(name)
     }
 
     /// Gets the value of an attribute.
-    pub fn get_value_and_transition<T: FromAttribute>(
+    pub fn get_value_and_transition<T: FromStyleAttribute>(
         &self,
         name: &str,
-    ) -> Option<(T, Option<Transition>)> {
+    ) -> Option<(T, Option<StyleTransition>)> {
         self.attributes.get_value_and_transition(name)
     }
 }

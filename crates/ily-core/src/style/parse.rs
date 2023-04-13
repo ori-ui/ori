@@ -5,7 +5,8 @@ use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
 
 use crate::{
-    Attribute, AttributeValue, Style, StyleElement, StyleRule, StyleSelectors, Transition, Unit,
+    Style, StyleAttribute, StyleAttributeValue, StyleElement, StyleRule, StyleSelectors,
+    StyleTransition, Unit,
 };
 
 #[derive(Parser)]
@@ -61,19 +62,19 @@ fn parse_color(pair: Pair<'_, Rule>) -> Color {
     }
 }
 
-fn parse_transition(pair: Option<Pair<'_, Rule>>) -> Option<Transition> {
-    Some(Transition::new(parse_number(pair?)))
+fn parse_transition(pair: Option<Pair<'_, Rule>>) -> Option<StyleTransition> {
+    Some(StyleTransition::new(parse_number(pair?)))
 }
 
-fn parse_value(pair: Pair<'_, Rule>) -> (AttributeValue, Option<Transition>) {
+fn parse_value(pair: Pair<'_, Rule>) -> (StyleAttributeValue, Option<StyleTransition>) {
     let mut pairs = pair.into_inner();
 
     let value = pairs.next().unwrap();
     let transition = parse_transition(pairs.next());
     let value = match value.as_rule() {
-        Rule::String => AttributeValue::String(value.as_str().to_string()),
-        Rule::Unit => AttributeValue::Unit(parse_unit(value)),
-        Rule::Color => AttributeValue::Color(parse_color(value)),
+        Rule::String => StyleAttributeValue::String(value.as_str().to_string()),
+        Rule::Unit => StyleAttributeValue::Unit(parse_unit(value)),
+        Rule::Color => StyleAttributeValue::Color(parse_color(value)),
         _ => unreachable!(),
     };
 
@@ -122,13 +123,13 @@ fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelectors {
     selector
 }
 
-fn parse_attribute(pair: Pair<'_, Rule>) -> Attribute {
+fn parse_attribute(pair: Pair<'_, Rule>) -> StyleAttribute {
     let mut iter = pair.into_inner();
 
     let name = iter.next().unwrap().as_str().to_string();
     let (value, transition) = parse_value(iter.next().unwrap());
 
-    Attribute {
+    StyleAttribute {
         key: name,
         value,
         transition,

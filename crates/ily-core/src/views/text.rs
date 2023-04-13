@@ -1,23 +1,23 @@
 use glam::Vec2;
 use ily_graphics::{Color, Rect, TextSection};
 
-use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, View};
+use crate::{attributes, BoxConstraints, DrawContext, LayoutContext, Length, Properties, View};
 
 #[derive(Clone)]
 pub struct Text {
     text: String,
-    scale: f32,
+    font_size: Option<Length>,
     font: Option<String>,
-    color: Color,
+    color: Option<Color>,
 }
 
 impl Default for Text {
     fn default() -> Self {
         Self {
             text: String::new(),
-            scale: 24.0,
+            font_size: None,
             font: None,
-            color: Color::hex("#444444"),
+            color: None,
         }
     }
 }
@@ -37,20 +37,20 @@ impl Text {
     }
 
     /// Set the scale of the text.
-    pub fn scale(mut self, scale: f32) -> Self {
-        self.scale = scale;
+    pub fn scale(mut self, scale: impl Into<Length>) -> Self {
+        self.font_size = Some(scale.into());
         self
     }
 
     /// Set the font to use.
-    pub fn font(mut self, font: impl Into<Option<String>>) -> Self {
-        self.font = font.into();
+    pub fn font(mut self, font: impl Into<String>) -> Self {
+        self.font = Some(font.into());
         self
     }
 
     /// Set the color of the text.
     pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
+        self.color = Some(color);
         self
     }
 }
@@ -64,16 +64,16 @@ impl<'a> TextProperties<'a> {
         self.text.text = text.into();
     }
 
-    pub fn scale(&mut self, scale: f32) {
-        self.text.scale = scale;
+    pub fn scale(&mut self, scale: impl Into<Length>) {
+        self.text.font_size = Some(scale.into());
     }
 
-    pub fn font(&mut self, font: impl Into<Option<String>>) {
-        self.text.font = font.into();
+    pub fn font(&mut self, font: impl Into<String>) {
+        self.text.font = Some(font.into());
     }
 
     pub fn color(&mut self, color: Color) {
-        self.text.color = color;
+        self.text.color = Some(color);
     }
 }
 
@@ -95,12 +95,21 @@ impl View for Text {
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        attributes! {
+            cx, self,
+            font_size: "font-size",
+            font: "font",
+            color: "color",
+        }
+
+        let font_size = font_size.pixels();
+
         let section = TextSection {
             bounds: Rect::min_size(Vec2::ZERO, bc.max),
             text: self.text.clone(),
-            scale: self.scale,
-            font: self.font.clone(),
-            color: self.color,
+            scale: font_size,
+            font: (font.is_empty()).then(|| font),
+            color,
         };
 
         let bounds = cx.text_bounds(&section).unwrap_or_default();
@@ -108,12 +117,21 @@ impl View for Text {
     }
 
     fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
+        attributes! {
+            cx, self,
+            font_size: "font-size",
+            font: "font",
+            color: "color",
+        }
+
+        let font_size = font_size.pixels();
+
         let section = TextSection {
             bounds: cx.rect(),
             text: self.text.clone(),
-            scale: self.scale,
-            font: self.font.clone(),
-            color: self.color,
+            scale: font_size,
+            font: (font.is_empty()).then(|| font),
+            color,
         };
 
         cx.draw_primitive(section);

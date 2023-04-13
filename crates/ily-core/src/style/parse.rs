@@ -4,13 +4,16 @@ use ily_graphics::Color;
 use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
 
-use crate::{Attribute, AttributeValue, Length, Pt, Px, Selector, Style, StyleRule};
+use crate::{
+    Attribute, AttributeValue, Length, Pt, Px, Style, StyleElement, StyleRule, StyleSelector,
+};
 
 #[derive(Parser)]
 #[grammar = "style/grammar.pest"]
 pub struct StyleParser;
 
 pub type StyleParseError = Error<Rule>;
+pub type SelectorParseError = Error<Rule>;
 
 fn parse_length(pair: Pair<'_, Rule>) -> Length {
     let number_pair = pair.clone().into_inner().next().unwrap();
@@ -41,21 +44,42 @@ fn parse_value(pair: Pair<'_, Rule>) -> AttributeValue {
     }
 }
 
+fn parse_element(pair: Pair<'_, Rule>) -> StyleElement {
+    let mut iter = pair.into_inner();
+
+    let mut element = StyleElement {
+        name: iter.next().unwrap().as_str().into(),
+        ..Default::default()
+    };
+
+    for pair in iter {
+        match pair.as_rule() {
+            Rule::State => {
+                element.states.push(parse_class(pair));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    element
+}
+
 fn parse_class(pair: Pair<'_, Rule>) -> String {
     pair.into_inner().as_str().to_string()
 }
 
-fn parse_selector(pair: Pair<'_, Rule>) -> Selector {
-    let mut selector = Selector::default();
+fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelector {
+    let mut selector = StyleSelector::default();
 
     for pair in pair.into_inner() {
         match pair.as_rule() {
             Rule::Element => {
-                selector.element = Some(pair.as_str().to_string());
+                selector.elements.push(parse_element(pair));
             }
             Rule::Class => {
                 selector.classes.push(parse_class(pair));
             }
+            Rule::Wildcard => {}
             _ => unreachable!(),
         }
     }
@@ -112,6 +136,15 @@ impl FromStr for Style {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         parse_style(input)
+    }
+}
+
+impl FromStr for StyleSelector {
+    type Err = SelectorParseError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let pair = StyleParser::parse(Rule::Selector, input)?.next().unwrap();
+        Ok(parse_selector(pair))
     }
 }
 

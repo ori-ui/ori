@@ -1,5 +1,4 @@
 use glam::Vec2;
-use ily_graphics::Color;
 
 use crate::{
     BoxConstraints, Div, DivEvents, DivProperties, DrawContext, Event, EventContext, Events,
@@ -13,11 +12,7 @@ pub struct Button {
 impl Default for Button {
     fn default() -> Self {
         Self {
-            content: Div::new()
-                .background(Color::hex("#b4f8c8"))
-                .background_hover(Color::hex("#a4e8b8"))
-                .border_radius(8.0)
-                .padding(8.0),
+            content: Div::new(),
         }
     }
 }

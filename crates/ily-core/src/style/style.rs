@@ -2,7 +2,7 @@ use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
 use ily_graphics::Color;
 
-use crate::Length;
+use crate::{Length, StyleSelector};
 
 use super::parse::StyleParseError;
 
@@ -56,12 +56,17 @@ impl Style {
         self.rules.push(rule);
     }
 
+    /// Extends the style sheet with the given rules.
+    pub fn extend(&mut self, rules: impl IntoIterator<Item = StyleRule>) {
+        self.rules.extend(rules);
+    }
+
     /// Gets the attributes that match the given selector.
-    pub fn get_attributes(&self, selector: &Selector) -> Vec<Attribute> {
+    pub fn get_attributes(&self, selector: &StyleSelector) -> Vec<Attribute> {
         let mut attributes = Vec::new();
 
         for rule in self.rules.iter() {
-            if rule.selectors.contains(selector) {
+            if selector.select(&rule.selector) {
                 attributes.extend(rule.attributes.clone());
             }
         }
@@ -70,9 +75,9 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_attribute(&self, selector: &Selector, name: &str) -> Option<&AttributeValue> {
+    pub fn get_attribute(&self, selector: &StyleSelector, name: &str) -> Option<&AttributeValue> {
         for rule in self.rules.iter().rev() {
-            if rule.selectors.contains(selector) {
+            if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_attribute(name) {
                     return Some(value);
                 }
@@ -83,12 +88,12 @@ impl Style {
     }
 
     /// Gets the value of an attribute that matches the given selector.
-    pub fn get_value<T>(&self, selector: &Selector, name: &str) -> Option<T>
+    pub fn get_value<T>(&self, selector: &StyleSelector, name: &str) -> Option<T>
     where
         Option<T>: From<AttributeValue>,
     {
         for rule in self.rules.iter().rev() {
-            if rule.selectors.contains(selector) {
+            if selector.select(&rule.selector) {
                 if let Some(value) = rule.get_value(name) {
                     return Some(value);
                 }
@@ -105,21 +110,30 @@ impl Style {
     }
 }
 
+impl IntoIterator for Style {
+    type Item = StyleRule;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.rules.into_iter()
+    }
+}
+
 /// A [`Style`] rule.
 ///
 /// A rule is a selector and a list of attributes.
 /// The attributes are applied to the elements that match the selector.
 #[derive(Clone, Debug)]
 pub struct StyleRule {
-    pub selectors: Selector,
+    pub selector: StyleSelector,
     pub attributes: Vec<Attribute>,
 }
 
 impl StyleRule {
     /// Creates a new style rule from a [`Selector`].
-    pub fn new(selectors: Selector) -> Self {
+    pub fn new(selector: StyleSelector) -> Self {
         Self {
-            selectors,
+            selector,
             attributes: Vec::new(),
         }
     }
@@ -152,7 +166,7 @@ impl StyleRule {
     {
         for attribute in self.attributes.iter() {
             if attribute.name != name {
-                break;
+                continue;
             }
 
             if let Some(value) = Option::<T>::from(attribute.value.clone()) {
@@ -161,63 +175,6 @@ impl StyleRule {
         }
 
         None
-    }
-}
-
-/// A [`Style`] selector.
-///
-/// A selector is a list of classes and an optional element.
-#[derive(Clone, Debug, Default)]
-pub struct Selector {
-    /// The element name.
-    ///
-    /// This is set by [`View::element`](crate::View::element).
-    pub element: Option<String>,
-    /// The list of classes.
-    pub classes: Vec<String>,
-}
-
-impl Selector {
-    /// Creates a new selector.
-    pub fn new(element: Option<String>, classes: Vec<String>) -> Self {
-        Self { element, classes }
-    }
-
-    /// Returns true if `other` is a subset of `self`.
-    pub fn contains(&self, other: &Self) -> bool {
-        // check if the element is the same
-        //
-        // if `other` doesn't have an element, then it's a wildcard
-        if other.element.is_some() && self.element != other.element {
-            return false;
-        }
-
-        // check `self` contains all the classes in `other`
-        for class in other.classes.iter() {
-            if !self.classes.contains(class) {
-                return false;
-            }
-        }
-
-        true
-    }
-}
-
-impl Display for Selector {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(element) = &self.element {
-            write!(f, "{}", element)?;
-        }
-
-        for (i, class) in self.classes.iter().enumerate() {
-            if i == 0 && self.element.is_none() {
-                write!(f, ".{}", class)?;
-            } else {
-                write!(f, " .{}", class)?;
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -247,7 +204,11 @@ impl From<AttributeValue> for Option<String> {
     fn from(value: AttributeValue) -> Self {
         match value {
             AttributeValue::String(value) => Some(value),
-            _ => None,
+            _ => {
+                tracing::warn!("attribute is not a string");
+
+                None
+            }
         }
     }
 }
@@ -256,7 +217,11 @@ impl From<AttributeValue> for Option<Length> {
     fn from(value: AttributeValue) -> Self {
         match value {
             AttributeValue::Length(value) => Some(value),
-            _ => None,
+            _ => {
+                tracing::warn!("attribute is not a length");
+
+                None
+            }
         }
     }
 }
@@ -265,7 +230,11 @@ impl From<AttributeValue> for Option<Color> {
     fn from(value: AttributeValue) -> Self {
         match value {
             AttributeValue::Color(value) => Some(value),
-            _ => None,
+            _ => {
+                tracing::warn!("attribute is not a color");
+
+                None
+            }
         }
     }
 }

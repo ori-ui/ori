@@ -19,9 +19,11 @@ AttributeValue = _{ Px | Pt | Color | String }
 Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 
 // selector
-Element = { Identifier }
+State = { ":" ~ Identifier }
+Element = { Identifier ~ State* }
 Class = { "." ~ Identifier }
-Selector = { Element? ~ Class* }
+Wildcard = { "*" }
+Selector = { (Element+ ~ Class*) | (Element* ~ Class+) | Wildcard }
 
 // stylesheet
 StyleRule = { Selector ~ "{" ~ Attribute* ~ "}" }

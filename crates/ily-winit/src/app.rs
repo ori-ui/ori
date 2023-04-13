@@ -1,8 +1,7 @@
-use std::{error::Error, sync::Arc};
+use std::{error::Error, str::FromStr, sync::Arc};
 
 use ily_core::{
-    BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, Modifiers, Node,
-    NodeState, PointerEvent, Scope, Style, Vec2, View, WeakCallback,
+    Callback, Event, Modifiers, Node, PointerEvent, Scope, Style, Vec2, View, WeakCallback,
 };
 use ily_graphics::Frame;
 use winit::{
@@ -45,13 +44,13 @@ impl App {
         });
 
         Self {
-            style: Style::default(),
+            style: Style::from_str(include_str!("../../../assets/default.css")).unwrap(),
             builder: Some(builder),
         }
     }
 
     pub fn style(mut self, style: Style) -> Self {
-        self.style = style;
+        self.style.extend(style);
         self
     }
 }
@@ -63,7 +62,6 @@ struct AppState {
     mouse_position: Vec2,
     modifiers: Modifiers,
     root: Node,
-    root_state: NodeState,
     frame: Frame,
     #[cfg(feature = "wgpu")]
     renderer: ily_wgpu::Renderer,
@@ -76,40 +74,20 @@ impl AppState {
     }
 
     fn event(&mut self, event: &Event) {
-        let mut cx = EventContext {
-            style: &self.style,
-            state: &mut self.root_state,
-            request_redraw: &self.request_redraw,
-        };
-
-        self.root.event(&mut cx, event);
+        (self.root).event_root(&self.style, &self.request_redraw, event);
     }
 
     fn layout(&mut self) {
         let size = self.window_size();
-        let bc = BoxConstraints::new(Vec2::ZERO, size);
-
-        let mut cx = LayoutContext {
-            style: &self.style,
-            text_layout: &mut self.renderer.text_layout(),
-        };
-
-        self.root.layout(&mut cx, bc);
+        let text_layout = &mut self.renderer.text_layout();
+        self.root.layout_root(&self.style, text_layout, size);
     }
 
     fn draw(&mut self) {
         self.layout();
 
         self.frame.clear();
-
-        let mut cx = DrawContext {
-            style: &self.style,
-            frame: &mut self.frame,
-            state: &mut self.root_state,
-            request_redraw: &self.request_redraw,
-        };
-
-        self.root.draw(&mut cx);
+        (self.root).draw_root(&self.style, &mut self.frame, &self.request_redraw);
 
         #[cfg(feature = "wgpu")]
         self.renderer.render_frame(&self.frame);
@@ -148,7 +126,6 @@ impl App {
             mouse_position: Vec2::ZERO,
             modifiers: Modifiers::default(),
             root: builder(),
-            root_state: NodeState::default(),
             frame: Frame::new(),
             #[cfg(feature = "wgpu")]
             renderer,

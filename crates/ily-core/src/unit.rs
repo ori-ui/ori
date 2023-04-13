@@ -161,7 +161,23 @@ pub enum Length {
     Pt(Pt),
 }
 
+impl Default for Length {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
 impl Length {
+    pub const ZERO: Self = Self::Px(Px(0.0));
+
+    pub const fn px(value: f32) -> Self {
+        Self::Px(Px(value))
+    }
+
+    pub const fn pt(value: f32) -> Self {
+        Self::Pt(Pt(value))
+    }
+
     pub fn pixels(&self) -> f32 {
         match self {
             Self::Px(value) => value.0,

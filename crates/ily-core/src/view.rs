@@ -5,19 +5,29 @@ use std::{
 
 use glam::Vec2;
 use ily_graphics::{Frame, Rect, TextLayout, TextSection};
-use uuid::Uuid;
 
-use crate::{BoxConstraints, Event, SharedSignal, Style, WeakCallback};
+use crate::{
+    AttributeValue, BoxConstraints, Event, NodeState, SharedSignal, Style, StyleClasses,
+    StyleSelector, WeakCallback,
+};
 
 pub struct EventContext<'a> {
     pub style: &'a Style,
+    pub selector: &'a StyleSelector,
     pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
 }
 
 impl<'a> EventContext<'a> {
-    pub fn request_redraw(&self) {
-        self.request_redraw.emit(&());
+    pub fn style_value<T>(&self, key: &str) -> Option<T>
+    where
+        Option<T>: From<AttributeValue>,
+    {
+        self.style.get_value(self.selector, key)
+    }
+
+    pub fn style_attribute(&self, key: &str) -> Option<&AttributeValue> {
+        self.style.get_attribute(self.selector, key)
     }
 
     pub fn active(&self) -> bool {
@@ -39,14 +49,30 @@ impl<'a> EventContext<'a> {
     pub fn rect(&self) -> Rect {
         self.state.global_rect
     }
+
+    pub fn request_redraw(&self) {
+        self.request_redraw.emit(&());
+    }
 }
 
 pub struct LayoutContext<'a> {
     pub style: &'a Style,
+    pub selector: &'a StyleSelector,
     pub text_layout: &'a dyn TextLayout,
 }
 
 impl<'a> LayoutContext<'a> {
+    pub fn style_value<T>(&self, key: &str) -> Option<T>
+    where
+        Option<T>: From<AttributeValue>,
+    {
+        self.style.get_value(self.selector, key)
+    }
+
+    pub fn style_attribute(&self, key: &str) -> Option<&AttributeValue> {
+        self.style.get_attribute(self.selector, key)
+    }
+
     pub fn text_bounds(&self, section: &TextSection) -> Option<Rect> {
         self.text_layout.bounds(section)
     }
@@ -54,14 +80,22 @@ impl<'a> LayoutContext<'a> {
 
 pub struct DrawContext<'a> {
     pub style: &'a Style,
+    pub selector: &'a StyleSelector,
     pub frame: &'a mut Frame,
     pub state: &'a mut NodeState,
     pub request_redraw: &'a WeakCallback,
 }
 
 impl<'a> DrawContext<'a> {
-    pub fn request_redraw(&self) {
-        self.request_redraw.emit(&());
+    pub fn style_value<T>(&self, key: &str) -> Option<T>
+    where
+        Option<T>: From<AttributeValue>,
+    {
+        self.style.get_value(self.selector, key)
+    }
+
+    pub fn style_attribute(&self, key: &str) -> Option<&AttributeValue> {
+        self.style.get_attribute(self.selector, key)
     }
 
     pub fn active(&self) -> bool {
@@ -88,10 +122,15 @@ impl<'a> DrawContext<'a> {
         self.state.global_rect
     }
 
+    pub fn request_redraw(&self) {
+        self.request_redraw.emit(&());
+    }
+
     pub fn layer(&mut self, callback: impl FnOnce(&mut DrawContext)) {
         self.frame.layer(|frame| {
             let mut child = DrawContext {
                 style: self.style,
+                selector: self.selector,
                 frame,
                 state: self.state,
                 request_redraw: self.request_redraw,
@@ -116,70 +155,50 @@ impl<'a> DerefMut for DrawContext<'a> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NodeId {
-    uuid: Uuid,
-}
-
-impl NodeId {
-    pub fn new() -> Self {
-        Self {
-            uuid: Uuid::new_v4(),
-        }
-    }
-}
-
-impl Default for NodeId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct NodeState {
-    pub id: NodeId,
-    pub local_rect: Rect,
-    pub global_rect: Rect,
-    pub active: bool,
-    pub focused: bool,
-    pub hovered: bool,
-}
-
-impl NodeState {
-    pub fn propagate_parent(&mut self, parent: &NodeState) {
-        self.global_rect = self.local_rect.translate(parent.global_rect.min);
-    }
-}
-
+/// A [`View`] is a component that can be rendered to the screen.
 #[allow(unused_variables)]
 pub trait View: 'static {
+    /// The state of the view.
     type State: 'static;
 
+    /// Builds the state of the view.
     fn build(&self) -> Self::State;
 
+    /// Returns the element name of the view.
     fn element(&self) -> Option<&'static str> {
         None
     }
 
-    fn classes(&self) -> Vec<String> {
-        Vec::new()
+    /// Returns the classes of the view.
+    fn classes(&self) -> StyleClasses {
+        StyleClasses::new()
     }
 
+    /// Handles an event.
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {}
 
+    /// Handle layout and returns the size of the view.
+    ///
+    /// This method should return a size that fits the [`BoxConstraints`].
+    ///
+    /// The default implementation returns the minimum size.
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         bc.min
     }
 
+    /// Draws the view.
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {}
 }
 
+/// A [`View`] that with an unknown state.
+///
+/// This is used to store a [`View`] in a [`Node`].
 pub trait AnyView {
     fn build(&self) -> Box<dyn Any>;
 
     fn element(&self) -> Option<&'static str>;
 
-    fn classes(&self) -> Vec<String>;
+    fn classes(&self) -> StyleClasses;
 
     fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event);
 
@@ -197,7 +216,7 @@ impl<T: View> AnyView for T {
         self.element()
     }
 
-    fn classes(&self) -> Vec<String> {
+    fn classes(&self) -> StyleClasses {
         self.classes()
     }
 
@@ -225,10 +244,6 @@ impl<T: View> AnyView for T {
             tracing::warn!("invalid state type on {}", any::type_name::<T>());
         }
     }
-}
-
-pub trait Parent {
-    fn add_child(&mut self, child: impl View);
 }
 
 pub trait Properties {
@@ -260,7 +275,7 @@ impl<V: View> View for SharedSignal<V> {
         self.get().element()
     }
 
-    fn classes(&self) -> Vec<String> {
+    fn classes(&self) -> StyleClasses {
         self.get().classes()
     }
 

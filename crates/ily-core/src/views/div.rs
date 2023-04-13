@@ -2,13 +2,15 @@ use glam::Vec2;
 use ily_graphics::{Color, Quad};
 
 use crate::{
-    BoxConstraints, DrawContext, Event, EventContext, EventSignal, Events, LayoutContext, Node,
-    Parent, PointerEvent, Properties, Scope, View,
+    attributes, AttributeValue, BoxConstraints, Children, DrawContext, Event, EventContext,
+    EventSignal, Events, LayoutContext, Length, Node, Parent, PointerEvent, Properties, Scope,
+    View,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Axis {
     Horizontal,
+    #[default]
     Vertical,
 }
 
@@ -42,36 +44,35 @@ impl Axis {
     }
 }
 
-pub struct Div {
-    pub direction: Axis,
-    pub padding: f32,
-    pub gap: f32,
-    pub background: Color,
-    pub background_hover: Option<Color>,
-    pub border_radius: [f32; 4],
-    pub border_width: f32,
-    pub border_color: Color,
-    pub on_press: Option<EventSignal<PointerEvent>>,
-    pub on_release: Option<EventSignal<PointerEvent>>,
-    pub children: Vec<Node>,
-}
+impl From<AttributeValue> for Option<Axis> {
+    fn from(value: AttributeValue) -> Self {
+        match value {
+            AttributeValue::String(s) => match s.as_str() {
+                "row" | "horizontal" => Some(Axis::Horizontal),
+                "column" | "vertical" => Some(Axis::Vertical),
+                _ => {
+                    tracing::warn!("Invalid axis: {}", s);
 
-impl Default for Div {
-    fn default() -> Self {
-        Self {
-            direction: Axis::Vertical,
-            padding: 10.0,
-            gap: 10.0,
-            background: Default::default(),
-            background_hover: Default::default(),
-            border_radius: Default::default(),
-            border_width: Default::default(),
-            border_color: Default::default(),
-            on_press: Default::default(),
-            on_release: Default::default(),
-            children: Default::default(),
+                    None
+                }
+            },
+            _ => None,
         }
     }
+}
+
+#[derive(Default)]
+pub struct Div {
+    pub direction: Option<Axis>,
+    pub padding: Option<Length>,
+    pub gap: Option<Length>,
+    pub background: Option<Color>,
+    pub border_radius: Option<Length>,
+    pub border_width: Option<Length>,
+    pub border_color: Option<Color>,
+    pub on_press: Option<EventSignal<PointerEvent>>,
+    pub on_release: Option<EventSignal<PointerEvent>>,
+    pub children: Children,
 }
 
 impl Div {
@@ -81,10 +82,10 @@ impl Div {
 
     pub fn zeroed() -> Self {
         Self {
-            direction: Axis::Vertical,
-            padding: 0.0,
-            gap: 0.0,
-            background: Color::TRANSPARENT,
+            direction: Some(Axis::Vertical),
+            padding: Some(Length::ZERO),
+            gap: Some(Length::ZERO),
+            background: Some(Color::TRANSPARENT),
             ..Default::default()
         }
     }
@@ -98,6 +99,7 @@ impl Div {
         self.on_press
             .get_or_insert_with(|| EventSignal::new())
             .subscribe(cx, callback);
+
         self
     }
 
@@ -114,58 +116,56 @@ impl Div {
     }
 
     pub fn direction(mut self, direction: Axis) -> Self {
-        self.direction = direction;
+        self.direction = Some(direction);
         self
     }
 
-    pub fn padding(mut self, padding: f32) -> Self {
-        self.padding = padding;
+    pub fn padding(mut self, padding: impl Into<Length>) -> Self {
+        self.padding = Some(padding.into());
         self
     }
 
-    pub fn gap(mut self, gap: f32) -> Self {
-        self.gap = gap;
+    pub fn gap(mut self, gap: impl Into<Length>) -> Self {
+        self.gap = Some(gap.into());
         self
     }
 
     pub fn background(mut self, background: Color) -> Self {
-        self.background = background;
+        self.background = Some(background);
         self
     }
 
-    pub fn background_hover(mut self, background_hover: impl Into<Option<Color>>) -> Self {
-        self.background_hover = background_hover.into();
+    pub fn border_radius(mut self, border_radius: impl Into<Length>) -> Self {
+        self.border_radius = Some(border_radius.into());
         self
     }
 
-    pub fn border_radius(mut self, border_radius: f32) -> Self {
-        self.border_radius = [border_radius; 4];
-        self
-    }
-
-    pub fn border_width(mut self, border_width: f32) -> Self {
-        self.border_width = border_width;
+    pub fn border_width(mut self, border_width: impl Into<Length>) -> Self {
+        self.border_width = Some(border_width.into());
         self
     }
 
     pub fn border_color(mut self, border_color: Color) -> Self {
-        self.border_color = border_color;
+        self.border_color = Some(border_color);
         self
     }
 
     fn handle_pointer_event(&self, cx: &mut EventContext, event: &PointerEvent) -> bool {
-        if !cx.hovered() {
-            return false;
-        }
-
-        if event.pressed {
+        if event.button.is_some() && event.pressed && cx.hovered() {
             if let Some(on_press) = &self.on_press {
+                cx.state.active = true;
                 on_press.emit(event.clone());
+                cx.request_redraw();
             }
-        } else {
+        } else if !event.pressed && cx.state.active {
+            cx.state.active = false;
+            cx.request_redraw();
+
             if let Some(on_release) = &self.on_release {
                 on_release.emit(event.clone());
             }
+        } else {
+            return false;
         }
 
         true
@@ -184,35 +184,31 @@ pub struct DivProperties<'a> {
 
 impl<'a> DivProperties<'a> {
     pub fn direction(&mut self, direction: Axis) {
-        self.div.direction = direction;
+        self.div.direction = Some(direction);
     }
 
-    pub fn padding(&mut self, padding: f32) {
-        self.div.padding = padding;
+    pub fn padding(&mut self, padding: impl Into<Length>) {
+        self.div.padding = Some(padding.into());
     }
 
-    pub fn gap(&mut self, gap: f32) {
-        self.div.gap = gap;
+    pub fn gap(&mut self, gap: impl Into<Length>) {
+        self.div.gap = Some(gap.into());
     }
 
     pub fn background(&mut self, background: Color) {
-        self.div.background = background;
+        self.div.background = Some(background);
     }
 
-    pub fn background_hover(&mut self, background_hover: impl Into<Option<Color>>) {
-        self.div.background_hover = background_hover.into();
+    pub fn border_radius(&mut self, border_radius: impl Into<Length>) {
+        self.div.border_radius = Some(border_radius.into());
     }
 
-    pub fn border_radius(&mut self, border_radius: f32) {
-        self.div.border_radius = [border_radius; 4];
-    }
-
-    pub fn border_width(&mut self, border_width: f32) {
-        self.div.border_width = border_width;
+    pub fn border_width(&mut self, border_width: impl Into<Length>) {
+        self.div.border_width = Some(border_width.into());
     }
 
     pub fn border_color(&mut self, border_color: Color) {
-        self.div.border_color = border_color;
+        self.div.border_color = Some(border_color);
     }
 }
 
@@ -290,20 +286,30 @@ impl View for Div {
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let mut major = self.padding;
-        let mut minor = self.direction.minor(bc.min);
+        attributes! {
+            cx, self,
+            direction: "direction",
+            padding: "padding",
+            gap: "gap",
+        }
 
-        let max_minor = self.direction.minor(bc.max) - self.padding * 2.0;
+        let padding = padding.pixels();
+        let gap = gap.pixels();
+
+        let mut major = padding;
+        let mut minor = direction.minor(bc.min);
+
+        let max_minor = direction.minor(bc.max) - padding * 2.0;
 
         for (i, child) in self.children.iter().enumerate() {
             let child_bc = BoxConstraints {
-                min: self.direction.pack(0.0, minor),
-                max: self.direction.pack(f32::INFINITY, max_minor),
+                min: direction.pack(0.0, minor),
+                max: direction.pack(f32::INFINITY, max_minor),
             };
 
             let child_size = child.layout(cx, child_bc);
-            let child_major = self.direction.major(child_size);
-            child.set_offset(self.direction.pack(major, self.padding));
+            let child_major = direction.major(child_size);
+            child.set_offset(direction.pack(major, padding));
 
             // skip children that are too small
             if child_size.min_element() <= 0.0 {
@@ -311,34 +317,41 @@ impl View for Div {
             }
 
             major += child_major;
-            minor = minor.max(self.direction.minor(child_size + self.padding * 2.0));
+            minor = minor.max(direction.minor(child_size + padding * 2.0));
 
             if i < self.children.len() - 1 {
-                major += self.gap;
+                major += gap;
             }
         }
 
-        major += self.padding;
-        major = major.max(self.direction.major(bc.min));
+        major += padding;
+        major = major.max(direction.major(bc.min));
 
         tracing::trace!("Div::layout: major = {}, minor = {}", major, minor);
 
-        self.direction.pack(major, minor)
+        direction.pack(major, minor)
     }
 
     fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
         tracing::trace!("Div::draw: rect = {:?}", cx.rect());
 
+        attributes! {
+            cx, self,
+            background: "background",
+            border_radius: "border-radius",
+            border_width: "border-width",
+            border_color: "border-color",
+        }
+
+        let border_radius = border_radius.pixels();
+        let border_width = border_width.pixels();
+
         let quad = Quad {
             rect: cx.rect(),
-            background: if cx.hovered() {
-                self.background_hover.unwrap_or(self.background)
-            } else {
-                self.background
-            },
-            border_radius: self.border_radius,
-            border_width: self.border_width,
-            border_color: self.border_color,
+            background,
+            border_radius: [border_radius; 4],
+            border_width,
+            border_color,
         };
 
         cx.draw_primitive(quad);

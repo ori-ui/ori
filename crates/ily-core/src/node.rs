@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::{
     AnyView, Attributes, BoxConstraints, DrawContext, Event, EventContext, LayoutContext,
     PointerEvent, SharedSignal, Style, StyleElement, StyleElements, StyleSelectors, StyleStates,
-    Styleable, Transition, TransitionStates, View, WeakCallback,
+    Styled, Transition, TransitionStates, View, WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -112,6 +112,36 @@ impl NodeState {
     }
 }
 
+pub trait NodeBuilder {
+    fn build(self) -> Node;
+}
+
+impl NodeBuilder for Node {
+    fn build(self) -> Node {
+        self
+    }
+}
+
+impl<T: View> NodeBuilder for T {
+    fn build(self) -> Node {
+        Node {
+            state: RefCell::new(Box::new(View::build(&self))),
+            node_state: RefCell::new(NodeState::default()),
+            view: Box::new(self),
+        }
+    }
+}
+
+impl<T: View> NodeBuilder for Styled<T> {
+    fn build(self) -> Node {
+        Node {
+            state: RefCell::new(Box::new(View::build(&self.value))),
+            node_state: RefCell::new(NodeState::styled(self.attributes)),
+            view: Box::new(self.value),
+        }
+    }
+}
+
 /// A node in the [`View`](crate::View) tree.
 pub struct Node {
     state: RefCell<Box<dyn Any>>,
@@ -120,30 +150,8 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(view: impl View) -> Self {
-        Self {
-            state: RefCell::new(Box::new(view.build())),
-            node_state: RefCell::new(NodeState::default()),
-            view: Box::new(view),
-        }
-    }
-
-    /// Creates a new [`Node`] from a [`Styleable`] view.
-    pub fn styled<T: View>(styleable: impl Styleable<T>) -> Self {
-        let styled = styleable.styled();
-        Self {
-            state: RefCell::new(Box::new(styled.build())),
-            node_state: RefCell::new(NodeState::styled(styled.attributes)),
-            view: Box::new(styled.value),
-        }
-    }
-
-    pub fn styled_signal(view: impl View, attributes: SharedSignal<Attributes>) -> Self {
-        Self {
-            state: RefCell::new(Box::new(view.build())),
-            node_state: RefCell::new(NodeState::styled_signal(attributes)),
-            view: Box::new(view),
-        }
+    pub fn new(builder: impl NodeBuilder) -> Self {
+        builder.build()
     }
 
     pub fn set_offset(&self, offset: Vec2) {
@@ -316,11 +324,5 @@ impl Node {
         self.view.draw(&mut **state, &mut cx);
 
         cx.state.draw();
-    }
-}
-
-impl<T: View> From<T> for Node {
-    fn from(view: T) -> Self {
-        Self::new(view)
     }
 }

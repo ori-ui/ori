@@ -1,12 +1,13 @@
-use proc_macro2::{TokenStream, Ident};
-use proc_macro_error::{ResultExt, abort};
+use proc_macro2::{Ident, TokenStream};
+use proc_macro_error::{abort, ResultExt};
 use quote::{quote, quote_spanned};
 use syn::{
-    parse::{ParseStream, Parser, discouraged::Speculative},
-    parse_quote, Expr, ExprPath, Token, spanned::Spanned,
+    parse::{discouraged::Speculative, ParseStream, Parser},
+    parse_quote,
+    spanned::Spanned,
+    Expr, ExprPath, Token,
 };
-use syn_rsx::{Node, NodeName};
-
+use syn_rsx::{Node, NodeAttribute, NodeName};
 
 pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (context, rest) = parse_context(input.into());
@@ -37,16 +38,16 @@ fn parse_context(input: TokenStream) -> (Expr, TokenStream) {
         }
 
         let fork = parser.fork();
-        let Ok(expr) = fork.parse::<Expr>() else { 
+        let Ok(expr) = fork.parse::<Expr>() else {
             return Ok((parse_quote! { cx }, parser.parse()?));
         };
-        
+
         if fork.peek(Token![,]) {
             fork.parse::<Token![,]>()?;
         } else {
             return Ok((parse_quote! { cx }, parser.parse()?));
         }
-        
+
         parser.advance_to(&fork);
         Ok((expr, parser.parse()?))
     };
@@ -59,10 +60,13 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
         Node::Element(element) => {
             let name = &element.name;
 
-            let properties = element
-                .attributes
-                .iter()
-                .map(|node| attribute(context, name, node));
+            let mut attributes = Vec::new();
+            let mut properties = Vec::new();
+
+            for node in &element.attributes {
+                let attr = get_attribute(&node);
+                attribute(context, name, attr, &mut attributes, &mut properties);
+            }
 
             let children = element.children.iter().map(|node| {
                 let child = view_node(context, node);
@@ -101,47 +105,97 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
     }
 }
 
-fn attribute(context: &Expr, name: &NodeName, attribute: &Node) -> TokenStream {
-    let Node::Attribute(attribute) = attribute else {
+fn get_attribute(node: &Node) -> &NodeAttribute {
+    let Node::Attribute(attribute) = node else {
         unreachable!()
     };
 
-    match attribute.key {
-        NodeName::Path(ref path) => {
-            if let Some(ref value) = attribute.value {
-                property(name, path, value)
-            } else {
-                unimplemented!()
-            }
+    attribute
+}
+
+fn attribute(
+    context: &Expr,
+    name: &NodeName,
+    attr: &NodeAttribute,
+    attributes: &mut Vec<TokenStream>,
+    properties: &mut Vec<TokenStream>,
+) {
+    if let NodeName::Path(ref path) = attr.key {
+        if let Some(ref value) = attr.value {
+            properties.push(property(name, &path, &value));
+        } else {
+            properties.push(quote!(true));
         }
-        NodeName::Punctuated(ref punct) => {
-            if punct.len() > 2 {
-                abort!(punct, "invalid event name");
-            }
 
-            let pair = punct.pairs().next().unwrap();
-
-            let kind = pair.value();
-
-            if pair.punct().unwrap().as_char() != ':' {
-                abort!(punct, "expected ':'");
-            }
-
-            let key = punct.last().unwrap(); 
-
-            let Some(ref value) = attribute.value else {
-                abort!(punct, "expected value");
-            };
-            
-            let kind = kind.to_string();
-            match kind.as_str() {
-                "on" => event(context, name, key, value),
-                "bind" => binding(context, name, key, value),
-                _ => abort!(kind, "expected 'on' or 'bind'"),
-            }
-        }
-        _ => unimplemented!(),
+        return;
     }
+
+    if let NodeName::Punctuated(ref punct) = attr.key {
+        let (kind, key) = attribute_kind(attr);
+
+        match kind.as_str() {
+            "on" => {
+                if let Some(ref value) = attr.value {
+                    let key = Ident::new(&key, punct.span());
+                    properties.push(event(context, name, &key, &value));
+                } else {
+                    abort!(punct, "expected event handler");
+                }
+            }
+            "bind" => {
+                if let Some(ref value) = attr.value {
+                    let key = Ident::new(&key, punct.span());
+                    properties.push(binding(context, name, &key, &value));
+                } else {
+                    abort!(punct, "expected binding");
+                }
+            }
+            "style" => {
+                if let Some(ref value) = attr.value {
+                    attributes.push(style(context, name, &key, &value));
+                } else {
+                    abort!(punct, "expected attribute");
+                }
+            }
+            _ => abort!(kind, "invalid attribute kind"),
+        }
+
+        return;
+    }
+}
+
+fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
+    let NodeName::Punctuated(ref punct) = attribute.key else {
+        unreachable!()
+    };
+
+    let mut pairs = punct.pairs();
+
+    let pair = pairs.next().unwrap();
+    let kind = pair.value().clone();
+
+    if pair.punct().unwrap().as_char() != ':' {
+        abort!(punct, "expected ':'");
+    }
+
+    let mut key = String::new();
+    for pair in pairs {
+        let ident = pair.value().clone();
+
+        if let Some(punct) = pair.punct() {
+            if punct.as_char() != '-' {
+                abort!(punct, "expected '-'");
+            }
+        }
+
+        key.push_str(&ident.to_string());
+    }
+
+    if key.is_empty() {
+        abort!(punct, "expected attribute name");
+    }
+
+    (kind.to_string(), key)
 }
 
 fn property(name: &NodeName, key: &ExprPath, value: &Expr) -> TokenStream {
@@ -164,4 +218,8 @@ fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenS
     quote! {
         <#name as ily::core::Bindable>::setter(&mut view).#key(#context, #value);
     }
+}
+
+fn style(_context: &Expr, _name: &NodeName, _key: &str, _value: &Expr) -> TokenStream {
+    quote! {}
 }

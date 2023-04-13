@@ -3,7 +3,9 @@ use std::ops::{Deref, DerefMut, Range};
 use glam::Vec2;
 use ily_graphics::{Frame, Rect, TextHit, TextLayout, TextSection};
 
-use crate::{Attribute, FromAttribute, NodeState, Style, StyleSelectors, Unit, WeakCallback};
+use crate::{
+    Attribute, FromAttribute, NodeState, Style, StyleSelectors, Transition, Unit, WeakCallback,
+};
 
 pub struct EventContext<'a> {
     pub style: &'a Style,
@@ -75,11 +77,25 @@ impl<'a> DerefMut for DrawContext<'a> {
 macro_rules! context {
     ($name:ident) => {
         impl<'a> $name<'a> {
+            pub fn get_style_value_and_transition<T: FromAttribute + Default + 'static>(
+                &self,
+                key: &str,
+            ) -> (T, Option<Transition>) {
+                if let Some(result) = self.state.attributes.get().get_value_and_transition(key) {
+                    return result;
+                }
+
+                if let Some(result) = self.style.get_value_and_transition(self.selectors, key) {
+                    return result;
+                }
+
+                (T::default(), None)
+            }
+
             /// Get the value of a style attribute, if it has a transition, the value will be
             /// interpolated between the current value and the new value.
             pub fn style<T: FromAttribute + Default + 'static>(&mut self, key: &str) -> T {
-                let result = self.style.get_value_and_transition(self.selectors, key);
-                let (value, transition) = result.unwrap_or_default();
+                let (value, transition) = self.get_style_value_and_transition(key);
                 let (value, redraw) = self.state.transition(key, value, transition);
 
                 if redraw {
@@ -95,8 +111,7 @@ macro_rules! context {
             /// This is a convenience method for getting a value in pixels, as opposed to
             /// `style` which returns a `Unit`.
             pub fn style_range(&mut self, key: &str, range: Range<f32>) -> f32 {
-                let result = self.style.get_value_and_transition(self.selectors, key);
-                let (value, transition): (Unit, _) = result.unwrap_or_default();
+                let (value, transition) = self.get_style_value_and_transition::<Unit>(key);
 
                 let pixels = value.pixels(range);
                 let (pixels, redraw) = self.state.transition(key, pixels, transition);

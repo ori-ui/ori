@@ -155,6 +155,30 @@ impl Attribute {
     }
 }
 
+pub trait AttributeBuilder {
+    fn attribute(self, key: impl Into<String>) -> Attribute;
+}
+
+impl<T: Into<AttributeValue>> AttributeBuilder for T {
+    fn attribute(self, key: impl Into<String>) -> Attribute {
+        Attribute::new(key, self)
+    }
+}
+
+impl<T: Into<AttributeValue>, U: Into<Transition>> AttributeBuilder for (T, U) {
+    fn attribute(self, key: impl Into<String>) -> Attribute {
+        Attribute::with_transition(key, self.0, self.1)
+    }
+}
+
+/// An ease of use function to create an [`AttributeBuilder`] with a transition.
+pub fn trans(
+    value: impl Into<AttributeValue>,
+    transition: impl Into<Transition>,
+) -> impl AttributeBuilder {
+    (value, transition)
+}
+
 /// A [`Style`](super::Style) attribute value.
 #[derive(Clone, Debug)]
 pub enum AttributeValue {

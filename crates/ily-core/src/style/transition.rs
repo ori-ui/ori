@@ -22,6 +22,12 @@ impl Transition {
     }
 }
 
+impl From<f32> for Transition {
+    fn from(duration: f32) -> Self {
+        Self::new(duration)
+    }
+}
+
 pub trait Transitionable
 where
     Self: Mul<f32, Output = Self> + Add<Output = Self> + PartialEq + Copy,

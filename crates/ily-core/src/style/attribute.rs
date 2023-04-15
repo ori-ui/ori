@@ -3,7 +3,7 @@ use std::fmt::Display;
 use ily_graphics::{Color, TextAlign};
 use smallvec::SmallVec;
 
-use crate::{StyleTransition, Unit};
+use crate::{ReadSignal, StyleTransition, Unit};
 
 /// A collection of [`StyleAttribute`]s.
 #[derive(Clone, Debug, Default)]
@@ -91,6 +91,10 @@ impl StyleAttributes {
         }
 
         None
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &StyleAttribute> {
+        self.attributes.iter()
     }
 }
 
@@ -212,11 +216,19 @@ impl From<&str> for StyleAttributeValue {
     }
 }
 
-impl From<f32> for StyleAttributeValue {
-    fn from(value: f32) -> Self {
-        Self::Unit(Unit::Px(value))
-    }
+macro_rules! num_impl {
+    ($($t:ty),*) => {
+        $(
+            impl From<$t> for StyleAttributeValue {
+                fn from(value: $t) -> Self {
+                    Self::Unit(Unit::Px(value as f32))
+                }
+            }
+        )*
+    };
 }
+
+num_impl!(f32, f64, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
 impl From<Unit> for StyleAttributeValue {
     fn from(value: Unit) -> Self {
@@ -227,6 +239,15 @@ impl From<Unit> for StyleAttributeValue {
 impl From<Color> for StyleAttributeValue {
     fn from(value: Color) -> Self {
         Self::Color(value)
+    }
+}
+
+impl<T> From<&ReadSignal<T>> for StyleAttributeValue
+where
+    T: Into<StyleAttributeValue> + Clone,
+{
+    fn from(value: &ReadSignal<T>) -> Self {
+        value.cloned().into()
     }
 }
 
@@ -272,6 +293,16 @@ impl FromStyleAttribute for Color {
 
 pub trait StyleAttributeEnum: Sized {
     fn from_str(s: &str) -> Option<Self>;
+}
+
+impl StyleAttributeEnum for bool {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }
+    }
 }
 
 impl StyleAttributeEnum for TextAlign {

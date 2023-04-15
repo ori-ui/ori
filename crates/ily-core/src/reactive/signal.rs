@@ -1,17 +1,18 @@
 use std::{
+    cell::RefCell,
     cmp::Ordering,
     fmt::{Debug, Formatter},
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     panic::Location,
-    sync::{Arc, Mutex, Weak},
+    sync::{Arc, Weak},
 };
 
 use crate::CallbackEmitter;
 
 /// A read-only [`Signal`].
 pub struct ReadSignal<T: ?Sized> {
-    value: Mutex<Arc<T>>,
+    value: RefCell<Arc<T>>,
     emitter: CallbackEmitter,
 }
 
@@ -26,7 +27,7 @@ impl<T: ?Sized> ReadSignal<T> {
     /// Creates a new [`ReadSignal`] from an [`Arc`].
     pub fn new_arc(value: Arc<T>) -> Self {
         Self {
-            value: Mutex::new(value),
+            value: RefCell::new(value),
             emitter: CallbackEmitter::new(),
         }
     }
@@ -51,7 +52,7 @@ impl<T: ?Sized> ReadSignal<T> {
 
     /// Gets the current value of `self` without tracking it.
     pub fn get_untracked(&self) -> Arc<T> {
-        self.value.lock().unwrap().clone()
+        self.value.borrow().clone()
     }
 }
 
@@ -66,6 +67,18 @@ impl<T: Clone> ReadSignal<T> {
     /// Returns a clone of the current value of `self` without tracking it.
     pub fn cloned_untracked(&self) -> T {
         self.get_untracked().as_ref().clone()
+    }
+}
+
+impl<T: Copy> ReadSignal<T> {
+    /// Returns a copy to the current value of `self`.
+    pub fn copied(&self) -> T {
+        *self.get().as_ref()
+    }
+
+    /// Returns a copy to the current value of `self`.
+    pub fn copied_untracked(&self) -> T {
+        *self.get_untracked().as_ref()
     }
 }
 
@@ -133,7 +146,7 @@ impl<T: ?Sized> Signal<T> {
 
     /// Sets the value of `self` to an [`Arc`] without triggering the callbacks.
     pub fn set_arc_silent(&self, value: Arc<T>) {
-        *self.value.lock().unwrap() = value;
+        *self.value.borrow_mut() = value;
     }
 
     /// Emits the [`CallbackEmitter`] for this [`Signal`].

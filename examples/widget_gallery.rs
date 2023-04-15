@@ -4,12 +4,20 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
 
+    let font_size = cx.memo(|| if *checked.get() { 32 } else { 24 });
+
     view! {
-        <Div class=if *checked.get() { "column" } else { "row" }>
-            <Button on:press=|_| *counter.modify() += 1>
-                <Text text=format!("Counter: {}", counter.get()) />
-            </Button>
-            <Checkbox bind:checked=checked />
+        <Div class="widget-gallery">
+            <Div class="column">
+                <Div class="row">
+                    <Text text="Toggle me" style:font-size=trans(font_size, 1.0) />
+                    <Checkbox bind:checked=checked />
+                </Div>
+
+                <Button on:press=|_| *counter.modify() += 1>
+                    <Text text=format!("Counter: {}", counter.get()) />
+                </Button>
+            </Div>
         </Div>
     }
 }
@@ -17,6 +25,6 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
 fn main() {
     App::new(|cx| ui(cx)) // create a new app with the ui function
         .title("Widget Gallery (examples/widget_gallery.rs)") // set the window title
-        .style("examples/widget_gallery.css") // load a custom stylesheet
+        .style("examples/widget-gallery.css") // load a custom stylesheet
         .run(); // run the app
 }

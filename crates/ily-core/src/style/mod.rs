@@ -2,18 +2,76 @@ mod attribute;
 mod loader;
 mod parse;
 mod selector;
-mod style;
+mod stylesheet;
 mod transition;
 
 pub use attribute::*;
 pub use loader::*;
 pub use selector::*;
-pub use style::*;
+pub use stylesheet::*;
 pub use transition::*;
 
 use deref_derive::{Deref, DerefMut};
 
-use crate::{BoxConstraints, DrawContext, Event, EventContext, LayoutContext, View, ViewState};
+use crate::{BoxConstraints, DrawContext, Event, EventContext, LayoutContext, View};
+
+#[derive(Clone, Debug, Default)]
+pub struct Style {
+    pub element: Option<&'static str>,
+    pub classes: StyleClasses,
+    pub attributes: StyleAttributes,
+}
+
+impl Style {
+    pub const fn new(element: &'static str) -> Self {
+        Self {
+            element: Some(element),
+            classes: StyleClasses::new(),
+            attributes: StyleAttributes::new(),
+        }
+    }
+
+    pub fn with_element(mut self, name: &'static str) -> Self {
+        self.element = Some(name);
+        self
+    }
+
+    pub fn with_class(mut self, class: impl Into<StyleClass>) -> Self {
+        self.classes.add(class.into());
+        self
+    }
+
+    pub fn with_classes(
+        mut self,
+        classes: impl IntoIterator<Item = impl Into<StyleClass>>,
+    ) -> Self {
+        self.classes.extend(classes.into_iter().map(Into::into));
+        self
+    }
+
+    pub fn with_attr(mut self, key: &str, builder: impl StyleAttributeBuilder) -> Self {
+        let attr = builder.attribute(key);
+        self.attributes.add(attr);
+        self
+    }
+
+    pub fn with_attrs(mut self, attrs: impl IntoIterator<Item = StyleAttribute>) -> Self {
+        self.attributes.extend(attrs);
+        self
+    }
+
+    pub fn selectors(&self, mut ancestors: StyleElements) -> StyleSelectors {
+        ancestors.add(StyleElement::new(
+            self.element.map(Into::into),
+            self.classes.iter().cloned().collect(),
+        ));
+
+        StyleSelectors {
+            elements: ancestors,
+            classes: self.classes.clone(),
+        }
+    }
+}
 
 /// A value with associated style [`Attributes`].
 #[derive(Clone, Debug, Default, Deref, DerefMut)]
@@ -38,11 +96,15 @@ impl<T> Styled<T> {
 impl<T: View> View for Styled<T> {
     type State = T::State;
 
-    fn build(&self) -> ViewState<Self::State> {
-        let mut state = self.value.build();
-        state.classes.extend(self.classes.clone());
-        state.attributes.extend(self.attributes.clone());
-        state
+    fn build(&self) -> Self::State {
+        self.value.build()
+    }
+
+    fn style(&self) -> Style {
+        self.value
+            .style()
+            .with_classes(self.classes.iter().cloned())
+            .with_attrs(self.attributes.iter().cloned())
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {

@@ -39,11 +39,11 @@ impl Display for StyleLoadError {
 /// A sheet is a list of [`StyleRule`]s.
 /// Rules are applied in the order they are defined.
 #[derive(Clone, Debug, Default)]
-pub struct Style {
+pub struct Stylesheet {
     pub rules: Vec<StyleRule>,
 }
 
-impl Style {
+impl Stylesheet {
     /// Creates a new style sheet.
     pub fn new() -> Self {
         Self { rules: Vec::new() }
@@ -126,7 +126,7 @@ impl Style {
     }
 }
 
-impl IntoIterator for Style {
+impl IntoIterator for Stylesheet {
     type Item = StyleRule;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -135,7 +135,7 @@ impl IntoIterator for Style {
     }
 }
 
-/// A [`Style`] rule.
+/// A [`Stylesheet`] rule.
 ///
 /// A rule is a selector and a list of attributes.
 /// The attributes are applied to the elements that match the selector.

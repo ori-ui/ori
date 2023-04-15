@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Style,
-    StyleAttributes, StyleClasses, StyleElement, StyleElements, StyleSelectors, StyleStates,
-    StyleTransition, TransitionStates, View, WeakCallback,
+    StyleElement, StyleElements, StyleSelectors, StyleStates, StyleTransition, Stylesheet,
+    TransitionStates, View, WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -29,7 +29,7 @@ impl Default for NodeId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NodeState {
     pub id: NodeId,
     pub local_rect: Rect,
@@ -38,9 +38,7 @@ pub struct NodeState {
     pub focused: bool,
     pub hovered: bool,
     pub last_draw: Instant,
-    pub element: Option<&'static str>,
-    pub classes: StyleClasses,
-    pub attributes: StyleAttributes,
+    pub style: Style,
     pub transitions: TransitionStates,
 }
 
@@ -54,26 +52,18 @@ impl Default for NodeState {
             focused: false,
             hovered: false,
             last_draw: Instant::now(),
-            element: None,
-            classes: StyleClasses::new(),
-            attributes: StyleAttributes::new(),
+            style: Style::default(),
             transitions: TransitionStates::new(),
         }
     }
 }
 
 impl NodeState {
-    pub fn build<T: View>(view: &T) -> (Self, T::State) {
-        let view_state = View::build(view);
-
-        let node_state = Self {
-            element: view_state.element,
-            classes: view_state.classes,
-            attributes: view_state.attributes,
-            ..Self::default()
-        };
-
-        (node_state, view_state.state)
+    pub fn new(style: Style) -> Self {
+        Self {
+            style,
+            ..Default::default()
+        }
     }
 
     pub fn propagate_parent(&mut self, parent: &NodeState) {
@@ -101,13 +91,13 @@ impl NodeState {
     pub fn selectors(&self, ancestors: &StyleElements) -> StyleSelectors {
         let mut elements = ancestors.clone();
 
-        if let Some(element) = self.element {
+        if let Some(element) = self.style.element {
             elements.add(StyleElement::new(Some(element.into()), self.style_states()));
         }
 
         StyleSelectors {
             elements,
-            classes: self.classes.clone(),
+            classes: self.style.classes.clone(),
         }
     }
 
@@ -131,45 +121,36 @@ impl NodeState {
     }
 }
 
-pub trait NodeBuilder {
-    fn build(self) -> Node;
-}
-
-impl NodeBuilder for Node {
-    fn build(self) -> Node {
-        self
-    }
-}
-
-impl<T: View> NodeBuilder for T {
-    fn build(self) -> Node {
-        let (node_state, state) = NodeState::build(&self);
-
-        Node {
-            state: RefCell::new(Box::new(state)),
-            node_state: RefCell::new(node_state),
-            view: Box::new(self),
-        }
+impl<T: View> From<T> for Node {
+    fn from(view: T) -> Self {
+        Self::new(view)
     }
 }
 
 /// A node in the [`View`](crate::View) tree.
 pub struct Node {
-    state: RefCell<Box<dyn Any>>,
+    view_state: RefCell<Box<dyn Any>>,
     node_state: RefCell<NodeState>,
     view: Box<dyn AnyView>,
 }
 
 impl Node {
-    pub fn new(builder: impl NodeBuilder) -> Self {
-        builder.build()
+    pub fn new(view: impl View) -> Self {
+        let view_state = Box::new(View::build(&view));
+        let node_state = NodeState::new(View::style(&view));
+
+        Self {
+            view_state: RefCell::new(view_state),
+            node_state: RefCell::new(node_state),
+            view: Box::new(view),
+        }
     }
 
     pub fn set_offset(&self, offset: Vec2) {
-        let mut state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.borrow_mut();
 
-        let size = state.local_rect.size();
-        state.local_rect = Rect::min_size(offset, size);
+        let size = node_state.local_rect.size();
+        node_state.local_rect = Rect::min_size(offset, size);
     }
 
     pub fn states(&self) -> StyleStates {
@@ -198,6 +179,7 @@ impl Node {
 
     pub fn event(&self, cx: &mut EventContext, event: &Event) {
         let mut node_state = self.node_state.borrow_mut();
+        node_state.style = self.view.style();
         node_state.propagate_parent(cx.state);
 
         if let Some(event) = event.get::<PointerEvent>() {
@@ -213,12 +195,14 @@ impl Node {
             request_redraw: cx.request_redraw,
         };
 
-        let mut state = self.state.borrow_mut();
-        self.view.event(&mut **state, &mut cx, event);
+        let mut view_state = self.view_state.borrow_mut();
+        self.view.event(&mut **view_state, &mut cx, event);
     }
 
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut node_state = self.node_state.borrow_mut();
+        node_state.style = self.view.style();
+
         let selectors = node_state.selectors(&cx.selectors.elements);
         let mut cx = LayoutContext {
             style: cx.style,
@@ -228,7 +212,7 @@ impl Node {
             request_redraw: cx.request_redraw,
         };
 
-        let mut view_state = self.state.borrow_mut();
+        let mut view_state = self.view_state.borrow_mut();
         let size = self.view.layout(&mut **view_state, &mut cx, bc);
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
@@ -239,6 +223,7 @@ impl Node {
 
     pub fn draw(&self, cx: &mut DrawContext) {
         let mut node_state = self.node_state.borrow_mut();
+        node_state.style = self.view.style();
         node_state.propagate_parent(cx.state);
 
         let selectors = node_state.selectors(&cx.selectors.elements);
@@ -250,16 +235,17 @@ impl Node {
             request_redraw: cx.request_redraw,
         };
 
-        let mut state = self.state.borrow_mut();
-        self.view.draw(&mut **state, &mut cx);
+        let mut view_state = self.view_state.borrow_mut();
+        self.view.draw(&mut **view_state, &mut cx);
 
         cx.state.draw();
     }
 }
 
 impl Node {
-    pub fn event_root(&self, style: &Style, request_redraw: &WeakCallback, event: &Event) {
+    pub fn event_root(&self, style: &Stylesheet, request_redraw: &WeakCallback, event: &Event) {
         let mut node_state = self.node_state.borrow_mut();
+        node_state.style = self.view.style();
 
         if let Some(event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(&mut node_state, event) {
@@ -275,18 +261,20 @@ impl Node {
             request_redraw,
         };
 
-        let mut state = self.state.borrow_mut();
-        self.view.event(&mut **state, &mut cx, event);
+        let mut view_state = self.view_state.borrow_mut();
+        self.view.event(&mut **view_state, &mut cx, event);
     }
 
     pub fn layout_root(
         &self,
-        style: &Style,
+        style: &Stylesheet,
         text_layout: &mut dyn TextLayout,
         window_size: Vec2,
         request_redraw: &WeakCallback,
     ) -> Vec2 {
         let mut node_state = self.node_state.borrow_mut();
+        node_state.style = self.view.style();
+
         let selectors = node_state.selectors(&StyleElements::new());
         let mut cx = LayoutContext {
             style,
@@ -297,8 +285,8 @@ impl Node {
         };
 
         let bc = BoxConstraints::new(Vec2::ZERO, window_size);
-        let mut state = self.state.borrow_mut();
-        let size = self.view.layout(&mut **state, &mut cx, bc);
+        let mut view_state = self.view_state.borrow_mut();
+        let size = self.view.layout(&mut **view_state, &mut cx, bc);
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
         node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
@@ -306,8 +294,9 @@ impl Node {
         size
     }
 
-    pub fn draw_root(&self, style: &Style, frame: &mut Frame, request_redraw: &WeakCallback) {
+    pub fn draw_root(&self, style: &Stylesheet, frame: &mut Frame, request_redraw: &WeakCallback) {
         let mut node_state = self.node_state.borrow_mut();
+        node_state.style = self.view.style();
 
         let selectors = node_state.selectors(&StyleElements::new());
         let mut cx = DrawContext {
@@ -318,8 +307,8 @@ impl Node {
             request_redraw,
         };
 
-        let mut state = self.state.borrow_mut();
-        self.view.draw(&mut **state, &mut cx);
+        let mut view_state = self.view_state.borrow_mut();
+        self.view.draw(&mut **view_state, &mut cx);
 
         cx.state.draw();
     }

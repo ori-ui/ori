@@ -7,8 +7,8 @@ use std::{
 };
 
 use ily_core::{
-    Callback, Event, LoadedStyleKind, Modifiers, Node, PointerEvent, Scope, Style, StyleLoader,
-    Vec2, View, WeakCallback,
+    Callback, Event, KeyboardEvent, LoadedStyleKind, Modifiers, Node, PointerEvent, Scope,
+    StyleLoader, Stylesheet, Vec2, View, WeakCallback,
 };
 use ily_graphics::Frame;
 use winit::{
@@ -17,11 +17,12 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::convert::{convert_mouse_button, is_pressed};
+use crate::convert::{convert_key, convert_mouse_button, is_pressed};
 
 const BUILTIN_STYLES: &[&str] = &[
     include_str!("../../../style/default.css"),
     include_str!("../../../style/text.css"),
+    include_str!("../../../style/text-input.css"),
     include_str!("../../../style/button.css"),
     include_str!("../../../style/checkbox.css"),
 ];
@@ -61,7 +62,7 @@ impl App {
         let mut loader = StyleLoader::new();
 
         for builtin in BUILTIN_STYLES {
-            let default_style = Style::from_str(builtin).unwrap();
+            let default_style = Stylesheet::from_str(builtin).unwrap();
             let _ = loader.add_style(default_style);
         }
 
@@ -226,9 +227,32 @@ impl App {
                         state.event(&Event::new(event));
                     }
                     WindowEvent::KeyboardInput {
-                        input: KeyboardInput { .. },
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(virtual_keycode),
+                                state: element_state,
+                                ..
+                            },
                         ..
-                    } => {}
+                    } => {
+                        let event = KeyboardEvent {
+                            key: convert_key(virtual_keycode),
+                            pressed: is_pressed(element_state),
+                            modifiers: state.modifiers,
+                            ..Default::default()
+                        };
+
+                        state.event(&Event::new(event));
+                    }
+                    WindowEvent::ReceivedCharacter(c) => {
+                        let event = KeyboardEvent {
+                            text: Some(c),
+                            modifiers: state.modifiers,
+                            ..Default::default()
+                        };
+
+                        state.event(&Event::new(event));
+                    }
                     WindowEvent::ModifiersChanged(new_modifiers) => {
                         state.modifiers = Modifiers {
                             shift: new_modifiers.shift(),

@@ -1,27 +1,17 @@
 use glam::Vec2;
-use ily_graphics::{Color, TextAlign, TextSection};
+use ily_graphics::TextSection;
 
-use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Unit, View, ViewState};
+use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Style, View};
 
 #[derive(Clone)]
 pub struct Text {
     text: String,
-    font_size: Option<Unit>,
-    font: Option<String>,
-    color: Option<Color>,
-    h_align: Option<TextAlign>,
-    v_align: Option<TextAlign>,
 }
 
 impl Default for Text {
     fn default() -> Self {
         Self {
             text: String::new(),
-            font_size: None,
-            font: None,
-            color: None,
-            h_align: None,
-            v_align: None,
         }
     }
 }
@@ -39,36 +29,6 @@ impl Text {
         self.text = text.into();
         self
     }
-
-    /// Set the scale of the text.
-    pub fn scale(mut self, scale: impl Into<Unit>) -> Self {
-        self.font_size = Some(scale.into());
-        self
-    }
-
-    /// Set the font to use.
-    pub fn font(mut self, font: impl Into<String>) -> Self {
-        self.font = Some(font.into());
-        self
-    }
-
-    /// Set the color of the text.
-    pub fn color(mut self, color: Color) -> Self {
-        self.color = Some(color);
-        self
-    }
-
-    /// Set the horizontal alignment of the text.
-    pub fn align(mut self, align: TextAlign) -> Self {
-        self.h_align = Some(align);
-        self
-    }
-
-    /// Set the vertical alignment of the text.
-    pub fn v_align(mut self, align: TextAlign) -> Self {
-        self.v_align = Some(align);
-        self
-    }
 }
 
 pub struct TextProperties<'a> {
@@ -78,26 +38,6 @@ pub struct TextProperties<'a> {
 impl<'a> TextProperties<'a> {
     pub fn text(&mut self, text: impl Into<String>) {
         self.text.text = text.into();
-    }
-
-    pub fn scale(&mut self, scale: impl Into<Unit>) {
-        self.text.font_size = Some(scale.into());
-    }
-
-    pub fn font(&mut self, font: impl Into<String>) {
-        self.text.font = Some(font.into());
-    }
-
-    pub fn color(&mut self, color: Color) {
-        self.text.color = Some(color);
-    }
-
-    pub fn align(&mut self, align: TextAlign) {
-        self.text.h_align = Some(align);
-    }
-
-    pub fn v_align(&mut self, align: TextAlign) {
-        self.text.v_align = Some(align);
     }
 }
 
@@ -110,18 +50,25 @@ impl Properties for Text {
 }
 
 impl View for Text {
-    type State = ();
+    type State = f32;
 
-    fn build(&self) -> ViewState<Self::State> {
-        ViewState::new((), Some("text"))
+    fn build(&self) -> Self::State {
+        0.0
     }
 
-    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn style(&self) -> Style {
+        Style::new("text")
+    }
+
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let font: String = cx.style("font");
         let font_size = cx.style_range("font-size", 0.0..bc.max.y);
         let color = cx.style("color");
         let h_align = cx.style("text-align");
         let v_align = cx.style("text-valign");
+        let wrap = cx.style("text-wrap");
+
+        *state = font_size;
 
         let section = TextSection {
             position: Vec2::ZERO,
@@ -129,6 +76,7 @@ impl View for Text {
             scale: font_size,
             h_align,
             v_align,
+            wrap,
             text: self.text.clone(),
             font: (font.is_empty()).then(|| font),
             color,
@@ -138,23 +86,26 @@ impl View for Text {
         bounds.size()
     }
 
-    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let font: String = cx.style("font");
         let color = cx.style("color");
         let h_align = cx.style("text-align");
         let v_align = cx.style("text-valign");
+        let wrap = cx.style("text-wrap");
 
         let mut section = TextSection {
+            scale: *state,
             h_align,
             v_align,
+            wrap,
             text: self.text.clone(),
-            scale: cx.rect().size().y,
             font: (font.is_empty()).then(|| font),
             color,
             ..Default::default()
         };
 
         section.set_rect(cx.rect());
+        section.bounds += Vec2::ONE;
 
         cx.draw_primitive(section);
     }

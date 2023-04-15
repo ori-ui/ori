@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     BoxConstraints, Div, DivEvents, DrawContext, Event, EventContext, Events, LayoutContext,
-    Parent, PointerEvent, Scope, View, ViewState,
+    Parent, PointerEvent, Scope, Style, View,
 };
 
 pub struct Button {
@@ -50,8 +50,10 @@ impl Events for Button {
 impl View for Button {
     type State = <Div as View>::State;
 
-    fn build(&self) -> ViewState<Self::State> {
-        self.content.build().with_element("button")
+    fn build(&self) -> Self::State {}
+
+    fn style(&self) -> Style {
+        Style::new("button")
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {

@@ -1,3 +1,9 @@
+mod keyboard;
+mod pointer;
+
+pub use keyboard::*;
+pub use pointer::*;
+
 use std::{
     any::Any,
     sync::{
@@ -5,8 +11,6 @@ use std::{
         Arc,
     },
 };
-
-use glam::Vec2;
 
 pub struct Event {
     inner: Arc<dyn Any>,
@@ -40,38 +44,4 @@ pub struct Modifiers {
     pub ctrl: bool,
     pub alt: bool,
     pub meta: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum PointerButton {
-    Primary,
-    Secondary,
-    Tertiary,
-    Other(u16),
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct PointerEvent {
-    pub position: Vec2,
-    pub pressed: bool,
-    pub button: Option<PointerButton>,
-    pub modifiers: Modifiers,
-}
-
-impl PointerEvent {
-    pub fn pressed(&self, button: PointerButton) -> bool {
-        self.pressed && self.button == Some(button)
-    }
-
-    pub fn released(&self, button: PointerButton) -> bool {
-        !self.pressed && self.button == Some(button)
-    }
-
-    pub fn is_press(&self) -> bool {
-        self.pressed && self.button.is_some()
-    }
-
-    pub fn is_release(&self) -> bool {
-        !self.pressed && self.button.is_some()
-    }
 }

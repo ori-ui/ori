@@ -4,19 +4,19 @@ use glam::Vec2;
 use ily_graphics::{Frame, Rect, TextHit, TextLayout, TextSection};
 
 use crate::{
-    FromStyleAttribute, NodeState, Style, StyleAttribute, StyleSelectors, StyleTransition, Unit,
-    WeakCallback,
+    FromStyleAttribute, NodeState, StyleAttribute, StyleSelectors, StyleTransition, Stylesheet,
+    Unit, WeakCallback,
 };
 
 pub struct EventContext<'a> {
-    pub style: &'a Style,
+    pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
     pub selectors: &'a StyleSelectors,
     pub request_redraw: &'a WeakCallback,
 }
 
 pub struct LayoutContext<'a> {
-    pub style: &'a Style,
+    pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
     pub selectors: &'a StyleSelectors,
     pub text_layout: &'a dyn TextLayout,
@@ -34,7 +34,7 @@ impl<'a> LayoutContext<'a> {
 }
 
 pub struct DrawContext<'a> {
-    pub style: &'a Style,
+    pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
     pub frame: &'a mut Frame,
     pub selectors: &'a StyleSelectors,
@@ -82,7 +82,7 @@ macro_rules! context {
                 &self,
                 key: &str,
             ) -> (T, Option<StyleTransition>) {
-                if let Some(result) = self.state.attributes.get_value_and_transition(key) {
+                if let Some(result) = self.state.style.attributes.get_value_and_transition(key) {
                     return result;
                 }
 

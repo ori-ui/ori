@@ -54,14 +54,24 @@ impl Fonts {
             text = text.with_font_id(self.find_font(font));
         }
 
-        wgpu_glyph::Section {
-            screen_position: (x, y),
-            bounds: (width, height),
-            layout: wgpu_glyph::Layout::Wrap {
+        let layout = if section.wrap {
+            wgpu_glyph::Layout::Wrap {
                 line_breaker: Default::default(),
                 h_align: convert_h_align(section.h_align),
                 v_align: convert_v_align(section.v_align),
-            },
+            }
+        } else {
+            wgpu_glyph::Layout::SingleLine {
+                line_breaker: Default::default(),
+                h_align: convert_h_align(section.h_align),
+                v_align: convert_v_align(section.v_align),
+            }
+        };
+
+        wgpu_glyph::Section {
+            screen_position: (x, y),
+            bounds: (width, height),
+            layout,
             text: vec![text],
         }
     }

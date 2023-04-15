@@ -3,7 +3,7 @@ use ily_graphics::{Quad, TextAlign, TextSection};
 
 use crate::{
     Bindable, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Scope,
-    SharedSignal, Signal, View, ViewState,
+    SharedSignal, Signal, Style, View,
 };
 
 #[derive(Default)]
@@ -85,8 +85,10 @@ impl Bindable for Checkbox {
 impl View for Checkbox {
     type State = ();
 
-    fn build(&self) -> ViewState<Self::State> {
-        ViewState::new((), Some("checkbox"))
+    fn build(&self) -> Self::State {}
+
+    fn style(&self) -> Style {
+        Style::new("checkbox")
     }
 
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
@@ -143,6 +145,7 @@ impl View for Checkbox {
                 text: String::from(Self::CHECKMARK),
                 font: Some(String::from("MaterialIcons-Regular")),
                 color,
+                ..Default::default()
             };
 
             cx.draw_primitive(section);

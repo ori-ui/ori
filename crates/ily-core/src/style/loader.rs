@@ -3,21 +3,21 @@ use std::{
     time::SystemTime,
 };
 
-use crate::{Style, StyleLoadError};
+use crate::{StyleLoadError, Stylesheet};
 
 /// A style that has been loaded from a file.
 #[derive(Clone, Debug)]
 pub struct LoadedStyle {
     modified: SystemTime,
     path: PathBuf,
-    style: Style,
+    style: Stylesheet,
 }
 
 impl LoadedStyle {
     /// Loads a style from a file.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, StyleLoadError> {
         let modified = path.as_ref().metadata()?.modified()?;
-        let style = Style::load(&path)?;
+        let style = Stylesheet::load(&path)?;
         Ok(Self {
             modified,
             path: path.as_ref().to_path_buf(),
@@ -34,7 +34,7 @@ impl LoadedStyle {
         let needs_reload = modified > self.modified;
         if needs_reload {
             self.modified = modified;
-            self.style = Style::load(&self.path)?;
+            self.style = Stylesheet::load(&self.path)?;
         }
 
         Ok(needs_reload)
@@ -45,7 +45,7 @@ impl LoadedStyle {
 #[derive(Clone, Debug)]
 pub enum LoadedStyleKind {
     Loaded(LoadedStyle),
-    Inline(Style),
+    Inline(Stylesheet),
 }
 
 impl LoadedStyleKind {
@@ -60,7 +60,7 @@ impl LoadedStyleKind {
     }
 
     /// Returns the style.
-    pub fn style(&self) -> &Style {
+    pub fn style(&self) -> &Stylesheet {
         match self {
             Self::Loaded(style) => &style.style,
             Self::Inline(style) => style,
@@ -68,8 +68,8 @@ impl LoadedStyleKind {
     }
 }
 
-impl From<Style> for LoadedStyleKind {
-    fn from(style: Style) -> Self {
+impl From<Stylesheet> for LoadedStyleKind {
+    fn from(style: Stylesheet) -> Self {
         Self::Inline(style)
     }
 }
@@ -96,7 +96,7 @@ impl TryFrom<&Path> for LoadedStyleKind {
 #[derive(Clone, Debug)]
 pub struct StyleLoader {
     styles: Vec<LoadedStyleKind>,
-    cache: Style,
+    cache: Stylesheet,
 }
 
 impl StyleLoader {
@@ -104,7 +104,7 @@ impl StyleLoader {
     pub fn new() -> Self {
         Self {
             styles: Vec::new(),
-            cache: Style::new(),
+            cache: Stylesheet::new(),
         }
     }
 
@@ -117,7 +117,7 @@ impl StyleLoader {
 
     /// Recomputes the cache.
     fn compute_cache(&mut self) {
-        self.cache = Style::new();
+        self.cache = Stylesheet::new();
 
         for style in self.styles.iter() {
             self.cache.extend(style.style().clone());
@@ -142,7 +142,7 @@ impl StyleLoader {
     }
 
     /// Returns the style.
-    pub fn style(&self) -> &Style {
+    pub fn style(&self) -> &Stylesheet {
         &self.cache
     }
 }

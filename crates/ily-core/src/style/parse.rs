@@ -5,8 +5,8 @@ use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
 
 use crate::{
-    Style, StyleAttribute, StyleAttributeValue, StyleElement, StyleRule, StyleSelectors,
-    StyleTransition, Unit,
+    StyleAttribute, StyleAttributeValue, StyleElement, StyleRule, StyleSelectors, StyleTransition,
+    Stylesheet, Unit,
 };
 
 #[derive(Parser)]
@@ -154,9 +154,9 @@ fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {
     rule
 }
 
-fn parse_style(input: &str) -> Result<Style, Error<Rule>> {
+fn parse_style(input: &str) -> Result<Stylesheet, Error<Rule>> {
     let pairs = StyleParser::parse(Rule::Style, input)?.next().unwrap();
-    let mut style = Style::new();
+    let mut style = Stylesheet::new();
 
     for pair in pairs.into_inner() {
         match pair.as_rule() {
@@ -171,7 +171,7 @@ fn parse_style(input: &str) -> Result<Style, Error<Rule>> {
     Ok(style)
 }
 
-impl FromStr for Style {
+impl FromStr for Stylesheet {
     type Err = StyleParseError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {

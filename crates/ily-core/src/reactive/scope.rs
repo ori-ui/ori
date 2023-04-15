@@ -5,10 +5,7 @@ use std::{
     mem,
     ops::Index,
     rc::Rc,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Mutex,
-    },
+    sync::atomic::{AtomicUsize, Ordering},
     vec::IntoIter,
 };
 
@@ -19,13 +16,13 @@ impl<T> Item for T {}
 
 #[derive(Default, Debug)]
 struct ScopeArena<'a> {
-    items: Mutex<Vec<*mut (dyn Item + 'a)>>,
+    items: RefCell<Vec<*mut (dyn Item + 'a)>>,
 }
 
 impl<'a> ScopeArena<'a> {
     pub fn alloc_static<T: 'static>(&self, item: T) -> &'a mut T {
         let item = Box::into_raw(Box::new(item));
-        self.items.lock().unwrap().push(item);
+        self.items.borrow_mut().push(item);
         unsafe { &mut *item }
     }
 
@@ -33,7 +30,7 @@ impl<'a> ScopeArena<'a> {
     /// - `item` must never reference any other item in the arena in it's [`Drop`] implementation.
     pub unsafe fn alloc<T: 'a>(&self, item: T) -> &'a mut T {
         let item = Box::into_raw(Box::new(item));
-        self.items.lock().unwrap().push(item);
+        self.items.borrow_mut().push(item);
         &mut *item
     }
 
@@ -44,7 +41,7 @@ impl<'a> ScopeArena<'a> {
     /// # Safety
     /// - There must be no other references to any item in the arena.
     pub unsafe fn dispose(&self) {
-        let mut items = self.items.lock().unwrap();
+        let mut items = self.items.borrow_mut();
         Self::dispose_inner(&mut items);
     }
 
@@ -59,7 +56,7 @@ impl<'a> ScopeArena<'a> {
 
 impl<'a> Drop for ScopeArena<'a> {
     fn drop(&mut self) {
-        let items = self.items.get_mut().unwrap();
+        let items = self.items.get_mut();
         unsafe { Self::dispose_inner(items) };
     }
 }
@@ -141,7 +138,7 @@ struct RawScope<'a> {
     drop_lock: AtomicUsize,
 
     /// A list of child scopes.
-    children: Mutex<Sparse<*mut RawScope<'a>>>,
+    children: RefCell<Sparse<*mut RawScope<'a>>>,
 
     /// A marker that ensures that 'a is invariant
     marker: PhantomData<&'a mut &'a ()>,
@@ -153,7 +150,7 @@ impl<'a> RawScope<'a> {
             arena: ScopeArena::default(),
             parent: None,
             drop_lock: AtomicUsize::new(0),
-            children: Mutex::new(Sparse::new()),
+            children: RefCell::new(Sparse::new()),
             marker: PhantomData,
         }
     }
@@ -163,13 +160,13 @@ impl<'a> RawScope<'a> {
             arena: ScopeArena::default(),
             parent: Some(parent),
             drop_lock: AtomicUsize::new(0),
-            children: Mutex::new(Sparse::new()),
+            children: RefCell::new(Sparse::new()),
             marker: PhantomData,
         }
     }
 
     fn push_child(&self, child: *mut RawScope<'a>) -> usize {
-        let mut children = self.children.lock().unwrap();
+        let mut children = self.children.borrow_mut();
         children.insert(child)
     }
 
@@ -182,7 +179,7 @@ impl<'a> RawScope<'a> {
     }
 
     fn is_child_scope_drop_locked(&self, index: usize) -> bool {
-        let children = self.children.lock().unwrap();
+        let children = self.children.borrow();
         if let Some(&child) = children.get(index) {
             let child = unsafe { &*child };
             child.is_drop_locked()
@@ -192,14 +189,14 @@ impl<'a> RawScope<'a> {
     }
 
     fn is_child_scopes_drop_locked(&self) -> bool {
-        self.children.lock().unwrap().iter().any(|&child| {
+        self.children.borrow().iter().any(|&child| {
             let child = unsafe { &*child };
             child.is_drop_locked()
         })
     }
 
     unsafe fn dispose(&self) {
-        let mut children = self.children.lock().unwrap();
+        let mut children = self.children.borrow_mut();
 
         for child in mem::take(&mut *children).into_iter() {
             let cx = Box::from_raw(child);
@@ -391,7 +388,7 @@ impl<'a> Scope<'a> {
             let value = f(cx);
 
             if signal.borrow().is_some() {
-                signal.borrow_mut().as_ref().unwrap().set(value);
+                signal.borrow().as_ref().unwrap().set(value);
             } else {
                 *signal.borrow_mut() = Some(SharedSignal::new(value));
             }
@@ -449,7 +446,7 @@ impl<'a> ScopeDisposer<'a> {
                 cx.dispose();
             }
             ScopeDisposerInner::Child { parent, index } => {
-                let mut children = parent.children.lock().unwrap();
+                let mut children = parent.children.borrow_mut();
                 let child = children.remove(index).unwrap();
                 // SAFETY: `child` is the only reference to the scope.
                 let cx = Box::from_raw(child);

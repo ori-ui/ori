@@ -1,9 +1,4 @@
-use std::{
-    cell::RefCell,
-    mem,
-    ops::DerefMut,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, mem, ops::DerefMut, rc::Rc};
 
 use crate::{Scope, WeakCallback, WeakCallbackEmitter};
 
@@ -12,14 +7,14 @@ thread_local! {
 }
 
 struct EffectState<'a> {
-    callback: Arc<Mutex<dyn FnMut() + 'a>>,
+    callback: Rc<RefCell<dyn FnMut() + 'a>>,
     dependencies: Vec<WeakCallbackEmitter>,
 }
 
 impl<'a> EffectState<'a> {
     fn empty() -> Self {
         Self {
-            callback: Arc::new(Mutex::new(|| {})),
+            callback: Rc::new(RefCell::new(|| {})),
             dependencies: Vec::new(),
         }
     }
@@ -27,7 +22,7 @@ impl<'a> EffectState<'a> {
     fn clear_dependencies(&mut self) {
         for dependency in &self.dependencies {
             if let Some(dependency) = dependency.upgrade() {
-                let ptr = Arc::as_ptr(&self.callback);
+                let ptr = Rc::as_ptr(&self.callback);
                 dependency.unsubscribe(unsafe { mem::transmute(ptr) });
             }
         }
@@ -59,7 +54,7 @@ pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
     // SAFETY: `Effect` is `!Drop`, so it's safe to use `alloc_unsafe`.
     let effect = unsafe { cx.alloc_unsafe(RefCell::new(EffectState::empty())) };
 
-    let callback = Arc::new(Mutex::new(move || {
+    let callback = Rc::new(RefCell::new(move || {
         EFFECTS.with(|effects| {
             let len = effects.borrow().len();
 
@@ -87,7 +82,7 @@ pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
             for emitter in &effect.dependencies {
                 if let Some(emitter) = emitter.upgrade() {
                     let callback = unsafe { mem::transmute(&effect.callback) };
-                    let callback = WeakCallback::new(Arc::downgrade(callback));
+                    let callback = WeakCallback::new(Rc::downgrade(callback));
                     emitter.subscribe_weak(callback);
                 }
             }
@@ -98,5 +93,5 @@ pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
 
     effect.borrow_mut().callback = callback.clone();
 
-    callback.lock().unwrap()();
+    callback.borrow_mut()();
 }

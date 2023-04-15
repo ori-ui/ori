@@ -114,7 +114,7 @@ impl<T: Transitionable> TransitionState<T> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct TransitionStates {
     units: SmallVec<[(SmolStr, TransitionState<f32>); 4]>,
     colors: SmallVec<[(SmolStr, TransitionState<Color>); 4]>,

@@ -77,12 +77,13 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
             });
 
             quote! {
-                ily::core::BoundedScope::dynamic(#context, |#context| {
+                ily::core::BoundedScope::dynamic(#context, move |#context| {
                     let mut view = <#name as ily::core::Styleable<_>>::styled(
                         <#name as ::std::default::Default>::default()
                     );
 
                     #(#properties)*
+                    #(#attributes)*
                     #(#children)*
 
                     view
@@ -184,13 +185,15 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
     for pair in pairs {
         let ident = pair.value().clone();
 
+        key.push_str(&ident.to_string());
+
         if let Some(punct) = pair.punct() {
             if punct.as_char() != '-' {
                 abort!(punct, "expected '-'");
             }
-        }
 
-        key.push_str(&ident.to_string());
+            key.push('-');
+        }
     }
 
     if key.is_empty() {
@@ -228,6 +231,8 @@ fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenS
     }
 }
 
-fn style(_context: &Expr, _name: &NodeName, _key: &str, _value: &Expr) -> TokenStream {
-    quote! {}
+fn style(_context: &Expr, name: &NodeName, key: &str, value: &Expr) -> TokenStream {
+    quote! {
+        view = <ily::core::Styled<#name> as ily::core::Styleable<_>>::attr(view, #key, #value);
+    }
 }

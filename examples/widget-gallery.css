@@ -1,0 +1,22 @@
+div .widget-gallery {
+	min-width: 100%;
+	min-height: 100%;
+
+	direction: row;
+	justify-content: center;
+	align-items: center;
+}
+
+div .row {
+	gap: 10px;
+
+	direction: row;
+	align-items: center;
+}
+
+div .column {
+	gap: 5px;
+
+	direction: column;
+	align-items: stretch;
+}

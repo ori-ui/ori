@@ -3,8 +3,7 @@ use ily_graphics::Quad;
 
 use crate::{
     AlignItems, Axis, BoxConstraints, Children, DrawContext, Event, EventContext, EventSignal,
-    Events, JustifyContent, LayoutContext, NodeBuilder, Parent, PointerEvent, Scope, View,
-    ViewState,
+    Events, JustifyContent, LayoutContext, Node, Parent, PointerEvent, Scope, Style, View,
 };
 
 #[derive(Default)]
@@ -67,8 +66,8 @@ impl Div {
 }
 
 impl Parent for Div {
-    fn add_child(&mut self, child: impl NodeBuilder) {
-        self.children.push(child.build());
+    fn add_child(&mut self, child: impl View) {
+        self.children.push(Node::new(child));
     }
 }
 
@@ -115,8 +114,10 @@ impl Events for Div {
 impl View for Div {
     type State = ();
 
-    fn build(&self) -> ViewState<Self::State> {
-        ViewState::new((), Some("div"))
+    fn build(&self) -> Self::State {}
+
+    fn style(&self) -> Style {
+        Style::new("div")
     }
 
     fn event(&self, _state: &mut Self::State, cx: &mut EventContext, event: &Event) {

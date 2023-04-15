@@ -22,3 +22,4 @@ winit = ["ily-winit"]
 
 [profile.dev]
 debug = false
+opt-level = 1

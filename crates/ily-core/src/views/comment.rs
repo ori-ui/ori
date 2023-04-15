@@ -1,4 +1,4 @@
-use crate::{View, ViewState};
+use crate::{Style, View};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Comment {
@@ -14,7 +14,9 @@ impl Comment {
 impl View for Comment {
     type State = ();
 
-    fn build(&self) -> ViewState<Self::State> {
-        ViewState::new((), Some("comment"))
+    fn build(&self) -> Self::State {}
+
+    fn style(&self) -> Style {
+        Style::new("comment")
     }
 }

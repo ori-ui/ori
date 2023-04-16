@@ -95,15 +95,10 @@ macro_rules! context {
 
             /// Get the value of a style attribute, if it has a transition, the value will be
             /// interpolated between the current value and the new value.
+            #[track_caller]
             pub fn style<T: FromStyleAttribute + Default + 'static>(&mut self, key: &str) -> T {
                 let (value, transition) = self.get_style_value_and_transition(key);
-                let (value, redraw) = self.state.transition(key, value, transition);
-
-                if redraw {
-                    self.request_redraw();
-                }
-
-                value
+                self.state.transition(key, value, transition)
             }
 
             /// Get the value of a style attribute, if it has a transition, the value will be
@@ -111,17 +106,12 @@ macro_rules! context {
             ///
             /// This is a convenience method for getting a value in pixels, as opposed to
             /// `style` which returns a `Unit`.
+            #[track_caller]
             pub fn style_range(&mut self, key: &str, range: Range<f32>) -> f32 {
                 let (value, transition) = self.get_style_value_and_transition::<Unit>(key);
 
                 let pixels = value.pixels(range);
-                let (pixels, redraw) = self.state.transition(key, pixels, transition);
-
-                if redraw {
-                    self.request_redraw();
-                }
-
-                pixels
+                self.state.transition(key, pixels, transition)
             }
 
             pub fn style_attribute(&self, key: &str) -> Option<&StyleAttribute> {
@@ -148,7 +138,10 @@ macro_rules! context {
                 self.state.global_rect
             }
 
+            #[track_caller]
             pub fn request_redraw(&self) {
+                tracing::trace!("requesting redraw at {:?}", std::panic::Location::caller());
+
                 self.request_redraw.emit(&());
             }
         }

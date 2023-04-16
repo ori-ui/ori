@@ -39,6 +39,12 @@ impl<T> Callback<T> {
     }
 }
 
+impl<T> Default for Callback<T> {
+    fn default() -> Self {
+        Callback::new(|_| {})
+    }
+}
+
 /// A weak reference to a [`Callback`].
 ///
 /// This is usually created by [`Callback::downgrade`].
@@ -76,6 +82,14 @@ impl<T> WeakCallback<T> {
         }
 
         self.callback.strong_count() > 0
+    }
+}
+
+impl<T> Default for WeakCallback<T> {
+    fn default() -> Self {
+        // FIXME: this is a hack to get a valid pointer
+        // but it just doesn't feel right
+        Callback::default().downgrade()
     }
 }
 

@@ -6,11 +6,13 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
 
     let font_size = cx.memo(|| if *checked.get() { 32 } else { 24 });
 
+    checked.track();
+
     view! {
         <Div class="widget-gallery">
             <Div class="column">
                 <Div class="row">
-                    <Text text="Toggle me" style:font-size=trans(font_size, 1.0) />
+                    <Text text="Toggle me" style:font-size=trans(font_size, 0.5) />
                     <Checkbox bind:checked=checked />
                 </Div>
 

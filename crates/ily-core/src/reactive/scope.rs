@@ -378,6 +378,31 @@ impl<'a> Scope<'a> {
         signal.get().unwrap()
     }
 
+    /// This will create an effect that binds two signals together.
+    /// Whenever one of the signals is updated, the other will be updated to the same value.
+    /// This is useful for creating two-way bindings (eg. a checkbox).
+    ///
+    /// When initializing the binding, the value of `signal_a` will be used.
+    pub fn bind<T: Clone + PartialEq + 'static>(
+        self,
+        signal_a: &'a Signal<T>,
+        signal_b: &'a Signal<T>,
+    ) {
+        let prev = self.alloc(RefCell::new(signal_b.get()));
+
+        self.effect(move || {
+            let a = signal_a.get();
+            let b = signal_b.get();
+
+            if *prev.borrow() != a {
+                signal_b.set(a.as_ref().clone());
+            } else if *prev.borrow() != b {
+                signal_a.set(b.as_ref().clone());
+            }
+        });
+    }
+
+    /// Creates a shared signal that is recomputed every time a dependency is updated.
     pub fn dynamic<T: 'static>(
         self,
         mut f: impl FnMut(BoundedScope<'_, 'a>) -> T + 'a,

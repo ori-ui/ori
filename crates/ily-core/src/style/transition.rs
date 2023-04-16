@@ -78,28 +78,50 @@ impl<T: Transitionable> TransitionState<T> {
         true
     }
 
-    pub fn update(&mut self, to: T, transition: Option<StyleTransition>, delta: f32) -> (T, bool) {
+    pub fn get(&mut self, to: T, transition: Option<StyleTransition>) -> T {
         if self.from.is_none() {
             self.from = Some(to);
         }
 
         if self.transition != transition || self.to != Some(to) {
+            if let (Some(prev), Some(new)) = (self.transition, transition) {
+                let progress = self.elapsed / prev.duration;
+
+                self.elapsed = new.duration - (new.duration * progress);
+            } else {
+                self.elapsed = 0.0;
+            }
+
             self.prev_transition = self.transition;
             self.transition = transition;
             self.to = Some(to);
-
-            self.elapsed = 0.0;
-
-            return (self.from.unwrap(), true);
         }
 
         if self.is_complete() {
-            return (to, false);
+            return to;
+        }
+
+        self.from.unwrap()
+    }
+
+    pub fn update(&mut self, delta: f32) -> bool {
+        if self.is_complete() {
+            return false;
         }
 
         let Some(transition) = self.transition() else {
-            return (to, false);
+            return false;
         };
+
+        let Some(to) = self.to else {
+            return false;
+        };
+
+        // TODO: this is some bs
+        if self.elapsed == 0.0 {
+            self.elapsed = f32::EPSILON;
+            return true;
+        }
 
         let remaining = transition.duration - self.elapsed;
         let delta = delta.min(remaining);
@@ -110,7 +132,7 @@ impl<T: Transitionable> TransitionState<T> {
 
         self.elapsed += delta;
 
-        (value, true)
+        true
     }
 }
 
@@ -153,14 +175,13 @@ impl TransitionStates {
         name: &str,
         value: f32,
         transition: Option<StyleTransition>,
-        delta: f32,
-    ) -> (f32, bool) {
+    ) -> f32 {
         if let Some(state) = self.find_unit(name) {
-            return state.update(value, transition, delta);
+            return state.get(value, transition);
         }
 
         let mut state = TransitionState::default();
-        let result = state.update(value, transition, delta);
+        let result = state.get(value, transition);
 
         self.units.push((name.into(), state));
 
@@ -172,39 +193,45 @@ impl TransitionStates {
         name: &str,
         value: Color,
         transition: Option<StyleTransition>,
-        delta: f32,
-    ) -> (Color, bool) {
+    ) -> Color {
         if let Some(state) = self.find_color(name) {
-            return state.update(value, transition, delta);
+            return state.get(value, transition);
         }
 
         let mut state = TransitionState::default();
-        let result = state.update(value, transition, delta);
+        let result = state.get(value, transition);
 
         self.colors.push((name.into(), state));
 
         result
     }
 
-    pub fn transition_any<T: Any>(
+    pub(crate) fn transition_any<T: Any>(
         &mut self,
         name: &str,
         value: &mut T,
         transition: Option<StyleTransition>,
-        delta: f32,
-    ) -> bool {
+    ) {
         if let Some(value) = <dyn Any>::downcast_mut::<f32>(value) {
-            let (new_value, redraw) = self.transition_unit(name, *value, transition, delta);
-            *value = new_value;
-            return redraw;
+            *value = self.transition_unit(name, *value, transition);
         }
 
         if let Some(value) = <dyn Any>::downcast_mut::<Color>(value) {
-            let (new_value, redraw) = self.transition_color(name, *value, transition, delta);
-            *value = new_value;
-            return redraw;
+            *value = self.transition_color(name, *value, transition);
+        }
+    }
+
+    pub fn update(&mut self, delta: f32) -> bool {
+        let mut redraw = false;
+
+        for (_, state) in &mut self.units {
+            redraw |= state.update(delta);
         }
 
-        false
+        for (_, state) in &mut self.colors {
+            redraw |= state.update(delta);
+        }
+
+        redraw
     }
 }

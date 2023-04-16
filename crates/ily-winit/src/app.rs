@@ -145,10 +145,7 @@ impl App {
 
         let request_redraw = Callback::new({
             let window = window.clone();
-            move |_| {
-                tracing::trace!("redraw requested");
-                window.request_redraw()
-            }
+            move |_| window.request_redraw()
         });
         let request_redraw = request_redraw.downgrade();
 
@@ -178,6 +175,8 @@ impl App {
 
             match event {
                 WinitEvent::RedrawRequested(_) => {
+                    tracing::debug!("redrawing app");
+
                     state.draw();
                 }
                 WinitEvent::MainEventsCleared => match state.style_loader.reload() {

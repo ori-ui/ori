@@ -110,10 +110,13 @@ impl NodeState {
         name: &str,
         mut value: T,
         transition: Option<StyleTransition>,
-    ) -> (T, bool) {
-        let delta = self.delta();
-        let redraw = (self.transitions).transition_any(name, &mut value, transition, delta);
-        (value, redraw)
+    ) -> T {
+        (self.transitions).transition_any(name, &mut value, transition);
+        value
+    }
+
+    pub fn update_transitions(&mut self) -> bool {
+        self.transitions.update(self.delta())
     }
 
     fn draw(&mut self) {
@@ -237,6 +240,10 @@ impl Node {
 
         let mut view_state = self.view_state.borrow_mut();
         self.view.draw(&mut **view_state, &mut cx);
+
+        if cx.state.update_transitions() {
+            cx.request_redraw();
+        }
 
         cx.state.draw();
     }

@@ -24,23 +24,8 @@ impl Checkbox {
     }
 
     pub fn bind_checked<'a>(self, cx: Scope<'a>, binding: &'a Signal<bool>) -> Self {
-        let checked = self.checked.clone();
-        cx.effect(move || {
-            if checked.get_untracked() == binding.get() {
-                return;
-            }
-
-            checked.set(*binding.get());
-        });
-
-        let checked = self.checked.clone();
-        cx.effect(move || {
-            if checked.get() == binding.get_untracked() {
-                return;
-            }
-
-            binding.set(*checked.get());
-        });
+        let signal = cx.alloc(self.checked.clone());
+        cx.bind(signal, binding);
 
         self
     }

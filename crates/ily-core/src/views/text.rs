@@ -3,7 +3,7 @@ use ily_graphics::TextSection;
 
 use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Style, View};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Text {
     text: String,
 }
@@ -18,10 +18,7 @@ impl Default for Text {
 
 impl Text {
     pub fn new(text: impl Into<String>) -> Self {
-        Self {
-            text: text.into(),
-            ..Default::default()
-        }
+        Self { text: text.into() }
     }
 
     /// Set the text to display.

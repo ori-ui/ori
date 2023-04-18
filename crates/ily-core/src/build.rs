@@ -53,7 +53,7 @@ pub trait Bindable<'a> {
     fn bind(&mut self, cx: Scope<'a>, signal: &'a Signal<Self::Item>);
 }
 
-impl<'a, T: Clone + PartialEq + std::fmt::Debug + 'static> Bindable<'a> for &'a Signal<T> {
+impl<'a, T: Clone + PartialEq + 'static> Bindable<'a> for &'a Signal<T> {
     type Item = T;
 
     fn bind(&mut self, cx: Scope<'a>, signal: &'a Signal<Self::Item>) {
@@ -61,7 +61,7 @@ impl<'a, T: Clone + PartialEq + std::fmt::Debug + 'static> Bindable<'a> for &'a 
     }
 }
 
-impl<'a, T: Clone + PartialEq + std::fmt::Debug + 'static> Bindable<'a> for SharedSignal<T> {
+impl<'a, T: Clone + PartialEq + 'static> Bindable<'a> for SharedSignal<T> {
     type Item = T;
 
     fn bind(&mut self, cx: Scope<'a>, signal: &'a Signal<Self::Item>) {

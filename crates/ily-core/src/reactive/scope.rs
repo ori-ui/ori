@@ -319,6 +319,7 @@ impl<'a> Scope<'a> {
     /// signal.set(1); // prints "signal is 1"
     /// # });
     /// ```
+    #[track_caller]
     pub fn effect(self, f: impl FnMut() + 'a) {
         super::effect::create_effect(self, f);
     }
@@ -360,6 +361,7 @@ impl<'a> Scope<'a> {
     /// assert_eq!(*memo, 4);
     /// # });
     /// ```
+    #[track_caller]
     pub fn memo<T: 'static>(self, mut f: impl FnMut() -> T + 'a) -> &'a ReadSignal<T> {
         let signal = Rc::new(Cell::new(None::<&Signal<T>>));
 
@@ -382,30 +384,32 @@ impl<'a> Scope<'a> {
     /// Whenever one of the signals is updated, the other will be updated to the same value.
     /// This is useful for creating two-way bindings (eg. a checkbox).
     ///
-    /// When initializing the binding, the value of `signal_a` will be used.
+    /// When initializing the binding, the value of `signal_b` will be used.
+    #[track_caller]
     pub fn bind<T: Clone + PartialEq + 'static>(
         self,
         signal_a: &'a Signal<T>,
         signal_b: &'a Signal<T>,
     ) {
-        let prev = self.alloc(RefCell::new(signal_b.get()));
+        let prev = self.alloc(RefCell::new(signal_a.cloned_untracked()));
 
         self.effect(move || {
-            let a = signal_a.get();
-            let b = signal_b.get();
+            let a = signal_a.cloned();
+            let b = signal_b.cloned();
             let mut prev = prev.borrow_mut();
 
             if *prev != a {
                 *prev = a.clone();
-                signal_b.set(a.as_ref().clone());
+                signal_b.set(a);
             } else if *prev != b {
                 *prev = b.clone();
-                signal_a.set(b.as_ref().clone());
+                signal_a.set(b);
             }
         });
     }
 
     /// Creates a shared signal that is recomputed every time a dependency is updated.
+    #[track_caller]
     pub fn dynamic<T: 'static>(
         self,
         mut f: impl FnMut(BoundedScope<'_, 'a>) -> T + 'a,

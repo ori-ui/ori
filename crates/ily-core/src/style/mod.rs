@@ -74,7 +74,7 @@ impl Style {
     }
 }
 
-/// A value with associated style [`Attributes`].
+/// A value with associated style [`StyleAttributes`].
 #[derive(Clone, Debug, Default, Deref, DerefMut)]
 pub struct Styled<T> {
     #[deref]

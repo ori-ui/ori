@@ -175,7 +175,7 @@ impl<T: Into<StyleAttributeValue>, U: Into<StyleTransition>> StyleAttributeBuild
     }
 }
 
-/// An ease of use function to create an [`AttributeBuilder`] with a transition.
+/// An ease of use function to create an [`StyleAttributeBuilder`] with a transition.
 pub fn trans(
     value: impl Into<StyleAttributeValue>,
     transition: impl Into<StyleTransition>,

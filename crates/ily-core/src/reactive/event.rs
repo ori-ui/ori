@@ -1,5 +1,6 @@
 use crate::{Scope, SharedSignal};
 
+#[derive(Debug)]
 pub struct EventSignal<T: 'static> {
     signal: SharedSignal<Option<T>>,
 }

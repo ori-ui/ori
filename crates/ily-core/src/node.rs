@@ -1,13 +1,13 @@
 use std::{any::Any, cell::RefCell, time::Instant};
 
 use glam::Vec2;
-use ily_graphics::{Frame, Rect, TextLayout};
+use ily_graphics::{Frame, Rect, Renderer};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Style,
-    StyleElement, StyleElements, StyleSelectors, StyleStates, StyleTransition, Stylesheet,
-    TransitionStates, View, WeakCallback,
+    AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext,
+    PointerEvent, Style, StyleElement, StyleElements, StyleSelectors, StyleStates, StyleTransition,
+    Stylesheet, TransitionStates, View, WeakCallback,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -195,7 +195,7 @@ impl Node {
         let mut cx = EventContext {
             style: cx.style,
             state: &mut node_state,
-            root_font_size: cx.root_font_size,
+            renderer: cx.renderer,
             selectors: &selectors,
             request_redraw: cx.request_redraw,
         };
@@ -212,9 +212,8 @@ impl Node {
         let mut cx = LayoutContext {
             style: cx.style,
             state: &mut node_state,
-            root_font_size: cx.root_font_size,
+            renderer: cx.renderer,
             selectors: &selectors,
-            text_layout: cx.text_layout,
             request_redraw: cx.request_redraw,
         };
 
@@ -237,7 +236,7 @@ impl Node {
             style: cx.style,
             state: &mut node_state,
             frame: cx.frame,
-            root_font_size: cx.root_font_size,
+            renderer: cx.renderer,
             selectors: &selectors,
             request_redraw: cx.request_redraw,
         };
@@ -254,7 +253,13 @@ impl Node {
 }
 
 impl Node {
-    pub fn event_root(&self, style: &Stylesheet, request_redraw: &WeakCallback, event: &Event) {
+    pub fn event_root(
+        &self,
+        style: &Stylesheet,
+        renderer: &dyn Renderer,
+        request_redraw: &WeakCallback,
+        event: &Event,
+    ) {
         let mut node_state = self.node_state.borrow_mut();
         node_state.style = self.view.style();
 
@@ -268,7 +273,7 @@ impl Node {
         let mut cx = EventContext {
             style,
             state: &mut node_state,
-            root_font_size: 16.0,
+            renderer,
             selectors: &selectors,
             request_redraw,
         };
@@ -280,7 +285,7 @@ impl Node {
     pub fn layout_root(
         &self,
         style: &Stylesheet,
-        text_layout: &mut dyn TextLayout,
+        renderer: &dyn Renderer,
         window_size: Vec2,
         request_redraw: &WeakCallback,
     ) -> Vec2 {
@@ -291,9 +296,8 @@ impl Node {
         let mut cx = LayoutContext {
             style,
             state: &mut node_state,
-            root_font_size: 16.0,
+            renderer,
             selectors: &selectors,
-            text_layout,
             request_redraw,
         };
 
@@ -307,7 +311,13 @@ impl Node {
         size
     }
 
-    pub fn draw_root(&self, style: &Stylesheet, frame: &mut Frame, request_redraw: &WeakCallback) {
+    pub fn draw_root(
+        &self,
+        style: &Stylesheet,
+        frame: &mut Frame,
+        renderer: &dyn Renderer,
+        request_redraw: &WeakCallback,
+    ) {
         let mut node_state = self.node_state.borrow_mut();
         node_state.style = self.view.style();
 
@@ -316,7 +326,7 @@ impl Node {
             style,
             state: &mut node_state,
             frame,
-            root_font_size: 16.0,
+            renderer,
             selectors: &selectors,
             request_redraw,
         };

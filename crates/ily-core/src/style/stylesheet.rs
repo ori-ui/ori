@@ -161,12 +161,12 @@ impl StyleRule {
         }
     }
 
-    /// Adds an [`Attribute`] to the rule.
+    /// Adds an [`StyleAttribute`] to the rule.
     pub fn add_attribute(&mut self, attribute: StyleAttribute) {
         self.attributes.add(attribute);
     }
 
-    /// Adds a list of [`Attribute`]s to the rule.
+    /// Adds a list of [`StyleAttribute`]s to the rule.
     pub fn add_attributes(&mut self, attributes: Vec<StyleAttribute>) {
         self.attributes.extend(attributes);
     }

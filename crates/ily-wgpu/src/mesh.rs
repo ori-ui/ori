@@ -1,8 +1,8 @@
-use std::mem;
+use std::{mem, sync::Arc};
 
 use bytemuck::{Pod, Zeroable};
 use ily_core::Vec2;
-use ily_graphics::{Mesh, Vertex};
+use ily_graphics::{ImageHandle, Mesh, Vertex};
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},
@@ -14,6 +14,8 @@ use wgpu::{
     VertexStepMode,
 };
 
+use crate::WgpuImage;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 struct MeshUniforms {
@@ -22,6 +24,7 @@ struct MeshUniforms {
 
 struct MeshInstance {
     bind_group: BindGroup,
+    image: Option<Arc<WgpuImage>>,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     index_count: u32,
@@ -43,6 +46,7 @@ impl MeshInstance {
 
         Self {
             bind_group,
+            image: mesh.image.clone().and_then(ImageHandle::downcast_arc),
             vertex_buffer,
             index_buffer,
             index_count: mesh.indices.len() as u32,
@@ -100,7 +104,11 @@ pub struct MeshPipeline {
 }
 
 impl MeshPipeline {
-    pub fn new(device: &Device, format: TextureFormat) -> Self {
+    pub fn new(
+        device: &Device,
+        image_bind_group_layout: &BindGroupLayout,
+        format: TextureFormat,
+    ) -> Self {
         let shader = device.create_shader_module(include_wgsl!("mesh.wgsl"));
 
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
@@ -126,7 +134,7 @@ impl MeshPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Mesh Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[&bind_group_layout, &image_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -185,10 +193,22 @@ impl MeshPipeline {
         queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
-    pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
+    pub fn render<'a>(
+        &'a self,
+        pass: &mut RenderPass<'a>,
+        default_image: &'a WgpuImage,
+        index: usize,
+    ) {
         let instance = &self.instances[index];
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &instance.bind_group, &[]);
+
+        if let Some(image) = &instance.image {
+            pass.set_bind_group(1, &image.bind_group, &[]);
+        } else {
+            pass.set_bind_group(1, &default_image.bind_group, &[]);
+        }
+
         pass.set_vertex_buffer(0, instance.vertex_buffer.slice(..));
         pass.set_index_buffer(instance.index_buffer.slice(..), IndexFormat::Uint32);
         pass.draw_indexed(0..instance.index_count, 0, 0..1);

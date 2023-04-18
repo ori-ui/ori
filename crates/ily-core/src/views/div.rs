@@ -1,14 +1,18 @@
 use glam::Vec2;
-use ily_graphics::Quad;
+use ily_macro::Build;
 
 use crate::{
-    AlignItems, Axis, BoxConstraints, Children, DrawContext, Event, EventContext, EventSignal,
-    Events, JustifyContent, LayoutContext, Node, Parent, PointerEvent, Scope, Style, View,
+    AlignItems, Axis, BoxConstraints, Children, Context, DrawContext, Event, EventContext,
+    EventSignal, JustifyContent, LayoutContext, Node, Parent, PointerEvent, Scope, Style, View,
 };
 
-#[derive(Default)]
+#[derive(Default, Build)]
 pub struct Div {
+    #[event]
+    pub on_event: Option<EventSignal<Event>>,
+    #[event]
     pub on_press: Option<EventSignal<PointerEvent>>,
+    #[event]
     pub on_release: Option<EventSignal<PointerEvent>>,
     pub children: Children,
 }
@@ -20,6 +24,14 @@ impl Div {
 
     pub fn child(mut self, child: impl View) -> Self {
         self.add_child(child);
+        self
+    }
+
+    pub fn on_event<'a>(mut self, cx: Scope<'a>, callback: impl FnMut(&Event) + 'a) -> Self {
+        self.on_event
+            .get_or_insert_with(|| EventSignal::new())
+            .subscribe(cx, callback);
+
         self
     }
 
@@ -44,13 +56,13 @@ impl Div {
     }
 
     fn handle_pointer_event(&self, cx: &mut EventContext, event: &PointerEvent) -> bool {
-        if event.button.is_some() && event.pressed && cx.hovered() {
+        if event.is_press() && cx.hovered() {
             if let Some(on_press) = &self.on_press {
                 cx.state.active = true;
                 on_press.emit(event.clone());
                 cx.request_redraw();
             }
-        } else if !event.pressed && cx.state.active {
+        } else if event.is_release() && cx.state.active {
             cx.state.active = false;
             cx.request_redraw();
 
@@ -68,46 +80,6 @@ impl Div {
 impl Parent for Div {
     fn add_child(&mut self, child: impl View) {
         self.children.push(Node::new(child));
-    }
-}
-
-pub struct DivEvents<'a> {
-    div: &'a mut Div,
-}
-
-impl<'a> DivEvents<'a> {
-    pub fn press<'b>(
-        &mut self,
-        cx: Scope<'b>,
-        callback: impl FnMut(&PointerEvent) + 'b,
-    ) -> &mut Self {
-        self.div
-            .on_press
-            .get_or_insert_with(|| EventSignal::new())
-            .subscribe(cx, callback);
-
-        self
-    }
-
-    pub fn release<'b>(
-        &mut self,
-        cx: Scope<'b>,
-        callback: impl FnMut(&PointerEvent) + 'b,
-    ) -> &mut Self {
-        self.div
-            .on_release
-            .get_or_insert_with(|| EventSignal::new())
-            .subscribe(cx, callback);
-
-        self
-    }
-}
-
-impl Events for Div {
-    type Setter<'a> = DivEvents<'a>;
-
-    fn setter(&mut self) -> Self::Setter<'_> {
-        Self::Setter { div: self }
     }
 }
 
@@ -160,24 +132,38 @@ impl View for Div {
         let min_major = axis.major(min_size) - padding * 2.0;
 
         let mut minor = min_minor;
-        let mut major = 0.0f32;
-
-        let mut children = Vec::with_capacity(self.children.len());
 
         // first we need to measure the children to determine their size
-        for (i, child) in self.children.iter().enumerate() {
+        for child in self.children.iter() {
             let child_bc = BoxConstraints {
                 min: axis.pack(0.0, 0.0),
                 max: axis.pack(max_major, max_minor),
             };
             let size = child.layout(cx, child_bc);
-
             let child_minor = axis.minor(size);
+
+            minor = minor.max(child_minor);
+        }
+
+        let mut major = 0.0f32;
+
+        let min_minor = if align_items == AlignItems::Stretch {
+            minor
+        } else {
+            0.0
+        };
+
+        let mut children = Vec::new();
+        for (i, child) in self.children.iter().enumerate() {
+            let child_bc = BoxConstraints {
+                min: axis.pack(0.0, min_minor),
+                max: axis.pack(max_major, max_minor),
+            };
+            let size = child.layout(cx, child_bc);
             let child_major = axis.major(size);
 
             children.push(child_major);
 
-            minor = minor.max(child_minor);
             major += child_major;
 
             if i > 0 {
@@ -185,60 +171,29 @@ impl View for Div {
             }
         }
 
-        major = major.clamp(min_major, max_major);
-
-        tracing::trace!("Div::layout: minor = {}, major = {}", minor, major);
+        major = major.max(min_major);
 
         let child_offsets = justify_content.justify(&children, major, gap);
 
         // now we can layout the children
-        for (i, child) in self.children.iter().enumerate() {
-            let min_minor = if align_items == AlignItems::Stretch {
-                minor
-            } else {
-                0.0
-            };
+        for (i, align_major) in child_offsets.into_iter().enumerate() {
+            let child = &self.children[i];
 
-            let child_bc = BoxConstraints {
-                min: axis.pack(0.0, min_minor),
-                max: axis.pack(max_major, max_minor),
-            };
-            let child_size = child.layout(cx, child_bc);
-
-            let child_minor = axis.minor(child_size);
+            let child_minor = axis.minor(child.size());
 
             let align_minor = align_items.align(0.0, minor, child_minor);
-            let align_major = child_offsets[i];
 
             let offset = axis.pack(align_major, align_minor);
             child.set_offset(offset + padding);
         }
 
         let size = axis.pack(major, minor) + padding * 2.0;
-        tracing::trace!("Div::layout: size = {:?}", size);
 
         size
     }
 
     fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
-        tracing::trace!("Div::draw: rect = {:?}", cx.rect());
-
-        let range = 0.0..cx.rect().max.min_element() / 2.0;
-        let border_radius = cx.style_range("border-radius", range.clone());
-        let border_width = cx.style_range("border-width", range);
-
-        let background = cx.style("background-color");
-        let border_color = cx.style("border-color");
-
-        let quad = Quad {
-            rect: cx.rect(),
-            background,
-            border_radius: [border_radius; 4],
-            border_width,
-            border_color,
-        };
-
-        cx.draw_primitive(quad);
+        cx.draw_quad();
 
         cx.layer(|cx| {
             for child in &self.children {

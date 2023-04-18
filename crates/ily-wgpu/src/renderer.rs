@@ -1,26 +1,38 @@
 use std::cell::RefCell;
 
-use ily_graphics::{Color, Frame, Mesh, Primitive, Quad, TextLayout, TextSection};
+use ily_core::Vec2;
+use ily_graphics::{
+    Color, Frame, ImageData, ImageHandle, Mesh, Primitive, Quad, Rect, Renderer, TextHit,
+    TextSection,
+};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{
-    util::StagingBelt, CompositeAlphaMode, Device, Extent3d, Instance, LoadOp, Operations, Queue,
-    RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, Surface,
-    SurfaceConfiguration, Texture, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureUsages,
+    util::{DeviceExt, StagingBelt},
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, CompositeAlphaMode, Device, Extent3d,
+    FilterMode, Instance, LoadOp, Operations, Queue, RenderPass, RenderPassColorAttachment,
+    RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor,
+    ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureSampleType, TextureUsages, TextureViewDimension,
 };
-use wgpu_glyph::{ab_glyph::FontArc, GlyphBrush, GlyphBrushBuilder};
+use wgpu_glyph::{
+    ab_glyph::{Font, FontArc, ScaleFont},
+    GlyphBrush, GlyphBrushBuilder, GlyphCruncher,
+};
 
-use crate::{Fonts, MeshPipeline, QuadPipeline};
+use crate::{Fonts, MeshPipeline, QuadPipeline, WgpuImage};
 
 const TEXT_FONT: &[u8] = include_bytes!("../../../assets/NotoSans-Medium.ttf");
 const ICON_FONT: &[u8] = include_bytes!("../../../assets/MaterialIcons-Regular.ttf");
 
-pub struct Renderer {
+pub struct WgpuRenderer {
     device: Device,
     queue: Queue,
     config: SurfaceConfiguration,
     surface: Surface,
     msaa_texture: Texture,
+    image_bind_group_layout: BindGroupLayout,
+    default_image: WgpuImage,
     mesh_pipeline: MeshPipeline,
     quad_pipeline: QuadPipeline,
     fonts: Fonts,
@@ -28,7 +40,7 @@ pub struct Renderer {
     staging_belt: StagingBelt,
 }
 
-impl Renderer {
+impl WgpuRenderer {
     pub async unsafe fn new_async(
         window: &(impl HasRawWindowHandle + HasRawDisplayHandle),
         width: u32,
@@ -58,7 +70,10 @@ impl Renderer {
 
         let msaa_texture = Self::create_msaa_texture(&device, config.format, width, height);
 
-        let mesh_pipeline = MeshPipeline::new(&device, config.format);
+        let image_bind_group_layout = Self::create_image_bind_group_layout(&device);
+        let default_image = Self::create_default_image(&device, &queue, &image_bind_group_layout);
+
+        let mesh_pipeline = MeshPipeline::new(&device, &image_bind_group_layout, config.format);
         let quad_pipeline = QuadPipeline::new(&device, config.format);
 
         let mut fonts = Fonts::default();
@@ -83,6 +98,8 @@ impl Renderer {
             msaa_texture,
             mesh_pipeline,
             quad_pipeline,
+            image_bind_group_layout,
+            default_image,
             fonts,
             glyph_brush: RefCell::new(glyph_brush),
             staging_belt,
@@ -95,13 +112,6 @@ impl Renderer {
         height: u32,
     ) -> Self {
         pollster::block_on(Self::new_async(window, width, height))
-    }
-
-    pub fn text_layout(&mut self) -> impl TextLayout + '_ {
-        crate::text::TextLayout {
-            fonts: &self.fonts,
-            glyph: &self.glyph_brush,
-        }
     }
 
     fn create_msaa_texture(
@@ -126,6 +136,99 @@ impl Renderer {
         })
     }
 
+    fn create_image_bind_group_layout(device: &Device) -> BindGroupLayout {
+        device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("Ily Image Bind Group Layout"),
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    fn create_image(
+        device: &Device,
+        queue: &Queue,
+        layout: &BindGroupLayout,
+        width: u32,
+        height: u32,
+        data: &[u8],
+    ) -> WgpuImage {
+        let texture = device.create_texture_with_data(
+            queue,
+            &TextureDescriptor {
+                label: Some("Ily Texture"),
+                size: Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba8Unorm,
+                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+                view_formats: &[],
+            },
+            data,
+        );
+        let view = texture.create_view(&Default::default());
+        let sampler = device.create_sampler(&SamplerDescriptor {
+            label: Some("Ily Image Sampler"),
+            min_filter: FilterMode::Linear,
+            mag_filter: FilterMode::Linear,
+            ..Default::default()
+        });
+        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Ily Bind Group"),
+            layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&sampler),
+                },
+            ],
+        });
+
+        WgpuImage {
+            texture,
+            view,
+            sampler,
+            bind_group,
+        }
+    }
+
+    fn create_default_image(device: &Device, queue: &Queue, layout: &BindGroupLayout) -> WgpuImage {
+        let data = vec![0; 4];
+        Self::create_image(device, queue, layout, 1, 1, &data)
+    }
+
+    pub fn device(&self) -> &Device {
+        &self.device
+    }
+
+    pub fn queue(&self) -> &Queue {
+        &self.queue
+    }
+
     pub fn resize(&mut self, width: u32, height: u32) {
         self.config.width = width;
         self.config.height = height;
@@ -138,17 +241,17 @@ impl Renderer {
         );
     }
 
-    pub fn prepare_mesh(&mut self, mesh: &Mesh, mesh_index: &mut usize) {
+    fn prepare_mesh(&mut self, mesh: &Mesh, mesh_index: &mut usize) {
         (self.mesh_pipeline).prepare_mesh(&self.device, &self.queue, mesh, *mesh_index);
         *mesh_index += 1;
     }
 
-    pub fn prepare_quad(&mut self, quad: &Quad, quad_index: &mut usize) {
+    fn prepare_quad(&mut self, quad: &Quad, quad_index: &mut usize) {
         (self.quad_pipeline).prepare_quad(&self.device, &self.queue, quad, *quad_index);
         *quad_index += 1;
     }
 
-    pub fn prepare_primitive(
+    fn prepare_primitive(
         &mut self,
         primitive: &Primitive,
         mesh_index: &mut usize,
@@ -161,7 +264,7 @@ impl Renderer {
         }
     }
 
-    pub fn prepare_frame(&mut self, frame: &Frame) {
+    fn prepare_frame(&mut self, frame: &Frame) {
         let mut mesh_index = 0;
         let mut quad_index = 0;
         frame.visit_primitives(|primitive| {
@@ -169,22 +272,22 @@ impl Renderer {
         });
     }
 
-    pub fn render_quad<'a>(&'a self, pass: &mut RenderPass<'a>, index: &mut usize) {
+    fn render_quad<'a>(&'a self, pass: &mut RenderPass<'a>, index: &mut usize) {
         self.quad_pipeline.render(pass, *index);
         *index += 1;
     }
 
-    pub fn render_mesh<'a>(&'a self, pass: &mut RenderPass<'a>, index: &mut usize) {
-        self.mesh_pipeline.render(pass, *index);
+    fn render_mesh<'a>(&'a self, pass: &mut RenderPass<'a>, index: &mut usize) {
+        self.mesh_pipeline.render(pass, &self.default_image, *index);
         *index += 1;
     }
 
-    pub fn render_text<'a>(&self, text: &TextSection) {
+    fn render_text<'a>(&self, text: &TextSection) {
         let section = self.fonts.convert_section(text);
         self.glyph_brush.borrow_mut().queue(section);
     }
 
-    pub fn render_primitive<'a>(
+    fn render_primitive<'a>(
         &'a self,
         pass: &mut RenderPass<'a>,
         primitive: &Primitive,
@@ -259,5 +362,96 @@ impl Renderer {
         self.queue.submit(Some(encoder.finish()));
         target.present();
         self.staging_belt.recall();
+    }
+}
+
+impl Renderer for WgpuRenderer {
+    fn scale(&self) -> f32 {
+        1.0
+    }
+
+    fn create_image(&self, data: &ImageData) -> ImageHandle {
+        let image = Self::create_image(
+            &self.device,
+            &self.queue,
+            &self.image_bind_group_layout,
+            data.width(),
+            data.height(),
+            data.pixels(),
+        );
+
+        ImageHandle::new(image, data.width(), data.height())
+    }
+
+    fn messure_text(&self, section: &TextSection) -> Option<Rect> {
+        let section = self.fonts.convert_section(section);
+        let mut glyph_brush = self.glyph_brush.borrow_mut();
+        let bounds = glyph_brush.glyph_bounds(&section)?;
+
+        Some(Rect {
+            min: Vec2::new(bounds.min.x, bounds.min.y),
+            max: Vec2::new(bounds.max.x, bounds.max.y),
+        })
+    }
+
+    fn hit_text(&self, section: &TextSection, position: Vec2) -> Option<TextHit> {
+        let mut glyph_brush = self.glyph_brush.borrow_mut();
+        let font_id = if let Some(font) = &section.font {
+            self.fonts.find_font(font)
+        } else {
+            wgpu_glyph::FontId::default()
+        };
+
+        let font = glyph_brush.fonts()[font_id.0].clone();
+        let scaled = font.into_scaled(section.scale);
+        let section = self.fonts.convert_section(section);
+
+        let mut closest = None::<TextHit>;
+
+        for glyph in glyph_brush.glyphs(section) {
+            let wgpu_glyph::SectionGlyph {
+                ref glyph,
+                byte_index,
+                ..
+            } = *glyph;
+
+            let min = Vec2::new(
+                glyph.position.x - scaled.h_side_bearing(glyph.id),
+                glyph.position.y - scaled.ascent(),
+            );
+            let size = Vec2::new(
+                scaled.h_advance(glyph.id),
+                scaled.ascent() - scaled.descent(),
+            );
+
+            let rect = Rect::min_size(min, size);
+            let delta = position - rect.center();
+
+            if rect.contains(position) {
+                return Some(TextHit {
+                    inside: true,
+                    index: byte_index,
+                    delta,
+                });
+            } else {
+                if let Some(ref mut closest) = closest {
+                    if delta.length_squared() < closest.delta.length_squared() {
+                        *closest = TextHit {
+                            inside: false,
+                            index: byte_index,
+                            delta,
+                        };
+                    }
+                } else {
+                    closest = Some(TextHit {
+                        inside: false,
+                        index: byte_index,
+                        delta,
+                    });
+                }
+            }
+        }
+
+        closest
     }
 }

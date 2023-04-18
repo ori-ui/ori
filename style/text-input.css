@@ -1,3 +1,20 @@
 text-input {
+	color: #444444;
+	font-size: 1.5em;
+
+	padding: 6px;
 	
+	border-radius: 5px;
+	border-width: 1px;
+	border-color: #b0b0b0;
+
+	placeholder-color: #d0d0d0;
+}
+
+text-input:hover {
+	border-color: #808080 0.05s;
+}
+
+text-input:focus {
+	border-color: #808080 0.05s;
 }

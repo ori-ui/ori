@@ -1,8 +1,8 @@
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Div, DivEvents, DrawContext, Event, EventContext, Events, LayoutContext,
-    Parent, PointerEvent, Scope, Style, View,
+    BoxConstraints, Div, DrawContext, Event, EventContext, Events, LayoutContext, Parent,
+    PointerEvent, Scope, Style, View,
 };
 
 pub struct Button {
@@ -40,7 +40,7 @@ impl Parent for Button {
 }
 
 impl Events for Button {
-    type Setter<'a> = DivEvents<'a>;
+    type Setter<'a> = <Div as Events>::Setter<'a>;
 
     fn setter(&mut self) -> Self::Setter<'_> {
         Events::setter(&mut self.content)

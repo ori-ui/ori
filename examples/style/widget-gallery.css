@@ -20,3 +20,7 @@ div .column {
 	direction: column;
 	align-items: stretch;
 }
+
+image {
+	max-height: 5em;
+}

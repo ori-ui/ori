@@ -34,12 +34,12 @@ impl Default for Unit {
 impl Unit {
     pub const ZERO: Self = Px(0.0);
 
-    pub fn pixels(self, range: Range<f32>, root_font_size: f32) -> f32 {
+    pub fn pixels(self, range: Range<f32>, scale: f32) -> f32 {
         match self {
             Px(value) => value,
-            Pt(value) => value * 96.0 / 72.0,
+            Pt(value) => value * 96.0 / 72.0 * scale,
             Pc(value) => value * (range.end - range.start) / 100.0,
-            Em(value) => value * root_font_size,
+            Em(value) => value * 16.0 * scale,
         }
     }
 }

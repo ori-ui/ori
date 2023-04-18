@@ -3,6 +3,7 @@ use ily::prelude::*;
 fn ui<'a>(cx: Scope<'a>) -> impl View {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
+    let text = cx.signal(String::new());
 
     let font_size = cx.memo(|| if *checked.get() { 32 } else { 24 });
 
@@ -19,6 +20,10 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
                 <Button on:press=|_| *counter.modify() += 1>
                     <Text text=format!("Counter: {}", counter.get()) />
                 </Button>
+
+                <Image src="examples/images/image.jpg" />
+
+                <TextInput bind:text=text />
             </Div>
         </Div>
     }

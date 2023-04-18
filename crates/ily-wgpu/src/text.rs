@@ -1,8 +1,4 @@
-use std::cell::RefCell;
-
-use ily_core::Vec2;
-use ily_graphics::{Rect, TextAlign, TextHit, TextSection};
-use wgpu_glyph::ab_glyph::{Font, ScaleFont};
+use ily_graphics::{TextAlign, TextSection};
 
 fn convert_h_align(align: TextAlign) -> wgpu_glyph::HorizontalAlign {
     match align {
@@ -44,8 +40,8 @@ impl Fonts {
         let aligned_rect = section.aligned_rect();
         let x = aligned_rect.min.x;
         let y = aligned_rect.min.y;
-        let width = aligned_rect.size().x + 1.0;
-        let height = aligned_rect.size().y + 1.0;
+        let width = aligned_rect.width() + 5.0;
+        let height = aligned_rect.height() + 5.0;
 
         let mut text = wgpu_glyph::Text::new(&section.text)
             .with_color(section.color)
@@ -74,71 +70,6 @@ impl Fonts {
             bounds: (width, height),
             layout,
             text: vec![text],
-        }
-    }
-}
-
-pub struct TextLayout<'a, T: wgpu_glyph::GlyphCruncher> {
-    pub fonts: &'a Fonts,
-    pub glyph: &'a RefCell<T>,
-}
-
-impl<'a, T: wgpu_glyph::GlyphCruncher> ily_graphics::TextLayout for TextLayout<'a, T> {
-    fn bounds(&self, section: &TextSection) -> Option<Rect> {
-        let section = self.fonts.convert_section(section);
-        let bounds = self.glyph.borrow_mut().glyph_bounds(section)?;
-
-        Some(Rect {
-            min: Vec2::new(bounds.min.x, bounds.min.y),
-            max: Vec2::new(bounds.max.x, bounds.max.y),
-        })
-    }
-
-    fn hit(&self, section: &TextSection, postition: Vec2) -> Option<TextHit> {
-        let glyph = self.glyph.borrow_mut();
-        let font_id = if let Some(font) = &section.font {
-            self.fonts.find_font(font)
-        } else {
-            wgpu_glyph::FontId::default()
-        };
-
-        let font = glyph.fonts()[font_id.0].clone().into_scaled(section.scale);
-        let section = self.fonts.convert_section(section);
-
-        let mut closest_distance = f32::INFINITY;
-        let mut closest = None;
-
-        for glyph in self.glyph.borrow_mut().glyphs(section) {
-            let wgpu_glyph::SectionGlyph {
-                ref glyph,
-                byte_index,
-                ..
-            } = *glyph;
-
-            let min = Vec2::new(
-                glyph.position.x - font.h_side_bearing(glyph.id),
-                glyph.position.y - font.ascent(),
-            );
-            let size = Vec2::new(font.h_advance(glyph.id), font.ascent() - font.descent());
-
-            let rect = Rect::min_size(min, size);
-
-            if rect.contains(postition) {
-                return Some(TextHit::Inside(byte_index));
-            } else {
-                let distance = rect.center().distance(postition);
-
-                if distance < closest_distance {
-                    closest_distance = distance;
-                    closest = Some(byte_index);
-                }
-            }
-        }
-
-        if let Some(byte_index) = closest {
-            Some(TextHit::Outside(byte_index))
-        } else {
-            None
         }
     }
 }

@@ -20,8 +20,23 @@ impl Rect {
         }
     }
 
+    pub fn rounded(self) -> Self {
+        Self {
+            min: self.min.round(),
+            max: self.max.round(),
+        }
+    }
+
     pub fn size(self) -> Vec2 {
         self.max - self.min
+    }
+
+    pub fn width(self) -> f32 {
+        self.max.x - self.min.x
+    }
+
+    pub fn height(self) -> f32 {
+        self.max.y - self.min.y
     }
 
     pub fn center(self) -> Vec2 {

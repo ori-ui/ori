@@ -49,7 +49,7 @@ impl QuadInstance {
             }],
         });
 
-        let mesh = Self::quad_mesh(quad);
+        let mesh = Self::quad_mesh(&quad.rounded());
         let vertex_buffer = Self::create_vertex_buffer(device, bytemuck::cast_slice(&mesh));
         let index_buffer = Self::create_index_buffer(device);
 
@@ -102,7 +102,7 @@ impl QuadInstance {
     }
 
     pub fn update(&mut self, device: &Device, queue: &Queue, quad: &Quad) {
-        self.update_vertex_buffer(device, queue, quad);
+        self.update_vertex_buffer(device, queue, &quad.rounded());
     }
 
     fn update_vertex_buffer(&mut self, device: &Device, queue: &Queue, quad: &Quad) {

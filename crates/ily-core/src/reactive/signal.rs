@@ -176,12 +176,14 @@ pub struct Modify<'a, T> {
 impl<'a, T> Deref for Modify<'a, T> {
     type Target = T;
 
+    #[track_caller]
     fn deref(&self) -> &Self::Target {
         self.value.as_ref().unwrap()
     }
 }
 
 impl<'a, T> DerefMut for Modify<'a, T> {
+    #[track_caller]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.value.as_mut().unwrap()
     }

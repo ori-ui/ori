@@ -1,13 +1,64 @@
 use std::{
     cell::RefCell,
-    collections::BTreeMap,
     mem,
     rc::{Rc, Weak},
 };
 
+struct CallbackCollection<T> {
+    callbacks: Vec<WeakCallback<T>>,
+}
+
+impl<T> Default for CallbackCollection<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> CallbackCollection<T> {
+    fn new() -> Self {
+        Self {
+            callbacks: Vec::new(),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.callbacks.len()
+    }
+
+    fn contains(&self, ptr: CallbackPtr<T>) -> bool {
+        for callback in &self.callbacks {
+            if callback.callback.as_ptr() == ptr {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn insert(&mut self, callback: WeakCallback<T>) {
+        if !self.contains(callback.callback.as_ptr()) {
+            self.callbacks.push(callback);
+        }
+    }
+
+    fn remove(&mut self, ptr: CallbackPtr<T>) {
+        let equals = |callback: &WeakCallback<T>| callback.callback.as_ptr() != ptr;
+        self.callbacks.retain(equals);
+    }
+}
+
+impl<T> IntoIterator for CallbackCollection<T> {
+    type Item = WeakCallback<T>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.callbacks.into_iter()
+    }
+}
+
 type RawCallback<T> = dyn FnMut(&T);
 type CallbackPtr<T> = *const RefCell<RawCallback<T>>;
-type Callbacks<T> = RefCell<BTreeMap<CallbackPtr<T>, WeakCallback<T>>>;
+type Callbacks<T> = RefCell<CallbackCollection<T>>;
 
 /// A callback that can be called from any thread.
 #[derive(Clone)]
@@ -104,7 +155,7 @@ pub struct CallbackEmitter<T = ()> {
 impl<T> Default for CallbackEmitter<T> {
     fn default() -> Self {
         Self {
-            callbacks: Rc::new(RefCell::new(BTreeMap::new())),
+            callbacks: Rc::new(RefCell::new(CallbackCollection::new())),
         }
     }
 }
@@ -151,20 +202,19 @@ impl<T> CallbackEmitter<T> {
 
     /// Subscribes a weak callback to the emitter.
     pub fn subscribe_weak(&self, callback: WeakCallback<T>) {
-        let ptr = callback.as_ptr();
-        self.callbacks.borrow_mut().insert(ptr, callback);
+        self.callbacks.borrow_mut().insert(callback);
     }
 
     /// Unsubscribes a callback from the emitter.
     pub fn unsubscribe(&self, ptr: CallbackPtr<T>) {
-        self.callbacks.borrow_mut().remove(&ptr);
+        self.callbacks.borrow_mut().remove(ptr);
     }
 
     /// Clears all the callbacks, and calls them.
     pub fn emit(&self, event: &T) {
         let callbacks = mem::take(&mut *self.callbacks.borrow_mut());
 
-        for callback in callbacks.into_values().rev() {
+        for callback in callbacks.into_iter() {
             if let Some(callback) = callback.upgrade() {
                 callback.emit(event);
             }

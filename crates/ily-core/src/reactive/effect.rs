@@ -1,4 +1,4 @@
-use std::{cell::RefCell, mem, ops::DerefMut, rc::Rc};
+use std::{cell::RefCell, mem, ops::DerefMut, panic::Location, rc::Rc};
 
 use crate::{Scope, WeakCallback, WeakCallbackEmitter};
 
@@ -7,13 +7,16 @@ thread_local! {
 }
 
 struct EffectState<'a> {
+    location: &'static Location<'static>,
     callback: Rc<RefCell<dyn FnMut() + 'a>>,
     dependencies: Vec<WeakCallbackEmitter>,
 }
 
 impl<'a> EffectState<'a> {
+    #[track_caller]
     fn empty() -> Self {
         Self {
+            location: Location::caller(),
             callback: Rc::new(RefCell::new(|| {})),
             dependencies: Vec::new(),
         }
@@ -50,6 +53,7 @@ pub(crate) fn untrack<T>(f: impl FnOnce() -> T) -> T {
     })
 }
 
+#[track_caller]
 pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
     // SAFETY: `Effect` is `!Drop`, so it's safe to use `alloc_unsafe`.
     let effect = unsafe { cx.alloc_unsafe(RefCell::new(EffectState::empty())) };
@@ -71,6 +75,7 @@ pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
             // drop lock the scope to ensure that child scopes stay alive for the duration of the effect
             cx.drop_lock();
             // now we can run the effect
+            tracing::trace!("running effect at {}", effect.location);
             f();
             // we release the lock so that child scopes can be dropped
             cx.release_drop_lock();

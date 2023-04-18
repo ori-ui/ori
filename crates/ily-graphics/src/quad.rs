@@ -1,6 +1,4 @@
-use glam::Vec2;
-
-use crate::{Color, Mesh, Rect, Vertex};
+use crate::{Color, Rect};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Quad {
@@ -24,37 +22,10 @@ impl Default for Quad {
 }
 
 impl Quad {
-    pub fn mesh(self) -> Mesh {
-        let mut mesh = Mesh::new();
-
-        mesh.vertices.push(Vertex {
-            position: self.rect.top_left(),
-            color: self.background,
-            uv: Vec2::new(0.0, 0.0),
-        });
-        mesh.vertices.push(Vertex {
-            position: self.rect.top_right(),
-            color: self.background,
-            uv: Vec2::new(1.0, 0.0),
-        });
-        mesh.vertices.push(Vertex {
-            position: self.rect.bottom_right(),
-            color: self.background,
-            uv: Vec2::new(1.0, 1.0),
-        });
-        mesh.vertices.push(Vertex {
-            position: self.rect.bottom_left(),
-            color: self.background,
-            uv: Vec2::new(0.0, 1.0),
-        });
-
-        mesh.indices.push(0);
-        mesh.indices.push(1);
-        mesh.indices.push(2);
-        mesh.indices.push(0);
-        mesh.indices.push(2);
-        mesh.indices.push(3);
-
-        mesh
+    pub fn rounded(self) -> Self {
+        Self {
+            rect: self.rect.rounded(),
+            ..self
+        }
     }
 }

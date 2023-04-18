@@ -82,49 +82,9 @@ impl TextSection {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TextHit {
-    /// The hit position is inside the text.
-    ///
-    /// The index is the index of the character that was hit.
-    Inside(usize),
-    /// The hit position is outside the text.
-    ///
-    /// The index is the index of the character closest to the hit position.
-    Outside(usize),
-}
-
-impl TextHit {
-    pub const fn index(&self) -> usize {
-        match self {
-            TextHit::Inside(index) => *index,
-            TextHit::Outside(index) => *index,
-        }
-    }
-
-    pub const fn inside(&self) -> Option<bool> {
-        match self {
-            TextHit::Inside(_) => Some(true),
-            _ => None,
-        }
-    }
-
-    pub const fn outside(&self) -> Option<bool> {
-        match self {
-            TextHit::Outside(_) => Some(true),
-            _ => None,
-        }
-    }
-
-    pub const fn is_inside(&self) -> bool {
-        matches!(self, TextHit::Inside(_))
-    }
-}
-
-pub trait TextLayout {
-    /// Calculates the bounds of the text section.
-    fn bounds(&self, section: &TextSection) -> Option<Rect>;
-
-    /// Calculates the hit position of the text section.
-    fn hit(&self, section: &TextSection, postition: Vec2) -> Option<TextHit>;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextHit {
+    pub inside: bool,
+    pub index: usize,
+    pub delta: Vec2,
 }

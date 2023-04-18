@@ -5,6 +5,12 @@ struct Uniforms {
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
 
+@group(1) @binding(0)
+var image: texture_2d<f32>;
+
+@group(1) @binding(1)
+var image_sampler: sampler;
+
 struct VertexInput {
 	@location(0)
 	position: vec2<f32>,
@@ -37,5 +43,5 @@ fn vertex(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-	return in.color;
+	return in.color * textureSample(image, image_sampler, in.uv);
 }

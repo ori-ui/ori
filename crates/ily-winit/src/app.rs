@@ -149,7 +149,7 @@ struct AppState {
     frame: Frame,
     clear_color: Color,
     #[cfg(feature = "wgpu")]
-    renderer: ily_wgpu::Renderer,
+    renderer: ily_wgpu::WgpuRenderer,
 }
 
 impl AppState {
@@ -159,14 +159,18 @@ impl AppState {
     }
 
     fn event(&mut self, event: &Event) {
-        (self.root).event_root(self.style_loader.style(), &self.request_redraw, event);
+        self.root.event_root(
+            self.style_loader.style(),
+            &self.renderer,
+            &self.request_redraw,
+            event,
+        );
     }
 
     fn layout(&mut self) {
         let style = self.style_loader.style();
         let size = self.window_size();
-        let text_layout = &mut self.renderer.text_layout();
-        (self.root).layout_root(style, text_layout, size, &self.request_redraw);
+        (self.root).layout_root(style, &self.renderer, size, &self.request_redraw);
     }
 
     fn draw(&mut self) {
@@ -174,7 +178,7 @@ impl AppState {
 
         self.frame.clear();
         let style = self.style_loader.style();
-        (self.root).draw_root(style, &mut self.frame, &self.request_redraw);
+        (self.root).draw_root(style, &mut self.frame, &self.renderer, &self.request_redraw);
 
         #[cfg(feature = "wgpu")]
         self.renderer.render_frame(&self.frame, self.clear_color);
@@ -195,7 +199,7 @@ impl App {
         #[cfg(feature = "wgpu")]
         let renderer = {
             let size = window.inner_size();
-            unsafe { ily_wgpu::Renderer::new(window.as_ref(), size.width, size.height) }
+            unsafe { ily_wgpu::WgpuRenderer::new(window.as_ref(), size.width, size.height) }
         };
 
         let builder = self.builder.take().unwrap();
@@ -219,8 +223,6 @@ impl App {
 
             match event {
                 WinitEvent::RedrawRequested(_) => {
-                    tracing::debug!("redrawing app");
-
                     state.draw();
                 }
                 WinitEvent::MainEventsCleared => match state.style_loader.reload() {

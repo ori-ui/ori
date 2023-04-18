@@ -1,10 +1,12 @@
 use glam::Vec2;
 use ily_graphics::{Rect, TextSection};
+use ily_macro::Build;
 
-use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Style, View};
+use crate::{BoxConstraints, Context, DrawContext, LayoutContext, Style, View};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Build)]
 pub struct Text {
+    #[prop]
     text: String,
 }
 
@@ -25,24 +27,6 @@ impl Text {
     pub fn text(mut self, text: impl Into<String>) -> Self {
         self.text = text.into();
         self
-    }
-}
-
-pub struct TextProperties<'a> {
-    text: &'a mut Text,
-}
-
-impl<'a> TextProperties<'a> {
-    pub fn text(&mut self, text: impl Into<String>) {
-        self.text.text = text.into();
-    }
-}
-
-impl Properties for Text {
-    type Setter<'a> = TextProperties<'a>;
-
-    fn setter(&mut self) -> Self::Setter<'_> {
-        TextProperties { text: self }
     }
 }
 
@@ -73,7 +57,7 @@ impl View for Text {
             color: cx.style("color"),
         };
 
-        let bounds = cx.text_bounds(&section).unwrap_or_default();
+        let bounds = cx.messure_text(&section).unwrap_or_default();
         bounds.size()
     }
 

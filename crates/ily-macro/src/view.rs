@@ -227,7 +227,7 @@ fn event(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStr
 
 fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStream {
     quote! {
-        <#name as ily::core::Bindable>::setter(&mut view).#key(#context, #value);
+        <#name as ily::core::Bindings>::setter(&mut view).#key(#context, #value);
     }
 }
 

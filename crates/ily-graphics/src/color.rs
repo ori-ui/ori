@@ -75,6 +75,12 @@ impl Color {
                 color.g = u8::from_str_radix(&hex[2..4], 16).ok()? as f32 / 255.0;
                 color.b = u8::from_str_radix(&hex[4..6], 16).ok()? as f32 / 255.0;
             }
+            8 => {
+                color.r = u8::from_str_radix(&hex[0..2], 16).ok()? as f32 / 255.0;
+                color.g = u8::from_str_radix(&hex[2..4], 16).ok()? as f32 / 255.0;
+                color.b = u8::from_str_radix(&hex[4..6], 16).ok()? as f32 / 255.0;
+                color.a = u8::from_str_radix(&hex[6..8], 16).ok()? as f32 / 255.0;
+            }
             _ => return None,
         }
 
@@ -92,6 +98,10 @@ impl Color {
             (self.g * 255.0) as u8,
             (self.b * 255.0) as u8,
         )
+    }
+
+    pub fn is_translucent(self) -> bool {
+        self.a < 1.0
     }
 
     pub fn to_linear(self) -> [f32; 4] {

@@ -186,18 +186,27 @@ pub fn trans(
 /// A [`Style`](super::Style) attribute value.
 #[derive(Clone, Debug)]
 pub enum StyleAttributeValue {
-    /// A string value, eg. `red`.
+    /// A string value, eg. `"hello"`.
     String(String),
+    /// An enum value, eg. `red` or `space-between`.
+    Enum(String),
     /// A length value, eg. `10px` or `10pt`.
     Unit(Unit),
     /// A color value, eg. `#ff0000`.
     Color(Color),
 }
 
+impl StyleAttributeValue {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::Enum(value) if value == "none")
+    }
+}
+
 impl Display for StyleAttributeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(value) => write!(f, "{}", value),
+            Self::String(value) => write!(f, "\"{}\"", value),
+            Self::Enum(value) => write!(f, "{}", value),
             Self::Unit(value) => write!(f, "{}", value),
             Self::Color(value) => write!(f, "{}", value),
         }
@@ -258,9 +267,19 @@ pub trait FromStyleAttribute: Sized {
 impl<T: StyleAttributeEnum> FromStyleAttribute for T {
     fn from_attribute(value: StyleAttributeValue) -> Option<Self> {
         match value {
-            StyleAttributeValue::String(value) => T::from_str(&value),
+            StyleAttributeValue::Enum(value) => T::from_str(&value),
             _ => None,
         }
+    }
+}
+
+impl<T: FromStyleAttribute> FromStyleAttribute for Option<T> {
+    fn from_attribute(value: StyleAttributeValue) -> Option<Self> {
+        if value.is_none() {
+            return Some(None);
+        }
+
+        T::from_attribute(value).map(Some)
     }
 }
 

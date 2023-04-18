@@ -1,5 +1,5 @@
 use glam::Vec2;
-use ily_graphics::TextSection;
+use ily_graphics::{Rect, TextSection};
 
 use crate::{BoxConstraints, DrawContext, LayoutContext, Properties, Style, View};
 
@@ -58,25 +58,19 @@ impl View for Text {
     }
 
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let font: String = cx.style("font");
         let font_size = cx.style_range("font-size", 0.0..bc.max.y);
-        let color = cx.style("color");
-        let h_align = cx.style("text-align");
-        let v_align = cx.style("text-valign");
-        let wrap = cx.style("text-wrap");
 
         *state = font_size;
 
         let section = TextSection {
-            position: Vec2::ZERO,
-            bounds: bc.max,
+            rect: Rect::min_size(Vec2::ZERO, bc.max),
             scale: font_size,
-            h_align,
-            v_align,
-            wrap,
+            h_align: cx.style("text-align"),
+            v_align: cx.style("text-valign"),
+            wrap: cx.style("text-wrap"),
             text: self.text.clone(),
-            font: (font.is_empty()).then(|| font),
-            color,
+            font: cx.style("font"),
+            color: cx.style("color"),
         };
 
         let bounds = cx.text_bounds(&section).unwrap_or_default();
@@ -84,25 +78,16 @@ impl View for Text {
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        let font: String = cx.style("font");
-        let color = cx.style("color");
-        let h_align = cx.style("text-align");
-        let v_align = cx.style("text-valign");
-        let wrap = cx.style("text-wrap");
-
-        let mut section = TextSection {
+        let section = TextSection {
+            rect: cx.rect(),
             scale: *state,
-            h_align,
-            v_align,
-            wrap,
+            h_align: cx.style("text-align"),
+            v_align: cx.style("text-valign"),
+            wrap: cx.style("text-wrap"),
             text: self.text.clone(),
-            font: (font.is_empty()).then(|| font),
-            color,
-            ..Default::default()
+            font: cx.style("font"),
+            color: cx.style("color"),
         };
-
-        section.set_rect(cx.rect());
-        section.bounds += Vec2::ONE;
 
         cx.draw_primitive(section);
     }

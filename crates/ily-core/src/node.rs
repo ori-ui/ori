@@ -191,10 +191,12 @@ impl Node {
             }
         }
 
+        let selectors = node_state.selectors(&cx.selectors.elements);
         let mut cx = EventContext {
             style: cx.style,
-            selectors: &node_state.selectors(&cx.selectors.elements),
             state: &mut node_state,
+            root_font_size: cx.root_font_size,
+            selectors: &selectors,
             request_redraw: cx.request_redraw,
         };
 
@@ -210,6 +212,7 @@ impl Node {
         let mut cx = LayoutContext {
             style: cx.style,
             state: &mut node_state,
+            root_font_size: cx.root_font_size,
             selectors: &selectors,
             text_layout: cx.text_layout,
             request_redraw: cx.request_redraw,
@@ -232,9 +235,10 @@ impl Node {
         let selectors = node_state.selectors(&cx.selectors.elements);
         let mut cx = DrawContext {
             style: cx.style,
-            selectors: &selectors,
-            frame: cx.frame,
             state: &mut node_state,
+            frame: cx.frame,
+            root_font_size: cx.root_font_size,
+            selectors: &selectors,
             request_redraw: cx.request_redraw,
         };
 
@@ -263,8 +267,9 @@ impl Node {
         let selectors = node_state.selectors(&StyleElements::new());
         let mut cx = EventContext {
             style,
-            selectors: &selectors,
             state: &mut node_state,
+            root_font_size: 16.0,
+            selectors: &selectors,
             request_redraw,
         };
 
@@ -286,6 +291,7 @@ impl Node {
         let mut cx = LayoutContext {
             style,
             state: &mut node_state,
+            root_font_size: 16.0,
             selectors: &selectors,
             text_layout,
             request_redraw,
@@ -308,9 +314,10 @@ impl Node {
         let selectors = node_state.selectors(&StyleElements::new());
         let mut cx = DrawContext {
             style,
-            selectors: &selectors,
-            frame,
             state: &mut node_state,
+            frame,
+            root_font_size: 16.0,
+            selectors: &selectors,
             request_redraw,
         };
 

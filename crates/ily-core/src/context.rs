@@ -11,6 +11,7 @@ use crate::{
 pub struct EventContext<'a> {
     pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
+    pub root_font_size: f32,
     pub selectors: &'a StyleSelectors,
     pub request_redraw: &'a WeakCallback,
 }
@@ -18,6 +19,7 @@ pub struct EventContext<'a> {
 pub struct LayoutContext<'a> {
     pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
+    pub root_font_size: f32,
     pub selectors: &'a StyleSelectors,
     pub text_layout: &'a dyn TextLayout,
     pub request_redraw: &'a WeakCallback,
@@ -37,6 +39,7 @@ pub struct DrawContext<'a> {
     pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
     pub frame: &'a mut Frame,
+    pub root_font_size: f32,
     pub selectors: &'a StyleSelectors,
     pub request_redraw: &'a WeakCallback,
 }
@@ -52,6 +55,7 @@ impl<'a> DrawContext<'a> {
                 style: self.style,
                 selectors: self.selectors,
                 frame,
+                root_font_size: self.root_font_size,
                 state: self.state,
                 request_redraw: self.request_redraw,
             };
@@ -78,26 +82,27 @@ impl<'a> DerefMut for DrawContext<'a> {
 macro_rules! context {
     ($name:ident) => {
         impl<'a> $name<'a> {
-            pub fn get_style_value_and_transition<T: FromStyleAttribute + Default + 'static>(
+            fn get_style_value_and_transition<T: FromStyleAttribute + Default + 'static>(
                 &self,
                 key: &str,
-            ) -> (T, Option<StyleTransition>) {
+            ) -> Option<(T, Option<StyleTransition>)> {
                 if let Some(result) = self.state.style.attributes.get_value_and_transition(key) {
-                    return result;
+                    return Some(result);
                 }
 
                 if let Some(result) = self.style.get_value_and_transition(self.selectors, key) {
-                    return result;
+                    return Some(result);
                 }
 
-                (T::default(), None)
+                None
             }
 
             /// Get the value of a style attribute, if it has a transition, the value will be
             /// interpolated between the current value and the new value.
             #[track_caller]
             pub fn style<T: FromStyleAttribute + Default + 'static>(&mut self, key: &str) -> T {
-                let (value, transition) = self.get_style_value_and_transition(key);
+                let (value, transition) =
+                    self.get_style_value_and_transition(key).unwrap_or_default();
                 self.state.transition(key, value, transition)
             }
 
@@ -108,10 +113,33 @@ macro_rules! context {
             /// `style` which returns a `Unit`.
             #[track_caller]
             pub fn style_range(&mut self, key: &str, range: Range<f32>) -> f32 {
-                let (value, transition) = self.get_style_value_and_transition::<Unit>(key);
+                let (value, transition) = self
+                    .get_style_value_and_transition::<Unit>(key)
+                    .unwrap_or_default();
 
-                let pixels = value.pixels(range);
+                let pixels = value.pixels(range, self.root_font_size);
                 self.state.transition(key, pixels, transition)
+            }
+
+            pub fn style_range_or(
+                &mut self,
+                primary: &str,
+                secondary: &str,
+                range: Range<f32>,
+            ) -> f32 {
+                if let Some((value, transition)) =
+                    self.get_style_value_and_transition::<Unit>(primary)
+                {
+                    let pixels = value.pixels(range, self.root_font_size);
+                    self.state.transition(primary, pixels, transition)
+                } else if let Some((value, transition)) =
+                    self.get_style_value_and_transition::<Unit>(secondary)
+                {
+                    let pixels = value.pixels(range, self.root_font_size);
+                    self.state.transition(secondary, pixels, transition)
+                } else {
+                    0.0
+                }
             }
 
             pub fn style_attribute(&self, key: &str) -> Option<&StyleAttribute> {

@@ -21,7 +21,7 @@ pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     } else {
         quote! {
-            ily::core::Div::zeroed()
+            ily::core::Div::new()
                 #( .child(#nodes) )*
         }
     };

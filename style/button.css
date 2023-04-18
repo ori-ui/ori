@@ -1,5 +1,5 @@
 button {
-	background: #b4f8c8;
+	background-color: #ffaebc;
 	border-radius: 5px;
 
 	padding: 6px;
@@ -9,15 +9,15 @@ button {
 }
 
 button:hover {
-	background: #a4e8b8 0.05s;
+	background-color: #f4a4b2;
 }
 
 button:active {
-	background: #94d8a8;
+	background-color: #e89aa8 0.02s;
 }
 
 button text {
-	font-size: 24px;
+	font-size: 1.5em;
 	color: #444444;
 	text-align: center;
 	text-valign: center;

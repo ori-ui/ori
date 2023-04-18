@@ -34,6 +34,13 @@ impl Display for StyleLoadError {
     }
 }
 
+#[macro_export]
+macro_rules! include_stylesheet {
+    ($($tt:tt)*) => {
+        <$crate::Stylesheet as ::std::str::FromStr>::from_str(include_str!($($tt)*)).unwrap()
+    };
+}
+
 /// A style sheet.
 ///
 /// A sheet is a list of [`StyleRule`]s.

@@ -111,3 +111,22 @@ impl<V: View> View for SharedSignal<V> {
         self.get().draw(state, cx);
     }
 }
+
+impl View for () {
+    type State = ();
+
+    fn build(&self) -> Self::State {}
+
+    fn event(&self, _state: &mut Self::State, _cx: &mut EventContext, _event: &Event) {}
+
+    fn layout(
+        &self,
+        _state: &mut Self::State,
+        _cx: &mut LayoutContext,
+        bc: BoxConstraints,
+    ) -> Vec2 {
+        bc.min
+    }
+
+    fn draw(&self, _state: &mut Self::State, _cx: &mut DrawContext) {}
+}

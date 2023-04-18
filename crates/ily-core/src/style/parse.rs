@@ -30,6 +30,7 @@ fn parse_unit(pair: Pair<'_, Rule>) -> Unit {
         Some(Rule::Px) | None => Unit::Px(number),
         Some(Rule::Pt) => Unit::Pt(number),
         Some(Rule::Pc) => Unit::Pc(number),
+        Some(Rule::Em) => Unit::Em(number),
         _ => unreachable!(),
     }
 }
@@ -72,7 +73,11 @@ fn parse_value(pair: Pair<'_, Rule>) -> (StyleAttributeValue, Option<StyleTransi
     let value = pairs.next().unwrap();
     let transition = parse_transition(pairs.next());
     let value = match value.as_rule() {
-        Rule::String => StyleAttributeValue::String(value.as_str().to_string()),
+        Rule::String => {
+            let value = &value.as_str()[1..value.as_str().len() - 1];
+            StyleAttributeValue::String(value.to_string())
+        }
+        Rule::Enum => StyleAttributeValue::Enum(value.as_str().to_string()),
         Rule::Unit => StyleAttributeValue::Unit(parse_unit(value)),
         Rule::Color => StyleAttributeValue::Color(parse_color(value)),
         _ => unreachable!(),

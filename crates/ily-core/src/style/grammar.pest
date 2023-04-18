@@ -11,19 +11,21 @@ Number = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? ~ (^"e" ~ ("-" | "-") ~ ASCII_D
 Px = { "px" }
 Pt = { "pt" }
 Pc = { "pc" | "%" }
-Unit = { Number ~ (Px | Pt | Pc)? }
-HexColor = @{ "#" ~ (ASCII_HEX_DIGIT{6} | ASCII_HEX_DIGIT{3, 4}) }
+Em = { "em" }
+Unit = { Number ~ (Px | Pt | Pc | Em)? }
+HexColor = @{ "#" ~ (ASCII_HEX_DIGIT{8} | ASCII_HEX_DIGIT{6} | ASCII_HEX_DIGIT{3, 4}) }
 RgbColor = { "rgb(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
 RgbaColor = { "rgba(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
 Color = { HexColor | RgbColor | RgbaColor }
-String = { Identifier }
+Enum = { Identifier }
+String = { "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
 // transitions
 Transition = _{ Number ~ "s" }
 
 // attribute
 Transitionable = _{ Unit | Color }
-AttributeValue = { Transitionable ~ Transition? | String }
+AttributeValue = { Transitionable ~ Transition? | Enum | String }
 Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 
 // selector

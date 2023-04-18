@@ -1,0 +1,59 @@
+div .result-bar {
+	background-color: #202020a0;
+	height: 20%;
+	width: 100%;
+
+	padding: 0.5em;
+
+	direction: row;
+	justify-content: end;
+	align-items: center;
+}
+
+div .buttons .column {
+	width: 100%;
+	height: 80%;
+
+	direction: column;
+
+	background: #404040;
+}
+
+div .buttons .row {
+	width: 100%;
+	height: 20%;
+
+	direction: row;
+
+	background: #404040;
+}
+
+button {
+	width: 25%;
+	height: 100%;
+
+	border-radius: 0;
+	border-width: 1px;
+	border-color: #000000a0;
+}
+
+button .number {
+	background-color: #a0e7e5d8;
+}
+
+button:hover .number {
+	background-color: #90d7d5;
+}
+
+button:active .number {
+	background-color: #80c7c5 0.02s;
+}
+
+button text {
+	font-size: 2em;
+}
+
+text .result {
+	font-size: 3em;
+	color: #ffffff;
+}

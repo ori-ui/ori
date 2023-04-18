@@ -393,10 +393,13 @@ impl<'a> Scope<'a> {
         self.effect(move || {
             let a = signal_a.get();
             let b = signal_b.get();
+            let mut prev = prev.borrow_mut();
 
-            if *prev.borrow() != a {
+            if *prev != a {
+                *prev = a.clone();
                 signal_b.set(a.as_ref().clone());
-            } else if *prev.borrow() != b {
+            } else if *prev != b {
+                *prev = b.clone();
                 signal_a.set(b.as_ref().clone());
             }
         });

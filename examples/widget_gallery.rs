@@ -27,6 +27,6 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
 fn main() {
     App::new(|cx| ui(cx)) // create a new app with the ui function
         .title("Widget Gallery (examples/widget_gallery.rs)") // set the window title
-        .style("examples/widget-gallery.css") // load a custom stylesheet
+        .style("examples/style/widget-gallery.css") // load a custom stylesheet
         .run(); // run the app
 }

@@ -36,8 +36,9 @@ impl Style {
         self
     }
 
-    pub fn with_class(mut self, class: impl Into<StyleClass>) -> Self {
-        self.classes.add(class.into());
+    pub fn with_class(mut self, class: &str) -> Self {
+        let classes = class.split_whitespace().map(StyleClass::from);
+        self.classes.extend(classes);
         self
     }
 
@@ -131,7 +132,7 @@ pub trait Styleable<T> {
     fn styled(self) -> Styled<T>;
 
     /// Adds a class.
-    fn class(self, class: impl Into<StyleClass>) -> Styled<T>;
+    fn class(self, class: impl AsRef<str>) -> Styled<T>;
 
     /// Adds an attribute.
     fn attr(self, key: &str, builder: impl StyleAttributeBuilder) -> Styled<T>;
@@ -150,8 +151,9 @@ impl<T> Styleable<T> for Styled<T> {
         self
     }
 
-    fn class(mut self, class: impl Into<StyleClass>) -> Styled<T> {
-        self.classes.add(class.into());
+    fn class(mut self, class: impl AsRef<str>) -> Styled<T> {
+        let classes = class.as_ref().split_whitespace().map(StyleClass::from);
+        self.classes.extend(classes);
         self
     }
 
@@ -177,7 +179,7 @@ impl<T> Styleable<T> for T {
         Styled::new(self)
     }
 
-    fn class(self, class: impl Into<StyleClass>) -> Styled<T> {
+    fn class(self, class: impl AsRef<str>) -> Styled<T> {
         Styled::new(self).class(class)
     }
 

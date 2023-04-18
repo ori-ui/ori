@@ -10,8 +10,9 @@ use ily_core::{
     Callback, Event, KeyboardEvent, LoadedStyleKind, Modifiers, Node, PointerEvent, Scope,
     StyleLoader, Stylesheet, Vec2, View, WeakCallback,
 };
-use ily_graphics::Frame;
+use ily_graphics::{Color, Frame};
 use winit::{
+    dpi::LogicalSize,
     event::{Event as WinitEvent, KeyboardInput, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
@@ -27,13 +28,7 @@ const BUILTIN_STYLES: &[&str] = &[
     include_str!("../../../style/checkbox.css"),
 ];
 
-pub struct App {
-    style_loader: StyleLoader,
-    title: String,
-    builder: Option<Box<dyn FnOnce() -> Node>>,
-}
-
-fn init_tracing() -> Result<(), Box<dyn Error>> {
+fn initialize_log() -> Result<(), Box<dyn Error>> {
     let filter = tracing_subscriber::EnvFilter::from_default_env()
         .add_directive("wgpu=warn".parse()?)
         .add_directive("naga=warn".parse()?)
@@ -45,9 +40,18 @@ fn init_tracing() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+pub struct App {
+    style_loader: StyleLoader,
+    title: String,
+    size: Vec2,
+    reziseable: bool,
+    clear_color: Color,
+    builder: Option<Box<dyn FnOnce() -> Node>>,
+}
+
 impl App {
     pub fn new<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
-        init_tracing().unwrap();
+        initialize_log().unwrap();
 
         let builder = Box::new(move || {
             let mut view = None;
@@ -69,6 +73,9 @@ impl App {
         Self {
             style_loader: loader,
             title: "Ily App".to_string(),
+            size: Vec2::new(800.0, 600.0),
+            reziseable: true,
+            clear_color: Color::WHITE,
             builder: Some(builder),
         }
     }
@@ -91,6 +98,45 @@ impl App {
 
         self
     }
+
+    pub fn size(mut self, width: f32, height: f32) -> Self {
+        self.size = Vec2::new(width, height);
+        self
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.size.x = width;
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.size.y = height;
+        self
+    }
+
+    pub fn reziseable(mut self, reziseable: bool) -> Self {
+        self.reziseable = reziseable;
+        self
+    }
+
+    pub fn clear_color(mut self, color: Color) -> Self {
+        self.clear_color = color;
+        self
+    }
+
+    pub fn transparent(self) -> Self {
+        self.clear_color(Color::TRANSPARENT)
+    }
+
+    fn window_builder(&self) -> WindowBuilder {
+        let size = LogicalSize::new(self.size.x, self.size.y);
+
+        WindowBuilder::new()
+            .with_title(&self.title)
+            .with_inner_size(size)
+            .with_resizable(self.reziseable)
+            .with_transparent(self.clear_color.is_translucent())
+    }
 }
 
 struct AppState {
@@ -101,6 +147,7 @@ struct AppState {
     modifiers: Modifiers,
     root: Node,
     frame: Frame,
+    clear_color: Color,
     #[cfg(feature = "wgpu")]
     renderer: ily_wgpu::Renderer,
 }
@@ -130,18 +177,14 @@ impl AppState {
         (self.root).draw_root(style, &mut self.frame, &self.request_redraw);
 
         #[cfg(feature = "wgpu")]
-        self.renderer.render_frame(&self.frame);
+        self.renderer.render_frame(&self.frame, self.clear_color);
     }
 }
 
 impl App {
     pub fn run(mut self) {
         let event_loop = EventLoop::new();
-        let window = WindowBuilder::new()
-            .with_title(self.title)
-            .build(&event_loop)
-            .unwrap();
-        let window = Arc::new(window);
+        let window = Arc::new(self.window_builder().build(&event_loop).unwrap());
 
         let request_redraw = Callback::new({
             let window = window.clone();
@@ -164,6 +207,7 @@ impl App {
             modifiers: Modifiers::default(),
             root: builder(),
             frame: Frame::new(),
+            clear_color: self.clear_color,
             #[cfg(feature = "wgpu")]
             renderer,
         };

@@ -41,10 +41,11 @@ impl Fonts {
     }
 
     pub fn convert_section<'a>(&'a self, section: &'a TextSection) -> wgpu_glyph::Section<'a> {
-        let x = section.position.x;
-        let y = section.position.y;
-        let width = section.bounds.x;
-        let height = section.bounds.y;
+        let aligned_rect = section.aligned_rect();
+        let x = aligned_rect.min.x;
+        let y = aligned_rect.min.y;
+        let width = aligned_rect.size().x + 1.0;
+        let height = aligned_rect.size().y + 1.0;
 
         let mut text = wgpu_glyph::Text::new(&section.text)
             .with_color(section.color)

@@ -141,11 +141,11 @@ impl View for Div {
         let justify_content = cx.style::<JustifyContent>("justify-content");
         let align_items = cx.style::<AlignItems>("align-items");
 
-        let min_width = cx.style_range("min-width", bc.width());
-        let max_width = cx.style_range("max-width", bc.width());
+        let min_width = cx.style_range_or("width", "min-width", bc.width());
+        let max_width = cx.style_range_or("width", "max-width", bc.width());
 
-        let min_height = cx.style_range("min-height", bc.height());
-        let max_height = cx.style_range("max-height", bc.height());
+        let min_height = cx.style_range_or("height", "min-height", bc.height());
+        let max_height = cx.style_range_or("height", "max-height", bc.height());
 
         let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
         let gap = cx.style_range("gap", 0.0..axis.major(bc.max));
@@ -227,7 +227,7 @@ impl View for Div {
         let border_radius = cx.style_range("border-radius", range.clone());
         let border_width = cx.style_range("border-width", range);
 
-        let background = cx.style("background");
+        let background = cx.style("background-color");
         let border_color = cx.style("border-color");
 
         let quad = Quad {

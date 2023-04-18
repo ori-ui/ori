@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 
-use ily_graphics::{Frame, Mesh, Primitive, Quad, TextLayout, TextSection};
+use ily_graphics::{Color, Frame, Mesh, Primitive, Quad, TextLayout, TextSection};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{
-    util::StagingBelt, Device, Extent3d, Instance, LoadOp, Operations, Queue, RenderPass,
-    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, Surface,
+    util::StagingBelt, CompositeAlphaMode, Device, Extent3d, Instance, LoadOp, Operations, Queue,
+    RenderPass, RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, Surface,
     SurfaceConfiguration, Texture, TextureDescriptor, TextureDimension, TextureFormat,
     TextureUsages,
 };
@@ -53,6 +53,7 @@ impl Renderer {
 
         let mut config = surface.get_default_config(&adapter, width, height).unwrap();
         config.format = TextureFormat::Bgra8Unorm;
+        config.alpha_mode = CompositeAlphaMode::Auto;
         surface.configure(&device, &config);
 
         let msaa_texture = Self::create_msaa_texture(&device, config.format, width, height);
@@ -64,8 +65,8 @@ impl Renderer {
         let text_font = FontArc::try_from_slice(TEXT_FONT).unwrap();
         let icon_font = FontArc::try_from_slice(ICON_FONT).unwrap();
 
-        fonts.add_font("NotoSans-Medium");
-        fonts.add_font("MaterialIcons-Regular");
+        fonts.add_font("NotoSans");
+        fonts.add_font("icon");
 
         let mut glyph_brush_builder = GlyphBrushBuilder::using_font(text_font);
         glyph_brush_builder.add_font(icon_font);
@@ -198,7 +199,7 @@ impl Renderer {
         }
     }
 
-    pub fn render_frame(&mut self, frame: &Frame) {
+    pub fn render_frame(&mut self, frame: &Frame, clear_color: Color) {
         let width = self.config.width;
         let height = self.config.height;
         self.quad_pipeline.set_size(&self.queue, width, height);
@@ -220,7 +221,12 @@ impl Renderer {
                 view: &msaa_view,
                 resolve_target: Some(&view),
                 ops: Operations {
-                    load: LoadOp::Clear(wgpu::Color::WHITE),
+                    load: LoadOp::Clear(wgpu::Color {
+                        r: clear_color.r as f64,
+                        g: clear_color.g as f64,
+                        b: clear_color.b as f64,
+                        a: clear_color.a as f64,
+                    }),
                     store: true,
                 },
             })],

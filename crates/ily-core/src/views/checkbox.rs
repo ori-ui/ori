@@ -25,47 +25,31 @@ impl Checkbox {
 
     pub fn bind_checked<'a>(self, cx: Scope<'a>, binding: &'a Signal<bool>) -> Self {
         let signal = cx.alloc(self.checked.clone());
-        cx.bind(signal, binding);
-
+        cx.bind(binding, signal);
         self
     }
 }
 
-pub struct CheckboxBinding<'a> {
-    checkbox: &'a mut Checkbox,
-}
-
-impl<'a> CheckboxBinding<'a> {
-    pub fn checked<'b>(&self, cx: Scope<'b>, binding: &'b Signal<bool>) {
-        let checked = self.checkbox.checked.downgrade();
-        cx.effect(move || {
-            if checked.get_untracked() == Some(binding.get()) {
-                return;
-            }
-
-            checked.set(*binding.get());
-        });
-
-        let checked = self.checkbox.checked.downgrade();
-        cx.effect(move || {
-            if checked.get() == Some(binding.get_untracked()) {
-                return;
-            }
-
-            if let Some(checked) = checked.get() {
-                binding.set(*checked);
-            }
-        });
+const _: () = {
+    pub struct CheckboxBinding<'a> {
+        checkbox: &'a mut Checkbox,
     }
-}
 
-impl Bindable for Checkbox {
-    type Setter<'a> = CheckboxBinding<'a>;
-
-    fn setter(&mut self) -> Self::Setter<'_> {
-        CheckboxBinding { checkbox: self }
+    impl<'a> CheckboxBinding<'a> {
+        pub fn checked<'b>(&self, cx: Scope<'b>, binding: &'b Signal<bool>) {
+            let signal = cx.alloc(self.checkbox.checked.clone());
+            cx.bind(binding, signal);
+        }
     }
-}
+
+    impl Bindable for Checkbox {
+        type Setter<'a> = CheckboxBinding<'a>;
+
+        fn setter(&mut self) -> Self::Setter<'_> {
+            CheckboxBinding { checkbox: self }
+        }
+    }
+};
 
 impl View for Checkbox {
     type State = ();
@@ -122,13 +106,12 @@ impl View for Checkbox {
 
         if *self.checked.get() {
             let section = TextSection {
-                position: cx.rect().center(),
-                bounds: cx.rect().size(),
+                rect: cx.rect(),
                 scale: cx.rect().size().min_element() * 0.8,
                 h_align: TextAlign::Center,
                 v_align: TextAlign::Center,
                 text: String::from(Self::CHECKMARK),
-                font: Some(String::from("MaterialIcons-Regular")),
+                font: Some(String::from("icon")),
                 color,
                 ..Default::default()
             };

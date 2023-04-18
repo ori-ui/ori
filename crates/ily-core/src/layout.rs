@@ -118,6 +118,10 @@ pub enum JustifyContent {
 
 impl JustifyContent {
     pub fn justify(&self, children: &[f32], container_size: f32, gap: f32) -> Vec<f32> {
+        if children.is_empty() {
+            return Vec::new();
+        }
+
         let mut positions = Vec::with_capacity(children.len());
 
         let total_gap = gap * (children.len() - 1) as f32;

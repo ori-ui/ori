@@ -47,8 +47,7 @@ impl TextAlign {
 
 #[derive(Clone, Debug)]
 pub struct TextSection {
-    pub position: Vec2,
-    pub bounds: Vec2,
+    pub rect: Rect,
     pub scale: f32,
     pub h_align: TextAlign,
     pub v_align: TextAlign,
@@ -61,8 +60,7 @@ pub struct TextSection {
 impl Default for TextSection {
     fn default() -> Self {
         Self {
-            position: Vec2::ZERO,
-            bounds: Vec2::splat(f32::INFINITY),
+            rect: Rect::new(Vec2::ZERO, Vec2::splat(f32::INFINITY)),
             scale: 16.0,
             h_align: TextAlign::Start,
             v_align: TextAlign::Start,
@@ -75,12 +73,12 @@ impl Default for TextSection {
 }
 
 impl TextSection {
-    pub fn set_rect(&mut self, rect: Rect) {
-        self.position = Vec2::new(
-            self.h_align.align(rect.min.x, rect.max.x),
-            self.v_align.align(rect.min.y, rect.max.y),
-        );
-        self.bounds = rect.size();
+    pub fn aligned_rect(&self) -> Rect {
+        let x = self.h_align.align(self.rect.min.x, self.rect.max.x);
+        let y = self.v_align.align(self.rect.min.y, self.rect.max.y);
+        let position = Vec2::new(x, y);
+
+        Rect::min_size(position, self.rect.size())
     }
 }
 

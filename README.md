@@ -3,4 +3,10 @@ Ily (pronounced "ellie") is a reactive ui framework for creating native applicat
 
 ## Examples
 A [`calculator`](examples/calculator.rs) made with ily.
+
 ![Calculator image](assets/calculator.png)
+
+## License
+Ily is dual-licensed under either:
+ - MIT
+ - Apache License, Version 2.0

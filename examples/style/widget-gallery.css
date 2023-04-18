@@ -2,6 +2,8 @@ div .widget-gallery {
 	min-width: 100%;
 	min-height: 100%;
 
+	gap: 1em;
+
 	direction: row;
 	justify-content: center;
 	align-items: center;

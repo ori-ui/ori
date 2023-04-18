@@ -1,6 +1,7 @@
 text {
 	font-size: 1em;
 	color: #444444;
+	text-wrap: true;
 	text-align: start;
 	text-valign: start;
 }

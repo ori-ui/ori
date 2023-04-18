@@ -1,5 +1,10 @@
 use ily::prelude::*;
 
+const LONG_TEXT: &str =
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl eget
+tincidunt luctus, nisl nisl aliquet nisl, nec lacinia nisl nisl non nisl. Nulla facilisi. Nulla
+facilisi.";
+
 fn ui<'a>(cx: Scope<'a>) -> impl View {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
@@ -24,6 +29,13 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
                 <Image src="examples/images/image.jpg" />
 
                 <TextInput bind:text=text />
+
+                <Text text=format!("Input: {}", text.get()) />
+            </Div>
+            <Div class="column">
+                <Div style:max-width=Em(5.0)>
+                    <Text text=LONG_TEXT />
+                </Div>
             </Div>
         </Div>
     }

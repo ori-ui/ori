@@ -1,10 +1,4 @@
-use std::{
-    error::Error,
-    fmt::Display,
-    str::FromStr,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{error::Error, fmt::Display, str::FromStr, sync::Arc};
 
 use ily_core::{
     Callback, Event, KeyboardEvent, LoadedStyleKind, Modifiers, Node, PointerEvent, Scope,
@@ -204,7 +198,7 @@ impl App {
 
         let builder = self.builder.take().unwrap();
         let mut state = AppState {
-            window,
+            window: window.clone(),
             style_loader: self.style_loader,
             request_redraw,
             mouse_position: Vec2::ZERO,
@@ -216,100 +210,94 @@ impl App {
             renderer,
         };
 
-        let update_time = Duration::from_secs_f32(1.0 / 2.0);
-
-        event_loop.run(move |event, _, control_flow| {
-            *control_flow = ControlFlow::WaitUntil(Instant::now() + update_time);
-
-            match event {
-                WinitEvent::RedrawRequested(_) => {
-                    state.draw();
-                }
-                WinitEvent::MainEventsCleared => match state.style_loader.reload() {
-                    Ok(reload) if reload => {
-                        tracing::info!("style reloaded");
-                        state.draw();
-                    }
-                    Err(err) => tracing::error!("failed to reload style: {}", err),
-                    _ => {}
-                },
-                WinitEvent::WindowEvent { event, .. } => match event {
-                    WindowEvent::Resized(size)
-                    | WindowEvent::ScaleFactorChanged {
-                        new_inner_size: &mut size,
-                        ..
-                    } => {
-                        #[cfg(feature = "wgpu")]
-                        state.renderer.resize(size.width, size.height);
-                    }
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::CursorMoved { position, .. } => {
-                        state.mouse_position.x = position.x as f32;
-                        state.mouse_position.y = position.y as f32;
-
-                        let event = PointerEvent {
-                            position: state.mouse_position,
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.layout();
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::MouseInput {
-                        button,
-                        state: element_state,
-                        ..
-                    } => {
-                        let event = PointerEvent {
-                            position: state.mouse_position,
-                            button: Some(convert_mouse_button(button)),
-                            pressed: is_pressed(element_state),
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(virtual_keycode),
-                                state: element_state,
-                                ..
-                            },
-                        ..
-                    } => {
-                        let event = KeyboardEvent {
-                            key: convert_key(virtual_keycode),
-                            pressed: is_pressed(element_state),
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::ReceivedCharacter(c) => {
-                        let event = KeyboardEvent {
-                            text: Some(c),
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::ModifiersChanged(new_modifiers) => {
-                        state.modifiers = Modifiers {
-                            shift: new_modifiers.shift(),
-                            ctrl: new_modifiers.ctrl(),
-                            alt: new_modifiers.alt(),
-                            meta: new_modifiers.logo(),
-                        };
-                    }
-                    _ => {}
-                },
-                _ => {}
+        event_loop.run(move |event, _, control_flow| match event {
+            WinitEvent::RedrawRequested(_) => {
+                state.draw();
             }
+            WinitEvent::MainEventsCleared => match state.style_loader.reload() {
+                Ok(reload) if reload => {
+                    tracing::info!("style reloaded");
+                    window.request_redraw();
+                }
+                Err(err) => tracing::error!("failed to reload style: {}", err),
+                _ => {}
+            },
+            WinitEvent::WindowEvent { event, .. } => match event {
+                WindowEvent::Resized(size)
+                | WindowEvent::ScaleFactorChanged {
+                    new_inner_size: &mut size,
+                    ..
+                } => {
+                    #[cfg(feature = "wgpu")]
+                    state.renderer.resize(size.width, size.height);
+                }
+                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                WindowEvent::CursorMoved { position, .. } => {
+                    state.mouse_position.x = position.x as f32;
+                    state.mouse_position.y = position.y as f32;
+
+                    let event = PointerEvent {
+                        position: state.mouse_position,
+                        modifiers: state.modifiers,
+                        ..Default::default()
+                    };
+
+                    state.layout();
+                    state.event(&Event::new(event));
+                }
+                WindowEvent::MouseInput {
+                    button,
+                    state: element_state,
+                    ..
+                } => {
+                    let event = PointerEvent {
+                        position: state.mouse_position,
+                        button: Some(convert_mouse_button(button)),
+                        pressed: is_pressed(element_state),
+                        modifiers: state.modifiers,
+                        ..Default::default()
+                    };
+
+                    state.event(&Event::new(event));
+                }
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            virtual_keycode: Some(virtual_keycode),
+                            state: element_state,
+                            ..
+                        },
+                    ..
+                } => {
+                    let event = KeyboardEvent {
+                        key: convert_key(virtual_keycode),
+                        pressed: is_pressed(element_state),
+                        modifiers: state.modifiers,
+                        ..Default::default()
+                    };
+
+                    state.event(&Event::new(event));
+                }
+                WindowEvent::ReceivedCharacter(c) => {
+                    let event = KeyboardEvent {
+                        text: Some(c),
+                        modifiers: state.modifiers,
+                        ..Default::default()
+                    };
+
+                    state.event(&Event::new(event));
+                }
+                WindowEvent::ModifiersChanged(new_modifiers) => {
+                    state.modifiers = Modifiers {
+                        shift: new_modifiers.shift(),
+                        ctrl: new_modifiers.ctrl(),
+                        alt: new_modifiers.alt(),
+                        meta: new_modifiers.logo(),
+                    };
+                }
+                _ => {}
+            },
+            _ => {}
         });
     }
 }

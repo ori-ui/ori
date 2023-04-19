@@ -20,6 +20,14 @@ impl Rect {
         }
     }
 
+    pub fn center_size(center: Vec2, size: Vec2) -> Self {
+        let half_size = size / 2.0;
+        Self {
+            min: center - half_size,
+            max: center + half_size,
+        }
+    }
+
     pub fn rounded(self) -> Self {
         Self {
             min: self.min.round(),

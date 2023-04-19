@@ -212,6 +212,16 @@ pub trait Context {
         self.request_redraw();
     }
 
+    fn activate(&mut self) {
+        self.state_mut().active = true;
+        self.request_redraw();
+    }
+
+    fn deactivate(&mut self) {
+        self.state_mut().active = false;
+        self.request_redraw();
+    }
+
     fn local_rect(&self) -> Rect {
         self.state().local_rect
     }

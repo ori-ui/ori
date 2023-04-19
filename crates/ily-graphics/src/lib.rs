@@ -1,4 +1,5 @@
 mod color;
+mod curve;
 mod frame;
 mod image;
 mod mesh;
@@ -9,6 +10,7 @@ mod text;
 
 pub use self::image::*;
 pub use color::*;
+pub use curve::*;
 pub use frame::*;
 pub use mesh::*;
 pub use quad::*;

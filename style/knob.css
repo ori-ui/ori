@@ -1,0 +1,15 @@
+knob {
+	size: 3em;
+	background-color: #f0f0f0;
+	border-width: 1px;
+	border-color: #aaaaaa;
+	color: #ffaebc;
+}
+
+knob:hover {
+	background-color: #e8e8e8;
+}
+
+knob:active {
+	background-color: #e0e0e0;
+}

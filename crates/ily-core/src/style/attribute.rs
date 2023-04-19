@@ -260,6 +260,12 @@ where
     }
 }
 
+impl<T: StyleAttributeEnum> From<T> for StyleAttributeValue {
+    fn from(value: T) -> Self {
+        Self::Enum(String::from(value.to_str()))
+    }
+}
+
 pub trait FromStyleAttribute: Sized {
     fn from_attribute(value: StyleAttributeValue) -> Option<Self>;
 }
@@ -312,6 +318,7 @@ impl FromStyleAttribute for Color {
 
 pub trait StyleAttributeEnum: Sized {
     fn from_str(s: &str) -> Option<Self>;
+    fn to_str(&self) -> &str;
 }
 
 impl StyleAttributeEnum for bool {
@@ -320,6 +327,14 @@ impl StyleAttributeEnum for bool {
             "true" => Some(true),
             "false" => Some(false),
             _ => None,
+        }
+    }
+
+    fn to_str(&self) -> &str {
+        if *self {
+            "true"
+        } else {
+            "false"
         }
     }
 }
@@ -333,14 +348,12 @@ impl StyleAttributeEnum for TextAlign {
             _ => None,
         }
     }
-}
 
-impl Into<StyleAttributeValue> for TextAlign {
-    fn into(self) -> StyleAttributeValue {
+    fn to_str(&self) -> &str {
         match self {
-            Self::Start => "start".into(),
-            Self::Center => "center".into(),
-            Self::End => "end".into(),
+            Self::Start => "start",
+            Self::Center => "center",
+            Self::End => "end",
         }
     }
 }

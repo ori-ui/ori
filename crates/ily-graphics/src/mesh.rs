@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bytemuck::{Pod, Zeroable};
 use glam::Vec2;
 
@@ -29,6 +31,14 @@ impl Vertex {
             color: Color::WHITE,
         }
     }
+
+    pub const fn new_color(position: Vec2, color: Color) -> Self {
+        Self {
+            position,
+            uv: Vec2::ZERO,
+            color,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -45,6 +55,26 @@ impl Mesh {
             indices: Vec::new(),
             image: None,
         }
+    }
+
+    pub fn circle(center: Vec2, radius: f32, color: Color) -> Self {
+        let mut mesh = Mesh::new();
+
+        let center = Vertex::new_color(center, color);
+        mesh.vertices.push(center);
+
+        for i in 0..=60 {
+            let angle = i as f32 / 60.0 * PI * 2.0;
+            let x = angle.cos();
+            let y = angle.sin();
+            let vertex = Vertex::new_color(center.position + Vec2::new(x, y) * radius, color);
+            mesh.vertices.push(vertex);
+            mesh.indices.push(0);
+            mesh.indices.push(i as u32 + 1);
+            mesh.indices.push(i as u32 + 2);
+        }
+
+        mesh
     }
 
     pub fn quad(rect: Rect) -> Self {

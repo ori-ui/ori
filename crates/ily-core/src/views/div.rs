@@ -58,13 +58,11 @@ impl Div {
     fn handle_pointer_event(&self, cx: &mut EventContext, event: &PointerEvent) -> bool {
         if event.is_press() && cx.hovered() {
             if let Some(on_press) = &self.on_press {
-                cx.state.active = true;
+                cx.activate();
                 on_press.emit(event.clone());
-                cx.request_redraw();
             }
         } else if event.is_release() && cx.state.active {
-            cx.state.active = false;
-            cx.request_redraw();
+            cx.deactivate();
 
             if let Some(on_release) = &self.on_release {
                 on_release.emit(event.clone());

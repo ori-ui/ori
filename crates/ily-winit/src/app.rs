@@ -21,6 +21,7 @@ const BUILTIN_STYLES: &[&str] = &[
     include_str!("../../../style/text-input.css"),
     include_str!("../../../style/button.css"),
     include_str!("../../../style/checkbox.css"),
+    include_str!("../../../style/knob.css"),
 ];
 
 struct EventLoopSender(EventLoopProxy<Event>);

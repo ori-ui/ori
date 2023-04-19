@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use glam::Vec2;
 
-use crate::{StyleAttributeEnum, StyleAttributeValue};
+use crate::StyleAttributeEnum;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoxConstraints {
@@ -95,13 +95,11 @@ impl StyleAttributeEnum for Axis {
             _ => None,
         }
     }
-}
 
-impl Into<StyleAttributeValue> for Axis {
-    fn into(self) -> StyleAttributeValue {
+    fn to_str(&self) -> &str {
         match self {
-            Axis::Horizontal => StyleAttributeValue::String("horizontal".to_string()),
-            Axis::Vertical => StyleAttributeValue::String("vertical".to_string()),
+            Axis::Horizontal => "horizontal",
+            Axis::Vertical => "vertical",
         }
     }
 }
@@ -206,19 +204,15 @@ impl StyleAttributeEnum for JustifyContent {
             _ => None,
         }
     }
-}
 
-impl Into<StyleAttributeValue> for JustifyContent {
-    fn into(self) -> StyleAttributeValue {
+    fn to_str(&self) -> &str {
         match self {
-            JustifyContent::Start => StyleAttributeValue::String("start".to_string()),
-            JustifyContent::Center => StyleAttributeValue::String("center".to_string()),
-            JustifyContent::End => StyleAttributeValue::String("end".to_string()),
-            JustifyContent::SpaceBetween => {
-                StyleAttributeValue::String("space-between".to_string())
-            }
-            JustifyContent::SpaceAround => StyleAttributeValue::String("space-around".to_string()),
-            JustifyContent::SpaceEvenly => StyleAttributeValue::String("space-evenly".to_string()),
+            JustifyContent::Start => "start",
+            JustifyContent::Center => "center",
+            JustifyContent::End => "end",
+            JustifyContent::SpaceBetween => "space-between",
+            JustifyContent::SpaceAround => "space-around",
+            JustifyContent::SpaceEvenly => "space-evenly",
         }
     }
 }
@@ -258,15 +252,13 @@ impl StyleAttributeEnum for AlignItems {
             _ => None,
         }
     }
-}
 
-impl Into<StyleAttributeValue> for AlignItems {
-    fn into(self) -> StyleAttributeValue {
+    fn to_str(&self) -> &str {
         match self {
-            AlignItems::Start => StyleAttributeValue::String("start".to_string()),
-            AlignItems::Center => StyleAttributeValue::String("center".to_string()),
-            AlignItems::End => StyleAttributeValue::String("end".to_string()),
-            AlignItems::Stretch => StyleAttributeValue::String("stretch".to_string()),
+            AlignItems::Start => "start",
+            AlignItems::Center => "center",
+            AlignItems::End => "end",
+            AlignItems::Stretch => "stretch",
         }
     }
 }

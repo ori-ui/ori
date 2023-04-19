@@ -8,6 +8,7 @@ facilisi.";
 fn ui<'a>(cx: Scope<'a>) -> impl View {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
+    let knob_value = cx.signal(0.0);
     let text = cx.signal(String::new());
 
     let font_size = cx.memo(|| if *checked.get() { 32 } else { 24 });
@@ -36,6 +37,10 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
                 <Div style:max-width=Em(5.0)>
                     <Text text=LONG_TEXT />
                 </Div>
+            </Div>
+            <Div class="column">
+                <Knob bind:value=knob_value />
+                <Text text=format!("{:.2}", knob_value.get()) />
             </Div>
         </Div>
     }

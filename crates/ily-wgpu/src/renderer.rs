@@ -217,7 +217,7 @@ impl WgpuRenderer {
     }
 
     fn create_default_image(device: &Device, queue: &Queue, layout: &BindGroupLayout) -> WgpuImage {
-        let data = vec![0; 4];
+        let data = vec![255, 255, 255, 255];
         Self::create_image(device, queue, layout, 1, 1, &data)
     }
 

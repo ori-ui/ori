@@ -56,19 +56,19 @@ impl<T> IntoIterator for CallbackCollection<T> {
     }
 }
 
-type RawCallback<T> = dyn FnMut(&T);
-type CallbackPtr<T> = *const RefCell<RawCallback<T>>;
+type RawCallback<'a, T> = dyn FnMut(&T) + 'a;
+type CallbackPtr<T> = *const RefCell<RawCallback<'static, T>>;
 type Callbacks<T> = RefCell<CallbackCollection<T>>;
 
 /// A callback that can be called from any thread.
 #[derive(Clone)]
-pub struct Callback<T = ()> {
-    callback: Rc<RefCell<RawCallback<T>>>,
+pub struct Callback<'a, T = ()> {
+    callback: Rc<RefCell<RawCallback<'a, T>>>,
 }
 
-impl<T> Callback<T> {
+impl<'a, T> Callback<'a, T> {
     /// Creates a new callback.
-    pub fn new(callback: impl FnMut(&T) + 'static) -> Self {
+    pub fn new(callback: impl FnMut(&T) + 'a) -> Self {
         Self {
             callback: Rc::new(RefCell::new(callback)),
         }
@@ -79,9 +79,17 @@ impl<T> Callback<T> {
     /// When the last strong reference is dropped, the callback will be dropped
     /// and all weak callbacks will be invalidated.
     pub fn downgrade(&self) -> WeakCallback<T> {
-        WeakCallback {
-            callback: Rc::downgrade(&self.callback),
-        }
+        // SAFETY: When the last strong reference is dropped, the callback will
+        // be dropped and all weak callbacks will be invalidated. And can therefore
+        // never be called. And since all strong references are tied to the lifetime
+        // of the callback, it is safe to transmute the lifetime to static.
+        let callback = unsafe {
+            mem::transmute::<
+                Weak<RefCell<RawCallback<'a, T>>>,
+                Weak<RefCell<RawCallback<'static, T>>>,
+            >(Rc::downgrade(&self.callback))
+        };
+        WeakCallback { callback }
     }
 
     /// Calls the callback.
@@ -90,7 +98,7 @@ impl<T> Callback<T> {
     }
 }
 
-impl<T> Default for Callback<T> {
+impl<'a, T> Default for Callback<'a, T> {
     fn default() -> Self {
         Callback::new(|_| {})
     }
@@ -101,12 +109,12 @@ impl<T> Default for Callback<T> {
 /// This is usually created by [`Callback::downgrade`].
 #[derive(Clone)]
 pub struct WeakCallback<T = ()> {
-    callback: Weak<RefCell<RawCallback<T>>>,
+    callback: Weak<RefCell<RawCallback<'static, T>>>,
 }
 
 impl<T> WeakCallback<T> {
     /// Creates a new weak callback from a weak reference.
-    pub fn new(weak: Weak<RefCell<RawCallback<T>>>) -> Self {
+    pub fn new(weak: Weak<RefCell<RawCallback<'static, T>>>) -> Self {
         Self { callback: weak }
     }
 
@@ -196,7 +204,7 @@ impl<T> CallbackEmitter<T> {
     /// The reference to the callback is weak, and will therefore not keep the
     /// callback alive. If the callback is dropped, it will be removed from the
     /// emitter.
-    pub fn subscribe(&self, callback: &Callback<T>) {
+    pub fn subscribe(&self, callback: &Callback<'_, T>) {
         self.subscribe_weak(callback.downgrade());
     }
 

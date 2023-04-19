@@ -90,7 +90,7 @@ impl<T: View> AnyView for T {
 /// When a view is wrapped in a signal, the view will be redrawn when the signal
 /// changes.
 impl<V: View> View for SharedSignal<V> {
-    type State = (Callback<()>, V::State);
+    type State = (Callback<'static, ()>, V::State);
 
     fn build(&self) -> Self::State {
         (Callback::default(), self.get_untracked().build())

@@ -97,6 +97,10 @@ impl View for Div {
             child.event(cx, event);
         }
 
+        if let Some(on_event) = &self.on_event {
+            on_event.emit(event.clone());
+        }
+
         if event.is_handled() {
             return;
         }

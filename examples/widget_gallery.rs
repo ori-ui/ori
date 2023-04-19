@@ -40,7 +40,9 @@ fn ui<'a>(cx: Scope<'a>) -> impl View {
             </Div>
             <Div class="column">
                 <Knob bind:value=knob_value />
-                <Text text=format!("{:.2}", knob_value.get()) />
+                <Text style:width=Em(5.0)
+                    style:text-align=TextAlign::Center
+                    text=format!("{:.2}", knob_value.get()) />
             </Div>
         </Div>
     }

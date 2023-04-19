@@ -27,7 +27,7 @@ const BUILTIN_STYLES: &[&str] = &[
 struct EventLoopSender(EventLoopProxy<Event>);
 
 impl EventSender for EventLoopSender {
-    fn send_event(&self, event: Event) {
+    fn send_event(&mut self, event: Event) {
         let _ = self.0.send_event(event);
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Scope, SharedSignal};
+use crate::{Scope, SendSync, Sendable, SharedSignal};
 
 #[derive(Debug)]
 pub struct EventSignal<T: 'static> {
@@ -16,7 +16,10 @@ impl<T> EventSignal<T> {
         self.signal.track();
     }
 
-    pub fn subscribe<'a>(&self, cx: Scope<'a>, mut callback: impl FnMut(&T) + 'a) {
+    pub fn subscribe<'a>(&self, cx: Scope<'a>, mut callback: impl FnMut(&T) + Sendable + 'a)
+    where
+        T: SendSync,
+    {
         let signal = self.signal.clone();
         cx.effect(move || {
             if let Some(event) = signal.get().as_ref() {

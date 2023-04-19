@@ -17,14 +17,19 @@ use std::{
     },
 };
 
+use crate::SendSync;
+
 #[derive(Clone)]
 pub struct Event {
+    #[cfg(feature = "multithread")]
+    inner: Arc<dyn Any + Send + Sync>,
+    #[cfg(not(feature = "multithread"))]
     inner: Arc<dyn Any>,
     is_handled: Arc<AtomicBool>,
 }
 
 impl Event {
-    pub fn new<T: Any>(event: T) -> Self {
+    pub fn new<T: Any + SendSync>(event: T) -> Self {
         Self {
             inner: Arc::new(event),
             is_handled: Arc::new(AtomicBool::new(false)),

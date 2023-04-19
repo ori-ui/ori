@@ -1,15 +1,14 @@
 use std::{
-    cell::{Cell, RefCell},
+    cell::RefCell,
     iter::FilterMap,
     marker::PhantomData,
     mem,
     ops::Index,
-    rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
     vec::IntoIter,
 };
 
-use crate::{ReadSignal, SharedSignal, Signal};
+use crate::{Lock, Lockable, ReadSignal, SendSync, Sendable, Shared, SharedSignal, Signal};
 
 trait Item {}
 impl<T> Item for T {}
@@ -19,8 +18,12 @@ struct ScopeArena<'a> {
     items: RefCell<Vec<*mut (dyn Item + 'a)>>,
 }
 
+// SAFETY: the access to `items` is thread-safe because it's only accessed from mutable references.
+#[cfg(feature = "multithread")]
+unsafe impl<'a> Sync for ScopeArena<'a> {}
+
 impl<'a> ScopeArena<'a> {
-    pub fn alloc_static<T: 'static>(&self, item: T) -> &'a mut T {
+    pub fn alloc_static<T: Sendable + 'static>(&self, item: T) -> &'a mut T {
         let item = Box::into_raw(Box::new(item));
         self.items.borrow_mut().push(item);
         unsafe { &mut *item }
@@ -28,7 +31,7 @@ impl<'a> ScopeArena<'a> {
 
     /// # Safety
     /// - `item` must never reference any other item in the arena in it's [`Drop`] implementation.
-    pub unsafe fn alloc<T: 'a>(&self, item: T) -> &'a mut T {
+    pub unsafe fn alloc<T: Sendable + 'a>(&self, item: T) -> &'a mut T {
         let item = Box::into_raw(Box::new(item));
         self.items.borrow_mut().push(item);
         &mut *item
@@ -221,6 +224,9 @@ pub struct BoundedScope<'a, 'b: 'a> {
     marker: PhantomData<&'b ()>,
 }
 
+unsafe impl<'a, 'b> Send for BoundedScope<'a, 'b> {}
+unsafe impl<'a, 'b> Sync for BoundedScope<'a, 'b> {}
+
 impl<'a> Scope<'a> {
     /// Creates a new scope.
     ///
@@ -266,7 +272,7 @@ impl<'a> Scope<'a> {
     }
 
     /// Allocates an item in the scope.
-    pub fn alloc<T: 'static>(&self, item: T) -> &'a T {
+    pub fn alloc<T: Sendable + 'static>(&self, item: T) -> &'a T {
         self.raw.arena.alloc_static(item)
     }
 
@@ -274,12 +280,12 @@ impl<'a> Scope<'a> {
     ///
     /// # Safety
     /// - `item` must never reference any other item in the arena in it's [`Drop`] implementation.
-    pub unsafe fn alloc_unsafe<T: 'a>(self, item: T) -> &'a T {
+    pub unsafe fn alloc_unsafe<T: Sendable + 'a>(self, item: T) -> &'a T {
         self.raw.arena.alloc(item)
     }
 
     /// Allocates an item in the scope.
-    pub fn alloc_mut<T: 'static>(&self, item: T) -> &'a mut T {
+    pub fn alloc_mut<T: Sendable + 'static>(&self, item: T) -> &'a mut T {
         self.raw.arena.alloc_static(item)
     }
 
@@ -287,12 +293,12 @@ impl<'a> Scope<'a> {
     ///
     /// # Safety
     /// - `item` must never reference any other item in the arena in it's [`Drop`] implementation.
-    pub unsafe fn alloc_mut_unsafe<T: 'a>(self, item: T) -> &'a mut T {
+    pub unsafe fn alloc_mut_unsafe<T: Sendable + 'a>(self, item: T) -> &'a mut T {
         self.raw.arena.alloc(item)
     }
 
     /// Creates a signal in the scope.
-    pub fn signal<T: 'static>(self, value: T) -> &'a Signal<T> {
+    pub fn signal<T: SendSync + 'static>(self, value: T) -> &'a Signal<T> {
         self.alloc(Signal::new(value))
     }
 
@@ -320,13 +326,13 @@ impl<'a> Scope<'a> {
     /// # });
     /// ```
     #[track_caller]
-    pub fn effect(self, f: impl FnMut() + 'a) {
+    pub fn effect(self, f: impl FnMut() + Sendable + 'a) {
         super::effect::create_effect(self, f);
     }
 
     /// Creates an effect in a child scope. See [`Scope::effect`].
     #[track_caller]
-    pub fn effect_scoped(self, mut f: impl for<'b> FnMut(BoundedScope<'b, 'a>) + 'a) {
+    pub fn effect_scoped(self, mut f: impl for<'b> FnMut(BoundedScope<'b, 'a>) + Sendable + 'a) {
         let mut disposer = None::<ScopeDisposer<'a>>;
         self.effect(move || {
             if let Some(disposer) = disposer.take() {
@@ -362,22 +368,26 @@ impl<'a> Scope<'a> {
     /// # });
     /// ```
     #[track_caller]
-    pub fn memo<T: 'static>(self, mut f: impl FnMut() -> T + 'a) -> &'a ReadSignal<T> {
-        let signal = Rc::new(Cell::new(None::<&Signal<T>>));
+    pub fn memo<T: SendSync + 'static>(
+        self,
+        mut f: impl FnMut() -> T + Sendable + 'a,
+    ) -> &'a ReadSignal<T> {
+        let signal = Shared::new(Lock::new(None::<&'a Signal<T>>));
 
         self.effect({
             let signal = signal.clone();
             move || {
                 let value = f();
-                if let Some(signal) = signal.get() {
-                    signal.set(value);
+                if signal.lock_mut().is_some() {
+                    signal.lock_mut().unwrap().set(value);
                 } else {
-                    signal.set(Some(self.signal(value)));
+                    *signal.lock_mut() = Some(self.signal(value));
                 }
             }
         });
 
-        signal.get().unwrap()
+        let signal = signal.lock_mut().unwrap();
+        signal
     }
 
     /// This will create an effect that binds two signals together.
@@ -386,17 +396,17 @@ impl<'a> Scope<'a> {
     ///
     /// When initializing the binding, the value of `signal_b` will be used.
     #[track_caller]
-    pub fn bind<T: Clone + PartialEq + 'static>(
+    pub fn bind<T: Clone + PartialEq + SendSync + 'static>(
         self,
         signal_a: &'a Signal<T>,
         signal_b: &'a Signal<T>,
     ) {
-        let prev = self.alloc(RefCell::new(signal_a.cloned_untracked()));
+        let prev = self.alloc(Lock::new(signal_a.cloned_untracked()));
 
         self.effect(move || {
             let a = signal_a.cloned();
             let b = signal_b.cloned();
-            let mut prev = prev.borrow_mut();
+            let mut prev = prev.lock_mut();
 
             if *prev != a {
                 *prev = a.clone();
@@ -410,23 +420,23 @@ impl<'a> Scope<'a> {
 
     /// Creates a shared signal that is recomputed every time a dependency is updated.
     #[track_caller]
-    pub fn dynamic<T: 'static>(
+    pub fn dynamic<T: SendSync + 'static>(
         self,
-        mut f: impl FnMut(BoundedScope<'_, 'a>) -> T + 'a,
+        mut f: impl FnMut(BoundedScope<'_, 'a>) -> T + Sendable + 'a,
     ) -> SharedSignal<T> {
-        let signal = self.alloc(RefCell::new(None::<SharedSignal<T>>));
+        let signal = self.alloc(Lock::new(None::<SharedSignal<T>>));
 
         self.effect_scoped(move |cx| {
             let value = f(cx);
 
-            if signal.borrow().is_some() {
-                signal.borrow().as_ref().unwrap().set(value);
+            if signal.lock_mut().is_some() {
+                signal.lock_mut().as_ref().unwrap().set(value);
             } else {
-                *signal.borrow_mut() = Some(SharedSignal::new(value));
+                *signal.lock_mut() = Some(SharedSignal::new(value));
             }
         });
 
-        signal.borrow().as_ref().unwrap().clone()
+        signal.lock_mut().as_ref().unwrap().clone()
     }
 }
 
@@ -440,6 +450,9 @@ enum ScopeDisposerInner<'a> {
         index: usize,
     },
 }
+
+// SAFETY: ScopeDisposerInner is Send because it is only accessed from the main thread.
+unsafe impl<'a> Send for ScopeDisposerInner<'a> {}
 
 #[derive(Debug)]
 pub struct ScopeDisposer<'a> {
@@ -491,20 +504,19 @@ impl<'a> ScopeDisposer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cell::Cell;
 
     #[test]
     fn test_signal() {
         Scope::immediate(|cx| {
             let signal = cx.signal(0);
 
-            let cell = &*cx.alloc(Cell::new(0));
+            let cell = cx.alloc(Lock::new(0));
             cx.effect(move || {
-                cell.set(*signal.get());
+                *cell.lock_mut() = *signal.get();
             });
             signal.set(1);
 
-            assert_eq!(cell.get(), 1);
+            assert_eq!(*cell.lock_mut(), 1);
         });
     }
 

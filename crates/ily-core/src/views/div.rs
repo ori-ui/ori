@@ -3,7 +3,8 @@ use ily_macro::Build;
 
 use crate::{
     AlignItems, Axis, BoxConstraints, Children, Context, DrawContext, Event, EventContext,
-    EventSignal, JustifyContent, LayoutContext, Node, Parent, PointerEvent, Scope, Style, View,
+    EventSignal, JustifyContent, LayoutContext, Node, Parent, PointerEvent, Scope, Sendable, Style,
+    View,
 };
 
 #[derive(Default, Build)]
@@ -27,7 +28,11 @@ impl Div {
         self
     }
 
-    pub fn on_event<'a>(mut self, cx: Scope<'a>, callback: impl FnMut(&Event) + 'a) -> Self {
+    pub fn on_event<'a>(
+        mut self,
+        cx: Scope<'a>,
+        callback: impl FnMut(&Event) + Sendable + 'a,
+    ) -> Self {
         self.on_event
             .get_or_insert_with(|| EventSignal::new())
             .subscribe(cx, callback);
@@ -35,7 +40,11 @@ impl Div {
         self
     }
 
-    pub fn on_press<'a>(mut self, cx: Scope<'a>, callback: impl FnMut(&PointerEvent) + 'a) -> Self {
+    pub fn on_press<'a>(
+        mut self,
+        cx: Scope<'a>,
+        callback: impl FnMut(&PointerEvent) + Sendable + 'a,
+    ) -> Self {
         self.on_press
             .get_or_insert_with(|| EventSignal::new())
             .subscribe(cx, callback);
@@ -46,7 +55,7 @@ impl Div {
     pub fn on_release<'a>(
         mut self,
         cx: Scope<'a>,
-        callback: impl FnMut(&PointerEvent) + 'a,
+        callback: impl FnMut(&PointerEvent) + Sendable + 'a,
     ) -> Self {
         self.on_release
             .get_or_insert_with(|| EventSignal::new())
@@ -115,23 +124,16 @@ impl View for Div {
         let justify_content = cx.style::<JustifyContent>("justify-content");
         let align_items = cx.style::<AlignItems>("align-items");
 
-        let min_width = cx.style_range_or("width", "min-width", bc.width());
-        let max_width = cx.style_range_or("width", "max-width", bc.width());
-
-        let min_height = cx.style_range_or("height", "min-height", bc.height());
-        let max_height = cx.style_range_or("height", "max-height", bc.height());
+        let bc = cx.style_constraints(bc);
 
         let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
         let gap = cx.style_range("gap", 0.0..axis.major(bc.max));
 
-        let min_size = bc.constrain(Vec2::new(min_width, min_height));
-        let max_size = bc.constrain(Vec2::new(max_width, max_height));
+        let max_minor = axis.minor(bc.max) - padding * 2.0;
+        let min_minor = axis.minor(bc.min) - padding * 2.0;
 
-        let max_minor = axis.minor(max_size) - padding * 2.0;
-        let min_minor = axis.minor(min_size) - padding * 2.0;
-
-        let max_major = axis.major(max_size) - padding * 2.0;
-        let min_major = axis.major(min_size) - padding * 2.0;
+        let max_major = axis.major(bc.max) - padding * 2.0;
+        let min_major = axis.major(bc.min) - padding * 2.0;
 
         let mut minor = min_minor;
 

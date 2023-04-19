@@ -1,6 +1,6 @@
-use std::{cell::RefCell, mem, ops::DerefMut, panic::Location, rc::Rc};
+use std::{cell::RefCell, mem, ops::DerefMut, panic::Location};
 
-use crate::{Scope, WeakCallback, WeakCallbackEmitter};
+use crate::{Lock, Lockable, Scope, Sendable, Shared, WeakCallback, WeakCallbackEmitter};
 
 thread_local! {
     static EFFECTS: RefCell<Vec<*mut EffectState<'static>>> = Default::default();
@@ -8,7 +8,10 @@ thread_local! {
 
 struct EffectState<'a> {
     location: &'static Location<'static>,
-    callback: Rc<RefCell<dyn FnMut() + 'a>>,
+    #[cfg(feature = "multithread")]
+    callback: Shared<Lock<dyn FnMut() + Send + 'a>>,
+    #[cfg(not(feature = "multithread"))]
+    callback: Shared<Lock<dyn FnMut() + 'a>>,
     dependencies: Vec<WeakCallbackEmitter>,
 }
 
@@ -17,7 +20,7 @@ impl<'a> EffectState<'a> {
     fn empty() -> Self {
         Self {
             location: Location::caller(),
-            callback: Rc::new(RefCell::new(|| {})),
+            callback: Shared::new(Lock::new(|| {})),
             dependencies: Vec::new(),
         }
     }
@@ -25,7 +28,7 @@ impl<'a> EffectState<'a> {
     fn clear_dependencies(&mut self) {
         for dependency in &self.dependencies {
             if let Some(dependency) = dependency.upgrade() {
-                let ptr = Rc::as_ptr(&self.callback);
+                let ptr = Shared::as_ptr(&self.callback);
                 dependency.unsubscribe(unsafe { mem::transmute(ptr) });
             }
         }
@@ -54,15 +57,15 @@ pub(crate) fn untrack<T>(f: impl FnOnce() -> T) -> T {
 }
 
 #[track_caller]
-pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
+pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + Sendable + 'a) {
     // SAFETY: `Effect` is `!Drop`, so it's safe to use `alloc_unsafe`.
-    let effect = unsafe { cx.alloc_unsafe(RefCell::new(EffectState::empty())) };
+    let effect = unsafe { cx.alloc_unsafe(Lock::new(EffectState::empty())) };
 
-    let callback = Rc::new(RefCell::new(move || {
+    let callback = Shared::new(Lock::new(move || {
         EFFECTS.with(|effects| {
             let len = effects.borrow().len();
 
-            let mut effect = effect.borrow_mut();
+            let mut effect = effect.lock_mut();
             let effect_ptr = effect.deref_mut() as *mut EffectState<'a>;
             let static_effect_ptr = effect_ptr.cast::<EffectState<'static>>();
 
@@ -87,7 +90,7 @@ pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
             for emitter in &effect.dependencies {
                 if let Some(emitter) = emitter.upgrade() {
                     let callback = unsafe { mem::transmute(&effect.callback) };
-                    let callback = WeakCallback::new(Rc::downgrade(callback));
+                    let callback = WeakCallback::new(Shared::downgrade(callback));
                     emitter.subscribe_weak(callback);
                 }
             }
@@ -96,7 +99,7 @@ pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + 'a) {
         })
     }));
 
-    effect.borrow_mut().callback = callback.clone();
+    effect.lock_mut().callback = callback.clone();
 
-    callback.borrow_mut()();
+    callback.lock_mut()();
 }

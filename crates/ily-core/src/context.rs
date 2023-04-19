@@ -7,8 +7,8 @@ use glam::Vec2;
 use ily_graphics::{Frame, Quad, Rect, Renderer, TextHit, TextSection};
 
 use crate::{
-    EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, StyleAttribute, StyleSelectors,
-    StyleTransition, Stylesheet, Unit,
+    BoxConstraints, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
+    StyleAttribute, StyleSelectors, StyleTransition, Stylesheet, Unit,
 };
 
 pub struct EventContext<'a> {
@@ -28,6 +28,19 @@ pub struct LayoutContext<'a> {
 }
 
 impl<'a> LayoutContext<'a> {
+    pub fn style_constraints(&mut self, bc: BoxConstraints) -> BoxConstraints {
+        let min_width = self.style_range_or("width", "min-width", bc.width());
+        let max_width = self.style_range_or("width", "max-width", bc.width());
+
+        let min_height = self.style_range_or("height", "min-height", bc.height());
+        let max_height = self.style_range_or("height", "max-height", bc.height());
+
+        let min_size = bc.constrain(Vec2::new(min_width, min_height));
+        let max_size = bc.constrain(Vec2::new(max_width, max_height));
+
+        BoxConstraints::new(min_size, max_size)
+    }
+
     pub fn messure_text(&self, section: &TextSection) -> Option<Rect> {
         self.renderer.messure_text(section)
     }
@@ -234,7 +247,7 @@ pub trait Context {
         self.send_event(RequestRedrawEvent);
     }
 
-    fn send_event(&self, event: impl Any) {
+    fn send_event(&self, event: impl Any + SendSync) {
         self.event_sink().send(event);
     }
 

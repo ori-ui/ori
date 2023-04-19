@@ -1,33 +1,31 @@
 use std::{
-    cell::RefCell,
     cmp::Ordering,
     fmt::{Debug, Formatter},
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     panic::Location,
-    sync::{Arc, Weak},
 };
 
-use crate::CallbackEmitter;
+use crate::{CallbackEmitter, Lock, Lockable, Shared, Weak};
 
 /// A read-only [`Signal`].
 pub struct ReadSignal<T: ?Sized> {
-    value: RefCell<Arc<T>>,
+    value: Lock<Shared<T>>,
     emitter: CallbackEmitter,
 }
 
 impl<T> ReadSignal<T> {
     /// Creates a new [`ReadSignal`] from a value.
     pub fn new(value: T) -> Self {
-        Self::new_arc(Arc::new(value))
+        Self::new_arc(Shared::new(value))
     }
 }
 
 impl<T: ?Sized> ReadSignal<T> {
-    /// Creates a new [`ReadSignal`] from an [`Arc`].
-    pub fn new_arc(value: Arc<T>) -> Self {
+    /// Creates a new [`ReadSignal`] from an [`Shared`].
+    pub fn new_arc(value: Shared<T>) -> Self {
         Self {
-            value: RefCell::new(value),
+            value: Lock::new(value),
             emitter: CallbackEmitter::new(),
         }
     }
@@ -45,14 +43,14 @@ impl<T: ?Sized> ReadSignal<T> {
     /// Gets the current value of `self`.
     ///
     /// This will track `self` in the currently running `effect`.
-    pub fn get(&self) -> Arc<T> {
+    pub fn get(&self) -> Shared<T> {
         self.emitter.track();
         self.get_untracked()
     }
 
     /// Gets the current value of `self` without tracking it.
-    pub fn get_untracked(&self) -> Arc<T> {
-        self.value.borrow().clone()
+    pub fn get_untracked(&self) -> Shared<T> {
+        self.value.lock_mut().clone()
     }
 }
 
@@ -122,31 +120,31 @@ impl<T> Signal<T> {
     /// Sets the value of `self`.
     #[track_caller]
     pub fn set(&self, value: T) {
-        self.set_arc(Arc::new(value));
+        self.set_arc(Shared::new(value));
     }
 
     /// Sets the value of `self` without triggering the callbacks.
     pub fn set_silent(&self, value: T) {
-        self.set_arc_silent(Arc::new(value));
+        self.set_arc_silent(Shared::new(value));
     }
 }
 
 impl<T: ?Sized> Signal<T> {
-    /// Creates a new [`Signal`] from an [`Arc`].
-    pub fn new_arc(value: Arc<T>) -> Self {
+    /// Creates a new [`Signal`] from an [`Shared`].
+    pub fn new_arc(value: Shared<T>) -> Self {
         Self(ReadSignal::new_arc(value))
     }
 
-    /// Sets the value of `self` to an [`Arc`].
+    /// Sets the value of `self` to an [`Shared`].
     #[track_caller]
-    pub fn set_arc(&self, value: Arc<T>) {
+    pub fn set_arc(&self, value: Shared<T>) {
         self.set_arc_silent(value.clone());
         self.emit();
     }
 
-    /// Sets the value of `self` to an [`Arc`] without triggering the callbacks.
-    pub fn set_arc_silent(&self, value: Arc<T>) {
-        *self.value.borrow_mut() = value;
+    /// Sets the value of `self` to an [`Shared`] without triggering the callbacks.
+    pub fn set_arc_silent(&self, value: Shared<T>) {
+        *self.value.lock_mut() = value;
     }
 
     /// Emits the [`CallbackEmitter`] for this [`Signal`].
@@ -208,21 +206,21 @@ impl<T: Clone> Signal<T> {
 }
 
 /// A [`Signal`] that can be cloned.
-pub struct SharedSignal<T: ?Sized>(Arc<Signal<T>>);
+pub struct SharedSignal<T: ?Sized>(Shared<Signal<T>>);
 
 impl<T> SharedSignal<T> {
     pub fn new(value: T) -> Self {
-        Self(Arc::new(Signal::new(value)))
+        Self(Shared::new(Signal::new(value)))
     }
 }
 
 impl<T: ?Sized> SharedSignal<T> {
-    pub fn new_arc(value: Arc<T>) -> Self {
-        Self(Arc::new(Signal::new_arc(value)))
+    pub fn new_arc(value: Shared<T>) -> Self {
+        Self(Shared::new(Signal::new_arc(value)))
     }
 
     pub fn downgrade(&self) -> WeakSignal<T> {
-        WeakSignal(Arc::downgrade(&self.0))
+        WeakSignal(Shared::downgrade(&self.0))
     }
 }
 
@@ -264,23 +262,23 @@ impl<T: ?Sized> WeakSignal<T> {
     }
 
     #[track_caller]
-    pub fn set_arc(&self, value: Arc<T>) {
+    pub fn set_arc(&self, value: Shared<T>) {
         if let Some(signal) = self.upgrade() {
             signal.set_arc(value);
         }
     }
 
-    pub fn set_arc_silent(&self, value: Arc<T>) {
+    pub fn set_arc_silent(&self, value: Shared<T>) {
         if let Some(signal) = self.upgrade() {
             signal.set_arc_silent(value);
         }
     }
 
-    pub fn get(&self) -> Option<Arc<T>> {
+    pub fn get(&self) -> Option<Shared<T>> {
         Some(self.upgrade()?.get())
     }
 
-    pub fn get_untracked(&self) -> Option<Arc<T>> {
+    pub fn get_untracked(&self) -> Option<Shared<T>> {
         Some(self.upgrade()?.get_untracked())
     }
 }

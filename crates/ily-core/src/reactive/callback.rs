@@ -1,8 +1,6 @@
-use std::{
-    cell::RefCell,
-    mem,
-    rc::{Rc, Weak},
-};
+use std::mem;
+
+use crate::{Lock, Lockable, Sendable, Shared, Weak};
 
 struct CallbackCollection<T> {
     callbacks: Vec<WeakCallback<T>>,
@@ -56,21 +54,25 @@ impl<T> IntoIterator for CallbackCollection<T> {
     }
 }
 
+#[cfg(feature = "multithread")]
+type RawCallback<'a, T> = dyn FnMut(&T) + Send + 'a;
+#[cfg(not(feature = "multithread"))]
 type RawCallback<'a, T> = dyn FnMut(&T) + 'a;
-type CallbackPtr<T> = *const RefCell<RawCallback<'static, T>>;
-type Callbacks<T> = RefCell<CallbackCollection<T>>;
+
+type CallbackPtr<T> = *const Lock<RawCallback<'static, T>>;
+type Callbacks<T> = Lock<CallbackCollection<T>>;
 
 /// A callback that can be called from any thread.
 #[derive(Clone)]
 pub struct Callback<'a, T = ()> {
-    callback: Rc<RefCell<RawCallback<'a, T>>>,
+    callback: Shared<Lock<RawCallback<'a, T>>>,
 }
 
 impl<'a, T> Callback<'a, T> {
     /// Creates a new callback.
-    pub fn new(callback: impl FnMut(&T) + 'a) -> Self {
+    pub fn new(callback: impl FnMut(&T) + Sendable + 'a) -> Self {
         Self {
-            callback: Rc::new(RefCell::new(callback)),
+            callback: Shared::new(Lock::new(callback)),
         }
     }
 
@@ -84,17 +86,16 @@ impl<'a, T> Callback<'a, T> {
         // never be called. And since all strong references are tied to the lifetime
         // of the callback, it is safe to transmute the lifetime to static.
         let callback = unsafe {
-            mem::transmute::<
-                Weak<RefCell<RawCallback<'a, T>>>,
-                Weak<RefCell<RawCallback<'static, T>>>,
-            >(Rc::downgrade(&self.callback))
+            mem::transmute::<Weak<Lock<RawCallback<'a, T>>>, Weak<Lock<RawCallback<'static, T>>>>(
+                Shared::downgrade(&self.callback),
+            )
         };
         WeakCallback { callback }
     }
 
     /// Calls the callback.
     pub fn emit(&self, event: &T) {
-        self.callback.borrow_mut()(event);
+        self.callback.lock_mut()(event);
     }
 }
 
@@ -109,12 +110,12 @@ impl<'a, T> Default for Callback<'a, T> {
 /// This is usually created by [`Callback::downgrade`].
 #[derive(Clone)]
 pub struct WeakCallback<T = ()> {
-    callback: Weak<RefCell<RawCallback<'static, T>>>,
+    callback: Weak<Lock<RawCallback<'static, T>>>,
 }
 
 impl<T> WeakCallback<T> {
     /// Creates a new weak callback from a weak reference.
-    pub fn new(weak: Weak<RefCell<RawCallback<'static, T>>>) -> Self {
+    pub fn new(weak: Weak<Lock<RawCallback<'static, T>>>) -> Self {
         Self { callback: weak }
     }
 
@@ -157,13 +158,13 @@ impl<T> Default for WeakCallback<T> {
 /// This is used to store a list of callbacks and call them all.
 /// All the callbacks are weak, so they must be kept alive by the user.
 pub struct CallbackEmitter<T = ()> {
-    callbacks: Rc<Callbacks<T>>,
+    callbacks: Shared<Callbacks<T>>,
 }
 
 impl<T> Default for CallbackEmitter<T> {
     fn default() -> Self {
         Self {
-            callbacks: Rc::new(RefCell::new(CallbackCollection::new())),
+            callbacks: Shared::new(Lock::new(CallbackCollection::new())),
         }
     }
 }
@@ -184,7 +185,7 @@ impl<T> CallbackEmitter<T> {
 
     /// Returns the number of callbacks, valid or not.
     pub fn len(&self) -> usize {
-        self.callbacks.borrow().len()
+        self.callbacks.lock_mut().len()
     }
 
     /// Returns `true` if there are no callbacks.
@@ -195,7 +196,7 @@ impl<T> CallbackEmitter<T> {
     /// Downgrades the callback emitter to a [`WeakCallbackEmitter`].
     pub fn downgrade(&self) -> WeakCallbackEmitter<T> {
         WeakCallbackEmitter {
-            callbacks: Rc::downgrade(&self.callbacks),
+            callbacks: Shared::downgrade(&self.callbacks),
         }
     }
 
@@ -210,17 +211,17 @@ impl<T> CallbackEmitter<T> {
 
     /// Subscribes a weak callback to the emitter.
     pub fn subscribe_weak(&self, callback: WeakCallback<T>) {
-        self.callbacks.borrow_mut().insert(callback);
+        self.callbacks.lock_mut().insert(callback);
     }
 
     /// Unsubscribes a callback from the emitter.
     pub fn unsubscribe(&self, ptr: CallbackPtr<T>) {
-        self.callbacks.borrow_mut().remove(ptr);
+        self.callbacks.lock_mut().remove(ptr);
     }
 
     /// Clears all the callbacks, and calls them.
     pub fn emit(&self, event: &T) {
-        let callbacks = mem::take(&mut *self.callbacks.borrow_mut());
+        let callbacks = mem::take(&mut *self.callbacks.lock_mut());
 
         for callback in callbacks.into_iter() {
             if let Some(callback) = callback.upgrade() {

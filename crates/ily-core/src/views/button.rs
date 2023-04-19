@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     BoxConstraints, Div, DrawContext, Event, EventContext, Events, LayoutContext, Parent,
-    PointerEvent, Scope, Style, View,
+    PointerEvent, Scope, Sendable, Style, View,
 };
 
 pub struct Button {
@@ -27,7 +27,11 @@ impl Button {
         self
     }
 
-    pub fn on_press<'a>(mut self, cx: Scope<'a>, callback: impl FnMut(&PointerEvent) + 'a) -> Self {
+    pub fn on_press<'a>(
+        mut self,
+        cx: Scope<'a>,
+        callback: impl FnMut(&PointerEvent) + Sendable + 'a,
+    ) -> Self {
         self.content = self.content.on_press(cx, callback);
         self
     }

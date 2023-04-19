@@ -1,25 +1,32 @@
-use std::{any::Any, fmt::Debug, sync::Arc};
+use std::{any::Any, fmt::Debug};
 
-use crate::Event;
+use crate::{Event, Lock, Lockable, SendSync, Sendable, Shared};
 
-pub trait EventSender: 'static {
-    fn send_event(&self, event: Event);
+/// An event sender, that can send events to the application.
+///
+/// This is usually implemented by the application shell and
+/// should not be implemented by the user.
+pub trait EventSender: Sendable + 'static {
+    fn send_event(&mut self, event: Event);
 }
 
+/// An event sink, that can send events to the application.
 #[derive(Clone)]
 pub struct EventSink {
-    sender: Arc<dyn EventSender>,
+    sender: Shared<Lock<dyn EventSender>>,
 }
 
 impl EventSink {
+    /// Creates a new event sink from an [`EventSender`].
     pub fn new(sender: impl EventSender) -> Self {
         Self {
-            sender: Arc::new(sender),
+            sender: Shared::new(Lock::new(sender)),
         }
     }
 
-    pub fn send(&self, event: impl Any) {
-        self.sender.send_event(Event::new(event));
+    /// Sends an event to the application.
+    pub fn send(&self, event: impl Any + SendSync) {
+        self.sender.lock_mut().send_event(Event::new(event));
     }
 }
 

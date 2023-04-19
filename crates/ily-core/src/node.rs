@@ -1,4 +1,4 @@
-use std::{any::Any, cell::RefCell, time::Instant};
+use std::{any::Any, time::Instant};
 
 use glam::Vec2;
 use ily_graphics::{Frame, Rect, Renderer};
@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, EventSink, LayoutContext,
-    PointerEvent, RequestRedrawEvent, Style, StyleElement, StyleElements, StyleSelectors,
-    StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
+    Lock, Lockable, PointerEvent, RequestRedrawEvent, Style, StyleElement, StyleElements,
+    StyleSelectors, StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -132,8 +132,11 @@ impl<T: View> From<T> for Node {
 
 /// A node in the [`View`](crate::View) tree.
 pub struct Node {
-    view_state: RefCell<Box<dyn Any>>,
-    node_state: RefCell<NodeState>,
+    #[cfg(feature = "multithread")]
+    view_state: Lock<Box<dyn Any + Send + Sync>>,
+    #[cfg(not(feature = "multithread"))]
+    view_state: Lock<Box<dyn Any>>,
+    node_state: Lock<NodeState>,
     view: Box<dyn AnyView>,
 }
 
@@ -143,29 +146,29 @@ impl Node {
         let node_state = NodeState::new(View::style(&view));
 
         Self {
-            view_state: RefCell::new(view_state),
-            node_state: RefCell::new(node_state),
+            view_state: Lock::new(view_state),
+            node_state: Lock::new(node_state),
             view: Box::new(view),
         }
     }
 
     pub fn set_offset(&self, offset: Vec2) {
-        let mut node_state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.lock_mut();
 
         let size = node_state.local_rect.size();
         node_state.local_rect = Rect::min_size(offset, size);
     }
 
     pub fn states(&self) -> StyleStates {
-        self.node_state.borrow().style_states()
+        self.node_state.lock_mut().style_states()
     }
 
     pub fn local_rect(&self) -> Rect {
-        self.node_state.borrow().local_rect
+        self.node_state.lock_mut().local_rect
     }
 
     pub fn size(&self) -> Vec2 {
-        self.node_state.borrow().local_rect.size()
+        self.node_state.lock_mut().local_rect.size()
     }
 }
 
@@ -181,7 +184,7 @@ impl Node {
     }
 
     pub fn event(&self, cx: &mut EventContext, event: &Event) {
-        let mut node_state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
         node_state.propagate_parent(cx.state);
 
@@ -200,12 +203,12 @@ impl Node {
             event_sink: cx.event_sink,
         };
 
-        let mut view_state = self.view_state.borrow_mut();
+        let mut view_state = self.view_state.lock_mut();
         self.view.event(&mut **view_state, &mut cx, event);
     }
 
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let mut node_state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
         let selectors = node_state.selectors(&cx.selectors.elements);
@@ -217,7 +220,7 @@ impl Node {
             event_sink: cx.event_sink,
         };
 
-        let mut view_state = self.view_state.borrow_mut();
+        let mut view_state = self.view_state.lock_mut();
         let size = self.view.layout(&mut **view_state, &mut cx, bc);
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
@@ -227,7 +230,7 @@ impl Node {
     }
 
     pub fn draw(&self, cx: &mut DrawContext) {
-        let mut node_state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
         node_state.propagate_parent(cx.state);
 
@@ -241,7 +244,7 @@ impl Node {
             event_sink: cx.event_sink,
         };
 
-        let mut view_state = self.view_state.borrow_mut();
+        let mut view_state = self.view_state.lock_mut();
         self.view.draw(&mut **view_state, &mut cx);
 
         if cx.state.update_transitions() {
@@ -260,7 +263,7 @@ impl Node {
         event_sink: &EventSink,
         event: &Event,
     ) {
-        let mut node_state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
         if let Some(event) = event.get::<PointerEvent>() {
@@ -278,7 +281,7 @@ impl Node {
             event_sink,
         };
 
-        let mut view_state = self.view_state.borrow_mut();
+        let mut view_state = self.view_state.lock_mut();
         self.view.event(&mut **view_state, &mut cx, event);
     }
 
@@ -289,7 +292,7 @@ impl Node {
         window_size: Vec2,
         event_sink: &EventSink,
     ) -> Vec2 {
-        let mut node_state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
         let selectors = node_state.selectors(&StyleElements::new());
@@ -302,7 +305,7 @@ impl Node {
         };
 
         let bc = BoxConstraints::new(Vec2::ZERO, window_size);
-        let mut view_state = self.view_state.borrow_mut();
+        let mut view_state = self.view_state.lock_mut();
         let size = self.view.layout(&mut **view_state, &mut cx, bc);
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
@@ -318,7 +321,7 @@ impl Node {
         renderer: &dyn Renderer,
         event_sink: &EventSink,
     ) {
-        let mut node_state = self.node_state.borrow_mut();
+        let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
         let selectors = node_state.selectors(&StyleElements::new());
@@ -331,7 +334,7 @@ impl Node {
             event_sink,
         };
 
-        let mut view_state = self.view_state.borrow_mut();
+        let mut view_state = self.view_state.lock_mut();
         self.view.draw(&mut **view_state, &mut cx);
 
         cx.state.draw();

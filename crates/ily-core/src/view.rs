@@ -4,14 +4,14 @@ use glam::Vec2;
 
 use crate::{
     BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, RequestRedrawEvent,
-    SharedSignal, Style,
+    SendSync, SharedSignal, Style,
 };
 
 /// A [`View`] is a component that can be rendered to the screen.
 #[allow(unused_variables)]
-pub trait View: 'static {
+pub trait View: SendSync + 'static {
     /// The state of the view.
-    type State: 'static;
+    type State: SendSync + 'static;
 
     /// Builds the state of the view.
     fn build(&self) -> Self::State;
@@ -40,9 +40,7 @@ pub trait View: 'static {
 /// A [`View`] that with an unknown state.
 ///
 /// This is used to store a [`View`] in a [`Node`](crate::Node).
-pub trait AnyView {
-    fn build(&self) -> Box<dyn Any>;
-
+pub trait AnyView: SendSync {
     fn style(&self) -> Style;
 
     fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event);
@@ -53,10 +51,6 @@ pub trait AnyView {
 }
 
 impl<T: View> AnyView for T {
-    fn build(&self) -> Box<dyn Any> {
-        Box::new(self.build())
-    }
-
     fn style(&self) -> Style {
         self.style()
     }
@@ -89,7 +83,7 @@ impl<T: View> AnyView for T {
 
 /// When a view is wrapped in a signal, the view will be redrawn when the signal
 /// changes.
-impl<V: View> View for SharedSignal<V> {
+impl<V: View + SendSync> View for SharedSignal<V> {
     type State = (Callback<'static, ()>, V::State);
 
     fn build(&self) -> Self::State {

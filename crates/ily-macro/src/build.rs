@@ -200,7 +200,7 @@ fn event_setter(input: &DeriveInput) -> TokenStream {
             pub fn #event<'b>(
                 &mut self,
                 cx: #ily_core::Scope<'b>,
-                #name: impl FnMut(&<#ty as #ily_core::BindCallback>::Event) + 'b
+                #name: impl FnMut(&<#ty as #ily_core::BindCallback>::Event) + #ily_core::Sendable + 'b
             ) {
                 <#ty as #ily_core::BindCallback>::bind(&mut self.this.#name, cx, #name);
             }

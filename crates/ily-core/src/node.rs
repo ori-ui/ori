@@ -5,9 +5,9 @@ use ily_graphics::{Frame, Rect, Renderer};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext,
-    PointerEvent, Style, StyleElement, StyleElements, StyleSelectors, StyleStates, StyleTransition,
-    Stylesheet, TransitionStates, View, WeakCallback,
+    AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, EventSink, LayoutContext,
+    PointerEvent, RequestRedrawEvent, Style, StyleElement, StyleElements, StyleSelectors,
+    StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -197,7 +197,7 @@ impl Node {
             state: &mut node_state,
             renderer: cx.renderer,
             selectors: &selectors,
-            request_redraw: cx.request_redraw,
+            event_sink: cx.event_sink,
         };
 
         let mut view_state = self.view_state.borrow_mut();
@@ -214,7 +214,7 @@ impl Node {
             state: &mut node_state,
             renderer: cx.renderer,
             selectors: &selectors,
-            request_redraw: cx.request_redraw,
+            event_sink: cx.event_sink,
         };
 
         let mut view_state = self.view_state.borrow_mut();
@@ -238,7 +238,7 @@ impl Node {
             frame: cx.frame,
             renderer: cx.renderer,
             selectors: &selectors,
-            request_redraw: cx.request_redraw,
+            event_sink: cx.event_sink,
         };
 
         let mut view_state = self.view_state.borrow_mut();
@@ -257,7 +257,7 @@ impl Node {
         &self,
         style: &Stylesheet,
         renderer: &dyn Renderer,
-        request_redraw: &WeakCallback,
+        event_sink: &EventSink,
         event: &Event,
     ) {
         let mut node_state = self.node_state.borrow_mut();
@@ -265,7 +265,7 @@ impl Node {
 
         if let Some(event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(&mut node_state, event) {
-                request_redraw.emit(&());
+                event_sink.send(RequestRedrawEvent);
             }
         }
 
@@ -275,7 +275,7 @@ impl Node {
             state: &mut node_state,
             renderer,
             selectors: &selectors,
-            request_redraw,
+            event_sink,
         };
 
         let mut view_state = self.view_state.borrow_mut();
@@ -287,7 +287,7 @@ impl Node {
         style: &Stylesheet,
         renderer: &dyn Renderer,
         window_size: Vec2,
-        request_redraw: &WeakCallback,
+        event_sink: &EventSink,
     ) -> Vec2 {
         let mut node_state = self.node_state.borrow_mut();
         node_state.style = self.view.style();
@@ -298,7 +298,7 @@ impl Node {
             state: &mut node_state,
             renderer,
             selectors: &selectors,
-            request_redraw,
+            event_sink,
         };
 
         let bc = BoxConstraints::new(Vec2::ZERO, window_size);
@@ -316,7 +316,7 @@ impl Node {
         style: &Stylesheet,
         frame: &mut Frame,
         renderer: &dyn Renderer,
-        request_redraw: &WeakCallback,
+        event_sink: &EventSink,
     ) {
         let mut node_state = self.node_state.borrow_mut();
         node_state.style = self.view.style();
@@ -328,7 +328,7 @@ impl Node {
             frame,
             renderer,
             selectors: &selectors,
-            request_redraw,
+            event_sink,
         };
 
         let mut view_state = self.view_state.borrow_mut();

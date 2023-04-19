@@ -2,7 +2,10 @@ use std::any::{self, Any};
 
 use glam::Vec2;
 
-use crate::{BoxConstraints, DrawContext, Event, EventContext, LayoutContext, SharedSignal, Style};
+use crate::{
+    BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, RequestRedrawEvent,
+    SharedSignal, Style,
+};
 
 /// A [`View`] is a component that can be rendered to the screen.
 #[allow(unused_variables)]
@@ -87,27 +90,35 @@ impl<T: View> AnyView for T {
 /// When a view is wrapped in a signal, the view will be redrawn when the signal
 /// changes.
 impl<V: View> View for SharedSignal<V> {
-    type State = V::State;
+    type State = (Callback<()>, V::State);
 
     fn build(&self) -> Self::State {
-        self.get_untracked().build()
+        (Callback::default(), self.get_untracked().build())
     }
 
     fn style(&self) -> Style {
         self.get_untracked().style()
     }
 
-    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+    fn event(&self, (_, state): &mut Self::State, cx: &mut EventContext, event: &Event) {
         self.get().event(state, cx, event);
     }
 
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(
+        &self,
+        (_, state): &mut Self::State,
+        cx: &mut LayoutContext,
+        bc: BoxConstraints,
+    ) -> Vec2 {
         self.get().layout(state, cx, bc)
     }
 
-    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+    fn draw(&self, (callback, state): &mut Self::State, cx: &mut DrawContext) {
         // redraw when the signal changes
-        self.emitter().subscribe_weak(cx.request_redraw.clone());
+        let event_sink = cx.event_sink.clone();
+        *callback = Callback::new(move |&()| event_sink.send(RequestRedrawEvent));
+
+        self.emitter().subscribe_weak(callback.downgrade());
         self.get().draw(state, cx);
     }
 }

@@ -1,11 +1,14 @@
-use std::ops::{Deref, DerefMut, Range};
+use std::{
+    any::Any,
+    ops::{Deref, DerefMut, Range},
+};
 
 use glam::Vec2;
 use ily_graphics::{Frame, Quad, Rect, Renderer, TextHit, TextSection};
 
 use crate::{
-    FromStyleAttribute, NodeState, StyleAttribute, StyleSelectors, StyleTransition, Stylesheet,
-    Unit, WeakCallback,
+    EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, StyleAttribute, StyleSelectors,
+    StyleTransition, Stylesheet, Unit,
 };
 
 pub struct EventContext<'a> {
@@ -13,7 +16,7 @@ pub struct EventContext<'a> {
     pub state: &'a mut NodeState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
-    pub request_redraw: &'a WeakCallback,
+    pub event_sink: &'a EventSink,
 }
 
 pub struct LayoutContext<'a> {
@@ -21,7 +24,7 @@ pub struct LayoutContext<'a> {
     pub state: &'a mut NodeState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
-    pub request_redraw: &'a WeakCallback,
+    pub event_sink: &'a EventSink,
 }
 
 impl<'a> LayoutContext<'a> {
@@ -40,7 +43,7 @@ pub struct DrawContext<'a> {
     pub frame: &'a mut Frame,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
-    pub request_redraw: &'a WeakCallback,
+    pub event_sink: &'a EventSink,
 }
 
 impl<'a> DrawContext<'a> {
@@ -56,7 +59,7 @@ impl<'a> DrawContext<'a> {
                 frame,
                 renderer: self.renderer,
                 selectors: self.selectors,
-                request_redraw: self.request_redraw,
+                event_sink: self.event_sink,
             };
 
             callback(&mut child);
@@ -114,7 +117,7 @@ pub trait Context {
     fn state_mut(&mut self) -> &mut NodeState;
     fn renderer(&self) -> &dyn Renderer;
     fn selectors(&self) -> &StyleSelectors;
-    fn request_redraw_callback(&self) -> &WeakCallback;
+    fn event_sink(&self) -> &EventSink;
 
     fn get_style_value_and_transition<T: FromStyleAttribute + Default + 'static>(
         &self,
@@ -218,7 +221,11 @@ pub trait Context {
     }
 
     fn request_redraw(&self) {
-        self.request_redraw_callback().emit(&());
+        self.send_event(RequestRedrawEvent);
+    }
+
+    fn send_event(&self, event: impl Any) {
+        self.event_sink().send(event);
     }
 
     fn delta_time(&self) -> f32 {
@@ -249,8 +256,8 @@ macro_rules! context {
                 &self.selectors
             }
 
-            fn request_redraw_callback(&self) -> &WeakCallback {
-                &self.request_redraw
+            fn event_sink(&self) -> &EventSink {
+                &self.event_sink
             }
         }
     };

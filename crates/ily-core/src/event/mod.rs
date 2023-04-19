@@ -1,8 +1,12 @@
 mod keyboard;
 mod pointer;
+mod sink;
+mod window;
 
 pub use keyboard::*;
 pub use pointer::*;
+pub use sink::*;
+pub use window::*;
 
 use std::{
     any::Any,
@@ -31,6 +35,10 @@ impl Event {
 
     pub fn handle(&self) {
         self.is_handled.store(true, Ordering::Release);
+    }
+
+    pub fn is<T: Any>(&self) -> bool {
+        self.inner.as_ref().is::<T>()
     }
 
     pub fn get<T: Any>(&self) -> Option<&T> {

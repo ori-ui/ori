@@ -1,6 +1,6 @@
 use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
-use crate::{FromStyleAttribute, StyleAttribute, StyleAttributes, StyleSelectors, StyleTransition};
+use crate::{StyleAttribute, StyleAttributes, StyleSelectors, StyleSpecificity};
 
 use super::parse::StyleParseError;
 
@@ -66,64 +66,35 @@ impl Stylesheet {
         self.rules.extend(rules);
     }
 
-    /// Gets the attributes that match the given selector.
-    pub fn get_attributes(&self, selector: &StyleSelectors) -> StyleAttributes {
-        let mut attributes = StyleAttributes::new();
+    pub fn get_attribute(&self, selectors: &StyleSelectors, name: &str) -> Option<&StyleAttribute> {
+        let (attribute, _) = self.get_attribute_specificity(selectors, name)?;
+        Some(attribute)
+    }
+
+    pub fn get_attribute_specificity(
+        &self,
+        selectors: &StyleSelectors,
+        name: &str,
+    ) -> Option<(&StyleAttribute, StyleSpecificity)> {
+        let mut specificity = StyleSpecificity::default();
+        let mut result = None;
 
         for rule in self.rules.iter() {
-            if selector.select(&rule.selector) {
-                attributes.extend(rule.attributes.clone());
-            }
-        }
+            if selectors.select(&rule.selector) {
+                let s = rule.selector.specificity();
 
-        attributes
-    }
+                if s < specificity {
+                    continue;
+                }
 
-    /// Gets the value of an attribute that matches the given selector.
-    pub fn get_attribute(&self, selector: &StyleSelectors, name: &str) -> Option<&StyleAttribute> {
-        for rule in self.rules.iter().rev() {
-            if selector.select(&rule.selector) {
-                if let Some(value) = rule.get_attribute(name) {
-                    return Some(value);
+                if let Some(attribute) = rule.get_attribute(name) {
+                    specificity = s;
+                    result = Some((attribute, s));
                 }
             }
         }
 
-        None
-    }
-
-    /// Gets the value of an attribute that matches the given selector.
-    pub fn get_value<T: FromStyleAttribute>(
-        &self,
-        selector: &StyleSelectors,
-        name: &str,
-    ) -> Option<T> {
-        for rule in self.rules.iter().rev() {
-            if selector.select(&rule.selector) {
-                if let Some(value) = rule.get_value(name) {
-                    return Some(value);
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Gets the value of an attribute that matches the given selector.
-    pub fn get_value_and_transition<T: FromStyleAttribute>(
-        &self,
-        selector: &StyleSelectors,
-        name: &str,
-    ) -> Option<(T, Option<StyleTransition>)> {
-        for rule in self.rules.iter().rev() {
-            if selector.select(&rule.selector) {
-                if let Some(value) = rule.get_value_and_transition(name) {
-                    return Some(value);
-                }
-            }
-        }
-
-        None
+        result
     }
 
     /// Loads a style sheet from a file.
@@ -174,18 +145,5 @@ impl StyleRule {
     /// Gets the value of an attribute.
     pub fn get_attribute(&self, name: &str) -> Option<&StyleAttribute> {
         self.attributes.get(name)
-    }
-
-    /// Gets the value of an attribute.
-    pub fn get_value<T: FromStyleAttribute>(&self, name: &str) -> Option<T> {
-        self.attributes.get_value(name)
-    }
-
-    /// Gets the value of an attribute.
-    pub fn get_value_and_transition<T: FromStyleAttribute>(
-        &self,
-        name: &str,
-    ) -> Option<(T, Option<StyleTransition>)> {
-        self.attributes.get_value_and_transition(name)
     }
 }

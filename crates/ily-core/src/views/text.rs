@@ -45,6 +45,8 @@ impl View for Text {
         let font_size = cx.style_range("font-size", 0.0..bc.max.y);
         *state = font_size;
 
+        let bc = cx.style_constraints(bc);
+
         let section = TextSection {
             rect: Rect::min_size(Vec2::ZERO, bc.max),
             scale: font_size,
@@ -57,7 +59,7 @@ impl View for Text {
         };
 
         let bounds = cx.messure_text(&section).unwrap_or_default();
-        cx.style_constraints(bc).constrain(bounds.size())
+        bounds.size()
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {

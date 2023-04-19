@@ -1,5 +1,6 @@
 use glam::Vec2;
 use ily_macro::Build;
+use smallvec::SmallVec;
 
 use crate::{
     AlignItems, Axis, BoxConstraints, Children, Context, DrawContext, Event, EventContext,
@@ -136,42 +137,48 @@ impl View for Div {
         let min_major = axis.major(bc.min) - padding * 2.0;
 
         let mut minor = min_minor;
+        let mut major = 0.0f32;
 
         // first we need to measure the children to determine their size
-        for child in self.children.iter() {
+        //
+        // NOTE: using a SmallVec here is a bit faster than using a Vec, but it's not a huge
+        // difference
+        let mut children = SmallVec::<[f32; 8]>::with_capacity(self.children.len());
+        for (i, child) in self.children.iter().enumerate() {
             let child_bc = BoxConstraints {
                 min: axis.pack(0.0, 0.0),
                 max: axis.pack(max_major, max_minor),
             };
             let size = child.layout(cx, child_bc);
             let child_minor = axis.minor(size);
-
-            minor = minor.max(child_minor);
-        }
-
-        let mut major = 0.0f32;
-
-        let min_minor = if align_items == AlignItems::Stretch {
-            minor
-        } else {
-            0.0
-        };
-
-        let mut children = Vec::new();
-        for (i, child) in self.children.iter().enumerate() {
-            let child_bc = BoxConstraints {
-                min: axis.pack(0.0, min_minor),
-                max: axis.pack(max_major, max_minor),
-            };
-            let size = child.layout(cx, child_bc);
             let child_major = axis.major(size);
 
             children.push(child_major);
 
+            minor = minor.max(child_minor);
             major += child_major;
 
             if i > 0 {
                 major += gap;
+            }
+        }
+
+        if align_items == AlignItems::Stretch {
+            // we need to re-measure the children to determine their size
+            children.clear();
+
+            for child in self.children.iter() {
+                let child_bc = BoxConstraints {
+                    min: axis.pack(0.0, minor),
+                    max: axis.pack(max_major, minor),
+                };
+                // FIXME: calling layout again is not ideal, but it's the only way to get the
+                // correct size for the child, since we don't know the minor size until we've
+                // measured all the children
+                let size = child.layout(cx, child_bc);
+                let child_major = axis.major(size);
+
+                children.push(child_major);
             }
         }
 
@@ -180,11 +187,8 @@ impl View for Div {
         let child_offsets = justify_content.justify(&children, major, gap);
 
         // now we can layout the children
-        for (i, align_major) in child_offsets.into_iter().enumerate() {
-            let child = &self.children[i];
-
+        for (child, align_major) in self.children.iter().zip(child_offsets) {
             let child_minor = axis.minor(child.size());
-
             let align_minor = align_items.align(0.0, minor, child_minor);
 
             let offset = axis.pack(align_major, align_minor);

@@ -1,7 +1,64 @@
-use std::fmt::Display;
+use std::{
+    cmp::Ordering,
+    fmt::Display,
+    ops::{Add, AddAssign},
+};
 
 use smallvec::SmallVec;
 use smol_str::SmolStr;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StyleSpecificity {
+    pub class: u16,
+    pub tag: u16,
+}
+
+impl StyleSpecificity {
+    pub const MAX: Self = Self::new(u16::MAX, u16::MAX);
+    pub const INLINE: Self = Self::MAX;
+
+    pub const fn new(class: u16, tag: u16) -> Self {
+        Self { class, tag }
+    }
+}
+
+impl PartialOrd for StyleSpecificity {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.class.partial_cmp(&other.class) {
+            Some(Ordering::Equal) => {}
+            ord => return ord,
+        }
+        self.tag.partial_cmp(&other.tag)
+    }
+}
+
+impl Ord for StyleSpecificity {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.class.cmp(&other.class) {
+            Ordering::Equal => {}
+            ord => return ord,
+        }
+        self.tag.cmp(&other.tag)
+    }
+}
+
+impl Add for StyleSpecificity {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            class: self.class + other.class,
+            tag: self.tag + other.tag,
+        }
+    }
+}
+
+impl AddAssign for StyleSpecificity {
+    fn add_assign(&mut self, other: Self) {
+        self.class += other.class;
+        self.tag += other.tag;
+    }
+}
 
 /// A [`Style`](super::Style) selector.
 ///
@@ -9,113 +66,151 @@ use smol_str::SmolStr;
 #[derive(Clone, Debug, Default)]
 pub struct StyleSelectors {
     /// The element name.
-    pub elements: StyleElements,
-    /// The list of classes.
-    pub classes: StyleClasses,
+    pub selectors: SmallVec<[StyleSelector; 1]>,
 }
 
 impl StyleSelectors {
-    /// Creates a new selector.
-    pub fn new(elements: StyleElements, classes: StyleClasses) -> Self {
-        Self { elements, classes }
-    }
-
-    /// Returns true if `other` is a subset of `self`.
-    pub fn select(&self, other: &Self) -> bool {
-        self.elements.select(&other.elements) && self.classes.select(&other.classes)
-    }
-}
-
-impl Display for StyleSelectors {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (i, element) in self.elements.iter().enumerate() {
-            if i == 0 {
-                write!(f, "{}", element)?;
-            } else {
-                write!(f, " {}", element)?;
-            }
-        }
-
-        for (i, class) in self.classes.iter().enumerate() {
-            if i == 0 && self.elements.is_empty() {
-                write!(f, ".{}", class)?;
-            } else {
-                write!(f, " .{}", class)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct StyleElements {
-    elements: SmallVec<[StyleElement; 4]>,
-}
-
-impl StyleElements {
     pub const fn new() -> Self {
         Self {
-            elements: SmallVec::new_const(),
+            selectors: SmallVec::new_const(),
         }
     }
 
     pub fn len(&self) -> usize {
-        self.elements.len()
+        self.selectors.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.elements.is_empty()
+        self.selectors.is_empty()
     }
 
-    pub fn add(&mut self, element: StyleElement) {
-        self.elements.push(element);
+    pub fn push(&mut self, selector: StyleSelector) {
+        self.selectors.push(selector);
     }
 
-    pub fn extend(&mut self, elements: impl IntoIterator<Item = StyleElement>) {
-        self.elements.extend(elements);
+    pub fn with(mut self, selector: StyleSelector) -> Self {
+        self.push(selector);
+        self
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &StyleElement> {
-        self.elements.iter()
+    pub fn specificity(&self) -> StyleSpecificity {
+        let mut specificity = StyleSpecificity::default();
+
+        for selector in self.selectors.iter() {
+            specificity += selector.specificity();
+        }
+
+        specificity
     }
 
     /// Returns true if `other` is a subset of `self`.
-    ///
-    /// The order of the elements is important.
     pub fn select(&self, other: &Self) -> bool {
-        let mut elements = self.elements.as_slice();
+        if other.len() > self.len() {
+            return false;
+        }
 
-        for element in other.elements.iter() {
-            if let Some(index) = elements.iter().position(|e| e.select(element)) {
-                elements = &elements[index + 1..];
-            } else {
+        for (a, b) in self.iter().rev().zip(other.iter().rev()) {
+            if !a.select(b) {
                 return false;
             }
         }
 
         true
     }
-}
 
-impl IntoIterator for StyleElements {
-    type Item = StyleElement;
-    type IntoIter = smallvec::IntoIter<[StyleElement; 4]>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.elements.into_iter()
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &StyleSelector> {
+        self.selectors.iter()
     }
 }
 
-impl<T: Into<StyleElement>> FromIterator<T> for StyleElements {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+impl IntoIterator for StyleSelectors {
+    type Item = StyleSelector;
+    type IntoIter = smallvec::IntoIter<[Self::Item; 1]>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.selectors.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a StyleSelectors {
+    type Item = &'a StyleSelector;
+    type IntoIter = std::slice::Iter<'a, StyleSelector>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.selectors.iter()
+    }
+}
+
+impl FromIterator<StyleSelector> for StyleSelectors {
+    fn from_iter<T: IntoIterator<Item = StyleSelector>>(iter: T) -> Self {
         Self {
-            elements: iter.into_iter().map(Into::into).collect(),
+            selectors: iter.into_iter().collect(),
         }
     }
 }
 
+impl Display for StyleSelectors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, selector) in self.selectors.iter().enumerate() {
+            if i > 0 {
+                write!(f, " ")?;
+            }
+            write!(f, "{}", selector)?;
+        }
+
+        Ok(())
+    }
+}
+
+pub type StyleElement = SmolStr;
 pub type StyleClass = SmolStr;
+
+#[derive(Clone, Debug, Default)]
+pub struct StyleSelector {
+    pub element: Option<StyleElement>,
+    pub classes: StyleClasses,
+    pub states: StyleStates,
+}
+
+impl StyleSelector {
+    pub fn new(element: Option<StyleElement>, classes: StyleClasses, states: StyleStates) -> Self {
+        Self {
+            element,
+            classes,
+            states,
+        }
+    }
+
+    pub fn specificity(&self) -> StyleSpecificity {
+        StyleSpecificity {
+            class: self.classes.len() as u16 + self.states.len() as u16,
+            tag: self.element.is_some() as u16,
+        }
+    }
+
+    pub fn select(&self, other: &Self) -> bool {
+        if other.element.is_some() && self.element != other.element {
+            return false;
+        }
+
+        self.classes.select(&other.classes) && self.states.select(&other.states)
+    }
+}
+
+impl Display for StyleSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(element) = &self.element {
+            write!(f, "{}", element)?;
+        } else {
+            write!(f, "*")?;
+        }
+
+        write!(f, "{}", self.classes)?;
+        write!(f, "{}", self.states)?;
+
+        Ok(())
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct StyleClasses {
@@ -137,7 +232,7 @@ impl StyleClasses {
         self.classes.is_empty()
     }
 
-    pub fn add(&mut self, class: impl Into<SmolStr>) {
+    pub fn push(&mut self, class: impl Into<SmolStr>) {
         self.classes.push(class.into());
     }
 
@@ -178,53 +273,13 @@ impl<T: Into<SmolStr>> FromIterator<T> for StyleClasses {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct StyleElement {
-    pub name: Option<SmolStr>,
-    pub states: StyleStates,
-}
-
-impl StyleElement {
-    pub fn new(name: impl Into<Option<SmolStr>>, states: StyleStates) -> Self {
-        Self {
-            name: name.into(),
-            states,
-        }
-    }
-
-    pub fn push_state(&mut self, state: impl Into<SmolStr>) {
-        self.states.push(state);
-    }
-
-    pub fn select(&self, other: &Self) -> bool {
-        let name_matches = other.name.is_none() || self.name == other.name;
-        name_matches && self.states.select(&other.states)
-    }
-}
-
-impl Display for StyleElement {
+impl Display for StyleClasses {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(name) = &self.name {
-            write!(f, "{}", name)?;
-        }
-
-        for state in self.states.iter() {
-            write!(f, ":{}", state)?;
+        for class in self.classes.iter() {
+            write!(f, ".{}", class)?;
         }
 
         Ok(())
-    }
-}
-
-impl From<SmolStr> for StyleElement {
-    fn from(name: SmolStr) -> Self {
-        Self::new(name, StyleStates::new())
-    }
-}
-
-impl From<&str> for StyleElement {
-    fn from(name: &str) -> Self {
-        Self::new(Some(name.into()), StyleStates::new())
     }
 }
 
@@ -247,7 +302,7 @@ impl StyleStates {
         self.elements.len()
     }
 
-    /// Returns true if the list is empty.
+    /// Returns true if the list is empSharedty.
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
     }
@@ -302,6 +357,16 @@ impl<T: Into<SmolStr>> FromIterator<T> for StyleStates {
     }
 }
 
+impl Display for StyleStates {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for element in self.elements.iter() {
+            write!(f, ":{}", element)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
@@ -340,23 +405,5 @@ mod tests {
         let other = StyleClasses::from_iter(vec!["b", "d", "f", "h", "j", "k"]);
 
         assert!(!classes.select(&other));
-    }
-
-    #[test]
-    fn elements_select() {
-        let elements =
-            StyleElements::from_iter(vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]);
-        let other = StyleElements::from_iter(vec!["b", "d", "f", "h", "j"]);
-
-        assert!(elements.select(&other));
-    }
-
-    #[test]
-    fn elements_select_not() {
-        let elements =
-            StyleElements::from_iter(vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]);
-        let other = StyleElements::from_iter(vec!["b", "d", "f", "h", "j", "k"]);
-
-        assert!(!elements.select(&other));
     }
 }

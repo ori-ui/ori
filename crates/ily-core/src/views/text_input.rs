@@ -258,11 +258,11 @@ impl View for TextInput {
         let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
         state.padding = padding;
 
-        let min_width = cx.style_range_or("width", "min-width", bc.width());
-        let max_width = cx.style_range_or("width", "max-width", bc.width());
+        let min_width = cx.style_range_group("width", "min-width", bc.width());
+        let max_width = cx.style_range_group("width", "max-width", bc.width());
 
-        let mut min_height = cx.style_range_or("height", "min-height", bc.height());
-        let max_height = cx.style_range_or("height", "max-height", bc.height());
+        let mut min_height = cx.style_range_group("height", "min-height", bc.height());
+        let max_height = cx.style_range_group("height", "max-height", bc.height());
 
         min_height = min_height.max(font_size + padding * 2.0);
 

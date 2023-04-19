@@ -60,18 +60,6 @@ impl Style {
         self.attributes.extend(attrs);
         self
     }
-
-    pub fn selectors(&self, mut ancestors: StyleElements) -> StyleSelectors {
-        ancestors.add(StyleElement::new(
-            self.element.map(Into::into),
-            self.classes.iter().cloned().collect(),
-        ));
-
-        StyleSelectors {
-            elements: ancestors,
-            classes: self.classes.clone(),
-        }
-    }
 }
 
 /// A value with associated style [`StyleAttributes`].

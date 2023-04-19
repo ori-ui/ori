@@ -51,11 +51,11 @@ impl View for Image {
     fn event(&self, _state: &mut Self::State, _cx: &mut EventContext, _event: &Event) {}
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let min_width = cx.style_range_or("width", "min-width", bc.width());
-        let max_width = cx.style_range_or("width", "max-width", bc.width());
+        let min_width = cx.style_range_group("width", "min-width", bc.width());
+        let max_width = cx.style_range_group("width", "max-width", bc.width());
 
-        let min_height = cx.style_range_or("height", "min-height", bc.height());
-        let max_height = cx.style_range_or("height", "max-height", bc.height());
+        let min_height = cx.style_range_group("height", "min-height", bc.height());
+        let max_height = cx.style_range_group("height", "max-height", bc.height());
 
         let min_size = bc.constrain(Vec2::new(min_width, min_height));
         let max_size = bc.constrain(Vec2::new(max_width, max_height));

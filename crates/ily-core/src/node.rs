@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, EventSink, LayoutContext,
-    Lock, Lockable, PointerEvent, RequestRedrawEvent, Style, StyleElement, StyleElements,
-    StyleSelectors, StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
+    Lock, Lockable, PointerEvent, RequestRedrawEvent, Style, StyleSelector, StyleSelectors,
+    StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -70,6 +70,8 @@ impl NodeState {
         self.global_rect = self.local_rect.translate(parent.global_rect.min);
     }
 
+    pub fn propagate_child(&mut self, _child: &NodeState) {}
+
     pub fn style_states(&self) -> StyleStates {
         let mut states = StyleStates::new();
 
@@ -88,16 +90,11 @@ impl NodeState {
         states
     }
 
-    pub fn selectors(&self, ancestors: &StyleElements) -> StyleSelectors {
-        let mut elements = ancestors.clone();
-
-        if let Some(element) = self.style.element {
-            elements.add(StyleElement::new(Some(element.into()), self.style_states()));
-        }
-
-        StyleSelectors {
-            elements,
+    pub fn selector(&self) -> StyleSelector {
+        StyleSelector {
+            element: self.style.element.map(Into::into),
             classes: self.style.classes.clone(),
+            states: self.style_states(),
         }
     }
 
@@ -167,6 +164,10 @@ impl Node {
         self.node_state.lock_mut().local_rect
     }
 
+    pub fn global_rect(&self) -> Rect {
+        self.node_state.lock_mut().global_rect
+    }
+
     pub fn size(&self) -> Vec2 {
         self.node_state.lock_mut().local_rect.size()
     }
@@ -194,37 +195,45 @@ impl Node {
             }
         }
 
-        let selectors = node_state.selectors(&cx.selectors.elements);
-        let mut cx = EventContext {
-            style: cx.style,
-            state: &mut node_state,
-            renderer: cx.renderer,
-            selectors: &selectors,
-            event_sink: cx.event_sink,
-        };
+        {
+            let selector = node_state.selector();
+            let mut cx = EventContext {
+                style: cx.style,
+                state: &mut node_state,
+                renderer: cx.renderer,
+                selectors: &cx.selectors.clone().with(selector),
+                event_sink: cx.event_sink,
+            };
 
-        let mut view_state = self.view_state.lock_mut();
-        self.view.event(&mut **view_state, &mut cx, event);
+            let mut view_state = self.view_state.lock_mut();
+            self.view.event(&mut **view_state, &mut cx, event);
+        }
+
+        cx.state.propagate_child(&node_state);
     }
 
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
-        let selectors = node_state.selectors(&cx.selectors.elements);
-        let mut cx = LayoutContext {
-            style: cx.style,
-            state: &mut node_state,
-            renderer: cx.renderer,
-            selectors: &selectors,
-            event_sink: cx.event_sink,
-        };
+        let size = {
+            let selector = node_state.selector();
+            let mut cx = LayoutContext {
+                style: cx.style,
+                state: &mut node_state,
+                renderer: cx.renderer,
+                selectors: &cx.selectors.clone().with(selector),
+                event_sink: cx.event_sink,
+            };
 
-        let mut view_state = self.view_state.lock_mut();
-        let size = self.view.layout(&mut **view_state, &mut cx, bc);
+            let mut view_state = self.view_state.lock_mut();
+            self.view.layout(&mut **view_state, &mut cx, bc)
+        };
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
         node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
+
+        cx.state.propagate_child(&node_state);
 
         size
     }
@@ -234,24 +243,28 @@ impl Node {
         node_state.style = self.view.style();
         node_state.propagate_parent(cx.state);
 
-        let selectors = node_state.selectors(&cx.selectors.elements);
-        let mut cx = DrawContext {
-            style: cx.style,
-            state: &mut node_state,
-            frame: cx.frame,
-            renderer: cx.renderer,
-            selectors: &selectors,
-            event_sink: cx.event_sink,
-        };
+        {
+            let selector = node_state.selector();
+            let mut cx = DrawContext {
+                style: cx.style,
+                state: &mut node_state,
+                frame: cx.frame,
+                renderer: cx.renderer,
+                selectors: &cx.selectors.clone().with(selector),
+                event_sink: cx.event_sink,
+            };
 
-        let mut view_state = self.view_state.lock_mut();
-        self.view.draw(&mut **view_state, &mut cx);
+            let mut view_state = self.view_state.lock_mut();
+            self.view.draw(&mut **view_state, &mut cx);
 
-        if cx.state.update_transitions() {
-            cx.request_redraw();
+            if cx.state.update_transitions() {
+                cx.request_redraw();
+            }
+
+            cx.state.draw();
         }
 
-        cx.state.draw();
+        cx.state.propagate_child(&node_state);
     }
 }
 
@@ -272,12 +285,12 @@ impl Node {
             }
         }
 
-        let selectors = node_state.selectors(&StyleElements::new());
+        let selector = node_state.selector();
         let mut cx = EventContext {
             style,
             state: &mut node_state,
             renderer,
-            selectors: &selectors,
+            selectors: &StyleSelectors::new().with(selector),
             event_sink,
         };
 
@@ -295,12 +308,12 @@ impl Node {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
-        let selectors = node_state.selectors(&StyleElements::new());
+        let selector = node_state.selector();
         let mut cx = LayoutContext {
             style,
             state: &mut node_state,
             renderer,
-            selectors: &selectors,
+            selectors: &StyleSelectors::new().with(selector),
             event_sink,
         };
 
@@ -324,13 +337,13 @@ impl Node {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
-        let selectors = node_state.selectors(&StyleElements::new());
+        let selector = node_state.selector();
         let mut cx = DrawContext {
             style,
             state: &mut node_state,
             frame,
             renderer,
-            selectors: &selectors,
+            selectors: &StyleSelectors::new().with(selector),
             event_sink,
         };
 

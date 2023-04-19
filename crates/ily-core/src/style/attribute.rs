@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use ily_graphics::{Color, TextAlign};
 use smallvec::SmallVec;
+use smol_str::SmolStr;
 
 use crate::{ReadSignal, StyleTransition, Unit};
 
@@ -69,7 +70,7 @@ impl StyleAttributes {
         None
     }
 
-    pub fn get_value_and_transition<T: FromStyleAttribute>(
+    pub fn get_value_transition<T: FromStyleAttribute>(
         &self,
         name: &str,
     ) -> Option<(T, Option<StyleTransition>)> {
@@ -124,13 +125,15 @@ impl FromIterator<StyleAttribute> for StyleAttributes {
     }
 }
 
+pub type StyleAttributeKey = SmolStr;
+
 /// A [`Style`](super::Style) attribute.
 ///
 /// An attribute is a name and a value.
 #[derive(Clone, Debug)]
 pub struct StyleAttribute {
     /// The attribute key.
-    pub key: String,
+    pub key: StyleAttributeKey,
     /// The attribute value.
     pub value: StyleAttributeValue,
     /// The transition to use when animating the attribute.
@@ -138,7 +141,7 @@ pub struct StyleAttribute {
 }
 
 impl StyleAttribute {
-    pub fn new(key: impl Into<String>, value: impl Into<StyleAttributeValue>) -> Self {
+    pub fn new(key: impl Into<SmolStr>, value: impl Into<StyleAttributeValue>) -> Self {
         Self {
             key: key.into(),
             value: value.into(),
@@ -147,7 +150,7 @@ impl StyleAttribute {
     }
 
     pub fn with_transition(
-        key: impl Into<String>,
+        key: impl Into<SmolStr>,
         value: impl Into<StyleAttributeValue>,
         transition: impl Into<StyleTransition>,
     ) -> Self {
@@ -160,17 +163,17 @@ impl StyleAttribute {
 }
 
 pub trait StyleAttributeBuilder {
-    fn attribute(self, key: impl Into<String>) -> StyleAttribute;
+    fn attribute(self, key: impl Into<StyleAttributeKey>) -> StyleAttribute;
 }
 
 impl<T: Into<StyleAttributeValue>> StyleAttributeBuilder for T {
-    fn attribute(self, key: impl Into<String>) -> StyleAttribute {
+    fn attribute(self, key: impl Into<StyleAttributeKey>) -> StyleAttribute {
         StyleAttribute::new(key, self)
     }
 }
 
 impl<T: Into<StyleAttributeValue>, U: Into<StyleTransition>> StyleAttributeBuilder for (T, U) {
-    fn attribute(self, key: impl Into<String>) -> StyleAttribute {
+    fn attribute(self, key: impl Into<StyleAttributeKey>) -> StyleAttribute {
         StyleAttribute::with_transition(key, self.0, self.1)
     }
 }

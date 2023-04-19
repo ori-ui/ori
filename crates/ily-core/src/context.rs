@@ -8,7 +8,7 @@ use ily_graphics::{Frame, Quad, Rect, Renderer, TextHit, TextSection};
 
 use crate::{
     BoxConstraints, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
-    StyleAttribute, StyleSelectors, StyleTransition, Stylesheet, Unit,
+    StyleAttribute, StyleSelectors, StyleSpecificity, Stylesheet, Unit,
 };
 
 pub struct EventContext<'a> {
@@ -29,11 +29,11 @@ pub struct LayoutContext<'a> {
 
 impl<'a> LayoutContext<'a> {
     pub fn style_constraints(&mut self, bc: BoxConstraints) -> BoxConstraints {
-        let min_width = self.style_range_or("width", "min-width", bc.width());
-        let max_width = self.style_range_or("width", "max-width", bc.width());
+        let min_width = self.style_range_group("min-width", "width", bc.width());
+        let max_width = self.style_range_group("max-width", "width", bc.width());
 
-        let min_height = self.style_range_or("height", "min-height", bc.height());
-        let max_height = self.style_range_or("height", "max-height", bc.height());
+        let min_height = self.style_range_group("min-height", "height", bc.height());
+        let max_height = self.style_range_group("max-height", "height", bc.height());
 
         let min_size = bc.constrain(Vec2::new(min_width, min_height));
         let max_size = bc.constrain(Vec2::new(max_width, max_height));
@@ -93,10 +93,15 @@ impl<'a> DrawContext<'a> {
     pub fn draw_quad(&mut self) {
         let range = 0.0..self.rect().max.min_element() / 2.0;
 
-        let tl = self.style_range_or("border-top-left-radius", "border-radius", range.clone());
-        let tr = self.style_range_or("border-top-right-radius", "border-radius", range.clone());
-        let br = self.style_range_or("border-bottom-right-radius", "border-radius", range.clone());
-        let bl = self.style_range_or("border-bottom-left-radius", "border-radius", range.clone());
+        let tl = "border-top-left-radius";
+        let tr = "border-top-right-radius";
+        let br = "border-bottom-right-radius";
+        let bl = "border-bottom-left-radius";
+
+        let tl = self.style_range_group(tl, "border-radius", range.clone());
+        let tr = self.style_range_group(tr, "border-radius", range.clone());
+        let br = self.style_range_group(br, "border-radius", range.clone());
+        let bl = self.style_range_group(bl, "border-radius", range.clone());
 
         let quad = Quad {
             rect: self.rect(),
@@ -132,42 +137,104 @@ pub trait Context {
     fn selectors(&self) -> &StyleSelectors;
     fn event_sink(&self) -> &EventSink;
 
-    fn get_style_value_and_transition<T: FromStyleAttribute + Default + 'static>(
+    fn get_style_attribute(&self, key: &str) -> Option<StyleAttribute> {
+        if let Some(attribute) = self.state().style.attributes.get(key) {
+            return Some(attribute.clone());
+        }
+
+        let attribute = self.stylesheet().get_attribute(self.selectors(), key)?;
+        Some(attribute.clone())
+    }
+
+    fn get_style_attribute_specificity(
         &self,
         key: &str,
-    ) -> Option<(T, Option<StyleTransition>)> {
-        if let Some(result) = self.state().style.attributes.get_value_and_transition(key) {
-            return Some(result);
+    ) -> Option<(StyleAttribute, StyleSpecificity)> {
+        if let Some(attribute) = self.state().style.attributes.get(key) {
+            return Some((attribute.clone(), StyleSpecificity::INLINE));
         }
 
-        let style = self.stylesheet();
+        let stylesheet = self.stylesheet();
+        let selectors = self.selectors();
+        let (attribute, specificity) = stylesheet.get_attribute_specificity(selectors, key)?;
+        Some((attribute.clone(), specificity))
+    }
 
-        if let Some(result) = style.get_value_and_transition(self.selectors(), key) {
-            return Some(result);
-        }
+    fn get_style<T: FromStyleAttribute + 'static>(&mut self, key: &str) -> Option<T> {
+        let attribute = self.get_style_attribute(key)?;
+        let value = T::from_attribute(attribute.value)?;
+        let transition = attribute.transition;
 
-        None
+        Some(self.state_mut().transition(key, value, transition))
+    }
+
+    fn get_style_specificity<T: FromStyleAttribute + 'static>(
+        &mut self,
+        key: &str,
+    ) -> Option<(T, StyleSpecificity)> {
+        let (attribute, specificity) = self.get_style_attribute_specificity(key)?;
+        let value = T::from_attribute(attribute.value)?;
+        let transition = attribute.transition;
+
+        Some((
+            self.state_mut().transition(key, value, transition),
+            specificity,
+        ))
     }
 
     /// Get the value of a style attribute, if it has a transition, the value will be
     /// interpolated between the current value and the new value.
     #[track_caller]
     fn style<T: FromStyleAttribute + Default + 'static>(&mut self, key: &str) -> T {
-        let (value, transition) = self.get_style_value_and_transition(key).unwrap_or_default();
-        self.state_mut().transition(key, value, transition)
+        self.get_style(key).unwrap_or_default()
     }
 
-    fn style_or<T: FromStyleAttribute + Default + 'static>(
+    fn style_group<T: FromStyleAttribute + Default + 'static>(
         &mut self,
-        primary: &str,
-        secondary: &str,
+        primary_key: &str,
+        secondary_key: &str,
     ) -> T {
-        let (value, transition) = self
-            .get_style_value_and_transition(primary)
-            .or_else(|| self.get_style_value_and_transition(secondary))
-            .unwrap_or_default();
+        let primary = self.get_style_specificity(primary_key);
+        let secondary = self.get_style_specificity(secondary_key);
 
-        self.state_mut().transition(primary, value, transition)
+        match (primary, secondary) {
+            (Some((primary, primary_specificity)), Some((secondary, secondary_specificity))) => {
+                if primary_specificity >= secondary_specificity {
+                    primary
+                } else {
+                    secondary
+                }
+            }
+            (Some((value, _)), None) | (None, Some((value, _))) => value,
+            _ => T::default(),
+        }
+    }
+
+    fn get_style_range(&mut self, key: &str, range: Range<f32>) -> Option<f32> {
+        let attribute = self.get_style_attribute(key)?;
+        let value = Unit::from_attribute(attribute.value)?;
+        let transition = attribute.transition;
+
+        let pixels = value.pixels(range, self.renderer().scale());
+
+        Some((self.state_mut()).transition(key, pixels, transition))
+    }
+
+    fn get_style_range_specificity(
+        &mut self,
+        key: &str,
+        range: Range<f32>,
+    ) -> Option<(f32, StyleSpecificity)> {
+        let (attribute, specificity) = self.get_style_attribute_specificity(key)?;
+        let value = Unit::from_attribute(attribute.value)?;
+        let transition = attribute.transition;
+
+        let pixels = value.pixels(range, self.renderer().scale());
+
+        Some((
+            (self.state_mut()).transition(key, pixels, transition),
+            specificity,
+        ))
     }
 
     /// Get the value of a style attribute, if it has a transition, the value will be
@@ -177,26 +244,29 @@ pub trait Context {
     /// `style` which returns a `Unit`.
     #[track_caller]
     fn style_range(&mut self, key: &str, range: Range<f32>) -> f32 {
-        let (value, transition) = self
-            .get_style_value_and_transition::<Unit>(key)
-            .unwrap_or_default();
-
-        let pixels = value.pixels(range, self.renderer().scale());
-        self.state_mut().transition(key, pixels, transition)
+        self.get_style_range(key, range).unwrap_or_default()
     }
 
-    fn style_range_or(&mut self, primary: &str, secondary: &str, range: Range<f32>) -> f32 {
-        let (value, transition) = self
-            .get_style_value_and_transition::<Unit>(primary)
-            .or_else(|| self.get_style_value_and_transition::<Unit>(secondary))
-            .unwrap_or_default();
+    fn style_range_group(
+        &mut self,
+        primary_key: &str,
+        secondary_key: &str,
+        range: Range<f32>,
+    ) -> f32 {
+        let primary = self.get_style_range_specificity(primary_key, range.clone());
+        let secondary = self.get_style_range_specificity(secondary_key, range);
 
-        let pixels = value.pixels(range, self.renderer().scale());
-        self.state_mut().transition(primary, pixels, transition)
-    }
-
-    fn style_attribute(&self, key: &str) -> Option<&StyleAttribute> {
-        self.state().style.attributes.get(key)
+        match (primary, secondary) {
+            (Some((primary, primary_specificity)), Some((secondary, secondary_specificity))) => {
+                if primary_specificity >= secondary_specificity {
+                    primary
+                } else {
+                    secondary
+                }
+            }
+            (Some((value, _)), None) | (None, Some((value, _))) => value,
+            _ => 0.0,
+        }
     }
 
     fn downcast_renderer<T: Renderer>(&self) -> Option<&T> {
@@ -243,7 +313,11 @@ pub trait Context {
         self.state().global_rect
     }
 
-    fn request_redraw(&self) {
+    fn size(&self) -> Vec2 {
+        self.state().local_rect.size()
+    }
+
+    fn request_redraw(&mut self) {
         self.send_event(RequestRedrawEvent);
     }
 

@@ -264,7 +264,6 @@ impl App {
                             ..Default::default()
                         };
 
-                        state.layout();
                         state.event(&Event::new(event));
                     }
                     WindowEvent::MouseInput {

@@ -33,8 +33,9 @@ State = { ":" ~ Identifier }
 Element = { (Identifier | Wildcard) ~ State* }
 Class = { "." ~ Identifier }
 Wildcard = { "*" }
-Selector = { (Element+ ~ Class*) | (Element* ~ Class+) }
+Selector = { (Element ~ Class*) | Class+ }
+Selectors = { Selector+ }
 
 // stylesheet
-StyleRule = { Selector ~ "{" ~ Attribute* ~ "}" }
+StyleRule = { Selectors ~ "{" ~ Attribute* ~ "}" }
 Style = { SOI ~ StyleRule* ~ EOI }

@@ -59,7 +59,7 @@ impl View for Text {
         };
 
         let bounds = cx.messure_text(&section).unwrap_or_default();
-        bounds.size()
+        bc.constrain(bounds.size())
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {

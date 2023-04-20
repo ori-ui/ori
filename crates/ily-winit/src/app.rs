@@ -13,7 +13,7 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::convert::{convert_key, convert_mouse_button, is_pressed};
+use crate::convert::{convert_device_id, convert_key, convert_mouse_button, is_pressed};
 
 const BUILTIN_STYLES: &[&str] = &[
     include_str!("../../../style/default.css"),
@@ -254,12 +254,28 @@ impl App {
                         state.renderer.resize(size.width, size.height);
                     }
                     WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                    WindowEvent::CursorMoved { position, .. } => {
+                    WindowEvent::CursorMoved {
+                        position,
+                        device_id,
+                        ..
+                    } => {
                         state.mouse_position.x = position.x as f32;
                         state.mouse_position.y = position.y as f32;
 
                         let event = PointerEvent {
+                            id: convert_device_id(device_id),
                             position: state.mouse_position,
+                            modifiers: state.modifiers,
+                            ..Default::default()
+                        };
+
+                        state.event(&Event::new(event));
+                    }
+                    WindowEvent::CursorLeft { device_id } => {
+                        let event = PointerEvent {
+                            id: convert_device_id(device_id),
+                            position: state.mouse_position,
+                            left: true,
                             modifiers: state.modifiers,
                             ..Default::default()
                         };
@@ -269,9 +285,11 @@ impl App {
                     WindowEvent::MouseInput {
                         button,
                         state: element_state,
+                        device_id,
                         ..
                     } => {
                         let event = PointerEvent {
+                            id: convert_device_id(device_id),
                             position: state.mouse_position,
                             button: Some(convert_mouse_button(button)),
                             pressed: is_pressed(element_state),

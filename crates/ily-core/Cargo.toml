@@ -10,6 +10,7 @@ ily-graphics = { path = "../ily-graphics", version = "0.1.0" }
 ily-macro = { path = "../ily-macro", version = "0.1.0" }
 
 deref-derive = "0.1"
+fxhash = "0.2"
 glam = "0.23"
 pest = "2.5"
 pest_derive = "2.5"

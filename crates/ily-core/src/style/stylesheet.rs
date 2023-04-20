@@ -1,6 +1,6 @@
 use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
-use crate::{StyleAttribute, StyleAttributes, StyleSelectors, StyleSpecificity};
+use crate::{StyleAttribute, StyleAttributes, StyleCache, StyleSelectors, StyleSpecificity};
 
 use super::parse::StyleParseError;
 
@@ -48,34 +48,44 @@ macro_rules! include_stylesheet {
 #[derive(Clone, Debug, Default)]
 pub struct Stylesheet {
     pub rules: Vec<StyleRule>,
+    pub cache: StyleCache,
 }
 
 impl Stylesheet {
     /// Creates a new style sheet.
     pub fn new() -> Self {
-        Self { rules: Vec::new() }
+        Self {
+            rules: Vec::new(),
+            cache: StyleCache::new(),
+        }
     }
 
     /// Adds a [`StyleRule`] to the style sheet.
     pub fn add_rule(&mut self, rule: StyleRule) {
+        self.cache.clear();
         self.rules.push(rule);
     }
 
     /// Extends the style sheet with the given rules.
     pub fn extend(&mut self, rules: impl IntoIterator<Item = StyleRule>) {
+        self.cache.clear();
         self.rules.extend(rules);
     }
 
-    pub fn get_attribute(&self, selectors: &StyleSelectors, name: &str) -> Option<&StyleAttribute> {
+    pub fn get_attribute(&self, selectors: &StyleSelectors, name: &str) -> Option<StyleAttribute> {
         let (attribute, _) = self.get_attribute_specificity(selectors, name)?;
-        Some(attribute)
+        Some(attribute.clone())
     }
 
     pub fn get_attribute_specificity(
         &self,
         selectors: &StyleSelectors,
         name: &str,
-    ) -> Option<(&StyleAttribute, StyleSpecificity)> {
+    ) -> Option<(StyleAttribute, StyleSpecificity)> {
+        if let Some(result) = self.cache.get_attribute(selectors, name) {
+            return Some(result);
+        }
+
         let mut specificity = StyleSpecificity::default();
         let mut result = None;
 
@@ -94,7 +104,9 @@ impl Stylesheet {
             }
         }
 
-        result
+        let (attribute, specificity) = result?;
+        self.cache.insert(selectors, attribute.clone(), specificity);
+        Some((attribute.clone(), specificity))
     }
 
     /// Loads a style sheet from a file.

@@ -1,5 +1,16 @@
+use std::{
+    collections::hash_map::RandomState,
+    hash::{BuildHasher, Hash, Hasher},
+};
+
 use ily_core::{Key, PointerButton};
-use winit::event::{ElementState, MouseButton, VirtualKeyCode};
+use winit::event::{DeviceId, ElementState, MouseButton, VirtualKeyCode};
+
+pub(crate) fn convert_device_id(device_id: DeviceId) -> u64 {
+    let mut hasher = RandomState::new().build_hasher();
+    device_id.hash(&mut hasher);
+    hasher.finish()
+}
 
 pub(crate) fn is_pressed(state: ElementState) -> bool {
     match state {

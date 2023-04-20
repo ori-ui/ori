@@ -1,4 +1,5 @@
 mod attribute;
+mod cache;
 mod loader;
 mod parse;
 mod selector;
@@ -6,6 +7,7 @@ mod stylesheet;
 mod transition;
 
 pub use attribute::*;
+pub use cache::*;
 pub use loader::*;
 pub use selector::*;
 pub use stylesheet::*;

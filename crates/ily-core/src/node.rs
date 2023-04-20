@@ -175,7 +175,7 @@ impl Node {
 
 impl Node {
     fn handle_pointer_event(&self, node_state: &mut NodeState, event: &PointerEvent) -> bool {
-        let hovered = node_state.global_rect.contains(event.position);
+        let hovered = node_state.global_rect.contains(event.position) && !event.left;
         if hovered != node_state.hovered {
             node_state.hovered = hovered;
             true

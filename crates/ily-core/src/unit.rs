@@ -1,4 +1,9 @@
-use std::{fmt::Display, ops::Range};
+use std::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+    mem,
+    ops::Range,
+};
 
 pub use Unit::*;
 
@@ -23,6 +28,21 @@ pub enum Unit {
     /// 1em = the font size of the root.
     /// 1em = 16px by default.
     Em(f32),
+}
+
+impl Eq for Unit {}
+
+impl Hash for Unit {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        mem::discriminant(self).hash(state);
+
+        match self {
+            Px(value) => value.to_bits().hash(state),
+            Pt(value) => value.to_bits().hash(state),
+            Pc(value) => value.to_bits().hash(state),
+            Em(value) => value.to_bits().hash(state),
+        }
+    }
 }
 
 impl Default for Unit {

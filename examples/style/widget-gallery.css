@@ -13,6 +13,7 @@ div .row {
 	gap: 10px;
 
 	direction: row;
+	justify-content: center;
 	align-items: center;
 }
 
@@ -20,6 +21,7 @@ div .column {
 	gap: 5px;
 
 	direction: column;
+	justify-content: center;
 	align-items: stretch;
 }
 

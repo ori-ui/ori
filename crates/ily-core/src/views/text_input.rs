@@ -279,7 +279,7 @@ impl View for TextInput {
         cx.draw_quad();
 
         let section = self.display_section(state, cx);
-        cx.draw_primitive(section);
+        cx.draw(section);
 
         if let Some(cursor) = state.cursor {
             state.blink += cx.state.delta() * 10.0;
@@ -303,7 +303,7 @@ impl View for TextInput {
                 ..Quad::default()
             };
 
-            cx.draw_primitive(quad);
+            cx.draw(quad);
         }
     }
 }

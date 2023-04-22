@@ -36,20 +36,32 @@ impl Fonts {
         wgpu_glyph::FontId::default()
     }
 
-    pub fn convert_section<'a>(&'a self, section: &'a TextSection) -> wgpu_glyph::Section<'a> {
+    pub fn convert_section<'a>(
+        &'a self,
+        section: &'a TextSection,
+        depth: f32,
+    ) -> wgpu_glyph::Section<'a> {
         let aligned_rect = section.aligned_rect();
         let x = aligned_rect.min.x;
         let y = aligned_rect.min.y;
         let width = aligned_rect.width() + 5.0;
         let height = aligned_rect.height() + 5.0;
 
-        let mut text = wgpu_glyph::Text::new(&section.text)
-            .with_color(section.color)
-            .with_scale(section.scale);
+        let font_id = if let Some(font) = &section.font {
+            self.find_font(font)
+        } else {
+            wgpu_glyph::FontId::default()
+        };
 
-        if let Some(font) = &section.font {
-            text = text.with_font_id(self.find_font(font));
-        }
+        let text = wgpu_glyph::Text {
+            text: &section.text,
+            scale: section.scale.into(),
+            font_id,
+            extra: wgpu_glyph::Extra {
+                color: section.color.into(),
+                z: depth,
+            },
+        };
 
         let layout = if section.wrap {
             wgpu_glyph::Layout::Wrap {

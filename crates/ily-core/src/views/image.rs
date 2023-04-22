@@ -91,6 +91,6 @@ impl View for Image {
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let handle = state.update(cx, &self.src);
         let mesh = Mesh::image(cx.rect(), handle.clone());
-        cx.draw_primitive(mesh);
+        cx.draw(mesh);
     }
 }

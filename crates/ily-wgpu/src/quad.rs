@@ -1,16 +1,17 @@
-use std::mem;
+use std::{mem, num::NonZeroU64};
 
 use bytemuck::{Pod, Zeroable};
 use ily_core::Vec2;
 use ily_graphics::{Color, Quad};
 use wgpu::{
     include_wgsl,
-    util::{BufferInitDescriptor, DeviceExt},
+    util::{BufferInitDescriptor, DeviceExt, StagingBelt},
     vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-    BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites, Device,
-    FragmentState, IndexFormat, MultisampleState, PipelineLayoutDescriptor, Queue, RenderPass,
-    RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexBufferLayout,
+    BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites,
+    CommandEncoder, Device, FragmentState, IndexFormat, LoadOp, MultisampleState, Operations,
+    PipelineLayoutDescriptor, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
+    RenderPipelineDescriptor, ShaderStages, TextureFormat, TextureView, VertexBufferLayout,
     VertexStepMode,
 };
 
@@ -18,6 +19,7 @@ use wgpu::{
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 struct QuadUniforms {
     resolution: Vec2,
+    depth: f32,
 }
 
 #[repr(C)]
@@ -32,112 +34,13 @@ struct QuadVertex {
     border_width: f32,
 }
 
-struct QuadInstance {
-    bind_group: BindGroup,
-    vertex_buffer: Buffer,
-    index_buffer: Buffer,
-}
-
-impl QuadInstance {
-    pub fn new(device: &Device, pipeline: &QuadPipeline, quad: &Quad) -> Self {
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Quad Bind Group"),
-            layout: &pipeline.bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: pipeline.uniform_buffer.as_entire_binding(),
-            }],
-        });
-
-        let mesh = Self::quad_mesh(&quad.rounded());
-        let vertex_buffer = Self::create_vertex_buffer(device, bytemuck::cast_slice(&mesh));
-        let index_buffer = Self::create_index_buffer(device);
-
-        Self {
-            bind_group,
-            vertex_buffer,
-            index_buffer,
-        }
-    }
-
-    fn quad_mesh(quad: &Quad) -> [QuadVertex; 4] {
-        [
-            QuadVertex {
-                position: quad.rect.top_left(),
-                min: quad.rect.min,
-                max: quad.rect.max,
-                color: quad.background,
-                border_color: quad.border_color,
-                border_radius: quad.border_radius,
-                border_width: quad.border_width,
-            },
-            QuadVertex {
-                position: quad.rect.top_right(),
-                min: quad.rect.min,
-                max: quad.rect.max,
-                color: quad.background,
-                border_color: quad.border_color,
-                border_radius: quad.border_radius,
-                border_width: quad.border_width,
-            },
-            QuadVertex {
-                position: quad.rect.bottom_right(),
-                min: quad.rect.min,
-                max: quad.rect.max,
-                color: quad.background,
-                border_color: quad.border_color,
-                border_radius: quad.border_radius,
-                border_width: quad.border_width,
-            },
-            QuadVertex {
-                position: quad.rect.bottom_left(),
-                min: quad.rect.min,
-                max: quad.rect.max,
-                color: quad.background,
-                border_color: quad.border_color,
-                border_radius: quad.border_radius,
-                border_width: quad.border_width,
-            },
-        ]
-    }
-
-    pub fn update(&mut self, device: &Device, queue: &Queue, quad: &Quad) {
-        self.update_vertex_buffer(device, queue, &quad.rounded());
-    }
-
-    fn update_vertex_buffer(&mut self, device: &Device, queue: &Queue, quad: &Quad) {
-        let mesh = Self::quad_mesh(quad);
-        let data = bytemuck::cast_slice(&mesh);
-
-        if self.vertex_buffer.size() < data.len() as u64 {
-            self.vertex_buffer = Self::create_vertex_buffer(device, data);
-        } else {
-            queue.write_buffer(&self.vertex_buffer, 0, data);
-        }
-    }
-
-    fn create_vertex_buffer(device: &Device, contents: &[u8]) -> Buffer {
-        device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Quad Vertex Buffer"),
-            contents,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-        })
-    }
-
-    fn create_index_buffer(device: &Device) -> Buffer {
-        device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Quad Index Buffer"),
-            contents: bytemuck::cast_slice::<u32, _>(&[0, 1, 2, 2, 3, 0]),
-            usage: BufferUsages::INDEX,
-        })
-    }
-}
-
 pub struct QuadPipeline {
     pub bind_group_layout: BindGroupLayout,
     pub uniform_buffer: Buffer,
+    pub uniform_bind_group: BindGroup,
     pub pipeline: RenderPipeline,
-    instances: Vec<QuadInstance>,
+    pub vertex_buffer: Buffer,
+    pub index_buffer: Buffer,
 }
 
 impl QuadPipeline {
@@ -162,6 +65,15 @@ impl QuadPipeline {
                     min_binding_size: None,
                 },
                 count: None,
+            }],
+        });
+
+        let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Quad Uniform Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
             }],
         });
 
@@ -209,37 +121,157 @@ impl QuadPipeline {
             multiview: None,
         });
 
+        let vertex_buffer = Self::create_vertex_buffer(device);
+        let index_buffer = Self::create_index_buffer(device);
+
         Self {
             bind_group_layout,
             uniform_buffer,
             pipeline,
-            instances: Vec::new(),
+            uniform_bind_group,
+            vertex_buffer,
+            index_buffer,
         }
     }
 
-    pub fn prepare_quad(&mut self, device: &Device, queue: &Queue, quad: &Quad, index: usize) {
-        if let Some(instance) = self.instances.get_mut(index) {
-            instance.update(device, queue, quad);
-        } else {
-            let instance = QuadInstance::new(device, self, quad);
-            self.instances.push(instance);
-        }
+    fn create_vertex_buffer(device: &Device) -> Buffer {
+        device.create_buffer(&BufferDescriptor {
+            label: Some("Quad Vertex Buffer"),
+            size: mem::size_of::<QuadVertex>() as u64 * 4,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
     }
 
-    pub fn set_size(&self, queue: &Queue, width: u32, height: u32) {
+    fn create_index_buffer(device: &Device) -> Buffer {
+        let indices = [0, 1, 2, 2, 3, 0];
+
+        device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Quad Index Buffer"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: BufferUsages::INDEX,
+        })
+    }
+
+    fn quad_mesh(quad: &Quad) -> [QuadVertex; 4] {
+        [
+            QuadVertex {
+                position: quad.rect.top_left(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+            QuadVertex {
+                position: quad.rect.top_right(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+            QuadVertex {
+                position: quad.rect.bottom_right(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+            QuadVertex {
+                position: quad.rect.bottom_left(),
+                min: quad.rect.min,
+                max: quad.rect.max,
+                color: quad.background,
+                border_color: quad.border_color,
+                border_radius: quad.border_radius,
+                border_width: quad.border_width,
+            },
+        ]
+    }
+
+    fn write_uniform_buffer(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        width: u32,
+        height: u32,
+        depth: f32,
+    ) {
         let uniforms = QuadUniforms {
             resolution: Vec2::new(width as f32, height as f32),
+            depth,
         };
 
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+        let bytes = bytemuck::bytes_of(&uniforms);
+
+        let mut buffer = staging_belt.write_buffer(
+            encoder,
+            &self.uniform_buffer,
+            0,
+            NonZeroU64::new(bytes.len() as u64).unwrap(),
+            device,
+        );
+        buffer.copy_from_slice(bytes);
     }
 
-    pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
-        let instance = &self.instances[index];
+    fn write_vertex_buffer(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        quad: &Quad,
+    ) {
+        let vertices = Self::quad_mesh(quad);
+        let bytes = bytemuck::cast_slice(&vertices);
+
+        let mut buffer = staging_belt.write_buffer(
+            encoder,
+            &self.vertex_buffer,
+            0,
+            NonZeroU64::new(bytes.len() as u64).unwrap(),
+            device,
+        );
+        buffer.copy_from_slice(bytes);
+    }
+
+    pub fn render(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        view: &TextureView,
+        msaa: &TextureView,
+        width: u32,
+        height: u32,
+        quad: &Quad,
+        depth: f32,
+    ) {
+        self.write_uniform_buffer(device, encoder, staging_belt, width, height, depth);
+        self.write_vertex_buffer(device, encoder, staging_belt, quad);
+
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("Quad Render Pass"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: &msaa,
+                resolve_target: Some(view),
+                ops: Operations {
+                    load: LoadOp::Load,
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+        });
+
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &instance.bind_group, &[]);
-        pass.set_vertex_buffer(0, instance.vertex_buffer.slice(..));
-        pass.set_index_buffer(instance.index_buffer.slice(..), IndexFormat::Uint32);
+        pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
         pass.draw_indexed(0..6, 0, 0..1);
     }
 }

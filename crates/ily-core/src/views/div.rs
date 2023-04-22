@@ -203,7 +203,7 @@ impl View for Div {
     fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 
-        cx.layer(|cx| {
+        cx.draw_layer(1.0, |cx| {
             for child in &self.children {
                 child.draw(cx);
             }

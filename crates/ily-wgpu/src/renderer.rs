@@ -2,18 +2,18 @@ use std::cell::RefCell;
 
 use ily_core::Vec2;
 use ily_graphics::{
-    Color, Frame, ImageData, ImageHandle, Mesh, Primitive, Quad, Rect, Renderer, TextHit,
-    TextSection,
+    Color, Frame, ImageData, ImageHandle, Mesh, Primitive, PrimitiveKind, Quad, Rect, Renderer,
+    TextHit, TextSection,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{
     util::{DeviceExt, StagingBelt},
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingResource, BindingType, CompositeAlphaMode, Device, Extent3d,
-    FilterMode, Instance, LoadOp, Operations, Queue, RenderPass, RenderPassColorAttachment,
+    BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder, CompositeAlphaMode, Device,
+    Extent3d, FilterMode, Instance, LoadOp, Operations, Queue, RenderPassColorAttachment,
     RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor,
     ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureSampleType, TextureUsages, TextureViewDimension,
+    TextureFormat, TextureSampleType, TextureUsages, TextureView, TextureViewDimension,
 };
 use wgpu_glyph::{
     ab_glyph::{Font, FontArc, ScaleFont},
@@ -241,76 +241,76 @@ impl WgpuRenderer {
         );
     }
 
-    fn prepare_mesh(&mut self, mesh: &Mesh, mesh_index: &mut usize) {
-        (self.mesh_pipeline).prepare_mesh(&self.device, &self.queue, mesh, *mesh_index);
-        *mesh_index += 1;
-    }
-
-    fn prepare_quad(&mut self, quad: &Quad, quad_index: &mut usize) {
-        (self.quad_pipeline).prepare_quad(&self.device, &self.queue, quad, *quad_index);
-        *quad_index += 1;
-    }
-
-    fn prepare_primitive(
+    fn render_quad(
         &mut self,
-        primitive: &Primitive,
-        mesh_index: &mut usize,
-        quad_index: &mut usize,
+        encoder: &mut CommandEncoder,
+        view: &TextureView,
+        quad: &Quad,
+        depth: f32,
     ) {
-        match primitive {
-            Primitive::Quad(quad) => self.prepare_quad(quad, quad_index),
-            Primitive::Mesh(mesh) => self.prepare_mesh(mesh, mesh_index),
-            _ => {}
-        }
+        let msaa_view = self.msaa_texture.create_view(&Default::default());
+
+        self.quad_pipeline.render(
+            &self.device,
+            encoder,
+            &mut self.staging_belt,
+            view,
+            &msaa_view,
+            self.config.width,
+            self.config.height,
+            quad,
+            depth,
+        );
     }
 
-    fn prepare_frame(&mut self, frame: &Frame) {
-        let mut mesh_index = 0;
-        let mut quad_index = 0;
-        frame.visit_primitives(|primitive| {
-            self.prepare_primitive(primitive, &mut mesh_index, &mut quad_index);
-        });
+    fn render_mesh(
+        &mut self,
+        encoder: &mut CommandEncoder,
+        view: &TextureView,
+        mesh: &Mesh,
+        depth: f32,
+    ) {
+        let msaa_view = self.msaa_texture.create_view(&Default::default());
+
+        self.mesh_pipeline.render(
+            &self.device,
+            encoder,
+            &mut self.staging_belt,
+            view,
+            &msaa_view,
+            self.config.width,
+            self.config.height,
+            &self.default_image,
+            mesh,
+            depth,
+        );
     }
 
-    fn render_quad<'a>(&'a self, pass: &mut RenderPass<'a>, index: &mut usize) {
-        self.quad_pipeline.render(pass, *index);
-        *index += 1;
-    }
-
-    fn render_mesh<'a>(&'a self, pass: &mut RenderPass<'a>, index: &mut usize) {
-        self.mesh_pipeline.render(pass, &self.default_image, *index);
-        *index += 1;
-    }
-
-    fn render_text<'a>(&self, text: &TextSection) {
-        let section = self.fonts.convert_section(text);
+    fn render_text(&self, text: &TextSection, depth: f32) {
+        let section = self.fonts.convert_section(text, depth);
         self.glyph_brush.borrow_mut().queue(section);
     }
 
-    fn render_primitive<'a>(
-        &'a self,
-        pass: &mut RenderPass<'a>,
+    fn render_primitive(
+        &mut self,
+        encoder: &mut CommandEncoder,
+        view: &TextureView,
         primitive: &Primitive,
-        mesh_index: &mut usize,
-        quad_index: &mut usize,
     ) {
-        match primitive {
-            Primitive::Text(text) => self.render_text(text),
-            Primitive::Quad(_) => self.render_quad(pass, quad_index),
-            Primitive::Mesh(_) => self.render_mesh(pass, mesh_index),
-            _ => {}
+        match primitive.kind {
+            PrimitiveKind::Text(ref text) => {
+                self.render_text(text, primitive.depth);
+            }
+            PrimitiveKind::Quad(ref quad) => {
+                self.render_quad(encoder, view, quad, primitive.depth);
+            }
+            PrimitiveKind::Mesh(ref mesh) => {
+                self.render_mesh(encoder, view, mesh, primitive.depth);
+            }
         }
     }
 
     pub fn render_frame(&mut self, frame: &Frame, clear_color: Color) {
-        let width = self.config.width;
-        let height = self.config.height;
-        self.quad_pipeline.set_size(&self.queue, width, height);
-        self.mesh_pipeline.set_size(&self.queue, width, height);
-
-        // prepare the pipelines
-        self.prepare_frame(frame);
-
         let target = self.surface.get_current_texture().unwrap();
         let view = target.texture.create_view(&Default::default());
         let msaa_view = self.msaa_texture.create_view(&Default::default());
@@ -318,7 +318,7 @@ impl WgpuRenderer {
         let mut encoder = self.device.create_command_encoder(&Default::default());
 
         // create render pass
-        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+        encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Ily Render Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: &msaa_view,
@@ -337,13 +337,9 @@ impl WgpuRenderer {
         });
 
         // render primitives
-        let mut mesh_index = 0;
-        let mut quad_index = 0;
-        frame.visit_primitives(|primitive| {
-            self.render_primitive(&mut pass, primitive, &mut mesh_index, &mut quad_index);
-        });
-
-        drop(pass);
+        for primitive in frame.primitives() {
+            self.render_primitive(&mut encoder, &view, primitive);
+        }
 
         self.glyph_brush
             .borrow_mut()
@@ -352,8 +348,8 @@ impl WgpuRenderer {
                 &mut self.staging_belt,
                 &mut encoder,
                 &view,
-                width,
-                height,
+                self.config.width,
+                self.config.height,
             )
             .unwrap();
 
@@ -384,7 +380,7 @@ impl Renderer for WgpuRenderer {
     }
 
     fn messure_text(&self, section: &TextSection) -> Option<Rect> {
-        let section = self.fonts.convert_section(section);
+        let section = self.fonts.convert_section(section, 0.0);
         let mut glyph_brush = self.glyph_brush.borrow_mut();
         let bounds = glyph_brush.glyph_bounds(&section)?;
 
@@ -404,7 +400,7 @@ impl Renderer for WgpuRenderer {
 
         let font = glyph_brush.fonts()[font_id.0].clone();
         let scaled = font.into_scaled(section.scale);
-        let section = self.fonts.convert_section(section);
+        let section = self.fonts.convert_section(section, 0.0);
 
         let mut closest = None::<TextHit>;
 

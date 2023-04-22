@@ -105,8 +105,11 @@ impl<'a> DrawContext<'a> {
         self.frame
     }
 
-    pub fn layer(&mut self, callback: impl FnOnce(&mut DrawContext)) {
-        self.frame.layer(|frame| {
+    /// Runs the given callback on a new layer offset by the given amount.
+    ///
+    /// `offset` should almost always be `1.0`.
+    pub fn draw_layer(&mut self, offset: f32, f: impl FnOnce(&mut DrawContext)) {
+        self.frame.draw_layer(offset, |frame| {
             let mut child = DrawContext {
                 style: self.style,
                 state: self.state,
@@ -117,7 +120,7 @@ impl<'a> DrawContext<'a> {
                 image_cache: self.image_cache,
             };
 
-            callback(&mut child);
+            f(&mut child);
         });
     }
 
@@ -153,7 +156,7 @@ impl<'a> DrawContext<'a> {
             border_color: self.style("border-color"),
         };
 
-        self.draw_primitive(quad);
+        self.draw(quad);
     }
 }
 

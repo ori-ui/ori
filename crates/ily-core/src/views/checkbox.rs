@@ -82,7 +82,7 @@ impl View for Checkbox {
                 ..Default::default()
             };
 
-            cx.draw_primitive(section);
+            cx.draw(section);
         }
     }
 }

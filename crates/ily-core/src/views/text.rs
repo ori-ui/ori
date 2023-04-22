@@ -74,6 +74,6 @@ impl View for Text {
             color: cx.style("color"),
         };
 
-        cx.draw_primitive(section);
+        cx.draw(section);
     }
 }

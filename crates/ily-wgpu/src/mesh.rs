@@ -1,17 +1,16 @@
-use std::{mem, sync::Arc};
+use std::{mem, num::NonZeroU64};
 
 use bytemuck::{Pod, Zeroable};
 use ily_core::Vec2;
-use ily_graphics::{ImageHandle, Mesh, Vertex};
+use ily_graphics::{Mesh, Vertex};
 use wgpu::{
-    include_wgsl,
-    util::{BufferInitDescriptor, DeviceExt},
-    vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
-    BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites, Device,
-    FragmentState, IndexFormat, MultisampleState, PipelineLayoutDescriptor, Queue, RenderPass,
-    RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexBufferLayout,
-    VertexStepMode,
+    include_wgsl, util::StagingBelt, vertex_attr_array, BindGroup, BindGroupDescriptor,
+    BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,
+    BlendState, Buffer, BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState,
+    ColorWrites, CommandEncoder, Device, FragmentState, IndexFormat, LoadOp, MultisampleState,
+    Operations, PipelineLayoutDescriptor, RenderPassColorAttachment, RenderPassDescriptor,
+    RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, TextureView,
+    VertexBufferLayout, VertexStepMode,
 };
 
 use crate::WgpuImage;
@@ -20,87 +19,16 @@ use crate::WgpuImage;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 struct MeshUniforms {
     resolution: Vec2,
-}
-
-struct MeshInstance {
-    bind_group: BindGroup,
-    image: Option<Arc<WgpuImage>>,
-    vertex_buffer: Buffer,
-    index_buffer: Buffer,
-    index_count: u32,
-}
-
-impl MeshInstance {
-    pub fn new(device: &Device, pipeline: &MeshPipeline, mesh: &Mesh) -> Self {
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Mesh Bind Group"),
-            layout: &pipeline.bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: pipeline.uniform_buffer.as_entire_binding(),
-            }],
-        });
-
-        let vertex_buffer = Self::create_vertex_buffer(device, mesh.vertex_bytes());
-        let index_buffer = Self::create_index_buffer(device, mesh.index_bytes());
-
-        Self {
-            bind_group,
-            image: mesh.image.clone().and_then(ImageHandle::downcast_arc),
-            vertex_buffer,
-            index_buffer,
-            index_count: mesh.indices.len() as u32,
-        }
-    }
-
-    pub fn update(&mut self, device: &Device, queue: &Queue, mesh: &Mesh) {
-        self.update_vertex_buffer(device, queue, mesh);
-        self.update_index_buffer(device, queue, mesh);
-        self.index_count = mesh.indices.len() as u32;
-    }
-
-    fn update_vertex_buffer(&mut self, device: &Device, queue: &Queue, mesh: &Mesh) {
-        let data = mesh.vertex_bytes();
-
-        if self.vertex_buffer.size() < data.len() as u64 {
-            self.vertex_buffer = Self::create_vertex_buffer(device, data);
-        } else {
-            queue.write_buffer(&self.vertex_buffer, 0, data);
-        }
-    }
-
-    fn update_index_buffer(&mut self, device: &Device, queue: &Queue, mesh: &Mesh) {
-        let data = mesh.index_bytes();
-
-        if self.index_buffer.size() < data.len() as u64 {
-            self.index_buffer = Self::create_index_buffer(device, data);
-        } else {
-            queue.write_buffer(&self.index_buffer, 0, data);
-        }
-    }
-
-    fn create_vertex_buffer(device: &Device, contents: &[u8]) -> Buffer {
-        device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Mesh Vertex Buffer"),
-            contents,
-            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
-        })
-    }
-
-    fn create_index_buffer(device: &Device, contents: &[u8]) -> Buffer {
-        device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("Mesh Index Buffer"),
-            contents,
-            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
-        })
-    }
+    depth: f32,
 }
 
 pub struct MeshPipeline {
     pub bind_group_layout: BindGroupLayout,
     pub uniform_buffer: Buffer,
+    pub uniform_bind_group: BindGroup,
     pub pipeline: RenderPipeline,
-    instances: Vec<MeshInstance>,
+    pub vertex_buffer: Buffer,
+    pub index_buffer: Buffer,
 }
 
 impl MeshPipeline {
@@ -129,6 +57,15 @@ impl MeshPipeline {
                     min_binding_size: None,
                 },
                 count: None,
+            }],
+        });
+
+        let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Mesh Uniform Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
             }],
         });
 
@@ -168,49 +105,166 @@ impl MeshPipeline {
             multiview: None,
         });
 
+        let vertex_buffer = Self::create_vertex_buffer(device, 512);
+        let index_buffer = Self::create_index_buffer(device, 512);
+
         Self {
             bind_group_layout,
             uniform_buffer,
+            uniform_bind_group,
             pipeline,
-            instances: Vec::new(),
+            vertex_buffer,
+            index_buffer,
         }
     }
 
-    pub fn prepare_mesh(&mut self, device: &Device, queue: &Queue, mesh: &Mesh, index: usize) {
-        if let Some(instance) = self.instances.get_mut(index) {
-            instance.update(device, queue, mesh);
-        } else {
-            let instance = MeshInstance::new(device, self, mesh);
-            self.instances.push(instance);
-        }
+    fn create_vertex_buffer(device: &Device, vertices: u64) -> Buffer {
+        device.create_buffer(&BufferDescriptor {
+            label: Some("Mesh Vertex Buffer"),
+            size: mem::size_of::<Vertex>() as u64 * vertices,
+            usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
     }
 
-    pub fn set_size(&self, queue: &Queue, width: u32, height: u32) {
+    fn create_index_buffer(device: &Device, indices: u64) -> Buffer {
+        device.create_buffer(&BufferDescriptor {
+            label: Some("Mesh Index Buffer"),
+            size: mem::size_of::<u32>() as u64 * indices,
+            usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
+    }
+
+    fn write_uniform_buffer(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        width: u32,
+        height: u32,
+        depth: f32,
+    ) {
         let uniforms = MeshUniforms {
             resolution: Vec2::new(width as f32, height as f32),
+            depth,
         };
 
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+        let bytes = bytemuck::bytes_of(&uniforms);
+
+        let mut buffer = staging_belt.write_buffer(
+            encoder,
+            &self.uniform_buffer,
+            0,
+            NonZeroU64::new(bytes.len() as u64).unwrap(),
+            device,
+        );
+
+        buffer.copy_from_slice(bytes);
     }
 
-    pub fn render<'a>(
-        &'a self,
-        pass: &mut RenderPass<'a>,
-        default_image: &'a WgpuImage,
-        index: usize,
-    ) {
-        let instance = &self.instances[index];
-        pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &instance.bind_group, &[]);
+    fn recreate_vertex_buffer(&mut self, device: &Device, vertices: u64) {
+        self.vertex_buffer = Self::create_vertex_buffer(device, vertices);
+    }
 
-        if let Some(image) = &instance.image {
+    fn recreate_index_buffer(&mut self, device: &Device, indices: u64) {
+        self.index_buffer = Self::create_index_buffer(device, indices);
+    }
+
+    fn write_vertex_buffer(
+        &mut self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        vertices: &[Vertex],
+    ) {
+        let bytes = bytemuck::cast_slice(vertices);
+
+        if self.vertex_buffer.size() < bytes.len() as u64 {
+            self.recreate_vertex_buffer(device, vertices.len() as u64);
+        }
+
+        let mut buffer = staging_belt.write_buffer(
+            encoder,
+            &self.vertex_buffer,
+            0,
+            NonZeroU64::new(bytes.len() as u64).unwrap(),
+            device,
+        );
+
+        buffer.copy_from_slice(bytes);
+    }
+
+    fn write_index_buffer(
+        &mut self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        indices: &[u32],
+    ) {
+        let bytes = bytemuck::cast_slice(indices);
+
+        if self.index_buffer.size() < bytes.len() as u64 {
+            self.recreate_index_buffer(device, indices.len() as u64);
+        }
+
+        let mut buffer = staging_belt.write_buffer(
+            encoder,
+            &self.index_buffer,
+            0,
+            NonZeroU64::new(bytes.len() as u64).unwrap(),
+            device,
+        );
+
+        buffer.copy_from_slice(bytes);
+    }
+
+    pub fn render(
+        &mut self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        view: &TextureView,
+        msaa: &TextureView,
+        width: u32,
+        height: u32,
+        default_image: &WgpuImage,
+        mesh: &Mesh,
+        depth: f32,
+    ) {
+        if mesh.vertices.is_empty() || mesh.indices.is_empty() {
+            return;
+        }
+
+        self.write_uniform_buffer(device, encoder, staging_belt, width, height, depth);
+        self.write_vertex_buffer(device, encoder, staging_belt, &mesh.vertices);
+        self.write_index_buffer(device, encoder, staging_belt, &mesh.indices);
+
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("Mesh Render Pass"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: &msaa,
+                resolve_target: Some(view),
+                ops: Operations {
+                    load: LoadOp::Load,
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+        });
+
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+
+        if let Some(image) = &mesh.image {
+            let image = image.downcast_ref::<WgpuImage>().unwrap();
             pass.set_bind_group(1, &image.bind_group, &[]);
         } else {
             pass.set_bind_group(1, &default_image.bind_group, &[]);
         }
 
-        pass.set_vertex_buffer(0, instance.vertex_buffer.slice(..));
-        pass.set_index_buffer(instance.index_buffer.slice(..), IndexFormat::Uint32);
-        pass.draw_indexed(0..instance.index_count, 0, 0..1);
+        pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
+        pass.draw_indexed(0..mesh.indices.len() as u32, 0, 0..1);
     }
 }

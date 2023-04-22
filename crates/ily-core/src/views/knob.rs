@@ -86,11 +86,11 @@ impl View for Knob {
             border_color: cx.style("border-color"),
         };
 
-        cx.draw_primitive(circle);
+        cx.draw(circle);
 
         let curve = Curve::arc(cx.rect().center(), diameter * 0.65, -PI * 1.25, PI * 0.25);
         let mesh = curve.rounded_mesh(diameter * 0.075, cx.style("background-color"));
-        cx.draw_primitive(mesh);
+        cx.draw(mesh);
 
         let range = self.max - self.min;
         let value = self.value.get();
@@ -99,13 +99,13 @@ impl View for Knob {
 
         let curve = Curve::arc(cx.rect().center(), diameter * 0.65, -PI * 1.25, angle);
         let mesh = curve.rounded_mesh(diameter * 0.075, cx.style("color"));
-        cx.draw_primitive(mesh);
+        cx.draw(mesh);
 
         let mut arm = Curve::new();
         arm.add_point(cx.rect().center());
         arm.add_point(cx.rect().center() + Vec2::new(angle.cos(), angle.sin()) * diameter * 0.65);
 
         let mesh = arm.rounded_mesh(diameter * 0.075, cx.style("color"));
-        cx.draw_primitive(mesh);
+        cx.draw(mesh);
     }
 }

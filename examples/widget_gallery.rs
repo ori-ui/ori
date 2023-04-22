@@ -5,7 +5,7 @@ const LONG_TEXT: &str =
 tincidunt luctus, nisl nisl aliquet nisl, nec lacinia nisl nisl non nisl. Nulla facilisi. Nulla
 facilisi.";
 
-fn ui<'a>(cx: Scope<'a>) -> impl View {
+fn ui(cx: Scope) -> impl View {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
     let knob_value = cx.signal(0.0);

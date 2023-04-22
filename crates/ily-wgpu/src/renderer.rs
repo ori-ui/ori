@@ -429,22 +429,22 @@ impl Renderer for WgpuRenderer {
                     index: byte_index,
                     delta,
                 });
-            } else {
-                if let Some(ref mut closest) = closest {
-                    if delta.length_squared() < closest.delta.length_squared() {
-                        *closest = TextHit {
-                            inside: false,
-                            index: byte_index,
-                            delta,
-                        };
-                    }
-                } else {
-                    closest = Some(TextHit {
+            }
+
+            if let Some(ref mut closest) = closest {
+                if delta.length_squared() < closest.delta.length_squared() {
+                    *closest = TextHit {
                         inside: false,
                         index: byte_index,
                         delta,
-                    });
+                    };
                 }
+            } else {
+                closest = Some(TextHit {
+                    inside: false,
+                    index: byte_index,
+                    delta,
+                });
             }
         }
 

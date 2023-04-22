@@ -28,10 +28,24 @@ impl Rect {
         }
     }
 
-    pub fn rounded(self) -> Self {
+    pub fn round(self) -> Self {
         Self {
             min: self.min.round(),
             max: self.max.round(),
+        }
+    }
+
+    pub fn ceil(self) -> Self {
+        Self {
+            min: self.min.floor(),
+            max: self.max.ceil(),
+        }
+    }
+
+    pub fn floor(self) -> Self {
+        Self {
+            min: self.min.ceil(),
+            max: self.max.floor(),
         }
     }
 
@@ -55,6 +69,29 @@ impl Rect {
         let inside_x = point.x >= self.min.x && point.x <= self.max.x;
         let inside_y = point.y >= self.min.y && point.y <= self.max.y;
         inside_x && inside_y
+    }
+
+    pub fn union(self, other: Self) -> Self {
+        Self {
+            min: self.min.min(other.min),
+            max: self.max.max(other.max),
+        }
+    }
+
+    pub fn left(self) -> f32 {
+        self.min.x
+    }
+
+    pub fn right(self) -> f32 {
+        self.max.x
+    }
+
+    pub fn top(self) -> f32 {
+        self.min.y
+    }
+
+    pub fn bottom(self) -> f32 {
+        self.max.y
     }
 
     pub fn top_left(self) -> Vec2 {

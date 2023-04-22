@@ -24,7 +24,7 @@ impl Default for Quad {
 impl Quad {
     pub fn rounded(self) -> Self {
         Self {
-            rect: self.rect.rounded(),
+            rect: self.rect.round(),
             ..self
         }
     }

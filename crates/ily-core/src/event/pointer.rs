@@ -16,6 +16,8 @@ pub struct PointerEvent {
     pub id: u64,
     /// The position of the pointer.
     pub position: Vec2,
+    /// The delta of the pointer wheel.
+    pub scroll_delta: Vec2,
     /// Whether the pointer is pressed.
     pub pressed: bool,
     /// Whether the pointer left the window.

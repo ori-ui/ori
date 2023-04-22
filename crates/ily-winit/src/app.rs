@@ -8,7 +8,7 @@ use ily_graphics::{Color, Frame};
 use winit::{
     dpi::LogicalSize,
     error::OsError,
-    event::{Event as WinitEvent, KeyboardInput, WindowEvent},
+    event::{Event as WinitEvent, KeyboardInput, MouseScrollDelta, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
     window::{Window, WindowBuilder},
 };
@@ -22,6 +22,7 @@ const BUILTIN_STYLES: &[&str] = &[
     include_str!("../../../style/button.css"),
     include_str!("../../../style/checkbox.css"),
     include_str!("../../../style/knob.css"),
+    include_str!("../../../style/scroll.css"),
 ];
 
 struct EventLoopSender(EventLoopProxy<Event>);
@@ -318,6 +319,21 @@ impl App {
                             position: state.mouse_position,
                             button: Some(convert_mouse_button(button)),
                             pressed: is_pressed(element_state),
+                            modifiers: state.modifiers,
+                            ..Default::default()
+                        };
+
+                        state.event(&Event::new(event));
+                    }
+                    WindowEvent::MouseWheel {
+                        delta: MouseScrollDelta::LineDelta(x, y),
+                        device_id,
+                        ..
+                    } => {
+                        let event = PointerEvent {
+                            id: convert_device_id(device_id),
+                            position: state.mouse_position,
+                            scroll_delta: Vec2::new(x, y),
                             modifiers: state.modifiers,
                             ..Default::default()
                         };

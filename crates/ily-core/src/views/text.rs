@@ -64,7 +64,7 @@ impl View for Text {
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let section = TextSection {
-            rect: cx.rect(),
+            rect: cx.rect().ceil(),
             scale: *state,
             h_align: cx.style("text-align"),
             v_align: cx.style("text-valign"),

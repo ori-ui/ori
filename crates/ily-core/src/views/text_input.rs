@@ -298,7 +298,7 @@ impl View for TextInput {
                     Vec2::new(cursor, cx.rect().min.y + state.padding),
                     Vec2::new(1.0, cx.rect().height() - state.padding * 2.0),
                 )
-                .rounded(),
+                .round(),
                 background: cx.style::<Color>("color") * state.blink.cos(),
                 ..Quad::default()
             };

@@ -103,7 +103,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
     }
 
     pub fn clip(mut self, clip: Rect) -> Self {
-        self.clip = Some(clip);
+        self.clip = Some(clip.round());
         self
     }
 
@@ -381,21 +381,37 @@ pub trait Context {
     }
 
     fn focus(&mut self) {
+        if self.focused() {
+            return;
+        }
+
         self.state_mut().focused = true;
         self.request_redraw();
     }
 
     fn unfocus(&mut self) {
+        if !self.focused() {
+            return;
+        }
+
         self.state_mut().focused = false;
         self.request_redraw();
     }
 
     fn activate(&mut self) {
+        if self.active() {
+            return;
+        }
+
         self.state_mut().active = true;
         self.request_redraw();
     }
 
     fn deactivate(&mut self) {
+        if !self.active() {
+            return;
+        }
+
         self.state_mut().active = false;
         self.request_redraw();
     }

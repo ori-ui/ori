@@ -32,8 +32,29 @@ impl BoxConstraints {
 
     pub fn loose(self) -> Self {
         Self {
-            min: Vec2::ZERO,
-            max: self.max,
+            min: self.min,
+            max: Vec2::splat(f32::INFINITY),
+        }
+    }
+
+    pub fn loose_x(self) -> Self {
+        Self {
+            min: self.min,
+            max: Vec2::new(f32::INFINITY, self.max.x),
+        }
+    }
+
+    pub fn loose_y(self) -> Self {
+        Self {
+            min: self.min,
+            max: Vec2::new(self.max.y, f32::INFINITY),
+        }
+    }
+
+    pub fn shrink(self, size: Vec2) -> Self {
+        Self {
+            min: self.min - size,
+            max: self.max - size,
         }
     }
 

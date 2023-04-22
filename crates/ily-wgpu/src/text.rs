@@ -40,8 +40,8 @@ impl Fonts {
         let aligned_rect = section.aligned_rect();
         let x = aligned_rect.min.x;
         let y = aligned_rect.min.y;
-        let width = aligned_rect.width() + 5.0;
-        let height = aligned_rect.height() + 5.0;
+        let width = aligned_rect.width();
+        let height = aligned_rect.height();
 
         let font_id = if let Some(font) = &section.font {
             self.find_font(font)

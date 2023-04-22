@@ -101,7 +101,7 @@ impl<'a> Layer<'a> {
     }
 
     pub fn clip(mut self, clip: impl Into<Option<Rect>>) -> Self {
-        self.clip = clip.into();
+        self.clip = clip.into().map(Rect::round);
         self
     }
 

@@ -1,9 +1,6 @@
 use ily::prelude::*;
 
-const LONG_TEXT: &str =
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed euismod, nisl eget
-tincidunt luctus, nisl nisl aliquet nisl, nec lacinia nisl nisl non nisl. Nulla facilisi. Nulla
-facilisi.";
+const LONG_TEXT: &str = include_str!("long_text.txt");
 
 fn ui(cx: Scope) -> impl View {
     let counter = cx.signal(1);
@@ -33,11 +30,11 @@ fn ui(cx: Scope) -> impl View {
 
                 <Text text=format!("Input: {}", text.get()) />
             </Div>
-            <Div class="column">
-                <Div style:max-width=Em(5.0)>
+            <Scroll style:max-height=Em(14.0)>
+                <Div style:max-width=Em(8.0)>
                     <Text text=LONG_TEXT />
                 </Div>
-            </Div>
+            </Scroll>
             <Div class="column">
                 <Knob bind:value=knob_value />
                 <Text style:text-align=TextAlign::Center

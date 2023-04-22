@@ -1,6 +1,68 @@
 use deref_derive::{Deref, DerefMut};
+use glam::Vec2;
+use ily_graphics::Rect;
+use smallvec::SmallVec;
 
-use crate::Node;
+use crate::{
+    AlignItems, Axis, BoxConstraints, DrawContext, Event, EventContext, JustifyContent,
+    LayoutContext, Node,
+};
+
+/// A layout that lays out children in a flexbox-like manner.
+pub struct FlexLayout {
+    /// The offset to apply to the children.
+    ///
+    /// This is useful for scrolling or padding.
+    pub offset: Vec2,
+    /// The axis to use for laying out the children.
+    pub axis: Axis,
+    /// The justification of the children.
+    pub justify_content: JustifyContent,
+    /// The alignment of the children.
+    pub align_items: AlignItems,
+    /// The gap between the children.
+    pub gap: f32,
+}
+
+impl Default for FlexLayout {
+    fn default() -> Self {
+        Self {
+            offset: Vec2::ZERO,
+            axis: Axis::Vertical,
+            justify_content: JustifyContent::Start,
+            align_items: AlignItems::Start,
+            gap: 0.0,
+        }
+    }
+}
+
+impl FlexLayout {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn vertical() -> Self {
+        Self {
+            axis: Axis::Vertical,
+            ..Self::default()
+        }
+    }
+
+    pub fn horizontal() -> Self {
+        Self {
+            axis: Axis::Horizontal,
+            ..Self::default()
+        }
+    }
+
+    pub fn row() -> Self {
+        Self::horizontal()
+    }
+
+    pub fn column() -> Self {
+        Self::vertical()
+    }
+}
 
 #[derive(Default, Deref, DerefMut)]
 pub struct Children {
@@ -10,6 +72,149 @@ pub struct Children {
 impl Children {
     pub const fn new() -> Self {
         Self { nodes: Vec::new() }
+    }
+
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
+    pub fn add_child(&mut self, child: impl Into<Node>) {
+        self.nodes.push(child.into());
+    }
+
+    /// Call the `event` method on all the children.
+    pub fn event(&self, cx: &mut EventContext, event: &Event) {
+        for child in self.iter() {
+            child.event(cx, event);
+        }
+    }
+
+    /// Layout the children using a FlexLayout.
+    pub fn flex_layout(
+        &self,
+        cx: &mut LayoutContext,
+        bc: BoxConstraints,
+        flex: FlexLayout,
+    ) -> Vec2 {
+        let FlexLayout {
+            offset,
+            axis,
+            justify_content,
+            align_items,
+            gap,
+        } = flex;
+
+        let max_minor = axis.minor(bc.max);
+        let min_minor = axis.minor(bc.min);
+
+        let max_major = axis.major(bc.max);
+        let min_major = axis.major(bc.min);
+
+        let mut minor = min_minor;
+        let mut major = 0.0f32;
+
+        // first we need to measure the children to determine their size
+        //
+        // NOTE: using a SmallVec here is a bit faster than using a Vec, but it's not a huge
+        // difference
+        let mut children = SmallVec::<[f32; 8]>::with_capacity(self.len());
+        for (i, child) in self.iter().enumerate() {
+            let child_bc = BoxConstraints {
+                min: axis.pack(0.0, 0.0),
+                max: axis.pack(max_major, max_minor),
+            };
+            let size = child.layout(cx, child_bc);
+            let child_minor = axis.minor(size);
+            let child_major = axis.major(size);
+
+            children.push(child_major);
+
+            minor = minor.max(child_minor);
+            major += child_major;
+
+            if i > 0 {
+                major += gap;
+            }
+        }
+
+        if align_items == AlignItems::Stretch {
+            // we need to re-measure the children to determine their size
+            major = 0.0;
+            children.clear();
+
+            for (i, child) in self.iter().enumerate() {
+                let child_bc = BoxConstraints {
+                    min: axis.pack(0.0, minor),
+                    max: axis.pack(max_major, minor),
+                };
+                // FIXME: calling layout again is not ideal, but it's the only way to get the
+                // correct size for the child, since we don't know the minor size until we've
+                // measured all the children
+                let size = child.layout(cx, child_bc);
+                let child_major = axis.major(size);
+
+                children.push(child_major);
+
+                major += child_major;
+
+                if i > 0 {
+                    major += gap;
+                }
+            }
+        }
+
+        major = major.max(min_major);
+
+        let child_offsets = justify_content.justify(&children, major, gap);
+
+        // now we can layout the children
+        for (child, align_major) in self.iter().zip(child_offsets) {
+            let child_minor = axis.minor(child.size());
+            let align_minor = align_items.align(0.0, minor, child_minor);
+
+            let child_offset = axis.pack(align_major, align_minor);
+            child.set_offset(offset + child_offset);
+        }
+
+        axis.pack(major, minor)
+    }
+
+    pub fn rect(&self) -> Rect {
+        let mut rect = None;
+
+        for child in self.iter() {
+            let rect = rect.get_or_insert_with(|| child.global_rect());
+            *rect = rect.union(child.global_rect());
+        }
+
+        rect.unwrap_or_default()
+    }
+
+    pub fn size(&self) -> Vec2 {
+        self.rect().size()
+    }
+
+    pub fn set_offset(&self, offset: Vec2) {
+        if self.is_empty() {
+            return;
+        }
+
+        let min = self.nodes[0].local_rect().min;
+
+        for child in self.iter() {
+            let child_offset = child.local_rect().min - min;
+            child.set_offset(offset + child_offset);
+        }
+    }
+
+    pub fn draw(&self, cx: &mut DrawContext) {
+        for child in self.iter() {
+            child.draw(cx);
+        }
     }
 }
 

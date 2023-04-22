@@ -150,7 +150,7 @@ impl View for Scroll {
             axis,
             justify_content: cx.style("justify-content"),
             align_items: cx.style("align-items"),
-            gap: cx.style_range("gap", 0.0..bc.max.max_element()),
+            gap: cx.style_range("gap", 0.0..bc.max.min_element() / 2.0),
             ..Default::default()
         };
 

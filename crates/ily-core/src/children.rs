@@ -183,6 +183,17 @@ impl Children {
         axis.pack(major, minor)
     }
 
+    pub fn local_rect(&self) -> Rect {
+        let mut rect = None;
+
+        for child in self.iter() {
+            let rect = rect.get_or_insert_with(|| child.local_rect());
+            *rect = rect.union(child.local_rect());
+        }
+
+        rect.unwrap_or_default()
+    }
+
     pub fn rect(&self) -> Rect {
         let mut rect = None;
 
@@ -203,7 +214,7 @@ impl Children {
             return;
         }
 
-        let min = self.nodes[0].local_rect().min;
+        let min = self.local_rect().min;
 
         for child in self.iter() {
             let child_offset = child.local_rect().min - min;

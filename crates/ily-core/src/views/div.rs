@@ -129,11 +129,11 @@ impl View for Div {
         let align_items = cx.style("align-items");
 
         let flex = FlexLayout {
-            offset: Vec2::splat(padding),
             axis,
             justify_content,
             align_items,
             gap,
+            offset: Vec2::splat(padding),
         };
 
         let content_bc = bc.shrink(Vec2::splat(padding * 2.0));

@@ -1,8 +1,8 @@
 use std::{error::Error, fmt::Display, str::FromStr, sync::Arc};
 
 use ily_core::{
-    Event, EventSender, EventSink, KeyboardEvent, LoadedStyleKind, Modifiers, Node, PointerEvent,
-    RequestRedrawEvent, Scope, StyleLoader, Stylesheet, Vec2, View,
+    Event, EventSender, EventSink, ImageCache, KeyboardEvent, LoadedStyleKind, Modifiers, Node,
+    PointerEvent, RequestRedrawEvent, Scope, StyleLoader, Stylesheet, Vec2, View,
 };
 use ily_graphics::{Color, Frame};
 use winit::{
@@ -160,6 +160,7 @@ struct AppState {
     frame: Frame,
     clear_color: Color,
     event_sink: EventSink,
+    image_cache: ImageCache,
     #[cfg(feature = "wgpu")]
     renderer: ily_wgpu::WgpuRenderer,
 }
@@ -170,19 +171,34 @@ impl AppState {
         Vec2::new(size.width as f32, size.height as f32)
     }
 
+    fn clean(&mut self) {
+        self.image_cache.clean();
+    }
+
     fn event(&mut self, event: &Event) {
         self.root.event_root(
             self.style_loader.style(),
             &self.renderer,
             &self.event_sink,
             event,
+            &mut self.image_cache,
         );
+
+        self.clean();
     }
 
     fn layout(&mut self) {
         let style = self.style_loader.style();
         let size = self.window_size();
-        (self.root).layout_root(style, &self.renderer, size, &self.event_sink);
+        self.root.layout_root(
+            style,
+            &self.renderer,
+            size,
+            &self.event_sink,
+            &mut self.image_cache,
+        );
+
+        self.clean();
     }
 
     fn draw(&mut self) {
@@ -190,7 +206,15 @@ impl AppState {
 
         self.frame.clear();
         let style = self.style_loader.style();
-        (self.root).draw_root(style, &mut self.frame, &self.renderer, &self.event_sink);
+        self.root.draw_root(
+            style,
+            &mut self.frame,
+            &self.renderer,
+            &self.event_sink,
+            &mut self.image_cache,
+        );
+
+        self.clean();
 
         #[cfg(feature = "wgpu")]
         self.renderer.render_frame(&self.frame, self.clear_color);
@@ -218,6 +242,7 @@ impl App {
             frame: Frame::new(),
             clear_color: self.clear_color,
             event_sink: event_sink.clone(),
+            image_cache: ImageCache::new(),
             #[cfg(feature = "wgpu")]
             renderer,
         };

@@ -5,9 +5,9 @@ use ily_graphics::{Frame, Rect, Renderer};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, EventSink, LayoutContext,
-    Lock, Lockable, PointerEvent, RequestRedrawEvent, Style, StyleSelector, StyleSelectors,
-    StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
+    AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, EventSink, ImageCache,
+    LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Style, StyleSelector,
+    StyleSelectors, StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -203,6 +203,7 @@ impl Node {
                 renderer: cx.renderer,
                 selectors: &cx.selectors.clone().with(selector),
                 event_sink: cx.event_sink,
+                image_cache: cx.image_cache,
             };
 
             let mut view_state = self.view_state.lock_mut();
@@ -224,6 +225,7 @@ impl Node {
                 renderer: cx.renderer,
                 selectors: &cx.selectors.clone().with(selector),
                 event_sink: cx.event_sink,
+                image_cache: cx.image_cache,
             };
 
             let mut view_state = self.view_state.lock_mut();
@@ -252,6 +254,7 @@ impl Node {
                 renderer: cx.renderer,
                 selectors: &cx.selectors.clone().with(selector),
                 event_sink: cx.event_sink,
+                image_cache: cx.image_cache,
             };
 
             let mut view_state = self.view_state.lock_mut();
@@ -275,6 +278,7 @@ impl Node {
         renderer: &dyn Renderer,
         event_sink: &EventSink,
         event: &Event,
+        image_cache: &mut ImageCache,
     ) {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
@@ -292,6 +296,7 @@ impl Node {
             renderer,
             selectors: &StyleSelectors::new().with(selector),
             event_sink,
+            image_cache,
         };
 
         let mut view_state = self.view_state.lock_mut();
@@ -304,6 +309,7 @@ impl Node {
         renderer: &dyn Renderer,
         window_size: Vec2,
         event_sink: &EventSink,
+        image_cache: &mut ImageCache,
     ) -> Vec2 {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
@@ -315,6 +321,7 @@ impl Node {
             renderer,
             selectors: &StyleSelectors::new().with(selector),
             event_sink,
+            image_cache,
         };
 
         let bc = BoxConstraints::new(Vec2::ZERO, window_size);
@@ -333,6 +340,7 @@ impl Node {
         frame: &mut Frame,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
+        image_cache: &mut ImageCache,
     ) {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
@@ -345,6 +353,7 @@ impl Node {
             renderer,
             selectors: &StyleSelectors::new().with(selector),
             event_sink,
+            image_cache,
         };
 
         let mut view_state = self.view_state.lock_mut();

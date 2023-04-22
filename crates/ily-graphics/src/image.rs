@@ -1,4 +1,10 @@
-use std::{any::Any, path::Path, sync::Arc};
+use std::{
+    any::Any,
+    fmt::Debug,
+    io,
+    path::{Path, PathBuf},
+    sync::{Arc, Weak},
+};
 
 use glam::Vec2;
 
@@ -9,7 +15,89 @@ macro_rules! include_image {
     };
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
+pub enum ImageLoadError {
+    Io(io::Error),
+    Image(image::ImageError),
+}
+
+impl From<io::Error> for ImageLoadError {
+    fn from(err: io::Error) -> Self {
+        Self::Io(err)
+    }
+}
+
+impl From<image::ImageError> for ImageLoadError {
+    fn from(err: image::ImageError) -> Self {
+        Self::Image(err)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ImageSource {
+    Path(PathBuf),
+    Data(ImageData),
+}
+
+impl Default for ImageSource {
+    fn default() -> Self {
+        Self::Data(ImageData::default())
+    }
+}
+
+impl From<PathBuf> for ImageSource {
+    fn from(path: PathBuf) -> Self {
+        Self::Path(path)
+    }
+}
+
+impl From<&Path> for ImageSource {
+    fn from(path: &Path) -> Self {
+        Self::Path(path.into())
+    }
+}
+
+impl From<String> for ImageSource {
+    fn from(path: String) -> Self {
+        Self::Path(path.into())
+    }
+}
+
+impl From<&str> for ImageSource {
+    fn from(path: &str) -> Self {
+        Self::Path(path.into())
+    }
+}
+
+impl From<ImageData> for ImageSource {
+    fn from(image: ImageData) -> Self {
+        Self::Data(image)
+    }
+}
+
+impl From<&[u8]> for ImageSource {
+    fn from(bytes: &[u8]) -> Self {
+        Self::Data(ImageData::from_bytes(bytes))
+    }
+}
+
+impl ImageSource {
+    pub fn try_load(&self) -> Result<ImageData, ImageLoadError> {
+        match self {
+            Self::Path(path) => Ok(ImageData::try_load(path)?),
+            Self::Data(image) => Ok(image.clone()),
+        }
+    }
+
+    pub fn load(&self) -> ImageData {
+        match self {
+            Self::Path(path) => ImageData::load(path),
+            Self::Data(image) => image.clone(),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ImageData {
     width: u32,
     height: u32,
@@ -98,9 +186,13 @@ impl Default for ImageData {
     }
 }
 
-impl<T: AsRef<Path>> From<T> for ImageData {
-    fn from(path: T) -> Self {
-        Self::load(path)
+impl Debug for ImageData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImageData")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .field("pixels", &Arc::as_ptr(&self.pixels))
+            .finish()
     }
 }
 
@@ -120,6 +212,14 @@ impl ImageHandle {
         }
     }
 
+    pub fn downgrade(&self) -> WeakImageHandle {
+        WeakImageHandle {
+            width: self.width,
+            height: self.height,
+            handle: Arc::downgrade(&self.handle),
+        }
+    }
+
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         self.handle.downcast_ref()
     }
@@ -134,5 +234,42 @@ impl ImageHandle {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    pub fn size(&self) -> Vec2 {
+        Vec2::new(self.width as f32, self.height as f32)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WeakImageHandle {
+    width: u32,
+    height: u32,
+    handle: Weak<dyn Any + Send + Sync>,
+}
+
+impl WeakImageHandle {
+    pub fn upgrade(&self) -> Option<ImageHandle> {
+        Some(ImageHandle {
+            width: self.width,
+            height: self.height,
+            handle: self.handle.upgrade()?,
+        })
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.handle.strong_count() > 0
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn size(&self) -> Vec2 {
+        Vec2::new(self.width as f32, self.height as f32)
     }
 }

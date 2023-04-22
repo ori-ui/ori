@@ -1,15 +1,53 @@
 use std::{
     any::Any,
+    collections::HashMap,
     ops::{Deref, DerefMut, Range},
 };
 
 use glam::Vec2;
-use ily_graphics::{Frame, Quad, Rect, Renderer, TextHit, TextSection};
+use ily_graphics::{
+    Frame, ImageHandle, ImageSource, Quad, Rect, Renderer, TextHit, TextSection, WeakImageHandle,
+};
 
 use crate::{
     BoxConstraints, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
     StyleAttribute, StyleSelectors, StyleSpecificity, Stylesheet, Unit,
 };
+
+#[derive(Clone, Debug, Default)]
+pub struct ImageCache {
+    images: HashMap<ImageSource, WeakImageHandle>,
+}
+
+impl ImageCache {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn len(&self) -> usize {
+        self.images.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.images.is_empty()
+    }
+
+    pub fn get(&self, source: &ImageSource) -> Option<ImageHandle> {
+        self.images.get(source)?.upgrade()
+    }
+
+    pub fn insert(&mut self, source: ImageSource, handle: ImageHandle) {
+        self.images.insert(source, handle.downgrade());
+    }
+
+    pub fn clear(&mut self) {
+        self.images.clear();
+    }
+
+    pub fn clean(&mut self) {
+        self.images.retain(|_, v| v.is_alive());
+    }
+}
 
 pub struct EventContext<'a> {
     pub style: &'a Stylesheet,
@@ -17,6 +55,7 @@ pub struct EventContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub event_sink: &'a EventSink,
+    pub image_cache: &'a mut ImageCache,
 }
 
 pub struct LayoutContext<'a> {
@@ -25,6 +64,7 @@ pub struct LayoutContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub event_sink: &'a EventSink,
+    pub image_cache: &'a mut ImageCache,
 }
 
 impl<'a> LayoutContext<'a> {
@@ -57,6 +97,7 @@ pub struct DrawContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub event_sink: &'a EventSink,
+    pub image_cache: &'a mut ImageCache,
 }
 
 impl<'a> DrawContext<'a> {
@@ -73,6 +114,7 @@ impl<'a> DrawContext<'a> {
                 renderer: self.renderer,
                 selectors: self.selectors,
                 event_sink: self.event_sink,
+                image_cache: self.image_cache,
             };
 
             callback(&mut child);
@@ -136,6 +178,8 @@ pub trait Context {
     fn renderer(&self) -> &dyn Renderer;
     fn selectors(&self) -> &StyleSelectors;
     fn event_sink(&self) -> &EventSink;
+    fn image_cache(&self) -> &ImageCache;
+    fn image_cache_mut(&mut self) -> &mut ImageCache;
 
     fn get_style_attribute(&self, key: &str) -> Option<StyleAttribute> {
         if let Some(attribute) = self.state().style.attributes.get(key) {
@@ -273,6 +317,17 @@ pub trait Context {
         self.renderer().downcast_ref()
     }
 
+    fn load_image(&mut self, source: &ImageSource) -> ImageHandle {
+        if let Some(handle) = self.image_cache().get(source) {
+            return handle;
+        }
+
+        let data = source.load();
+        let image = self.renderer().create_image(&data);
+        self.image_cache_mut().insert(source.clone(), image.clone());
+        image
+    }
+
     fn active(&self) -> bool {
         self.state().active
     }
@@ -355,6 +410,14 @@ macro_rules! context {
 
             fn event_sink(&self) -> &EventSink {
                 &self.event_sink
+            }
+
+            fn image_cache(&self) -> &ImageCache {
+                &self.image_cache
+            }
+
+            fn image_cache_mut(&mut self) -> &mut ImageCache {
+                &mut self.image_cache
             }
         }
     };

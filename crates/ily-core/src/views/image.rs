@@ -1,5 +1,5 @@
 use glam::Vec2;
-use ily_graphics::{ImageData, ImageHandle, Mesh, Renderer};
+use ily_graphics::{ImageHandle, ImageSource, Mesh};
 use ily_macro::Build;
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
 #[derive(Clone, Default, Debug, Build)]
 pub struct Image {
     #[prop]
-    src: ImageData,
+    src: ImageSource,
 }
 
 impl Image {
@@ -20,20 +20,18 @@ impl Image {
 
 #[derive(Clone, Debug, Default)]
 pub struct ImageState {
-    handle: Option<(ImageData, ImageHandle)>,
+    src: ImageSource,
+    handle: Option<ImageHandle>,
 }
 
 impl ImageState {
-    pub fn update(&mut self, renderer: &dyn Renderer, data: ImageData) {
-        if let Some((old_data, _)) = self.handle.as_ref() {
-            if *old_data != data {
-                let handle = renderer.create_image(&data);
-                self.handle = Some((data, handle));
-            }
-        } else {
-            let handle = renderer.create_image(&data);
-            self.handle = Some((data, handle));
+    pub fn update(&mut self, context: &mut impl Context, src: &ImageSource) -> &ImageHandle {
+        if self.src != *src {
+            self.src = src.clone();
+            self.handle = Some(context.load_image(src));
         }
+
+        self.handle.as_ref().unwrap()
     }
 }
 
@@ -50,19 +48,21 @@ impl View for Image {
 
     fn event(&self, _state: &mut Self::State, _cx: &mut EventContext, _event: &Event) {}
 
-    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let min_width = cx.style_range_group("width", "min-width", bc.width());
-        let max_width = cx.style_range_group("width", "max-width", bc.width());
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        let min_width = cx.style_range_group("min-width", "width", bc.width());
+        let max_width = cx.style_range_group("max-width", "width", bc.width());
 
-        let min_height = cx.style_range_group("height", "min-height", bc.height());
-        let max_height = cx.style_range_group("height", "max-height", bc.height());
+        let min_height = cx.style_range_group("min-width", "height", bc.height());
+        let max_height = cx.style_range_group("min-height", "height", bc.height());
 
         let min_size = bc.constrain(Vec2::new(min_width, min_height));
         let max_size = bc.constrain(Vec2::new(max_width, max_height));
 
+        let handle = state.update(cx, &self.src);
+
         // try to fit the image in the min/max size
         // while maintaining the aspect ratio
-        let mut size = self.src.size();
+        let mut size = handle.size();
         let aspect = size.x / size.y;
 
         if size.x > max_size.x {
@@ -89,10 +89,7 @@ impl View for Image {
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        state.update(cx.renderer, self.src.clone());
-
-        let (_, handle) = state.handle.as_ref().unwrap();
-
+        let handle = state.update(cx, &self.src);
         let mesh = Mesh::image(cx.rect(), handle.clone());
         cx.draw_primitive(mesh);
     }

@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display, str::FromStr, sync::Arc};
+use std::{error::Error, fmt::Display, sync::Arc};
 
 use ily_core::{
     Event, EventSender, EventSink, ImageCache, KeyboardEvent, LoadedStyleKind, Modifiers, Node,
@@ -14,16 +14,6 @@ use winit::{
 };
 
 use crate::convert::{convert_device_id, convert_key, convert_mouse_button, is_pressed};
-
-const BUILTIN_STYLES: &[&str] = &[
-    include_str!("../../../style/default.css"),
-    include_str!("../../../style/text.css"),
-    include_str!("../../../style/text-input.css"),
-    include_str!("../../../style/button.css"),
-    include_str!("../../../style/checkbox.css"),
-    include_str!("../../../style/knob.css"),
-    include_str!("../../../style/scroll.css"),
-];
 
 struct EventLoopSender(EventLoopProxy<Event>);
 
@@ -71,10 +61,7 @@ impl App {
 
         let mut style_loader = StyleLoader::new();
 
-        for builtin in BUILTIN_STYLES {
-            let default_style = Stylesheet::from_str(builtin).unwrap();
-            let _ = style_loader.add_style(default_style);
-        }
+        style_loader.add_style(Stylesheet::day_theme()).unwrap();
 
         let event_loop = EventLoopBuilder::<Event>::with_user_event().build();
 
@@ -89,11 +76,36 @@ impl App {
         }
     }
 
+    /// Set the default theme to night theme, this will clear all the styles
+    /// that have been added before, and should therefore be called before
+    /// [`App::style`].
+    pub fn night_theme(mut self) -> Self {
+        self.style_loader.clear();
+        self.style_loader
+            .add_style(Stylesheet::night_theme())
+            .unwrap();
+        self
+    }
+
+    /// Set the default theme to day theme, this will clear all the styles
+    /// that have been added before, and should therefore be called before
+    /// [`App::style`].
+    pub fn day_theme(mut self) -> Self {
+        self.style_loader.clear();
+        self.style_loader
+            .add_style(Stylesheet::day_theme())
+            .unwrap();
+        self
+    }
+
+    /// Set the title of the window.
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = title.into();
         self
     }
 
+    /// Add a style to the app, this can be called multiple times to add
+    /// multiple styles.
     pub fn style<T>(mut self, style: T) -> Self
     where
         T: TryInto<LoadedStyleKind>,
@@ -107,35 +119,42 @@ impl App {
         self
     }
 
+    /// Set the size of the window.
     pub fn size(mut self, width: f32, height: f32) -> Self {
         self.size = Vec2::new(width, height);
         self
     }
 
+    /// Set the width of the window.
     pub fn width(mut self, width: f32) -> Self {
         self.size.x = width;
         self
     }
 
+    /// Set the height of the window.
     pub fn height(mut self, height: f32) -> Self {
         self.size.y = height;
         self
     }
 
+    /// Set the window to be resizable or not.
     pub fn reziseable(mut self, reziseable: bool) -> Self {
         self.reziseable = reziseable;
         self
     }
 
+    /// Set the clear color of the window.
     pub fn clear_color(mut self, color: Color) -> Self {
         self.clear_color = color;
         self
     }
 
+    /// Set the clear color of the window to transparent.
     pub fn transparent(self) -> Self {
         self.clear_color(Color::TRANSPARENT)
     }
 
+    /// Create an [`EventSink`] that can be used to send events to the app.
     pub fn event_sink(&self) -> EventSink {
         EventSink::new(EventLoopSender(self.event_loop.create_proxy()))
     }
@@ -223,7 +242,8 @@ impl AppState {
 }
 
 impl App {
-    pub fn run(mut self) {
+    /// Run the app, this will block the current thread until the app is closed.
+    pub fn run(mut self) -> ! {
         let window = Arc::new(self.window().unwrap());
         let event_sink = self.event_sink();
 

@@ -1,0 +1,20 @@
+scroll {
+	direction: column;
+
+	scrollbar-color: #80808000;
+	scrollbar-border-radius: 100%;
+	scrollbar-width: 0.5em;
+	scrollbar-height: 2em;
+	scrollbar-padding: 0.25em;
+	scrollbar-track-color: #60606000;
+}
+
+scroll:hover {
+	scrollbar-color: #808080ff 0.05s;
+	scrollbar-track-color: #606060a0 0.05s;
+}
+
+scroll:active {
+	scrollbar-color: #a0a0a0ff 0.05s;
+	scrollbar-track-color: #606060a0 0.05s;
+}

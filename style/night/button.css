@@ -1,0 +1,24 @@
+button {
+	background-color: #ffaebc;
+	border-radius: 5px;
+
+	padding: 6px;
+
+	justify-content: center;
+	align-items: center;
+}
+
+button:hover {
+	background-color: #f4a4b2;
+}
+
+button:active {
+	background-color: #e89aa8 0.02s;
+}
+
+button text {
+	font-size: 1.5em;
+	color: #444444;
+	text-align: center;
+	text-valign: center;
+}

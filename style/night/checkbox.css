@@ -1,0 +1,18 @@
+checkbox {
+	color: #d0d0d0;
+	background-color: #363636;
+	border-radius: 5px;
+	border-width: 1.5px;
+	border-color: #404040;
+
+	width: 24px;
+	height: 24px;
+}
+
+checkbox:hover {
+	border-color: #606060 0.05s;
+}
+
+checkbox:active {
+	border-color: #606060 0.05s;
+}

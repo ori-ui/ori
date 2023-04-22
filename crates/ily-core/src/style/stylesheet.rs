@@ -41,6 +41,38 @@ macro_rules! include_stylesheet {
     };
 }
 
+macro_rules! theme {
+    ($name:ident, $folder:literal => $($style:literal),* $(,)?) => {
+        pub const $name: &str = concat!(
+            $(include_str!(concat!("../../../../style/", $folder, "/", $style))),*
+        );
+    };
+}
+
+theme!(
+    DAY_THEME,
+    "day" =>
+    "default.css",
+    "button.css",
+    "checkbox.css",
+    "knob.css",
+    "scroll.css",
+    "text-input.css",
+    "text.css",
+);
+
+theme!(
+    NIGHT_THEME,
+    "night" =>
+    "default.css",
+    "button.css",
+    "checkbox.css",
+    "knob.css",
+    "scroll.css",
+    "text-input.css",
+    "text.css",
+);
+
 /// A style sheet.
 ///
 /// A sheet is a list of [`StyleRule`]s.
@@ -58,6 +90,14 @@ impl Stylesheet {
             rules: Vec::new(),
             cache: StyleCache::new(),
         }
+    }
+
+    pub fn day_theme() -> Self {
+        Self::from_str(DAY_THEME).expect("Failed to parse day theme, this is a bug with ily")
+    }
+
+    pub fn night_theme() -> Self {
+        Self::from_str(NIGHT_THEME).expect("Failed to parse night theme, this is a bug with ily")
     }
 
     /// Adds a [`StyleRule`] to the style sheet.

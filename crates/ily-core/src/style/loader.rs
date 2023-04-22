@@ -108,6 +108,11 @@ impl StyleLoader {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.styles.clear();
+        self.cache = Stylesheet::new();
+    }
+
     /// Adds a style to the loader.
     pub fn add_style<T: TryInto<LoadedStyleKind>>(&mut self, style: T) -> Result<(), T::Error> {
         self.styles.push(style.try_into()?);

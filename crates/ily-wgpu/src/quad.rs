@@ -2,7 +2,7 @@ use std::{mem, num::NonZeroU64};
 
 use bytemuck::{Pod, Zeroable};
 use ily_core::Vec2;
-use ily_graphics::{Color, Quad};
+use ily_graphics::{Color, Quad, Rect};
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt, StagingBelt},
@@ -251,6 +251,7 @@ impl QuadPipeline {
         height: u32,
         quad: &Quad,
         depth: f32,
+        clip: Option<Rect>,
     ) {
         self.write_uniform_buffer(device, encoder, staging_belt, width, height, depth);
         self.write_vertex_buffer(device, encoder, staging_belt, quad);
@@ -267,6 +268,15 @@ impl QuadPipeline {
             })],
             depth_stencil_attachment: None,
         });
+
+        if let Some(clip) = clip {
+            pass.set_scissor_rect(
+                clip.min.x as u32,
+                clip.min.y as u32,
+                clip.width() as u32,
+                clip.height() as u32,
+            );
+        }
 
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.uniform_bind_group, &[]);

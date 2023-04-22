@@ -36,11 +36,7 @@ impl Fonts {
         wgpu_glyph::FontId::default()
     }
 
-    pub fn convert_section<'a>(
-        &'a self,
-        section: &'a TextSection,
-        depth: f32,
-    ) -> wgpu_glyph::Section<'a> {
+    pub fn convert_section<'a>(&'a self, section: &'a TextSection) -> wgpu_glyph::Section<'a> {
         let aligned_rect = section.aligned_rect();
         let x = aligned_rect.min.x;
         let y = aligned_rect.min.y;
@@ -59,7 +55,7 @@ impl Fonts {
             font_id,
             extra: wgpu_glyph::Extra {
                 color: section.color.into(),
-                z: depth,
+                z: 1.0,
             },
         };
 

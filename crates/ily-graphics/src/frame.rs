@@ -1,4 +1,4 @@
-use crate::{Mesh, Quad, TextSection};
+use crate::{Mesh, Quad, Rect, TextSection};
 
 #[derive(Clone, Debug)]
 pub enum PrimitiveKind {
@@ -29,18 +29,21 @@ impl From<Mesh> for PrimitiveKind {
 pub struct Primitive {
     pub kind: PrimitiveKind,
     pub depth: f32,
+    pub clip: Option<Rect>,
 }
 
 pub struct Frame {
-    layer: f32,
     primitives: Vec<Primitive>,
+    depth: f32,
+    clip: Option<Rect>,
 }
 
 impl Frame {
     pub fn new() -> Self {
         Self {
-            layer: 0.0,
+            depth: 0.0,
             primitives: Vec::new(),
+            clip: None,
         }
     }
 
@@ -48,33 +51,72 @@ impl Frame {
         self.primitives.clear();
     }
 
-    pub fn layer(&self) -> f32 {
-        self.layer
+    pub fn depth(&self) -> f32 {
+        self.depth
     }
 
-    // a Sigmoid function that maps the range [-inf, inf] to [0, 1]
-    fn sigmoid(layer: f32) -> f32 {
-        1.0 / (1.0 + (-layer).exp())
+    pub fn clip(&self) -> Option<Rect> {
+        self.clip
     }
 
     pub fn draw(&mut self, primitive: impl Into<PrimitiveKind>) {
-        self.draw_with_layer(primitive, self.layer);
-    }
-
-    pub fn draw_with_layer(&mut self, primitive: impl Into<PrimitiveKind>, layer: f32) {
-        self.primitives.push(Primitive {
+        self.draw_primitive(Primitive {
             kind: primitive.into(),
-            depth: Self::sigmoid(self.layer + layer),
+            depth: self.depth,
+            clip: self.clip,
         });
     }
 
-    pub fn draw_layer(&mut self, offset: f32, f: impl FnOnce(&mut Self)) {
-        self.layer += offset;
-        f(self);
-        self.layer -= offset;
+    pub fn draw_primitive(&mut self, primitive: Primitive) {
+        self.primitives.push(primitive);
+    }
+
+    pub fn layer(&mut self) -> Layer<'_> {
+        Layer {
+            frame: self,
+            depth: 1.0,
+            clip: None,
+        }
+    }
+
+    pub fn draw_layer(&mut self, f: impl FnOnce(&mut Self)) {
+        self.layer().draw(f);
     }
 
     pub fn primitives(&self) -> &[Primitive] {
         &self.primitives
+    }
+}
+
+pub struct Layer<'a> {
+    frame: &'a mut Frame,
+    depth: f32,
+    clip: Option<Rect>,
+}
+
+impl<'a> Layer<'a> {
+    pub fn depth(mut self, depth: f32) -> Self {
+        self.depth = depth;
+        self
+    }
+
+    pub fn clip(mut self, clip: impl Into<Option<Rect>>) -> Self {
+        self.clip = clip.into();
+        self
+    }
+
+    pub fn draw(self, f: impl FnOnce(&mut Frame)) {
+        self.frame.depth += self.depth;
+
+        if let Some(clip) = self.clip {
+            let old_clip = self.frame.clip;
+            self.frame.clip = Some(clip);
+            f(self.frame);
+            self.frame.clip = old_clip;
+        } else {
+            f(self.frame);
+        }
+
+        self.frame.depth -= self.depth;
     }
 }

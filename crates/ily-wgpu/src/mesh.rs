@@ -2,7 +2,7 @@ use std::{mem, num::NonZeroU64};
 
 use bytemuck::{Pod, Zeroable};
 use ily_core::Vec2;
-use ily_graphics::{Mesh, Vertex};
+use ily_graphics::{Mesh, Rect, Vertex};
 use wgpu::{
     include_wgsl, util::StagingBelt, vertex_attr_array, BindGroup, BindGroupDescriptor,
     BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,
@@ -231,6 +231,7 @@ impl MeshPipeline {
         default_image: &WgpuImage,
         mesh: &Mesh,
         depth: f32,
+        clip: Option<Rect>,
     ) {
         if mesh.vertices.is_empty() || mesh.indices.is_empty() {
             return;
@@ -252,6 +253,15 @@ impl MeshPipeline {
             })],
             depth_stencil_attachment: None,
         });
+
+        if let Some(clip) = clip {
+            pass.set_scissor_rect(
+                clip.min.x as u32,
+                clip.min.y as u32,
+                clip.width() as u32,
+                clip.height() as u32,
+            );
+        }
 
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.uniform_bind_group, &[]);

@@ -90,6 +90,47 @@ impl<'a> LayoutContext<'a> {
     }
 }
 
+pub struct DrawLayer<'a, 'b> {
+    draw_context: &'b mut DrawContext<'a>,
+    depth: f32,
+    clip: Option<Rect>,
+}
+
+impl<'a, 'b> DrawLayer<'a, 'b> {
+    pub fn depth(mut self, depth: f32) -> Self {
+        self.depth = depth;
+        self
+    }
+
+    pub fn clip(mut self, clip: Rect) -> Self {
+        self.clip = Some(clip);
+        self
+    }
+
+    pub fn draw(self, f: impl FnOnce(&mut DrawContext)) {
+        let layer = self
+            .draw_context
+            .frame
+            .layer()
+            .depth(self.depth)
+            .clip(self.clip);
+
+        layer.draw(|frame| {
+            let mut child = DrawContext {
+                style: self.draw_context.style,
+                state: self.draw_context.state,
+                frame,
+                renderer: self.draw_context.renderer,
+                selectors: self.draw_context.selectors,
+                event_sink: self.draw_context.event_sink,
+                image_cache: self.draw_context.image_cache,
+            };
+
+            f(&mut child);
+        });
+    }
+}
+
 pub struct DrawContext<'a> {
     pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
@@ -105,23 +146,19 @@ impl<'a> DrawContext<'a> {
         self.frame
     }
 
+    pub fn layer<'b>(&'b mut self) -> DrawLayer<'a, 'b> {
+        DrawLayer {
+            draw_context: self,
+            depth: 1.0,
+            clip: None,
+        }
+    }
+
     /// Runs the given callback on a new layer offset by the given amount.
     ///
     /// `offset` should almost always be `1.0`.
-    pub fn draw_layer(&mut self, offset: f32, f: impl FnOnce(&mut DrawContext)) {
-        self.frame.draw_layer(offset, |frame| {
-            let mut child = DrawContext {
-                style: self.style,
-                state: self.state,
-                frame,
-                renderer: self.renderer,
-                selectors: self.selectors,
-                event_sink: self.event_sink,
-                image_cache: self.image_cache,
-            };
-
-            f(&mut child);
-        });
+    pub fn draw_layer(&mut self, f: impl FnOnce(&mut DrawContext)) {
+        self.layer().draw(f);
     }
 
     /// Draws the quad at the current layout rect.

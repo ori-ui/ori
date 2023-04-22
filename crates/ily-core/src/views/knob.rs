@@ -33,7 +33,7 @@ impl Default for Knob {
 }
 
 impl View for Knob {
-    type State = Option<f32>;
+    type State = Option<Vec2>;
 
     fn build(&self) -> Self::State {
         None
@@ -54,15 +54,16 @@ impl View for Knob {
 
             if cx.active() {
                 if let Some(prev_position) = *state {
-                    let delta = pointer_event.position.y - prev_position;
+                    let delta = pointer_event.position - prev_position;
+                    let delta = delta.x - delta.y * delta.length();
                     let range = self.max - self.min;
-                    let delta = delta / cx.rect().size().y * range * 0.25;
+                    let delta = delta / cx.rect().width() * range * 0.15;
                     let value = self.value.get();
-                    let new_value = f32::clamp(*value - delta, self.min, self.max);
+                    let new_value = f32::clamp(*value + delta, self.min, self.max);
                     self.value.set(new_value);
                 }
 
-                *state = Some(pointer_event.position.y);
+                *state = Some(pointer_event.position);
                 cx.request_redraw();
             }
         }

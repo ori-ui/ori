@@ -1,44 +1,54 @@
 use glam::Vec2;
 use ily_graphics::{Quad, Rect};
+use ily_macro::Build;
 
 use crate::{
-    BoxConstraints, Children, Context, DrawContext, Event, EventContext, FlexLayout, LayoutContext,
-    Parent, PointerEvent, Style, View,
+    Axis, BoxConstraints, Children, Context, DrawContext, Event, EventContext, FlexLayout,
+    LayoutContext, Parent, PointerEvent, Style, View,
 };
 
-#[derive(Default)]
+#[derive(Default, Build)]
 pub struct Scroll {
     content: Children,
 }
 
 impl Scroll {
     fn scrollbar_rect(&self, state: &ScrollState, cx: &mut impl Context) -> Rect {
-        let width = cx.style_range("scrollbar-width", 0.0..cx.rect().width());
-        let padding = cx.style_range("scrollbar-padding", 0.0..cx.rect().width() - width);
-        let height = cx.style_range("scrollbar-height", 0.0..cx.rect().height() - padding * 2.0);
+        let axis = cx.style::<Axis>("direction");
+        let max_width = axis.major(cx.rect().size());
 
-        let scrollbar_size = Vec2::new(width, height);
-        let range = cx.rect().height() - scrollbar_size.y - padding * 2.0;
+        let width = cx.style_range("scrollbar-width", 0.0..max_width);
+        let padding = cx.style_range("scrollbar-padding", 0.0..max_width - width);
+
+        let max_height = axis.minor(cx.rect().size()) - padding * 2.0;
+        let height = cx.style_range("scrollbar-height", 0.0..max_height);
+
+        let scrollbar_size = axis.pack(height, width);
+        let range = axis.major(cx.rect().size()) - height - padding * 2.0;
 
         Rect::min_size(
-            Vec2::new(
-                cx.rect().right() - scrollbar_size.x - padding,
-                cx.rect().top() + range * state.scroll.y + padding,
+            axis.pack(
+                axis.major(cx.rect().min) + range * axis.major(state.scroll) + padding,
+                axis.minor(cx.rect().max) - axis.minor(scrollbar_size) - padding,
             ),
             scrollbar_size,
         )
     }
 
     fn scrollbar_track_rect(&self, cx: &mut impl Context) -> Rect {
-        let width = cx.style_range("scrollbar-width", 0.0..cx.rect().width());
-        let padding = cx.style_range("scrollbar-padding", 0.0..cx.rect().width() - width);
+        let axis = cx.style::<Axis>("direction");
+
+        let max_width = axis.major(cx.rect().size());
+        let width = cx.style_range("scrollbar-width", 0.0..max_width);
+
+        let padding = cx.style_range("scrollbar-padding", 0.0..max_width - width);
 
         Rect::min_size(
-            Vec2::new(
-                cx.rect().right() - width - padding,
-                cx.rect().top() + padding,
+            axis.pack(
+                axis.major(cx.rect().min) + padding,
+                axis.minor(cx.rect().max) - width - padding,
             ),
-            Vec2::new(width, cx.rect().height() - padding * 2.0),
+            axis.pack(axis.major(cx.rect().size()) - padding * 2.0, width),
         )
     }
 
@@ -58,9 +68,11 @@ impl Scroll {
     ) -> bool {
         let mut handled = false;
 
+        let axis = cx.style::<Axis>("direction");
+
         if event.scroll_delta != Vec2::ZERO && cx.hovered() {
             let overflow = self.overflow(cx);
-            state.scroll -= event.scroll_delta / overflow * 10.0;
+            state.scroll -= axis.pack(event.scroll_delta.y, 0.0) / overflow * 10.0;
             state.scroll = state.scroll.clamp(Vec2::ZERO, Vec2::ONE);
 
             cx.request_redraw();
@@ -83,11 +95,11 @@ impl Scroll {
         }
 
         if cx.active() {
-            let start = scrollbar_rect.top();
-            let end = scrollbar_rect.bottom();
+            let start = axis.major(scrollbar_rect.min);
+            let end = axis.major(scrollbar_rect.max);
             let range = end - start;
 
-            let scroll = (event.position.y - start) / range;
+            let scroll = (axis.major(event.position) - start) / range;
             state.scroll.y = scroll.clamp(0.0, 1.0);
 
             cx.request_redraw();
@@ -132,13 +144,28 @@ impl View for Scroll {
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let flex = FlexLayout::vertical();
-        let size = self.content.flex_layout(cx, bc.loose_y(), flex);
+        let axis = cx.style::<Axis>("direction");
+
+        let flex = FlexLayout {
+            axis,
+            justify_content: cx.style("justify-content"),
+            align_items: cx.style("align-items"),
+            gap: cx.style_range("gap", 0.0..bc.max.max_element()),
+            ..Default::default()
+        };
+
+        let content_bc = match axis {
+            Axis::Horizontal => bc.loose_x(),
+            Axis::Vertical => bc.loose_y(),
+        };
+        let size = self.content.flex_layout(cx, content_bc, flex);
 
         cx.style_constraints(bc).constrain(size)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        cx.draw_quad();
+
         let overflow = self.overflow(cx);
         self.content.set_offset(-state.scroll * overflow);
 

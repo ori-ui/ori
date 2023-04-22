@@ -299,7 +299,11 @@ pub trait Context {
         let value = Unit::from_attribute(attribute.value)?;
         let transition = attribute.transition;
 
-        let pixels = value.pixels(range, self.renderer().scale());
+        let pixels = value.pixels(
+            range,
+            self.renderer().scale(),
+            self.renderer().window_size(),
+        );
 
         Some((self.state_mut()).transition(key, pixels, transition))
     }
@@ -313,7 +317,11 @@ pub trait Context {
         let value = Unit::from_attribute(attribute.value)?;
         let transition = attribute.transition;
 
-        let pixels = value.pixels(range, self.renderer().scale());
+        let pixels = value.pixels(
+            range,
+            self.renderer().scale(),
+            self.renderer().window_size(),
+        );
 
         Some((
             (self.state_mut()).transition(key, pixels, transition),

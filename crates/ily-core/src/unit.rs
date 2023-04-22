@@ -5,6 +5,7 @@ use std::{
     ops::Range,
 };
 
+use glam::Vec2;
 pub use Unit::*;
 
 /// A unit of measurement. (eg. 10px, 10pt, 10%)
@@ -23,6 +24,10 @@ pub enum Unit {
     /// The percent is context specific, and is often relative
     /// to the parent's size, but doesn't have to be.
     Pc(f32),
+    /// Unit of measurement in viewport width. (eg. 10vw)
+    Vw(f32),
+    /// Unit of measurement in viewport height. (eg. 10vh)
+    Vh(f32),
     /// Unit of measurement in em. (eg. 10em)
     ///
     /// 1em = the font size of the root.
@@ -40,6 +45,8 @@ impl Hash for Unit {
             Px(value) => value.to_bits().hash(state),
             Pt(value) => value.to_bits().hash(state),
             Pc(value) => value.to_bits().hash(state),
+            Vw(value) => value.to_bits().hash(state),
+            Vh(value) => value.to_bits().hash(state),
             Em(value) => value.to_bits().hash(state),
         }
     }
@@ -54,11 +61,13 @@ impl Default for Unit {
 impl Unit {
     pub const ZERO: Self = Px(0.0);
 
-    pub fn pixels(self, range: Range<f32>, scale: f32) -> f32 {
+    pub fn pixels(self, range: Range<f32>, scale: f32, window_size: Vec2) -> f32 {
         match self {
             Px(value) => value,
             Pt(value) => value * 96.0 / 72.0 * scale,
             Pc(value) => value * (range.end - range.start) / 100.0,
+            Vw(value) => value * window_size.x / 100.0,
+            Vh(value) => value * window_size.y / 100.0,
             Em(value) => value * 16.0 * scale,
         }
     }
@@ -69,7 +78,9 @@ impl Display for Unit {
         match self {
             Px(value) => write!(f, "{}px", value),
             Pt(value) => write!(f, "{}pt", value),
-            Pc(value) => write!(f, "{}pc", value),
+            Pc(value) => write!(f, "{}%", value),
+            Vw(value) => write!(f, "{}vw", value),
+            Vh(value) => write!(f, "{}vh", value),
             Em(value) => write!(f, "{}em", value),
         }
     }

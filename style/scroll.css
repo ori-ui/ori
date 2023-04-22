@@ -1,4 +1,6 @@
 scroll {
+	direction: column;
+
 	scrollbar-color: #e0e0e000;
 	scrollbar-border-radius: 100%;
 	scrollbar-width: 0.5em;

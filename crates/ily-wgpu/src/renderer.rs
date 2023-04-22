@@ -416,6 +416,10 @@ impl WgpuRenderer {
 }
 
 impl Renderer for WgpuRenderer {
+    fn window_size(&self) -> Vec2 {
+        Vec2::new(self.config.width as f32, self.config.height as f32)
+    }
+
     fn scale(&self) -> f32 {
         1.0
     }

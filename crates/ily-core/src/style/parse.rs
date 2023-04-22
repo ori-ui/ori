@@ -30,6 +30,8 @@ fn parse_unit(pair: Pair<'_, Rule>) -> Unit {
         Some(Rule::Px) | None => Unit::Px(number),
         Some(Rule::Pt) => Unit::Pt(number),
         Some(Rule::Pc) => Unit::Pc(number),
+        Some(Rule::Vw) => Unit::Vw(number),
+        Some(Rule::Vh) => Unit::Vh(number),
         Some(Rule::Em) => Unit::Em(number),
         _ => unreachable!(),
     }

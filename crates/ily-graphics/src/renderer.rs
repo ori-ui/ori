@@ -5,6 +5,7 @@ use glam::Vec2;
 use crate::{ImageData, ImageHandle, Rect, TextHit, TextSection};
 
 pub trait Renderer: Any {
+    fn window_size(&self) -> Vec2;
     fn create_image(&self, data: &ImageData) -> ImageHandle;
     fn messure_text(&self, section: &TextSection) -> Option<Rect>;
     fn hit_text(&self, section: &TextSection, position: Vec2) -> Option<TextHit>;

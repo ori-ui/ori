@@ -3,7 +3,7 @@ use ori_graphics::{Color, Quad, Rect, TextAlign, TextSection};
 use ori_macro::Build;
 
 use crate::{
-    BoxConstraints, Context, DrawContext, Event, EventContext, EventSignal, Key, KeyboardEvent,
+    BoxConstraints, CallbackEmitter, Context, DrawContext, Event, EventContext, Key, KeyboardEvent,
     LayoutContext, PointerEvent, Scope, SharedSignal, Signal, Style, View,
 };
 
@@ -14,9 +14,9 @@ pub struct TextInput {
     #[bind]
     text: SharedSignal<String>,
     #[event]
-    on_input: Option<EventSignal<KeyboardEvent>>,
+    on_input: CallbackEmitter<KeyboardEvent>,
     #[event]
-    on_submit: Option<EventSignal<String>>,
+    on_submit: CallbackEmitter<String>,
 }
 
 impl Default for TextInput {
@@ -24,8 +24,8 @@ impl Default for TextInput {
         Self {
             placeholder: String::from("Enter text..."),
             text: SharedSignal::new(String::new()),
-            on_input: None,
-            on_submit: None,
+            on_input: CallbackEmitter::new(),
+            on_submit: CallbackEmitter::new(),
         }
     }
 }
@@ -129,18 +129,14 @@ impl TextInput {
         event: &KeyboardEvent,
     ) {
         if event.is_press() {
-            if let Some(on_input) = &self.on_input {
-                on_input.emit(event.clone());
-            }
+            self.on_input.emit(event);
 
             self.handle_key(state, cx, event.key.unwrap());
         }
 
         if let Some(c) = event.text {
             if !c.is_control() {
-                if let Some(on_input) = &self.on_input {
-                    on_input.emit(event.clone());
-                }
+                self.on_input.emit(event);
 
                 let mut text = self.text.modify();
                 if let Some(cursor) = state.cursor {
@@ -184,8 +180,8 @@ impl TextInput {
                 cx.unfocus();
             }
             Key::Enter => {
-                if let Some(on_submit) = &self.on_submit {
-                    on_submit.emit(self.text.cloned());
+                if !self.on_submit.is_empty() {
+                    self.on_submit.emit(&self.text.get());
                     state.cursor = None;
                     cx.unfocus();
                 }

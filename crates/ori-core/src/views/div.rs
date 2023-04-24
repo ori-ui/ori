@@ -2,18 +2,19 @@ use glam::Vec2;
 use ori_macro::Build;
 
 use crate::{
-    Axis, BoxConstraints, Children, Context, DrawContext, Event, EventContext, EventSignal,
-    FlexLayout, LayoutContext, Node, Parent, PointerEvent, Scope, Sendable, Style, View,
+    Axis, BindCallback, BoxConstraints, CallbackEmitter, Children, Context, DrawContext, Event,
+    EventContext, FlexLayout, LayoutContext, Node, Parent, PointerEvent, Scope, Sendable, Style,
+    View,
 };
 
 #[derive(Default, Build)]
 pub struct Div {
     #[event]
-    pub on_event: Option<EventSignal<Event>>,
+    pub on_event: CallbackEmitter<Event>,
     #[event]
-    pub on_press: Option<EventSignal<PointerEvent>>,
+    pub on_press: CallbackEmitter<PointerEvent>,
     #[event]
-    pub on_release: Option<EventSignal<PointerEvent>>,
+    pub on_release: CallbackEmitter<PointerEvent>,
     pub children: Children,
 }
 
@@ -32,9 +33,7 @@ impl Div {
         cx: Scope<'a>,
         callback: impl FnMut(&Event) + Sendable + 'a,
     ) -> Self {
-        self.on_event
-            .get_or_insert_with(|| EventSignal::new())
-            .subscribe(cx, callback);
+        self.on_event.bind(cx, callback);
 
         self
     }
@@ -44,9 +43,7 @@ impl Div {
         cx: Scope<'a>,
         callback: impl FnMut(&PointerEvent) + Sendable + 'a,
     ) -> Self {
-        self.on_press
-            .get_or_insert_with(|| EventSignal::new())
-            .subscribe(cx, callback);
+        self.on_press.bind(cx, callback);
 
         self
     }
@@ -56,24 +53,22 @@ impl Div {
         cx: Scope<'a>,
         callback: impl FnMut(&PointerEvent) + Sendable + 'a,
     ) -> Self {
-        self.on_release
-            .get_or_insert_with(|| EventSignal::new())
-            .subscribe(cx, callback);
+        self.on_release.bind(cx, callback);
 
         self
     }
 
     fn handle_pointer_event(&self, cx: &mut EventContext, event: &PointerEvent) -> bool {
         if event.is_press() && cx.hovered() {
-            if let Some(on_press) = &self.on_press {
+            if !self.on_press.is_empty() {
                 cx.activate();
-                on_press.emit(event.clone());
+                self.on_press.emit(event);
             }
         } else if event.is_release() && cx.state.active {
             cx.deactivate();
 
-            if let Some(on_release) = &self.on_release {
-                on_release.emit(event.clone());
+            if !self.on_release.is_empty() {
+                self.on_release.emit(event);
             }
         } else {
             return false;
@@ -103,8 +98,8 @@ impl View for Div {
             child.event(cx, event);
         }
 
-        if let Some(on_event) = &self.on_event {
-            on_event.emit(event.clone());
+        if !self.on_event.is_empty() {
+            self.on_event.emit(event);
         }
 
         if event.is_handled() {

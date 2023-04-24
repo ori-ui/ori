@@ -1,4 +1,4 @@
-use std::mem;
+use std::{fmt::Debug, mem, panic::Location};
 
 use crate::{Lock, Lockable, Sendable, Shared, Weak};
 
@@ -43,6 +43,10 @@ impl<T> CallbackCollection<T> {
         let equals = |callback: &WeakCallback<T>| callback.callback.as_ptr() != ptr;
         self.callbacks.retain(equals);
     }
+
+    fn iter(&self) -> impl Iterator<Item = &WeakCallback<T>> {
+        self.callbacks.iter()
+    }
 }
 
 impl<T> IntoIterator for CallbackCollection<T> {
@@ -51,6 +55,14 @@ impl<T> IntoIterator for CallbackCollection<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.callbacks.into_iter()
+    }
+}
+
+impl<T> Debug for CallbackCollection<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallbackCollection")
+            .field("callbacks", &self.callbacks)
+            .finish()
     }
 }
 
@@ -65,13 +77,16 @@ type Callbacks<T> = Lock<CallbackCollection<T>>;
 /// A callback that can be called from any thread.
 #[derive(Clone)]
 pub struct Callback<'a, T = ()> {
+    location: &'static Location<'static>,
     callback: Shared<Lock<RawCallback<'a, T>>>,
 }
 
 impl<'a, T> Callback<'a, T> {
     /// Creates a new callback.
+    #[track_caller]
     pub fn new(callback: impl FnMut(&T) + Sendable + 'a) -> Self {
         Self {
+            location: Location::caller(),
             callback: Shared::new(Lock::new(callback)),
         }
     }
@@ -90,12 +105,20 @@ impl<'a, T> Callback<'a, T> {
                 Shared::downgrade(&self.callback),
             )
         };
-        WeakCallback { callback }
+        WeakCallback {
+            location: self.location,
+            callback,
+        }
     }
 
     /// Calls the callback.
     pub fn emit(&self, event: &T) {
         self.callback.lock_mut()(event);
+    }
+
+    /// Returns the location where the callback was created.
+    pub fn location(&self) -> &'static Location<'static> {
+        self.location
     }
 }
 
@@ -105,18 +128,31 @@ impl<'a, T> Default for Callback<'a, T> {
     }
 }
 
+impl<'a, T> Debug for Callback<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Callback")
+            .field("location", &self.location)
+            .finish()
+    }
+}
+
 /// A weak reference to a [`Callback`].
 ///
 /// This is usually created by [`Callback::downgrade`].
 #[derive(Clone)]
 pub struct WeakCallback<T = ()> {
+    location: &'static Location<'static>,
     callback: Weak<Lock<RawCallback<'static, T>>>,
 }
 
 impl<T> WeakCallback<T> {
     /// Creates a new weak callback from a weak reference.
+    #[track_caller]
     pub fn new(weak: Weak<Lock<RawCallback<'static, T>>>) -> Self {
-        Self { callback: weak }
+        Self {
+            location: Location::caller(),
+            callback: weak,
+        }
     }
 
     /// Tries to upgrade the weak callback to a [`Callback`].
@@ -124,6 +160,7 @@ impl<T> WeakCallback<T> {
     /// This will return `None` if all clones of the callback have been dropped.
     pub fn upgrade(&self) -> Option<Callback<T>> {
         Some(Callback {
+            location: self.location,
             callback: self.callback.upgrade()?,
         })
     }
@@ -143,13 +180,27 @@ impl<T> WeakCallback<T> {
 
         self.callback.strong_count() > 0
     }
+
+    /// Returns the location where the callback was created.
+    pub fn location(&self) -> &'static Location<'static> {
+        self.location
+    }
 }
 
 impl<T> Default for WeakCallback<T> {
+    #[track_caller]
     fn default() -> Self {
         // FIXME: this is a hack to get a valid pointer
         // but it just doesn't feel right
         Callback::default().downgrade()
+    }
+}
+
+impl<T> Debug for WeakCallback<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WeakCallback")
+            .field("location", &self.location)
+            .finish()
     }
 }
 
@@ -219,8 +270,22 @@ impl<T> CallbackEmitter<T> {
         self.callbacks.lock_mut().remove(ptr);
     }
 
-    /// Clears all the callbacks, and calls them.
+    /// Emits an event to all the callbacks.
     pub fn emit(&self, event: &T) {
+        let callbacks = self.callbacks.lock_mut();
+
+        for callback in callbacks.iter() {
+            if let Some(callback) = callback.upgrade() {
+                callback.emit(event);
+            }
+        }
+    }
+
+    /// Clears all the callbacks, and calls them.
+    ///
+    /// This is used internally for emitting effect dependencies like signals, since effects
+    /// always recreate dependencies when run.
+    pub fn clear_and_emit(&self, event: &T) {
         let callbacks = mem::take(&mut *self.callbacks.lock_mut());
 
         for callback in callbacks.into_iter() {
@@ -229,12 +294,25 @@ impl<T> CallbackEmitter<T> {
             }
         }
     }
+
+    /// Clears all the callbacks.
+    pub fn clear(&self) {
+        self.callbacks.lock_mut().callbacks.clear();
+    }
 }
 
 impl CallbackEmitter {
     /// Tracks `self` in the current `effect`.
     pub fn track(&self) {
         self.downgrade().track();
+    }
+}
+
+impl<T> Debug for CallbackEmitter<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallbackEmitter")
+            .field("callbacks", &self.callbacks)
+            .finish()
     }
 }
 
@@ -266,5 +344,13 @@ impl WeakCallbackEmitter {
     /// Tracks `self` in the current **effect**.
     pub fn track(&self) {
         super::effect::track_callback(self.clone());
+    }
+}
+
+impl<T> Debug for WeakCallbackEmitter<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WeakCallbackEmitter")
+            .field("callbacks", &self.callbacks)
+            .finish()
     }
 }

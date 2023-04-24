@@ -1,4 +1,6 @@
-use crate::{EventSignal, Scope, SendSync, Sendable, SharedSignal, Signal, View};
+use crate::{
+    Callback, CallbackEmitter, EventSignal, Scope, SendSync, Sendable, SharedSignal, Signal, View,
+};
 
 pub trait Properties {
     type Setter<'a>
@@ -16,26 +18,37 @@ pub trait Events {
     fn setter(&mut self) -> Self::Setter<'_>;
 }
 
-pub trait BindCallback {
+pub trait BindCallback<'a> {
     type Event;
 
-    fn bind<'a>(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a);
+    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a);
 }
 
-impl<T: SendSync> BindCallback for EventSignal<T> {
+impl<'a, T: SendSync> BindCallback<'a> for EventSignal<T> {
     type Event = T;
 
-    fn bind<'a>(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
+    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
         self.subscribe(cx, callback);
     }
 }
 
-impl<T: SendSync> BindCallback for Option<EventSignal<T>> {
+impl<'a, T: SendSync> BindCallback<'a> for Option<EventSignal<T>> {
     type Event = T;
 
-    fn bind<'a>(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
+    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
         let signal = self.get_or_insert_with(EventSignal::new);
         signal.subscribe(cx, callback);
+    }
+}
+
+impl<'a, T: SendSync + 'a> BindCallback<'a> for CallbackEmitter<T> {
+    type Event = T;
+
+    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
+        // SAFETY: `Callback` doesn't access any data allocated by `Scope::alloc_effect` in it's
+        // Drop implementation.
+        let callback = unsafe { cx.alloc_effect(Callback::new(callback)) };
+        self.subscribe(callback);
     }
 }
 

@@ -15,7 +15,7 @@ impl<T> Item for T {}
 
 #[derive(Default, Debug)]
 struct ScopeArena<'a> {
-    items: RefCell<Vec<*mut (dyn Item + 'a)>>,
+    items: Lock<Vec<*mut (dyn Item + 'a)>>,
 }
 
 // SAFETY: the access to `items` is thread-safe because it's only accessed from mutable references.
@@ -25,7 +25,7 @@ unsafe impl<'a> Sync for ScopeArena<'a> {}
 impl<'a> ScopeArena<'a> {
     pub fn alloc_static<T: Sendable + 'static>(&self, item: T) -> &'a mut T {
         let item = Box::into_raw(Box::new(item));
-        self.items.borrow_mut().push(item);
+        self.items.lock_mut().push(item);
         unsafe { &mut *item }
     }
 
@@ -33,7 +33,7 @@ impl<'a> ScopeArena<'a> {
     /// - `item` must never reference any other item in the arena in it's [`Drop`] implementation.
     pub unsafe fn alloc<T: Sendable + 'a>(&self, item: T) -> &'a mut T {
         let item = Box::into_raw(Box::new(item));
-        self.items.borrow_mut().push(item);
+        self.items.lock_mut().push(item);
         &mut *item
     }
 
@@ -44,7 +44,7 @@ impl<'a> ScopeArena<'a> {
     /// # Safety
     /// - There must be no other references to any item in the arena.
     pub unsafe fn dispose(&self) {
-        let mut items = self.items.borrow_mut();
+        let mut items = self.items.lock_mut();
         Self::dispose_inner(&mut items);
     }
 
@@ -129,6 +129,11 @@ impl<T> IntoIterator for Sparse<T> {
 
 #[derive(Debug)]
 struct RawScope<'a> {
+    /// The arena that holds all effects in this scope.
+    ///
+    /// This is separate from the `arena` field to prevent a use-after-free.
+    effects: ScopeArena<'a>,
+
     /// The arena that holds all items in this scope.
     arena: ScopeArena<'a>,
 
@@ -151,6 +156,7 @@ impl<'a> RawScope<'a> {
     fn new() -> Self {
         Self {
             arena: ScopeArena::default(),
+            effects: ScopeArena::default(),
             parent: None,
             drop_lock: AtomicUsize::new(0),
             children: RefCell::new(Sparse::new()),
@@ -161,6 +167,7 @@ impl<'a> RawScope<'a> {
     fn child(parent: &'a RawScope<'a>) -> Self {
         Self {
             arena: ScopeArena::default(),
+            effects: ScopeArena::default(),
             parent: Some(parent),
             drop_lock: AtomicUsize::new(0),
             children: RefCell::new(Sparse::new()),
@@ -206,6 +213,7 @@ impl<'a> RawScope<'a> {
             cx.dispose();
         }
 
+        self.effects.dispose();
         self.arena.dispose();
     }
 }
@@ -269,6 +277,19 @@ impl<'a> Scope<'a> {
         };
         f(scope);
         ScopeDisposer::child(self.raw, index)
+    }
+
+    /// Allocates an effect on to the scope.
+    ///
+    /// Any effects allocated on the scope will be dropped before any items allocated on the scope.
+    /// This is useful for ensuring that effects are dropped before any items that they reference.
+    ///
+    /// This should almost never be use be used directly.
+    ///
+    /// # Safety
+    /// - `effect` must never reference any other effect allocated on this scope in it's [`Drop`] implementation.
+    pub unsafe fn alloc_effect<T: Sendable + 'a>(&self, effect: T) -> &'a T {
+        self.raw.effects.alloc(effect)
     }
 
     /// Allocates an item in the scope.

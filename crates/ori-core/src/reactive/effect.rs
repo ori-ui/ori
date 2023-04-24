@@ -1,4 +1,4 @@
-use std::{cell::RefCell, mem, ops::DerefMut, panic::Location};
+use std::{cell::RefCell, fmt::Debug, mem, ops::DerefMut, panic::Location};
 
 use crate::{Lock, Lockable, Scope, Sendable, Shared, WeakCallback, WeakCallbackEmitter};
 
@@ -6,7 +6,7 @@ thread_local! {
     static EFFECTS: RefCell<Vec<*mut EffectState<'static>>> = Default::default();
 }
 
-struct EffectState<'a> {
+pub(crate) struct EffectState<'a> {
     location: &'static Location<'static>,
     #[cfg(feature = "multithread")]
     callback: Shared<Lock<dyn FnMut() + Send + 'a>>,
@@ -37,6 +37,14 @@ impl<'a> EffectState<'a> {
     }
 }
 
+impl<'a> Debug for EffectState<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EffectState")
+            .field("location", &self.location)
+            .finish()
+    }
+}
+
 pub(crate) fn track_callback(callback: WeakCallbackEmitter) {
     EFFECTS.with(|effects| {
         if let Some(effect) = effects.borrow().last() {
@@ -59,7 +67,7 @@ pub(crate) fn untrack<T>(f: impl FnOnce() -> T) -> T {
 #[track_caller]
 pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + Sendable + 'a) {
     // SAFETY: `Effect` is `!Drop`, so it's safe to use `alloc_unsafe`.
-    let effect = unsafe { cx.alloc_unsafe(Lock::new(EffectState::empty())) };
+    let effect = unsafe { cx.alloc_effect(Lock::new(EffectState::empty())) };
 
     let callback = Shared::new(Lock::new(move || {
         EFFECTS.with(|effects| {

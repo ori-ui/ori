@@ -153,7 +153,7 @@ impl<T: ?Sized> Signal<T> {
         let location = Location::caller();
         tracing::trace!("emitting signal at {}", location);
 
-        self.emitter.emit(&());
+        self.emitter.clear_and_emit(&());
     }
 }
 

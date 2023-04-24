@@ -2,7 +2,7 @@
 name = "ori"
 version = "0.1.0-alpha.0"
 edition = "2021"
-description = "A reactive ui framework for Rust"
+description = "A declarative ui framework for Rust"
 keywords = ["ui", "gui", "graphics", "wgpu", "winit", "reactive", "native"]
 categories = ["gui", "graphics"]
 readme = "README.md"

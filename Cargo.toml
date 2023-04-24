@@ -5,6 +5,7 @@ edition = "2021"
 description = "A declarative ui framework for Rust"
 keywords = ["ui", "gui", "graphics", "wgpu", "winit", "reactive", "native"]
 categories = ["gui", "graphics"]
+repository = "https://github.com/ChangeCaps/ori"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 

@@ -5,6 +5,7 @@ edition = "2021"
 description = "Core library for Ori, a declarative UI framework for Rust."
 keywords = ["ui", "gui", "graphics", "wgpu", "winit", "reactive", "native"]
 categories = ["gui", "graphics"]
+repository = "https://github.com/ChangeCaps/ori"
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

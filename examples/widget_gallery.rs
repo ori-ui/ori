@@ -1,4 +1,4 @@
-use ily::prelude::*;
+use ori::prelude::*;
 
 const LONG_TEXT: &str = include_str!("long_text.txt");
 

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use ily::prelude::*;
+use ori::prelude::*;
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Number {

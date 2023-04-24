@@ -1,4 +1,4 @@
-use ily::prelude::*;
+use ori::prelude::*;
 
 fn ui(_cx: Scope) -> impl View {
     let mut div = Div::new().class("row");

@@ -2,7 +2,7 @@
 Ily (pronounced "ellie") is a reactive ui framework for creating native applications for rust.
 
 ## Examples
-A [`calculator`](examples/calculator.rs) made with ily.
+A [`calculator`](examples/calculator.rs) made with ori.
 
 ![Calculator image](assets/calculator.png)
 

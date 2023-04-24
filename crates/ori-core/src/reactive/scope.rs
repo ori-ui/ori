@@ -284,10 +284,13 @@ impl<'a> Scope<'a> {
     /// Any effects allocated on the scope will be dropped before any items allocated on the scope.
     /// This is useful for ensuring that effects are dropped before any items that they reference.
     ///
-    /// This should almost never be use be used directly.
+    /// This should almost never be use be used directly. See [`Scope::alloc`] instead.
     ///
     /// # Safety
     /// - `effect` must never reference any other effect allocated on this scope in it's [`Drop`] implementation.
+    /// - The returned reference must never be used, basically, ever, and thus this function should
+    /// almost never be used directly. It cannot be allowed to be used in the Drop implementation
+    /// in an effect, because that would lead to use-after-free.
     pub unsafe fn alloc_effect<T: Sendable + 'a>(&self, effect: T) -> &'a T {
         self.raw.effects.alloc(effect)
     }

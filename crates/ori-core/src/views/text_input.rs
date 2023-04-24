@@ -1,10 +1,10 @@
 use glam::Vec2;
-use ori_graphics::{Color, Quad, Rect, TextAlign, TextSection};
+use ori_graphics::{Color, Quad, Rect, TextSection};
 use ori_macro::Build;
 
 use crate::{
     BoxConstraints, CallbackEmitter, Context, DrawContext, Event, EventContext, Key, KeyboardEvent,
-    LayoutContext, PointerEvent, Scope, SharedSignal, Signal, Style, View,
+    LayoutContext, Modifiers, PointerEvent, Scope, SharedSignal, Signal, Style, View,
 };
 
 #[derive(Clone, Debug, Build)]
@@ -62,19 +62,30 @@ impl TextInput {
         }
     }
 
-    fn display_section(&self, state: &TextInputState, cx: &mut impl Context) -> TextSection {
+    fn display_section(
+        &self,
+        state: &TextInputState,
+        bc: Option<BoxConstraints>,
+        cx: &mut impl Context,
+    ) -> TextSection {
         let color = if self.text.get().is_empty() {
             cx.style("placeholder-color")
         } else {
             cx.style("color")
         };
 
+        let rect = if let Some(bc) = bc {
+            Rect::min_size(Vec2::ZERO, bc.max - state.padding * 2.0)
+        } else {
+            cx.rect().shrink(state.padding - 1.0)
+        };
+
         TextSection {
-            rect: cx.rect().translate(Vec2::new(state.padding, 0.0)),
+            rect,
             scale: state.font_size,
-            h_align: TextAlign::Start,
-            v_align: TextAlign::Center,
-            wrap: false,
+            h_align: cx.style("text-align"),
+            v_align: cx.style("text-valign"),
+            wrap: cx.style("text-wrap"),
             text: self.display_text(),
             font: cx.style("font"),
             color,
@@ -83,11 +94,11 @@ impl TextInput {
 
     fn section(&self, state: &TextInputState, cx: &mut impl Context) -> TextSection {
         TextSection {
-            rect: cx.rect().translate(Vec2::new(state.padding, 0.0)),
+            rect: cx.rect().shrink(state.padding - 1.0),
             scale: state.font_size,
-            h_align: TextAlign::Start,
-            v_align: TextAlign::Center,
-            wrap: false,
+            h_align: cx.style("text-align"),
+            v_align: cx.style("text-valign"),
+            wrap: cx.style("text-wrap"),
             text: self.text.cloned(),
             font: cx.style("font"),
             ..Default::default()
@@ -106,7 +117,8 @@ impl TextInput {
 
             if let Some(hit) = hit {
                 if hit.delta.x > 0.0 {
-                    state.cursor = Some(hit.index + 1);
+                    state.cursor = Some(hit.index);
+                    state.cursor_right(&self.text.get());
                     cx.focus();
                 } else {
                     state.cursor = Some(hit.index);
@@ -131,46 +143,71 @@ impl TextInput {
         if event.is_press() {
             self.on_input.emit(event);
 
-            self.handle_key(state, cx, event.key.unwrap());
+            self.handle_key(state, cx, event.key.unwrap(), event.modifiers);
         }
 
         if let Some(c) = event.text {
             if !c.is_control() {
-                self.on_input.emit(event);
-
-                let mut text = self.text.modify();
-                if let Some(cursor) = state.cursor {
-                    if cursor < text.len() {
-                        text.insert(cursor, c);
-                    } else {
-                        text.push(c);
-                    }
-
-                    let new_cursor = cursor + c.len_utf8();
-                    state.cursor = Some(new_cursor);
-                }
-
-                cx.request_redraw();
+                self.input_char(state, cx, c);
             }
         }
     }
 
-    fn handle_key(&self, state: &mut TextInputState, cx: &mut EventContext, key: Key) {
+    fn input_char(&self, state: &mut TextInputState, cx: &mut EventContext, c: char) {
+        let mut text = self.text.modify();
+        if let Some(cursor) = state.cursor {
+            if cursor < text.len() {
+                text.insert(cursor, c);
+            } else {
+                text.push(c);
+            }
+
+            let new_cursor = cursor + c.len_utf8();
+            state.cursor = Some(new_cursor);
+        }
+
+        cx.request_redraw();
+    }
+
+    fn prev_char_index(&self, cursor: usize) -> Option<usize> {
+        if cursor == 0 {
+            return None;
+        }
+
+        let text = self.text.get();
+
+        let mut index = cursor - 1;
+        while !text.is_char_boundary(index) {
+            index -= 1;
+        }
+
+        Some(index)
+    }
+
+    fn handle_key(
+        &self,
+        state: &mut TextInputState,
+        cx: &mut EventContext,
+        key: Key,
+        modifiers: Modifiers,
+    ) {
         match key {
             Key::Right => {
                 state.cursor_right(&self.text.get());
                 cx.request_redraw();
             }
             Key::Left => {
-                state.cursor_left();
+                state.cursor_left(&self.text.get());
                 cx.request_redraw();
             }
             Key::Backspace => {
                 if let Some(cursor) = state.cursor {
-                    if cursor > 0 {
+                    if let Some(prev) = self.prev_char_index(cursor) {
                         let mut text = self.text.modify();
-                        text.remove(cursor - 1);
-                        state.cursor_left();
+
+                        state.cursor_left(&text);
+                        text.remove(prev);
+
                         cx.request_redraw();
                     }
                 }
@@ -180,14 +217,57 @@ impl TextInput {
                 cx.unfocus();
             }
             Key::Enter => {
-                if !self.on_submit.is_empty() {
+                let wrap = cx.style("text-wrap");
+
+                if !self.on_submit.is_empty() && !modifiers.shift && wrap {
                     self.on_submit.emit(&self.text.get());
                     state.cursor = None;
                     cx.unfocus();
+                } else if wrap {
+                    self.input_char(state, cx, '\n');
                 }
             }
             _ => {}
         }
+    }
+
+    fn glyph_index(&self, cursor: usize) -> usize {
+        let text = &self.text.get()[..cursor];
+        text.chars().filter(|c| !c.is_control()).count() - 1
+    }
+
+    fn cursor_rect(&self, state: &mut TextInputState, cx: &mut DrawContext) -> Rect {
+        if state.cursor.is_none() || state.cursor == Some(0) {
+            return Rect::min_size(
+                cx.rect().min + state.padding,
+                Vec2::new(0.0, state.font_size),
+            );
+        }
+
+        let cursor = state.cursor.unwrap();
+        let index = self.glyph_index(cursor);
+
+        let section = self.section(state, cx);
+        let glyphs = cx.renderer.text_glyphs(&section);
+
+        let glyph = glyphs[index];
+        if section.text.as_bytes()[cursor - 1] != b'\n' {
+            return glyph.rect;
+        }
+
+        let mut newlines = 0;
+
+        while section.text.as_bytes()[cursor - 1 - newlines] == b'\n' {
+            newlines += 1;
+        }
+
+        Rect::min_size(
+            Vec2::new(
+                cx.rect().min.x + state.padding,
+                glyph.rect.min.y + newlines as f32 * state.font_size,
+            ),
+            Vec2::new(0.0, state.font_size),
+        )
     }
 }
 
@@ -205,19 +285,27 @@ impl TextInputState {
     }
 
     fn cursor_right(&mut self, text: &str) {
-        if let Some(cursor) = self.cursor {
-            if cursor < text.len() {
-                self.cursor = Some(cursor + 1);
+        if let Some(ref mut cursor) = self.cursor {
+            if *cursor < text.len() {
+                *cursor += 1;
+
+                while !text.is_char_boundary(*cursor) {
+                    *cursor += 1;
+                }
             }
         }
 
         self.reset_blink();
     }
 
-    fn cursor_left(&mut self) {
-        if let Some(cursor) = self.cursor {
-            if cursor > 0 {
-                self.cursor = Some(cursor - 1);
+    fn cursor_left(&mut self, text: &str) {
+        if let Some(ref mut cursor) = self.cursor {
+            if *cursor > 0 {
+                *cursor -= 1;
+
+                while !text.is_char_boundary(*cursor) {
+                    *cursor -= 1;
+                }
             }
         }
 
@@ -242,7 +330,9 @@ impl View for TextInput {
         }
 
         if let Some(keyboard_event) = event.get::<KeyboardEvent>() {
-            self.handle_keyboard_input(state, cx, keyboard_event);
+            if cx.focused() {
+                self.handle_keyboard_input(state, cx, keyboard_event);
+            }
         }
     }
 
@@ -254,45 +344,33 @@ impl View for TextInput {
         let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
         state.padding = padding;
 
-        let min_width = cx.style_range_group("width", "min-width", bc.width());
-        let max_width = cx.style_range_group("width", "max-width", bc.width());
+        let bc = cx.style_constraints(bc);
 
-        let mut min_height = cx.style_range_group("height", "min-height", bc.height());
-        let max_height = cx.style_range_group("height", "max-height", bc.height());
-
-        min_height = min_height.max(font_size + padding * 2.0);
-
-        let min_size = bc.constrain(Vec2::new(min_width, min_height));
-        let max_size = bc.constrain(Vec2::new(max_width, max_height));
-
-        let section = self.display_section(state, cx);
+        let section = self.display_section(state, Some(bc), cx);
         let mut size = cx.messure_text(&section).unwrap_or_default().size();
         size += padding * 2.0;
-        size.clamp(min_size, max_size)
+        bc.constrain(size)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 
-        let section = self.display_section(state, cx);
-        cx.draw(section);
+        let section = self.display_section(state, None, cx);
+        cx.draw(section.clone());
 
-        if let Some(cursor) = state.cursor {
+        if state.cursor.is_some() {
             state.blink += cx.state.delta() * 10.0;
             cx.request_redraw();
 
-            let section = TextSection {
-                text: self.text.get()[..cursor].into(),
-                ..self.section(state, cx)
-            };
+            let rect = self.cursor_rect(state, cx);
 
-            let bounds = cx.renderer.messure_text(&section).unwrap_or_default();
-            let cursor = f32::max(bounds.max.x, cx.rect().min.x + state.padding);
+            let cursor_width = 1.0;
+            let cursor_height = state.font_size;
 
             let quad = Quad {
                 rect: Rect::min_size(
-                    Vec2::new(cursor, cx.rect().min.y + state.padding),
-                    Vec2::new(1.0, cx.rect().height() - state.padding * 2.0),
+                    rect.right_center() - Vec2::new(0.0, cursor_height / 2.0),
+                    Vec2::new(cursor_width, cursor_height),
                 )
                 .round(),
                 background: cx.style::<Color>("color") * state.blink.cos(),

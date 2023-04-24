@@ -2,8 +2,8 @@ use std::cell::RefCell;
 
 use ori_core::{Mat4, Vec2};
 use ori_graphics::{
-    Color, Frame, ImageData, ImageHandle, Mesh, Primitive, PrimitiveKind, Quad, Rect, Renderer,
-    TextHit, TextSection,
+    Color, Frame, Glyph, ImageData, ImageHandle, Mesh, Primitive, PrimitiveKind, Quad, Rect,
+    Renderer, TextSection,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{
@@ -437,18 +437,7 @@ impl Renderer for WgpuRenderer {
         ImageHandle::new(image, data.width(), data.height())
     }
 
-    fn messure_text(&self, section: &TextSection) -> Option<Rect> {
-        let section = self.fonts.convert_section(section);
-        let mut glyph_brush = self.glyph_brush.borrow_mut();
-        let bounds = glyph_brush.glyph_bounds(&section)?;
-
-        Some(Rect {
-            min: Vec2::new(bounds.min.x, bounds.min.y),
-            max: Vec2::new(bounds.max.x, bounds.max.y),
-        })
-    }
-
-    fn hit_text(&self, section: &TextSection, position: Vec2) -> Option<TextHit> {
+    fn text_glyphs(&self, section: &TextSection) -> Vec<Glyph> {
         let mut glyph_brush = self.glyph_brush.borrow_mut();
         let font_id = if let Some(font) = &section.font {
             self.fonts.find_font(font)
@@ -460,7 +449,7 @@ impl Renderer for WgpuRenderer {
         let scaled = font.into_scaled(section.scale);
         let section = self.fonts.convert_section(section);
 
-        let mut closest = None::<TextHit>;
+        let mut glyphs = Vec::new();
 
         for glyph in glyph_brush.glyphs(section) {
             let wgpu_glyph::SectionGlyph {
@@ -479,33 +468,15 @@ impl Renderer for WgpuRenderer {
             );
 
             let rect = Rect::min_size(min, size);
-            let delta = position - rect.center();
 
-            if rect.contains(position) {
-                return Some(TextHit {
-                    inside: true,
-                    index: byte_index,
-                    delta,
-                });
-            }
+            let glyph = Glyph {
+                rect,
+                index: byte_index,
+            };
 
-            if let Some(ref mut closest) = closest {
-                if delta.length_squared() < closest.delta.length_squared() {
-                    *closest = TextHit {
-                        inside: false,
-                        index: byte_index,
-                        delta,
-                    };
-                }
-            } else {
-                closest = Some(TextHit {
-                    inside: false,
-                    index: byte_index,
-                    delta,
-                });
-            }
+            glyphs.push(glyph);
         }
 
-        closest
+        glyphs
     }
 }

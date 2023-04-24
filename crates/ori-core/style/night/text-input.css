@@ -8,6 +8,8 @@ text-input {
 	border-width: 1px;
 	border-color: #404040;
 
+	text-valign: center;
+
 	placeholder-color: #b0b0b0;
 }
 

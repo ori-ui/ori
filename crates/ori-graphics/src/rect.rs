@@ -49,6 +49,13 @@ impl Rect {
         }
     }
 
+    pub fn shrink(self, amount: f32) -> Self {
+        Self {
+            min: self.min + Vec2::splat(amount),
+            max: self.max - Vec2::splat(amount),
+        }
+    }
+
     pub fn size(self) -> Vec2 {
         self.max - self.min
     }
@@ -108,6 +115,22 @@ impl Rect {
 
     pub fn bottom_right(self) -> Vec2 {
         self.max
+    }
+
+    pub fn right_center(self) -> Vec2 {
+        Vec2::new(self.max.x, self.center().y)
+    }
+
+    pub fn left_center(self) -> Vec2 {
+        Vec2::new(self.min.x, self.center().y)
+    }
+
+    pub fn top_center(self) -> Vec2 {
+        Vec2::new(self.center().x, self.min.y)
+    }
+
+    pub fn bottom_center(self) -> Vec2 {
+        Vec2::new(self.center().x, self.max.y)
     }
 
     pub fn translate(self, offset: impl Into<Vec2>) -> Self {

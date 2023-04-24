@@ -83,8 +83,21 @@ impl TextSection {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TextHit {
-    pub inside: bool,
+pub struct Glyph {
     pub index: usize,
+    pub rect: Rect,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Line {
+    pub index: usize,
+    pub glyphs: Vec<Glyph>,
+    pub rect: Rect,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextHit {
+    pub index: usize,
+    pub inside: bool,
     pub delta: Vec2,
 }

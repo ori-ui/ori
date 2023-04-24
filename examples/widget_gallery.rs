@@ -23,6 +23,7 @@ fn ui(cx: Scope) -> impl View {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
     let knob_value = cx.signal(0.0);
+    let long_text = cx.signal(String::from(LONG_TEXT));
     let text = cx.signal(String::new());
 
     let font_size = cx.memo(|| if *checked.get() { 32 } else { 24 });
@@ -49,7 +50,7 @@ fn ui(cx: Scope) -> impl View {
             </Div>
             <Scroll style:max-height=Em(14.0)>
                 <Div style:max-width=Em(8.0)>
-                    <Text text=LONG_TEXT />
+                    <TextInput class="long-text" bind:text=long_text />
                 </Div>
             </Scroll>
             <Div class="column">

@@ -22,8 +22,8 @@ use wgpu_glyph::{
 
 use crate::{BlitPipeline, Fonts, MeshPipeline, QuadPipeline, WgpuImage};
 
-const TEXT_FONT: &[u8] = include_bytes!("../../../assets/NotoSans-Medium.ttf");
-const ICON_FONT: &[u8] = include_bytes!("../../../assets/MaterialIcons-Regular.ttf");
+const TEXT_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Medium.ttf");
+const ICON_FONT: &[u8] = include_bytes!("../fonts/MaterialIcons-Regular.ttf");
 
 pub struct WgpuRenderer {
     device: Device,

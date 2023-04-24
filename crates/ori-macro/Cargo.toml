@@ -1,6 +1,6 @@
 [package]
 name = "ori-macro"
-version = "0.1.0-alpha.0"
+version = "0.1.0-alpha.1"
 edition = "2021"
 description = "Macros for Ori"
 keywords = ["gui", "graphics", "reactive", "native"]

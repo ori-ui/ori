@@ -1,6 +1,6 @@
 [package]
 name = "ori-core"
-version = "0.1.0-alpha.0"
+version = "0.1.0-alpha.1"
 edition = "2021"
 description = "Core library for Ori, a declarative UI framework for Rust."
 keywords = ["gui", "graphics", "reactive", "native"]

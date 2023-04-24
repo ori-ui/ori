@@ -44,7 +44,7 @@ macro_rules! include_stylesheet {
 macro_rules! theme {
     ($name:ident, $folder:literal => $($style:literal),* $(,)?) => {
         pub const $name: &str = concat!(
-            $(include_str!(concat!("../../../../style/", $folder, "/", $style))),*
+            $(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/style/", $folder, "/", $style))),*
         );
     };
 }

@@ -1,13 +1,13 @@
 [package]
 name = "ori-wgpu"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ori-core = { path = "../ori-core", version = "0.1.0" }
-ori-graphics = { path = "../ori-graphics", version = "0.1.0" }
+ori-core = { path = "../ori-core", version = "0.1.0-alpha.0" }
+ori-graphics = { path = "../ori-graphics", version = "0.1.0-alpha.0" }
 
 bytemuck = { version = "1.13", features = ["derive"] }
 pollster = "0.3.0"

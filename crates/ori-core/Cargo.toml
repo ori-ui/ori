@@ -1,13 +1,13 @@
 [package]
 name = "ori-core"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ori-graphics = { path = "../ori-graphics", version = "0.1.0" }
-ori-macro = { path = "../ori-macro", version = "0.1.0" }
+ori-graphics = { path = "../ori-graphics", version = "0.1.0-alpha.0" }
+ori-macro = { path = "../ori-macro", version = "0.1.0-alpha.0" }
 
 deref-derive = "0.1"
 fxhash = "0.2"

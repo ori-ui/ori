@@ -1,6 +1,6 @@
 [package]
 name = "ori"
-version = "0.1.0"
+version = "0.1.0-alpha.0"
 edition = "2021"
 description = "A reactive ui framework for Rust"
 keywords = ["ui", "gui", "graphics", "wgpu", "winit", "reactive", "native"]
@@ -14,11 +14,11 @@ license = "MIT OR Apache-2.0"
 members = ["crates/*"]
 
 [dependencies]
-ori-core = { path = "crates/ori-core", version = "0.1.0" }
-ori-macro = { path = "crates/ori-macro", version = "0.1.0" }
-ori-graphics = { path = "crates/ori-graphics", version = "0.1.0" }
-ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0", optional = true }
-ori-winit = { path = "crates/ori-winit", version = "0.1.0", optional = true }
+ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.0" }
+ori-macro = { path = "crates/ori-macro", version = "0.1.0-alpha.0" }
+ori-graphics = { path = "crates/ori-graphics", version = "0.1.0-alpha.0" }
+ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.0", optional = true }
+ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.0", optional = true }
 
 [features]
 default = ["winit", "wgpu"]

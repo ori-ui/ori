@@ -100,7 +100,8 @@ impl Scroll {
             let range = end - start;
 
             let scroll = (axis.major(event.position) - start) / range;
-            state.scroll.y = scroll.clamp(0.0, 1.0);
+            let minor = axis.minor(event.position);
+            state.scroll = axis.pack(scroll.clamp(0.0, 1.0), minor);
 
             cx.request_redraw();
 
@@ -181,7 +182,7 @@ impl View for Scroll {
         // draw scrollbar track
         let rect = self.scrollbar_track_rect(cx);
 
-        let max_radius = rect.width() * 0.5;
+        let max_radius = rect.size().min_element() / 2.0;
         let radius = cx.style_range("scrollbar-border-radius", 0.0..max_radius);
 
         let quad = Quad {

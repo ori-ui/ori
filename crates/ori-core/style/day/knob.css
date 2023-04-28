@@ -4,6 +4,8 @@ knob {
 	border-width: 1px;
 	border-color: #f8f8f8;
 	color: #ffaebc;
+
+	cursor: grab;
 }
 
 knob:hover {
@@ -12,4 +14,6 @@ knob:hover {
 
 knob:active {
 	background-color: #e0e0e0;
+
+	cursor: grabbing;
 }

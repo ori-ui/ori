@@ -34,4 +34,6 @@ text-input .long-text {
 	text-wrap: true;
 	text-align: start;
 	text-valign: start;
+
+	border-width: none;
 }

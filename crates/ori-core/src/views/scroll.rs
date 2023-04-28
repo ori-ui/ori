@@ -84,9 +84,14 @@ impl Scroll {
             return handled;
         }
 
-        let scrollbar_rect = self.scrollbar_track_rect(cx);
+        let scrollbar_track_rect = self.scrollbar_track_rect(cx);
 
-        if scrollbar_rect.contains(event.position) && event.is_press() {
+        if scrollbar_track_rect.contains(event.position) {
+            handled = true;
+            cx.hover();
+        }
+
+        if scrollbar_track_rect.contains(event.position) && event.is_press() {
             cx.activate();
         }
 
@@ -95,8 +100,8 @@ impl Scroll {
         }
 
         if cx.active() {
-            let start = axis.major(scrollbar_rect.min);
-            let end = axis.major(scrollbar_rect.max);
+            let start = axis.major(scrollbar_track_rect.min);
+            let end = axis.major(scrollbar_track_rect.max);
             let range = end - start;
 
             let scroll = (axis.major(event.position) - start) / range;
@@ -135,13 +140,15 @@ impl View for Scroll {
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+        self.content.event(cx, event);
+
+        println!("{:?}", cx.hovered());
+
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(state, cx, pointer_event) {
                 event.handle();
             }
         }
-
-        self.content.event(cx, event);
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {

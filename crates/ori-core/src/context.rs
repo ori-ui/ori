@@ -10,7 +10,7 @@ use ori_graphics::{
 };
 
 use crate::{
-    BoxConstraints, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
+    BoxConstraints, Cursor, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
     StyleAttribute, StyleSelectors, StyleSpecificity, Stylesheet, Unit,
 };
 
@@ -56,6 +56,7 @@ pub struct EventContext<'a> {
     pub selectors: &'a StyleSelectors,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
+    pub cursor: &'a mut Cursor,
 }
 
 pub struct LayoutContext<'a> {
@@ -65,6 +66,7 @@ pub struct LayoutContext<'a> {
     pub selectors: &'a StyleSelectors,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
+    pub cursor: &'a mut Cursor,
 }
 
 impl<'a> LayoutContext<'a> {
@@ -124,6 +126,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
                 selectors: self.draw_context.selectors,
                 event_sink: self.draw_context.event_sink,
                 image_cache: self.draw_context.image_cache,
+                cursor: self.draw_context.cursor,
             };
 
             f(&mut child);
@@ -139,6 +142,7 @@ pub struct DrawContext<'a> {
     pub selectors: &'a StyleSelectors,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
+    pub cursor: &'a mut Cursor,
 }
 
 impl<'a> DrawContext<'a> {
@@ -220,6 +224,8 @@ pub trait Context {
     fn event_sink(&self) -> &EventSink;
     fn image_cache(&self) -> &ImageCache;
     fn image_cache_mut(&mut self) -> &mut ImageCache;
+    fn cursor(&self) -> Cursor;
+    fn set_cursor(&mut self, icon: Cursor);
 
     fn get_style_attribute(&self, key: &str) -> Option<StyleAttribute> {
         if let Some(attribute) = self.state().style.attributes.get(key) {
@@ -406,6 +412,24 @@ pub trait Context {
         self.request_redraw();
     }
 
+    fn hover(&mut self) {
+        if self.hovered() {
+            return;
+        }
+
+        self.state_mut().hovered = true;
+        self.request_redraw();
+    }
+
+    fn unhover(&mut self) {
+        if !self.hovered() {
+            return;
+        }
+
+        self.state_mut().hovered = false;
+        self.request_redraw();
+    }
+
     fn activate(&mut self) {
         if self.active() {
             return;
@@ -482,6 +506,14 @@ macro_rules! context {
 
             fn image_cache_mut(&mut self) -> &mut ImageCache {
                 &mut self.image_cache
+            }
+
+            fn cursor(&self) -> Cursor {
+                *self.cursor
+            }
+
+            fn set_cursor(&mut self, cursor: Cursor) {
+                *self.cursor = cursor;
             }
         }
     };

@@ -3,7 +3,7 @@ use std::{
     hash::{BuildHasher, Hash, Hasher},
 };
 
-use ori_core::{Key, PointerButton};
+use ori_core::{Cursor, Key, PointerButton};
 use winit::event::{DeviceId, ElementState, MouseButton, VirtualKeyCode};
 
 pub(crate) fn convert_device_id(device_id: DeviceId) -> u64 {
@@ -113,4 +113,44 @@ pub(crate) fn convert_key(key: VirtualKeyCode) -> Option<Key> {
         VirtualKeyCode::Right => Key::Right,
         _ => return None,
     })
+}
+
+pub(crate) fn convert_cursor_icon(cursor_icon: Cursor) -> winit::window::CursorIcon {
+    match cursor_icon {
+        Cursor::Default => winit::window::CursorIcon::Default,
+        Cursor::Crosshair => winit::window::CursorIcon::Crosshair,
+        Cursor::Pointer => winit::window::CursorIcon::Hand,
+        Cursor::Arrow => winit::window::CursorIcon::Arrow,
+        Cursor::Move => winit::window::CursorIcon::Move,
+        Cursor::Text => winit::window::CursorIcon::Text,
+        Cursor::Wait => winit::window::CursorIcon::Wait,
+        Cursor::Help => winit::window::CursorIcon::Help,
+        Cursor::Progress => winit::window::CursorIcon::Progress,
+        Cursor::NotAllowed => winit::window::CursorIcon::NotAllowed,
+        Cursor::ContextMenu => winit::window::CursorIcon::ContextMenu,
+        Cursor::Cell => winit::window::CursorIcon::Cell,
+        Cursor::VerticalText => winit::window::CursorIcon::VerticalText,
+        Cursor::Alias => winit::window::CursorIcon::Alias,
+        Cursor::Copy => winit::window::CursorIcon::Copy,
+        Cursor::NoDrop => winit::window::CursorIcon::NoDrop,
+        Cursor::Grab => winit::window::CursorIcon::Grab,
+        Cursor::Grabbing => winit::window::CursorIcon::Grabbing,
+        Cursor::AllScroll => winit::window::CursorIcon::AllScroll,
+        Cursor::ZoomIn => winit::window::CursorIcon::ZoomIn,
+        Cursor::ZoomOut => winit::window::CursorIcon::ZoomOut,
+        Cursor::EResize => winit::window::CursorIcon::EResize,
+        Cursor::NResize => winit::window::CursorIcon::NResize,
+        Cursor::NeResize => winit::window::CursorIcon::NeResize,
+        Cursor::NwResize => winit::window::CursorIcon::NwResize,
+        Cursor::SResize => winit::window::CursorIcon::SResize,
+        Cursor::SeResize => winit::window::CursorIcon::SeResize,
+        Cursor::SwResize => winit::window::CursorIcon::SwResize,
+        Cursor::WResize => winit::window::CursorIcon::WResize,
+        Cursor::EwResize => winit::window::CursorIcon::EwResize,
+        Cursor::NsResize => winit::window::CursorIcon::NsResize,
+        Cursor::NeswResize => winit::window::CursorIcon::NeswResize,
+        Cursor::NwseResize => winit::window::CursorIcon::NwseResize,
+        Cursor::ColResize => winit::window::CursorIcon::ColResize,
+        Cursor::RowResize => winit::window::CursorIcon::RowResize,
+    }
 }

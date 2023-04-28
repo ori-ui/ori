@@ -17,4 +17,6 @@ scroll:hover {
 scroll:active {
 	scrollbar-color: #d0d0d0ff 0.05s;
 	scrollbar-track-color: #f0f0f0a0 0.05s;
+
+	cursor: pointer;
 }

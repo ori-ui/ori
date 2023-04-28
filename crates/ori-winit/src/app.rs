@@ -1,8 +1,8 @@
 use std::{error::Error, fmt::Display, sync::Arc};
 
 use ori_core::{
-    Event, EventSender, EventSink, ImageCache, KeyboardEvent, LoadedStyleKind, Modifiers, Node,
-    PointerEvent, RequestRedrawEvent, Scope, StyleLoader, Stylesheet, Vec2, View,
+    Cursor, Event, EventSender, EventSink, ImageCache, KeyboardEvent, LoadedStyleKind, Modifiers,
+    Node, PointerEvent, RequestRedrawEvent, Scope, StyleLoader, Stylesheet, Vec2, View,
 };
 use ori_graphics::{Color, Frame};
 use winit::{
@@ -13,7 +13,9 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::convert::{convert_device_id, convert_key, convert_mouse_button, is_pressed};
+use crate::convert::{
+    convert_cursor_icon, convert_device_id, convert_key, convert_mouse_button, is_pressed,
+};
 
 struct EventLoopSender(EventLoopProxy<Event>);
 
@@ -181,6 +183,7 @@ struct AppState {
     clear_color: Color,
     event_sink: EventSink,
     image_cache: ImageCache,
+    cursor_icon: Cursor,
     #[cfg(feature = "wgpu")]
     renderer: ori_wgpu::WgpuRenderer,
 }
@@ -192,16 +195,20 @@ impl AppState {
     }
 
     fn clean(&mut self) {
+        let icon = convert_cursor_icon(self.cursor_icon);
+        self.window.set_cursor_icon(icon);
         self.image_cache.clean();
     }
 
     fn event(&mut self, event: &Event) {
+        self.cursor_icon = Cursor::Default;
         self.root.event_root(
             self.style_loader.style(),
             &self.renderer,
             &self.event_sink,
             event,
             &mut self.image_cache,
+            &mut self.cursor_icon,
         );
 
         self.clean();
@@ -210,12 +217,15 @@ impl AppState {
     fn layout(&mut self) {
         let style = self.style_loader.style();
         let size = self.window_size();
+
+        self.cursor_icon = Cursor::Default;
         self.root.layout_root(
             style,
             &self.renderer,
             size,
             &self.event_sink,
             &mut self.image_cache,
+            &mut self.cursor_icon,
         );
 
         self.clean();
@@ -226,12 +236,15 @@ impl AppState {
 
         self.frame.clear();
         let style = self.style_loader.style();
+
+        self.cursor_icon = Cursor::Default;
         self.root.draw_root(
             style,
             &mut self.frame,
             &self.renderer,
             &self.event_sink,
             &mut self.image_cache,
+            &mut self.cursor_icon,
         );
 
         self.clean();
@@ -264,6 +277,7 @@ impl App {
             clear_color: self.clear_color,
             event_sink: event_sink.clone(),
             image_cache: ImageCache::new(),
+            cursor_icon: Cursor::Default,
             #[cfg(feature = "wgpu")]
             renderer,
         };
@@ -286,9 +300,9 @@ impl App {
                 WinitEvent::UserEvent(event) => {
                     if event.is::<RequestRedrawEvent>() {
                         window.request_redraw();
+                    } else {
+                        state.event(&event);
                     }
-
-                    state.event(&event);
                 }
                 WinitEvent::WindowEvent { event, .. } => match event {
                     WindowEvent::Resized(size)

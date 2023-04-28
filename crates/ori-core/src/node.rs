@@ -5,9 +5,10 @@ use ori_graphics::{Frame, Rect, Renderer};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, Context, DrawContext, Event, EventContext, EventSink, ImageCache,
-    LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Style, StyleSelector,
-    StyleSelectors, StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
+    AnyView, BoxConstraints, Context, Cursor, DrawContext, Event, EventContext, EventSink,
+    ImageCache, LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Style,
+    StyleSelector, StyleSelectors, StyleStates, StyleTransition, Stylesheet, TransitionStates,
+    View,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -70,7 +71,9 @@ impl NodeState {
         self.global_rect = self.local_rect.translate(parent.global_rect.min);
     }
 
-    pub fn propagate_child(&mut self, _child: &NodeState) {}
+    pub fn propagate_child(&mut self, child: &NodeState) {
+        self.hovered &= !child.hovered;
+    }
 
     pub fn style_states(&self) -> StyleStates {
         let mut states = StyleStates::new();
@@ -176,7 +179,7 @@ impl Node {
 impl Node {
     fn handle_pointer_event(&self, node_state: &mut NodeState, event: &PointerEvent) -> bool {
         let hovered = node_state.global_rect.contains(event.position) && !event.left;
-        if hovered != node_state.hovered {
+        if hovered != node_state.hovered  {
             node_state.hovered = hovered;
             true
         } else {
@@ -184,13 +187,23 @@ impl Node {
         }
     }
 
-    pub fn event(&self, cx: &mut EventContext, event: &Event) {
+    fn update_cursor(&self, cx: &mut impl Context) {
+        let Some(cursor) = cx.style("cursor") else {
+            return; 
+        };
+
+        if cx.hovered() || cx.active() {
+            cx.set_cursor(cursor);
+        }
+    }
+
+    pub fn event(&self, cx: &mut EventContext, event: &Event) { 
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
         node_state.propagate_parent(cx.state);
 
-        if let Some(event) = event.get::<PointerEvent>() {
-            if self.handle_pointer_event(&mut node_state, event) {
+        if let Some(pointer_event) = event.get::<PointerEvent>() {
+            if self.handle_pointer_event(&mut node_state, pointer_event) {
                 cx.request_redraw();
             }
         }
@@ -204,10 +217,13 @@ impl Node {
                 selectors: &cx.selectors.clone().with(selector),
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
+                cursor: cx.cursor,
             };
 
             let mut view_state = self.view_state.lock_mut();
             self.view.event(&mut **view_state, &mut cx, event);
+
+            self.update_cursor(&mut cx);
         }
 
         cx.state.propagate_child(&node_state);
@@ -216,6 +232,7 @@ impl Node {
     pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
+        node_state.propagate_parent(cx.state);
 
         let size = {
             let selector = node_state.selector();
@@ -226,10 +243,16 @@ impl Node {
                 selectors: &cx.selectors.clone().with(selector),
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
+                cursor: cx.cursor,
             };
 
+
             let mut view_state = self.view_state.lock_mut();
-            self.view.layout(&mut **view_state, &mut cx, bc)
+            let size = self.view.layout(&mut **view_state, &mut cx, bc);
+
+            self.update_cursor(&mut cx); 
+
+            size
         };
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
@@ -255,7 +278,8 @@ impl Node {
                 selectors: &cx.selectors.clone().with(selector),
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
-            };
+                cursor: cx.cursor,
+            }; 
 
             let mut view_state = self.view_state.lock_mut();
             self.view.draw(&mut **view_state, &mut cx);
@@ -265,6 +289,8 @@ impl Node {
             }
 
             cx.state.draw();
+
+            self.update_cursor(&mut cx);
         }
 
         cx.state.propagate_child(&node_state);
@@ -279,12 +305,13 @@ impl Node {
         event_sink: &EventSink,
         event: &Event,
         image_cache: &mut ImageCache,
+        cursor_icon: &mut Cursor,
     ) {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
 
-        if let Some(event) = event.get::<PointerEvent>() {
-            if self.handle_pointer_event(&mut node_state, event) {
+        if let Some(pointer_event) = event.get::<PointerEvent>() {
+            if self.handle_pointer_event(&mut node_state, pointer_event) {
                 event_sink.send(RequestRedrawEvent);
             }
         }
@@ -297,6 +324,7 @@ impl Node {
             selectors: &StyleSelectors::new().with(selector),
             event_sink,
             image_cache,
+            cursor: cursor_icon,
         };
 
         let mut view_state = self.view_state.lock_mut();
@@ -310,6 +338,7 @@ impl Node {
         window_size: Vec2,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
+        cursor_icon: &mut Cursor,
     ) -> Vec2 {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
@@ -322,6 +351,7 @@ impl Node {
             selectors: &StyleSelectors::new().with(selector),
             event_sink,
             image_cache,
+            cursor: cursor_icon,
         };
 
         let bc = BoxConstraints::new(Vec2::ZERO, window_size);
@@ -341,6 +371,7 @@ impl Node {
         renderer: &dyn Renderer,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
+        cursor_icon: &mut Cursor,
     ) {
         let mut node_state = self.node_state.lock_mut();
         node_state.style = self.view.style();
@@ -354,6 +385,7 @@ impl Node {
             selectors: &StyleSelectors::new().with(selector),
             event_sink,
             image_cache,
+            cursor: cursor_icon,
         };
 
         let mut view_state = self.view_state.lock_mut();

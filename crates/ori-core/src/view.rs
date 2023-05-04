@@ -81,6 +81,26 @@ impl<T: View> AnyView for T {
     }
 }
 
+impl dyn AnyView {
+    pub fn downcast_ref<T: AnyView>(&self) -> Option<&T> {
+        if any::type_name::<T>() == any::type_name::<Self>() {
+            // SAFETY: `T` and `Self` are the same type
+            unsafe { Some(&*(self as *const dyn AnyView as *const T)) }
+        } else {
+            None
+        }
+    }
+
+    pub fn downcast_mut<T: AnyView>(&mut self) -> Option<&mut T> {
+        if any::type_name::<T>() == any::type_name::<Self>() {
+            // SAFETY: `T` and `Self` are the same type
+            unsafe { Some(&mut *(self as *mut dyn AnyView as *mut T)) }
+        } else {
+            None
+        }
+    }
+}
+
 /// When a view is wrapped in a signal, the view will be redrawn when the signal
 /// changes.
 impl<V: View + SendSync> View for SharedSignal<V> {

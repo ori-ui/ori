@@ -142,8 +142,6 @@ impl View for Scroll {
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         self.content.event(cx, event);
 
-        println!("{:?}", cx.hovered());
-
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(state, cx, pointer_event) {
                 event.handle();

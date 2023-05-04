@@ -1,23 +1,6 @@
-use std::sync::{Arc, Mutex};
-
 use ori::prelude::*;
 
 const LONG_TEXT: &str = include_str!("long_text.txt");
-
-struct Droop<'a> {
-    item: Arc<Mutex<Option<&'a mut Vec<String>>>>,
-}
-
-impl<'a> Drop for Droop<'a> {
-    fn drop(&mut self) {
-        self.item
-            .lock()
-            .unwrap()
-            .as_mut()
-            .unwrap()
-            .push(String::from("test"));
-    }
-}
 
 fn ui(cx: Scope) -> impl View {
     let counter = cx.signal(1);

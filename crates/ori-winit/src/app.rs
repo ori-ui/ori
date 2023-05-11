@@ -45,6 +45,7 @@ pub struct App {
     clear_color: Color,
     event_loop: EventLoop<Event>,
     style_loader: StyleLoader,
+    x11_window_id: Option<i32>,
     builder: Option<Box<dyn FnOnce() -> Node>>,
 }
 
@@ -76,6 +77,7 @@ impl App {
             clear_color: Color::WHITE,
             event_loop,
             style_loader,
+            x11_window_id: None,
             builder: Some(builder),
         }
     }
@@ -164,14 +166,21 @@ impl App {
     }
 
     fn window(&self) -> Result<Window, OsError> {
+        use winit::platform::x11::WindowBuilderExtX11;
+
         let size = LogicalSize::new(self.size.x, self.size.y);
 
-        WindowBuilder::new()
+        let mut builder = WindowBuilder::new()
             .with_title(&self.title)
             .with_inner_size(size)
             .with_resizable(self.reziseable)
-            .with_transparent(self.clear_color.is_translucent())
-            .build(&self.event_loop)
+            .with_transparent(self.clear_color.is_translucent());
+
+        if let Some(x11_window_id) = self.x11_window_id {
+            builder = builder.with_x11_screen(x11_window_id);
+        }
+
+        builder.build(&self.event_loop)
     }
 }
 

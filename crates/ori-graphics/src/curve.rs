@@ -4,22 +4,38 @@ use glam::Vec2;
 
 use crate::{Color, Mesh, Vertex};
 
+/// A curve.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Curve {
+    /// The points of the curve.
     pub points: Vec<Vec2>,
 }
 
 impl Curve {
-    pub fn new() -> Self {
+    /// Creates an empty curve.
+    pub const fn new() -> Self {
         Self { points: vec![] }
     }
 
-    pub fn arc(center: Vec2, radius: f32, start_angle: f32, end_angle: f32) -> Self {
+    /// Creates an arc.
+    ///
+    /// # Arguments
+    /// - `center`: The center of the arc.
+    /// - `radius`: The radius of the arc.
+    /// - `start_angle`: The start angle of the arc.
+    /// - `end_angle`: The end angle of the arc.
+    pub fn arc_center_angle(center: Vec2, radius: f32, start_angle: f32, end_angle: f32) -> Self {
         let mut curve = Curve::new();
 
-        let mut angle = start_angle;
-        let step = (end_angle - start_angle) / 32.0;
+        let length = (end_angle - start_angle).abs() * radius;
+        // calculate the step in radians for a distance of 1 pixel
+        let step = 1.0 / length;
 
+        if step <= f32::EPSILON {
+            return curve;
+        }
+
+        let mut angle = start_angle;
         while angle < end_angle {
             let x = center.x + radius * angle.cos();
             let y = center.y + radius * angle.sin();
@@ -32,27 +48,64 @@ impl Curve {
         curve
     }
 
+    /// Creates a Jacobian function from a gradient function.
+    pub const fn jacobian(gradient: impl Fn(f32) -> Vec2) -> impl Fn(f32) -> f32 {
+        move |t| gradient(t).length()
+    }
+
+    /// Creates a parametric curve.
+    ///
+    /// # Arguments
+    /// - `f`: The function that returns the point at a given time.
+    /// - `jacobian`: The function that returns the length of the gradient at a given time.
+    /// - `start`: The start time.
+    /// - `end`: The end time.
+    pub fn parametric(
+        f: impl Fn(f32) -> Vec2,
+        jacobian: impl Fn(f32) -> f32,
+        start: f32,
+        end: f32,
+    ) -> Self {
+        let mut curve = Curve::new();
+
+        let mut t = start;
+        while t < end {
+            let point = f(t);
+            curve.add_point(point);
+
+            t += 1.0 / jacobian(t);
+        }
+
+        curve
+    }
+
+    /// Returns the number of points in the curve.
     pub fn len(&self) -> usize {
         self.points.len()
     }
 
+    /// Returns whether the curve is empty.
     pub fn is_empty(&self) -> bool {
         self.points.is_empty()
     }
 
+    /// Adds a point to the curve.
     pub fn add_point(&mut self, point: Vec2) {
         self.points.push(point);
     }
 
+    /// Removes a point from the curve at `index`.
     pub fn remove_point(&mut self, index: usize) {
         self.points.remove(index);
     }
 
+    /// Clears the curve.
     pub fn clear(&mut self) {
         self.points.clear();
     }
 
-    pub fn rounded_mesh(self, thickness: f32, color: Color) -> Mesh {
+    /// Creates a mesh with rounded ends.
+    pub fn rounded_mesh(&self, thickness: f32, color: Color) -> Mesh {
         if self.is_empty() {
             return Mesh::new();
         }

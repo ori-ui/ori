@@ -2,22 +2,24 @@ use glam::Vec2;
 use ori_graphics::{ImageHandle, ImageSource, Mesh};
 use ori_macro::Build;
 
-use crate::{
-    BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, Style, View,
-};
+use crate::{BoxConstraints, Context, DrawContext, LayoutContext, Style, View};
 
+/// A view that displays an image.
 #[derive(Clone, Default, Debug, Build)]
 pub struct Image {
+    /// The source of the image.
     #[prop]
-    src: ImageSource,
+    pub src: ImageSource,
 }
 
 impl Image {
+    /// Creates a new image view.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
+/// The state of an image view.
 #[derive(Clone, Debug, Default)]
 pub struct ImageState {
     src: ImageSource,
@@ -25,6 +27,7 @@ pub struct ImageState {
 }
 
 impl ImageState {
+    /// Updates the image handle if the source has changed.
     pub fn update(&mut self, context: &mut impl Context, src: &ImageSource) -> &ImageHandle {
         if self.src != *src || self.handle.is_none() {
             self.src = src.clone();
@@ -45,8 +48,6 @@ impl View for Image {
     fn style(&self) -> Style {
         Style::new("image")
     }
-
-    fn event(&self, _state: &mut Self::State, _cx: &mut EventContext, _event: &Event) {}
 
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let min_width = cx.style_range_group("min-width", "width", bc.width());

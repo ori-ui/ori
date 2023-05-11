@@ -7,6 +7,7 @@ use ori_graphics::Color;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 
+/// A style transition.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct StyleTransition {
     pub duration: f32,
@@ -28,6 +29,7 @@ impl From<f32> for StyleTransition {
     }
 }
 
+/// A value that can be transitioned.
 pub trait Transitionable
 where
     Self: Mul<f32, Output = Self> + Add<Output = Self> + PartialEq + Copy,
@@ -36,6 +38,7 @@ where
 
 impl<T: Mul<f32, Output = T> + Add<Output = T> + PartialEq + Copy> Transitionable for T {}
 
+/// The state of a transition.
 #[derive(Clone, Copy, Debug)]
 pub struct TransitionState<T> {
     pub from: Option<T>,
@@ -78,6 +81,11 @@ impl<T: Transitionable> TransitionState<T> {
         true
     }
 
+    /// Gets the current value of the transition.
+    ///
+    /// # Arguments
+    /// - `to`: The value to transition to.
+    /// - `transition`: The transition to use.
     pub fn get(&mut self, to: T, transition: Option<StyleTransition>) -> T {
         if self.from.is_none() {
             self.from = Some(to);
@@ -104,6 +112,7 @@ impl<T: Transitionable> TransitionState<T> {
         self.from.unwrap()
     }
 
+    /// Updates the transition.
     pub fn update(&mut self, delta: f32) -> bool {
         if self.is_complete() {
             return false;
@@ -143,6 +152,7 @@ pub struct TransitionStates {
 }
 
 impl TransitionStates {
+    /// Creates a new `TransitionStates`.
     pub const fn new() -> Self {
         Self {
             units: SmallVec::new_const(),
@@ -170,7 +180,8 @@ impl TransitionStates {
         None
     }
 
-    pub fn transition_unit(
+    /// Transitions an `f32` value.
+    pub fn transition_f32(
         &mut self,
         name: &str,
         value: f32,
@@ -188,6 +199,7 @@ impl TransitionStates {
         result
     }
 
+    /// Transitions a [`Color`] value.
     pub fn transition_color(
         &mut self,
         name: &str,
@@ -213,7 +225,7 @@ impl TransitionStates {
         transition: Option<StyleTransition>,
     ) {
         if let Some(value) = <dyn Any>::downcast_mut::<f32>(value) {
-            *value = self.transition_unit(name, *value, transition);
+            *value = self.transition_f32(name, *value, transition);
         }
 
         if let Some(value) = <dyn Any>::downcast_mut::<Color>(value) {
@@ -221,6 +233,7 @@ impl TransitionStates {
         }
     }
 
+    /// Updates the transitions.
     pub fn update(&mut self, delta: f32) -> bool {
         let mut redraw = false;
 

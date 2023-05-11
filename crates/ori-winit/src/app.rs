@@ -37,6 +37,7 @@ fn initialize_log() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// A app using [`winit`] as the windowing backend.
 pub struct App {
     title: String,
     size: Vec2,
@@ -48,6 +49,7 @@ pub struct App {
 }
 
 impl App {
+    /// Create a new [`App`] with the given content.
     pub fn new<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
         initialize_log().unwrap();
 
@@ -255,7 +257,7 @@ impl AppState {
 }
 
 impl App {
-    /// Run the app, this will block the current thread until the app is closed.
+    /// Run the app.
     pub fn run(mut self) -> ! {
         let window = Arc::new(self.window().unwrap());
         let event_sink = self.event_sink();

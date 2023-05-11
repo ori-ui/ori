@@ -4,9 +4,13 @@ use crate::Modifiers;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerButton {
+    /// The primary button, usually the left mouse button or the touch screen.
     Primary,
+    /// The secondary button, usually the right mouse button.
     Secondary,
+    /// The tertiary button, usually the middle mouse button.
     Tertiary,
+    /// Other buttons.
     Other(u16),
 }
 
@@ -29,6 +33,11 @@ pub struct PointerEvent {
 }
 
 impl PointerEvent {
+    /// Returns true if the event is a motion event.
+    pub fn is_motion(&self) -> bool {
+        self.scroll_delta == Vec2::ZERO && self.button.is_none()
+    }
+
     /// Returns true if `button` was pressed.
     pub fn is_pressed(&self, button: PointerButton) -> bool {
         self.pressed && self.button == Some(button)

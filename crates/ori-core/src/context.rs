@@ -14,41 +14,52 @@ use crate::{
     StyleAttribute, StyleSelectors, StyleSpecificity, Stylesheet, Unit,
 };
 
+/// A cache for images.
+///
+/// This is used to avoid loading the same image multiple times.
 #[derive(Clone, Debug, Default)]
 pub struct ImageCache {
     images: HashMap<ImageSource, WeakImageHandle>,
 }
 
 impl ImageCache {
+    /// Creates a new image cache.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Returns the number of images in the cache.
     pub fn len(&self) -> usize {
         self.images.len()
     }
 
+    /// Returns `true` if the cache is empty.
     pub fn is_empty(&self) -> bool {
         self.images.is_empty()
     }
 
+    /// Gets an image from the cache.
     pub fn get(&self, source: &ImageSource) -> Option<ImageHandle> {
         self.images.get(source)?.upgrade()
     }
 
+    /// Inserts an image into the cache.
     pub fn insert(&mut self, source: ImageSource, handle: ImageHandle) {
         self.images.insert(source, handle.downgrade());
     }
 
+    /// Clears the cache.
     pub fn clear(&mut self) {
         self.images.clear();
     }
 
+    /// Removes all images that are no longer in use.
     pub fn clean(&mut self) {
         self.images.retain(|_, v| v.is_alive());
     }
 }
 
+/// A context for [`View::event`].
 pub struct EventContext<'a> {
     pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
@@ -59,6 +70,7 @@ pub struct EventContext<'a> {
     pub cursor: &'a mut Cursor,
 }
 
+/// A context for [`View::layout`].
 pub struct LayoutContext<'a> {
     pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
@@ -134,6 +146,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
     }
 }
 
+/// A context for [`View::draw`].
 pub struct DrawContext<'a> {
     pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
@@ -215,18 +228,32 @@ impl<'a> DerefMut for DrawContext<'a> {
     }
 }
 
+/// A context that is passed to [`View`](crate::view::View) methods.
+///
+/// See [`EventContext`], [`DrawContext`] and [`LayoutContext`] for more information.
 pub trait Context {
+    /// Returns the [`Stylesheet`] of the application.
     fn stylesheet(&self) -> &Stylesheet;
+    /// Returns the [`NodeState`] of the current node.
     fn state(&self) -> &NodeState;
+    /// Returns the [`NodeState`] of the current node.
     fn state_mut(&mut self) -> &mut NodeState;
+    /// Returns the [`Renderer`] of the application.
     fn renderer(&self) -> &dyn Renderer;
+    /// Returns the [`StyleSelectors`] of the current node.
     fn selectors(&self) -> &StyleSelectors;
+    /// Returns the [`EventSink`] of the application.
     fn event_sink(&self) -> &EventSink;
+    /// Returns the [`ImageCache`] of the application.
     fn image_cache(&self) -> &ImageCache;
+    /// Returns the [`ImageCache`] of the application.
     fn image_cache_mut(&mut self) -> &mut ImageCache;
+    /// Returns the current [`Cursor`].
     fn cursor(&self) -> Cursor;
+    /// Sets the [`Cursor`].
     fn set_cursor(&mut self, icon: Cursor);
 
+    /// Gets the [`StyleAttribute`] for the given `key`.
     fn get_style_attribute(&self, key: &str) -> Option<StyleAttribute> {
         if let Some(attribute) = self.state().style.attributes.get(key) {
             return Some(attribute.clone());
@@ -236,6 +263,7 @@ pub trait Context {
         Some(attribute.clone())
     }
 
+    /// Gets the [`StyleAttribute`] and [`StyleSpecificity`] for the given `key`.
     fn get_style_attribute_specificity(
         &self,
         key: &str,
@@ -250,6 +278,9 @@ pub trait Context {
         Some((attribute.clone(), specificity))
     }
 
+    /// Gets the value of a style attribute for the given `key`.
+    ///
+    /// This will also transition the value if the attribute has a transition.
     fn get_style<T: FromStyleAttribute + 'static>(&mut self, key: &str) -> Option<T> {
         let attribute = self.get_style_attribute(key)?;
         let value = T::from_attribute(attribute.value)?;
@@ -258,6 +289,7 @@ pub trait Context {
         Some(self.state_mut().transition(key, value, transition))
     }
 
+    /// Gets the value of a style attribute for the given `key`.
     fn get_style_specificity<T: FromStyleAttribute + 'static>(
         &mut self,
         key: &str,
@@ -272,13 +304,18 @@ pub trait Context {
         ))
     }
 
-    /// Get the value of a style attribute, if it has a transition, the value will be
-    /// interpolated between the current value and the new value.
+    /// Gets the value of a style attribute for the given `key`, if there is no value, returns `T::default()`.
+    ///
+    /// This will also transition the value if the attribute has a transition.
     #[track_caller]
     fn style<T: FromStyleAttribute + Default + 'static>(&mut self, key: &str) -> T {
         self.get_style(key).unwrap_or_default()
     }
 
+    /// Takes a `primary_key` and a `secondary_key` and returns the value of the attribute with the highest specificity.
+    /// If both attributes have the same specificity, the `primary_key` will be used.
+    ///
+    /// This will also transition the value if the attribute has a transition.
     fn style_group<T: FromStyleAttribute + Default + 'static>(
         &mut self,
         primary_key: &str,
@@ -300,6 +337,10 @@ pub trait Context {
         }
     }
 
+    /// Gets the value of a style attribute in pixels for the given `key`.
+    /// `range` is the range from 0% to 100% of the desired value.
+    ///
+    /// This will also transition the value if the attribute has a transition.
     fn get_style_range(&mut self, key: &str, range: Range<f32>) -> Option<f32> {
         let attribute = self.get_style_attribute(key)?;
         let value = Unit::from_attribute(attribute.value)?;
@@ -314,6 +355,7 @@ pub trait Context {
         Some((self.state_mut()).transition(key, pixels, transition))
     }
 
+    /// Gets the value of a style attribute in pixels and [`StyleSpecificity`] for the given `key`.
     fn get_style_range_specificity(
         &mut self,
         key: &str,
@@ -335,16 +377,20 @@ pub trait Context {
         ))
     }
 
-    /// Get the value of a style attribute, if it has a transition, the value will be
-    /// interpolated between the current value and the new value.
+    /// Gets the value of a style attribute in pixels for the given `key`, if there is no value, returns `0.0`.
+    /// `range` is the range from 0% to 100% of the desired value.
     ///
-    /// This is a convenience method for getting a value in pixels, as opposed to
-    /// `style` which returns a `Unit`.
+    /// This will also transition the value if the attribute has a transition.
     #[track_caller]
     fn style_range(&mut self, key: &str, range: Range<f32>) -> f32 {
         self.get_style_range(key, range).unwrap_or_default()
     }
 
+    /// Takes a `primary_key` and a `secondary_key` and returns the value of the attribute with the highest specificity in pixels.
+    /// If both attributes have the same specificity, the `primary_key` will be used.
+    /// `range` is the range from 0% to 100% of the desired value.
+    ///
+    /// This will also transition the value if the attribute has a transition.
     fn style_range_group(
         &mut self,
         primary_key: &str,
@@ -367,10 +413,12 @@ pub trait Context {
         }
     }
 
+    /// Tries to downcast the `renderer` to the given type.
     fn downcast_renderer<T: Renderer>(&self) -> Option<&T> {
         self.renderer().downcast_ref()
     }
 
+    /// Loads an image from the given `source` and returns a handle to it.
     fn load_image(&mut self, source: &ImageSource) -> ImageHandle {
         if let Some(handle) = self.image_cache().get(source) {
             return handle;
@@ -382,18 +430,22 @@ pub trait Context {
         image
     }
 
+    /// Returns `true` if the node is active.
     fn active(&self) -> bool {
         self.state().active
     }
 
+    /// Returns `true` if the node is hovered.
     fn hovered(&self) -> bool {
         self.state().hovered
     }
 
+    /// Returns `true` if the node is focused.
     fn focused(&self) -> bool {
         self.state().focused
     }
 
+    /// Focuses the node, this will also request a redraw.
     fn focus(&mut self) {
         if self.focused() {
             return;
@@ -403,6 +455,7 @@ pub trait Context {
         self.request_redraw();
     }
 
+    /// Unfocuses the node, this will also request a redraw.
     fn unfocus(&mut self) {
         if !self.focused() {
             return;
@@ -412,6 +465,7 @@ pub trait Context {
         self.request_redraw();
     }
 
+    /// Hovers the node, this will also request a redraw.
     fn hover(&mut self) {
         if self.hovered() {
             return;
@@ -421,6 +475,7 @@ pub trait Context {
         self.request_redraw();
     }
 
+    /// Unhovers the node, this will also request a redraw.
     fn unhover(&mut self) {
         if !self.hovered() {
             return;
@@ -430,6 +485,7 @@ pub trait Context {
         self.request_redraw();
     }
 
+    /// Activates the node, this will also request a redraw.
     fn activate(&mut self) {
         if self.active() {
             return;
@@ -439,6 +495,7 @@ pub trait Context {
         self.request_redraw();
     }
 
+    /// Deactivates the node, this will also request a redraw.
     fn deactivate(&mut self) {
         if !self.active() {
             return;
@@ -448,26 +505,34 @@ pub trait Context {
         self.request_redraw();
     }
 
+    /// Returns the local rect of the node.
     fn local_rect(&self) -> Rect {
         self.state().local_rect
     }
 
+    /// Returns the global rect of the node.
     fn rect(&self) -> Rect {
         self.state().global_rect
     }
 
+    /// Returns the size of the node.
     fn size(&self) -> Vec2 {
         self.state().local_rect.size()
     }
 
+    /// Requests a redraw.
+    ///
+    /// This is a shortcut for `self.event_sink().send(RequestRedrawEvent)`.
     fn request_redraw(&mut self) {
         self.send_event(RequestRedrawEvent);
     }
 
+    /// Sends an event to the event sink.
     fn send_event(&self, event: impl Any + SendSync) {
         self.event_sink().send(event);
     }
 
+    /// Returns the time in seconds since the last frame.
     fn delta_time(&self) -> f32 {
         self.state().delta()
     }

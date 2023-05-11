@@ -140,13 +140,13 @@ impl View for Scroll {
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        self.content.event(cx, event);
-
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(state, cx, pointer_event) {
                 event.handle();
             }
         }
+
+        self.content.event(cx, event);
     }
 
     fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {

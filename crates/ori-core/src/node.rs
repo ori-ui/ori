@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, Context, Cursor, DrawContext, Event, EventContext, EventSink, Guard,
-    ImageCache, LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Shared, Style,
-    StyleSelector, StyleSelectors, StyleStates, StyleTransition, Stylesheet, TransitionStates,
-    View,
+    ImageCache, LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Shared,
+    SharedSignal, Style, StyleSelector, StyleSelectors, StyleStates, StyleTransition, Stylesheet,
+    TransitionStates, View,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -52,6 +52,7 @@ pub struct NodeState {
     pub hovered: bool,
     pub last_draw: Instant,
     pub style: Style,
+    pub recreated: SharedSignal<bool>,
     pub transitions: TransitionStates,
 }
 
@@ -66,6 +67,7 @@ impl Default for NodeState {
             hovered: false,
             last_draw: Instant::now(),
             style: Style::default(),
+            recreated: SharedSignal::new(true),
             transitions: TransitionStates::new(),
         }
     }
@@ -155,9 +157,9 @@ impl<T: View> From<T> for Node {
     }
 }
 
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 type AnyViewState = Box<dyn Any + Send + Sync>;
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 type AnyViewState = Box<dyn Any>;
 
 struct NodeInner {
@@ -302,11 +304,13 @@ impl Node {
 
         {
             let selector = node_state.selector();
+            let selectors = cx.selectors.clone().with(selector);
             let mut cx = EventContext {
                 style: cx.style,
                 state: node_state,
                 renderer: cx.renderer,
-                selectors: &cx.selectors.clone().with(selector),
+                selectors: &selectors,
+                hash: selectors.hash(),
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
                 cursor: cx.cursor,
@@ -331,11 +335,13 @@ impl Node {
 
         let size = {
             let selector = node_state.selector();
+            let selectors = cx.selectors.clone().with(selector);
             let mut cx = LayoutContext {
                 style: cx.style,
                 state: node_state,
                 renderer: cx.renderer,
-                selectors: &cx.selectors.clone().with(selector),
+                selectors: &selectors,
+                hash: selectors.hash(),
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
                 cursor: cx.cursor,
@@ -368,12 +374,14 @@ impl Node {
 
         {
             let selector = node_state.selector();
+            let selectors = cx.selectors.clone().with(selector);
             let mut cx = DrawContext {
                 style: cx.style,
                 state: node_state,
                 frame: cx.frame,
                 renderer: cx.renderer,
-                selectors: &cx.selectors.clone().with(selector),
+                selectors: &selectors,
+                hash: selectors.hash(),
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
                 cursor: cx.cursor,
@@ -419,11 +427,13 @@ impl Node {
         }
 
         let selector = node_state.selector();
+        let selectors = StyleSelectors::new().with(selector);
         let mut cx = EventContext {
             style,
             state: node_state,
             renderer,
-            selectors: &StyleSelectors::new().with(selector),
+            selectors: &selectors,
+            hash: selectors.hash(),
             event_sink,
             image_cache,
             cursor: cursor_icon,
@@ -466,11 +476,13 @@ impl Node {
         node_state.style = inner.view.style();
 
         let selector = node_state.selector();
+        let selectors = StyleSelectors::new().with(selector);
         let mut cx = LayoutContext {
             style,
             state: node_state,
             renderer,
-            selectors: &StyleSelectors::new().with(selector),
+            selectors: &selectors,
+            hash: selectors.hash(),
             event_sink,
             image_cache,
             cursor: cursor_icon,
@@ -519,12 +531,14 @@ impl Node {
         node_state.style = inner.view.style();
 
         let selector = node_state.selector();
+        let selectors = StyleSelectors::new().with(selector);
         let mut cx = DrawContext {
             style,
             state: node_state,
             frame,
             renderer,
-            selectors: &StyleSelectors::new().with(selector),
+            selectors: &selectors,
+            hash: selectors.hash(),
             event_sink,
             image_cache,
             cursor: cursor_icon,

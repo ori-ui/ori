@@ -41,6 +41,7 @@ impl View for Checkbox {
         Style::new("checkbox")
     }
 
+    #[tracing::instrument(name = "Checkbox", skip(self, cx, event))]
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
         cx.state.active = self.checked.cloned_untracked();
 
@@ -57,7 +58,8 @@ impl View for Checkbox {
         }
     }
 
-    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Checkbox", skip(self, cx, bc))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         cx.state.active = self.checked.cloned_untracked();
 
         let width = cx.style_range("width", bc.width());
@@ -65,7 +67,8 @@ impl View for Checkbox {
         bc.constrain(Vec2::new(width, height))
     }
 
-    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
+    #[tracing::instrument(name = "Checkbox", skip(self, cx))]
+    fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         cx.state.active = self.checked.cloned_untracked();
 
         cx.draw_quad();

@@ -23,9 +23,9 @@ use crate::SendSync;
 
 #[derive(Clone)]
 pub struct Event {
-    #[cfg(feature = "multithread")]
+    #[cfg(feature = "multi-thread")]
     inner: Arc<dyn Any + Send + Sync>,
-    #[cfg(not(feature = "multithread"))]
+    #[cfg(not(feature = "multi-thread"))]
     inner: Arc<dyn Any>,
     is_handled: Arc<AtomicBool>,
 }

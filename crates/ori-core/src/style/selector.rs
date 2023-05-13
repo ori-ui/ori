@@ -7,6 +7,8 @@ use std::{
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 
+use crate::StyleSelectorsHash;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct StyleSpecificity {
     pub class: u16,
@@ -91,6 +93,10 @@ impl StyleSelectors {
     pub fn with(mut self, selector: StyleSelector) -> Self {
         self.push(selector);
         self
+    }
+
+    pub fn hash(&self) -> StyleSelectorsHash {
+        StyleSelectorsHash::new(self)
     }
 
     pub fn specificity(&self) -> StyleSpecificity {

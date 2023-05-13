@@ -9,6 +9,7 @@ use crate::{
 };
 
 /// A layout that lays out children in a flexbox-like manner.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FlexLayout {
     /// The offset to apply to the children.
     ///
@@ -66,12 +67,14 @@ impl FlexLayout {
 
 #[derive(Default, Deref, DerefMut)]
 pub struct Children {
-    nodes: Vec<Node>,
+    nodes: SmallVec<[Node; 1]>,
 }
 
 impl Children {
     pub const fn new() -> Self {
-        Self { nodes: Vec::new() }
+        Self {
+            nodes: SmallVec::new_const(),
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -121,7 +124,7 @@ impl Children {
         //
         // NOTE: using a SmallVec here is a bit faster than using a Vec, but it's not a huge
         // difference
-        let mut children = SmallVec::<[f32; 8]>::with_capacity(self.len());
+        let mut children = SmallVec::<[f32; 4]>::with_capacity(self.len());
         for (i, child) in self.iter().enumerate() {
             let child_bc = BoxConstraints {
                 min: axis.pack(0.0, 0.0),
@@ -231,7 +234,7 @@ impl Children {
 
 impl IntoIterator for Children {
     type Item = Node;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = smallvec::IntoIter<[Self::Item; 1]>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.nodes.into_iter()

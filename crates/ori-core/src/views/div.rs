@@ -93,7 +93,8 @@ impl View for Div {
         Style::new("div")
     }
 
-    fn event(&self, _state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+    #[tracing::instrument(name = "Div", skip(self, cx, event))]
+    fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
         for child in &self.children {
             child.event(cx, event);
         }
@@ -113,7 +114,8 @@ impl View for Div {
         }
     }
 
-    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Div", skip(self, cx, bc))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let bc = cx.style_constraints(bc);
 
         let axis = cx.style::<Axis>("direction");
@@ -137,7 +139,8 @@ impl View for Div {
         size + Vec2::splat(padding * 2.0)
     }
 
-    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
+    #[tracing::instrument(name = "Div", skip(self, cx))]
+    fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 
         cx.draw_layer(|cx| {

@@ -4,7 +4,7 @@ use ori_graphics::{Color, TextAlign};
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 
-use crate::{ReadSignal, StyleTransition, Unit};
+use crate::{ReadSignal, Shared, StyleTransition, Unit};
 
 /// A collection of [`StyleAttribute`]s.
 #[derive(Clone, Debug, Default)]
@@ -41,7 +41,7 @@ impl StyleAttributes {
 
     pub fn get(&self, name: &str) -> Option<&StyleAttribute> {
         for attribute in self.attributes.iter() {
-            if attribute.key == name {
+            if attribute.key() == name {
                 return Some(&attribute);
             }
         }
@@ -51,17 +51,17 @@ impl StyleAttributes {
 
     pub fn get_value<T: FromStyleAttribute>(&self, name: &str) -> Option<T> {
         for attribute in self.attributes.iter().rev() {
-            if attribute.key != name {
+            if attribute.key() != name {
                 continue;
             }
 
-            if let Some(value) = T::from_attribute(attribute.value.clone()) {
+            if let Some(value) = T::from_attribute(attribute.value().clone()) {
                 return Some(value);
             } else {
                 tracing::warn!(
                     "Invalid attribute value for attribute '{}': {:?}, expected '{}'.",
                     name,
-                    attribute.value,
+                    attribute.value(),
                     std::any::type_name::<T>(),
                 );
             }
@@ -75,17 +75,17 @@ impl StyleAttributes {
         name: &str,
     ) -> Option<(T, Option<StyleTransition>)> {
         for attribute in self.attributes.iter().rev() {
-            if attribute.key != name {
+            if attribute.key() != name {
                 continue;
             }
 
-            if let Some(value) = T::from_attribute(attribute.value.clone()) {
-                return Some((value, attribute.transition));
+            if let Some(value) = T::from_attribute(attribute.value().clone()) {
+                return Some((value, attribute.transition()));
             } else {
                 tracing::warn!(
                     "Invalid attribute value for attribute '{}': {:?}, expected '{}'.",
                     name,
-                    attribute.value,
+                    attribute.value(),
                     std::any::type_name::<T>(),
                 );
             }
@@ -127,38 +127,46 @@ impl FromIterator<StyleAttribute> for StyleAttributes {
 
 pub type StyleAttributeKey = SmolStr;
 
+#[derive(Clone, Debug)]
+struct StyleAttributeInner {
+    key: StyleAttributeKey,
+    value: StyleAttributeValue,
+    transition: Option<StyleTransition>,
+}
+
 /// A [`Style`](super::Style) attribute.
 ///
 /// An attribute is a name and a value.
 #[derive(Clone, Debug)]
 pub struct StyleAttribute {
-    /// The attribute key.
-    pub key: StyleAttributeKey,
-    /// The attribute value.
-    pub value: StyleAttributeValue,
-    /// The transition to use when animating the attribute.
-    pub transition: Option<StyleTransition>,
+    inner: Shared<StyleAttributeInner>,
 }
 
 impl StyleAttribute {
-    pub fn new(key: impl Into<SmolStr>, value: impl Into<StyleAttributeValue>) -> Self {
+    pub fn new(
+        key: StyleAttributeKey,
+        value: StyleAttributeValue,
+        transition: Option<StyleTransition>,
+    ) -> Self {
         Self {
-            key: key.into(),
-            value: value.into(),
-            transition: None,
+            inner: Shared::new(StyleAttributeInner {
+                key,
+                value,
+                transition,
+            }),
         }
     }
 
-    pub fn with_transition(
-        key: impl Into<SmolStr>,
-        value: impl Into<StyleAttributeValue>,
-        transition: impl Into<StyleTransition>,
-    ) -> Self {
-        Self {
-            key: key.into(),
-            value: value.into(),
-            transition: Some(transition.into()),
-        }
+    pub fn key(&self) -> &StyleAttributeKey {
+        &self.inner.key
+    }
+
+    pub fn value(&self) -> &StyleAttributeValue {
+        &self.inner.value
+    }
+
+    pub fn transition(&self) -> Option<StyleTransition> {
+        self.inner.transition
     }
 }
 
@@ -168,13 +176,13 @@ pub trait StyleAttributeBuilder {
 
 impl<T: Into<StyleAttributeValue>> StyleAttributeBuilder for T {
     fn attribute(self, key: impl Into<StyleAttributeKey>) -> StyleAttribute {
-        StyleAttribute::new(key, self)
+        StyleAttribute::new(key.into(), self.into(), None)
     }
 }
 
 impl<T: Into<StyleAttributeValue>, U: Into<StyleTransition>> StyleAttributeBuilder for (T, U) {
     fn attribute(self, key: impl Into<StyleAttributeKey>) -> StyleAttribute {
-        StyleAttribute::with_transition(key, self.0, self.1)
+        StyleAttribute::new(key.into(), self.0.into(), Some(self.1.into()))
     }
 }
 

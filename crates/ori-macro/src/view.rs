@@ -77,7 +77,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
             });
 
             quote! {
-                ori::core::BoundedScope::dynamic(#context, move |#context| {
+                ori::core::BoundedScope::shared_memo_scoped(#context, move |#context| {
                     let mut view = <#name as ori::core::Styleable<_>>::styled(
                         <#name as ::std::default::Default>::default()
                     );

@@ -10,10 +10,11 @@ use wgpu::{
     util::{DeviceExt, StagingBelt},
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder, CompositeAlphaMode, Device,
-    Extent3d, FilterMode, Instance, LoadOp, Operations, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor,
-    ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureSampleType, TextureUsages, TextureView, TextureViewDimension,
+    Extent3d, FilterMode, Instance, LoadOp, MultisampleState, Operations, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType,
+    SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureView,
+    TextureViewDimension,
 };
 use wgpu_glyph::{
     ab_glyph::{Font, FontArc, ScaleFont},
@@ -25,6 +26,7 @@ use crate::{BlitPipeline, Fonts, MeshPipeline, QuadPipeline, WgpuImage};
 const TEXT_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Medium.ttf");
 const ICON_FONT: &[u8] = include_bytes!("../fonts/MaterialIcons-Regular.ttf");
 
+#[allow(dead_code)]
 pub struct WgpuRenderer {
     device: Device,
     queue: Queue,
@@ -88,6 +90,10 @@ impl WgpuRenderer {
 
         let mut glyph_brush_builder = GlyphBrushBuilder::using_font(text_font);
         glyph_brush_builder.add_font(icon_font);
+        glyph_brush_builder = glyph_brush_builder.multisample_state(MultisampleState {
+            count: 4,
+            ..Default::default()
+        });
 
         let glyph_brush = glyph_brush_builder.build(&device, config.format);
 
@@ -245,6 +251,7 @@ impl WgpuRenderer {
         );
     }
 
+    #[allow(dead_code)]
     fn blit_texture(
         &mut self,
         encoder: &mut CommandEncoder,
@@ -252,6 +259,24 @@ impl WgpuRenderer {
         target: &TextureView,
     ) {
         (self.blit_pipeline).blit(&self.device, encoder, source, target);
+    }
+
+    /// Resolves the MSAA texture to the given texture view.
+    fn resolve_msaa_texture(&mut self, encoder: &mut CommandEncoder, view: &TextureView) {
+        let msaa_view = self.msaa_texture.create_view(&Default::default());
+
+        encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("Ily Resolve MSAA Texture Render Pass"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: &msaa_view,
+                resolve_target: Some(&view),
+                ops: Operations {
+                    load: LoadOp::Load,
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+        });
     }
 
     fn render_quad(
@@ -306,7 +331,7 @@ impl WgpuRenderer {
     fn render_text(
         &mut self,
         encoder: &mut CommandEncoder,
-        view: &TextureView,
+        _view: &TextureView,
         text: &TextSection,
         clip: Option<Rect>,
     ) {
@@ -338,20 +363,19 @@ impl WgpuRenderer {
             1.0,
         );
 
+        let msaa_view = self.msaa_texture.create_view(&Default::default());
+
         self.glyph_brush
             .borrow_mut()
             .draw_queued_with_transform_and_scissoring(
                 &self.device,
                 &mut self.staging_belt,
                 encoder,
-                view,
+                &msaa_view,
                 projection.to_cols_array(),
                 region,
             )
             .unwrap();
-
-        let msaa_view = self.msaa_texture.create_view(&Default::default());
-        self.blit_texture(encoder, view, &msaa_view);
     }
 
     fn render_primitive(
@@ -406,6 +430,8 @@ impl WgpuRenderer {
         for primitive in primitives {
             self.render_primitive(&mut encoder, &view, primitive);
         }
+
+        self.resolve_msaa_texture(&mut encoder, &view);
 
         // submit and present
         self.staging_belt.finish();

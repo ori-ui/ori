@@ -15,17 +15,17 @@ pub struct Knob {
     #[bind]
     pub value: SharedSignal<f32>,
     #[prop]
-    pub max: f32,
-    #[prop]
     pub min: f32,
+    #[prop]
+    pub max: f32,
 }
 
 impl Default for Knob {
     fn default() -> Self {
         Self {
             value: SharedSignal::new(0.0),
-            max: 1.0,
             min: 0.0,
+            max: 1.0,
         }
     }
 }
@@ -41,6 +41,7 @@ impl View for Knob {
         Style::new("knob")
     }
 
+    #[tracing::instrument(name = "Knob", skip(self, state, cx, event))]
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if pointer_event.is_press() && cx.hovered() {
@@ -69,12 +70,14 @@ impl View for Knob {
         }
     }
 
-    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Knob", skip(self, cx, bc))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let size = cx.style_range("size", bc.min.max_element()..bc.max.min_element());
         bc.constrain(Vec2::splat(size))
     }
 
-    fn draw(&self, _state: &mut Self::State, cx: &mut DrawContext) {
+    #[tracing::instrument(name = "Knob", skip(self, cx))]
+    fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         let size = cx.rect().size().min_element();
 
         let diameter = size * 0.7;

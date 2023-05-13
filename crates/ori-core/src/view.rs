@@ -130,7 +130,11 @@ impl<V: View + SendSync> View for SharedSignal<V> {
     fn draw(&self, (callback, state): &mut Self::State, cx: &mut DrawContext) {
         // redraw when the signal changes
         let event_sink = cx.event_sink.clone();
-        *callback = Callback::new(move |&()| event_sink.send(RequestRedrawEvent));
+        let recreated = cx.state.recreated.clone();
+        *callback = Callback::new(move |&()| {
+            event_sink.send(RequestRedrawEvent);
+            recreated.set(true);
+        });
 
         self.emitter().subscribe_weak(callback.downgrade());
         self.get().draw(state, cx);

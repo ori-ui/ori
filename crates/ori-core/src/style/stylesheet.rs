@@ -1,6 +1,9 @@
 use std::{fmt::Display, fs, io, path::Path, str::FromStr};
 
-use crate::{StyleAttribute, StyleAttributes, StyleCache, StyleSelectors, StyleSpecificity};
+use crate::{
+    StyleAttribute, StyleAttributes, StyleCache, StyleSelectors, StyleSelectorsHash,
+    StyleSpecificity,
+};
 
 use super::parse::StyleParseError;
 
@@ -57,6 +60,7 @@ theme!(
     "checkbox.css",
     "knob.css",
     "scroll.css",
+    "slider.css",
     "text-input.css",
     "text.css",
 );
@@ -69,6 +73,7 @@ theme!(
     "checkbox.css",
     "knob.css",
     "scroll.css",
+    "slider.css",
     "text-input.css",
     "text.css",
 );
@@ -112,19 +117,27 @@ impl Stylesheet {
         self.rules.extend(rules);
     }
 
-    pub fn get_attribute(&self, selectors: &StyleSelectors, name: &str) -> Option<StyleAttribute> {
-        let (attribute, _) = self.get_attribute_specificity(selectors, name)?;
+    pub fn get_attribute(
+        &self,
+        selectors: &StyleSelectors,
+        hash: StyleSelectorsHash,
+        name: &str,
+    ) -> Option<StyleAttribute> {
+        let (attribute, _) = self.get_attribute_specificity(selectors, hash, name)?;
         Some(attribute.clone())
     }
 
     pub fn get_attribute_specificity(
         &self,
         selectors: &StyleSelectors,
+        hash: StyleSelectorsHash,
         name: &str,
     ) -> Option<(StyleAttribute, StyleSpecificity)> {
-        if let Some(result) = self.cache.get_attribute(selectors, name) {
-            return Some(result);
+        if let Some(result) = self.cache.get_attribute(hash, name) {
+            return result;
         }
+
+        tracing::trace!("Cache miss for attribute {}", name);
 
         let mut specificity = StyleSpecificity::default();
         let mut result = None;
@@ -144,9 +157,16 @@ impl Stylesheet {
             }
         }
 
-        let (attribute, specificity) = result?;
-        self.cache.insert(selectors, attribute.clone(), specificity);
-        Some((attribute.clone(), specificity))
+        match result {
+            Some((attribute, specificity)) => {
+                self.cache.insert(hash, attribute.clone(), specificity);
+                Some((attribute.clone(), specificity))
+            }
+            None => {
+                self.cache.insert_none(hash, name.into());
+                None
+            }
+        }
     }
 
     /// Loads a style sheet from a file.

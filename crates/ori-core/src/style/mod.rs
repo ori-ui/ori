@@ -126,14 +126,6 @@ pub trait Styleable<T> {
 
     /// Adds an attribute.
     fn attr(self, key: &str, builder: impl StyleAttributeBuilder) -> Styled<T>;
-
-    /// Adds an attribute with a transition.
-    fn attr_trans(
-        self,
-        key: &str,
-        value: impl Into<StyleAttributeValue>,
-        transition: impl Into<StyleTransition>,
-    ) -> Styled<T>;
 }
 
 impl<T> Styleable<T> for Styled<T> {
@@ -151,17 +143,6 @@ impl<T> Styleable<T> for Styled<T> {
         self.attributes.add(builder.attribute(key));
         self
     }
-
-    fn attr_trans(
-        mut self,
-        key: &str,
-        value: impl Into<StyleAttributeValue>,
-        transition: impl Into<StyleTransition>,
-    ) -> Styled<T> {
-        let attr = StyleAttribute::with_transition(key, value, transition);
-        self.attributes.add(attr);
-        self
-    }
 }
 
 impl<T> Styleable<T> for T {
@@ -175,14 +156,5 @@ impl<T> Styleable<T> for T {
 
     fn attr(self, key: &str, value: impl StyleAttributeBuilder) -> Styled<T> {
         Styled::new(self).attr(key, value)
-    }
-
-    fn attr_trans(
-        self,
-        key: &str,
-        value: impl Into<StyleAttributeValue>,
-        transition: impl Into<StyleTransition>,
-    ) -> Styled<T> {
-        Styled::new(self).attr_trans(key, value, transition)
     }
 }

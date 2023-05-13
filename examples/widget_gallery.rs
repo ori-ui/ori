@@ -41,6 +41,16 @@ fn ui(cx: Scope) -> impl View {
                 <Text style:text-align=TextAlign::Center
                     text=format!("{:.2}", knob_value.get()) />
             </Div>
+            <Slider style:direction=Axis::Vertical style:height=Em(10.0) value=0.5/>
+            <Div class="column">
+                <Slider/>
+                <Slider/>
+                <Slider/>
+                <Slider/>
+                <Slider/>
+                <Slider/>
+                <Slider/>
+            </Div>
         </Div>
     }
 }

@@ -155,11 +155,8 @@ fn parse_attribute(pair: Pair<'_, Rule>) -> StyleAttribute {
     let key = iter.next().unwrap().as_str();
     let (value, transition) = parse_value(iter.next().unwrap());
 
-    StyleAttribute {
-        key: StyleAttributeKey::new(key),
-        value,
-        transition,
-    }
+    let key = StyleAttributeKey::new(key);
+    StyleAttribute::new(key, value, transition)
 }
 
 fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {

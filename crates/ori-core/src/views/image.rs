@@ -49,6 +49,7 @@ impl View for Image {
         Style::new("image")
     }
 
+    #[tracing::instrument(name = "Image", skip(self, state, cx, bc))]
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let min_width = cx.style_range_group("min-width", "width", bc.width());
         let max_width = cx.style_range_group("max-width", "width", bc.width());
@@ -89,6 +90,7 @@ impl View for Image {
         size
     }
 
+    #[tracing::instrument(name = "Image", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let handle = state.update(cx, &self.src);
         let mesh = Mesh::image(cx.rect(), handle.clone());

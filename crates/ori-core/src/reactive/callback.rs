@@ -66,9 +66,9 @@ impl<T> Debug for CallbackCollection<T> {
     }
 }
 
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 type RawCallback<'a, T> = dyn FnMut(&T) + Send + 'a;
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 type RawCallback<'a, T> = dyn FnMut(&T) + 'a;
 
 type CallbackPtr<T> = *const Lock<RawCallback<'static, T>>;

@@ -19,7 +19,7 @@ struct ScopeArena<'a> {
 }
 
 // SAFETY: the access to `items` is thread-safe because it's only accessed from mutable references.
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 unsafe impl<'a> Sync for ScopeArena<'a> {}
 
 impl<'a> ScopeArena<'a> {
@@ -59,7 +59,11 @@ impl<'a> ScopeArena<'a> {
 
 impl<'a> Drop for ScopeArena<'a> {
     fn drop(&mut self) {
+        #[cfg(feature = "multi-thread")]
+        let items = self.items.get_mut().unwrap();
+        #[cfg(not(feature = "multi-thread"))]
         let items = self.items.get_mut();
+
         unsafe { Self::dispose_inner(items) };
     }
 }
@@ -414,6 +418,27 @@ impl<'a> Scope<'a> {
         signal
     }
 
+    /// Creates a shared signal that is recomputed every time a dependency is updated.
+    #[track_caller]
+    pub fn shared_memo_scoped<T: SendSync + 'static>(
+        self,
+        mut f: impl FnMut(BoundedScope<'_, 'a>) -> T + Sendable + 'a,
+    ) -> SharedSignal<T> {
+        let signal = self.alloc(Lock::new(None::<SharedSignal<T>>));
+
+        self.effect_scoped(move |cx| {
+            let value = f(cx);
+
+            if signal.lock_mut().is_some() {
+                signal.lock_mut().as_ref().unwrap().set(value);
+            } else {
+                *signal.lock_mut() = Some(SharedSignal::new(value));
+            }
+        });
+
+        signal.lock_mut().as_ref().unwrap().clone()
+    }
+
     /// This will create an effect that binds two signals together.
     /// Whenever one of the signals is updated, the other will be updated to the same value.
     /// This is useful for creating two-way bindings (eg. a checkbox).
@@ -441,27 +466,6 @@ impl<'a> Scope<'a> {
             }
         });
     }
-
-    /// Creates a shared signal that is recomputed every time a dependency is updated.
-    #[track_caller]
-    pub fn dynamic<T: SendSync + 'static>(
-        self,
-        mut f: impl FnMut(BoundedScope<'_, 'a>) -> T + Sendable + 'a,
-    ) -> SharedSignal<T> {
-        let signal = self.alloc(Lock::new(None::<SharedSignal<T>>));
-
-        self.effect_scoped(move |cx| {
-            let value = f(cx);
-
-            if signal.lock_mut().is_some() {
-                signal.lock_mut().as_ref().unwrap().set(value);
-            } else {
-                *signal.lock_mut() = Some(SharedSignal::new(value));
-            }
-        });
-
-        signal.lock_mut().as_ref().unwrap().clone()
-    }
 }
 
 #[derive(Debug)]
@@ -475,7 +479,7 @@ enum ScopeDisposerInner<'a> {
     },
 }
 
-// SAFETY: ScopeDisposerInner is Send because it is only accessed from the main thread.
+#[cfg(feature = "multi-thread")]
 unsafe impl<'a> Send for ScopeDisposerInner<'a> {}
 
 #[derive(Debug)]

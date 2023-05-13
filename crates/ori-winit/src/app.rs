@@ -1,4 +1,9 @@
-use std::{error::Error, fmt::Display, sync::Arc};
+use std::{
+    error::Error,
+    fmt::Display,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use ori_core::{
     Cursor, Event, EventSender, EventSink, ImageCache, KeyboardEvent, LoadedStyleKind, Modifiers,
@@ -26,13 +31,21 @@ impl EventSender for EventLoopSender {
 }
 
 fn initialize_log() -> Result<(), Box<dyn Error>> {
+    use tracing_subscriber::layer::SubscriberExt;
+
     let filter = tracing_subscriber::EnvFilter::from_default_env()
         .add_directive("wgpu=warn".parse()?)
         .add_directive("naga=warn".parse()?)
         .add_directive("winit=warn".parse()?)
         .add_directive("mio=warn".parse()?);
 
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    let subscriber = tracing_subscriber::registry().with(filter);
+    let subscriber = subscriber.with(tracing_subscriber::fmt::Layer::default());
+
+    #[cfg(feature = "tracy")]
+    let subscriber = subscriber.with(tracing_tracy::TracyLayer::new());
+
+    tracing::subscriber::set_global_default(subscriber)?;
 
     Ok(())
 }
@@ -45,7 +58,6 @@ pub struct App {
     clear_color: Color,
     event_loop: EventLoop<Event>,
     style_loader: StyleLoader,
-    x11_window_id: Option<i32>,
     builder: Option<Box<dyn FnOnce() -> Node>>,
 }
 
@@ -77,7 +89,6 @@ impl App {
             clear_color: Color::WHITE,
             event_loop,
             style_loader,
-            x11_window_id: None,
             builder: Some(builder),
         }
     }
@@ -166,19 +177,13 @@ impl App {
     }
 
     fn window(&self) -> Result<Window, OsError> {
-        use winit::platform::x11::WindowBuilderExtX11;
-
         let size = LogicalSize::new(self.size.x, self.size.y);
 
-        let mut builder = WindowBuilder::new()
+        let builder = WindowBuilder::new()
             .with_title(&self.title)
             .with_inner_size(size)
             .with_resizable(self.reziseable)
             .with_transparent(self.clear_color.is_translucent());
-
-        if let Some(x11_window_id) = self.x11_window_id {
-            builder = builder.with_x11_screen(x11_window_id);
-        }
 
         builder.build(&self.event_loop)
     }
@@ -211,6 +216,7 @@ impl AppState {
         self.image_cache.clean();
     }
 
+    #[tracing::instrument(skip(self, event))]
     fn event(&mut self, event: &Event) {
         self.cursor_icon = Cursor::Default;
         self.root.event_root(
@@ -225,6 +231,7 @@ impl AppState {
         self.clean();
     }
 
+    #[tracing::instrument(skip(self))]
     fn layout(&mut self) {
         let style = self.style_loader.style();
         let size = self.window_size();
@@ -242,7 +249,11 @@ impl AppState {
         self.clean();
     }
 
+    #[tracing::instrument(skip(self))]
     fn draw(&mut self) {
+        #[cfg(feature = "tracy")]
+        tracing_tracy::client::frame_mark();
+
         self.layout();
 
         self.frame.clear();
@@ -294,7 +305,7 @@ impl App {
         };
 
         self.event_loop.run(move |event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
+            *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(10));
 
             match event {
                 WinitEvent::RedrawRequested(_) => {

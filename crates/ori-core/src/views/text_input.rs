@@ -324,6 +324,7 @@ impl View for TextInput {
         Style::new("text-input")
     }
 
+    #[tracing::instrument(name = "TextInput", skip(self, state, cx, event))]
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             self.handle_pointer_event(state, cx, pointer_event);
@@ -336,6 +337,7 @@ impl View for TextInput {
         }
     }
 
+    #[tracing::instrument(name = "TextInput", skip(self, state, cx, bc))]
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let font_size = cx.style_range("font-size", 0.0..bc.max.y);
 
@@ -352,6 +354,7 @@ impl View for TextInput {
         bc.constrain(size)
     }
 
+    #[tracing::instrument(name = "TextInput", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 

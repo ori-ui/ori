@@ -5,6 +5,7 @@ mod div;
 mod image;
 mod knob;
 mod scroll;
+mod slider;
 mod text;
 mod text_input;
 
@@ -15,5 +16,6 @@ pub use div::*;
 pub use image::*;
 pub use knob::*;
 pub use scroll::*;
+pub use slider::*;
 pub use text::*;
 pub use text_input::*;

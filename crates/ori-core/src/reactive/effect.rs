@@ -8,9 +8,9 @@ thread_local! {
 
 pub(crate) struct EffectState<'a> {
     location: &'static Location<'static>,
-    #[cfg(feature = "multithread")]
+    #[cfg(feature = "multi-thread")]
     callback: Shared<Lock<dyn FnMut() + Send + 'a>>,
-    #[cfg(not(feature = "multithread"))]
+    #[cfg(not(feature = "multi-thread"))]
     callback: Shared<Lock<dyn FnMut() + 'a>>,
     dependencies: Vec<WeakCallbackEmitter>,
 }

@@ -11,7 +11,7 @@ use ori_graphics::{
 
 use crate::{
     BoxConstraints, Cursor, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
-    StyleAttribute, StyleSelectors, StyleSpecificity, Stylesheet, Unit,
+    StyleAttribute, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet, Unit,
 };
 
 /// A cache for images.
@@ -65,6 +65,7 @@ pub struct EventContext<'a> {
     pub state: &'a mut NodeState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
+    pub hash: StyleSelectorsHash,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
@@ -76,6 +77,7 @@ pub struct LayoutContext<'a> {
     pub state: &'a mut NodeState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
+    pub hash: StyleSelectorsHash,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
@@ -136,6 +138,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
                 frame,
                 renderer: self.draw_context.renderer,
                 selectors: self.draw_context.selectors,
+                hash: self.draw_context.hash,
                 event_sink: self.draw_context.event_sink,
                 image_cache: self.draw_context.image_cache,
                 cursor: self.draw_context.cursor,
@@ -153,6 +156,7 @@ pub struct DrawContext<'a> {
     pub frame: &'a mut Frame,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
+    pub hash: StyleSelectorsHash,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
@@ -242,6 +246,8 @@ pub trait Context {
     fn renderer(&self) -> &dyn Renderer;
     /// Returns the [`StyleSelectors`] of the current node.
     fn selectors(&self) -> &StyleSelectors;
+    /// Returns the [`StyleSelectorsHash`] of the current node.
+    fn selectors_hash(&self) -> StyleSelectorsHash;
     /// Returns the [`EventSink`] of the application.
     fn event_sink(&self) -> &EventSink;
     /// Returns the [`ImageCache`] of the application.
@@ -259,7 +265,10 @@ pub trait Context {
             return Some(attribute.clone());
         }
 
-        let attribute = self.stylesheet().get_attribute(self.selectors(), key)?;
+        let selectors = self.selectors();
+        let hash = self.selectors_hash();
+
+        let attribute = self.stylesheet().get_attribute(selectors, hash, key)?;
         Some(attribute.clone())
     }
 
@@ -274,7 +283,9 @@ pub trait Context {
 
         let stylesheet = self.stylesheet();
         let selectors = self.selectors();
-        let (attribute, specificity) = stylesheet.get_attribute_specificity(selectors, key)?;
+        let hash = self.selectors_hash();
+        let (attribute, specificity) =
+            stylesheet.get_attribute_specificity(selectors, hash, key)?;
         Some((attribute.clone(), specificity))
     }
 
@@ -283,8 +294,8 @@ pub trait Context {
     /// This will also transition the value if the attribute has a transition.
     fn get_style<T: FromStyleAttribute + 'static>(&mut self, key: &str) -> Option<T> {
         let attribute = self.get_style_attribute(key)?;
-        let value = T::from_attribute(attribute.value)?;
-        let transition = attribute.transition;
+        let value = T::from_attribute(attribute.value().clone())?;
+        let transition = attribute.transition();
 
         Some(self.state_mut().transition(key, value, transition))
     }
@@ -295,8 +306,8 @@ pub trait Context {
         key: &str,
     ) -> Option<(T, StyleSpecificity)> {
         let (attribute, specificity) = self.get_style_attribute_specificity(key)?;
-        let value = T::from_attribute(attribute.value)?;
-        let transition = attribute.transition;
+        let value = T::from_attribute(attribute.value().clone())?;
+        let transition = attribute.transition();
 
         Some((
             self.state_mut().transition(key, value, transition),
@@ -343,8 +354,8 @@ pub trait Context {
     /// This will also transition the value if the attribute has a transition.
     fn get_style_range(&mut self, key: &str, range: Range<f32>) -> Option<f32> {
         let attribute = self.get_style_attribute(key)?;
-        let value = Unit::from_attribute(attribute.value)?;
-        let transition = attribute.transition;
+        let value = Unit::from_attribute(attribute.value().clone())?;
+        let transition = attribute.transition();
 
         let pixels = value.pixels(
             range,
@@ -362,8 +373,8 @@ pub trait Context {
         range: Range<f32>,
     ) -> Option<(f32, StyleSpecificity)> {
         let (attribute, specificity) = self.get_style_attribute_specificity(key)?;
-        let value = Unit::from_attribute(attribute.value)?;
-        let transition = attribute.transition;
+        let value = Unit::from_attribute(attribute.value().clone())?;
+        let transition = attribute.transition();
 
         let pixels = value.pixels(
             range,
@@ -559,6 +570,10 @@ macro_rules! context {
 
             fn selectors(&self) -> &StyleSelectors {
                 &self.selectors
+            }
+
+            fn selectors_hash(&self) -> StyleSelectorsHash {
+                self.hash
             }
 
             fn event_sink(&self) -> &EventSink {

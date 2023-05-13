@@ -48,24 +48,13 @@ impl Curve {
         curve
     }
 
-    /// Creates a Jacobian function from a gradient function.
-    pub const fn jacobian(gradient: impl Fn(f32) -> Vec2) -> impl Fn(f32) -> f32 {
-        move |t| gradient(t).length()
-    }
-
     /// Creates a parametric curve.
     ///
     /// # Arguments
     /// - `f`: The function that returns the point at a given time.
-    /// - `jacobian`: The function that returns the length of the gradient at a given time.
     /// - `start`: The start time.
     /// - `end`: The end time.
-    pub fn parametric(
-        f: impl Fn(f32) -> Vec2,
-        jacobian: impl Fn(f32) -> f32,
-        start: f32,
-        end: f32,
-    ) -> Self {
+    pub fn parametric(f: impl Fn(f32) -> Vec2, start: f32, end: f32) -> Self {
         let mut curve = Curve::new();
 
         let mut t = start;
@@ -73,7 +62,10 @@ impl Curve {
             let point = f(t);
             curve.add_point(point);
 
-            t += 1.0 / jacobian(t);
+            let epsilon = 0.0001;
+            let gradient = (f(t + epsilon / 2.0) - f(t - epsilon / 2.0)) / epsilon;
+
+            t += 1.0 / gradient.length();
         }
 
         curve

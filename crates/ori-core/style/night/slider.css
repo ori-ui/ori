@@ -1,0 +1,10 @@
+slider {
+	direction: horizontal;
+	width: 5em;
+	background-color: #363636;
+	color: #ffaebc;
+	border-radius: 0.25em;
+	track-size: 0.5em;
+	knob-size: 1.0em;
+	knob-border-radius: 0.5em;
+}

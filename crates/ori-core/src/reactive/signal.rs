@@ -238,6 +238,12 @@ impl<T: ?Sized> Deref for SharedSignal<T> {
     }
 }
 
+impl<T> From<T> for SharedSignal<T> {
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
 /// A weak reference to a [`Signal`].
 pub struct WeakSignal<T: ?Sized>(Weak<Signal<T>>);
 

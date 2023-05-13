@@ -139,6 +139,7 @@ impl View for Scroll {
         Style::new("scroll")
     }
 
+    #[tracing::instrument(name = "Scroll", skip(self, state, cx, event))]
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(state, cx, pointer_event) {
@@ -149,7 +150,8 @@ impl View for Scroll {
         self.content.event(cx, event);
     }
 
-    fn layout(&self, _state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Scroll", skip(self, cx, bc))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let axis = cx.style::<Axis>("direction");
 
         let flex = FlexLayout {
@@ -169,6 +171,7 @@ impl View for Scroll {
         cx.style_constraints(bc).constrain(size)
     }
 
+    #[tracing::instrument(name = "Scroll", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 

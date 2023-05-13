@@ -23,6 +23,7 @@ ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.0", optional = t
 
 [features]
 default = ["winit", "wgpu"]
+multi-thread = ["ori-core/multi-thread"]
 wgpu = ["ori-wgpu", "ori-winit/wgpu"]
 winit = ["ori-winit"]
 

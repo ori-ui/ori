@@ -41,6 +41,7 @@ impl View for Text {
         Style::new("text")
     }
 
+    #[tracing::instrument(name = "Text", skip(self, state, cx, bc))]
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let font_size = cx.style_range("font-size", 0.0..bc.max.y);
         *state = font_size;
@@ -62,6 +63,7 @@ impl View for Text {
         bc.constrain(bounds.size())
     }
 
+    #[tracing::instrument(name = "Text", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let section = TextSection {
             rect: cx.rect().ceil(),

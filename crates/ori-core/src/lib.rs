@@ -26,54 +26,54 @@ pub use glam::*;
 
 pub use tracing::{debug, error, info, trace, warn};
 
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 pub(crate) type Shared<T> = std::sync::Arc<T>;
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 pub(crate) type Weak<T> = std::sync::Weak<T>;
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 pub(crate) type Lock<T> = std::sync::Mutex<T>;
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 pub(crate) type Guard<'a, T> = std::sync::MutexGuard<'a, T>;
 
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 pub(crate) type Shared<T> = std::rc::Rc<T>;
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 pub(crate) type Weak<T> = std::rc::Weak<T>;
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 pub(crate) type Lock<T> = std::cell::RefCell<T>;
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 pub(crate) type Guard<'a, T> = std::cell::RefMut<'a, T>;
 
 /// A trait that is implemented for all types that implement `Send`.
 ///
-/// Send is only required when the `multithread` feature is enabled.
-#[cfg(feature = "multithread")]
+/// Send is only required when the `multi-thread` feature is enabled.
+#[cfg(feature = "multi-thread")]
 pub trait Sendable: Send {}
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 impl<T: Send> Sendable for T {}
 
 /// A trait that is implemented for all types that implement `Send`.
 ///
-/// Send is only required when the `multithread` feature is enabled.
-#[cfg(not(feature = "multithread"))]
+/// Send is only required when the `multi-thread` feature is enabled.
+#[cfg(not(feature = "multi-thread"))]
 pub trait Sendable {}
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 impl<T> Sendable for T {}
 
 /// A trait that is implemented for all types that implement `Send + Sync`.
 ///
-/// Send + Sync is only required when the `multithread` feature is enabled.
-#[cfg(feature = "multithread")]
+/// Send + Sync is only required when the `multi-thread` feature is enabled.
+#[cfg(feature = "multi-thread")]
 pub trait SendSync: Send + Sync {}
-#[cfg(feature = "multithread")]
+#[cfg(feature = "multi-thread")]
 impl<T: Send + Sync> SendSync for T {}
 
 /// A trait that is implemented for all types that implement `Send + Sync`.
 ///
-/// Send + Sync is only required when the `multithread` feature is enabled.
-#[cfg(not(feature = "multithread"))]
+/// Send + Sync is only required when the `multi-thread` feature is enabled.
+#[cfg(not(feature = "multi-thread"))]
 pub trait SendSync {}
-#[cfg(not(feature = "multithread"))]
+#[cfg(not(feature = "multi-thread"))]
 impl<T> SendSync for T {}
 
 pub(crate) trait Lockable {
@@ -85,12 +85,12 @@ pub(crate) trait Lockable {
 impl<T: ?Sized> Lockable for Lock<T> {
     type Item = T;
 
-    #[cfg(feature = "multithread")]
+    #[cfg(feature = "multi-thread")]
     fn lock_mut(&self) -> Guard<'_, Self::Item> {
         self.lock().unwrap()
     }
 
-    #[cfg(not(feature = "multithread"))]
+    #[cfg(not(feature = "multi-thread"))]
     fn lock_mut(&self) -> Guard<'_, Self::Item> {
         self.borrow_mut()
     }

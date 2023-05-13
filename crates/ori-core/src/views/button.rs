@@ -60,14 +60,17 @@ impl View for Button {
         Style::new("button")
     }
 
+    #[tracing::instrument(name = "Button", skip(self, state, cx, event))]
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         self.content.event(state, cx, event);
     }
 
+    #[tracing::instrument(name = "Button", skip(self, state, cx, bc))]
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         self.content.layout(state, cx, bc)
     }
 
+    #[tracing::instrument(name = "Button", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         self.content.draw(state, cx);
     }

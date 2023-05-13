@@ -41,15 +41,15 @@ fn ui(cx: Scope) -> impl View {
                 <Text style:text-align=TextAlign::Center
                     text=format!("{:.2}", knob_value.get()) />
             </Div>
-            <Slider style:direction=Axis::Vertical style:height=Em(10.0) value=0.5/>
+            <Slider style:direction=Axis::Vertical style:height=Em(10.0) value=0.5 />
             <Div class="column">
-                <Slider/>
-                <Slider/>
-                <Slider/>
-                <Slider/>
-                <Slider/>
-                <Slider/>
-                <Slider/>
+                <Slider />
+                <Slider />
+                <Slider />
+                <Slider />
+                <Slider />
+                <Slider />
+                <Slider />
             </Div>
         </Div>
     }
@@ -58,7 +58,7 @@ fn ui(cx: Scope) -> impl View {
 fn main() {
     App::new(|cx| ui(cx)) // create a new app with the ui function
         .title("Widget Gallery (examples/widget_gallery.rs)") // set the window title
-        .night_theme()
+        //.night_theme()
         .style("examples/style/widget-gallery.css") // load a custom stylesheet
         .run(); // run the app
 }

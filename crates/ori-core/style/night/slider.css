@@ -7,4 +7,10 @@ slider {
 	track-size: 0.5em;
 	knob-size: 1.0em;
 	knob-border-radius: 0.5em;
+
+	cursor: pointer;
+}
+
+slider:hover {
+	background-color: #404040;
 }

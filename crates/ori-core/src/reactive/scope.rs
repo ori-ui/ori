@@ -161,12 +161,18 @@ struct RawScope<'a> {
     /// A list of event callbacks.
     event_callbacks: &'a CallbackEmitter<Event>,
 
+    /// A list of update callbacks.
+    update_callbacks: CallbackEmitter,
+
     /// A marker that ensures that 'a is invariant
     marker: PhantomData<&'a mut &'a ()>,
 }
 
 impl<'a> RawScope<'a> {
     fn new(event_sink: &'a EventSink, event_callbacks: &'a CallbackEmitter<Event>) -> Self {
+        let update_callbacks = CallbackEmitter::new();
+        update_callbacks.track();
+
         Self {
             arena: ScopeArena::default(),
             effects: ScopeArena::default(),
@@ -175,11 +181,15 @@ impl<'a> RawScope<'a> {
             children: Lock::new(Sparse::new()),
             event_sink,
             event_callbacks,
+            update_callbacks,
             marker: PhantomData,
         }
     }
 
     fn child(parent: &'a RawScope<'a>) -> Self {
+        let update_callbacks = CallbackEmitter::new();
+        update_callbacks.track();
+
         Self {
             arena: ScopeArena::default(),
             effects: ScopeArena::default(),
@@ -188,6 +198,7 @@ impl<'a> RawScope<'a> {
             children: Lock::new(Sparse::new()),
             event_sink: parent.event_sink,
             event_callbacks: parent.event_callbacks,
+            update_callbacks,
             marker: PhantomData,
         }
     }
@@ -346,6 +357,11 @@ impl<'a> Scope<'a> {
         self.raw.arena.alloc(item)
     }
 
+    /// Reruns the effect this scope was created in.
+    pub fn update(&self) {
+        self.raw.update_callbacks.emit(&());
+    }
+
     /// Creates a signal in the scope.
     pub fn signal<T: SendSync + 'static>(self, value: T) -> &'a Signal<T> {
         self.alloc(Signal::new(value))
@@ -364,7 +380,7 @@ impl<'a> Scope<'a> {
     ///
     /// ```
     /// # use ori_core::*;
-    /// # Scope::immediate(&EventSink::dummy(), |cx| {
+    /// # Scope::immediate(&EventSink::dummy(), &Default::default(), |cx| {
     /// let signal = cx.signal(0);
     ///
     /// cx.effect(|| {
@@ -405,7 +421,7 @@ impl<'a> Scope<'a> {
     ///
     /// ```
     /// # use ori_core::*;
-    /// # Scope::immediate(&EventSink::dummy(), |cx| {
+    /// # Scope::immediate(&EventSink::dummy(), &Default::default(), |cx| {
     /// let signal = cx.signal(0);
     ///
     /// let memo = cx.memo(|| *signal.get() * 2);

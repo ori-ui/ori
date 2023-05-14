@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, Context, Cursor, DrawContext, Event, EventContext, EventSink, Guard,
-    ImageCache, IntoView, LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Shared,
-    SharedSignal, Style, StyleSelector, StyleSelectors, StyleStates, StyleTransition, Stylesheet,
-    TransitionStates, View,
+    ImageCache, IntoView, LayoutContext, Lock, Lockable, Margin, PointerEvent, RequestRedrawEvent,
+    Shared, SharedSignal, Style, StyleSelector, StyleSelectors, StyleStates, StyleTransition,
+    Stylesheet, TransitionStates, View,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -370,7 +370,12 @@ impl<T: View> Node<T> {
                 cursor: cx.cursor,
             };
 
+            let margin = Margin::from_style(&mut cx, bc);
+            cx.state.global_rect.translate(margin.top_left());
+
+            let bc = bc.with_margin(margin);
             let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
+            let size = size + margin.size();
 
             Self::update_cursor(&mut cx);
 

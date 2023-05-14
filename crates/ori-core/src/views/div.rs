@@ -92,7 +92,6 @@ impl View for Div {
         let bc = cx.style_constraints(bc);
 
         let axis = cx.style::<Axis>("direction");
-        let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
         let gap = cx.style_range("gap", 0.0..axis.major(bc.max));
 
         let justify_content = cx.style("justify-content");
@@ -103,13 +102,10 @@ impl View for Div {
             justify_content,
             align_items,
             gap,
-            offset: Vec2::splat(padding),
+            ..Default::default()
         };
 
-        let content_bc = bc.shrink(Vec2::splat(padding * 2.0));
-        let size = self.children.flex_layout(cx, content_bc, flex);
-
-        size + Vec2::splat(padding * 2.0)
+        self.children.flex_layout(cx, bc, flex)
     }
 
     #[tracing::instrument(name = "Div", skip(self, cx))]

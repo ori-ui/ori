@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use glam::Vec2;
 
-use crate::StyleAttributeEnum;
+use crate::{Context, StyleAttributeEnum};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoxConstraints {
@@ -53,8 +53,8 @@ impl BoxConstraints {
 
     pub fn shrink(self, size: Vec2) -> Self {
         Self {
-            min: self.min - size,
-            max: self.max - size,
+            min: Vec2::max(self.min - size, Vec2::ZERO),
+            max: Vec2::max(self.max - size, Vec2::ZERO),
         }
     }
 
@@ -68,6 +68,95 @@ impl BoxConstraints {
 
     pub fn width(self) -> Range<f32> {
         self.min.x..self.max.x
+    }
+
+    pub fn with_margin(self, margin: Margin) -> Self {
+        Self {
+            min: Vec2::max(self.min - margin.size(), Vec2::ZERO),
+            max: Vec2::max(self.max - margin.size(), Vec2::ZERO),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+pub struct Padding {
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32,
+}
+
+impl Padding {
+    pub const fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
+
+    pub fn from_style(context: &mut impl Context, bc: BoxConstraints) -> Self {
+        let left = context.style_range_group("padding-left", "padding", 0.0..bc.max.x);
+        let right = context.style_range_group("padding-right", "padding", 0.0..bc.max.x);
+        let top = context.style_range_group("padding-top", "padding", 0.0..bc.max.y);
+        let bottom = context.style_range_group("padding-bottom", "padding", 0.0..bc.max.y);
+
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
+
+    pub fn top_left(self) -> Vec2 {
+        Vec2::new(self.left, self.top)
+    }
+
+    pub fn size(self) -> Vec2 {
+        Vec2::new(self.left + self.right, self.top + self.bottom)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+pub struct Margin {
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32,
+}
+
+impl Margin {
+    pub const fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
+
+    pub fn from_style(context: &mut impl Context, bc: BoxConstraints) -> Self {
+        let left = context.style_range_group("margin-left", "margin", 0.0..bc.max.x);
+        let right = context.style_range_group("margin-right", "margin", 0.0..bc.max.x);
+        let top = context.style_range_group("margin-top", "margin", 0.0..bc.max.y);
+        let bottom = context.style_range_group("margin-bottom", "margin", 0.0..bc.max.y);
+
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
+
+    pub fn top_left(self) -> Vec2 {
+        Vec2::new(self.left, self.top)
+    }
+
+    pub fn size(self) -> Vec2 {
+        Vec2::new(self.left + self.right, self.top + self.bottom)
     }
 }
 

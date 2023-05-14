@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use crate::{
     AlignItems, AnyView, Axis, BoxConstraints, DrawContext, Event, EventContext, IntoNode,
-    JustifyContent, LayoutContext, Node, Parent, View,
+    JustifyContent, LayoutContext, Node, Padding, Parent, View,
 };
 
 /// A layout that lays out children in a flexbox-like manner.
@@ -108,6 +108,19 @@ impl<T: View> Children<T> {
 
     /// Layout the children using a FlexLayout.
     pub fn flex_layout(
+        &self,
+        cx: &mut LayoutContext,
+        bc: BoxConstraints,
+        mut flex: FlexLayout,
+    ) -> Vec2 {
+        let padding = Padding::from_style(cx, bc);
+        let padded_bc = bc.shrink(padding.size());
+        flex.offset += padding.top_left();
+        self.flex_layout_padded(cx, padded_bc, flex) + padding.size()
+    }
+
+    /// Layout the children using a FlexLayout.
+    fn flex_layout_padded(
         &self,
         cx: &mut LayoutContext,
         bc: BoxConstraints,

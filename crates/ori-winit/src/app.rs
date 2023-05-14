@@ -86,7 +86,7 @@ impl App {
         let event_loop = EventLoopBuilder::<Event>::with_user_event().build();
 
         Self {
-            title: "Ily App".to_string(),
+            title: "Ori App".to_string(),
             size: Vec2::new(800.0, 600.0),
             reziseable: true,
             clear_color: Color::WHITE,

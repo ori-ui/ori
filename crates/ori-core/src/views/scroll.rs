@@ -4,11 +4,12 @@ use ori_macro::Build;
 
 use crate::{
     Axis, BoxConstraints, Children, Context, DrawContext, Event, EventContext, FlexLayout,
-    LayoutContext, Parent, PointerEvent, Style, View,
+    LayoutContext, PointerEvent, Style, View,
 };
 
 #[derive(Default, Build)]
 pub struct Scroll {
+    #[children]
     content: Children,
 }
 
@@ -114,12 +115,6 @@ impl Scroll {
         }
 
         handled
-    }
-}
-
-impl Parent for Scroll {
-    fn add_child(&mut self, child: impl View) {
-        self.content.add_child(child);
     }
 }
 

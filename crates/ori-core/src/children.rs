@@ -4,8 +4,8 @@ use ori_graphics::Rect;
 use smallvec::SmallVec;
 
 use crate::{
-    AlignItems, Axis, BoxConstraints, DrawContext, Event, EventContext, JustifyContent,
-    LayoutContext, Node,
+    AlignItems, AnyView, Axis, BoxConstraints, DrawContext, Event, EventContext, IntoNode,
+    JustifyContent, LayoutContext, Node, Parent, View,
 };
 
 /// A layout that lays out children in a flexbox-like manner.
@@ -65,12 +65,26 @@ impl FlexLayout {
     }
 }
 
-#[derive(Default, Deref, DerefMut)]
-pub struct Children {
-    nodes: SmallVec<[Node; 1]>,
+#[derive(Deref, DerefMut)]
+pub struct Children<T: View = Box<dyn AnyView>> {
+    nodes: SmallVec<[Node<T>; 1]>,
 }
 
-impl Children {
+impl<T: View> Default for Children<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: View> Parent for Children<T> {
+    type Child = T;
+
+    fn add_child<U: ?Sized>(&mut self, child: impl IntoNode<Self::Child, U>) {
+        self.nodes.push(child.into_node());
+    }
+}
+
+impl<T: View> Children<T> {
     pub const fn new() -> Self {
         Self {
             nodes: SmallVec::new_const(),
@@ -83,10 +97,6 @@ impl Children {
 
     pub fn is_empty(&self) -> bool {
         self.nodes.is_empty()
-    }
-
-    pub fn add_child(&mut self, child: impl Into<Node>) {
-        self.nodes.push(child.into());
     }
 
     /// Call the `event` method on all the children.

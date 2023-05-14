@@ -3,8 +3,7 @@ use ori_macro::Build;
 
 use crate::{
     Axis, BindCallback, BoxConstraints, CallbackEmitter, Children, Context, DrawContext, Event,
-    EventContext, FlexLayout, LayoutContext, Node, Parent, PointerEvent, Scope, Sendable, Style,
-    View,
+    EventContext, FlexLayout, LayoutContext, PointerEvent, Scope, Sendable, Style, View,
 };
 
 #[derive(Default, Build)]
@@ -13,17 +12,13 @@ pub struct Div {
     pub on_press: CallbackEmitter<PointerEvent>,
     #[event]
     pub on_release: CallbackEmitter<PointerEvent>,
+    #[children]
     pub children: Children,
 }
 
 impl Div {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn child(mut self, child: impl View) -> Self {
-        self.add_child(child);
-        self
     }
 
     pub fn on_press<'a>(
@@ -63,12 +58,6 @@ impl Div {
         }
 
         true
-    }
-}
-
-impl Parent for Div {
-    fn add_child(&mut self, child: impl View) {
-        self.children.push(Node::new(child));
     }
 }
 

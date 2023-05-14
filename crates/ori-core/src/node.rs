@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, Context, Cursor, DrawContext, Event, EventContext, EventSink, Guard,
-    ImageCache, LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Shared,
+    ImageCache, IntoView, LayoutContext, Lock, Lockable, PointerEvent, RequestRedrawEvent, Shared,
     SharedSignal, Style, StyleSelector, StyleSelectors, StyleStates, StyleTransition, Stylesheet,
     TransitionStates, View,
 };
@@ -151,25 +151,14 @@ impl NodeState {
     }
 }
 
-impl<T: View> From<T> for Node {
-    fn from(view: T) -> Self {
-        Self::new(view)
-    }
-}
-
-#[cfg(feature = "multi-thread")]
-type AnyViewState = Box<dyn Any + Send + Sync>;
-#[cfg(not(feature = "multi-thread"))]
-type AnyViewState = Box<dyn Any>;
-
-struct NodeInner {
-    view_state: Lock<AnyViewState>,
+struct NodeInner<T: View> {
+    view_state: Lock<T::State>,
     node_state: Lock<NodeState>,
-    view: Box<dyn AnyView>,
+    view: T,
 }
 
-impl NodeInner {
-    fn view_state(&self) -> Guard<AnyViewState> {
+impl<T: View> NodeInner<T> {
+    fn view_state(&self) -> Guard<T::State> {
         self.view_state.lock_mut()
     }
 
@@ -178,7 +167,11 @@ impl NodeInner {
     }
 }
 
-impl Debug for NodeInner {
+impl<T: View> Debug for NodeInner<T>
+where
+    T: Debug,
+    T::State: Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NodeInner")
             .field("view_state", &self.view_state)
@@ -188,38 +181,68 @@ impl Debug for NodeInner {
     }
 }
 
-/// A node in the ui tree.
-///
-/// A node is a wrapper around a view, and contains the state of the view.
-#[derive(Clone, Debug)]
-pub struct Node {
-    inner: Shared<NodeInner>,
-}
-
-impl Node {
-    /// Create a new empty node.
-    pub fn empty() -> Self {
-        Self::new(())
-    }
-
-    /// Create a new node with the given [`View`].
-    pub fn new(view: impl View) -> Self {
-        let view_state = Box::new(View::build(&view));
+impl<T: IntoView> From<T> for Node<T::View> {
+    fn from(into_view: T) -> Self {
+        let view = into_view.into_view();
+        let view_state = View::build(&view);
         let node_state = NodeState::new(View::style(&view));
 
         Self {
             inner: Shared::new(NodeInner {
                 view_state: Lock::new(view_state),
                 node_state: Lock::new(node_state),
-                view: Box::new(view),
+                view,
             }),
         }
+    }
+}
+
+pub trait IntoNode<T: View, U: ?Sized> {
+    fn into_node(self) -> Node<T>;
+}
+
+impl<T: IntoView> IntoNode<T::View, T> for T {
+    fn into_node(self) -> Node<T::View> {
+        Node::from(self.into_view())
+    }
+}
+
+impl<T: IntoView> IntoNode<Box<dyn AnyView>, dyn AnyView> for T {
+    fn into_node(self) -> Node<Box<dyn AnyView>> {
+        Node::from(Box::new(self.into_view()) as Box<dyn AnyView>)
+    }
+}
+
+impl<T: View> IntoNode<T, Node<T>> for Node<T> {
+    fn into_node(self) -> Node<T> {
+        self
+    }
+}
+
+/// A node in the ui tree.
+///
+/// A node is a wrapper around a view, and contains the state of the view.
+#[derive(Clone)]
+pub struct Node<T: View = Box<dyn AnyView>> {
+    inner: Shared<NodeInner<T>>,
+}
+
+impl Node {
+    pub fn empty() -> Self {
+        Self::new(())
+    }
+}
+
+impl<T: View> Node<T> {
+    /// Create a new node with the given [`View`].
+    pub fn new<U: ?Sized>(view: impl IntoNode<T, U>) -> Self {
+        view.into_node()
     }
 
     /// Returns a [`Guard`] to the [`AnyViewState`].
     ///
     /// Be careful when using this, as it can cause deadlocks.
-    pub fn view_state(&self) -> Guard<AnyViewState> {
+    pub fn view_state(&self) -> Guard<T::State> {
         self.inner.view_state.lock_mut()
     }
 
@@ -231,8 +254,8 @@ impl Node {
     }
 
     /// Returns a reference to the [`View`].
-    pub fn get<T: View>(&self) -> Option<&T> {
-        self.inner.view.downcast_ref()
+    pub fn view(&self) -> &T {
+        &self.inner.view
     }
 
     /// Sets the offset of the node, relative to the parent.
@@ -264,7 +287,7 @@ impl Node {
     }
 }
 
-impl Node {
+impl<T: View> Node<T> {
     /// Returns true if the node should be redrawn.
     fn handle_pointer_event(
         node_state: &mut NodeState,
@@ -291,7 +314,7 @@ impl Node {
         }
     }
 
-    fn event_inner(inner: &NodeInner, cx: &mut EventContext, event: &Event) {
+    fn event_inner(inner: &NodeInner<T>, cx: &mut EventContext, event: &Event) {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
@@ -316,7 +339,7 @@ impl Node {
                 cursor: cx.cursor,
             };
 
-            (inner.view).event(inner.view_state().as_mut(), &mut cx, event);
+            (inner.view).event(&mut inner.view_state(), &mut cx, event);
             Self::update_cursor(&mut cx);
         }
 
@@ -328,7 +351,7 @@ impl Node {
         Self::event_inner(&self.inner, cx, event);
     }
 
-    fn layout_inner(inner: &NodeInner, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout_inner(inner: &NodeInner<T>, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
@@ -347,7 +370,7 @@ impl Node {
                 cursor: cx.cursor,
             };
 
-            let size = inner.view.layout(inner.view_state().as_mut(), &mut cx, bc);
+            let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
 
             Self::update_cursor(&mut cx);
 
@@ -367,7 +390,7 @@ impl Node {
         Self::layout_inner(&self.inner, cx, bc)
     }
 
-    fn draw_inner(inner: &NodeInner, cx: &mut DrawContext) {
+    fn draw_inner(inner: &NodeInner<T>, cx: &mut DrawContext) {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
@@ -387,7 +410,7 @@ impl Node {
                 cursor: cx.cursor,
             };
 
-            inner.view.draw(inner.view_state().as_mut(), &mut cx);
+            inner.view.draw(&mut inner.view_state(), &mut cx);
 
             if cx.state.update_transitions() {
                 cx.request_redraw();
@@ -407,9 +430,9 @@ impl Node {
     }
 }
 
-impl Node {
+impl<T: View> Node<T> {
     fn event_root_inner(
-        inner: &NodeInner,
+        inner: &NodeInner<T>,
         style: &Stylesheet,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
@@ -439,7 +462,7 @@ impl Node {
             cursor: cursor_icon,
         };
 
-        (inner.view).event(inner.view_state().as_mut(), &mut cx, event);
+        (inner.view).event(&mut inner.view_state(), &mut cx, event);
     }
 
     /// Handle an event on the root node.
@@ -464,7 +487,7 @@ impl Node {
     }
 
     fn layout_root_inner(
-        inner: &NodeInner,
+        inner: &NodeInner<T>,
         style: &Stylesheet,
         renderer: &dyn Renderer,
         window_size: Vec2,
@@ -489,7 +512,7 @@ impl Node {
         };
 
         let bc = BoxConstraints::new(Vec2::ZERO, window_size);
-        let size = inner.view.layout(inner.view_state().as_mut(), &mut cx, bc);
+        let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
         node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
@@ -519,7 +542,7 @@ impl Node {
     }
 
     fn draw_root_inner(
-        inner: &NodeInner,
+        inner: &NodeInner<T>,
         style: &Stylesheet,
         frame: &mut Frame,
         renderer: &dyn Renderer,
@@ -544,7 +567,7 @@ impl Node {
             cursor: cursor_icon,
         };
 
-        inner.view.draw(inner.view_state().as_mut(), &mut cx);
+        inner.view.draw(&mut inner.view_state(), &mut cx);
 
         cx.state.draw();
     }
@@ -568,5 +591,15 @@ impl Node {
             image_cache,
             cursor_icon,
         );
+    }
+}
+
+impl<T: View> Debug for Node<T>
+where
+    T: Debug,
+    T::State: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Node").field("inner", &self.inner).finish()
     }
 }

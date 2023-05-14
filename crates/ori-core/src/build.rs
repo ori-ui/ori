@@ -1,5 +1,6 @@
 use crate::{
-    Callback, CallbackEmitter, EventSignal, Scope, SendSync, Sendable, SharedSignal, Signal, View,
+    Callback, CallbackEmitter, EventSignal, IntoNode, Scope, SendSync, Sendable, SharedSignal,
+    Signal, View,
 };
 
 pub trait Properties {
@@ -84,5 +85,15 @@ impl<'a, T: Clone + PartialEq + SendSync + 'static> Bindable<'a> for SharedSigna
 }
 
 pub trait Parent {
-    fn add_child(&mut self, child: impl View);
+    type Child: View;
+
+    fn add_child<U: ?Sized>(&mut self, child: impl IntoNode<Self::Child, U>);
+
+    fn with_child<U: ?Sized>(mut self, child: impl IntoNode<Self::Child, U>) -> Self
+    where
+        Self: Sized,
+    {
+        self.add_child(child);
+        self
+    }
 }

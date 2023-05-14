@@ -13,6 +13,7 @@ struct Attrs {
     is_prop: bool,
     is_event: bool,
     is_bind: bool,
+    is_children: bool,
 }
 
 impl Attrs {
@@ -20,6 +21,7 @@ impl Attrs {
         let mut is_prop = false;
         let mut is_event = false;
         let mut is_bind = false;
+        let mut is_children = false;
 
         for attr in attrs {
             if attr.path.is_ident("prop") {
@@ -28,6 +30,8 @@ impl Attrs {
                 is_event = true;
             } else if attr.path.is_ident("bind") {
                 is_bind = true;
+            } else if attr.path.is_ident("children") {
+                is_children = true;
             }
         }
 
@@ -35,6 +39,7 @@ impl Attrs {
             is_prop,
             is_event,
             is_bind,
+            is_children,
         }
     }
 }
@@ -45,11 +50,13 @@ pub fn derive_build(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let properties = properties(&input);
     let events = events(&input);
     let bindings = bindings(&input);
+    let children = children(&input);
 
     let expanded = quote! {
         #properties
         #events
         #bindings
+        #children
     };
 
     expanded.into()
@@ -145,6 +152,41 @@ fn bindings(input: &DeriveInput) -> TokenStream {
                 }
             }
         };
+    }
+}
+
+fn children(input: &DeriveInput) -> TokenStream {
+    let name = &input.ident;
+    let (_, fields) = data(&input);
+
+    let ori_core = find_crate("core");
+
+    let fields = fields.named.iter().filter_map(|field| {
+        let field_name = &field.ident;
+        let ty = &field.ty;
+
+        let attrs = Attrs::parse(&field.attrs);
+
+        if !attrs.is_children {
+            return None;
+        }
+
+        Some(quote! {
+            impl #ori_core::Parent for #name {
+                type Child = <#ty as #ori_core::Parent>::Child;
+
+                fn add_child<U: ?::std::marker::Sized>(
+                    &mut self,
+                    child: impl #ori_core::IntoNode<Self::Child, U>
+                ) {
+                    self.#field_name.add_child(child);
+                }
+            }
+        })
+    });
+
+    quote! {
+        #(#fields)*
     }
 }
 

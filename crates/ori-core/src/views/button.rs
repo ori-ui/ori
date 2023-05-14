@@ -1,8 +1,8 @@
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Div, DrawContext, Event, EventContext, Events, LayoutContext, Parent,
-    PointerEvent, Scope, Sendable, Style, View,
+    BoxConstraints, Div, DrawContext, Event, EventContext, Events, IntoNode, LayoutContext, Parent,
+    Style, View,
 };
 
 pub struct Button {
@@ -19,27 +19,7 @@ impl Default for Button {
 
 impl Button {
     pub fn new(view: impl View) -> Self {
-        Self::default().child(view)
-    }
-
-    pub fn child(mut self, view: impl View) -> Self {
-        self.content = self.content.child(view);
-        self
-    }
-
-    pub fn on_press<'a>(
-        mut self,
-        cx: Scope<'a>,
-        callback: impl FnMut(&PointerEvent) + Sendable + 'a,
-    ) -> Self {
-        self.content = self.content.on_press(cx, callback);
-        self
-    }
-}
-
-impl Parent for Button {
-    fn add_child(&mut self, view: impl View) {
-        self.content.add_child(view);
+        Self::default().with_child(view)
     }
 }
 
@@ -48,6 +28,14 @@ impl Events for Button {
 
     fn setter(&mut self) -> Self::Setter<'_> {
         Events::setter(&mut self.content)
+    }
+}
+
+impl Parent for Button {
+    type Child = <Div as Parent>::Child;
+
+    fn add_child<U: ?Sized>(&mut self, child: impl IntoNode<Self::Child, U>) {
+        self.content.add_child(child);
     }
 }
 

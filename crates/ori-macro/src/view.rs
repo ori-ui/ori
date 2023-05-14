@@ -9,21 +9,26 @@ use syn::{
 };
 use syn_rsx::{Node, NodeAttribute, NodeName};
 
+use crate::krate::find_crate;
+
 pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (context, rest) = parse_context(input.into());
     let nodes = syn_rsx::parse2(rest).unwrap_or_abort();
 
     let nodes = nodes.iter().map(|node| view_node(&context, node));
 
+    let ori_core = find_crate("core");
+
     let expanded = if nodes.len() == 1 {
         quote! {
             #(#nodes)*
         }
     } else {
-        quote! {
-            ori::core::Div::new()
-                #( .child(#nodes) )*
-        }
+        quote! {{
+            let mut fragment = #ori_core::Div::new();
+            #( <#ori_core::Div as #ori_core::Parent>::add_child(&mut fragment, #nodes); )*
+            fragment
+        }}
     };
 
     expanded.into()
@@ -56,6 +61,8 @@ fn parse_context(input: TokenStream) -> (Expr, TokenStream) {
 }
 
 fn view_node(context: &Expr, node: &Node) -> TokenStream {
+    let ori_core = find_crate("core");
+
     match node {
         Node::Element(element) => {
             let name = &element.name;
@@ -72,13 +79,16 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                 let child = view_node(context, node);
 
                 quote! {
-                    <#name as ori::core::Parent>::add_child(&mut view, #child);
+                    <#name as #ori_core::Parent>::add_child(
+                        &mut view,
+                        #ori_core::IntoNode::into_node(#child),
+                    );
                 }
             });
 
             quote! {
-                ori::core::BoundedScope::shared_memo_scoped(#context, move |#context| {
-                    let mut view = <#name as ori::core::Styleable<_>>::styled(
+                #ori_core::BoundedScope::shared_memo_scoped(#context, move |#context| {
+                    let mut view = <#name as #ori_core::Styleable<_>>::styled(
                         <#name as ::std::default::Default>::default()
                     );
 
@@ -101,7 +111,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
             let comment = comment.value.as_ref();
 
             quote! {
-                ori::core::Comment::new(#comment)
+                #ori_core::Comment::new(#comment)
             }
         }
         _ => unreachable!(),
@@ -204,9 +214,11 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
 }
 
 fn property(name: &NodeName, key: &ExprPath, value: &Expr) -> TokenStream {
+    let ori_core = find_crate("core");
+
     if key.path == parse_quote!(class) {
         return quote_spanned! {value.span() =>
-            view = <ori::core::Styled<#name> as ori::core::Styleable<_>>::class(view, #value);
+            view = <#ori_core::Styled<#name> as #ori_core::Styleable<_>>::class(view, #value);
         };
     }
 
@@ -215,24 +227,30 @@ fn property(name: &NodeName, key: &ExprPath, value: &Expr) -> TokenStream {
     };
 
     quote_spanned! {value.span() =>
-        <#name as ori::core::Properties>::setter(&mut view).#key(#value);
+        <#name as #ori_core::Properties>::setter(&mut view).#key(#value);
     }
 }
 
 fn event(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStream {
+    let ori_core = find_crate("core");
+
     quote! {
-        <#name as ori::core::Events>::setter(&mut view).#key(#context, #value);
+        <#name as #ori_core::Events>::setter(&mut view).#key(#context, #value);
     }
 }
 
 fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStream {
+    let ori_core = find_crate("core");
+
     quote! {
-        <#name as ori::core::Bindings>::setter(&mut view).#key(#context, #value);
+        <#name as #ori_core::Bindings>::setter(&mut view).#key(#context, #value);
     }
 }
 
 fn style(_context: &Expr, name: &NodeName, key: &str, value: &Expr) -> TokenStream {
+    let ori_core = find_crate("core");
+
     quote! {
-        view = <ori::core::Styled<#name> as ori::core::Styleable<_>>::attr(view, #key, #value);
+        view = <#ori_core::Styled<#name> as #ori_core::Styleable<_>>::attr(view, #key, #value);
     }
 }

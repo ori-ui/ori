@@ -1,4 +1,7 @@
-use std::any::{self, Any};
+use std::{
+    any::{self, Any},
+    sync::Arc,
+};
 
 use glam::Vec2;
 
@@ -6,6 +9,20 @@ use crate::{
     BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, RequestRedrawEvent,
     SendSync, SharedSignal, Style,
 };
+
+pub trait IntoView {
+    type View: View;
+
+    fn into_view(self) -> Self::View;
+}
+
+impl<T: View> IntoView for T {
+    type View = T;
+
+    fn into_view(self) -> Self::View {
+        self
+    }
+}
 
 /// A [`View`] is a component that can be rendered to the screen.
 #[allow(unused_variables)]
@@ -37,10 +54,17 @@ pub trait View: SendSync + 'static {
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {}
 }
 
+#[cfg(feature = "multi-thread")]
+type AnyViewState = Box<dyn Any + Send + Sync>;
+#[cfg(not(feature = "multi-thread"))]
+type AnyViewState = Box<dyn Any>;
+
 /// A [`View`] that with an unknown state.
 ///
 /// This is used to store a [`View`] in a [`Node`](crate::Node).
 pub trait AnyView: SendSync {
+    fn build(&self) -> AnyViewState;
+
     fn style(&self) -> Style;
 
     fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event);
@@ -51,6 +75,10 @@ pub trait AnyView: SendSync {
 }
 
 impl<T: View> AnyView for T {
+    fn build(&self) -> AnyViewState {
+        Box::new(self.build())
+    }
+
     fn style(&self) -> Style {
         self.style()
     }
@@ -98,6 +126,54 @@ impl dyn AnyView {
         } else {
             None
         }
+    }
+}
+
+impl View for Box<dyn AnyView> {
+    type State = AnyViewState;
+
+    fn build(&self) -> Self::State {
+        self.as_ref().build()
+    }
+
+    fn style(&self) -> Style {
+        self.as_ref().style()
+    }
+
+    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+        self.as_ref().event(state.as_mut(), cx, event);
+    }
+
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        self.as_ref().layout(state.as_mut(), cx, bc)
+    }
+
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        self.as_ref().draw(state.as_mut(), cx);
+    }
+}
+
+impl View for Arc<dyn AnyView> {
+    type State = AnyViewState;
+
+    fn build(&self) -> Self::State {
+        self.as_ref().build()
+    }
+
+    fn style(&self) -> Style {
+        self.as_ref().style()
+    }
+
+    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+        self.as_ref().event(state.as_mut(), cx, event);
+    }
+
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        self.as_ref().layout(state.as_mut(), cx, bc)
+    }
+
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        self.as_ref().draw(state.as_mut(), cx);
     }
 }
 

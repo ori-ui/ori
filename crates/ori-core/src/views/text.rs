@@ -2,7 +2,23 @@ use glam::Vec2;
 use ori_graphics::{Rect, TextSection};
 use ori_macro::Build;
 
-use crate::{BoxConstraints, Context, DrawContext, LayoutContext, Style, View};
+use crate::{BoxConstraints, Context, DrawContext, IntoView, LayoutContext, Style, View};
+
+impl IntoView for String {
+    type View = Text;
+
+    fn into_view(self) -> Self::View {
+        Text::new(self)
+    }
+}
+
+impl IntoView for &str {
+    type View = Text;
+
+    fn into_view(self) -> Self::View {
+        Text::new(self)
+    }
+}
 
 #[derive(Clone, Debug, Build)]
 pub struct Text {

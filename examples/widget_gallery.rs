@@ -20,14 +20,14 @@ fn ui(cx: Scope) -> impl View {
                 </Div>
 
                 <Button on:press=|_| *counter.modify() += 1>
-                    <Text text=format!("Counter: {}", counter.get()) />
+                    { format!("Counter: {}", counter.get()) }
                 </Button>
 
                 <Image src="examples/images/image.jpg" />
 
                 <TextInput bind:text=text />
 
-                <Text text=format!("Input: {}", text.get()) />
+                { format!("Input: {}", text.get()) }
             </Div>
             <Scroll style:max-height=Em(14.0)>
                 <Div style:max-width=Em(8.0)>
@@ -56,7 +56,7 @@ fn ui(cx: Scope) -> impl View {
 fn main() {
     App::new(|cx| ui(cx)) // create a new app with the ui function
         .title("Widget Gallery (examples/widget_gallery.rs)") // set the window title
-        //.night_theme()
+        .night_theme()
         .style("examples/style/widget-gallery.css") // load a custom stylesheet
         .run(); // run the app
 }

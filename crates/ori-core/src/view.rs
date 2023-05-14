@@ -132,7 +132,7 @@ impl<V: View + SendSync> View for SharedSignal<V> {
         let event_sink = cx.event_sink.clone();
         let recreated = cx.state.recreated.clone();
         *callback = Callback::new(move |&()| {
-            event_sink.send(RequestRedrawEvent);
+            event_sink.emit(RequestRedrawEvent);
             recreated.set(true);
         });
 

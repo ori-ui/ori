@@ -10,8 +10,6 @@ use crate::{
 #[derive(Default, Build)]
 pub struct Div {
     #[event]
-    pub on_event: CallbackEmitter<Event>,
-    #[event]
     pub on_press: CallbackEmitter<PointerEvent>,
     #[event]
     pub on_release: CallbackEmitter<PointerEvent>,
@@ -25,16 +23,6 @@ impl Div {
 
     pub fn child(mut self, child: impl View) -> Self {
         self.add_child(child);
-        self
-    }
-
-    pub fn on_event<'a>(
-        mut self,
-        cx: Scope<'a>,
-        callback: impl FnMut(&Event) + Sendable + 'a,
-    ) -> Self {
-        self.on_event.bind(cx, callback);
-
         self
     }
 
@@ -97,10 +85,6 @@ impl View for Div {
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
         for child in &self.children {
             child.event(cx, event);
-        }
-
-        if !self.on_event.is_empty() {
-            self.on_event.emit(event);
         }
 
         if event.is_handled() {

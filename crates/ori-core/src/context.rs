@@ -540,7 +540,7 @@ pub trait Context {
 
     /// Sends an event to the event sink.
     fn send_event(&self, event: impl Any + SendSync) {
-        self.event_sink().send(event);
+        self.event_sink().emit(event);
     }
 
     /// Returns the time in seconds since the last frame.

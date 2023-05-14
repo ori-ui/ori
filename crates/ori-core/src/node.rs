@@ -422,7 +422,7 @@ impl Node {
 
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if Self::handle_pointer_event(node_state, pointer_event, event.is_handled()) {
-                event_sink.send(RequestRedrawEvent);
+                event_sink.emit(RequestRedrawEvent);
             }
         }
 

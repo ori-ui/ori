@@ -11,8 +11,6 @@ fn ui(cx: Scope) -> impl View {
 
     let font_size = cx.memo(|| if *checked.get() { 32 } else { 24 });
 
-    checked.track();
-
     view! {
         <Div class="widget-gallery">
             <Div class="column">
@@ -37,11 +35,11 @@ fn ui(cx: Scope) -> impl View {
                 </Div>
             </Scroll>
             <Div class="column">
-                <Knob bind:value=knob_value />
+                <Knob bind:value=knob_value max=2.0 />
                 <Text style:text-align=TextAlign::Center
                     text=format!("{:.2}", knob_value.get()) />
             </Div>
-            <Slider style:direction=Axis::Vertical style:height=Em(10.0) value=0.5 />
+            <Slider style:direction=Axis::Vertical style:height=Em(10.0) min=-1.0 bind:value=knob_value />
             <Div class="column">
                 <Slider />
                 <Slider />

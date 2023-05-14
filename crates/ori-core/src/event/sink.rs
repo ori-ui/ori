@@ -6,27 +6,36 @@ use crate::{Event, Lock, Lockable, SendSync, Sendable, Shared};
 ///
 /// This is usually implemented by the application shell and
 /// should not be implemented by the user.
-pub trait EventSender: Sendable + 'static {
+pub trait EventEmitter: Sendable + 'static {
     fn send_event(&mut self, event: Event);
+}
+
+impl EventEmitter for () {
+    fn send_event(&mut self, _: Event) {}
 }
 
 /// An event sink, that can send events to the application.
 #[derive(Clone)]
 pub struct EventSink {
-    sender: Shared<Lock<dyn EventSender>>,
+    emitter: Shared<Lock<dyn EventEmitter>>,
 }
 
 impl EventSink {
+    /// Creates a dummy event sink, that does nothing.
+    pub fn dummy() -> Self {
+        Self::new(())
+    }
+
     /// Creates a new event sink from an [`EventSender`].
-    pub fn new(sender: impl EventSender) -> Self {
+    pub fn new(sender: impl EventEmitter) -> Self {
         Self {
-            sender: Shared::new(Lock::new(sender)),
+            emitter: Shared::new(Lock::new(sender)),
         }
     }
 
     /// Sends an event to the application.
-    pub fn send(&self, event: impl Any + SendSync) {
-        self.sender.lock_mut().send_event(Event::new(event));
+    pub fn emit(&self, event: impl Any + SendSync) {
+        self.emitter.lock_mut().send_event(Event::new(event));
     }
 }
 

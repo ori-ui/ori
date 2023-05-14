@@ -6,8 +6,9 @@ use std::{
 };
 
 use ori_core::{
-    Cursor, Event, EventSender, EventSink, ImageCache, KeyboardEvent, LoadedStyleKind, Modifiers,
-    Node, PointerEvent, RequestRedrawEvent, Scope, StyleLoader, Stylesheet, Vec2, View,
+    CallbackEmitter, Cursor, Event, EventEmitter, EventSink, ImageCache, KeyboardEvent,
+    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Scope, StyleLoader,
+    Stylesheet, Vec2, View,
 };
 use ori_graphics::{Color, Frame};
 use winit::{
@@ -24,7 +25,7 @@ use crate::convert::{
 
 struct EventLoopSender(EventLoopProxy<Event>);
 
-impl EventSender for EventLoopSender {
+impl EventEmitter for EventLoopSender {
     fn send_event(&mut self, event: Event) {
         let _ = self.0.send_event(event);
     }
@@ -58,7 +59,7 @@ pub struct App {
     clear_color: Color,
     event_loop: EventLoop<Event>,
     style_loader: StyleLoader,
-    builder: Option<Box<dyn FnOnce() -> Node>>,
+    builder: Option<Box<dyn FnOnce(&EventSink, &CallbackEmitter<Event>) -> Node>>,
 }
 
 impl App {
@@ -66,15 +67,17 @@ impl App {
     pub fn new<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
         initialize_log().unwrap();
 
-        let builder = Box::new(move || {
-            let mut view = None;
+        let builder = Box::new(
+            move |event_sink: &EventSink, event_callbacks: &CallbackEmitter<Event>| {
+                let mut view = None;
 
-            let _disposer = Scope::new(|cx| {
-                view = Some(content(cx));
-            });
+                let _disposer = Scope::new(event_sink, event_callbacks, |cx| {
+                    view = Some(content(cx));
+                });
 
-            Node::new(view.unwrap())
-        });
+                Node::new(view.unwrap())
+            },
+        );
 
         let mut style_loader = StyleLoader::new();
 
@@ -198,6 +201,7 @@ struct AppState {
     frame: Frame,
     clear_color: Color,
     event_sink: EventSink,
+    event_callbacks: CallbackEmitter<Event>,
     image_cache: ImageCache,
     cursor_icon: Cursor,
     #[cfg(feature = "wgpu")]
@@ -218,6 +222,8 @@ impl AppState {
 
     #[tracing::instrument(skip(self, event))]
     fn event(&mut self, event: &Event) {
+        self.event_callbacks.emit(&event);
+
         self.cursor_icon = Cursor::Default;
         self.root.event_root(
             self.style_loader.style(),
@@ -288,16 +294,18 @@ impl App {
             unsafe { ori_wgpu::WgpuRenderer::new(window.as_ref(), size.width, size.height) }
         };
 
+        let event_callbacks = CallbackEmitter::new();
         let builder = self.builder.take().unwrap();
         let mut state = AppState {
             window: window.clone(),
             style_loader: self.style_loader,
             mouse_position: Vec2::ZERO,
             modifiers: Modifiers::default(),
-            root: builder(),
+            root: builder(&event_sink, &event_callbacks),
             frame: Frame::new(),
             clear_color: self.clear_color,
             event_sink: event_sink.clone(),
+            event_callbacks,
             image_cache: ImageCache::new(),
             cursor_icon: Cursor::Default,
             #[cfg(feature = "wgpu")]

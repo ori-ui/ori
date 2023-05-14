@@ -11,7 +11,7 @@ pub use sink::*;
 pub use window::*;
 
 use std::{
-    any::Any,
+    any::{Any, TypeId},
     fmt::Debug,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -21,13 +21,16 @@ use std::{
 
 use crate::SendSync;
 
+#[cfg(feature = "multi-thread")]
+type EventInner = dyn Any + Send + Sync;
+#[cfg(not(feature = "multi-thread"))]
+type EventInner = dyn Any;
+
 #[derive(Clone)]
 pub struct Event {
-    #[cfg(feature = "multi-thread")]
-    inner: Arc<dyn Any + Send + Sync>,
-    #[cfg(not(feature = "multi-thread"))]
-    inner: Arc<dyn Any>,
+    inner: Arc<EventInner>,
     is_handled: Arc<AtomicBool>,
+    type_name: &'static str,
 }
 
 impl Event {
@@ -35,6 +38,7 @@ impl Event {
         Self {
             inner: Arc::new(event),
             is_handled: Arc::new(AtomicBool::new(false)),
+            type_name: std::any::type_name::<T>(),
         }
     }
 
@@ -44,6 +48,14 @@ impl Event {
 
     pub fn handle(&self) {
         self.is_handled.store(true, Ordering::Release);
+    }
+
+    pub const fn type_name(&self) -> &'static str {
+        self.type_name
+    }
+
+    pub fn type_id(&self) -> TypeId {
+        self.inner.as_ref().type_id()
     }
 
     pub fn is<T: Any>(&self) -> bool {
@@ -59,6 +71,7 @@ impl Debug for Event {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Event")
             .field("is_handled", &self.is_handled())
+            .field("type_name", &self.type_name)
             .finish()
     }
 }

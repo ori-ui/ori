@@ -49,7 +49,7 @@ impl Slider {
 
         let value = self.value.cloned();
         let range = self.max - self.min;
-        let t = (value - self.min) / range;
+        let t = f32::clamp((value - self.min) / range, 0.0, 1.0);
 
         let track_rect = Self::track_rect(cx);
         let track_size = axis.minor(track_rect.size());
@@ -130,9 +130,10 @@ impl View for Slider {
         let axis = cx.style::<Axis>("direction");
         let track_size = cx.style_range("track-size", 0.0..axis.minor(bc.max));
         let knob_size = cx.style_range("knob-size", 0.0..axis.minor(bc.max));
+        let length = cx.style_range("length", 0.0..axis.major(bc.max));
 
         let size = f32::max(track_size, knob_size);
-        cx.style_constraints(bc).constrain(Vec2::splat(size))
+        cx.style_constraints(bc).constrain(axis.pack(length, size))
     }
 
     #[tracing::instrument(name = "Slider", skip(self, cx))]

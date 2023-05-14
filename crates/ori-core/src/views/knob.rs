@@ -98,8 +98,8 @@ impl View for Knob {
 
         let range = self.max - self.min;
         let value = self.value.get();
-        let angle = (*value - self.min) / range;
-        let angle = -PI * 1.25 + angle * PI * 1.5;
+        let t = f32::clamp((*value - self.min) / range, 0.0, 1.0);
+        let angle = -PI * 1.25 + t * PI * 1.5;
 
         let ring = Curve::arc_center_angle(cx.rect().center(), diameter * 0.65, -PI * 1.25, angle);
         let mesh = ring.rounded_mesh(diameter * 0.075, cx.style("color"));

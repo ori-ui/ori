@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    any::Any,
     iter::FilterMap,
     marker::PhantomData,
     mem,
@@ -8,7 +8,10 @@ use std::{
     vec::IntoIter,
 };
 
-use crate::{Lock, Lockable, ReadSignal, SendSync, Sendable, Shared, SharedSignal, Signal};
+use crate::{
+    Callback, CallbackEmitter, Event, EventSink, Lock, Lockable, ReadSignal, SendSync, Sendable,
+    Shared, SharedSignal, Signal,
+};
 
 trait Item {}
 impl<T> Item for T {}
@@ -150,20 +153,28 @@ struct RawScope<'a> {
     drop_lock: AtomicUsize,
 
     /// A list of child scopes.
-    children: RefCell<Sparse<*mut RawScope<'a>>>,
+    children: Lock<Sparse<*mut RawScope<'a>>>,
+
+    /// The event sink that is used to send events to application.
+    event_sink: &'a EventSink,
+
+    /// A list of event callbacks.
+    event_callbacks: &'a CallbackEmitter<Event>,
 
     /// A marker that ensures that 'a is invariant
     marker: PhantomData<&'a mut &'a ()>,
 }
 
 impl<'a> RawScope<'a> {
-    fn new() -> Self {
+    fn new(event_sink: &'a EventSink, event_callbacks: &'a CallbackEmitter<Event>) -> Self {
         Self {
             arena: ScopeArena::default(),
             effects: ScopeArena::default(),
             parent: None,
             drop_lock: AtomicUsize::new(0),
-            children: RefCell::new(Sparse::new()),
+            children: Lock::new(Sparse::new()),
+            event_sink,
+            event_callbacks,
             marker: PhantomData,
         }
     }
@@ -174,13 +185,15 @@ impl<'a> RawScope<'a> {
             effects: ScopeArena::default(),
             parent: Some(parent),
             drop_lock: AtomicUsize::new(0),
-            children: RefCell::new(Sparse::new()),
+            children: Lock::new(Sparse::new()),
+            event_sink: parent.event_sink,
+            event_callbacks: parent.event_callbacks,
             marker: PhantomData,
         }
     }
 
     fn push_child(&self, child: *mut RawScope<'a>) -> usize {
-        let mut children = self.children.borrow_mut();
+        let mut children = self.children.lock_mut();
         children.insert(child)
     }
 
@@ -193,7 +206,7 @@ impl<'a> RawScope<'a> {
     }
 
     fn is_child_scope_drop_locked(&self, index: usize) -> bool {
-        let children = self.children.borrow();
+        let children = self.children.lock_mut();
         if let Some(&child) = children.get(index) {
             let child = unsafe { &*child };
             child.is_drop_locked()
@@ -203,14 +216,14 @@ impl<'a> RawScope<'a> {
     }
 
     fn is_child_scopes_drop_locked(&self) -> bool {
-        self.children.borrow().iter().any(|&child| {
+        self.children.lock_mut().iter().any(|&child| {
             let child = unsafe { &*child };
             child.is_drop_locked()
         })
     }
 
     unsafe fn dispose(&self) {
-        let mut children = self.children.borrow_mut();
+        let mut children = self.children.lock_mut();
 
         for child in mem::take(&mut *children).into_iter() {
             let cx = Box::from_raw(child);
@@ -245,8 +258,12 @@ impl<'a> Scope<'a> {
     /// This function returns a [`ScopeDisposer`] that must be used to dispose of the scope.
     /// If the disposer is not used, the scope will leak memory.
     #[must_use = "not calling `dispose` will leak memory"]
-    pub fn new(f: impl FnOnce(Scope<'a>) + 'a) -> ScopeDisposer<'a> {
-        let raw = Box::into_raw(Box::new(RawScope::new()));
+    pub fn new(
+        event_sink: &'a EventSink,
+        event_callbacks: &'a CallbackEmitter<Event>,
+        f: impl FnOnce(Scope<'a>) + 'a,
+    ) -> ScopeDisposer<'a> {
+        let raw = Box::into_raw(Box::new(RawScope::new(event_sink, event_callbacks)));
         let scope = Scope {
             raw: unsafe { &*raw },
             marker: PhantomData,
@@ -264,8 +281,12 @@ impl<'a> Scope<'a> {
     }
 
     /// Creates a new scope and immediately disposes it.
-    pub fn immediate(f: impl FnOnce(Scope<'a>) + 'a) {
-        let disposer = Self::new(f);
+    pub fn immediate(
+        event_sink: &'a EventSink,
+        event_callbacks: &'a CallbackEmitter<Event>,
+        f: impl FnOnce(Scope<'a>) + 'a,
+    ) {
+        let disposer = Self::new(event_sink, event_callbacks, f);
 
         // SAFETY: the scope is not accessed after this point.
         unsafe { disposer.dispose() };
@@ -343,7 +364,7 @@ impl<'a> Scope<'a> {
     ///
     /// ```
     /// # use ori_core::*;
-    /// # Scope::immediate(|cx| {
+    /// # Scope::immediate(&EventSink::dummy(), |cx| {
     /// let signal = cx.signal(0);
     ///
     /// cx.effect(|| {
@@ -384,7 +405,7 @@ impl<'a> Scope<'a> {
     ///
     /// ```
     /// # use ori_core::*;
-    /// # Scope::immediate(|cx| {
+    /// # Scope::immediate(&EventSink::dummy(), |cx| {
     /// let signal = cx.signal(0);
     ///
     /// let memo = cx.memo(|| *signal.get() * 2);
@@ -466,6 +487,22 @@ impl<'a> Scope<'a> {
             }
         });
     }
+
+    /// Creates an effect that will run whenever a [`Event`] is emitted.
+    ///
+    /// Use [`Scope::emit_event`] to emit an event.
+    pub fn on_event(self, f: impl FnMut(&Event) + Sendable + 'a) {
+        let callback = Callback::new(f);
+        self.raw.event_callbacks.subscribe(&callback);
+        unsafe { self.alloc_effect(callback) };
+    }
+
+    /// Emits an [`Event`].
+    ///
+    /// Use [`Scope::on_event`] to listen for events.
+    pub fn emit_event(&self, event: impl Any + SendSync) {
+        self.raw.event_sink.emit(event);
+    }
 }
 
 #[derive(Debug)]
@@ -519,7 +556,7 @@ impl<'a> ScopeDisposer<'a> {
                 cx.dispose();
             }
             ScopeDisposerInner::Child { parent, index } => {
-                let mut children = parent.children.borrow_mut();
+                let mut children = parent.children.lock_mut();
                 let child = children.remove(index).unwrap();
                 // SAFETY: `child` is the only reference to the scope.
                 let cx = Box::from_raw(child);
@@ -535,7 +572,7 @@ mod tests {
 
     #[test]
     fn test_signal() {
-        Scope::immediate(|cx| {
+        Scope::immediate(&EventSink::dummy(), &Default::default(), |cx| {
             let signal = cx.signal(0);
 
             let cell = cx.alloc(Lock::new(0));
@@ -550,7 +587,7 @@ mod tests {
 
     #[test]
     fn test_memo() {
-        Scope::immediate(|cx| {
+        Scope::immediate(&EventSink::dummy(), &Default::default(), |cx| {
             let signal = cx.signal(0);
 
             let memo = cx.memo(|| *signal.get() + 1);

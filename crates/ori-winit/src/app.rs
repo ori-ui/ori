@@ -7,8 +7,8 @@ use std::{
 
 use ori_core::{
     CallbackEmitter, Cursor, Event, EventEmitter, EventSink, ImageCache, KeyboardEvent,
-    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Scope, StyleLoader,
-    Stylesheet, Vec2, View,
+    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Scope, StyleCache,
+    StyleLoader, Stylesheet, Vec2, View,
 };
 use ori_graphics::{Color, Frame};
 use winit::{
@@ -203,6 +203,7 @@ struct AppState {
     event_sink: EventSink,
     event_callbacks: CallbackEmitter<Event>,
     image_cache: ImageCache,
+    style_cache: StyleCache,
     cursor_icon: Cursor,
     #[cfg(feature = "wgpu")]
     renderer: ori_wgpu::WgpuRenderer,
@@ -227,6 +228,7 @@ impl AppState {
         self.cursor_icon = Cursor::Default;
         self.root.event_root(
             self.style_loader.style(),
+            &mut self.style_cache,
             &self.renderer,
             &self.event_sink,
             event,
@@ -245,6 +247,7 @@ impl AppState {
         self.cursor_icon = Cursor::Default;
         self.root.layout_root(
             style,
+            &mut self.style_cache,
             &self.renderer,
             size,
             &self.event_sink,
@@ -268,6 +271,7 @@ impl AppState {
         self.cursor_icon = Cursor::Default;
         self.root.draw_root(
             style,
+            &mut self.style_cache,
             &mut self.frame,
             &self.renderer,
             &self.event_sink,
@@ -307,6 +311,7 @@ impl App {
             event_sink: event_sink.clone(),
             event_callbacks,
             image_cache: ImageCache::new(),
+            style_cache: StyleCache::new(),
             cursor_icon: Cursor::Default,
             #[cfg(feature = "wgpu")]
             renderer,

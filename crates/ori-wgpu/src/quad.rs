@@ -9,17 +9,15 @@ use wgpu::{
     vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState, Buffer,
     BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites,
-    CommandEncoder, Device, FragmentState, IndexFormat, LoadOp, MultisampleState, Operations,
-    PipelineLayoutDescriptor, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, ShaderStages, TextureFormat, TextureView, VertexBufferLayout,
-    VertexStepMode,
+    CommandEncoder, Device, FragmentState, IndexFormat, MultisampleState, PipelineLayoutDescriptor,
+    RenderPass, RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat,
+    VertexBufferLayout, VertexStepMode,
 };
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 struct QuadUniforms {
     resolution: Vec2,
-    depth: f32,
 }
 
 #[repr(C)]
@@ -34,13 +32,64 @@ struct QuadVertex {
     border_width: f32,
 }
 
+#[derive(Debug)]
+struct Instance {
+    vertex_buffer: Buffer,
+    clip: Rect,
+}
+
+impl Instance {
+    fn new(device: &Device) -> Self {
+        Self {
+            vertex_buffer: QuadPipeline::create_vertex_buffer(device),
+            clip: Rect::ZERO,
+        }
+    }
+
+    fn write_vertex_buffer(
+        &self,
+        device: &Device,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        quad: &Quad,
+    ) {
+        let vertices = QuadPipeline::quad_mesh(quad);
+        let bytes = bytemuck::cast_slice(&vertices);
+
+        let mut buffer = staging_belt.write_buffer(
+            encoder,
+            &self.vertex_buffer,
+            0,
+            NonZeroU64::new(bytes.len() as u64).unwrap(),
+            device,
+        );
+        buffer.copy_from_slice(bytes);
+    }
+}
+
+#[derive(Default, Debug)]
+struct Layer {
+    instances: Vec<Instance>,
+    instance_count: usize,
+}
+
+impl Layer {
+    const fn new() -> Self {
+        Self {
+            instances: Vec::new(),
+            instance_count: 0,
+        }
+    }
+}
+
 pub struct QuadPipeline {
-    pub bind_group_layout: BindGroupLayout,
-    pub uniform_buffer: Buffer,
-    pub uniform_bind_group: BindGroup,
-    pub pipeline: RenderPipeline,
-    pub vertex_buffer: Buffer,
-    pub index_buffer: Buffer,
+    #[allow(dead_code)]
+    bind_group_layout: BindGroupLayout,
+    uniform_buffer: Buffer,
+    uniform_bind_group: BindGroup,
+    pipeline: RenderPipeline,
+    index_buffer: Buffer,
+    layers: Vec<Layer>,
 }
 
 impl QuadPipeline {
@@ -121,7 +170,6 @@ impl QuadPipeline {
             multiview: None,
         });
 
-        let vertex_buffer = Self::create_vertex_buffer(device);
         let index_buffer = Self::create_index_buffer(device);
 
         Self {
@@ -129,8 +177,8 @@ impl QuadPipeline {
             uniform_buffer,
             pipeline,
             uniform_bind_group,
-            vertex_buffer,
             index_buffer,
+            layers: Vec::new(),
         }
     }
 
@@ -201,11 +249,9 @@ impl QuadPipeline {
         staging_belt: &mut StagingBelt,
         width: u32,
         height: u32,
-        depth: f32,
     ) {
         let uniforms = QuadUniforms {
             resolution: Vec2::new(width as f32, height as f32),
-            depth,
         };
 
         let bytes = bytemuck::bytes_of(&uniforms);
@@ -220,68 +266,56 @@ impl QuadPipeline {
         buffer.copy_from_slice(bytes);
     }
 
-    fn write_vertex_buffer(
-        &self,
+    pub fn prepare(
+        &mut self,
         device: &Device,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
-        quad: &Quad,
-    ) {
-        let vertices = Self::quad_mesh(quad);
-        let bytes = bytemuck::cast_slice(&vertices);
-
-        let mut buffer = staging_belt.write_buffer(
-            encoder,
-            &self.vertex_buffer,
-            0,
-            NonZeroU64::new(bytes.len() as u64).unwrap(),
-            device,
-        );
-        buffer.copy_from_slice(bytes);
-    }
-
-    pub fn render(
-        &self,
-        device: &Device,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
-        view: &TextureView,
-        msaa: &TextureView,
         width: u32,
         height: u32,
-        quad: &Quad,
-        depth: f32,
-        clip: Option<Rect>,
+        layer: usize,
+        quads: &[(&Quad, Option<Rect>)],
     ) {
-        self.write_uniform_buffer(device, encoder, staging_belt, width, height, depth);
-        self.write_vertex_buffer(device, encoder, staging_belt, quad);
+        self.write_uniform_buffer(device, encoder, staging_belt, width, height);
 
-        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("Quad Render Pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &msaa,
-                resolve_target: Some(view),
-                ops: Operations {
-                    load: LoadOp::Load,
-                    store: true,
-                },
-            })],
-            depth_stencil_attachment: None,
-        });
-
-        if let Some(clip) = clip {
-            pass.set_scissor_rect(
-                clip.min.x as u32,
-                clip.min.y as u32,
-                clip.width() as u32,
-                clip.height() as u32,
-            );
+        if layer >= self.layers.len() {
+            self.layers.resize_with(layer + 1, Layer::new);
         }
+
+        let layer = &mut self.layers[layer];
+        layer.instance_count = quads.len();
+
+        if quads.len() > layer.instances.len() {
+            (layer.instances).resize_with(quads.len(), || Instance::new(device));
+        }
+
+        for ((quad, clip), instance) in quads.into_iter().zip(&mut layer.instances) {
+            instance.clip = match clip {
+                Some(clip) => *clip,
+                None => Rect::new(Vec2::ZERO, Vec2::new(width as f32, height as f32)),
+            };
+
+            instance.write_vertex_buffer(device, encoder, staging_belt, quad);
+        }
+    }
+
+    pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, layer: usize) {
+        let layer = &self.layers[layer];
 
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
-        pass.draw_indexed(0..6, 0, 0..1);
+
+        for instance in &layer.instances[..layer.instance_count] {
+            pass.set_scissor_rect(
+                instance.clip.min.x as u32,
+                instance.clip.min.y as u32,
+                instance.clip.width() as u32,
+                instance.clip.height() as u32,
+            );
+
+            pass.set_vertex_buffer(0, instance.vertex_buffer.slice(..));
+            pass.draw_indexed(0..6, 0, 0..1);
+        }
     }
 }

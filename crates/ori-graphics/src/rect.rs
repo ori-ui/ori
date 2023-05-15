@@ -85,6 +85,21 @@ impl Rect {
         }
     }
 
+    pub fn intersect(self, other: Self) -> Self {
+        if self.min.x > other.max.x
+            || self.max.x < other.min.x
+            || self.min.y > other.max.y
+            || self.max.y < other.min.y
+        {
+            return Self::ZERO;
+        }
+
+        Self {
+            min: self.min.max(other.min),
+            max: self.max.min(other.max),
+        }
+    }
+
     pub fn left(self) -> f32 {
         self.min.x
     }

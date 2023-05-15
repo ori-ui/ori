@@ -69,9 +69,12 @@ impl Mesh {
             let y = angle.sin();
             let vertex = Vertex::new_color(center.position + Vec2::new(x, y) * radius, color);
             mesh.vertices.push(vertex);
-            mesh.indices.push(0);
-            mesh.indices.push(i as u32 + 1);
-            mesh.indices.push(i as u32 + 2);
+
+            if i < 60 {
+                mesh.indices.push(0);
+                mesh.indices.push(i as u32 + 1);
+                mesh.indices.push(i as u32 + 2);
+            }
         }
 
         mesh

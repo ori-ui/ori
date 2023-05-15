@@ -53,7 +53,7 @@ pub struct TextSection {
     pub v_align: TextAlign,
     pub wrap: bool,
     pub text: String,
-    pub font: Option<String>,
+    pub font_family: Option<String>,
     pub color: Color,
 }
 
@@ -66,7 +66,7 @@ impl Default for TextSection {
             v_align: TextAlign::Start,
             wrap: true,
             text: String::new(),
-            font: None,
+            font_family: None,
             color: Color::BLACK,
         }
     }

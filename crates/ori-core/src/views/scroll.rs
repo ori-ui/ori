@@ -196,7 +196,7 @@ impl View for Scroll {
             border_color: cx.style("scrollbar-track-border-color"),
         };
 
-        cx.layer().depth(100.0).draw(|cx| {
+        cx.layer().z_index(100.0).draw(|cx| {
             cx.draw(quad);
         });
 
@@ -211,7 +211,7 @@ impl View for Scroll {
             border_color: cx.style("scrollbar-border-color"),
         };
 
-        cx.layer().depth(100.0).draw(|cx| {
+        cx.layer().z_index(100.0).draw(|cx| {
             cx.draw(quad);
         });
     }

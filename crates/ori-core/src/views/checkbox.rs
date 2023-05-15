@@ -80,7 +80,7 @@ impl View for Checkbox {
                 h_align: TextAlign::Center,
                 v_align: TextAlign::Center,
                 text: String::from(Self::CHECKMARK),
-                font: Some(String::from("icon")),
+                font_family: Some(String::from("Material Icons")),
                 color: cx.style("color"),
                 ..Default::default()
             };

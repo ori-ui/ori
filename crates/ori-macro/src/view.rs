@@ -103,8 +103,10 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
         Node::Block(block) => {
             let expr = block.value.as_ref();
             quote_spanned!(expr.span() =>
-                #[allow(unused_braces)]
-                #expr
+                #ori_core::BoundedScope::shared_memo_scoped(#context, move |#context| {
+                    let into_view = #expr;
+                    #ori_core::IntoView::into_view(into_view)
+                })
             )
         }
         Node::Comment(comment) => {
@@ -185,7 +187,7 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
     let mut pairs = punct.pairs();
 
     let pair = pairs.next().unwrap();
-    let kind = pair.value().clone();
+    let kind = pair.value();
 
     if pair.punct().unwrap().as_char() != ':' {
         abort!(punct, "expected ':'");
@@ -193,7 +195,7 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
 
     let mut key = String::new();
     for pair in pairs {
-        let ident = pair.value().clone();
+        let ident = pair.value();
 
         key.push_str(&ident.to_string());
 

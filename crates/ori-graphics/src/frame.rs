@@ -28,20 +28,20 @@ impl From<Mesh> for PrimitiveKind {
 #[derive(Clone, Debug)]
 pub struct Primitive {
     pub kind: PrimitiveKind,
-    pub depth: f32,
+    pub z_index: f32,
     pub clip: Option<Rect>,
 }
 
 pub struct Frame {
     primitives: Vec<Primitive>,
-    depth: f32,
+    z_index: f32,
     clip: Option<Rect>,
 }
 
 impl Frame {
     pub fn new() -> Self {
         Self {
-            depth: 0.0,
+            z_index: 0.0,
             primitives: Vec::new(),
             clip: None,
         }
@@ -51,8 +51,8 @@ impl Frame {
         self.primitives.clear();
     }
 
-    pub fn depth(&self) -> f32 {
-        self.depth
+    pub fn z_index(&self) -> f32 {
+        self.z_index
     }
 
     pub fn clip(&self) -> Option<Rect> {
@@ -62,7 +62,7 @@ impl Frame {
     pub fn draw(&mut self, primitive: impl Into<PrimitiveKind>) {
         self.draw_primitive(Primitive {
             kind: primitive.into(),
-            depth: self.depth,
+            z_index: self.z_index,
             clip: self.clip,
         });
     }
@@ -74,7 +74,7 @@ impl Frame {
     pub fn layer(&mut self) -> Layer<'_> {
         Layer {
             frame: self,
-            depth: 1.0,
+            z_index: 1.0,
             clip: None,
         }
     }
@@ -90,13 +90,13 @@ impl Frame {
 
 pub struct Layer<'a> {
     frame: &'a mut Frame,
-    depth: f32,
+    z_index: f32,
     clip: Option<Rect>,
 }
 
 impl<'a> Layer<'a> {
-    pub fn depth(mut self, depth: f32) -> Self {
-        self.depth = depth;
+    pub fn z_index(mut self, z_index: f32) -> Self {
+        self.z_index = z_index;
         self
     }
 
@@ -106,7 +106,7 @@ impl<'a> Layer<'a> {
     }
 
     pub fn draw(self, f: impl FnOnce(&mut Frame)) {
-        self.frame.depth += self.depth;
+        self.frame.z_index += self.z_index;
 
         if let Some(clip) = self.clip {
             let old_clip = self.frame.clip;
@@ -117,6 +117,6 @@ impl<'a> Layer<'a> {
             f(self.frame);
         }
 
-        self.frame.depth -= self.depth;
+        self.frame.z_index -= self.z_index;
     }
 }

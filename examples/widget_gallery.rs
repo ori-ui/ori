@@ -56,7 +56,6 @@ fn ui(cx: Scope) -> impl View {
 fn main() {
     App::new(|cx| ui(cx)) // create a new app with the ui function
         .title("Widget Gallery (examples/widget_gallery.rs)") // set the window title
-        .night_theme()
         .style("examples/style/widget-gallery.css") // load a custom stylesheet
         .run(); // run the app
 }

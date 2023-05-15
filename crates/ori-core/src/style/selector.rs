@@ -68,13 +68,13 @@ impl AddAssign for StyleSpecificity {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StyleSelectors {
     /// The element name.
-    pub selectors: SmallVec<[StyleSelector; 1]>,
+    pub selectors: Vec<StyleSelector>,
 }
 
 impl StyleSelectors {
     pub const fn new() -> Self {
         Self {
-            selectors: SmallVec::new_const(),
+            selectors: Vec::new(),
         }
     }
 
@@ -131,7 +131,7 @@ impl StyleSelectors {
 
 impl IntoIterator for StyleSelectors {
     type Item = StyleSelector;
-    type IntoIter = smallvec::IntoIter<[Self::Item; 1]>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.selectors.into_iter()
@@ -220,7 +220,7 @@ impl Display for StyleSelector {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StyleClasses {
-    classes: SmallVec<[StyleClass; 4]>,
+    classes: SmallVec<[StyleClass; 2]>,
 }
 
 impl StyleClasses {
@@ -264,7 +264,7 @@ impl StyleClasses {
 
 impl IntoIterator for StyleClasses {
     type Item = SmolStr;
-    type IntoIter = smallvec::IntoIter<[SmolStr; 4]>;
+    type IntoIter = smallvec::IntoIter<[SmolStr; 2]>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.classes.into_iter()
@@ -292,7 +292,7 @@ impl Display for StyleClasses {
 /// A list of style states.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StyleStates {
-    elements: SmallVec<[SmolStr; 4]>,
+    elements: SmallVec<[SmolStr; 3]>,
 }
 
 impl StyleStates {
@@ -308,7 +308,7 @@ impl StyleStates {
         self.elements.len()
     }
 
-    /// Returns true if the list is empSharedty.
+    /// Returns true if the list is empty.
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
     }
@@ -348,7 +348,7 @@ impl StyleStates {
 
 impl IntoIterator for StyleStates {
     type Item = SmolStr;
-    type IntoIter = smallvec::IntoIter<[Self::Item; 4]>;
+    type IntoIter = smallvec::IntoIter<[Self::Item; 3]>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.elements.into_iter()

@@ -1,5 +1,4 @@
-use dashmap::DashMap;
-use smol_str::SmolStr;
+use nohash_hasher::IntMap;
 
 use crate::{StyleAttribute, StyleSelectors, StyleSpecificity};
 
@@ -16,7 +15,7 @@ impl StyleSelectorsHash {
     pub fn new(selectors: &StyleSelectors) -> Self {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = fxhash::FxHasher::default();
+        let mut hasher = twox_hash::XxHash::default();
         Hash::hash(&selectors, &mut hasher);
 
         Self {
@@ -25,13 +24,17 @@ impl StyleSelectorsHash {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct StyleCache {
-    attributes: DashMap<
-        (StyleSelectorsHash, SmolStr),
-        Option<(StyleAttribute, StyleSpecificity)>,
-        fxhash::FxBuildHasher,
-    >,
+    attributes: IntMap<u64, Option<(StyleAttribute, StyleSpecificity)>>,
+}
+
+impl Clone for StyleCache {
+    fn clone(&self) -> Self {
+        Self {
+            attributes: self.attributes.clone(),
+        }
+    }
 }
 
 impl StyleCache {
@@ -39,24 +42,45 @@ impl StyleCache {
         Self::default()
     }
 
-    pub fn clear(&self) {
+    pub fn clear(&mut self) {
+        tracing::trace!("Clearing style cache");
         self.attributes.clear();
     }
 
+    fn hash(hash: StyleSelectorsHash, key: &str) -> u64 {
+        use std::hash::{Hash, Hasher};
+
+        let mut hasher = twox_hash::XxHash::default();
+        Hash::hash(key, &mut hasher);
+
+        hasher.finish() ^ hash.hash
+    }
+
     pub fn insert(
-        &self,
+        &mut self,
         hash: StyleSelectorsHash,
         attribute: StyleAttribute,
         specificity: StyleSpecificity,
     ) {
-        self.attributes.insert(
-            (hash, attribute.key().clone()),
-            Some((attribute, specificity)),
-        );
+        let hash = Self::hash(hash, attribute.key());
+
+        #[cfg(debug_assertions)]
+        {
+            if self.attributes.contains_key(&hash) {
+                tracing::warn!(
+                    "Overwriting style cache entry for {}, this might be a hash collision",
+                    attribute.key()
+                );
+            }
+        }
+
+        self.attributes.insert(hash, Some((attribute, specificity)));
     }
 
-    pub fn insert_none(&self, hash: StyleSelectorsHash, key: SmolStr) {
-        self.attributes.insert((hash, key), None);
+    pub fn insert_none(&mut self, hash: StyleSelectorsHash, key: &str) {
+        let hash = Self::hash(hash, &key);
+
+        self.attributes.insert(hash, None);
     }
 
     pub fn get_attribute(
@@ -64,7 +88,9 @@ impl StyleCache {
         hash: StyleSelectorsHash,
         key: &str,
     ) -> Option<Option<(StyleAttribute, StyleSpecificity)>> {
-        match self.attributes.get(&(hash, key.into())) {
+        let hash = Self::hash(hash, key);
+
+        match self.attributes.get(&hash) {
             Some(result) => Some(result.clone()),
             None => None,
         }

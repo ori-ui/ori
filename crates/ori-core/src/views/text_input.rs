@@ -87,7 +87,7 @@ impl TextInput {
             v_align: cx.style("text-valign"),
             wrap: cx.style("text-wrap"),
             text: self.display_text(),
-            font: cx.style("font"),
+            font_family: cx.style("font-family"),
             color,
         }
     }
@@ -100,7 +100,7 @@ impl TextInput {
             v_align: cx.style("text-valign"),
             wrap: cx.style("text-wrap"),
             text: self.text.cloned(),
-            font: cx.style("font"),
+            font_family: cx.style("font-family"),
             ..Default::default()
         }
     }
@@ -380,7 +380,9 @@ impl View for TextInput {
                 ..Quad::default()
             };
 
-            cx.draw(quad);
+            cx.draw_layer(|cx| {
+                cx.draw(quad);
+            });
         }
     }
 }

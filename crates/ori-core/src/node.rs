@@ -7,8 +7,8 @@ use uuid::Uuid;
 use crate::{
     AnyView, BoxConstraints, Context, Cursor, DrawContext, Event, EventContext, EventSink, Guard,
     ImageCache, IntoView, LayoutContext, Lock, Lockable, Margin, PointerEvent, RequestRedrawEvent,
-    Shared, SharedSignal, Style, StyleSelector, StyleSelectors, StyleStates, StyleTransition,
-    Stylesheet, TransitionStates, View,
+    Shared, SharedSignal, Style, StyleCache, StyleSelector, StyleSelectors, StyleStates,
+    StyleTransition, Stylesheet, TransitionStates, View,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -329,11 +329,12 @@ impl<T: View> Node<T> {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = EventContext {
-                style: cx.style,
                 state: node_state,
                 renderer: cx.renderer,
                 selectors: &selectors,
-                hash: selectors.hash(),
+                selectors_hash: selectors.hash(),
+                style: cx.style,
+                style_cache: cx.style_cache,
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
                 cursor: cx.cursor,
@@ -360,11 +361,12 @@ impl<T: View> Node<T> {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = LayoutContext {
-                style: cx.style,
                 state: node_state,
                 renderer: cx.renderer,
                 selectors: &selectors,
-                hash: selectors.hash(),
+                selectors_hash: selectors.hash(),
+                style: cx.style,
+                style_cache: cx.style_cache,
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
                 cursor: cx.cursor,
@@ -404,12 +406,13 @@ impl<T: View> Node<T> {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = DrawContext {
-                style: cx.style,
                 state: node_state,
                 frame: cx.frame,
                 renderer: cx.renderer,
                 selectors: &selectors,
-                hash: selectors.hash(),
+                selectors_hash: selectors.hash(),
+                style: cx.style,
+                style_cache: cx.style_cache,
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
                 cursor: cx.cursor,
@@ -439,6 +442,7 @@ impl<T: View> Node<T> {
     fn event_root_inner(
         inner: &NodeInner<T>,
         style: &Stylesheet,
+        style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
         event: &Event,
@@ -457,11 +461,12 @@ impl<T: View> Node<T> {
         let selector = node_state.selector();
         let selectors = StyleSelectors::new().with(selector);
         let mut cx = EventContext {
-            style,
             state: node_state,
             renderer,
             selectors: &selectors,
-            hash: selectors.hash(),
+            selectors_hash: selectors.hash(),
+            style,
+            style_cache,
             event_sink,
             image_cache,
             cursor: cursor_icon,
@@ -474,6 +479,7 @@ impl<T: View> Node<T> {
     pub fn event_root(
         &self,
         style: &Stylesheet,
+        style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
         event: &Event,
@@ -483,6 +489,7 @@ impl<T: View> Node<T> {
         Self::event_root_inner(
             &self.inner,
             style,
+            style_cache,
             renderer,
             event_sink,
             event,
@@ -494,6 +501,7 @@ impl<T: View> Node<T> {
     fn layout_root_inner(
         inner: &NodeInner<T>,
         style: &Stylesheet,
+        style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         window_size: Vec2,
         event_sink: &EventSink,
@@ -506,11 +514,12 @@ impl<T: View> Node<T> {
         let selector = node_state.selector();
         let selectors = StyleSelectors::new().with(selector);
         let mut cx = LayoutContext {
-            style,
             state: node_state,
             renderer,
             selectors: &selectors,
-            hash: selectors.hash(),
+            selectors_hash: selectors.hash(),
+            style,
+            style_cache,
             event_sink,
             image_cache,
             cursor: cursor_icon,
@@ -529,6 +538,7 @@ impl<T: View> Node<T> {
     pub fn layout_root(
         &self,
         style: &Stylesheet,
+        style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         window_size: Vec2,
         event_sink: &EventSink,
@@ -538,6 +548,7 @@ impl<T: View> Node<T> {
         Self::layout_root_inner(
             &self.inner,
             style,
+            style_cache,
             renderer,
             window_size,
             event_sink,
@@ -549,6 +560,7 @@ impl<T: View> Node<T> {
     fn draw_root_inner(
         inner: &NodeInner<T>,
         style: &Stylesheet,
+        style_cache: &mut StyleCache,
         frame: &mut Frame,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
@@ -561,12 +573,13 @@ impl<T: View> Node<T> {
         let selector = node_state.selector();
         let selectors = StyleSelectors::new().with(selector);
         let mut cx = DrawContext {
-            style,
             state: node_state,
             frame,
             renderer,
             selectors: &selectors,
-            hash: selectors.hash(),
+            selectors_hash: selectors.hash(),
+            style,
+            style_cache,
             event_sink,
             image_cache,
             cursor: cursor_icon,
@@ -581,6 +594,7 @@ impl<T: View> Node<T> {
     pub fn draw_root(
         &self,
         style: &Stylesheet,
+        style_cache: &mut StyleCache,
         frame: &mut Frame,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
@@ -590,6 +604,7 @@ impl<T: View> Node<T> {
         Self::draw_root_inner(
             &self.inner,
             style,
+            style_cache,
             frame,
             renderer,
             event_sink,

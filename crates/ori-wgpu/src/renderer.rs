@@ -1,27 +1,20 @@
-use std::cell::RefCell;
-
-use ori_core::{Mat4, Vec2};
+use ori_core::Vec2;
 use ori_graphics::{
-    Color, Frame, Glyph, ImageData, ImageHandle, Mesh, Primitive, PrimitiveKind, Quad, Rect,
-    Renderer, TextSection,
+    Color, Frame, Glyph, ImageData, ImageHandle, Primitive, PrimitiveKind, Rect, Renderer,
+    TextSection,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{
     util::{DeviceExt, StagingBelt},
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder, CompositeAlphaMode, Device,
-    Extent3d, FilterMode, Instance, LoadOp, MultisampleState, Operations, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType,
-    SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor,
-    TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureView,
-    TextureViewDimension,
-};
-use wgpu_glyph::{
-    ab_glyph::{Font, FontArc, ScaleFont},
-    GlyphBrush, GlyphBrushBuilder, GlyphCruncher,
+    Extent3d, FilterMode, Instance, LoadOp, Operations, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor,
+    ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor, TextureDimension,
+    TextureFormat, TextureSampleType, TextureUsages, TextureView, TextureViewDimension,
 };
 
-use crate::{BlitPipeline, Fonts, MeshPipeline, QuadPipeline, WgpuImage};
+use crate::{BlitPipeline, Fonts, MeshPipeline, QuadPipeline, TextPipeline, WgpuImage};
 
 const TEXT_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Medium.ttf");
 const ICON_FONT: &[u8] = include_bytes!("../fonts/MaterialIcons-Regular.ttf");
@@ -38,8 +31,8 @@ pub struct WgpuRenderer {
     blit_pipeline: BlitPipeline,
     mesh_pipeline: MeshPipeline,
     quad_pipeline: QuadPipeline,
+    text_pipeline: TextPipeline,
     fonts: Fonts,
-    glyph_brush: RefCell<GlyphBrush<()>>,
     staging_belt: StagingBelt,
 }
 
@@ -80,22 +73,11 @@ impl WgpuRenderer {
         let blit_pipeline = BlitPipeline::new(&device, config.format);
         let mesh_pipeline = MeshPipeline::new(&device, &image_bind_group_layout, config.format);
         let quad_pipeline = QuadPipeline::new(&device, config.format);
+        let text_pipeline = TextPipeline::new(&device, &queue, config.format);
 
-        let mut fonts = Fonts::default();
-        let text_font = FontArc::try_from_slice(TEXT_FONT).unwrap();
-        let icon_font = FontArc::try_from_slice(ICON_FONT).unwrap();
-
-        fonts.add_font("NotoSans");
-        fonts.add_font("icon");
-
-        let mut glyph_brush_builder = GlyphBrushBuilder::using_font(text_font);
-        glyph_brush_builder.add_font(icon_font);
-        glyph_brush_builder = glyph_brush_builder.multisample_state(MultisampleState {
-            count: 4,
-            ..Default::default()
-        });
-
-        let glyph_brush = glyph_brush_builder.build(&device, config.format);
+        let fonts = Fonts::default();
+        fonts.load_font_data(TEXT_FONT.to_vec());
+        fonts.load_font_data(ICON_FONT.to_vec());
 
         let staging_belt = StagingBelt::new(1024);
 
@@ -108,10 +90,10 @@ impl WgpuRenderer {
             blit_pipeline,
             mesh_pipeline,
             quad_pipeline,
+            text_pipeline,
             image_bind_group_layout,
             default_image,
             fonts,
-            glyph_brush: RefCell::new(glyph_brush),
             staging_belt,
         }
     }
@@ -261,151 +243,104 @@ impl WgpuRenderer {
         (self.blit_pipeline).blit(&self.device, encoder, source, target);
     }
 
-    /// Resolves the MSAA texture to the given texture view.
-    fn resolve_msaa_texture(&mut self, encoder: &mut CommandEncoder, view: &TextureView) {
-        let msaa_view = self.msaa_texture.create_view(&Default::default());
+    /// Primitives must be sorted by their z-index.
+    pub fn prepare(&mut self, encoder: &mut CommandEncoder, primitives: &[&Primitive]) -> usize {
+        let mut z_index = f32::NEG_INFINITY;
+        let mut layer = 0;
+        let mut quads = Vec::new();
+        let mut meshes = Vec::new();
+        let mut text_sections = Vec::new();
 
-        encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("Ily Resolve MSAA Texture Render Pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &msaa_view,
-                resolve_target: Some(&view),
-                ops: Operations {
-                    load: LoadOp::Load,
-                    store: true,
-                },
-            })],
-            depth_stencil_attachment: None,
-        });
-    }
+        for primitive in primitives {
+            if primitive.z_index != z_index {
+                self.quad_pipeline.prepare(
+                    &self.device,
+                    encoder,
+                    &mut self.staging_belt,
+                    self.config.width,
+                    self.config.height,
+                    layer,
+                    &quads,
+                );
 
-    fn render_quad(
-        &mut self,
-        encoder: &mut CommandEncoder,
-        view: &TextureView,
-        quad: &Quad,
-        depth: f32,
-        clip: Option<Rect>,
-    ) {
-        let msaa_view = self.msaa_texture.create_view(&Default::default());
+                self.mesh_pipeline.prepare(
+                    &self.device,
+                    encoder,
+                    &mut self.staging_belt,
+                    self.config.width,
+                    self.config.height,
+                    layer,
+                    &meshes,
+                );
 
-        self.quad_pipeline.render(
-            &self.device,
-            encoder,
-            &mut self.staging_belt,
-            view,
-            &msaa_view,
-            self.config.width,
-            self.config.height,
-            quad,
-            depth,
-            clip,
-        );
-    }
+                self.text_pipeline.prepare(
+                    &self.device,
+                    &self.queue,
+                    layer,
+                    &self.fonts,
+                    self.config.width,
+                    self.config.height,
+                    &text_sections,
+                );
 
-    fn render_mesh(
-        &mut self,
-        encoder: &mut CommandEncoder,
-        view: &TextureView,
-        mesh: &Mesh,
-        depth: f32,
-        clip: Option<Rect>,
-    ) {
-        let msaa_view = self.msaa_texture.create_view(&Default::default());
+                z_index = primitive.z_index;
+                layer += 1;
 
-        self.mesh_pipeline.render(
-            &self.device,
-            encoder,
-            &mut self.staging_belt,
-            view,
-            &msaa_view,
-            self.config.width,
-            self.config.height,
-            &self.default_image,
-            mesh,
-            depth,
-            clip,
-        );
-    }
-
-    fn render_text(
-        &mut self,
-        encoder: &mut CommandEncoder,
-        _view: &TextureView,
-        text: &TextSection,
-        clip: Option<Rect>,
-    ) {
-        let section = self.fonts.convert_section(text);
-        self.glyph_brush.borrow_mut().queue(section);
-
-        let region = if let Some(clip) = clip {
-            wgpu_glyph::Region {
-                x: clip.min.x as u32,
-                y: clip.min.y as u32,
-                width: clip.width() as u32,
-                height: clip.height() as u32,
+                quads.clear();
+                meshes.clear();
+                text_sections.clear();
             }
-        } else {
-            wgpu_glyph::Region {
-                x: 0,
-                y: 0,
-                width: self.config.width,
-                height: self.config.height,
-            }
-        };
 
-        let projection = Mat4::orthographic_rh(
-            0.0,
-            self.config.width as f32,
-            self.config.height as f32,
-            0.0,
-            -1.0,
-            1.0,
-        );
-
-        let msaa_view = self.msaa_texture.create_view(&Default::default());
-
-        self.glyph_brush
-            .borrow_mut()
-            .draw_queued_with_transform_and_scissoring(
-                &self.device,
-                &mut self.staging_belt,
-                encoder,
-                &msaa_view,
-                projection.to_cols_array(),
-                region,
-            )
-            .unwrap();
-    }
-
-    fn render_primitive(
-        &mut self,
-        encoder: &mut CommandEncoder,
-        view: &TextureView,
-        primitive: &Primitive,
-    ) {
-        match primitive.kind {
-            PrimitiveKind::Text(ref text) => {
-                self.render_text(encoder, view, text, primitive.clip);
-            }
-            PrimitiveKind::Quad(ref quad) => {
-                self.render_quad(encoder, view, quad, primitive.depth, primitive.clip);
-            }
-            PrimitiveKind::Mesh(ref mesh) => {
-                self.render_mesh(encoder, view, mesh, primitive.depth, primitive.clip);
+            match primitive.kind {
+                PrimitiveKind::Quad(ref quad) => quads.push((quad, primitive.clip)),
+                PrimitiveKind::Mesh(ref mesh) => meshes.push((mesh, primitive.clip)),
+                PrimitiveKind::Text(ref text) => text_sections.push((text, primitive.clip)),
             }
         }
+
+        self.quad_pipeline.prepare(
+            &self.device,
+            encoder,
+            &mut self.staging_belt,
+            self.config.width,
+            self.config.height,
+            layer,
+            &quads,
+        );
+
+        self.mesh_pipeline.prepare(
+            &self.device,
+            encoder,
+            &mut self.staging_belt,
+            self.config.width,
+            self.config.height,
+            layer,
+            &meshes,
+        );
+
+        self.text_pipeline.prepare(
+            &self.device,
+            &self.queue,
+            layer,
+            &self.fonts,
+            self.config.width,
+            self.config.height,
+            &text_sections,
+        );
+
+        layer
     }
 
-    pub fn render_frame(&mut self, frame: &Frame, clear_color: Color) {
-        let target = self.surface.get_current_texture().unwrap();
-        let view = target.texture.create_view(&Default::default());
+    pub fn render(
+        &self,
+        encoder: &mut CommandEncoder,
+        view: &TextureView,
+        clear_color: Color,
+        layers: usize,
+    ) {
         let msaa_view = self.msaa_texture.create_view(&Default::default());
 
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-
-        // create render pass
-        encoder.begin_render_pass(&RenderPassDescriptor {
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("Ily Render Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: &msaa_view,
@@ -423,15 +358,26 @@ impl WgpuRenderer {
             depth_stencil_attachment: None,
         });
 
-        let mut primitives: Vec<_> = frame.primitives().iter().collect();
-        primitives.sort_by(|a, b| a.depth.partial_cmp(&b.depth).unwrap());
-
-        // render primitives
-        for primitive in primitives {
-            self.render_primitive(&mut encoder, &view, primitive);
+        for layer in 0..=layers {
+            self.quad_pipeline.render(&mut pass, layer);
+            (self.mesh_pipeline).render(&mut pass, layer, &self.default_image);
+            pass.set_scissor_rect(0, 0, self.config.width, self.config.height);
+            self.text_pipeline.render(&mut pass, layer);
         }
+    }
 
-        self.resolve_msaa_texture(&mut encoder, &view);
+    pub fn render_frame(&mut self, frame: &Frame, clear_color: Color) {
+        let target = self.surface.get_current_texture().unwrap();
+        let view = target.texture.create_view(&Default::default());
+
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+
+        // create render pass
+        let mut primitives: Vec<_> = frame.primitives().iter().collect();
+        primitives.sort_by(|a, b| a.z_index.partial_cmp(&b.z_index).unwrap());
+
+        let layers = self.prepare(&mut encoder, &primitives);
+        self.render(&mut encoder, &view, clear_color, layers);
 
         // submit and present
         self.staging_belt.finish();
@@ -463,46 +409,31 @@ impl Renderer for WgpuRenderer {
         ImageHandle::new(image, data.width(), data.height())
     }
 
+    fn messure_text(&self, section: &TextSection) -> Option<Rect> {
+        let buffer = self.fonts.create_buffer(section);
+        Some(self.fonts.measure_text(section, &buffer))
+    }
+
     fn text_glyphs(&self, section: &TextSection) -> Vec<Glyph> {
-        let mut glyph_brush = self.glyph_brush.borrow_mut();
-        let font_id = if let Some(font) = &section.font {
-            self.fonts.find_font(font)
-        } else {
-            wgpu_glyph::FontId::default()
-        };
+        let position = section.rect.top_left();
+        let buffer = self.fonts.create_buffer(section);
 
-        let font = glyph_brush.fonts()[font_id.0].clone();
-        let scaled = font.into_scaled(section.scale);
-        let section = self.fonts.convert_section(section);
+        buffer
+            .layout_runs()
+            .flat_map(|run| {
+                let line_height = buffer.metrics().line_height;
+                let y = run.line_y - line_height;
 
-        let mut glyphs = Vec::new();
+                run.glyphs.iter().map(move |glyph| {
+                    let position = position + Vec2::new(glyph.x, y);
+                    let size = Vec2::new(glyph.w, line_height);
 
-        for glyph in glyph_brush.glyphs(section) {
-            let wgpu_glyph::SectionGlyph {
-                ref glyph,
-                byte_index,
-                ..
-            } = *glyph;
-
-            let min = Vec2::new(
-                glyph.position.x - scaled.h_side_bearing(glyph.id),
-                glyph.position.y - scaled.ascent(),
-            );
-            let size = Vec2::new(
-                scaled.h_advance(glyph.id),
-                scaled.ascent() - scaled.descent(),
-            );
-
-            let rect = Rect::min_size(min, size);
-
-            let glyph = Glyph {
-                rect,
-                index: byte_index,
-            };
-
-            glyphs.push(glyph);
-        }
-
-        glyphs
+                    Glyph {
+                        index: glyph.start,
+                        rect: Rect::min_size(position, size),
+                    }
+                })
+            })
+            .collect()
     }
 }

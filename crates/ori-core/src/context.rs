@@ -11,7 +11,8 @@ use ori_graphics::{
 
 use crate::{
     BoxConstraints, Cursor, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
-    StyleAttribute, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet, Unit,
+    StyleAttribute, StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet,
+    Unit,
 };
 
 /// A cache for images.
@@ -61,11 +62,12 @@ impl ImageCache {
 
 /// A context for [`View::event`].
 pub struct EventContext<'a> {
-    pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
-    pub hash: StyleSelectorsHash,
+    pub selectors_hash: StyleSelectorsHash,
+    pub style: &'a Stylesheet,
+    pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
@@ -73,11 +75,12 @@ pub struct EventContext<'a> {
 
 /// A context for [`View::layout`].
 pub struct LayoutContext<'a> {
-    pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
-    pub hash: StyleSelectorsHash,
+    pub selectors_hash: StyleSelectorsHash,
+    pub style: &'a Stylesheet,
+    pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
@@ -108,13 +111,13 @@ impl<'a> LayoutContext<'a> {
 
 pub struct DrawLayer<'a, 'b> {
     draw_context: &'b mut DrawContext<'a>,
-    depth: f32,
+    z_index: f32,
     clip: Option<Rect>,
 }
 
 impl<'a, 'b> DrawLayer<'a, 'b> {
-    pub fn depth(mut self, depth: f32) -> Self {
-        self.depth = depth;
+    pub fn z_index(mut self, depth: f32) -> Self {
+        self.z_index = depth;
         self
     }
 
@@ -128,17 +131,18 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
             .draw_context
             .frame
             .layer()
-            .depth(self.depth)
+            .z_index(self.z_index)
             .clip(self.clip);
 
         layer.draw(|frame| {
             let mut child = DrawContext {
-                style: self.draw_context.style,
                 state: self.draw_context.state,
                 frame,
                 renderer: self.draw_context.renderer,
                 selectors: self.draw_context.selectors,
-                hash: self.draw_context.hash,
+                selectors_hash: self.draw_context.selectors_hash,
+                style: self.draw_context.style,
+                style_cache: self.draw_context.style_cache,
                 event_sink: self.draw_context.event_sink,
                 image_cache: self.draw_context.image_cache,
                 cursor: self.draw_context.cursor,
@@ -151,12 +155,13 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
 
 /// A context for [`View::draw`].
 pub struct DrawContext<'a> {
-    pub style: &'a Stylesheet,
     pub state: &'a mut NodeState,
     pub frame: &'a mut Frame,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
-    pub hash: StyleSelectorsHash,
+    pub selectors_hash: StyleSelectorsHash,
+    pub style: &'a Stylesheet,
+    pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
@@ -170,7 +175,7 @@ impl<'a> DrawContext<'a> {
     pub fn layer<'b>(&'b mut self) -> DrawLayer<'a, 'b> {
         DrawLayer {
             draw_context: self,
-            depth: 1.0,
+            z_index: 1.0,
             clip: None,
         }
     }
@@ -238,55 +243,82 @@ impl<'a> DerefMut for DrawContext<'a> {
 pub trait Context {
     /// Returns the [`Stylesheet`] of the application.
     fn stylesheet(&self) -> &Stylesheet;
+
+    /// Returns the [`StyleCache`] of the application.
+    fn style_cache(&self) -> &StyleCache;
+
+    /// Returns the [`StyleCache`] of the application.
+    fn style_cache_mut(&mut self) -> &mut StyleCache;
+
     /// Returns the [`NodeState`] of the current node.
     fn state(&self) -> &NodeState;
+
     /// Returns the [`NodeState`] of the current node.
     fn state_mut(&mut self) -> &mut NodeState;
+
     /// Returns the [`Renderer`] of the application.
     fn renderer(&self) -> &dyn Renderer;
+
     /// Returns the [`StyleSelectors`] of the current node.
     fn selectors(&self) -> &StyleSelectors;
+
     /// Returns the [`StyleSelectorsHash`] of the current node.
     fn selectors_hash(&self) -> StyleSelectorsHash;
+
     /// Returns the [`EventSink`] of the application.
     fn event_sink(&self) -> &EventSink;
+
     /// Returns the [`ImageCache`] of the application.
     fn image_cache(&self) -> &ImageCache;
+
     /// Returns the [`ImageCache`] of the application.
     fn image_cache_mut(&mut self) -> &mut ImageCache;
+
     /// Returns the current [`Cursor`].
     fn cursor(&self) -> Cursor;
+
     /// Sets the [`Cursor`].
     fn set_cursor(&mut self, icon: Cursor);
 
     /// Gets the [`StyleAttribute`] for the given `key`.
-    fn get_style_attribute(&self, key: &str) -> Option<StyleAttribute> {
-        if let Some(attribute) = self.state().style.attributes.get(key) {
-            return Some(attribute.clone());
-        }
-
-        let selectors = self.selectors();
-        let hash = self.selectors_hash();
-
-        let attribute = self.stylesheet().get_attribute(selectors, hash, key)?;
-        Some(attribute.clone())
+    fn get_style_attribute(&mut self, key: &str) -> Option<StyleAttribute> {
+        self.get_style_attribute_specificity(key)
+            .map(|(attribute, _)| attribute)
     }
 
     /// Gets the [`StyleAttribute`] and [`StyleSpecificity`] for the given `key`.
     fn get_style_attribute_specificity(
-        &self,
+        &mut self,
         key: &str,
     ) -> Option<(StyleAttribute, StyleSpecificity)> {
+        // get inline style attribute
         if let Some(attribute) = self.state().style.attributes.get(key) {
             return Some((attribute.clone(), StyleSpecificity::INLINE));
         }
 
+        let hash = self.selectors_hash();
+
+        // try to get cached attribute
+        if let Some(result) = self.style_cache().get_attribute(hash, key) {
+            return result;
+        }
+
         let stylesheet = self.stylesheet();
         let selectors = self.selectors();
-        let hash = self.selectors_hash();
-        let (attribute, specificity) =
-            stylesheet.get_attribute_specificity(selectors, hash, key)?;
-        Some((attribute.clone(), specificity))
+
+        // get attribute from stylesheet
+        match stylesheet.get_attribute_specificity(selectors, key) {
+            Some((attribute, specificity)) => {
+                // cache result
+                (self.style_cache_mut()).insert(hash, attribute.clone(), specificity);
+                Some((attribute, specificity))
+            }
+            None => {
+                // cache result
+                self.style_cache_mut().insert_none(hash, key);
+                None
+            }
+        }
     }
 
     /// Gets the value of a style attribute for the given `key`.
@@ -556,6 +588,14 @@ macro_rules! context {
                 self.style
             }
 
+            fn style_cache(&self) -> &StyleCache {
+                self.style_cache
+            }
+
+            fn style_cache_mut(&mut self) -> &mut StyleCache {
+                self.style_cache
+            }
+
             fn state(&self) -> &NodeState {
                 self.state
             }
@@ -573,7 +613,7 @@ macro_rules! context {
             }
 
             fn selectors_hash(&self) -> StyleSelectorsHash {
-                self.hash
+                self.selectors_hash
             }
 
             fn event_sink(&self) -> &EventSink {

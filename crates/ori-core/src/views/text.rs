@@ -71,7 +71,7 @@ impl View for Text {
             v_align: cx.style("text-valign"),
             wrap: cx.style("text-wrap"),
             text: self.text.clone(),
-            font: cx.style("font"),
+            font_family: cx.style("font-family"),
             color: cx.style("color"),
         };
 
@@ -88,7 +88,7 @@ impl View for Text {
             v_align: cx.style("text-valign"),
             wrap: cx.style("text-wrap"),
             text: self.text.clone(),
-            font: cx.style("font"),
+            font_family: cx.style("font-family"),
             color: cx.style("color"),
         };
 

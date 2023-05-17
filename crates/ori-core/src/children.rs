@@ -79,6 +79,10 @@ impl<T: View> Default for Children<T> {
 impl<T: View> Parent for Children<T> {
     type Child = T;
 
+    fn clear_children(&mut self) {
+        self.nodes.clear();
+    }
+
     fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
     where
         I::Item: IntoNode<Self::Child, U>,

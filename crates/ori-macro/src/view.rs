@@ -80,24 +80,33 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
 
                 quote! {
                     <#name as #ori_core::Parent>::add_child(
-                        &mut __view,
+                        &mut __view_ref,
                         #child,
                     );
                 }
             });
 
-            if properties.is_empty() && attributes.is_empty() {
-                quote! {{
-                    let mut __view = <#name as ::std::default::Default>::default();
-                    #(#children)*
-                    __view
-                }}
-            } else if attributes.is_empty() {
-                quote! {{
-                    let mut __view = <#name as ::std::default::Default>::default();
-                    #(#children)*
+            let children = if children.len() > 0 {
+                quote! {
+                    #context.effect({
+                        let __view_ref = __view_ref.clone();
+                        move || {
+                            let mut __view_ref = __view_ref.lock();
+                            <#name as #ori_core::Parent>::clear_children(&mut __view_ref);
+                            #(#children)*
+                        }
+                    });
+                }
+            } else {
+                quote! {}
+            };
 
+            if attributes.is_empty() {
+                quote! {{
+                    let mut __view = <#name as ::std::default::Default>::default();
                     let __view_ref = #ori_core::ViewRef::new(__view);
+
+                    #children
                     #(#properties)*
 
                     __view_ref
@@ -107,10 +116,9 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                     let mut __view = <#name as #ori_core::Styleable<_>>::styled(
                         <#name as ::std::default::Default>::default()
                     );
-
-                    #(#children)*
-
                     let __view_ref = #ori_core::ViewRef::new(__view);
+
+                    #children
                     #(#properties)*
                     #(#attributes)*
 
@@ -121,12 +129,8 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
         Node::Block(block) => {
             let expr = block.value.as_ref();
             quote_spanned!(expr.span() =>
-                #ori_core::Scope::owned_memo_scoped(#context, move |#context| {
-                    ::std::sync::Arc::new(#ori_core::IntoView::into_view(
-                        #[allow(unused_braces)]
-                        #expr
-                    ))
-                })
+                #[allow(unused_braces)]
+                #expr
             )
         }
         Node::Comment(comment) => {

@@ -175,6 +175,10 @@ fn children(input: &DeriveInput) -> TokenStream {
             impl #ori_core::Parent for #name {
                 type Child = <#ty as #ori_core::Parent>::Child;
 
+                fn clear_children(&mut self) {
+                    self.#field_name.clear_children();
+                }
+
                 fn add_child<I: ::std::iter::IntoIterator, U: ?Sized>(
                     &mut self,
                     child: impl #ori_core::IntoChildren<I>,

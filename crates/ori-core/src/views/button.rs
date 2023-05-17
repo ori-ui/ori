@@ -34,6 +34,10 @@ impl Events for Button {
 impl Parent for Button {
     type Child = <Div as Parent>::Child;
 
+    fn clear_children(&mut self) {
+        self.content.clear_children();
+    }
+
     fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
     where
         I::Item: IntoNode<Self::Child, U>,

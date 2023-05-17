@@ -97,6 +97,8 @@ impl<T: Clone + IntoIterator> IntoChildren<T> for Signal<T> {
 pub trait Parent {
     type Child: View;
 
+    fn clear_children(&mut self);
+
     fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
     where
         I::Item: IntoNode<Self::Child, U>;

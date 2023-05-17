@@ -160,7 +160,7 @@ impl<T: View> Children<T> {
         for (i, child) in self.iter().enumerate() {
             let child_bc = BoxConstraints {
                 min: axis.pack(0.0, 0.0),
-                max: axis.pack(max_major, max_minor),
+                max: axis.pack(max_major - major, max_minor),
             };
             let size = child.layout(cx, child_bc);
             let child_minor = axis.minor(size);

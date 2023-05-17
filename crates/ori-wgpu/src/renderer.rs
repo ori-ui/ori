@@ -8,10 +8,11 @@ use wgpu::{
     util::{DeviceExt, StagingBelt},
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder, CompositeAlphaMode, Device,
-    Extent3d, FilterMode, Instance, LoadOp, Operations, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor,
-    ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor, TextureDimension,
-    TextureFormat, TextureSampleType, TextureUsages, TextureView, TextureViewDimension,
+    Extent3d, FilterMode, Instance, LoadOp, Operations, PresentMode, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType,
+    SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor,
+    TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureView,
+    TextureViewDimension,
 };
 
 use crate::{BlitPipeline, Fonts, MeshPipeline, QuadPipeline, TextPipeline, WgpuImage};
@@ -63,6 +64,7 @@ impl WgpuRenderer {
         config.format = TextureFormat::Bgra8Unorm;
         config.alpha_mode = CompositeAlphaMode::Auto;
         config.usage |= TextureUsages::TEXTURE_BINDING;
+        config.present_mode = PresentMode::Immediate;
         surface.configure(&device, &config);
 
         let msaa_texture = Self::create_msaa_texture(&device, config.format, width, height);

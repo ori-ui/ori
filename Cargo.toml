@@ -26,6 +26,7 @@ default = ["winit", "wgpu"]
 multi-thread = ["ori-core/multi-thread"]
 wgpu = ["ori-wgpu", "ori-winit/wgpu"]
 winit = ["ori-winit"]
+tracy = ["ori-winit/tracy"]
 
 [profile.dev]
 debug = false

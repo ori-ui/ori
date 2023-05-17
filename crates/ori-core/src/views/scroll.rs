@@ -106,8 +106,7 @@ impl Scroll {
             let range = end - start;
 
             let scroll = (axis.major(event.position) - start) / range;
-            let minor = axis.minor(event.position);
-            state.scroll = axis.pack(scroll.clamp(0.0, 1.0), minor);
+            state.scroll = axis.pack(scroll.clamp(0.0, 1.0), 0.0);
 
             cx.request_redraw();
 

@@ -35,6 +35,17 @@ impl StyleAttributes {
         self.attributes.push(attribute);
     }
 
+    pub fn set(&mut self, attribute: StyleAttribute) {
+        for attr in self.attributes.iter_mut() {
+            if attr.key() == attribute.key() {
+                *attr = attribute;
+                return;
+            }
+        }
+
+        self.attributes.push(attribute);
+    }
+
     pub fn extend(&mut self, attributes: impl IntoIterator<Item = StyleAttribute>) {
         self.attributes.extend(attributes);
     }

@@ -82,6 +82,17 @@ impl<T> Styled<T> {
             attributes: StyleAttributes::new(),
         }
     }
+
+    pub fn set_class(&mut self, class: impl AsRef<str>) {
+        self.classes.clear();
+
+        let classes = class.as_ref().split_whitespace().map(StyleClass::from);
+        self.classes.extend(classes);
+    }
+
+    pub fn set_attr(&mut self, key: &str, builder: impl StyleAttributeBuilder) {
+        self.attributes.set(builder.attribute(key));
+    }
 }
 
 impl<T: View> View for Styled<T> {

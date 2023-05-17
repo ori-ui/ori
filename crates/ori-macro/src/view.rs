@@ -21,9 +21,7 @@ pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let expanded = if nodes.len() == 1 {
         quote! {
-            #ori_core::Scope::owned_memo_scoped(#context, move |#context| {
-                ::std::sync::Arc::new(#(#nodes)*)
-            })
+            #(#nodes)*
         }
     } else {
         quote! {{
@@ -82,24 +80,42 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
 
                 quote! {
                     <#name as #ori_core::Parent>::add_child(
-                        &mut view,
-                        #ori_core::IntoNode::into_node(#child),
+                        &mut __view,
+                        #child,
                     );
                 }
             });
 
-            quote! {
-                #ori_core::Scope::owned_memo_scoped(#context, move |#context| {
-                    let mut view = <#name as #ori_core::Styleable<_>>::styled(
+            if properties.is_empty() && attributes.is_empty() {
+                quote! {{
+                    let mut __view = <#name as ::std::default::Default>::default();
+                    #(#children)*
+                    __view
+                }}
+            } else if attributes.is_empty() {
+                quote! {{
+                    let mut __view = <#name as ::std::default::Default>::default();
+                    #(#children)*
+
+                    let __view_ref = #ori_core::ViewRef::new(__view);
+                    #(#properties)*
+
+                    __view_ref
+                }}
+            } else {
+                quote! {{
+                    let mut __view = <#name as #ori_core::Styleable<_>>::styled(
                         <#name as ::std::default::Default>::default()
                     );
 
-                    #(#properties)*
-                    #(#attributes)*
                     #(#children)*
 
-                    ::std::sync::Arc::new(view)
-                })
+                    let __view_ref = #ori_core::ViewRef::new(__view);
+                    #(#properties)*
+                    #(#attributes)*
+
+                    __view_ref
+                }}
             }
         }
         Node::Block(block) => {
@@ -140,12 +156,14 @@ fn attribute(
     properties: &mut Vec<TokenStream>,
 ) {
     if let NodeName::Path(ref path) = attr.key {
-        if let Some(ref value) = attr.value {
-            properties.push(property(name, &path, &value));
-        } else {
-            properties.push(quote!(true));
+        let Some(ref value) = attr.value else { return };
+
+        if path.path == parse_quote!(class) {
+            attributes.push(class(context, name, &value));
+            return;
         }
 
+        properties.push(property(context, name, &path, &value));
         return;
     }
 
@@ -219,21 +237,35 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
     (kind.to_string(), key)
 }
 
-fn property(name: &NodeName, key: &ExprPath, value: &Expr) -> TokenStream {
+fn class(context: &Expr, name: &NodeName, value: &Expr) -> TokenStream {
     let ori_core = find_crate("core");
 
-    if key.path == parse_quote!(class) {
-        return quote_spanned! {value.span() =>
-            view = <#ori_core::Styled<#name> as #ori_core::Styleable<_>>::class(view, #value);
-        };
+    quote_spanned! {value.span() =>
+        #context.effect({
+            let __view_ref = __view_ref.clone();
+            move || {
+                let mut __view_ref = __view_ref.lock();
+                #ori_core::Styled::<#name>::set_class(&mut __view_ref, #value);
+            }
+        });
     }
+}
+
+fn property(context: &Expr, name: &NodeName, key: &ExprPath, value: &Expr) -> TokenStream {
+    let ori_core = find_crate("core");
 
     let key = quote_spanned! {key.path.span() =>
         #key
     };
 
     quote_spanned! {value.span() =>
-        <#name as #ori_core::Properties>::setter(&mut view).#key(#value);
+        #context.effect({
+            let __view_ref = __view_ref.clone();
+            move || {
+                let mut __view_ref = __view_ref.lock();
+                <#name as #ori_core::Properties>::setter(&mut __view_ref).#key(#value);
+            }
+        });
     }
 }
 
@@ -241,7 +273,13 @@ fn event(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStr
     let ori_core = find_crate("core");
 
     quote! {
-        <#name as #ori_core::Events>::setter(&mut view).#key(#context, #value);
+        #context.effect({
+            let __view_ref = __view_ref.clone();
+            move || {
+                let mut __view_ref = __view_ref.lock();
+                <#name as #ori_core::Events>::setter(&mut __view_ref).#key(#context, #value);
+            }
+        });
     }
 }
 
@@ -249,14 +287,26 @@ fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenS
     let ori_core = find_crate("core");
 
     quote! {
-        <#name as #ori_core::Bindings>::setter(&mut view).#key(#context, #value);
+        #context.effect({
+            let __view_ref = __view_ref.clone();
+            move || {
+                let mut __view_ref = __view_ref.lock();
+                <#name as #ori_core::Bindings>::setter(&mut __view_ref).#key(#context, #value);
+            }
+        });
     }
 }
 
-fn style(_context: &Expr, name: &NodeName, key: &str, value: &Expr) -> TokenStream {
+fn style(context: &Expr, name: &NodeName, key: &str, value: &Expr) -> TokenStream {
     let ori_core = find_crate("core");
 
     quote! {
-        view = <#ori_core::Styled<#name> as #ori_core::Styleable<_>>::attr(view, #key, #value);
+        #context.effect({
+            let __view_ref = __view_ref.clone();
+            move || {
+                let mut __view_ref = __view_ref.lock();
+                #ori_core::Styled::<#name>::set_attr(&mut __view_ref, #key, #value);
+            }
+        });
     }
 }

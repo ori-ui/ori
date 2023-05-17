@@ -238,6 +238,10 @@ impl StyleClasses {
         self.classes.is_empty()
     }
 
+    pub fn clear(&mut self) {
+        self.classes.clear();
+    }
+
     pub fn push(&mut self, class: impl Into<SmolStr>) {
         self.classes.push(class.into());
     }

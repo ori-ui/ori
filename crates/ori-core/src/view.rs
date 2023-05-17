@@ -6,8 +6,8 @@ use std::{
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, OwnedSignal,
-    RequestRedrawEvent, SendSync, Style,
+    BoxConstraints, Callback, DrawContext, Event, EventContext, Guard, LayoutContext, Lock,
+    Lockable, OwnedSignal, RequestRedrawEvent, SendSync, Shared, Style,
 };
 
 pub trait IntoView {
@@ -52,6 +52,54 @@ pub trait View: SendSync + 'static {
 
     /// Draws the view.
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {}
+}
+
+pub struct ViewRef<V: View> {
+    view: Shared<Lock<V>>,
+}
+
+impl<V: View> Clone for ViewRef<V> {
+    fn clone(&self) -> Self {
+        Self {
+            view: self.view.clone(),
+        }
+    }
+}
+
+impl<V: View> ViewRef<V> {
+    pub fn new(view: V) -> Self {
+        Self {
+            view: Shared::new(Lock::new(view)),
+        }
+    }
+
+    pub fn lock(&self) -> Guard<'_, V> {
+        self.view.lock_mut()
+    }
+}
+
+impl<V: View> View for ViewRef<V> {
+    type State = V::State;
+
+    fn build(&self) -> Self::State {
+        self.lock().build()
+    }
+
+    fn style(&self) -> Style {
+        self.lock().style()
+    }
+
+    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+        self.lock().event(state, cx, event);
+    }
+
+    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        self.lock().layout(state, cx, bc)
+    }
+
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        self.lock().draw(state, cx);
+    }
 }
 
 #[cfg(feature = "multi-thread")]
@@ -183,15 +231,15 @@ impl<V: View + SendSync> View for OwnedSignal<Arc<V>> {
     type State = (Callback<'static, ()>, V::State);
 
     fn build(&self) -> Self::State {
-        (Callback::default(), self.get_untracked().build())
+        (Callback::default(), V::build(&self.get_untracked()))
     }
 
     fn style(&self) -> Style {
-        self.get_untracked().style()
+        V::style(&self.get_untracked())
     }
 
     fn event(&self, (_, state): &mut Self::State, cx: &mut EventContext, event: &Event) {
-        self.get_untracked().event(state, cx, event);
+        V::event(&self.get_untracked(), state, cx, event);
     }
 
     fn layout(
@@ -200,7 +248,7 @@ impl<V: View + SendSync> View for OwnedSignal<Arc<V>> {
         cx: &mut LayoutContext,
         bc: BoxConstraints,
     ) -> Vec2 {
-        self.get_untracked().layout(state, cx, bc)
+        V::layout(&self.get_untracked(), state, cx, bc)
     }
 
     fn draw(&self, (callback, state): &mut Self::State, cx: &mut DrawContext) {
@@ -216,7 +264,7 @@ impl<V: View + SendSync> View for OwnedSignal<Arc<V>> {
             emitter.subscribe_weak(callback.downgrade());
         }
 
-        self.get_untracked().draw(state, cx);
+        V::draw(&self.get_untracked(), state, cx);
     }
 }
 

@@ -5,15 +5,15 @@ use ori_graphics::{Curve, Quad, Rect};
 use ori_macro::Build;
 
 use crate::{
-    BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, PointerEvent,
-    SharedSignal, Style, View,
+    BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, OwnedSignal,
+    PointerEvent, Style, View,
 };
 
 /// A knob.
 #[derive(Clone, Debug, Build)]
 pub struct Knob {
     #[bind]
-    pub value: SharedSignal<f32>,
+    pub value: OwnedSignal<f32>,
     #[prop]
     pub min: f32,
     #[prop]
@@ -23,7 +23,7 @@ pub struct Knob {
 impl Default for Knob {
     fn default() -> Self {
         Self {
-            value: SharedSignal::new(0.0),
+            value: OwnedSignal::new(0.0),
             min: 0.0,
             max: 1.0,
         }
@@ -58,8 +58,8 @@ impl View for Knob {
                     let range = self.max - self.min;
                     let delta = delta / cx.rect().width() * range * 0.15;
                     let value = self.value.get();
-                    let new_value = f32::clamp(*value + delta, self.min, self.max);
-                    if new_value != *value {
+                    let new_value = f32::clamp(value + delta, self.min, self.max);
+                    if new_value != value {
                         self.value.set(new_value);
                     }
                 }
@@ -98,7 +98,7 @@ impl View for Knob {
 
         let range = self.max - self.min;
         let value = self.value.get();
-        let t = f32::clamp((*value - self.min) / range, 0.0, 1.0);
+        let t = f32::clamp((value - self.min) / range, 0.0, 1.0);
         let angle = -PI * 1.25 + t * PI * 1.5;
 
         let ring = Curve::arc_center_angle(cx.rect().center(), diameter * 0.65, -PI * 1.25, angle);

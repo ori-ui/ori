@@ -23,8 +23,8 @@ impl Div {
 
     pub fn on_press<'a>(
         mut self,
-        cx: Scope<'a>,
-        callback: impl FnMut(&PointerEvent) + Sendable + 'a,
+        cx: Scope,
+        callback: impl FnMut(&PointerEvent) + Sendable + 'static,
     ) -> Self {
         self.on_press.bind(cx, callback);
 
@@ -33,8 +33,8 @@ impl Div {
 
     pub fn on_release<'a>(
         mut self,
-        cx: Scope<'a>,
-        callback: impl FnMut(&PointerEvent) + Sendable + 'a,
+        cx: Scope,
+        callback: impl FnMut(&PointerEvent) + Sendable + 'static,
     ) -> Self {
         self.on_release.bind(cx, callback);
 

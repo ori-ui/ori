@@ -289,10 +289,12 @@ impl QuadPipeline {
             (layer.instances).resize_with(quads.len(), || Instance::new(device));
         }
 
+        let screen_rect = Rect::new(Vec2::ZERO, Vec2::new(width as f32, height as f32));
+
         for ((quad, clip), instance) in quads.into_iter().zip(&mut layer.instances) {
             instance.clip = match clip {
-                Some(clip) => *clip,
-                None => Rect::new(Vec2::ZERO, Vec2::new(width as f32, height as f32)),
+                Some(clip) => clip.intersect(screen_rect),
+                None => screen_rect,
             };
 
             instance.write_vertex_buffer(device, encoder, staging_belt, quad);

@@ -3,15 +3,15 @@ use ori_graphics::{Quad, Rect};
 use ori_macro::Build;
 
 use crate::{
-    Axis, BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, PointerEvent,
-    SharedSignal, Style, View,
+    Axis, BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, OwnedSignal,
+    PointerEvent, Style, View,
 };
 
 #[derive(Clone, Debug, Build)]
 pub struct Slider {
     #[bind]
     #[prop]
-    pub value: SharedSignal<f32>,
+    pub value: OwnedSignal<f32>,
     #[prop]
     pub draggable: bool,
     #[prop]
@@ -25,7 +25,7 @@ pub struct Slider {
 impl Default for Slider {
     fn default() -> Self {
         Self {
-            value: SharedSignal::new(0.0),
+            value: OwnedSignal::new(0.0),
             draggable: true,
             min: 0.0,
             max: 1.0,
@@ -47,7 +47,7 @@ impl Slider {
     fn fill_rect(&self, cx: &mut impl Context) -> Rect {
         let axis = cx.style::<Axis>("direction");
 
-        let value = self.value.cloned();
+        let value = self.value.get();
         let range = self.max - self.min;
         let t = f32::clamp((value - self.min) / range, 0.0, 1.0);
 
@@ -117,7 +117,7 @@ impl View for Slider {
                     value
                 };
 
-                if value != *self.value.get() {
+                if value != self.value.get() {
                     self.value.set(value);
                     cx.request_redraw();
                 }

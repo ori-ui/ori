@@ -1,6 +1,5 @@
 use crate::{
-    Callback, CallbackEmitter, EventSignal, IntoNode, Scope, SendSync, Sendable, SharedSignal,
-    Signal, View,
+    Callback, CallbackEmitter, IntoNode, OwnedSignal, Scope, SendSync, Sendable, Signal, View,
 };
 
 pub trait Properties {
@@ -19,37 +18,19 @@ pub trait Events {
     fn setter(&mut self) -> Self::Setter<'_>;
 }
 
-pub trait BindCallback<'a> {
+pub trait BindCallback {
     type Event;
 
-    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a);
+    fn bind(&mut self, cx: Scope, callback: impl FnMut(&Self::Event) + Sendable + 'static);
 }
 
-impl<'a, T: SendSync> BindCallback<'a> for EventSignal<T> {
+impl<T: SendSync + 'static> BindCallback for CallbackEmitter<T> {
     type Event = T;
 
-    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
-        self.subscribe(cx, callback);
-    }
-}
-
-impl<'a, T: SendSync> BindCallback<'a> for Option<EventSignal<T>> {
-    type Event = T;
-
-    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
-        let signal = self.get_or_insert_with(EventSignal::new);
-        signal.subscribe(cx, callback);
-    }
-}
-
-impl<'a, T: SendSync + 'a> BindCallback<'a> for CallbackEmitter<T> {
-    type Event = T;
-
-    fn bind(&mut self, cx: Scope<'a>, callback: impl FnMut(&Self::Event) + Sendable + 'a) {
-        // SAFETY: `Callback` doesn't access any data allocated by `Scope::alloc_effect` in it's
-        // Drop implementation.
-        let callback = unsafe { cx.alloc_effect(Callback::new(callback)) };
-        self.subscribe(callback);
+    fn bind(&mut self, cx: Scope, callback: impl FnMut(&Self::Event) + Sendable + 'static) {
+        let callback = Callback::new(callback);
+        self.subscribe(&callback);
+        cx.resource(callback);
     }
 }
 
@@ -64,23 +45,14 @@ pub trait Bindings {
 pub trait Bindable<'a> {
     type Item;
 
-    fn bind(&mut self, cx: Scope<'a>, signal: &'a Signal<Self::Item>);
+    fn bind(&mut self, cx: Scope, signal: Signal<Self::Item>);
 }
 
-impl<'a, T: Clone + PartialEq + SendSync + 'static> Bindable<'a> for &'a Signal<T> {
+impl<'a, T: Clone + PartialEq + SendSync + 'static> Bindable<'a> for OwnedSignal<T> {
     type Item = T;
 
-    fn bind(&mut self, cx: Scope<'a>, signal: &'a Signal<Self::Item>) {
-        cx.bind(self, signal);
-    }
-}
-
-impl<'a, T: Clone + PartialEq + SendSync + 'static> Bindable<'a> for SharedSignal<T> {
-    type Item = T;
-
-    fn bind(&mut self, cx: Scope<'a>, signal: &'a Signal<Self::Item>) {
-        let this = cx.alloc(self.clone());
-        cx.bind(this, signal);
+    fn bind(&mut self, _cx: Scope, signal: Signal<Self::Item>) {
+        self.bind(signal);
     }
 }
 

@@ -5,10 +5,10 @@ use ori_graphics::{Frame, Rect, Renderer};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, Context, Cursor, DrawContext, Event, EventContext, EventSink, Guard,
-    ImageCache, IntoView, LayoutContext, Lock, Lockable, Margin, PointerEvent, RequestRedrawEvent,
-    Shared, SharedSignal, Style, StyleCache, StyleSelector, StyleSelectors, StyleStates,
-    StyleTransition, Stylesheet, TransitionStates, View,
+    AnyView, BoxConstraints, Context, Cursor, DrawContext, EmptyView, Event, EventContext,
+    EventSink, Guard, ImageCache, IntoView, LayoutContext, Lock, Lockable, Margin, OwnedSignal,
+    PointerEvent, RequestRedrawEvent, Shared, Style, StyleCache, StyleSelector, StyleSelectors,
+    StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -52,7 +52,7 @@ pub struct NodeState {
     pub hovered: bool,
     pub last_draw: Instant,
     pub style: Style,
-    pub recreated: SharedSignal<bool>,
+    pub recreated: OwnedSignal<bool>,
     pub transitions: TransitionStates,
 }
 
@@ -67,7 +67,7 @@ impl Default for NodeState {
             hovered: false,
             last_draw: Instant::now(),
             style: Style::default(),
-            recreated: SharedSignal::new(true),
+            recreated: OwnedSignal::new(true),
             transitions: TransitionStates::new(),
         }
     }
@@ -229,7 +229,7 @@ pub struct Node<T: View = Box<dyn AnyView>> {
 
 impl Node {
     pub fn empty() -> Self {
-        Self::new(())
+        Self::new(EmptyView)
     }
 }
 

@@ -9,17 +9,17 @@ fn ui(cx: Scope) -> impl View {
     let long_text = cx.signal(String::from(LONG_TEXT));
     let text = cx.signal(String::new());
 
-    let font_size = cx.memo(|| if *checked.get() { 32 } else { 24 });
+    let text_size = cx.memo(move || if checked.get() { Em(2.0) } else { Em(1.5) });
 
     view! {
         <Div class="widget-gallery">
             <Div class="column">
                 <Div class="row">
-                    <Text text="Toggle me" style:font-size=trans(font_size, 0.5) />
+                    <Text text="Toggle me" style:font-size=trans(text_size.get(), 0.25) />
                     <Checkbox bind:checked=checked />
                 </Div>
 
-                <Button on:press=|_| *counter.modify() += 1>
+                <Button on:press=move |_| counter.set(counter.get() + 1)>
                     { format!("Counter: {}", counter.get()) }
                 </Button>
 
@@ -54,7 +54,7 @@ fn ui(cx: Scope) -> impl View {
 }
 
 fn main() {
-    App::new(|cx| ui(cx)) // create a new app with the ui function
+    App::new(ui) // create a new app with the ui function
         .title("Widget Gallery (examples/widget_gallery.rs)") // set the window title
         .style("examples/style/widget-gallery.css") // load a custom stylesheet
         .run(); // run the app

@@ -280,6 +280,8 @@ impl MeshPipeline {
             (layer.instances).resize_with(meshes.len(), || Instance::new(device));
         }
 
+        let screen_rect = Rect::new(Vec2::ZERO, Vec2::new(width as f32, height as f32));
+
         for ((mesh, clip), instance) in meshes.into_iter().zip(&mut layer.instances) {
             if mesh.vertices.is_empty() || mesh.indices.is_empty() {
                 instance.draw = false;
@@ -289,8 +291,8 @@ impl MeshPipeline {
             }
 
             instance.clip = match clip {
-                Some(clip) => *clip,
-                None => Rect::new(Vec2::ZERO, Vec2::new(width as f32, height as f32)),
+                Some(clip) => clip.intersect(screen_rect),
+                None => screen_rect,
             };
 
             instance.write_vertex_buffer(device, encoder, staging_belt, &mesh.vertices);
@@ -319,8 +321,8 @@ impl MeshPipeline {
             pass.set_scissor_rect(
                 instance.clip.min.x as u32,
                 instance.clip.min.y as u32,
-                instance.clip.width() as u32,
-                instance.clip.height() as u32,
+                instance.clip.width().floor() as u32,
+                instance.clip.height().floor() as u32,
             );
 
             let image = instance

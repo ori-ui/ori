@@ -7,14 +7,14 @@ use std::{
 
 use ori_core::{
     CallbackEmitter, Cursor, Event, EventEmitter, EventSink, ImageCache, KeyboardEvent,
-    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Scope, StyleCache,
+    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Runtime, Scope, StyleCache,
     StyleLoader, Stylesheet, Vec2, View,
 };
 use ori_graphics::{Color, Frame};
 use winit::{
     dpi::LogicalSize,
     error::OsError,
-    event::{Event as WinitEvent, KeyboardInput, MouseScrollDelta, WindowEvent},
+    event::{Event as WinitEvent, KeyboardInput, MouseScrollDelta, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
     window::{Window, WindowBuilder},
 };
@@ -68,14 +68,10 @@ impl App {
         initialize_log().unwrap();
 
         let builder = Box::new(
-            move |event_sink: &EventSink, event_callbacks: &CallbackEmitter<Event>| {
-                let mut view = None;
+            move |_event_sink: &EventSink, _event_callbacks: &CallbackEmitter<Event>| {
+                let scope = Scope::new();
 
-                let _disposer = Scope::new(event_sink, event_callbacks, |cx| {
-                    view = Some(content(cx));
-                });
-
-                Node::new(view.unwrap())
+                Node::new(content(scope))
             },
         );
 
@@ -324,14 +320,18 @@ impl App {
                 WinitEvent::RedrawRequested(_) => {
                     state.draw();
                 }
-                WinitEvent::MainEventsCleared => match state.style_loader.reload() {
-                    Ok(reload) if reload => {
-                        tracing::info!("style reloaded");
-                        window.request_redraw();
+                WinitEvent::MainEventsCleared
+                | WinitEvent::NewEvents(StartCause::ResumeTimeReached { .. }) => {
+                    match state.style_loader.reload() {
+                        Ok(reload) if reload => {
+                            tracing::info!("style reloaded");
+                            window.request_redraw();
+                            state.style_cache.clear();
+                        }
+                        Err(err) => tracing::error!("failed to reload style: {}", err),
+                        _ => {}
                     }
-                    Err(err) => tracing::error!("failed to reload style: {}", err),
-                    _ => {}
-                },
+                }
                 WinitEvent::UserEvent(event) => {
                     if event.is::<RequestRedrawEvent>() {
                         window.request_redraw();
@@ -348,7 +348,12 @@ impl App {
                         #[cfg(feature = "wgpu")]
                         state.renderer.resize(size.width, size.height);
                     }
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::CloseRequested => {
+                        state.root = Node::empty();
+                        Runtime::stop_global();
+
+                        *control_flow = ControlFlow::Exit;
+                    }
                     WindowEvent::CursorMoved {
                         position,
                         device_id,

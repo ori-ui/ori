@@ -3,14 +3,14 @@ use ori_graphics::{TextAlign, TextSection};
 use ori_macro::Build;
 
 use crate::{
-    BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, PointerEvent, Scope,
-    SharedSignal, Signal, Style, View,
+    BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, OwnedSignal,
+    PointerEvent, Scope, Signal, Style, View,
 };
 
 #[derive(Default, Build)]
 pub struct Checkbox {
     #[bind]
-    checked: SharedSignal<bool>,
+    checked: OwnedSignal<bool>,
 }
 
 impl Checkbox {
@@ -25,9 +25,8 @@ impl Checkbox {
         self
     }
 
-    pub fn bind_checked<'a>(self, cx: Scope<'a>, binding: &'a Signal<bool>) -> Self {
-        let signal = cx.alloc(self.checked.clone());
-        cx.bind(signal, binding);
+    pub fn bind_checked(mut self, _cx: Scope, binding: Signal<bool>) -> Self {
+        self.checked.bind(binding);
         self
     }
 }
@@ -43,7 +42,7 @@ impl View for Checkbox {
 
     #[tracing::instrument(name = "Checkbox", skip(self, cx, event))]
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        cx.state.active = self.checked.cloned_untracked();
+        cx.state.active = self.checked.get();
 
         if event.is_handled() || !cx.hovered() {
             return;
@@ -51,7 +50,7 @@ impl View for Checkbox {
 
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if pointer_event.is_press() {
-                self.checked.set(!self.checked.cloned());
+                self.checked.set(!self.checked.get());
                 event.handle();
                 cx.request_redraw();
             }
@@ -60,7 +59,7 @@ impl View for Checkbox {
 
     #[tracing::instrument(name = "Checkbox", skip(self, cx, bc))]
     fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        cx.state.active = self.checked.cloned_untracked();
+        cx.state.active = self.checked.get();
 
         let width = cx.style_range("width", bc.width());
         let height = cx.style_range("height", bc.height());
@@ -69,11 +68,11 @@ impl View for Checkbox {
 
     #[tracing::instrument(name = "Checkbox", skip(self, cx))]
     fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
-        cx.state.active = self.checked.cloned_untracked();
+        cx.state.active = self.checked.get();
 
         cx.draw_quad();
 
-        if *self.checked.get() {
+        if self.checked.get() {
             let section = TextSection {
                 rect: cx.rect(),
                 scale: cx.rect().size().min_element() * 0.8,

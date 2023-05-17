@@ -4,7 +4,7 @@ use ori_macro::Build;
 
 use crate::{
     BoxConstraints, CallbackEmitter, Context, DrawContext, Event, EventContext, Key, KeyboardEvent,
-    LayoutContext, Modifiers, PointerEvent, Scope, SharedSignal, Signal, Style, View,
+    LayoutContext, Modifiers, OwnedSignal, PointerEvent, Signal, Style, View,
 };
 
 #[derive(Clone, Debug, Build)]
@@ -12,7 +12,7 @@ pub struct TextInput {
     #[prop]
     placeholder: String,
     #[bind]
-    text: SharedSignal<String>,
+    text: OwnedSignal<String>,
     #[event]
     on_input: CallbackEmitter<KeyboardEvent>,
     #[event]
@@ -23,7 +23,7 @@ impl Default for TextInput {
     fn default() -> Self {
         Self {
             placeholder: String::from("Enter text..."),
-            text: SharedSignal::new(String::new()),
+            text: OwnedSignal::new(String::new()),
             on_input: CallbackEmitter::new(),
             on_submit: CallbackEmitter::new(),
         }
@@ -33,7 +33,7 @@ impl Default for TextInput {
 impl TextInput {
     pub fn new(text: impl Into<String>) -> Self {
         Self {
-            text: SharedSignal::new(text.into()),
+            text: OwnedSignal::new(text.into()),
             ..Default::default()
         }
     }
@@ -48,9 +48,8 @@ impl TextInput {
         self
     }
 
-    pub fn bind_text<'a>(self, cx: Scope<'a>, text: &'a Signal<String>) -> Self {
-        let signal = cx.alloc(self.text.clone());
-        cx.bind(text, &signal);
+    pub fn bind_text(mut self, text: Signal<String>) -> Self {
+        self.text.bind(text);
         self
     }
 
@@ -58,7 +57,7 @@ impl TextInput {
         if self.text.get().is_empty() {
             self.placeholder.clone()
         } else {
-            self.text.cloned()
+            self.text.get()
         }
     }
 
@@ -99,7 +98,7 @@ impl TextInput {
             h_align: cx.style("text-align"),
             v_align: cx.style("text-valign"),
             wrap: cx.style("text-wrap"),
-            text: self.text.cloned(),
+            text: self.text.get(),
             font_family: cx.style("font-family"),
             ..Default::default()
         }
@@ -154,7 +153,7 @@ impl TextInput {
     }
 
     fn input_char(&self, state: &mut TextInputState, cx: &mut EventContext, c: char) {
-        let mut text = self.text.modify();
+        let mut text = self.text.get();
         if let Some(cursor) = state.cursor {
             if cursor < text.len() {
                 text.insert(cursor, c);
@@ -166,6 +165,7 @@ impl TextInput {
             state.cursor = Some(new_cursor);
         }
 
+        self.text.set(text);
         cx.request_redraw();
     }
 
@@ -203,11 +203,12 @@ impl TextInput {
             Key::Backspace => {
                 if let Some(cursor) = state.cursor {
                     if let Some(prev) = self.prev_char_index(cursor) {
-                        let mut text = self.text.modify();
+                        let mut text = self.text.get();
 
                         state.cursor_left(&text);
                         text.remove(prev);
 
+                        self.text.set(text);
                         cx.request_redraw();
                     }
                 }
@@ -231,11 +232,6 @@ impl TextInput {
         }
     }
 
-    fn glyph_index(&self, cursor: usize) -> usize {
-        let text = &self.text.get()[..cursor];
-        text.chars().filter(|c| !c.is_control()).count() - 1
-    }
-
     fn cursor_rect(&self, state: &mut TextInputState, cx: &mut DrawContext) -> Rect {
         if state.cursor.is_none() || state.cursor == Some(0) {
             return Rect::min_size(
@@ -245,10 +241,10 @@ impl TextInput {
         }
 
         let cursor = state.cursor.unwrap();
-        let index = self.glyph_index(cursor);
 
         let section = self.section(state, cx);
         let glyphs = cx.renderer.text_glyphs(&section);
+        let index = glyphs.iter().position(|g| g.index == cursor).unwrap() - 1;
 
         let glyph = glyphs[index];
         if section.text.as_bytes()[cursor - 1] != b'\n' {

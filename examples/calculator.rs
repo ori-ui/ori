@@ -94,18 +94,18 @@ enum Operator {
     Divide,
 }
 
-fn result_bar<'a>(
-    cx: Scope<'a>,
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn result_bar(
+    cx: Scope,
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
 ) -> impl View {
-    let text = cx.memo(|| {
+    let text = cx.memo(move || {
         let result = result.get();
         let operator = operator.get();
         let rhs = rhs.get();
 
-        match *operator {
+        match operator {
             Operator::None => format!("{}", result),
             Operator::Add => format!("{} + {}", result, rhs),
             Operator::Subtract => format!("{} - {}", result, rhs),
@@ -116,40 +116,40 @@ fn result_bar<'a>(
 
     view! {
         <Div class="result-bar">
-            <Text class="result" text=text.cloned() />
+            <Text class="result" text=text.get() />
         </Div>
     }
 }
 
-fn bar0<'a>(
-    cx: Scope<'a>,
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn bar0(
+    cx: Scope,
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
 ) -> impl View {
-    let clear_all = |_: &PointerEvent| {
+    let clear_all = move |_: &PointerEvent| {
         operator.set(Operator::None);
         result.set(Number::new(0.0));
         rhs.set(Number::new(0.0));
     };
 
-    let clear = |_: &PointerEvent| {
-        if matches!(*operator.get(), Operator::None) {
+    let clear = move |_: &PointerEvent| {
+        if matches!(operator.get(), Operator::None) {
             result.set(Number::new(0.0));
         } else {
             rhs.set(Number::new(0.0));
         }
     };
 
-    let remove_digit = |_: &PointerEvent| {
-        if matches!(*operator.get(), Operator::None) {
-            result.modify().remove_digit();
+    let remove_digit = move |_: &PointerEvent| {
+        if matches!(operator.get(), Operator::None) {
+            //result.modify().remove_digit();
         } else {
-            rhs.modify().remove_digit();
+            //rhs.modify().remove_digit();
         }
     };
 
-    let divide = |_: &PointerEvent| {
+    let divide = move |_: &PointerEvent| {
         operator.set(Operator::Divide);
     };
 
@@ -171,28 +171,28 @@ fn bar0<'a>(
     }
 }
 
-fn add_digit<'a>(
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn add_digit(
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
     digit: u8,
-) -> impl Fn(&PointerEvent) + 'a {
+) -> impl Fn(&PointerEvent) {
     move |_| {
-        if matches!(*operator.get(), Operator::None) {
-            result.modify().add_digit(digit);
+        if matches!(operator.get(), Operator::None) {
+            //result.modify().add_digit(digit);
         } else {
-            rhs.modify().add_digit(digit);
+            //rhs.modify().add_digit(digit);
         }
     }
 }
 
-fn bar1<'a>(
-    cx: Scope<'a>,
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn bar1(
+    cx: Scope,
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
 ) -> impl View {
-    let multiply = |_: &PointerEvent| {
+    let multiply = move |_: &PointerEvent| {
         operator.set(Operator::Multiply);
     };
 
@@ -214,13 +214,13 @@ fn bar1<'a>(
     }
 }
 
-fn bar2<'a>(
-    cx: Scope<'a>,
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn bar2(
+    cx: Scope,
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
 ) -> impl View {
-    let subtract = |_: &PointerEvent| {
+    let subtract = move |_: &PointerEvent| {
         operator.set(Operator::Subtract);
     };
 
@@ -242,13 +242,13 @@ fn bar2<'a>(
     }
 }
 
-fn bar3<'a>(
-    cx: Scope<'a>,
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn bar3(
+    cx: Scope,
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
 ) -> impl View {
-    let add = |_: &PointerEvent| {
+    let add = move |_: &PointerEvent| {
         operator.set(Operator::Add);
     };
 
@@ -270,59 +270,59 @@ fn bar3<'a>(
     }
 }
 
-fn bar4<'a>(
-    cx: Scope<'a>,
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn bar4(
+    cx: Scope,
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
 ) -> impl View {
-    let negate = |_: &PointerEvent| {
+    let negate = move |_: &PointerEvent| {
         if result.get().value == 0.0 {
             return;
         }
 
-        if matches!(*operator.get(), Operator::None) {
-            result.modify().value *= -1.0;
+        if matches!(operator.get(), Operator::None) {
+            //result.modify().value *= -1.0;
         } else {
-            rhs.modify().value *= -1.0;
+            //rhs.modify().value *= -1.0;
         }
     };
 
-    let add_point = |_: &PointerEvent| {
+    let add_point = move |_: &PointerEvent| {
         if let Some(position) = result.get().position {
             if position < 0 {
                 return;
             }
         }
 
-        if matches!(*operator.get(), Operator::None) {
-            result.modify().position = Some(-1);
+        if matches!(operator.get(), Operator::None) {
+            //result.modify().position = Some(-1);
         } else {
-            rhs.modify().position = Some(-1);
+            //rhs.modify().position = Some(-1);
         }
     };
 
     let equals = |_: &PointerEvent| {
-        let mut result = result.modify();
-        let mut rhs = rhs.modify();
-        let mut operator = operator.modify();
-        match *operator {
-            Operator::None => {}
-            Operator::Add => {
-                *result = Number::new(result.value + rhs.value);
-            }
-            Operator::Subtract => {
-                *result = Number::new(result.value - rhs.value);
-            }
-            Operator::Multiply => {
-                *result = Number::new(result.value * rhs.value);
-            }
-            Operator::Divide => {
-                *result = Number::new(result.value / rhs.value);
-            }
-        }
-        *operator = Operator::None;
-        *rhs = Number::new(0.0);
+        //let mut result = result.modify();
+        //let mut rhs = rhs.modify();
+        //let mut operator = operator.modify();
+        //match *operator {
+        //    Operator::None => {}
+        //    Operator::Add => {
+        //        *result = Number::new(result.value + rhs.value);
+        //    }
+        //    Operator::Subtract => {
+        //        *result = Number::new(result.value - rhs.value);
+        //    }
+        //    Operator::Multiply => {
+        //        *result = Number::new(result.value * rhs.value);
+        //    }
+        //    Operator::Divide => {
+        //        *result = Number::new(result.value / rhs.value);
+        //    }
+        //}
+        //*operator = Operator::None;
+        //*rhs = Number::new(0.0);
     };
 
     view! {
@@ -343,11 +343,11 @@ fn bar4<'a>(
     }
 }
 
-fn buttons<'a>(
-    cx: Scope<'a>,
-    operator: &'a Signal<Operator>,
-    result: &'a Signal<Number>,
-    rhs: &'a Signal<Number>,
+fn buttons(
+    cx: Scope,
+    operator: Signal<Operator>,
+    result: Signal<Number>,
+    rhs: Signal<Number>,
 ) -> impl View {
     view! {
         <Div class="buttons column">

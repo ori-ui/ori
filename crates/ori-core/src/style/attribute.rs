@@ -262,12 +262,12 @@ impl From<Color> for StyleAttributeValue {
     }
 }
 
-impl<T> From<&ReadSignal<T>> for StyleAttributeValue
+impl<T: 'static> From<ReadSignal<T>> for StyleAttributeValue
 where
     T: Into<StyleAttributeValue> + Clone,
 {
-    fn from(value: &ReadSignal<T>) -> Self {
-        value.cloned().into()
+    fn from(value: ReadSignal<T>) -> Self {
+        value.get().into()
     }
 }
 

@@ -111,6 +111,10 @@ impl<'a, T> Callback<'a, T> {
         }
     }
 
+    pub fn as_ptr(&self) -> CallbackPtr<T> {
+        self.callback.as_ptr() as CallbackPtr<T>
+    }
+
     /// Calls the callback.
     pub fn emit(&self, event: &T) {
         self.callback.lock_mut()(event);
@@ -266,6 +270,7 @@ impl<T> CallbackEmitter<T> {
     }
 
     /// Unsubscribes a callback from the emitter.
+    #[track_caller]
     pub fn unsubscribe(&self, ptr: CallbackPtr<T>) {
         self.callbacks.lock_mut().remove(ptr);
     }

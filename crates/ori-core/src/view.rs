@@ -6,8 +6,8 @@ use std::{
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, RequestRedrawEvent,
-    SendSync, SharedSignal, Style,
+    BoxConstraints, Callback, DrawContext, Event, EventContext, LayoutContext, OwnedSignal,
+    RequestRedrawEvent, SendSync, Style,
 };
 
 pub trait IntoView {
@@ -179,7 +179,7 @@ impl View for Arc<dyn AnyView> {
 
 /// When a view is wrapped in a signal, the view will be redrawn when the signal
 /// changes.
-impl<V: View + SendSync> View for SharedSignal<V> {
+impl<V: View + SendSync> View for OwnedSignal<Arc<V>> {
     type State = (Callback<'static, ()>, V::State);
 
     fn build(&self) -> Self::State {
@@ -191,7 +191,7 @@ impl<V: View + SendSync> View for SharedSignal<V> {
     }
 
     fn event(&self, (_, state): &mut Self::State, cx: &mut EventContext, event: &Event) {
-        self.get().event(state, cx, event);
+        self.get_untracked().event(state, cx, event);
     }
 
     fn layout(
@@ -200,7 +200,7 @@ impl<V: View + SendSync> View for SharedSignal<V> {
         cx: &mut LayoutContext,
         bc: BoxConstraints,
     ) -> Vec2 {
-        self.get().layout(state, cx, bc)
+        self.get_untracked().layout(state, cx, bc)
     }
 
     fn draw(&self, (callback, state): &mut Self::State, cx: &mut DrawContext) {
@@ -212,26 +212,19 @@ impl<V: View + SendSync> View for SharedSignal<V> {
             recreated.set(true);
         });
 
-        self.emitter().subscribe_weak(callback.downgrade());
-        self.get().draw(state, cx);
+        if let Some(emitter) = self.emitter.get() {
+            emitter.subscribe_weak(callback.downgrade());
+        }
+
+        self.get_untracked().draw(state, cx);
     }
 }
 
-impl View for () {
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EmptyView;
+
+impl View for EmptyView {
     type State = ();
 
     fn build(&self) -> Self::State {}
-
-    fn event(&self, _state: &mut Self::State, _cx: &mut EventContext, _event: &Event) {}
-
-    fn layout(
-        &self,
-        _state: &mut Self::State,
-        _cx: &mut LayoutContext,
-        bc: BoxConstraints,
-    ) -> Vec2 {
-        bc.min
-    }
-
-    fn draw(&self, _state: &mut Self::State, _cx: &mut DrawContext) {}
 }

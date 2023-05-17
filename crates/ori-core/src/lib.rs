@@ -86,11 +86,13 @@ impl<T: ?Sized> Lockable for Lock<T> {
     type Item = T;
 
     #[cfg(feature = "multi-thread")]
+    #[track_caller]
     fn lock_mut(&self) -> Guard<'_, Self::Item> {
         self.lock().unwrap()
     }
 
     #[cfg(not(feature = "multi-thread"))]
+    #[track_caller]
     fn lock_mut(&self) -> Guard<'_, Self::Item> {
         self.borrow_mut()
     }

@@ -21,7 +21,9 @@ pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let expanded = if nodes.len() == 1 {
         quote! {
-            #(#nodes)*
+            #ori_core::Scope::owned_memo_scoped(#context, move |#context| {
+                ::std::sync::Arc::new(#(#nodes)*)
+            })
         }
     } else {
         quote! {{
@@ -87,7 +89,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
             });
 
             quote! {
-                #ori_core::BoundedScope::shared_memo_scoped(#context, move |#context| {
+                #ori_core::Scope::owned_memo_scoped(#context, move |#context| {
                     let mut view = <#name as #ori_core::Styleable<_>>::styled(
                         <#name as ::std::default::Default>::default()
                     );
@@ -96,16 +98,18 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                     #(#attributes)*
                     #(#children)*
 
-                    view
+                    ::std::sync::Arc::new(view)
                 })
             }
         }
         Node::Block(block) => {
             let expr = block.value.as_ref();
             quote_spanned!(expr.span() =>
-                #ori_core::BoundedScope::shared_memo_scoped(#context, move |#context| {
-                    let into_view = #expr;
-                    #ori_core::IntoView::into_view(into_view)
+                #ori_core::Scope::owned_memo_scoped(#context, move |#context| {
+                    ::std::sync::Arc::new(#ori_core::IntoView::into_view(
+                        #[allow(unused_braces)]
+                        #expr
+                    ))
                 })
             )
         }

@@ -1,6 +1,6 @@
-use std::{cell::RefCell, fmt::Debug, mem, ops::DerefMut, panic::Location};
+use std::{cell::RefCell, fmt::Debug, ops::DerefMut, panic::Location, rc::Rc};
 
-use crate::{Lock, Lockable, Scope, Sendable, Shared, WeakCallback, WeakCallbackEmitter};
+use crate::{Callback, Resource, Scope, Sendable, WeakCallbackEmitter};
 
 thread_local! {
     static EFFECTS: RefCell<Vec<*mut EffectState<'static>>> = Default::default();
@@ -8,10 +8,7 @@ thread_local! {
 
 pub(crate) struct EffectState<'a> {
     location: &'static Location<'static>,
-    #[cfg(feature = "multi-thread")]
-    callback: Shared<Lock<dyn FnMut() + Send + 'a>>,
-    #[cfg(not(feature = "multi-thread"))]
-    callback: Shared<Lock<dyn FnMut() + 'a>>,
+    callback: Callback<'a>,
     dependencies: Vec<WeakCallbackEmitter>,
 }
 
@@ -20,7 +17,7 @@ impl<'a> EffectState<'a> {
     fn empty() -> Self {
         Self {
             location: Location::caller(),
-            callback: Shared::new(Lock::new(|| {})),
+            callback: Callback::new(|()| {}),
             dependencies: Vec::new(),
         }
     }
@@ -28,8 +25,7 @@ impl<'a> EffectState<'a> {
     fn clear_dependencies(&mut self) {
         for dependency in &self.dependencies {
             if let Some(dependency) = dependency.upgrade() {
-                let ptr = Shared::as_ptr(&self.callback);
-                dependency.unsubscribe(unsafe { mem::transmute(ptr) });
+                dependency.unsubscribe(self.callback.as_ptr());
             }
         }
 
@@ -65,49 +61,40 @@ pub(crate) fn untrack<T>(f: impl FnOnce() -> T) -> T {
 }
 
 #[track_caller]
-pub(crate) fn create_effect<'a>(cx: Scope<'a>, mut f: impl FnMut() + Sendable + 'a) {
-    // SAFETY: `Effect` is `!Drop`, so it's safe to use `alloc_unsafe`.
-    let effect = unsafe { cx.alloc_effect(Lock::new(EffectState::empty())) };
+pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static) {
+    let caller = Location::caller();
 
-    let callback = Shared::new(Lock::new(move || {
+    let effect = Resource::new_leaking(Rc::new(RefCell::new(EffectState::empty())));
+    effect.manage(cx.id);
+
+    let callback = Callback::new(move |()| {
         EFFECTS.with(|effects| {
+            tracing::trace!("running effect at {}", caller);
+
             let len = effects.borrow().len();
 
-            let mut effect = effect.lock_mut();
-            let effect_ptr = effect.deref_mut() as *mut EffectState<'a>;
-            let static_effect_ptr = effect_ptr.cast::<EffectState<'static>>();
+            let effect = effect.get().unwrap();
+            let mut effect = effect.borrow_mut();
 
-            // clear the dependencies of `effect` so that we only track the new ones
             effect.clear_dependencies();
 
-            // push the effect onto the stack so that it can be used by `track_callback`
-            effects.borrow_mut().push(static_effect_ptr);
+            effects.borrow_mut().push(effect.deref_mut() as *mut _);
 
-            // drop lock the scope to ensure that child scopes stay alive for the duration of the effect
-            cx.drop_lock();
-            // now we can run the effect
-            tracing::trace!("running effect at {}", effect.location);
             f();
-            // we release the lock so that child scopes can be dropped
-            cx.release_drop_lock();
 
-            // pop the effect from the stack
-            effects.borrow_mut().pop().expect("effect stack underflow");
+            effects.borrow_mut().pop().expect("effects is empty");
 
-            // subscribe to all dependencies
             for emitter in &effect.dependencies {
                 if let Some(emitter) = emitter.upgrade() {
-                    let callback = unsafe { mem::transmute(&effect.callback) };
-                    let callback = WeakCallback::new(Shared::downgrade(callback));
-                    emitter.subscribe_weak(callback);
+                    emitter.subscribe(&effect.callback);
                 }
             }
 
-            debug_assert_eq!(len, effects.borrow().len());
-        })
-    }));
+            debug_assert_eq!(effects.borrow().len(), len);
+        });
+    });
 
-    effect.lock_mut().callback = callback.clone();
+    effect.get().unwrap().borrow_mut().callback = callback.clone();
 
-    callback.lock_mut()();
+    callback.emit(&());
 }

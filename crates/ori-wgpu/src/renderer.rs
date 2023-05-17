@@ -1,6 +1,6 @@
 use ori_core::Vec2;
 use ori_graphics::{
-    Color, Frame, Glyph, ImageData, ImageHandle, Primitive, PrimitiveKind, Rect, Renderer,
+    Color, Frame, Glyph, ImageData, ImageHandle, Line, Primitive, PrimitiveKind, Rect, Renderer,
     TextSection,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
@@ -415,24 +415,71 @@ impl Renderer for WgpuRenderer {
     }
 
     fn text_glyphs(&self, section: &TextSection) -> Vec<Glyph> {
-        let position = section.rect.top_left();
         let buffer = self.fonts.create_buffer(section);
 
+        let mut line_index = 0;
+        let mut line_offset = 0;
         buffer
             .layout_runs()
             .flat_map(|run| {
                 let line_height = buffer.metrics().line_height;
                 let y = run.line_y - line_height;
 
+                if line_index < run.line_i {
+                    line_offset += buffer.lines[line_index].text().len();
+                    line_index = run.line_i;
+                }
+
                 run.glyphs.iter().map(move |glyph| {
-                    let position = position + Vec2::new(glyph.x, y);
+                    let position = section.rect.top_left() + Vec2::new(glyph.x, y);
                     let size = Vec2::new(glyph.w, line_height);
 
                     Glyph {
-                        index: glyph.start,
+                        index: line_offset + glyph.start,
                         rect: Rect::min_size(position, size),
                     }
                 })
+            })
+            .collect()
+    }
+
+    fn text_lines(&self, section: &TextSection) -> Vec<Line> {
+        let buffer = self.fonts.create_buffer(section);
+
+        let mut line_index = 0;
+        let mut line_offset = 0;
+        buffer
+            .layout_runs()
+            .map(|run| {
+                let line_height = buffer.metrics().line_height;
+                let y = run.line_y - line_height;
+                let position = section.rect.top_left() + Vec2::new(0.0, y);
+
+                if line_index < run.line_i {
+                    line_offset += buffer.lines[line_index].text().len();
+                    line_index = run.line_i;
+                }
+
+                let mut glyphs = Vec::with_capacity(run.glyphs.len());
+                for glyph in run.glyphs {
+                    let position = Vec2::new(glyph.x, y);
+
+                    glyphs.push(Glyph {
+                        index: line_offset + glyph.start,
+                        rect: Rect::min_size(
+                            section.rect.top_left() + position,
+                            Vec2::new(glyph.w, line_height),
+                        ),
+                    });
+                }
+
+                let size = Vec2::new(run.line_w, line_height);
+
+                Line {
+                    index: line_offset,
+                    glyphs,
+                    rect: Rect::min_size(position, size),
+                }
             })
             .collect()
     }

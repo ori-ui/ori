@@ -118,8 +118,6 @@ impl Stylesheet {
         selectors: &StyleSelectors,
         name: &str,
     ) -> Option<(StyleAttribute, StyleSpecificity)> {
-        tracing::trace!("Cache miss for attribute {}", name);
-
         let mut specificity = StyleSpecificity::default();
         let mut result = None;
 

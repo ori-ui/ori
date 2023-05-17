@@ -373,7 +373,6 @@ impl<T: View> Node<T> {
             };
 
             let margin = Margin::from_style(&mut cx, bc);
-            cx.state.global_rect.translate(margin.top_left());
 
             let bc = bc.with_margin(margin);
             let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
@@ -383,8 +382,10 @@ impl<T: View> Node<T> {
             (size, margin)
         };
 
-        node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
-        node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
+        let local_offset = node_state.local_rect.min + margin.top_left();
+        let global_offset = node_state.global_rect.min + margin.top_left();
+        node_state.local_rect = Rect::min_size(local_offset, size);
+        node_state.global_rect = Rect::min_size(global_offset, size);
 
         cx.state.propagate_down(&node_state);
 

@@ -1,8 +1,8 @@
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Div, DrawContext, Event, EventContext, Events, IntoNode, LayoutContext, Parent,
-    Style, View,
+    BoxConstraints, Div, DrawContext, Event, EventContext, Events, IntoChildren, IntoNode,
+    LayoutContext, Parent, Style, View,
 };
 
 pub struct Button {
@@ -34,8 +34,11 @@ impl Events for Button {
 impl Parent for Button {
     type Child = <Div as Parent>::Child;
 
-    fn add_child<U: ?Sized>(&mut self, child: impl IntoNode<Self::Child, U>) {
-        self.content.add_child(child);
+    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
+    where
+        I::Item: IntoNode<Self::Child, U>,
+    {
+        self.content.add_child(child)
     }
 }
 

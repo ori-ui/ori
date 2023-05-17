@@ -54,14 +54,33 @@ impl<'a, T: Clone + PartialEq + 'static> Bindable<'a> for OwnedSignal<T> {
     }
 }
 
+pub trait IntoChildren<I: IntoIterator> {
+    fn into_children(self) -> I;
+}
+
+impl<T> IntoChildren<std::iter::Once<T>> for T {
+    fn into_children(self) -> std::iter::Once<T> {
+        std::iter::once(self)
+    }
+}
+
+impl<T: IntoIterator> IntoChildren<T> for T {
+    fn into_children(self) -> T {
+        self
+    }
+}
+
 pub trait Parent {
     type Child: View;
 
-    fn add_child<U: ?Sized>(&mut self, child: impl IntoNode<Self::Child, U>);
+    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
+    where
+        I::Item: IntoNode<Self::Child, U>;
 
-    fn with_child<U: ?Sized>(mut self, child: impl IntoNode<Self::Child, U>) -> Self
+    fn with_child<I: IntoIterator, U: ?Sized>(mut self, child: impl IntoChildren<I>) -> Self
     where
         Self: Sized,
+        I::Item: IntoNode<Self::Child, U>,
     {
         self.add_child(child);
         self

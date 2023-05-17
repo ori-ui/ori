@@ -4,8 +4,8 @@ use ori_graphics::Rect;
 use smallvec::SmallVec;
 
 use crate::{
-    AlignItems, AnyView, Axis, BoxConstraints, DrawContext, Event, EventContext, IntoNode,
-    JustifyContent, LayoutContext, Node, Padding, Parent, View,
+    AlignItems, AnyView, Axis, BoxConstraints, DrawContext, Event, EventContext, IntoChildren,
+    IntoNode, JustifyContent, LayoutContext, Node, Padding, Parent, View,
 };
 
 /// A layout that lays out children in a flexbox-like manner.
@@ -79,8 +79,13 @@ impl<T: View> Default for Children<T> {
 impl<T: View> Parent for Children<T> {
     type Child = T;
 
-    fn add_child<U: ?Sized>(&mut self, child: impl IntoNode<Self::Child, U>) {
-        self.nodes.push(child.into_node());
+    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
+    where
+        I::Item: IntoNode<Self::Child, U>,
+    {
+        for child in child.into_children() {
+            self.nodes.push(child.into_node());
+        }
     }
 }
 

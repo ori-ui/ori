@@ -1,8 +1,8 @@
 use std::{cell::Cell, future::Future, mem, rc::Rc};
 
 use crate::{
-    Callback, EventSink, Lock, Lockable, OwnedSignal, Resource, Runtime, ScopeId, Shared, Signal,
-    Task,
+    Callback, EventSink, Lock, Lockable, OwnedSignal, ReadSignal, Resource, Runtime, ScopeId,
+    Shared, Signal, Task,
 };
 
 use super::effect;
@@ -107,7 +107,7 @@ impl Scope {
     }
 
     #[track_caller]
-    pub fn memo<T>(self, mut memo: impl FnMut() -> T + 'static) -> Signal<T> {
+    pub fn memo<T>(self, mut memo: impl FnMut() -> T + 'static) -> ReadSignal<T> {
         let signal = Rc::new(Cell::new(None::<Signal<T>>));
 
         self.effect({
@@ -124,7 +124,7 @@ impl Scope {
             }
         });
 
-        signal.get().unwrap()
+        *signal.get().unwrap()
     }
 
     #[track_caller]
@@ -150,7 +150,7 @@ impl Scope {
     }
 
     #[track_caller]
-    pub fn memo_scoped<T>(self, mut memo: impl FnMut(Scope) -> T + 'static) -> Signal<T> {
+    pub fn memo_scoped<T>(self, mut memo: impl FnMut(Scope) -> T + 'static) -> ReadSignal<T> {
         let signal = Rc::new(Cell::new(None::<Signal<T>>));
 
         self.effect_scoped({
@@ -167,7 +167,7 @@ impl Scope {
             }
         });
 
-        signal.get().unwrap()
+        *signal.get().unwrap()
     }
 
     #[track_caller]

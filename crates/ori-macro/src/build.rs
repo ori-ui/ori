@@ -175,10 +175,13 @@ fn children(input: &DeriveInput) -> TokenStream {
             impl #ori_core::Parent for #name {
                 type Child = <#ty as #ori_core::Parent>::Child;
 
-                fn add_child<U: ?::std::marker::Sized>(
+                fn add_child<I: ::std::iter::IntoIterator, U: ?Sized>(
                     &mut self,
-                    child: impl #ori_core::IntoNode<Self::Child, U>
-                ) {
+                    child: impl #ori_core::IntoChildren<I>,
+                )
+                where
+                    I::Item: #ori_core::IntoNode<Self::Child, U>,
+                {
                     self.#field_name.add_child(child);
                 }
             }

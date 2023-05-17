@@ -1,4 +1,4 @@
-use crate::{Callback, CallbackEmitter, IntoNode, OwnedSignal, Scope, Signal, View};
+use crate::{Callback, CallbackEmitter, IntoNode, OwnedSignal, ReadSignal, Scope, Signal, View};
 
 pub trait Properties {
     type Setter<'a>
@@ -64,9 +64,33 @@ impl<T> IntoChildren<std::iter::Once<T>> for T {
     }
 }
 
+impl<T: Clone> IntoChildren<std::iter::Once<T>> for ReadSignal<T> {
+    fn into_children(self) -> std::iter::Once<T> {
+        std::iter::once(self.get())
+    }
+}
+
+impl<T: Clone> IntoChildren<std::iter::Once<T>> for Signal<T> {
+    fn into_children(self) -> std::iter::Once<T> {
+        std::iter::once(self.get())
+    }
+}
+
 impl<T: IntoIterator> IntoChildren<T> for T {
     fn into_children(self) -> T {
         self
+    }
+}
+
+impl<T: Clone + IntoIterator> IntoChildren<T> for ReadSignal<T> {
+    fn into_children(self) -> T {
+        self.get()
+    }
+}
+
+impl<T: Clone + IntoIterator> IntoChildren<T> for Signal<T> {
+    fn into_children(self) -> T {
+        self.get()
     }
 }
 

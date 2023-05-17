@@ -1,30 +1,38 @@
-use std::{cell::Cell, panic::Location, rc::Rc};
+use std::{cell::Cell, future::Future, mem, rc::Rc};
 
-use crate::{Lock, Lockable, OwnedSignal, Resource, Runtime, ScopeId, Shared, Signal};
+use crate::{
+    Callback, EventSink, Lock, Lockable, OwnedSignal, Resource, Runtime, ScopeId, Shared, Signal,
+    Task,
+};
 
 use super::effect;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug)]
 pub struct Scope {
     pub(crate) id: ScopeId,
+    pub(crate) event_sink: Resource<EventSink>,
 }
 
 impl Scope {
-    fn from_raw(id: ScopeId) -> Self {
-        Self { id }
-    }
+    pub fn new(event_sink: EventSink) -> Self {
+        let event_sink = Resource::new_leaking(event_sink);
 
-    pub fn new() -> Self {
         Runtime::with_global_runtime(|runtime| {
             let id = runtime.create_scope(None);
-            Self { id }
+            runtime.manage_resource(id, event_sink.id());
+
+            Self { id, event_sink }
         })
     }
 
     pub fn child(self) -> Scope {
         Runtime::with_global_runtime(|runtime| {
             let id = runtime.create_scope(Some(self.id));
-            Scope { id }
+
+            Scope {
+                id,
+                event_sink: self.event_sink,
+            }
         })
     }
 
@@ -38,6 +46,18 @@ impl Scope {
         resource
     }
 
+    pub fn manage_callback<T>(self, callback: Callback<'static, T>) {
+        // do not think about this too much, it will drive you mad
+        unsafe {
+            // SAFETY: the transmuted callback just exists to keep the callback alive
+            // and allow WeakCallbacks to upgrade, this transmutation is needed because
+            // T might not be 'static, but we know that the transmuted callback will never be
+            // used, i hope
+            let callback = mem::transmute::<Callback<'static, T>, Callback<'static, ()>>(callback);
+            self.resource(callback);
+        };
+    }
+
     pub fn manage_resource<T: 'static>(self, resource: Resource<T>) {
         Runtime::with_global_runtime(|runtime| {
             runtime.manage_resource(self.id, resource.id());
@@ -49,6 +69,14 @@ impl Scope {
             runtime.manage_resource(self.id, signal.resource.id());
             runtime.manage_resource(self.id, signal.emitter.id());
         })
+    }
+
+    pub fn event_sink(&self) -> EventSink {
+        self.event_sink.get().expect("event sink was dropped")
+    }
+
+    pub fn spawn(self, future: impl Future<Output = ()> + Send + 'static) {
+        Task::spawn(self.event_sink(), future);
     }
 
     pub fn signal<T: 'static>(self, value: T) -> Signal<T> {
@@ -66,19 +94,15 @@ impl Scope {
 
     #[track_caller]
     pub fn effect_scoped(self, mut effect: impl FnMut(Scope) + 'static) {
-        let caller = Location::caller();
-        let mut scope = None::<ScopeId>;
-        let id = self.id;
-        Scope::from_raw(id).effect(move || {
-            tracing::trace!("effect created at {}", caller);
-
+        let mut scope = None::<Scope>;
+        self.effect(move || {
             if let Some(scope) = scope {
-                Scope::from_raw(scope).dispose();
+                scope.dispose();
             }
 
-            let child = Scope::from_raw(id).child();
+            let child = self.child();
             effect(child);
-            scope = Some(child.id);
+            scope = Some(child);
         });
     }
 

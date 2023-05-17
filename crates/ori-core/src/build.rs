@@ -1,6 +1,4 @@
-use crate::{
-    Callback, CallbackEmitter, IntoNode, OwnedSignal, Scope, SendSync, Sendable, Signal, View,
-};
+use crate::{Callback, CallbackEmitter, IntoNode, OwnedSignal, Scope, Signal, View};
 
 pub trait Properties {
     type Setter<'a>
@@ -21,16 +19,16 @@ pub trait Events {
 pub trait BindCallback {
     type Event;
 
-    fn bind(&mut self, cx: Scope, callback: impl FnMut(&Self::Event) + Sendable + 'static);
+    fn bind(&mut self, cx: Scope, callback: impl FnMut(&Self::Event) + 'static);
 }
 
-impl<T: SendSync + 'static> BindCallback for CallbackEmitter<T> {
+impl<T> BindCallback for CallbackEmitter<T> {
     type Event = T;
 
-    fn bind(&mut self, cx: Scope, callback: impl FnMut(&Self::Event) + Sendable + 'static) {
+    fn bind(&mut self, cx: Scope, callback: impl FnMut(&Self::Event) + 'static) {
         let callback = Callback::new(callback);
         self.subscribe(&callback);
-        cx.resource(callback);
+        cx.manage_callback(callback);
     }
 }
 
@@ -48,7 +46,7 @@ pub trait Bindable<'a> {
     fn bind(&mut self, cx: Scope, signal: Signal<Self::Item>);
 }
 
-impl<'a, T: Clone + PartialEq + SendSync + 'static> Bindable<'a> for OwnedSignal<T> {
+impl<'a, T: Clone + PartialEq + 'static> Bindable<'a> for OwnedSignal<T> {
     type Item = T;
 
     fn bind(&mut self, _cx: Scope, signal: Signal<Self::Item>) {

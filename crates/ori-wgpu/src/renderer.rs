@@ -343,7 +343,7 @@ impl WgpuRenderer {
         let msaa_view = self.msaa_texture.create_view(&Default::default());
 
         let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("Ily Render Pass"),
+            label: Some("Ily Main Render Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: &msaa_view,
                 resolve_target: Some(&view),

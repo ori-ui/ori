@@ -11,6 +11,8 @@ fn ui(cx: Scope) -> impl View {
 
     let text_size = cx.memo(move || if checked.get() { Em(2.0) } else { Em(1.5) });
 
+    let on_click = move |_: &PointerEvent| counter.set(counter.get() + 1);
+
     view! {
         <Div class="widget-gallery">
             <Div class="column">
@@ -19,7 +21,7 @@ fn ui(cx: Scope) -> impl View {
                     <Checkbox bind:checked=checked />
                 </Div>
 
-                <Button on:press=move |_| counter.set(counter.get() + 1)>
+                <Button on:press=on_click>
                     { format!("Counter: {}", counter.get()) }
                 </Button>
 

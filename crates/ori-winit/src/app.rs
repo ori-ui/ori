@@ -8,7 +8,7 @@ use std::{
 use ori_core::{
     CallbackEmitter, Cursor, Event, EventEmitter, EventSink, ImageCache, KeyboardEvent,
     LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Runtime, Scope, StyleCache,
-    StyleLoader, Stylesheet, Vec2, View,
+    StyleLoader, Stylesheet, Task, Vec2, View,
 };
 use ori_graphics::{Color, Frame};
 use winit::{
@@ -68,8 +68,8 @@ impl App {
         initialize_log().unwrap();
 
         let builder = Box::new(
-            move |_event_sink: &EventSink, _event_callbacks: &CallbackEmitter<Event>| {
-                let scope = Scope::new();
+            move |event_sink: &EventSink, _event_callbacks: &CallbackEmitter<Event>| {
+                let scope = Scope::new(event_sink.clone());
 
                 Node::new(content(scope))
             },
@@ -333,11 +333,17 @@ impl App {
                     }
                 }
                 WinitEvent::UserEvent(event) => {
+                    if let Some(task) = event.get::<Task>() {
+                        task.poll();
+                        return;
+                    }
+
                     if event.is::<RequestRedrawEvent>() {
                         window.request_redraw();
-                    } else {
-                        state.event(&event);
+                        return;
                     }
+
+                    state.event(&event);
                 }
                 WinitEvent::WindowEvent { event, .. } => match event {
                     WindowEvent::Resized(size)

@@ -2,12 +2,14 @@ mod cursor;
 mod keyboard;
 mod pointer;
 mod sink;
+mod task;
 mod window;
 
 pub use cursor::*;
 pub use keyboard::*;
 pub use pointer::*;
 pub use sink::*;
+pub use task::*;
 pub use window::*;
 
 use std::{

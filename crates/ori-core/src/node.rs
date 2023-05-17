@@ -357,7 +357,7 @@ impl<T: View> Node<T> {
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
 
-        let size = {
+        let (size, margin) = {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = LayoutContext {
@@ -377,11 +377,10 @@ impl<T: View> Node<T> {
 
             let bc = bc.with_margin(margin);
             let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
-            let size = size + margin.size();
 
             Self::update_cursor(&mut cx);
 
-            size
+            (size, margin)
         };
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
@@ -389,7 +388,7 @@ impl<T: View> Node<T> {
 
         cx.state.propagate_down(&node_state);
 
-        size
+        size + margin.size()
     }
 
     /// Layout the node.

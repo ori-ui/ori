@@ -21,22 +21,15 @@ use std::{
     },
 };
 
-use crate::SendSync;
-
-#[cfg(feature = "multi-thread")]
-type EventInner = dyn Any + Send + Sync;
-#[cfg(not(feature = "multi-thread"))]
-type EventInner = dyn Any;
-
 #[derive(Clone)]
 pub struct Event {
-    inner: Arc<EventInner>,
+    inner: Arc<dyn Any + Send + Sync>,
     is_handled: Arc<AtomicBool>,
     type_name: &'static str,
 }
 
 impl Event {
-    pub fn new<T: Any + SendSync>(event: T) -> Self {
+    pub fn new<T: Any + Send + Sync>(event: T) -> Self {
         Self {
             inner: Arc::new(event),
             is_handled: Arc::new(AtomicBool::new(false)),

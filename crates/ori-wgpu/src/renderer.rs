@@ -64,7 +64,7 @@ impl WgpuRenderer {
         config.format = TextureFormat::Bgra8Unorm;
         config.alpha_mode = CompositeAlphaMode::Auto;
         config.usage |= TextureUsages::TEXTURE_BINDING;
-        config.present_mode = PresentMode::Immediate;
+        config.present_mode = PresentMode::AutoVsync;
         surface.configure(&device, &config);
 
         let msaa_texture = Self::create_msaa_texture(&device, config.format, width, height);

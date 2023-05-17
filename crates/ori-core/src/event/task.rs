@@ -1,20 +1,12 @@
 use std::{
     cell::UnsafeCell,
     future::Future,
-    mem::{self, ManuallyDrop},
     pin::Pin,
     sync::Arc,
-    task::{Context, RawWaker, RawWakerVTable, Waker},
+    task::{Context, Wake, Waker},
 };
 
 use crate::EventSink;
-
-type BoxFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
-
-struct TaskInner {
-    future: UnsafeCell<Option<BoxFuture>>,
-    event_sink: EventSink,
-}
 
 /// A handle to a task.
 ///
@@ -47,7 +39,7 @@ impl Task {
         // SAFETY: This is safe because only one thread can poll a task at a time.
         let future_slot = unsafe { &mut *inner.future.get() };
         if let Some(mut future) = future_slot.take() {
-            let waker = inner.waker();
+            let waker = Waker::from(inner.clone());
             let context = &mut Context::from_waker(&waker);
 
             if future.as_mut().poll(context).is_pending() {
@@ -57,44 +49,22 @@ impl Task {
     }
 }
 
-impl TaskInner {
-    const RAW_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
-        Self::clone_arc_raw,
-        Self::wake_arc_raw,
-        Self::wake_by_ref_arc_raw,
-        Self::drop_arc_raw,
-    );
+type BoxFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
 
-    unsafe fn increment_ref_count(ptr: *const ()) {
-        let arc = ManuallyDrop::new(Arc::from_raw(ptr as *const Self));
-        mem::forget(arc.clone());
+struct TaskInner {
+    future: UnsafeCell<Option<BoxFuture>>,
+    event_sink: EventSink,
+}
+
+impl Wake for TaskInner {
+    fn wake(self: Arc<Self>) {
+        self.event_sink.emit(self.clone());
     }
 
-    unsafe fn clone_arc_raw(ptr: *const ()) -> RawWaker {
-        Self::increment_ref_count(ptr);
-        RawWaker::new(ptr, &Self::RAW_WAKER_VTABLE)
-    }
-
-    unsafe fn wake_arc_raw(ptr: *const ()) {
-        let arc = Arc::from_raw(ptr as *const Self);
-        arc.event_sink.emit(Task(arc.clone()));
-    }
-
-    unsafe fn wake_by_ref_arc_raw(ptr: *const ()) {
-        Self::increment_ref_count(ptr);
-        Self::wake_arc_raw(ptr);
-    }
-
-    unsafe fn drop_arc_raw(ptr: *const ()) {
-        Arc::from_raw(ptr as *const Self);
-    }
-
-    fn raw_waker(self: &Arc<Self>) -> RawWaker {
-        let ptr = Arc::into_raw(self.clone());
-        RawWaker::new(ptr as *const (), &Self::RAW_WAKER_VTABLE)
-    }
-
-    fn waker(self: &Arc<Self>) -> Waker {
-        unsafe { Waker::from_raw(self.raw_waker()) }
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.event_sink.emit(self.clone());
     }
 }
+
+// SAFETY: This is safe because only one thread can poll a task at a time.
+unsafe impl Sync for TaskInner {}

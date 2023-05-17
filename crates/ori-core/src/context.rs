@@ -10,7 +10,7 @@ use ori_graphics::{
 };
 
 use crate::{
-    BoxConstraints, Cursor, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent, SendSync,
+    BoxConstraints, Cursor, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent,
     StyleAttribute, StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet,
     Unit,
 };
@@ -571,7 +571,7 @@ pub trait Context {
     }
 
     /// Sends an event to the event sink.
-    fn send_event(&self, event: impl Any + SendSync) {
+    fn send_event(&self, event: impl Any + Send + Sync) {
         self.event_sink().emit(event);
     }
 

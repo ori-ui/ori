@@ -396,14 +396,7 @@ impl<T: View> Node<T> {
             let bc = cx.style_constraints(bc);
             cx.bc = bc;
 
-            let size = if cx.state.needs_layout {
-                cx.state.needs_layout = false;
-
-                inner.view.layout(&mut inner.view_state(), &mut cx, bc)
-            } else {
-                cx.state.local_rect.size()
-            };
-
+            let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
             Self::update_cursor(&mut cx);
 
             size

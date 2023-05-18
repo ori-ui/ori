@@ -86,7 +86,7 @@ impl<V: View> ViewRef<V> {
     }
 
     pub fn is_dirty(&self) -> bool {
-        self.is_dirty.get()
+        self.is_dirty.get_untracked()
     }
 
     pub fn set_dirty(&self) {
@@ -110,30 +110,35 @@ impl<V: View> View for ViewRef<V> {
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        if self.is_dirty.get_untracked() {
+        if self.is_dirty() {
             self.clear_dirty();
-            cx.request_layout();
             cx.request_redraw();
+            cx.request_layout();
         }
 
         self.lock_untracked().event(state, cx, event);
     }
 
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        if self.is_dirty.get_untracked() {
+        if self.is_dirty() {
             self.clear_dirty();
-            cx.request_layout();
             cx.request_redraw();
+            cx.request_layout();
         }
 
-        self.lock_untracked().layout(state, cx, bc)
+        if cx.state.needs_layout {
+            cx.state.needs_layout = false;
+            self.lock_untracked().layout(state, cx, bc)
+        } else {
+            cx.local_rect().size()
+        }
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        if self.is_dirty.get_untracked() {
+        if self.is_dirty() {
             self.clear_dirty();
-            cx.request_layout();
             cx.request_redraw();
+            cx.request_layout();
         }
 
         self.lock_untracked().draw(state, cx);
@@ -292,10 +297,8 @@ impl<V: View + SendSync> View for OwnedSignal<Arc<V>> {
     fn draw(&self, (callback, state): &mut Self::State, cx: &mut DrawContext) {
         // redraw when the signal changes
         let event_sink = cx.event_sink.clone();
-        let recreated = cx.state.recreated.clone();
         *callback = Callback::new(move |&()| {
             event_sink.emit(RequestRedrawEvent);
-            recreated.set(true);
         });
 
         if let Some(emitter) = self.emitter.get() {

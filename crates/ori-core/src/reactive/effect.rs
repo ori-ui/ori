@@ -97,8 +97,6 @@ pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static)
         CAPTURE.with(|capture| {
             let mut capture = capture.borrow_mut();
 
-            println!("capture: {:?}", capture);
-
             if let Some(capture) = capture.as_mut() {
                 let callback = effect.get().unwrap().borrow().callback.clone();
                 capture.push(callback);

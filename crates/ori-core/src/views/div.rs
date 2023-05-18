@@ -41,8 +41,13 @@ impl Div {
         self
     }
 
-    fn handle_pointer_event(&self, cx: &mut EventContext, event: &PointerEvent) -> bool {
-        if event.is_press() && cx.hovered() {
+    fn handle_pointer_event(
+        &self,
+        cx: &mut EventContext,
+        event: &PointerEvent,
+        handled: bool,
+    ) -> bool {
+        if event.is_press() && cx.hovered() && !handled {
             if !self.on_press.is_empty() {
                 cx.activate();
                 self.on_press.emit(event);
@@ -76,12 +81,8 @@ impl View for Div {
             child.event(cx, event);
         }
 
-        if event.is_handled() {
-            return;
-        }
-
         if let Some(pointer_event) = event.get::<PointerEvent>() {
-            if self.handle_pointer_event(cx, pointer_event) {
+            if self.handle_pointer_event(cx, pointer_event, event.is_handled()) {
                 event.handle();
             }
         }

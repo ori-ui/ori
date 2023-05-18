@@ -156,6 +156,7 @@ impl View for Scroll {
             ..Default::default()
         };
 
+        cx.bc = BoxConstraints::new(Vec2::ZERO, axis.pack(f32::INFINITY, 0.0));
         let content_bc = match axis {
             Axis::Horizontal => bc.loose_x(),
             Axis::Vertical => bc.loose_y(),

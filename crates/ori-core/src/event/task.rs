@@ -58,11 +58,11 @@ struct TaskInner {
 
 impl Wake for TaskInner {
     fn wake(self: Arc<Self>) {
-        self.event_sink.emit(self.clone());
+        self.event_sink.emit(Task(self.clone()));
     }
 
     fn wake_by_ref(self: &Arc<Self>) {
-        self.event_sink.emit(self.clone());
+        self.event_sink.emit(Task(self.clone()));
     }
 }
 

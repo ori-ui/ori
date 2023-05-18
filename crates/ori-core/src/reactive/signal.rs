@@ -1,15 +1,15 @@
 use std::{fmt::Debug, ops::Deref, panic::Location};
 
-use crate::{CallbackEmitter, Resource};
+use crate::{CallbackEmitter, Resource, Sendable};
 
 use super::effect;
 
-pub struct ReadSignal<T: 'static> {
+pub struct ReadSignal<T: Sendable + 'static> {
     pub(crate) resource: Resource<T>,
     pub(crate) emitter: Resource<CallbackEmitter>,
 }
 
-impl<T: 'static> ReadSignal<T> {
+impl<T: Sendable + 'static> ReadSignal<T> {
     pub fn new_leaking(value: T) -> Self {
         Self {
             resource: Resource::new_leaking(value),
@@ -59,7 +59,7 @@ impl<T: 'static> ReadSignal<T> {
     }
 }
 
-impl<T> Clone for ReadSignal<T> {
+impl<T: Sendable> Clone for ReadSignal<T> {
     fn clone(&self) -> Self {
         Self {
             resource: self.resource.clone(),
@@ -68,13 +68,13 @@ impl<T> Clone for ReadSignal<T> {
     }
 }
 
-impl<T> Copy for ReadSignal<T> {}
+impl<T: Sendable> Copy for ReadSignal<T> {}
 
-pub struct Signal<T: 'static> {
+pub struct Signal<T: Sendable + 'static> {
     signal: ReadSignal<T>,
 }
 
-impl<T> Deref for Signal<T> {
+impl<T: Sendable> Deref for Signal<T> {
     type Target = ReadSignal<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -82,7 +82,7 @@ impl<T> Deref for Signal<T> {
     }
 }
 
-impl<T: 'static> Signal<T> {
+impl<T: Sendable + 'static> Signal<T> {
     pub fn new_leaking(value: T) -> Self {
         Self {
             signal: ReadSignal::new_leaking(value),
@@ -117,7 +117,7 @@ impl<T: 'static> Signal<T> {
     }
 }
 
-impl<T> Clone for Signal<T> {
+impl<T: Sendable> Clone for Signal<T> {
     fn clone(&self) -> Self {
         Self {
             signal: self.signal,
@@ -125,16 +125,16 @@ impl<T> Clone for Signal<T> {
     }
 }
 
-impl<T> Copy for Signal<T> {}
+impl<T: Sendable> Copy for Signal<T> {}
 
 /// A signal that owns its resources.
 ///
 /// This is useful for signals that aren't bound to a [`Scope`].
-pub struct OwnedSignal<T: 'static> {
+pub struct OwnedSignal<T: Sendable + 'static> {
     signal: Signal<T>,
 }
 
-impl<T> Deref for OwnedSignal<T> {
+impl<T: Sendable> Deref for OwnedSignal<T> {
     type Target = Signal<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -142,7 +142,7 @@ impl<T> Deref for OwnedSignal<T> {
     }
 }
 
-impl<T> Clone for OwnedSignal<T> {
+impl<T: Sendable> Clone for OwnedSignal<T> {
     fn clone(&self) -> Self {
         self.reference();
 
@@ -152,13 +152,13 @@ impl<T> Clone for OwnedSignal<T> {
     }
 }
 
-impl<T: Default> Default for OwnedSignal<T> {
+impl<T: Sendable + Default> Default for OwnedSignal<T> {
     fn default() -> Self {
         Self::new(T::default())
     }
 }
 
-impl<T> OwnedSignal<T> {
+impl<T: Sendable> OwnedSignal<T> {
     pub fn new(value: T) -> Self {
         Self {
             signal: Signal::new_leaking(value),
@@ -171,13 +171,13 @@ impl<T> OwnedSignal<T> {
     }
 }
 
-impl<T> From<T> for OwnedSignal<T> {
+impl<T: Sendable> From<T> for OwnedSignal<T> {
     fn from(value: T) -> Self {
         Self::new(value)
     }
 }
 
-impl<T> Drop for OwnedSignal<T> {
+impl<T: Sendable> Drop for OwnedSignal<T> {
     #[track_caller]
     fn drop(&mut self) {
         self.resource.dispose();
@@ -188,7 +188,7 @@ impl<T> Drop for OwnedSignal<T> {
 macro_rules! impl_signal {
     ($($type:ty),*) => {
         $(
-            impl<T: Clone + Debug> Debug for $type {
+            impl<T: Sendable + Clone + Debug> Debug for $type {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     f.debug_struct(stringify!($type))
                         .field("resource", &self.resource)
@@ -197,13 +197,13 @@ macro_rules! impl_signal {
                 }
             }
 
-            impl<T: Clone + PartialEq> PartialEq for $type {
+            impl<T: Sendable + Clone + PartialEq> PartialEq for $type {
                 fn eq(&self, other: &Self) -> bool {
                     self.resource == other.resource
                 }
             }
 
-            impl<T: Clone + Eq> Eq for $type {}
+            impl<T: Sendable + Clone + Eq> Eq for $type {}
         )*
     };
 }

@@ -1,6 +1,6 @@
-use std::{cell::RefCell, fmt::Debug, ops::DerefMut, panic::Location, rc::Rc};
+use std::{cell::RefCell, fmt::Debug, ops::DerefMut, panic::Location};
 
-use crate::{Callback, Resource, Scope, Sendable, WeakCallbackEmitter};
+use crate::{Callback, Lock, Lockable, Resource, Scope, Sendable, Shared, WeakCallbackEmitter};
 
 thread_local! {
     static EFFECTS: RefCell<Vec<*mut EffectState<'static>>> = Default::default();
@@ -88,7 +88,7 @@ pub fn delay_effects(f: impl FnOnce()) {
 pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static) {
     let caller = Location::caller();
 
-    let effect = Resource::new_leaking(Rc::new(RefCell::new(EffectState::empty())));
+    let effect = Resource::new_leaking(Shared::new(Lock::new(EffectState::empty())));
     effect.manage(cx.id);
 
     let callback = Callback::new(move |()| {
@@ -98,7 +98,7 @@ pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static)
             let mut capture = capture.borrow_mut();
 
             if let Some(capture) = capture.as_mut() {
-                let callback = effect.get().unwrap().borrow().callback.clone();
+                let callback = effect.get().unwrap().lock_mut().callback.clone();
                 capture.push(callback);
                 captured = true;
             }
@@ -114,7 +114,7 @@ pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static)
             let len = effects.borrow().len();
 
             let effect = effect.get().unwrap();
-            let mut effect = effect.borrow_mut();
+            let mut effect = effect.lock_mut();
 
             effect.clear_dependencies();
 
@@ -134,7 +134,7 @@ pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static)
         });
     });
 
-    effect.get().unwrap().borrow_mut().callback = callback.clone();
+    effect.get().unwrap().lock_mut().callback = callback.clone();
 
     callback.emit(&());
 }

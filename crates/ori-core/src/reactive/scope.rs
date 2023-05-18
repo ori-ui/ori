@@ -1,8 +1,8 @@
-use std::{cell::Cell, future::Future, mem, rc::Rc};
+use std::{future::Future, mem};
 
 use crate::{
     Callback, EventSink, Lock, Lockable, OwnedSignal, ReadSignal, Resource, Runtime, ScopeId,
-    Shared, Signal, Task,
+    Sendable, Shared, Signal, Task,
 };
 
 use super::effect;
@@ -40,7 +40,7 @@ impl Scope {
         effect::untrack(f)
     }
 
-    pub fn resource<T: 'static>(self, value: T) -> Resource<T> {
+    pub fn resource<T: Sendable + 'static>(self, value: T) -> Resource<T> {
         let resource = Resource::new_leaking(value);
         self.manage_resource(resource);
         resource
@@ -58,13 +58,13 @@ impl Scope {
         };
     }
 
-    pub fn manage_resource<T: 'static>(self, resource: Resource<T>) {
+    pub fn manage_resource<T: Sendable + 'static>(self, resource: Resource<T>) {
         Runtime::with_global_runtime(|runtime| {
             runtime.manage_resource(self.id, resource.id());
         })
     }
 
-    pub fn manage_signal<T: 'static>(self, signal: Signal<T>) {
+    pub fn manage_signal<T: Sendable + 'static>(self, signal: Signal<T>) {
         Runtime::with_global_runtime(|runtime| {
             runtime.manage_resource(self.id, signal.resource.id());
             runtime.manage_resource(self.id, signal.emitter.id());
@@ -79,7 +79,7 @@ impl Scope {
         Task::spawn(self.event_sink(), future);
     }
 
-    pub fn signal<T: 'static>(self, value: T) -> Signal<T> {
+    pub fn signal<T: Sendable + 'static>(self, value: T) -> Signal<T> {
         let signal = Signal::new_leaking(value);
 
         self.manage_signal(signal);
@@ -88,12 +88,12 @@ impl Scope {
     }
 
     #[track_caller]
-    pub fn effect(self, effect: impl FnMut() + 'static) {
+    pub fn effect(self, effect: impl FnMut() + Sendable + 'static) {
         effect::create_effect(self, effect);
     }
 
     #[track_caller]
-    pub fn effect_scoped(self, mut effect: impl FnMut(Scope) + 'static) {
+    pub fn effect_scoped(self, mut effect: impl FnMut(Scope) + Sendable + 'static) {
         let mut scope = None::<Scope>;
         self.effect(move || {
             if let Some(scope) = scope {
@@ -107,8 +107,11 @@ impl Scope {
     }
 
     #[track_caller]
-    pub fn memo<T>(self, mut memo: impl FnMut() -> T + 'static) -> ReadSignal<T> {
-        let signal = Rc::new(Cell::new(None::<Signal<T>>));
+    pub fn memo<T: Sendable>(
+        self,
+        mut memo: impl FnMut() -> T + Sendable + 'static,
+    ) -> ReadSignal<T> {
+        let signal = Shared::new(Lock::new(None::<Signal<T>>));
 
         self.effect({
             let signal = signal.clone();
@@ -116,19 +119,23 @@ impl Scope {
             move || {
                 let value = memo();
 
-                if signal.get().is_some() {
-                    signal.get().unwrap().set(value);
+                if signal.lock_mut().is_some() {
+                    signal.lock_mut().unwrap().set(value);
                 } else {
-                    signal.set(Some(self.signal(value)));
+                    *signal.lock_mut() = Some(self.signal(value));
                 }
             }
         });
 
-        *signal.get().unwrap()
+        let signal = signal.lock_mut();
+        **signal.as_ref().unwrap()
     }
 
     #[track_caller]
-    pub fn owned_memo<T>(self, mut memo: impl FnMut() -> T + 'static) -> OwnedSignal<T> {
+    pub fn owned_memo<T: Sendable>(
+        self,
+        mut memo: impl FnMut() -> T + Sendable + 'static,
+    ) -> OwnedSignal<T> {
         let signal = Shared::new(Lock::new(None::<OwnedSignal<T>>));
 
         self.effect({
@@ -150,8 +157,11 @@ impl Scope {
     }
 
     #[track_caller]
-    pub fn memo_scoped<T>(self, mut memo: impl FnMut(Scope) -> T + 'static) -> ReadSignal<T> {
-        let signal = Rc::new(Cell::new(None::<Signal<T>>));
+    pub fn memo_scoped<T: Sendable>(
+        self,
+        mut memo: impl FnMut(Scope) -> T + Sendable + 'static,
+    ) -> ReadSignal<T> {
+        let signal = Shared::new(Lock::new(None::<Signal<T>>));
 
         self.effect_scoped({
             let signal = signal.clone();
@@ -159,21 +169,22 @@ impl Scope {
             move |child| {
                 let value = memo(child);
 
-                if signal.get().is_some() {
-                    signal.get().unwrap().set(value);
+                if signal.lock_mut().is_some() {
+                    signal.lock_mut().unwrap().set(value);
                 } else {
-                    signal.set(Some(child.signal(value)));
+                    *signal.lock_mut() = Some(child.signal(value));
                 }
             }
         });
 
-        *signal.get().unwrap()
+        let signal = signal.lock_mut();
+        **signal.as_ref().unwrap()
     }
 
     #[track_caller]
-    pub fn owned_memo_scoped<T>(
+    pub fn owned_memo_scoped<T: Sendable>(
         self,
-        mut memo: impl FnMut(Scope) -> T + 'static,
+        mut memo: impl FnMut(Scope) -> T + Sendable + 'static,
     ) -> OwnedSignal<T> {
         let signal = Shared::new(Lock::new(None::<OwnedSignal<T>>));
 

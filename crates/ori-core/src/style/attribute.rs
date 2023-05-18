@@ -4,7 +4,7 @@ use ori_graphics::{Color, TextAlign};
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 
-use crate::{ReadSignal, Shared, StyleTransition, Unit};
+use crate::{ReadSignal, Sendable, Shared, StyleTransition, Unit};
 
 /// A collection of [`StyleAttribute`]s.
 #[derive(Clone, Debug, Default)]
@@ -273,7 +273,7 @@ impl From<Color> for StyleAttributeValue {
     }
 }
 
-impl<T: 'static> From<ReadSignal<T>> for StyleAttributeValue
+impl<T: Sendable + 'static> From<ReadSignal<T>> for StyleAttributeValue
 where
     T: Into<StyleAttributeValue> + Clone,
 {

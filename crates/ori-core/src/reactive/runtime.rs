@@ -1,6 +1,5 @@
 use std::{
     any::Any,
-    cell::{Cell, RefCell},
     fmt::Debug,
     mem,
     panic::Location,
@@ -8,6 +7,8 @@ use std::{
 };
 
 use nohash_hasher::{IntMap, IsEnabled};
+
+use crate::{Guard, Lock, Lockable, Sendable};
 
 #[derive(Debug)]
 struct RuntimeScope {
@@ -19,6 +20,9 @@ struct RuntimeScope {
 struct RuntimeResource {
     #[allow(dead_code)]
     creator: &'static Location<'static>,
+    #[cfg(feature = "multi-thread")]
+    data: Box<dyn Any + Send>,
+    #[cfg(not(feature = "multi-thread"))]
     data: Box<dyn Any>,
     refs: u32,
 }
@@ -26,42 +30,48 @@ struct RuntimeResource {
 #[derive(Default)]
 pub struct Runtime {
     is_global: bool,
-    scopes: RefCell<IntMap<ScopeId, RuntimeScope>>,
-    resources: RefCell<IntMap<ResourceId, RuntimeResource>>,
+    scopes: Lock<IntMap<ScopeId, RuntimeScope>>,
+    resources: Lock<IntMap<ResourceId, RuntimeResource>>,
 }
 
 impl Runtime {
-    thread_local! {
-        static GLOBAL_ENABLED: Cell<bool> = Cell::new(true);
-    }
-
     fn global() -> Self {
         Self {
             is_global: true,
-            scopes: RefCell::new(IntMap::default()),
-            resources: RefCell::new(IntMap::default()),
+            scopes: Lock::new(IntMap::default()),
+            resources: Lock::new(IntMap::default()),
         }
     }
 
+    #[cfg(feature = "multi-thread")]
     pub fn with_global_runtime<T>(f: impl FnOnce(&Runtime) -> T) -> T {
-        thread_local! {
+        lazy_static::lazy_static! {
+            static ref RUNTIME: Runtime = Runtime::global();
+        }
+
+        f(&RUNTIME)
+    }
+
+    #[cfg(not(feature = "multi-thread"))]
+    pub fn with_global_runtime<T>(f: impl FnOnce(&Runtime) -> T) -> T {
+        std::thread_local! {
             static RUNTIME: Runtime = Runtime::global();
         }
 
-        RUNTIME.with(|runtime| f(runtime))
+        RUNTIME.with(f)
     }
 
-    pub fn is_global_enabled() -> bool {
-        Self::GLOBAL_ENABLED.with(|enabled| enabled.get())
+    fn scopes(&self) -> Guard<'_, IntMap<ScopeId, RuntimeScope>> {
+        self.scopes.lock_mut()
     }
 
-    pub fn set_global_enabled(enabled: bool) {
-        Self::GLOBAL_ENABLED.with(|e| e.set(enabled));
+    fn resources(&self) -> Guard<'_, IntMap<ResourceId, RuntimeResource>> {
+        self.resources.lock_mut()
     }
 
     pub fn create_scope(&self, parent: Option<ScopeId>) -> ScopeId {
         let id = ScopeId::new();
-        let mut scopes = self.scopes.borrow_mut();
+        let mut scopes = self.scopes();
         scopes.insert(
             id,
             RuntimeScope {
@@ -81,7 +91,7 @@ impl Runtime {
     }
 
     pub fn scope_parent(&self, scope: ScopeId) -> Option<ScopeId> {
-        let scopes = self.scopes.borrow();
+        let scopes = self.scopes();
         let scope = scopes.get(&scope)?;
         scope.parent
     }
@@ -89,14 +99,14 @@ impl Runtime {
     pub fn manage_resource(&self, scope: ScopeId, resource: ResourceId) {
         tracing::trace!("managing resource {:?} in scope {:?}", resource, scope);
 
-        let mut scopes = self.scopes.borrow_mut();
+        let mut scopes = self.scopes();
         let scope = scopes.get_mut(&scope).unwrap();
         scope.resources.push(resource);
     }
 
     pub fn dispose_scope(&self, scope: ScopeId) {
         let scope = {
-            let mut scopes = self.scopes.borrow_mut();
+            let mut scopes = self.scopes();
             scopes.remove(&scope).unwrap()
         };
 
@@ -112,12 +122,12 @@ impl Runtime {
     }
 
     #[track_caller]
-    pub fn create_resource<T: 'static>(&self, data: T) -> ResourceId {
+    pub fn create_resource<T: Sendable + 'static>(&self, data: T) -> ResourceId {
         let id = ResourceId::new();
 
         tracing::trace!("creating resource {:?} at {}", id, Location::caller());
 
-        self.resources.borrow_mut().insert(
+        self.resources().insert(
             id,
             RuntimeResource {
                 creator: Location::caller(),
@@ -133,7 +143,7 @@ impl Runtime {
     pub fn reference_resource(&self, id: ResourceId) {
         tracing::trace!("referencing resource {:?}", id);
 
-        let mut resources = self.resources.borrow_mut();
+        let mut resources = self.resources();
         if let Some(resource) = resources.get_mut(&id) {
             resource.refs += 1;
         }
@@ -142,7 +152,7 @@ impl Runtime {
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
     pub unsafe fn get_resource<T: Clone + 'static>(&self, id: ResourceId) -> Option<T> {
-        let resources = self.resources.borrow();
+        let resources = self.resources();
         let resource = resources.get(&id)?;
 
         let ptr = resource.data.as_ref() as *const _ as *const T;
@@ -154,10 +164,14 @@ impl Runtime {
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
     #[track_caller]
-    pub unsafe fn set_resource<T: 'static>(&self, id: ResourceId, value: T) -> Result<(), T> {
+    pub unsafe fn set_resource<T: Sendable + 'static>(
+        &self,
+        id: ResourceId,
+        value: T,
+    ) -> Result<(), T> {
         tracing::trace!("setting resource {:?} at {}", id, Location::caller());
 
-        let old = match self.resources.borrow_mut().get_mut(&id) {
+        let old = match self.resources().get_mut(&id) {
             Some(resource) => mem::replace(&mut resource.data, Box::new(value)),
             None => return Err(value),
         };
@@ -176,7 +190,7 @@ impl Runtime {
         tracing::trace!("removing resource {:?}, at {}", id, Location::caller());
 
         let resource = {
-            let mut resources = self.resources.borrow_mut();
+            let mut resources = self.resources();
             resources.remove(&id)?
         };
 
@@ -191,7 +205,7 @@ impl Runtime {
         tracing::trace!("disposing resource {:?} at {}", id, Location::caller());
 
         let resource = {
-            let mut resources = self.resources.borrow_mut();
+            let mut resources = self.resources();
 
             let Some(resource) = resources.get_mut(&id) else { return };
 
@@ -209,8 +223,8 @@ impl Runtime {
     pub fn clear(&self) {
         tracing::trace!("clearing runtime");
 
-        let scopes = mem::take(&mut *self.scopes.borrow_mut());
-        let resources = mem::take(&mut *self.resources.borrow_mut());
+        let scopes = mem::take(&mut *self.scopes());
+        let resources = mem::take(&mut *self.resources());
 
         drop(scopes);
         drop(resources);
@@ -219,16 +233,14 @@ impl Runtime {
     pub fn forget(&self) {
         tracing::trace!("forgetting runtime");
 
-        let scopes = mem::take(&mut *self.scopes.borrow_mut());
-        let resources = mem::take(&mut *self.resources.borrow_mut());
+        let scopes = mem::take(&mut *self.scopes());
+        let resources = mem::take(&mut *self.resources());
 
         mem::forget(scopes);
         mem::forget(resources);
     }
 
     pub fn stop_global() {
-        Self::set_global_enabled(false);
-
         Self::with_global_runtime(|runtime| {
             runtime.clear();
         });

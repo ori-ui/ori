@@ -1,13 +1,13 @@
 use std::{fmt::Debug, marker::PhantomData};
 
-use crate::{ResourceId, Runtime, ScopeId};
+use crate::{ResourceId, Runtime, ScopeId, Sendable};
 
-pub struct Resource<T: 'static> {
+pub struct Resource<T: Sendable + 'static> {
     id: ResourceId,
     _marker: PhantomData<fn() -> T>,
 }
 
-impl<T> Clone for Resource<T> {
+impl<T: Sendable> Clone for Resource<T> {
     fn clone(&self) -> Self {
         Self {
             id: self.id,
@@ -16,9 +16,9 @@ impl<T> Clone for Resource<T> {
     }
 }
 
-impl<T> Copy for Resource<T> {}
+impl<T: Sendable> Copy for Resource<T> {}
 
-impl<T: Clone + Debug> Debug for Resource<T> {
+impl<T: Sendable + Clone + Debug> Debug for Resource<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Resource")
             .field("id", &self.id)
@@ -27,15 +27,15 @@ impl<T: Clone + Debug> Debug for Resource<T> {
     }
 }
 
-impl<T: Clone + PartialEq> PartialEq for Resource<T> {
+impl<T: Sendable + Clone + PartialEq> PartialEq for Resource<T> {
     fn eq(&self, other: &Self) -> bool {
         self.get() == other.get()
     }
 }
 
-impl<T: Clone + Eq> Eq for Resource<T> {}
+impl<T: Sendable + Clone + Eq> Eq for Resource<T> {}
 
-impl<T> Resource<T> {
+impl<T: Sendable> Resource<T> {
     /// Creates a new resource that must be manually disposed.
     pub fn new_leaking(data: T) -> Self {
         Runtime::with_global_runtime(|runtime| Self {

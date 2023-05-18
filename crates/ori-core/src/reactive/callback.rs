@@ -25,7 +25,7 @@ impl<T> CallbackCollection<T> {
 
     fn contains(&self, ptr: CallbackPtr<T>) -> bool {
         for callback in &self.callbacks {
-            if callback.callback.as_ptr() == ptr {
+            if callback.callback.as_ptr() as CallbackPtr<T> == ptr {
                 return true;
             }
         }
@@ -34,13 +34,14 @@ impl<T> CallbackCollection<T> {
     }
 
     fn insert(&mut self, callback: WeakCallback<T>) {
-        if !self.contains(callback.callback.as_ptr()) {
+        if !self.contains(callback.callback.as_ptr() as CallbackPtr<T>) {
             self.callbacks.push(callback);
         }
     }
 
     fn remove(&mut self, ptr: CallbackPtr<T>) {
-        let equals = |callback: &WeakCallback<T>| callback.callback.as_ptr() != ptr;
+        let equals =
+            |callback: &WeakCallback<T>| callback.callback.as_ptr() as CallbackPtr<T> != ptr;
         self.callbacks.retain(equals);
     }
 
@@ -71,7 +72,7 @@ type RawCallback<'a, T> = dyn FnMut(&T) + Send + 'a;
 #[cfg(not(feature = "multi-thread"))]
 type RawCallback<'a, T> = dyn FnMut(&T) + 'a;
 
-type CallbackPtr<T> = *const Lock<RawCallback<'static, T>>;
+type CallbackPtr<T> = *const T;
 type Callbacks<T> = Lock<CallbackCollection<T>>;
 
 /// A callback that can be called from any thread.
@@ -112,7 +113,7 @@ impl<'a, T> Callback<'a, T> {
     }
 
     pub fn as_ptr(&self) -> CallbackPtr<T> {
-        self.callback.as_ptr() as CallbackPtr<T>
+        Shared::as_ptr(&self.callback) as *const T
     }
 
     /// Calls the callback.
@@ -171,7 +172,7 @@ impl<T> WeakCallback<T> {
 
     /// Returns the raw pointer to the callback.
     pub fn as_ptr(&self) -> CallbackPtr<T> {
-        self.callback.as_ptr() as CallbackPtr<T>
+        Weak::as_ptr(&self.callback) as CallbackPtr<T>
     }
 
     /// Tries to call the [`Callback`] if it is still alive.

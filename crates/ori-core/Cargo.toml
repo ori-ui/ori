@@ -16,6 +16,7 @@ ori-macro = { path = "../ori-macro", version = "0.1.0-alpha.0" }
 
 deref-derive = "0.1"
 glam = "0.24"
+lazy_static = "1.4"
 nohash-hasher = "0.2"
 pest = "2.5"
 pest_derive = "2.5"

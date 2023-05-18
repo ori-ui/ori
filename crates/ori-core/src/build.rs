@@ -75,7 +75,11 @@ pub trait Parent {
 
     fn clear_children(&mut self);
 
-    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
+    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>) -> usize
+    where
+        I::Item: IntoNode<Self::Child, U>;
+
+    fn set_child<I: IntoIterator, U: ?Sized>(&mut self, index: usize, child: impl IntoChildren<I>)
     where
         I::Item: IntoNode<Self::Child, U>;
 

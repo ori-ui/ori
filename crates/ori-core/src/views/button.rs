@@ -38,11 +38,18 @@ impl Parent for Button {
         self.content.clear_children();
     }
 
-    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
+    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>) -> usize
     where
         I::Item: IntoNode<Self::Child, U>,
     {
         self.content.add_child(child)
+    }
+
+    fn set_child<I: IntoIterator, U: ?Sized>(&mut self, index: usize, child: impl IntoChildren<I>)
+    where
+        I::Item: IntoNode<Self::Child, U>,
+    {
+        self.content.set_child(index, child)
     }
 }
 

@@ -79,34 +79,34 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                 let child = view_node(context, node);
 
                 quote! {
-                    <#name as #ori_core::Parent>::add_child(
-                        &mut __view_ref,
-                        #child,
-                    );
-                }
-            });
-
-            let children = if children.len() > 0 {
-                quote! {
                     #context.effect({
                         let __view_ref = __view_ref.clone();
+                        let mut __child_index = None;
                         move || {
                             let mut __view_ref = __view_ref.lock();
-                            <#name as #ori_core::Parent>::clear_children(&mut __view_ref);
-                            #(#children)*
+                            if let Some(__child_index) = __child_index {
+                                <#name as #ori_core::Parent>::set_child(
+                                    &mut __view_ref,
+                                    __child_index,
+                                    #child,
+                                );
+                            } else {
+                                __child_index = Some(<#name as #ori_core::Parent>::add_child(
+                                    &mut __view_ref,
+                                    #child,
+                                ));
+                            }
                         }
                     });
                 }
-            } else {
-                quote! {}
-            };
+            });
 
             if attributes.is_empty() {
                 quote! {{
                     let mut __view = <#name as ::std::default::Default>::default();
                     let __view_ref = #ori_core::ViewRef::new(__view);
 
-                    #children
+                    #(#children)*
                     #(#properties)*
 
                     __view_ref
@@ -118,7 +118,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                     );
                     let __view_ref = #ori_core::ViewRef::new(__view);
 
-                    #children
+                    #(#children)*
                     #(#properties)*
                     #(#attributes)*
 

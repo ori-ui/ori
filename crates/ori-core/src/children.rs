@@ -67,7 +67,7 @@ impl FlexLayout {
 
 #[derive(Deref, DerefMut)]
 pub struct Children<T: View = Box<dyn AnyView>> {
-    nodes: SmallVec<[Node<T>; 1]>,
+    nodes: SmallVec<[SmallVec<[Node<T>; 1]>; 1]>,
 }
 
 impl<T: View> Default for Children<T> {
@@ -83,13 +83,32 @@ impl<T: View> Parent for Children<T> {
         self.nodes.clear();
     }
 
-    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>)
+    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>) -> usize
     where
         I::Item: IntoNode<Self::Child, U>,
     {
-        for child in child.into_children() {
-            self.nodes.push(child.into_node());
-        }
+        let children = child
+            .into_children()
+            .into_iter()
+            .map(IntoNode::into_node)
+            .collect();
+
+        let index = self.nodes.len();
+        self.nodes.push(children);
+        index
+    }
+
+    fn set_child<I: IntoIterator, U: ?Sized>(&mut self, index: usize, child: impl IntoChildren<I>)
+    where
+        I::Item: IntoNode<Self::Child, U>,
+    {
+        let children = child
+            .into_children()
+            .into_iter()
+            .map(IntoNode::into_node)
+            .collect();
+
+        self.nodes[index] = children;
     }
 }
 
@@ -262,31 +281,35 @@ impl<T: View> Children<T> {
             child.draw(cx);
         }
     }
-}
 
-impl IntoIterator for Children {
-    type Item = Node;
-    type IntoIter = smallvec::IntoIter<[Self::Item; 1]>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.nodes.into_iter()
+    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
+        self.nodes.iter().flatten()
     }
 }
 
-impl<'a> IntoIterator for &'a Children {
-    type Item = &'a Node;
-    type IntoIter = std::slice::Iter<'a, Node>;
+impl<T: View> IntoIterator for Children<T> {
+    type Item = Node<T>;
+    type IntoIter = std::iter::Flatten<smallvec::IntoIter<[SmallVec<[Self::Item; 1]>; 1]>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.nodes.iter()
+        self.nodes.into_iter().flatten()
+    }
+}
+
+impl<'a, T: View> IntoIterator for &'a Children<T> {
+    type Item = &'a Node<T>;
+    type IntoIter = std::iter::Flatten<std::slice::Iter<'a, SmallVec<[Node<T>; 1]>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.nodes.iter().flatten()
     }
 }
 
 impl<'a> IntoIterator for &'a mut Children {
     type Item = &'a mut Node;
-    type IntoIter = std::slice::IterMut<'a, Node>;
+    type IntoIter = std::iter::Flatten<std::slice::IterMut<'a, SmallVec<[Node; 1]>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.nodes.iter_mut()
+        self.nodes.iter_mut().flatten()
     }
 }

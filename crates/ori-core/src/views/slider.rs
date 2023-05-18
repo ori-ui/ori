@@ -133,7 +133,7 @@ impl View for Slider {
         let length = cx.style_range("length", 0.0..axis.major(bc.max));
 
         let size = f32::max(track_size, knob_size);
-        cx.style_constraints(bc).constrain(axis.pack(length, size))
+        bc.constrain(axis.pack(length, size))
     }
 
     #[tracing::instrument(name = "Slider", skip(self, cx))]

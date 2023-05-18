@@ -206,11 +206,6 @@ struct AppState {
 }
 
 impl AppState {
-    fn window_size(&self) -> Vec2 {
-        let size = self.window.inner_size();
-        Vec2::new(size.width as f32, size.height as f32)
-    }
-
     fn clean(&mut self) {
         let icon = convert_cursor_icon(self.cursor_icon);
         self.window.set_cursor_icon(icon);
@@ -222,15 +217,18 @@ impl AppState {
         self.event_callbacks.emit(&event);
 
         self.cursor_icon = Cursor::Default;
-        self.root.event_root(
-            self.style_loader.style(),
-            &mut self.style_cache,
-            &self.renderer,
-            &self.event_sink,
-            event,
-            &mut self.image_cache,
-            &mut self.cursor_icon,
-        );
+
+        ori_core::delay_effects(|| {
+            self.root.event_root(
+                self.style_loader.style(),
+                &mut self.style_cache,
+                &self.renderer,
+                &self.event_sink,
+                event,
+                &mut self.image_cache,
+                &mut self.cursor_icon,
+            );
+        });
 
         self.clean();
     }
@@ -238,18 +236,18 @@ impl AppState {
     #[tracing::instrument(skip(self))]
     fn layout(&mut self) {
         let style = self.style_loader.style();
-        let size = self.window_size();
 
         self.cursor_icon = Cursor::Default;
-        self.root.layout_root(
-            style,
-            &mut self.style_cache,
-            &self.renderer,
-            size,
-            &self.event_sink,
-            &mut self.image_cache,
-            &mut self.cursor_icon,
-        );
+        ori_core::delay_effects(|| {
+            self.root.layout_root(
+                style,
+                &mut self.style_cache,
+                &self.renderer,
+                &self.event_sink,
+                &mut self.image_cache,
+                &mut self.cursor_icon,
+            );
+        });
 
         self.clean();
     }
@@ -265,15 +263,18 @@ impl AppState {
         let style = self.style_loader.style();
 
         self.cursor_icon = Cursor::Default;
-        self.root.draw_root(
-            style,
-            &mut self.style_cache,
-            &mut self.frame,
-            &self.renderer,
-            &self.event_sink,
-            &mut self.image_cache,
-            &mut self.cursor_icon,
-        );
+
+        ori_core::delay_effects(|| {
+            self.root.draw_root(
+                style,
+                &mut self.style_cache,
+                &mut self.frame,
+                &self.renderer,
+                &self.event_sink,
+                &mut self.image_cache,
+                &mut self.cursor_icon,
+            );
+        });
 
         self.clean();
 

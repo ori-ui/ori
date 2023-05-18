@@ -89,8 +89,6 @@ impl View for Div {
 
     #[tracing::instrument(name = "Div", skip(self, cx, bc))]
     fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let bc = cx.style_constraints(bc);
-
         let axis = cx.style::<Axis>("direction");
         let gap = cx.style_range("gap", 0.0..axis.major(bc.max));
 

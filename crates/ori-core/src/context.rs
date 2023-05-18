@@ -84,15 +84,18 @@ pub struct LayoutContext<'a> {
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
+    pub parent_bc: BoxConstraints,
+    pub bc: BoxConstraints,
 }
 
 impl<'a> LayoutContext<'a> {
     pub fn style_constraints(&mut self, bc: BoxConstraints) -> BoxConstraints {
-        let min_width = self.style_range_group("min-width", "width", bc.width());
-        let max_width = self.style_range_group("max-width", "width", bc.width());
+        let parent_bc = self.parent_bc;
+        let min_width = self.style_range_group("min-width", "width", parent_bc.width());
+        let max_width = self.style_range_group("max-width", "width", parent_bc.width());
 
-        let min_height = self.style_range_group("min-height", "height", bc.height());
-        let max_height = self.style_range_group("max-height", "height", bc.height());
+        let min_height = self.style_range_group("min-height", "height", parent_bc.height());
+        let max_height = self.style_range_group("max-height", "height", parent_bc.height());
 
         let min_size = bc.constrain(Vec2::new(min_width, min_height));
         let max_size = bc.constrain(Vec2::new(max_width, max_height));

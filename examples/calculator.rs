@@ -374,7 +374,7 @@ fn ui(cx: Scope) -> impl View {
 fn main() {
     App::new(ui)
         .title("Calculator (examples/calculator.rs)")
-        .style(include_stylesheet!("style/calculator.css"))
+        .style("examples/style/calculator.css")
         .reziseable(false)
         .transparent()
         .size(300.0, 400.0)

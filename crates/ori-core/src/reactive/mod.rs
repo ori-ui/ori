@@ -6,6 +6,7 @@ mod scope;
 mod signal;
 
 pub use callback::*;
+pub use effect::*;
 pub use resource::*;
 pub use runtime::*;
 pub use scope::*;

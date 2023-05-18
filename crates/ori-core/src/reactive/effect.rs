@@ -4,6 +4,7 @@ use crate::{Callback, Resource, Scope, Sendable, WeakCallbackEmitter};
 
 thread_local! {
     static EFFECTS: RefCell<Vec<*mut EffectState<'static>>> = Default::default();
+    static CAPTURE: RefCell<Option<Vec<Callback<'static, ()>>>> = Default::default();
 }
 
 pub(crate) struct EffectState<'a> {
@@ -60,6 +61,29 @@ pub(crate) fn untrack<T>(f: impl FnOnce() -> T) -> T {
     })
 }
 
+fn set_capture(value: Option<Vec<Callback<'static, ()>>>) -> Option<Vec<Callback<'static, ()>>> {
+    CAPTURE.with(|capture| {
+        let mut capture = capture.borrow_mut();
+        let tmp = capture.take();
+        *capture = value;
+        tmp
+    })
+}
+
+pub fn capture_effects(f: impl FnOnce()) -> Vec<Callback<'static, ()>> {
+    let tmp = set_capture(Some(Vec::new()));
+    f();
+    set_capture(tmp).unwrap()
+}
+
+pub fn delay_effects(f: impl FnOnce()) {
+    let effects = capture_effects(f);
+
+    for effect in effects {
+        effect.emit(&());
+    }
+}
+
 #[track_caller]
 pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static) {
     let caller = Location::caller();
@@ -68,6 +92,24 @@ pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static)
     effect.manage(cx.id);
 
     let callback = Callback::new(move |()| {
+        let mut captured = false;
+
+        CAPTURE.with(|capture| {
+            let mut capture = capture.borrow_mut();
+
+            println!("capture: {:?}", capture);
+
+            if let Some(capture) = capture.as_mut() {
+                let callback = effect.get().unwrap().borrow().callback.clone();
+                capture.push(callback);
+                captured = true;
+            }
+        });
+
+        if captured {
+            return;
+        }
+
         EFFECTS.with(|effects| {
             tracing::trace!("running effect at {}", caller);
 

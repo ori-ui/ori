@@ -342,8 +342,6 @@ impl View for TextInput {
         let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
         state.padding = padding;
 
-        let bc = cx.style_constraints(bc);
-
         let section = self.display_section(state, Some(bc), cx);
         let mut size = cx.messure_text(&section).unwrap_or_default().size();
         size += padding * 2.0;

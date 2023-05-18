@@ -62,12 +62,12 @@ impl BoxConstraints {
         size.clamp(self.min, self.max)
     }
 
-    pub fn height(self) -> Range<f32> {
-        self.min.y..self.max.y
-    }
-
     pub fn width(self) -> Range<f32> {
         self.min.x..self.max.x
+    }
+
+    pub fn height(self) -> Range<f32> {
+        self.min.y..self.max.y
     }
 
     pub fn with_margin(self, margin: Margin) -> Self {
@@ -87,6 +87,8 @@ pub struct Padding {
 }
 
 impl Padding {
+    pub const ZERO: Self = Self::new(0.0, 0.0, 0.0, 0.0);
+
     pub const fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
         Self {
             left,
@@ -128,6 +130,8 @@ pub struct Margin {
 }
 
 impl Margin {
+    pub const ZERO: Self = Self::new(0.0, 0.0, 0.0, 0.0);
+
     pub const fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
         Self {
             left,

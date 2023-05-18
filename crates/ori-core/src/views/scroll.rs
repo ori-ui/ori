@@ -162,7 +162,7 @@ impl View for Scroll {
         };
         let size = self.content.flex_layout(cx, content_bc, flex);
 
-        cx.style_constraints(bc).constrain(size)
+        bc.constrain(size)
     }
 
     #[tracing::instrument(name = "Scroll", skip(self, state, cx))]

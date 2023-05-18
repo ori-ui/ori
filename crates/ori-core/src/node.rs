@@ -45,6 +45,7 @@ impl Default for NodeId {
 #[derive(Clone, Debug)]
 pub struct NodeState {
     pub id: NodeId,
+    pub margin: Margin,
     pub local_rect: Rect,
     pub global_rect: Rect,
     pub active: bool,
@@ -60,6 +61,7 @@ impl Default for NodeState {
     fn default() -> Self {
         Self {
             id: NodeId::new(),
+            margin: Margin::ZERO,
             local_rect: Rect::ZERO,
             global_rect: Rect::ZERO,
             active: false,
@@ -263,7 +265,7 @@ impl<T: View> Node<T> {
         let mut node_state = self.node_state();
 
         let size = node_state.local_rect.size();
-        node_state.local_rect = Rect::min_size(offset, size);
+        node_state.local_rect = Rect::min_size(node_state.margin.top_left() + offset, size);
     }
 
     /// Returns the [`StyleStates`].
@@ -357,7 +359,7 @@ impl<T: View> Node<T> {
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
 
-        let (size, margin) = {
+        let size = {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = LayoutContext {
@@ -370,26 +372,31 @@ impl<T: View> Node<T> {
                 event_sink: cx.event_sink,
                 image_cache: cx.image_cache,
                 cursor: cx.cursor,
+                parent_bc: cx.bc,
+                bc,
             };
 
-            let margin = Margin::from_style(&mut cx, bc);
+            cx.state.margin = Margin::from_style(&mut cx, bc);
 
-            let bc = bc.with_margin(margin);
+            let bc = bc.with_margin(cx.state.margin);
+            let bc = cx.style_constraints(bc);
+            cx.bc = bc;
+
             let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
 
             Self::update_cursor(&mut cx);
 
-            (size, margin)
+            size
         };
 
-        let local_offset = node_state.local_rect.min + margin.top_left();
-        let global_offset = node_state.global_rect.min + margin.top_left();
+        let local_offset = node_state.local_rect.min + node_state.margin.top_left();
+        let global_offset = node_state.global_rect.min + node_state.margin.top_left();
         node_state.local_rect = Rect::min_size(local_offset, size);
         node_state.global_rect = Rect::min_size(global_offset, size);
 
         cx.state.propagate_down(&node_state);
 
-        size + margin.size()
+        size + node_state.margin.size()
     }
 
     /// Layout the node.
@@ -503,13 +510,14 @@ impl<T: View> Node<T> {
         style: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
-        window_size: Vec2,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
     ) -> Vec2 {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
+
+        let bc = BoxConstraints::new(Vec2::ZERO, renderer.window_size());
 
         let selector = node_state.selector();
         let selectors = StyleSelectors::new().with(selector);
@@ -523,9 +531,13 @@ impl<T: View> Node<T> {
             event_sink,
             image_cache,
             cursor: cursor_icon,
+            parent_bc: bc,
+            bc,
         };
 
-        let bc = BoxConstraints::new(Vec2::ZERO, window_size);
+        let bc = cx.style_constraints(bc);
+        cx.bc = bc;
+
         let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
 
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
@@ -540,7 +552,6 @@ impl<T: View> Node<T> {
         style: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
-        window_size: Vec2,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
@@ -550,7 +561,6 @@ impl<T: View> Node<T> {
             style,
             style_cache,
             renderer,
-            window_size,
             event_sink,
             image_cache,
             cursor_icon,

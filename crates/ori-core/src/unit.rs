@@ -65,7 +65,7 @@ impl Unit {
         match self {
             Px(value) => value,
             Pt(value) => value * 96.0 / 72.0 * scale,
-            Pc(value) => value * (range.end - range.start) / 100.0,
+            Pc(value) => range.start + (range.end - range.start) * value / 100.0,
             Vw(value) => value * window_size.x / 100.0,
             Vh(value) => value * window_size.y / 100.0,
             Em(value) => value * 16.0 * scale,

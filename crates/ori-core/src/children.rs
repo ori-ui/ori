@@ -181,7 +181,7 @@ impl<T: View> Children<T> {
 
         // initialize the major and minor axis
         let mut minor = min_minor;
-        let mut major = (self.len() - 1) as f32 * gap;
+        let mut major = self.len().saturating_sub(1) as f32 * gap;
         let mut flex_sum = 0.0f32;
 
         // first we need to measure the fixed-sized children to determine their size

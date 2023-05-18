@@ -241,17 +241,50 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
     (kind.to_string(), key)
 }
 
+fn is_dynamic(value: &Expr) -> bool {
+    match value {
+        Expr::Array(expr) => expr.elems.iter().any(|expr| is_dynamic(expr)),
+        Expr::Assign(_) | Expr::AssignOp(_) => false,
+        Expr::Unary(expr) => is_dynamic(&expr.expr),
+        Expr::Binary(expr) => is_dynamic(&expr.left) || is_dynamic(&expr.right),
+        Expr::Cast(expr) => is_dynamic(&expr.expr),
+        Expr::Closure(_) => false,
+        Expr::Field(expr) => is_dynamic(&expr.base),
+        Expr::Group(expr) => is_dynamic(&expr.expr),
+        Expr::Index(expr) => is_dynamic(&expr.expr) || is_dynamic(&expr.index),
+        Expr::Lit(_) => false,
+        Expr::Paren(expr) => is_dynamic(&expr.expr),
+        Expr::Path(_) => false,
+        Expr::Reference(expr) => is_dynamic(&expr.expr),
+        Expr::Repeat(expr) => is_dynamic(&expr.expr),
+        Expr::Try(expr) => is_dynamic(&expr.expr),
+        Expr::Tuple(expr) => expr.elems.iter().any(|expr| is_dynamic(expr)),
+        Expr::Type(_) => false,
+        _ => true,
+    }
+}
+
+fn wrap_effect(context: &Expr, value: TokenStream) -> TokenStream {
+    quote! {
+        #context.effect({
+            let __view_ref = __view_ref.clone();
+            move || { #value }
+        });
+    }
+}
+
 fn class(context: &Expr, name: &NodeName, value: &Expr) -> TokenStream {
     let ori_core = find_crate("core");
 
-    quote_spanned! {value.span() =>
-        #context.effect({
-            let __view_ref = __view_ref.clone();
-            move || {
-                let mut __view_ref = __view_ref.lock();
-                #ori_core::Styled::<#name>::set_class(&mut __view_ref, #value);
-            }
-        });
+    let tt = quote_spanned! {value.span() => {
+        let mut __view_ref = __view_ref.lock();
+        #ori_core::Styled::<#name>::set_class(&mut __view_ref, #value);
+    }};
+
+    if is_dynamic(value) {
+        wrap_effect(context, tt)
+    } else {
+        tt
     }
 }
 
@@ -262,55 +295,59 @@ fn property(context: &Expr, name: &NodeName, key: &ExprPath, value: &Expr) -> To
         #key
     };
 
-    quote_spanned! {value.span() =>
-        #context.effect({
-            let __view_ref = __view_ref.clone();
-            move || {
-                let mut __view_ref = __view_ref.lock();
-                <#name as #ori_core::Properties>::setter(&mut __view_ref).#key(#value);
-            }
-        });
+    let tt = quote_spanned! {value.span() => {
+        let mut __view_ref = __view_ref.lock();
+        <#name as #ori_core::Properties>::setter(&mut __view_ref).#key(#value);
+    }};
+
+    if is_dynamic(value) {
+        wrap_effect(context, tt)
+    } else {
+        tt
     }
 }
 
 fn event(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStream {
     let ori_core = find_crate("core");
 
-    quote! {
-        #context.effect({
-            let __view_ref = __view_ref.clone();
-            move || {
-                let mut __view_ref = __view_ref.lock();
-                <#name as #ori_core::Events>::setter(&mut __view_ref).#key(#context, #value);
-            }
-        });
+    let tt = quote_spanned! {value.span() => {
+        let mut __view_ref = __view_ref.lock();
+        <#name as #ori_core::Events>::setter(&mut __view_ref).#key(#context, #value);
+    }};
+
+    if is_dynamic(value) {
+        wrap_effect(context, tt)
+    } else {
+        tt
     }
 }
 
 fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStream {
     let ori_core = find_crate("core");
 
-    quote! {
-        #context.effect({
-            let __view_ref = __view_ref.clone();
-            move || {
-                let mut __view_ref = __view_ref.lock();
-                <#name as #ori_core::Bindings>::setter(&mut __view_ref).#key(#context, #value);
-            }
-        });
+    let tt = quote_spanned! {value.span() => {
+        let mut __view_ref = __view_ref.lock();
+        <#name as #ori_core::Bindings>::setter(&mut __view_ref).#key(#context, #value);
+    }};
+
+    if is_dynamic(value) {
+        wrap_effect(context, tt)
+    } else {
+        tt
     }
 }
 
 fn style(context: &Expr, name: &NodeName, key: &str, value: &Expr) -> TokenStream {
     let ori_core = find_crate("core");
 
-    quote! {
-        #context.effect({
-            let __view_ref = __view_ref.clone();
-            move || {
-                let mut __view_ref = __view_ref.lock();
-                #ori_core::Styled::<#name>::set_attr(&mut __view_ref, #key, #value);
-            }
-        });
+    let tt = quote_spanned! {value.span() => {
+        let mut __view_ref = __view_ref.lock();
+        #ori_core::Styled::<#name>::set_attr(&mut __view_ref, #key, #value);
+    }};
+
+    if is_dynamic(value) {
+        wrap_effect(context, tt)
+    } else {
+        tt
     }
 }

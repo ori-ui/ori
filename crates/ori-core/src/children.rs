@@ -144,7 +144,12 @@ impl<T: View> Children<T> {
         let padding = Padding::from_style(cx, bc);
         let padded_bc = bc.shrink(padding.size());
         flex.offset += padding.top_left();
-        self.flex_layout_padded(cx, padded_bc, flex) + padding.size()
+
+        let tmp = cx.bc;
+        cx.bc = padded_bc;
+        let size = self.flex_layout_padded(cx, padded_bc, flex) + padding.size();
+        cx.bc = tmp;
+        size
     }
 
     /// Layout the children using a FlexLayout.

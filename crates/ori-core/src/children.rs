@@ -181,6 +181,7 @@ impl<T: View> Children<T> {
                 min: axis.pack(0.0, 0.0),
                 max: axis.pack(max_major - major, max_minor),
             };
+            let needs_layout = child.needs_layout();
             let size = child.layout(cx, child_bc);
             let child_minor = axis.minor(size);
             let child_major = axis.major(size);
@@ -189,6 +190,10 @@ impl<T: View> Children<T> {
 
             minor = minor.max(child_minor);
             major += child_major;
+
+            if align_items == AlignItems::Stretch && needs_layout {
+                child.request_layout();
+            }
 
             if i > 0 {
                 major += gap;

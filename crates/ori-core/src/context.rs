@@ -573,6 +573,13 @@ pub trait Context {
         self.send_event(RequestRedrawEvent);
     }
 
+    /// Requests a layout.
+    ///
+    /// This is a shortcut for `self.state_mut().needs_layout = true`.
+    fn request_layout(&mut self) {
+        self.state_mut().needs_layout = true;
+    }
+
     /// Sends an event to the event sink.
     fn send_event(&self, event: impl Any + Send + Sync) {
         self.event_sink().emit(event);

@@ -25,7 +25,7 @@ impl<T> CallbackCollection<T> {
 
     fn contains(&self, ptr: CallbackPtr<T>) -> bool {
         for callback in &self.callbacks {
-            if callback.callback.as_ptr() as CallbackPtr<T> == ptr {
+            if callback.as_ptr() == ptr {
                 return true;
             }
         }
@@ -34,14 +34,13 @@ impl<T> CallbackCollection<T> {
     }
 
     fn insert(&mut self, callback: WeakCallback<T>) {
-        if !self.contains(callback.callback.as_ptr() as CallbackPtr<T>) {
+        if !self.contains(callback.as_ptr()) {
             self.callbacks.push(callback);
         }
     }
 
     fn remove(&mut self, ptr: CallbackPtr<T>) {
-        let equals =
-            |callback: &WeakCallback<T>| callback.callback.as_ptr() as CallbackPtr<T> != ptr;
+        let equals = |callback: &WeakCallback<T>| callback.as_ptr() != ptr;
         self.callbacks.retain(equals);
     }
 

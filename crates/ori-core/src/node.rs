@@ -53,6 +53,7 @@ pub struct NodeState {
     pub hovered: bool,
     pub last_draw: Instant,
     pub style: Style,
+    pub needs_layout: bool,
     pub recreated: OwnedSignal<bool>,
     pub transitions: TransitionStates,
 }
@@ -69,6 +70,7 @@ impl Default for NodeState {
             hovered: false,
             last_draw: Instant::now(),
             style: Style::default(),
+            needs_layout: true,
             recreated: OwnedSignal::new(true),
             transitions: TransitionStates::new(),
         }
@@ -87,14 +89,16 @@ impl NodeState {
     /// Propagate the node state up to the parent.
     ///
     /// This is called before events are propagated.
-    pub fn propagate_up(&mut self, parent: &NodeState) {
+    pub fn propagate_up(&mut self, parent: &mut NodeState) {
         self.global_rect = self.local_rect.translate(parent.global_rect.min);
     }
 
     /// Propagate the node state down to the child.
     ///
     /// This is called after events are propagated.
-    pub fn propagate_down(&mut self, _child: &NodeState) {}
+    pub fn propagate_down(&mut self, child: &mut NodeState) {
+        child.needs_layout |= self.needs_layout;
+    }
 
     /// Returns the [`StyleStates´].
     pub fn style_states(&self) -> StyleStates {
@@ -273,6 +277,16 @@ impl<T: View> Node<T> {
         self.node_state().style_states()
     }
 
+    /// Returns true if the node needs to be laid out.
+    pub fn needs_layout(&self) -> bool {
+        self.node_state().needs_layout
+    }
+
+    /// Requests a layout.
+    pub fn request_layout(&self) {
+        self.node_state().needs_layout = true;
+    }
+
     /// Gets the local [`Rect`] of the node.
     pub fn local_rect(&self) -> Rect {
         self.node_state().local_rect
@@ -346,7 +360,7 @@ impl<T: View> Node<T> {
             Self::update_cursor(&mut cx);
         }
 
-        cx.state.propagate_down(&node_state);
+        cx.state.propagate_down(node_state);
     }
 
     /// Handle an event.
@@ -358,6 +372,13 @@ impl<T: View> Node<T> {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
+
+        if !node_state.needs_layout {
+            tracing::trace!("layout: no layout needed");
+            return node_state.local_rect.size();
+        }
+
+        node_state.needs_layout = false;
 
         let size = {
             let selector = node_state.selector();
@@ -394,7 +415,7 @@ impl<T: View> Node<T> {
         node_state.local_rect = Rect::min_size(local_offset, size);
         node_state.global_rect = Rect::min_size(global_offset, size);
 
-        cx.state.propagate_down(&node_state);
+        cx.state.propagate_down(node_state);
 
         size + node_state.margin.size()
     }
@@ -429,6 +450,7 @@ impl<T: View> Node<T> {
 
             if cx.state.update_transitions() {
                 cx.request_redraw();
+                cx.request_layout();
             }
 
             cx.state.draw();
@@ -436,7 +458,7 @@ impl<T: View> Node<T> {
             Self::update_cursor(&mut cx);
         }
 
-        cx.state.propagate_down(&node_state);
+        cx.state.propagate_down(node_state);
     }
 
     /// Draw the node.

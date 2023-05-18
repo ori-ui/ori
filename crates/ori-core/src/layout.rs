@@ -40,14 +40,14 @@ impl BoxConstraints {
     pub fn loose_x(self) -> Self {
         Self {
             min: self.min,
-            max: Vec2::new(f32::INFINITY, self.max.x),
+            max: Vec2::new(f32::INFINITY, self.max.y),
         }
     }
 
     pub fn loose_y(self) -> Self {
         Self {
             min: self.min,
-            max: Vec2::new(self.max.y, f32::INFINITY),
+            max: Vec2::new(self.max.x, f32::INFINITY),
         }
     }
 

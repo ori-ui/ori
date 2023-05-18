@@ -569,14 +569,18 @@ pub trait Context {
     /// Requests a redraw.
     ///
     /// This is a shortcut for `self.event_sink().send(RequestRedrawEvent)`.
+    #[track_caller]
     fn request_redraw(&mut self) {
+        tracing::trace!("request redraw");
         self.send_event(RequestRedrawEvent);
     }
 
     /// Requests a layout.
     ///
     /// This is a shortcut for `self.state_mut().needs_layout = true`.
+    #[track_caller]
     fn request_layout(&mut self) {
+        tracing::trace!("request layout");
         self.state_mut().needs_layout = true;
     }
 

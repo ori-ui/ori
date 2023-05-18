@@ -6,8 +6,8 @@ use std::{
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Callback, DrawContext, Event, EventContext, Guard, LayoutContext, Lock,
-    Lockable, OwnedSignal, RequestRedrawEvent, SendSync, Shared, Style,
+    BoxConstraints, Callback, Context, DrawContext, Event, EventContext, Guard, LayoutContext,
+    Lock, Lockable, OwnedSignal, RequestRedrawEvent, SendSync, Shared, Style,
 };
 
 pub trait IntoView {
@@ -56,12 +56,14 @@ pub trait View: SendSync + 'static {
 
 pub struct ViewRef<V: View> {
     view: Shared<Lock<V>>,
+    is_dirty: OwnedSignal<bool>,
 }
 
 impl<V: View> Clone for ViewRef<V> {
     fn clone(&self) -> Self {
         Self {
             view: self.view.clone(),
+            is_dirty: self.is_dirty.clone(),
         }
     }
 }
@@ -70,11 +72,29 @@ impl<V: View> ViewRef<V> {
     pub fn new(view: V) -> Self {
         Self {
             view: Shared::new(Lock::new(view)),
+            is_dirty: OwnedSignal::new(false),
         }
     }
 
     pub fn lock(&self) -> Guard<'_, V> {
+        self.set_dirty();
         self.view.lock_mut()
+    }
+
+    pub fn lock_untracked(&self) -> Guard<'_, V> {
+        self.view.lock_mut()
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.is_dirty.get()
+    }
+
+    pub fn set_dirty(&self) {
+        self.is_dirty.set(true);
+    }
+
+    pub fn clear_dirty(&self) {
+        self.is_dirty.set(false);
     }
 }
 
@@ -82,23 +102,41 @@ impl<V: View> View for ViewRef<V> {
     type State = V::State;
 
     fn build(&self) -> Self::State {
-        self.lock().build()
+        self.lock_untracked().build()
     }
 
     fn style(&self) -> Style {
-        self.lock().style()
+        self.lock_untracked().style()
     }
 
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        self.lock().event(state, cx, event);
+        if self.is_dirty.get_untracked() {
+            self.clear_dirty();
+            cx.request_layout();
+            cx.request_redraw();
+        }
+
+        self.lock_untracked().event(state, cx, event);
     }
 
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.lock().layout(state, cx, bc)
+        if self.is_dirty.get_untracked() {
+            self.clear_dirty();
+            cx.request_layout();
+            cx.request_redraw();
+        }
+
+        self.lock_untracked().layout(state, cx, bc)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        self.lock().draw(state, cx);
+        if self.is_dirty.get_untracked() {
+            self.clear_dirty();
+            cx.request_layout();
+            cx.request_redraw();
+        }
+
+        self.lock_untracked().draw(state, cx);
     }
 }
 

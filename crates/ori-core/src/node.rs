@@ -97,7 +97,7 @@ impl NodeState {
     ///
     /// This is called after events are propagated.
     pub fn propagate_down(&mut self, child: &mut NodeState) {
-        child.needs_layout |= self.needs_layout;
+        self.needs_layout |= child.needs_layout;
     }
 
     /// Returns the [`StyleStates´].
@@ -373,13 +373,6 @@ impl<T: View> Node<T> {
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
 
-        if !node_state.needs_layout {
-            tracing::trace!("layout: no layout needed");
-            return node_state.local_rect.size();
-        }
-
-        node_state.needs_layout = false;
-
         let size = {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
@@ -403,7 +396,13 @@ impl<T: View> Node<T> {
             let bc = cx.style_constraints(bc);
             cx.bc = bc;
 
-            let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
+            let size = if cx.state.needs_layout {
+                cx.state.needs_layout = false;
+
+                inner.view.layout(&mut inner.view_state(), &mut cx, bc)
+            } else {
+                cx.state.local_rect.size()
+            };
 
             Self::update_cursor(&mut cx);
 

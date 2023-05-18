@@ -21,13 +21,13 @@ pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let expanded = if nodes.len() == 1 {
         quote! {
-            #(#nodes)*
+            ::std::boxed::Box::new(#(#nodes)*) as ::std::boxed::Box<dyn #ori_core::AnyView>
         }
     } else {
         quote! {{
             let mut fragment = #ori_core::Div::new();
             #( <#ori_core::Div as #ori_core::Parent>::add_child(&mut fragment, #nodes); )*
-            fragment
+            ::std::boxed::Box::new(fragment) as ::std::boxed::Box<dyn #ori_core::AnyView>
         }}
     };
 

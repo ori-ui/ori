@@ -126,12 +126,7 @@ impl<V: View> View for ViewRef<V> {
             cx.request_layout();
         }
 
-        if cx.state.needs_layout {
-            cx.state.needs_layout = false;
-            self.lock_untracked().layout(state, cx, bc)
-        } else {
-            cx.local_rect().size()
-        }
+        self.lock_untracked().layout(state, cx, bc)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {

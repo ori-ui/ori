@@ -1,7 +1,7 @@
 use deref_derive::{Deref, DerefMut};
 use glam::Vec2;
 use ori_graphics::Rect;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use crate::{
     AlignItems, AnyView, Axis, BoxConstraints, DrawContext, Event, EventContext, IntoChildren,
@@ -174,62 +174,77 @@ impl<T: View> Children<T> {
         let min_major = axis.major(bc.min);
 
         let mut minor = min_minor;
-        let mut major = 0.0f32;
+        let mut major = (self.len() - 1) as f32 * gap;
+        let mut flex_sum = 0.0f32;
 
-        // first we need to measure the children to determine their size
+        // first we need to measure the fixed-sized children to determine their size
         //
         // NOTE: using a SmallVec here is a bit faster than using a Vec, but it's not a huge
         // difference
-        let mut children = SmallVec::<[f32; 4]>::with_capacity(self.len());
+        let mut children: SmallVec<[f32; 4]> = smallvec![0.0; self.len()];
         for (i, child) in self.iter().enumerate() {
+            if let Some(flex) = child.style::<Option<f32>>(cx, "flex") {
+                flex_sum += flex;
+                continue;
+            }
+
             let child_bc = BoxConstraints {
                 min: axis.pack(0.0, 0.0),
                 max: axis.pack(max_major - major, max_minor),
             };
 
-            if align_items == AlignItems::Stretch {
-                child.request_layout();
-            }
+            let size = child.layout(cx, child_bc);
+            let child_minor = axis.minor(size);
+            let child_major = axis.major(size);
+
+            children[i] = child_major;
+
+            minor = minor.max(child_minor);
+            major += child_major;
+        }
+
+        // now we need to measure the flex-sized children to determine their size
+        let remaining_major = f32::max(max_major - major, 0.0);
+        let px_per_flex = remaining_major / flex_sum;
+        for (i, child) in self.iter().enumerate() {
+            let Some(flex) = child.style::<Option<f32>>(cx, "flex") else {
+                continue;
+            };
+
+            let desired_major = px_per_flex * flex;
+            let child_bc = BoxConstraints {
+                min: axis.pack(0.0, minor),
+                max: axis.pack(desired_major, max_minor),
+            };
 
             let size = child.layout(cx, child_bc);
             let child_minor = axis.minor(size);
             let child_major = axis.major(size);
 
-            children.push(child_major);
+            children[i] = child_major;
 
             minor = minor.max(child_minor);
             major += child_major;
-
-            if i > 0 {
-                major += gap;
-            }
         }
 
-        if align_items == AlignItems::Stretch {
-            // we need to re-measure the children to determine their size
-            major = 0.0;
-            children.clear();
+        // we need to re-measure the children to determine their size
+        for (i, child) in self.iter().enumerate() {
+            let align_self = child.style::<Option<AlignItems>>(cx, "align-self");
 
-            for (i, child) in self.iter().enumerate() {
-                let child_bc = BoxConstraints {
-                    min: axis.pack(0.0, minor),
-                    max: axis.pack(max_major, minor),
-                };
-                // FIXME: calling layout again is not ideal, but it's the only way to get the
-                // correct size for the child, since we don't know the minor size until we've
-                // measured all the children
-                child.request_layout();
-                let size = child.layout(cx, child_bc);
-                let child_major = axis.major(size);
-
-                children.push(child_major);
-
-                major += child_major;
-
-                if i > 0 {
-                    major += gap;
-                }
+            if align_items != AlignItems::Stretch && align_self != Some(AlignItems::Stretch) {
+                continue;
             }
+
+            let child_bc = BoxConstraints {
+                min: axis.pack(0.0, minor),
+                max: axis.pack(max_major, minor),
+            };
+
+            // FIXME: calling layout again is not ideal, but it's the only way to get the
+            // correct size for the child, since we don't know the minor size until we've
+            // measured all the children
+            let size = child.layout(cx, child_bc);
+            children[i] = axis.major(size);
         }
 
         major = major.max(min_major);
@@ -238,8 +253,13 @@ impl<T: View> Children<T> {
 
         // now we can layout the children
         for (child, align_major) in self.iter().zip(child_offsets) {
+            let align_item = match child.style::<Option<AlignItems>>(cx, "align-self") {
+                Some(align) => align,
+                None => align_items,
+            };
+
             let child_minor = axis.minor(child.size());
-            let align_minor = align_items.align(0.0, minor, child_minor);
+            let align_minor = align_item.align(0.0, minor, child_minor);
 
             let child_offset = axis.pack(align_major, align_minor);
             child.set_offset(offset + child_offset);

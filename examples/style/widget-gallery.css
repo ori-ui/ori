@@ -25,10 +25,6 @@ div .column {
 	align-items: stretch;
 }
 
-image {
-	max-height: 5em;
-}
-
 text-input .long-text {
 	font-size: 1em;
 	text-wrap: true;

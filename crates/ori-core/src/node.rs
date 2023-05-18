@@ -6,9 +6,10 @@ use uuid::Uuid;
 
 use crate::{
     AnyView, BoxConstraints, Context, Cursor, DrawContext, EmptyView, Event, EventContext,
-    EventSink, Guard, ImageCache, IntoView, LayoutContext, Lock, Lockable, Margin, OwnedSignal,
-    PointerEvent, RequestRedrawEvent, Shared, Style, StyleCache, StyleSelector, StyleSelectors,
-    StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
+    EventSink, FromStyleAttribute, Guard, ImageCache, IntoView, LayoutContext, Lock, Lockable,
+    Margin, OwnedSignal, PointerEvent, RequestRedrawEvent, Shared, Style, StyleAttribute,
+    StyleCache, StyleSelector, StyleSelectors, StyleSpecificity, StyleStates, StyleTransition,
+    Stylesheet, TransitionStates, View,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -131,6 +132,65 @@ impl NodeState {
     /// Returns the time in seconds since the last draw.
     pub fn delta(&self) -> f32 {
         self.last_draw.elapsed().as_secs_f32()
+    }
+
+    pub fn get_style_attribyte(
+        &mut self,
+        cx: &mut impl Context,
+        key: &str,
+    ) -> Option<StyleAttribute> {
+        self.get_style_attribute_specificity(cx, key)
+            .map(|(attribute, _)| attribute)
+    }
+
+    pub fn get_style_attribute_specificity(
+        &mut self,
+        cx: &mut impl Context,
+        key: &str,
+    ) -> Option<(StyleAttribute, StyleSpecificity)> {
+        if let Some(attribute) = self.style.attributes.get(key) {
+            return Some((attribute.clone(), StyleSpecificity::INLINE));
+        }
+
+        let selectors = cx.selectors().clone().with(self.selector());
+        let hash = selectors.hash();
+
+        if let Some(result) = cx.style_cache().get_attribute(hash, key) {
+            return result;
+        }
+
+        let stylesheet = cx.stylesheet();
+
+        match stylesheet.get_attribute_specificity(&selectors, key) {
+            Some((attribute, specificity)) => {
+                (cx.style_cache_mut()).insert(hash, attribute.clone(), specificity);
+                Some((attribute, specificity))
+            }
+            None => {
+                cx.style_cache_mut().insert_none(hash, key);
+                None
+            }
+        }
+    }
+
+    pub fn get_style<T: FromStyleAttribute + 'static>(
+        &mut self,
+        cx: &mut impl Context,
+        key: &str,
+    ) -> Option<T> {
+        let attribute = self.get_style_attribyte(cx, key)?;
+        let value = T::from_attribute(attribute.value().clone())?;
+        let transition = attribute.transition();
+
+        Some(self.transition(key, value, transition))
+    }
+
+    pub fn style<T: FromStyleAttribute + Default + 'static>(
+        &mut self,
+        cx: &mut impl Context,
+        key: &str,
+    ) -> T {
+        self.get_style(cx, key).unwrap_or_default()
     }
 
     /// Transition a value.
@@ -272,6 +332,22 @@ impl<T: View> Node<T> {
         node_state.local_rect = Rect::min_size(node_state.margin.top_left() + offset, size);
     }
 
+    pub fn get_style<S: FromStyleAttribute + 'static>(
+        &self,
+        cx: &mut impl Context,
+        key: &str,
+    ) -> Option<S> {
+        self.node_state().get_style(cx, key)
+    }
+
+    pub fn style<S: FromStyleAttribute + Default + 'static>(
+        &self,
+        cx: &mut impl Context,
+        key: &str,
+    ) -> S {
+        self.get_style(cx, key).unwrap_or_default()
+    }
+
     /// Returns the [`StyleStates`].
     pub fn style_states(&self) -> StyleStates {
         self.node_state().style_states()
@@ -372,6 +448,8 @@ impl<T: View> Node<T> {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
+
+        node_state.needs_layout = false;
 
         let size = {
             let selector = node_state.selector();

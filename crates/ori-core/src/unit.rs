@@ -71,6 +71,17 @@ impl Unit {
             Em(value) => value * 16.0 * scale,
         }
     }
+
+    pub fn as_f32(self) -> f32 {
+        match self {
+            Px(value) => value,
+            Pt(value) => value,
+            Pc(value) => value,
+            Vw(value) => value,
+            Vh(value) => value,
+            Em(value) => value,
+        }
+    }
 }
 
 impl Display for Unit {

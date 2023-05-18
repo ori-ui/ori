@@ -338,6 +338,15 @@ impl FromStyleAttribute for Color {
     }
 }
 
+impl FromStyleAttribute for f32 {
+    fn from_attribute(value: StyleAttributeValue) -> Option<Self> {
+        match value {
+            StyleAttributeValue::Unit(value) => Some(value.as_f32()),
+            _ => None,
+        }
+    }
+}
+
 pub trait StyleAttributeEnum: Sized {
     fn from_str(s: &str) -> Option<Self>;
     fn to_str(&self) -> &str;

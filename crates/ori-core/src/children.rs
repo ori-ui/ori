@@ -213,7 +213,7 @@ impl<T: View> Children<T> {
 
             let desired_major = px_per_flex * flex;
             let child_bc = BoxConstraints {
-                min: axis.pack(0.0, minor),
+                min: axis.pack(desired_major, minor),
                 max: axis.pack(desired_major, max_minor),
             };
 
@@ -235,9 +235,10 @@ impl<T: View> Children<T> {
                 continue;
             }
 
+            let child_major = children[i];
             let child_bc = BoxConstraints {
-                min: axis.pack(0.0, minor),
-                max: axis.pack(max_major, minor),
+                min: axis.pack(child_major, minor),
+                max: axis.pack(child_major, minor),
             };
 
             // FIXME: calling layout again is not ideal, but it's the only way to get the

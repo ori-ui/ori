@@ -77,27 +77,35 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
 
             let children = element.children.iter().map(|node| {
                 let child = view_node(context, node);
+                let is_dynamic = matches!(node, Node::Block(_));
 
-                quote! {
-                    #context.effect({
-                        let __view_ref = __view_ref.clone();
-                        let mut __child_index = None;
-                        move || {
-                            let mut __view_ref = __view_ref.lock();
-                            if let Some(__child_index) = __child_index {
-                                <#name as #ori_core::Parent>::set_child(
-                                    &mut __view_ref,
-                                    __child_index,
-                                    #child,
-                                );
-                            } else {
-                                __child_index = Some(<#name as #ori_core::Parent>::add_child(
-                                    &mut __view_ref,
-                                    #child,
-                                ));
+                if is_dynamic {
+                    quote! {
+                        #context.effect({
+                            let __view_ref = __view_ref.clone();
+                            let mut __child_index = None;
+                            move || {
+                                let mut __view_ref = __view_ref.lock();
+                                if let Some(__child_index) = __child_index {
+                                    <#name as #ori_core::Parent>::set_child(
+                                        &mut __view_ref,
+                                        __child_index,
+                                        #child,
+                                    );
+                                } else {
+                                    __child_index = Some(<#name as #ori_core::Parent>::add_child(
+                                        &mut __view_ref,
+                                        #child,
+                                    ));
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
+                } else {
+                    quote! {{
+                        let mut __view_ref = __view_ref.lock();
+                        <#name as #ori_core::Parent>::add_child(&mut __view_ref, #child);
+                    }}
                 }
             });
 

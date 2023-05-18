@@ -81,10 +81,10 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
 
                 if is_dynamic {
                     quote! {
-                        #context.effect({
+                        #context.effect_scoped({
                             let __view_ref = __view_ref.clone();
                             let mut __child_index = None;
-                            move || {
+                            move |#context| {
                                 let mut __view_ref = __view_ref.lock();
                                 if let Some(__child_index) = __child_index {
                                     <#name as #ori_core::Parent>::set_child(
@@ -274,9 +274,9 @@ fn is_dynamic(value: &Expr) -> bool {
 
 fn wrap_effect(context: &Expr, value: TokenStream) -> TokenStream {
     quote! {
-        #context.effect({
+        #context.effect_scoped({
             let __view_ref = __view_ref.clone();
-            move || { #value }
+            move |#context| { #value }
         });
     }
 }

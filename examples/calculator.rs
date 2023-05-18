@@ -143,9 +143,9 @@ fn bar0(
 
     let remove_digit = move |_: &PointerEvent| {
         if matches!(operator.get(), Operator::None) {
-            //result.modify().remove_digit();
+            result.modify().remove_digit();
         } else {
-            //rhs.modify().remove_digit();
+            rhs.modify().remove_digit();
         }
     };
 
@@ -179,9 +179,9 @@ fn add_digit(
 ) -> impl Fn(&PointerEvent) {
     move |_| {
         if matches!(operator.get(), Operator::None) {
-            //result.modify().add_digit(digit);
+            result.modify().add_digit(digit);
         } else {
-            //rhs.modify().add_digit(digit);
+            rhs.modify().add_digit(digit);
         }
     }
 }
@@ -282,9 +282,9 @@ fn bar4(
         }
 
         if matches!(operator.get(), Operator::None) {
-            //result.modify().value *= -1.0;
+            result.modify().value *= -1.0;
         } else {
-            //rhs.modify().value *= -1.0;
+            rhs.modify().value *= -1.0;
         }
     };
 
@@ -296,33 +296,33 @@ fn bar4(
         }
 
         if matches!(operator.get(), Operator::None) {
-            //result.modify().position = Some(-1);
+            result.modify().position = Some(-1);
         } else {
-            //rhs.modify().position = Some(-1);
+            rhs.modify().position = Some(-1);
         }
     };
 
-    let equals = |_: &PointerEvent| {
-        //let mut result = result.modify();
-        //let mut rhs = rhs.modify();
-        //let mut operator = operator.modify();
-        //match *operator {
-        //    Operator::None => {}
-        //    Operator::Add => {
-        //        *result = Number::new(result.value + rhs.value);
-        //    }
-        //    Operator::Subtract => {
-        //        *result = Number::new(result.value - rhs.value);
-        //    }
-        //    Operator::Multiply => {
-        //        *result = Number::new(result.value * rhs.value);
-        //    }
-        //    Operator::Divide => {
-        //        *result = Number::new(result.value / rhs.value);
-        //    }
-        //}
-        //*operator = Operator::None;
-        //*rhs = Number::new(0.0);
+    let equals = move |_: &PointerEvent| {
+        let mut result = result.modify();
+        let mut rhs = rhs.modify();
+        let mut operator = operator.modify();
+        match *operator {
+            Operator::None => {}
+            Operator::Add => {
+                *result = Number::new(result.value + rhs.value);
+            }
+            Operator::Subtract => {
+                *result = Number::new(result.value - rhs.value);
+            }
+            Operator::Multiply => {
+                *result = Number::new(result.value * rhs.value);
+            }
+            Operator::Divide => {
+                *result = Number::new(result.value / rhs.value);
+            }
+        }
+        *operator = Operator::None;
+        *rhs = Number::new(0.0);
     };
 
     view! {

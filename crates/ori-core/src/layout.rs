@@ -199,6 +199,13 @@ impl Axis {
             Axis::Vertical => Vec2::new(minor, major),
         }
     }
+
+    pub const fn unpack(self, size: Vec2) -> (f32, f32) {
+        match self {
+            Axis::Horizontal => (size.x, size.y),
+            Axis::Vertical => (size.y, size.x),
+        }
+    }
 }
 
 impl StyleAttributeEnum for Axis {

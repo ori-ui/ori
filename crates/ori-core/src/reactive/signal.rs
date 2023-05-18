@@ -1,4 +1,8 @@
-use std::{fmt::Debug, ops::Deref, panic::Location};
+use std::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+    panic::Location,
+};
 
 use crate::{CallbackEmitter, Resource, Sendable};
 
@@ -91,21 +95,38 @@ impl<T: Sendable + 'static> Signal<T> {
 
     #[track_caller]
     pub fn set(self, value: T) {
-        match self.try_set(value) {
-            Ok(_) => {}
-            Err(_) => panic!("Signal::set() called on a dropped signal"),
+        if self.try_set(value).is_err() {
+            panic!("Signal::set() called on a dropped signal");
         }
     }
 
     #[track_caller]
     pub fn try_set(self, value: T) -> Result<(), T> {
+        self.try_set_untracked(value)?;
+        self.emit();
+        Ok(())
+    }
+
+    #[track_caller]
+    pub fn set_untracked(self, value: T) {
+        if self.try_set_untracked(value).is_err() {
+            panic!("Signal::set_untracked() called on a dropped signal");
+        }
+    }
+
+    #[track_caller]
+    pub fn try_set_untracked(self, value: T) -> Result<(), T> {
         match self.signal.resource.set(value) {
-            Ok(_) => {
-                self.emit();
-                Ok(())
-            }
+            Ok(_) => Ok(()),
             Err(value) => Err(value),
         }
+    }
+
+    pub fn modify(self) -> Modify<T>
+    where
+        T: Clone,
+    {
+        Modify::new(self)
     }
 
     #[track_caller]
@@ -126,6 +147,42 @@ impl<T: Sendable> Clone for Signal<T> {
 }
 
 impl<T: Sendable> Copy for Signal<T> {}
+
+pub struct Modify<T: Sendable + Clone + 'static> {
+    signal: Signal<T>,
+    value: Option<T>,
+}
+
+impl<T: Sendable + Clone> Modify<T> {
+    pub fn new(signal: Signal<T>) -> Self {
+        Self {
+            signal,
+            value: Some(signal.get()),
+        }
+    }
+}
+
+impl<T: Sendable + Clone> Deref for Modify<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.value.as_ref().unwrap()
+    }
+}
+
+impl<T: Sendable + Clone> DerefMut for Modify<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.value.as_mut().unwrap()
+    }
+}
+
+impl<T: Sendable + Clone> Drop for Modify<T> {
+    fn drop(&mut self) {
+        if let Some(value) = self.value.take() {
+            self.signal.set(value);
+        }
+    }
+}
 
 /// A signal that owns its resources.
 ///

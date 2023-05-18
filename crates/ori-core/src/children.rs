@@ -145,9 +145,14 @@ impl<T: View> Children<T> {
         let padded_bc = bc.shrink(padding.size());
         flex.offset += padding.top_left();
 
+        // we need to store the original bc so we can restore it later
         let tmp = cx.bc;
         cx.bc = padded_bc;
+
+        // do the actual layout
         let size = self.flex_layout_padded(cx, padded_bc, flex) + padding.size();
+
+        // restore the original bc and return the size
         cx.bc = tmp;
         size
     }
@@ -167,12 +172,14 @@ impl<T: View> Children<T> {
             gap,
         } = flex;
 
+        // calculate the bounds of the major and minor axis
         let max_minor = axis.minor(bc.max);
         let min_minor = axis.minor(bc.min);
 
         let max_major = axis.major(bc.max);
         let min_major = axis.major(bc.min);
 
+        // initialize the major and minor axis
         let mut minor = min_minor;
         let mut major = (self.len() - 1) as f32 * gap;
         let mut flex_sum = 0.0f32;
@@ -183,6 +190,7 @@ impl<T: View> Children<T> {
         // difference
         let mut children: SmallVec<[f32; 4]> = smallvec![0.0; self.len()];
         for (i, child) in self.iter().enumerate() {
+            // if the child doesn't have a flex property, we can measure it right away
             if let Some(flex) = child.style::<Option<f32>>(cx, "flex") {
                 flex_sum += flex;
                 continue;
@@ -193,12 +201,14 @@ impl<T: View> Children<T> {
                 max: axis.pack(max_major - major, max_minor),
             };
 
+            // layout the child
             let size = child.layout(cx, child_bc);
-            let child_minor = axis.minor(size);
-            let child_major = axis.major(size);
+            let (child_major, child_minor) = axis.unpack(size);
 
+            // store the size
             children[i] = child_major;
 
+            // update the major and minor axis
             minor = minor.max(child_minor);
             major += child_major;
         }
@@ -207,22 +217,26 @@ impl<T: View> Children<T> {
         let remaining_major = f32::max(max_major - major, 0.0);
         let px_per_flex = remaining_major / flex_sum;
         for (i, child) in self.iter().enumerate() {
+            // if the child has a flex property, now is the time
             let Some(flex) = child.style::<Option<f32>>(cx, "flex") else {
                 continue;
             };
 
+            // calculate the desired size of the child
             let desired_major = px_per_flex * flex;
             let child_bc = BoxConstraints {
                 min: axis.pack(desired_major, minor),
                 max: axis.pack(desired_major, max_minor),
             };
 
+            // layout the flex-child
             let size = child.layout(cx, child_bc);
-            let child_minor = axis.minor(size);
-            let child_major = axis.major(size);
+            let (child_major, child_minor) = axis.unpack(size);
 
+            // store the size
             children[i] = child_major;
 
+            // update the major and minor axis
             minor = minor.max(child_minor);
             major += child_major;
         }
@@ -235,6 +249,7 @@ impl<T: View> Children<T> {
                 continue;
             }
 
+            // calculate the constraints for the child
             let child_major = children[i];
             let child_bc = BoxConstraints {
                 min: axis.pack(child_major, minor),
@@ -254,18 +269,22 @@ impl<T: View> Children<T> {
 
         // now we can layout the children
         for (child, align_major) in self.iter().zip(child_offsets) {
+            // get the align item for the child
             let align_item = match child.style::<Option<AlignItems>>(cx, "align-self") {
                 Some(align) => align,
                 None => align_items,
             };
 
+            // align the minor axis
             let child_minor = axis.minor(child.size());
             let align_minor = align_item.align(0.0, minor, child_minor);
 
+            // set the offset for the child
             let child_offset = axis.pack(align_major, align_minor);
             child.set_offset(offset + child_offset);
         }
 
+        // return the size of the flex container
         axis.pack(major, minor)
     }
 

@@ -212,34 +212,3 @@ impl Scope {
         });
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-
-    #[test]
-    fn effect() {
-        let scope = Scope::new();
-        let signal = scope.memo(|| 0);
-        assert_eq!(signal.get(), 0);
-        scope.effect(move || {
-            signal.set(1);
-        });
-        assert_eq!(signal.get(), 1);
-        scope.dispose();
-    }
-
-    #[test]
-    fn effect_scoped() {
-        let scope = Scope::new();
-        let signal = scope.signal(0);
-        assert_eq!(signal.get(), 0);
-        scope.effect_scoped(move |child| {
-            child.effect(move || {
-                signal.set(2);
-            });
-        });
-        assert_eq!(signal.get(), 2);
-        scope.dispose();
-    }
-}

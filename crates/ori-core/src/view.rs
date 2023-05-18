@@ -6,8 +6,8 @@ use std::{
 use glam::Vec2;
 
 use crate::{
-    BoxConstraints, Callback, Context, DrawContext, Event, EventContext, Guard, LayoutContext,
-    Lock, Lockable, OwnedSignal, RequestRedrawEvent, SendSync, Shared, Style,
+    BoxConstraints, Context, DrawContext, Event, EventContext, Guard, LayoutContext, Lock,
+    Lockable, OwnedSignal, SendSync, Shared, Style,
 };
 
 pub trait IntoView {
@@ -260,47 +260,6 @@ impl View for Arc<dyn AnyView> {
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         self.as_ref().draw(state.as_mut(), cx);
-    }
-}
-
-/// When a view is wrapped in a signal, the view will be redrawn when the signal
-/// changes.
-impl<V: View + SendSync> View for OwnedSignal<Arc<V>> {
-    type State = (Callback<'static, ()>, V::State);
-
-    fn build(&self) -> Self::State {
-        (Callback::default(), V::build(&self.get_untracked()))
-    }
-
-    fn style(&self) -> Style {
-        V::style(&self.get_untracked())
-    }
-
-    fn event(&self, (_, state): &mut Self::State, cx: &mut EventContext, event: &Event) {
-        V::event(&self.get_untracked(), state, cx, event);
-    }
-
-    fn layout(
-        &self,
-        (_, state): &mut Self::State,
-        cx: &mut LayoutContext,
-        bc: BoxConstraints,
-    ) -> Vec2 {
-        V::layout(&self.get_untracked(), state, cx, bc)
-    }
-
-    fn draw(&self, (callback, state): &mut Self::State, cx: &mut DrawContext) {
-        // redraw when the signal changes
-        let event_sink = cx.event_sink.clone();
-        *callback = Callback::new(move |&()| {
-            event_sink.emit(RequestRedrawEvent);
-        });
-
-        if let Some(emitter) = self.emitter.get() {
-            emitter.subscribe_weak(callback.downgrade());
-        }
-
-        V::draw(&self.get_untracked(), state, cx);
     }
 }
 

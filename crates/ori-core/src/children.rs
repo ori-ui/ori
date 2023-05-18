@@ -120,11 +120,11 @@ impl<T: View> Children<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.nodes.len()
+        self.nodes.iter().map(SmallVec::len).sum()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.nodes.is_empty()
+        self.len() == 0
     }
 
     /// Call the `event` method on all the children.

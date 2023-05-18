@@ -47,10 +47,10 @@ impl Text {
 }
 
 impl View for Text {
-    type State = f32;
+    type State = Option<f32>;
 
     fn build(&self) -> Self::State {
-        0.0
+        None
     }
 
     fn style(&self) -> Style {
@@ -60,7 +60,7 @@ impl View for Text {
     #[tracing::instrument(name = "Text", skip(self, state, cx, bc))]
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let font_size = cx.style_range("font-size", 0.0..bc.max.y);
-        *state = font_size;
+        *state = Some(font_size);
 
         let section = TextSection {
             rect: Rect::min_size(Vec2::ZERO, bc.max),
@@ -81,7 +81,7 @@ impl View for Text {
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let section = TextSection {
             rect: cx.rect().ceil(),
-            scale: *state,
+            scale: state.unwrap_or(16.0),
             h_align: cx.style("text-align"),
             v_align: cx.style("text-valign"),
             wrap: cx.style("text-wrap"),

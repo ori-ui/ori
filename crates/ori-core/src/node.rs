@@ -9,7 +9,7 @@ use crate::{
     EventSink, FromStyleAttribute, Guard, ImageCache, IntoView, LayoutContext, Lock, Lockable,
     Margin, OwnedSignal, PointerEvent, RequestRedrawEvent, Shared, Style, StyleAttribute,
     StyleCache, StyleSelector, StyleSelectors, StyleSpecificity, StyleStates, StyleTransition,
-    Stylesheet, TransitionStates, View,
+    Stylesheet, TransitionStates, View, WindowResizeEvent,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -375,7 +375,8 @@ impl<T: View> Node<T> {
 
     /// Gets the size of the node.
     pub fn size(&self) -> Vec2 {
-        self.local_rect().size()
+        let node_state = self.node_state();
+        node_state.local_rect.size() + node_state.margin.size()
     }
 }
 
@@ -415,6 +416,10 @@ impl<T: View> Node<T> {
             if Self::handle_pointer_event(node_state, pointer_event, event.is_handled()) {
                 cx.request_redraw();
             }
+        }
+
+        if event.is::<WindowResizeEvent>() {
+            node_state.needs_layout = true;
         }
 
         {
@@ -608,6 +613,7 @@ impl<T: View> Node<T> {
     ) -> Vec2 {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
+        node_state.needs_layout = false;
 
         let bc = BoxConstraints::new(Vec2::ZERO, renderer.window_size());
 

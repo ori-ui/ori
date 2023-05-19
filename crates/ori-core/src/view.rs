@@ -112,8 +112,8 @@ impl<V: View> View for ViewRef<V> {
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         if self.is_dirty() {
             self.clear_dirty();
-            cx.request_redraw();
             cx.request_layout();
+            cx.request_redraw();
         }
 
         self.lock_untracked().event(state, cx, event);
@@ -122,8 +122,8 @@ impl<V: View> View for ViewRef<V> {
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         if self.is_dirty() {
             self.clear_dirty();
-            cx.request_redraw();
             cx.request_layout();
+            cx.request_redraw();
         }
 
         self.lock_untracked().layout(state, cx, bc)
@@ -132,8 +132,8 @@ impl<V: View> View for ViewRef<V> {
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         if self.is_dirty() {
             self.clear_dirty();
-            cx.request_redraw();
             cx.request_layout();
+            cx.request_redraw();
         }
 
         self.lock_untracked().draw(state, cx);

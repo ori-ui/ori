@@ -7,8 +7,8 @@ use std::{
 
 use ori_core::{
     CallbackEmitter, Cursor, Event, EventEmitter, EventSink, ImageCache, KeyboardEvent,
-    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Runtime, Scope, StyleCache,
-    StyleLoader, Stylesheet, Task, Vec2, View,
+    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Runtime, Scope,
+    SetWindowTitleEvent, StyleCache, StyleLoader, Stylesheet, Task, Vec2, View, WindowResizeEvent,
 };
 use ori_graphics::{Color, Frame};
 use winit::{
@@ -212,6 +212,14 @@ impl AppState {
         self.image_cache.clean();
     }
 
+    fn resize(&mut self, width: u32, heigth: u32) {
+        #[cfg(feature = "wgpu")]
+        self.renderer.resize(width, heigth);
+
+        let size = Vec2::new(width as f32, heigth as f32);
+        self.event(&Event::new(WindowResizeEvent::new(size)));
+    }
+
     #[tracing::instrument(skip(self, event))]
     fn event(&mut self, event: &Event) {
         self.event_callbacks.emit(&event);
@@ -235,6 +243,8 @@ impl AppState {
 
     #[tracing::instrument(skip(self))]
     fn layout(&mut self) {
+        self.event(&Event::new(()));
+
         let style = self.style_loader.style();
 
         self.cursor_icon = Cursor::Default;
@@ -339,6 +349,11 @@ impl App {
                         return;
                     }
 
+                    if let Some(event) = event.get::<SetWindowTitleEvent>() {
+                        window.set_title(&event.title);
+                        return;
+                    }
+
                     if event.is::<RequestRedrawEvent>() {
                         window.request_redraw();
                         return;
@@ -353,7 +368,7 @@ impl App {
                         ..
                     } => {
                         #[cfg(feature = "wgpu")]
-                        state.renderer.resize(size.width, size.height);
+                        state.resize(size.width, size.height);
                     }
                     WindowEvent::CloseRequested => {
                         state.root = Node::empty();

@@ -4,7 +4,7 @@ use std::{
     panic::Location,
 };
 
-use crate::{CallbackEmitter, Resource, Sendable};
+use crate::{Callback, CallbackEmitter, Resource, Sendable};
 
 use super::effect;
 
@@ -59,6 +59,16 @@ impl<T: Sendable + 'static> ReadSignal<T> {
     pub fn track(self) {
         if let Some(emitter) = self.emitter.get() {
             effect::track_callback(emitter.downgrade());
+        }
+    }
+
+    pub fn emitter(self) -> Option<CallbackEmitter> {
+        self.emitter.get()
+    }
+
+    pub fn subscribe(self, callback: &Callback) {
+        if let Some(emitter) = self.emitter.get() {
+            emitter.subscribe(callback);
         }
     }
 }

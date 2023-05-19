@@ -103,6 +103,14 @@ impl<'a> LayoutContext<'a> {
         BoxConstraints::new(min_size, max_size)
     }
 
+    pub fn with_bc<T>(&mut self, bc: BoxConstraints, f: impl FnOnce(&mut Self) -> T) -> T {
+        let tmp = self.bc;
+        self.bc = bc;
+        let result = f(self);
+        self.bc = tmp;
+        result
+    }
+
     pub fn messure_text(&self, section: &TextSection) -> Option<Rect> {
         self.renderer.messure_text(section)
     }

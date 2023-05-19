@@ -339,47 +339,47 @@ impl StyleAttributeEnum for JustifyContent {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AlignItems {
+pub enum AlignItem {
     Start,
     Center,
     End,
     Stretch,
 }
 
-impl Default for AlignItems {
+impl Default for AlignItem {
     fn default() -> Self {
         Self::Start
     }
 }
 
-impl AlignItems {
+impl AlignItem {
     pub fn align(&self, start: f32, end: f32, size: f32) -> f32 {
         match self {
-            AlignItems::Start => start,
-            AlignItems::Center => start + (end - start - size) / 2.0,
-            AlignItems::End => end - size,
-            AlignItems::Stretch => start,
+            AlignItem::Start => start,
+            AlignItem::Center => start + (end - start - size) / 2.0,
+            AlignItem::End => end - size,
+            AlignItem::Stretch => start,
         }
     }
 }
 
-impl StyleAttributeEnum for AlignItems {
+impl StyleAttributeEnum for AlignItem {
     fn from_str(s: &str) -> Option<Self> {
         match s {
-            "start" => Some(AlignItems::Start),
-            "center" => Some(AlignItems::Center),
-            "end" => Some(AlignItems::End),
-            "stretch" => Some(AlignItems::Stretch),
+            "start" => Some(AlignItem::Start),
+            "center" => Some(AlignItem::Center),
+            "end" => Some(AlignItem::End),
+            "stretch" => Some(AlignItem::Stretch),
             _ => None,
         }
     }
 
     fn to_str(&self) -> &str {
         match self {
-            AlignItems::Start => "start",
-            AlignItems::Center => "center",
-            AlignItems::End => "end",
-            AlignItems::Stretch => "stretch",
+            AlignItem::Start => "start",
+            AlignItem::Center => "center",
+            AlignItem::End => "end",
+            AlignItem::Stretch => "stretch",
         }
     }
 }

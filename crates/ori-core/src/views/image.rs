@@ -51,6 +51,15 @@ impl View for Image {
 
     #[tracing::instrument(name = "Image", skip(self, state, cx, bc))]
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        let min_width = cx.style_range_group(&["min-width", "width"], bc.width());
+        let max_width = cx.style_range_group(&["max-width", "width"], bc.width());
+
+        let min_height = cx.style_range_group(&["min-width", "height"], bc.height());
+        let max_height = cx.style_range_group(&["min-height", "height"], bc.height());
+
+        let min_size = bc.constrain(Vec2::new(min_width, min_height));
+        let max_size = bc.constrain(Vec2::new(max_width, max_height));
+
         let handle = state.update(cx, &self.src);
 
         // try to fit the image in the min/max size
@@ -58,23 +67,23 @@ impl View for Image {
         let mut size = handle.size();
         let aspect = size.x / size.y;
 
-        if size.x > bc.max.x {
-            size.x = bc.max.x;
+        if size.x > max_size.x {
+            size.x = max_size.x;
             size.y = size.x / aspect;
         }
 
-        if size.y > bc.max.y {
-            size.y = bc.max.y;
+        if size.y > max_size.y {
+            size.y = max_size.y;
             size.x = size.y * aspect;
         }
 
-        if size.x < bc.min.x {
-            size.x = bc.min.x;
+        if size.x < min_size.x {
+            size.x = min_size.x;
             size.y = size.x / aspect;
         }
 
-        if size.y < bc.min.y {
-            size.y = bc.min.y;
+        if size.y < min_size.y {
+            size.y = min_size.y;
             size.x = size.y * aspect;
         }
 

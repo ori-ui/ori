@@ -188,6 +188,7 @@ impl<T: View> Children<T> {
         //
         // NOTE: using a SmallVec here is a bit faster than using a Vec, but it's not a huge
         // difference
+        let mut any_changed = false;
         let mut children: SmallVec<[f32; 4]> = smallvec![0.0; self.len()];
         for (i, child) in self.iter().enumerate() {
             // if the child doesn't have a flex property, we can measure it right away
@@ -202,7 +203,15 @@ impl<T: View> Children<T> {
             };
 
             // layout the child
-            let size = child.layout(cx, child_bc);
+            let size = if child.needs_layout() || any_changed {
+                let old_size = child.size();
+                let size = child.layout(cx, child_bc);
+                any_changed |= size != old_size;
+                size
+            } else {
+                child.size()
+            };
+
             let (child_major, child_minor) = axis.unpack(size);
 
             // store the size
@@ -230,7 +239,15 @@ impl<T: View> Children<T> {
             };
 
             // layout the flex-child
-            let size = child.layout(cx, child_bc);
+            let size = if child.needs_layout() || any_changed {
+                let old_size = child.size();
+                let size = child.layout(cx, child_bc);
+                any_changed |= size != old_size;
+                size
+            } else {
+                child.size()
+            };
+
             let (child_major, child_minor) = axis.unpack(size);
 
             // store the size
@@ -259,7 +276,12 @@ impl<T: View> Children<T> {
             // FIXME: calling layout again is not ideal, but it's the only way to get the
             // correct size for the child, since we don't know the minor size until we've
             // measured all the children
-            let size = child.layout(cx, child_bc);
+            let size = if any_changed {
+                child.layout(cx, child_bc)
+            } else {
+                child.size()
+            };
+
             children[i] = axis.major(size);
         }
 

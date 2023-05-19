@@ -173,16 +173,24 @@ impl NodeState {
         }
     }
 
+    pub fn get_style_specificity<T: FromStyleAttribute + 'static>(
+        &mut self,
+        cx: &mut impl Context,
+        key: &str,
+    ) -> Option<(T, StyleSpecificity)> {
+        let (attribute, specificity) = self.get_style_attribute_specificity(cx, key)?;
+        let value = T::from_attribute(attribute.value().clone())?;
+        let transition = attribute.transition();
+
+        Some((self.transition(key, value, transition), specificity))
+    }
+
     pub fn get_style<T: FromStyleAttribute + 'static>(
         &mut self,
         cx: &mut impl Context,
         key: &str,
     ) -> Option<T> {
-        let attribute = self.get_style_attribyte(cx, key)?;
-        let value = T::from_attribute(attribute.value().clone())?;
-        let transition = attribute.transition();
-
-        Some(self.transition(key, value, transition))
+        self.get_style_specificity(cx, key).map(|(value, _)| value)
     }
 
     pub fn style<T: FromStyleAttribute + Default + 'static>(
@@ -191,6 +199,26 @@ impl NodeState {
         key: &str,
     ) -> T {
         self.get_style(cx, key).unwrap_or_default()
+    }
+
+    pub fn style_group<T: FromStyleAttribute + Default + 'static>(
+        &mut self,
+        cx: &mut impl Context,
+        keys: &[&str],
+    ) -> T {
+        let mut specificity = None;
+        let mut result = None;
+
+        for key in keys {
+            if let Some((v, s)) = self.get_style_specificity(cx, key) {
+                if specificity.is_none() || s > specificity.unwrap() {
+                    specificity = Some(s);
+                    result = Some(v);
+                }
+            }
+        }
+
+        result.unwrap_or_default()
     }
 
     /// Transition a value.
@@ -346,6 +374,14 @@ impl<T: View> Node<T> {
         key: &str,
     ) -> S {
         self.get_style(cx, key).unwrap_or_default()
+    }
+
+    pub fn style_group<S: FromStyleAttribute + Default + 'static>(
+        &self,
+        cx: &mut impl Context,
+        key: &[&str],
+    ) -> S {
+        self.node_state().style_group(cx, key)
     }
 
     /// Returns the [`StyleStates`].

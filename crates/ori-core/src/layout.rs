@@ -99,10 +99,10 @@ impl Padding {
     }
 
     pub fn from_style(context: &mut impl Context, bc: BoxConstraints) -> Self {
-        let left = context.style_range_group("padding-left", "padding", 0.0..bc.max.x);
-        let right = context.style_range_group("padding-right", "padding", 0.0..bc.max.x);
-        let top = context.style_range_group("padding-top", "padding", 0.0..bc.max.y);
-        let bottom = context.style_range_group("padding-bottom", "padding", 0.0..bc.max.y);
+        let left = context.style_range_group(&["padding-left", "padding"], 0.0..bc.max.x);
+        let right = context.style_range_group(&["padding-right", "padding"], 0.0..bc.max.x);
+        let top = context.style_range_group(&["padding-top", "padding"], 0.0..bc.max.y);
+        let bottom = context.style_range_group(&["padding-bottom", "padding"], 0.0..bc.max.y);
 
         Self {
             left,
@@ -142,10 +142,10 @@ impl Margin {
     }
 
     pub fn from_style(context: &mut impl Context, bc: BoxConstraints) -> Self {
-        let left = context.style_range_group("margin-left", "margin", 0.0..bc.max.x);
-        let right = context.style_range_group("margin-right", "margin", 0.0..bc.max.x);
-        let top = context.style_range_group("margin-top", "margin", 0.0..bc.max.y);
-        let bottom = context.style_range_group("margin-bottom", "margin", 0.0..bc.max.y);
+        let left = context.style_range_group(&["margin-left", "margin"], 0.0..bc.max.x);
+        let right = context.style_range_group(&["margin-right", "margin"], 0.0..bc.max.x);
+        let top = context.style_range_group(&["margin-top", "margin"], 0.0..bc.max.y);
+        let bottom = context.style_range_group(&["margin-bottom", "margin"], 0.0..bc.max.y);
 
         Self {
             left,

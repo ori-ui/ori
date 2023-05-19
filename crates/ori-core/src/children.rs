@@ -189,14 +189,8 @@ impl<T: View> Children<T> {
         // NOTE: using a SmallVec here is a bit faster than using a Vec, but it's not a huge
         // difference
         let mut any_changed = false;
-        let mut children: SmallVec<[f32; 4]> = smallvec![0.0; self.len()];
+        let mut child_majors: SmallVec<[f32; 4]> = smallvec![0.0; self.len()];
         for (i, child) in self.iter().enumerate() {
-            // if the child doesn't have a flex property, we can measure it right away
-            if let Some(flex) = child.style::<Option<f32>>(cx, "flex") {
-                flex_sum += flex;
-                continue;
-            }
-
             let child_bc = BoxConstraints {
                 min: axis.pack(0.0, 0.0),
                 max: axis.pack(max_major - major, max_minor),
@@ -215,7 +209,12 @@ impl<T: View> Children<T> {
             let (child_major, child_minor) = axis.unpack(size);
 
             // store the size
-            children[i] = child_major;
+            child_majors[i] = child_major;
+
+            if let Some(flex) = child.style::<Option<f32>>(cx, "flex") {
+                flex_sum += flex;
+                continue;
+            }
 
             // update the major and minor axis
             minor = minor.max(child_minor);
@@ -227,23 +226,22 @@ impl<T: View> Children<T> {
         let px_per_flex = remaining_major / flex_sum;
         for (i, child) in self.iter().enumerate() {
             // if the child has a flex property, now is the time
-            let Some(flex) = child.style::<Option<f32>>(cx, "flex") else {
+            let Some(flex) = child.style_group::<Option<f32>>(cx, &["flex-grow", "flex"]) else {
                 continue;
             };
 
             // calculate the desired size of the child
             let desired_major = px_per_flex * flex;
+
+            let desired_major = f32::max(desired_major, child_majors[i]);
             let child_bc = BoxConstraints {
                 min: axis.pack(desired_major, minor),
                 max: axis.pack(desired_major, max_minor),
             };
 
             // layout the flex-child
-            let size = if child.needs_layout() || any_changed {
-                let old_size = child.size();
-                let size = child.layout(cx, child_bc);
-                any_changed |= size != old_size;
-                size
+            let size = if any_changed && desired_major != child_majors[i] {
+                child.layout(cx, child_bc)
             } else {
                 child.size()
             };
@@ -251,7 +249,7 @@ impl<T: View> Children<T> {
             let (child_major, child_minor) = axis.unpack(size);
 
             // store the size
-            children[i] = child_major;
+            child_majors[i] = child_major;
 
             // update the major and minor axis
             minor = minor.max(child_minor);
@@ -267,7 +265,7 @@ impl<T: View> Children<T> {
             }
 
             // calculate the constraints for the child
-            let child_major = children[i];
+            let child_major = child_majors[i];
             let child_bc = BoxConstraints {
                 min: axis.pack(child_major, minor),
                 max: axis.pack(child_major, minor),
@@ -282,12 +280,12 @@ impl<T: View> Children<T> {
                 child.size()
             };
 
-            children[i] = axis.major(size);
+            child_majors[i] = axis.major(size);
         }
 
         major = major.max(min_major);
 
-        let child_offsets = justify_content.justify(&children, major, gap);
+        let child_offsets = justify_content.justify(&child_majors, major, gap);
 
         // now we can layout the children
         for (child, align_major) in self.iter().zip(child_offsets) {

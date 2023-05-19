@@ -91,11 +91,11 @@ pub struct LayoutContext<'a> {
 impl<'a> LayoutContext<'a> {
     pub fn style_constraints(&mut self, bc: BoxConstraints) -> BoxConstraints {
         let parent_bc = self.parent_bc;
-        let min_width = self.style_range_group("min-width", "width", parent_bc.width());
-        let max_width = self.style_range_group("max-width", "width", parent_bc.width());
+        let min_width = self.style_range_group(&["min-width", "width"], parent_bc.width());
+        let max_width = self.style_range_group(&["max-width", "width"], parent_bc.width());
 
-        let min_height = self.style_range_group("min-height", "height", parent_bc.height());
-        let max_height = self.style_range_group("max-height", "height", parent_bc.height());
+        let min_height = self.style_range_group(&["min-height", "height"], parent_bc.height());
+        let max_height = self.style_range_group(&["max-height", "height"], parent_bc.height());
 
         let min_size = bc.constrain(Vec2::new(min_width, min_height));
         let max_size = bc.constrain(Vec2::new(max_width, max_height));
@@ -209,10 +209,10 @@ impl<'a> DrawContext<'a> {
         let br = "border-bottom-right-radius";
         let bl = "border-bottom-left-radius";
 
-        let tl = self.style_range_group(tl, "border-radius", range.clone());
-        let tr = self.style_range_group(tr, "border-radius", range.clone());
-        let br = self.style_range_group(br, "border-radius", range.clone());
-        let bl = self.style_range_group(bl, "border-radius", range.clone());
+        let tl = self.style_range_group(&[tl, "border-radius"], range.clone());
+        let tr = self.style_range_group(&[tr, "border-radius"], range.clone());
+        let br = self.style_range_group(&[br, "border-radius"], range.clone());
+        let bl = self.style_range_group(&[bl, "border-radius"], range.clone());
 
         let quad = Quad {
             rect: self.rect(),
@@ -325,17 +325,6 @@ pub trait Context {
     }
 
     /// Gets the value of a style attribute for the given `key`.
-    ///
-    /// This will also transition the value if the attribute has a transition.
-    fn get_style<T: FromStyleAttribute + 'static>(&mut self, key: &str) -> Option<T> {
-        let attribute = self.get_style_attribute(key)?;
-        let value = T::from_attribute(attribute.value().clone())?;
-        let transition = attribute.transition();
-
-        Some(self.state_mut().transition(key, value, transition))
-    }
-
-    /// Gets the value of a style attribute for the given `key`.
     fn get_style_specificity<T: FromStyleAttribute + 'static>(
         &mut self,
         key: &str,
@@ -350,6 +339,13 @@ pub trait Context {
         ))
     }
 
+    /// Gets the value of a style attribute for the given `key`.
+    ///
+    /// This will also transition the value if the attribute has a transition.
+    fn get_style<T: FromStyleAttribute + 'static>(&mut self, key: &str) -> Option<T> {
+        self.get_style_specificity(key).map(|(value, _)| value)
+    }
+
     /// Gets the value of a style attribute for the given `key`, if there is no value, returns `T::default()`.
     ///
     /// This will also transition the value if the attribute has a transition.
@@ -362,25 +358,20 @@ pub trait Context {
     /// If both attributes have the same specificity, the `primary_key` will be used.
     ///
     /// This will also transition the value if the attribute has a transition.
-    fn style_group<T: FromStyleAttribute + Default + 'static>(
-        &mut self,
-        primary_key: &str,
-        secondary_key: &str,
-    ) -> T {
-        let primary = self.get_style_specificity(primary_key);
-        let secondary = self.get_style_specificity(secondary_key);
+    fn style_group<T: FromStyleAttribute + Default + 'static>(&mut self, keys: &[&str]) -> T {
+        let mut specificity = None;
+        let mut result = None;
 
-        match (primary, secondary) {
-            (Some((primary, primary_specificity)), Some((secondary, secondary_specificity))) => {
-                if primary_specificity >= secondary_specificity {
-                    primary
-                } else {
-                    secondary
+        for key in keys {
+            if let Some((v, s)) = self.get_style_specificity(key) {
+                if specificity.is_none() || s > specificity.unwrap() {
+                    specificity = Some(s);
+                    result = Some(v);
                 }
             }
-            (Some((value, _)), None) | (None, Some((value, _))) => value,
-            _ => T::default(),
         }
+
+        result.unwrap_or_default()
     }
 
     /// Gets the value of a style attribute in pixels for the given `key`.
@@ -437,26 +428,20 @@ pub trait Context {
     /// `range` is the range from 0% to 100% of the desired value.
     ///
     /// This will also transition the value if the attribute has a transition.
-    fn style_range_group(
-        &mut self,
-        primary_key: &str,
-        secondary_key: &str,
-        range: Range<f32>,
-    ) -> f32 {
-        let primary = self.get_style_range_specificity(primary_key, range.clone());
-        let secondary = self.get_style_range_specificity(secondary_key, range);
+    fn style_range_group(&mut self, keys: &[&str], range: Range<f32>) -> f32 {
+        let mut specificity = None;
+        let mut result = None;
 
-        match (primary, secondary) {
-            (Some((primary, primary_specificity)), Some((secondary, secondary_specificity))) => {
-                if primary_specificity >= secondary_specificity {
-                    primary
-                } else {
-                    secondary
+        for key in keys {
+            if let Some((v, s)) = self.get_style_range_specificity(key, range.clone()) {
+                if specificity.is_none() || s > specificity.unwrap() {
+                    specificity = Some(s);
+                    result = Some(v);
                 }
             }
-            (Some((value, _)), None) | (None, Some((value, _))) => value,
-            _ => 0.0,
         }
+
+        result.unwrap_or_default()
     }
 
     /// Tries to downcast the `renderer` to the given type.

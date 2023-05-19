@@ -145,10 +145,10 @@ impl View for Slider {
         let br = "border-bottom-right-radius";
         let bl = "border-bottom-left-radius";
 
-        let tl = cx.style_range_group(tl, "border-radius", range.clone());
-        let tr = cx.style_range_group(tr, "border-radius", range.clone());
-        let br = cx.style_range_group(br, "border-radius", range.clone());
-        let bl = cx.style_range_group(bl, "border-radius", range.clone());
+        let tl = cx.style_range_group(&[tl, "border-radius"], range.clone());
+        let tr = cx.style_range_group(&[tr, "border-radius"], range.clone());
+        let br = cx.style_range_group(&[br, "border-radius"], range.clone());
+        let bl = cx.style_range_group(&[bl, "border-radius"], range.clone());
 
         let track_quad = Quad {
             rect: Self::track_rect(cx),
@@ -173,15 +173,15 @@ impl View for Slider {
         let br = "knob-border-bottom-right-radius";
         let bl = "knob-border-bottom-left-radius";
 
-        let tl = cx.style_range_group(tl, "knob-border-radius", range.clone());
-        let tr = cx.style_range_group(tr, "knob-border-radius", range.clone());
-        let br = cx.style_range_group(br, "knob-border-radius", range.clone());
-        let bl = cx.style_range_group(bl, "knob-border-radius", range.clone());
+        let tl = cx.style_range_group(&[tl, "knob-border-radius"], range.clone());
+        let tr = cx.style_range_group(&[tr, "knob-border-radius"], range.clone());
+        let br = cx.style_range_group(&[br, "knob-border-radius"], range.clone());
+        let bl = cx.style_range_group(&[bl, "knob-border-radius"], range.clone());
 
         let knob_rect = self.knob_rect(cx);
         let knob_quad = Quad {
             rect: knob_rect,
-            background: cx.style_group("color", "knob-color"),
+            background: cx.style_group(&["color", "knob-color"]),
             border_radius: [tl, tr, br, bl],
             border_width: cx.style_range("knob-border-width", range),
             border_color: cx.style("knob-border-color"),

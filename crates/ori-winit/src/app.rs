@@ -68,9 +68,8 @@ impl App {
         initialize_log().unwrap();
 
         let builder = Box::new(
-            move |event_sink: &EventSink, _event_callbacks: &CallbackEmitter<Event>| {
-                let scope = Scope::new(event_sink.clone());
-
+            move |event_sink: &EventSink, event_callbacks: &CallbackEmitter<Event>| {
+                let scope = Scope::new(event_sink.clone(), event_callbacks.clone());
                 Node::new(content(scope))
             },
         );

@@ -1,8 +1,8 @@
-use std::{future::Future, mem};
+use std::{any::Any, future::Future, mem};
 
 use crate::{
-    Callback, EventSink, Lock, Lockable, OwnedSignal, ReadSignal, Resource, Runtime, ScopeId,
-    Sendable, Shared, Signal, Task,
+    Callback, CallbackEmitter, Event, EventSink, Lock, Lockable, OwnedSignal, ReadSignal, Resource,
+    Runtime, ScopeId, Sendable, Shared, Signal, Task,
 };
 
 use super::effect;
@@ -11,17 +11,24 @@ use super::effect;
 pub struct Scope {
     pub(crate) id: ScopeId,
     pub(crate) event_sink: Resource<EventSink>,
+    pub(crate) event_callbacks: Resource<CallbackEmitter<Event>>,
 }
 
 impl Scope {
-    pub fn new(event_sink: EventSink) -> Self {
+    pub fn new(event_sink: EventSink, event_callback: CallbackEmitter<Event>) -> Self {
         let event_sink = Resource::new_leaking(event_sink);
+        let event_callbacks = Resource::new_leaking(event_callback);
 
         Runtime::with_global_runtime(|runtime| {
             let id = runtime.create_scope(None);
             runtime.manage_resource(id, event_sink.id());
+            runtime.manage_resource(id, event_callbacks.id());
 
-            Self { id, event_sink }
+            Self {
+                id,
+                event_sink,
+                event_callbacks,
+            }
         })
     }
 
@@ -32,6 +39,7 @@ impl Scope {
             Scope {
                 id,
                 event_sink: self.event_sink,
+                event_callbacks: self.event_callbacks,
             }
         })
     }
@@ -71,8 +79,22 @@ impl Scope {
         })
     }
 
-    pub fn event_sink(&self) -> EventSink {
+    pub fn event_sink(self) -> EventSink {
         self.event_sink.get().expect("event sink was dropped")
+    }
+
+    pub fn event_callbacks(self) -> CallbackEmitter<Event> {
+        (self.event_callbacks.get()).expect("event callback emitter was dropped")
+    }
+
+    pub fn emit_event(self, event: impl Any + Send + Sync) {
+        self.event_sink().emit(event);
+    }
+
+    pub fn on_event(self, callback: impl FnMut(&Event) + Sendable + 'static) {
+        let callback = Callback::new(callback);
+        self.event_callbacks().subscribe(&callback);
+        self.manage_callback(callback);
     }
 
     pub fn spawn(self, future: impl Future<Output = ()> + Send + 'static) {

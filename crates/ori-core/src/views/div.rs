@@ -2,7 +2,7 @@ use glam::Vec2;
 use ori_macro::Build;
 
 use crate::{
-    Axis, BindCallback, BoxConstraints, CallbackEmitter, Children, Context, DrawContext, Event,
+    BindCallback, BoxConstraints, CallbackEmitter, Children, Context, DrawContext, Event,
     EventContext, FlexLayout, LayoutContext, PointerEvent, Scope, Sendable, Style, View,
 };
 
@@ -90,28 +90,15 @@ impl View for Div {
 
     #[tracing::instrument(name = "Div", skip(self, cx, bc))]
     fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let axis = cx.style::<Axis>("direction");
-        let gap = cx.style_range("gap", 0.0..axis.major(bc.max));
-
-        let justify_content = cx.style("justify-content");
-        let align_items = cx.style("align-items");
-
-        let flex = FlexLayout {
-            axis,
-            justify_content,
-            align_items,
-            gap,
-            ..Default::default()
-        };
-
-        self.children.flex_layout(cx, bc, flex)
+        let flex = FlexLayout::from_style(cx);
+        bc.constrain(self.children.flex_layout(cx, bc, flex))
     }
 
     #[tracing::instrument(name = "Div", skip(self, cx))]
     fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 
-        cx.draw_layer(|cx| {
+        cx.layer().draw(|cx| {
             for child in &self.children {
                 child.draw(cx);
             }

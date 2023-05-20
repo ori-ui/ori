@@ -118,7 +118,7 @@ impl Scope {
     pub fn effect_scoped(self, mut effect: impl FnMut(Scope) + Sendable + 'static) {
         let mut scope = None::<Scope>;
         self.effect(move || {
-            if let Some(scope) = scope {
+            if let Some(scope) = scope.take() {
                 scope.dispose();
             }
 

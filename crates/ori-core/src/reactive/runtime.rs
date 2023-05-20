@@ -107,7 +107,10 @@ impl Runtime {
     pub fn dispose_scope(&self, scope: ScopeId) {
         let scope = {
             let mut scopes = self.scopes();
-            scopes.remove(&scope).unwrap()
+            match scopes.remove(&scope) {
+                Some(scope) => scope,
+                None => return,
+            }
         };
 
         tracing::trace!("disposing scope {:?}", scope);

@@ -400,7 +400,14 @@ impl<T: View> Node<T> {
         self.node_state().needs_layout
     }
 
-    #[inline]
+    pub fn last_bc(&self) -> BoxConstraints {
+        self.node_state().last_bc
+    }
+
+    pub fn set_last_bc(&self, bc: BoxConstraints) {
+        self.node_state().last_bc = bc;
+    }
+
     pub fn bc_changed(&self, bc: BoxConstraints) -> bool {
         self.node_state().bc_changed(bc)
     }
@@ -522,7 +529,7 @@ impl<T: View> Node<T> {
             let bc = cx.style_constraints(bc);
             cx.bc = bc;
 
-            let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
+            let size = (inner.view).layout(&mut inner.view_state(), &mut cx, bc);
             if size.x.round() > bc.max.x.round() || size.y.round() > bc.max.y.round() {
                 tracing::warn!(
                     "View {} returned a size ({}, {}) that is larger than the constraints ({}, {}).",
@@ -534,7 +541,6 @@ impl<T: View> Node<T> {
                 );
             }
 
-            cx.state.last_bc = bc;
             Self::update_cursor(&mut cx);
 
             size

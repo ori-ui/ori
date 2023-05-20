@@ -67,6 +67,11 @@ impl BoxConstraints {
         size.ceil().clamp(self.min, self.max)
     }
 
+    /// Returns true if the given size is within the constraints.
+    pub fn contains(self, size: Vec2) -> bool {
+        size.cmpge(self.min).all() && size.cmple(self.max).all()
+    }
+
     pub fn width(self) -> Range<f32> {
         self.min.x..self.max.x
     }

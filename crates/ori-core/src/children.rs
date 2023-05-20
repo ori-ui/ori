@@ -4,8 +4,8 @@ use ori_graphics::Rect;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    AlignItem, AnyView, Axis, BoxConstraints, DrawContext, Event, EventContext, IntoChildren,
-    IntoNode, JustifyContent, LayoutContext, Node, Padding, Parent, View,
+    AlignItem, AnyView, Axis, BoxConstraints, Context, DrawContext, Event, EventContext,
+    IntoChildren, IntoNode, JustifyContent, LayoutContext, Node, Padding, Parent, View,
 };
 
 /// A layout that lays out children in a flexbox-like manner.
@@ -62,6 +62,21 @@ impl FlexLayout {
 
     pub fn column() -> Self {
         Self::vertical()
+    }
+
+    pub fn from_style(cx: &mut LayoutContext) -> Self {
+        let axis = cx.style::<Axis>("direction");
+        let justify_content = cx.style("justify-content");
+        let align_items = cx.style("align-items");
+        let gap = cx.style_range("gap", 0.0..axis.major(cx.parent_bc.max));
+
+        Self {
+            axis,
+            justify_content,
+            align_items,
+            gap,
+            ..Self::default()
+        }
     }
 }
 
@@ -213,10 +228,11 @@ impl<T: View> Children<T> {
             child_flexes[i] = (flex_grow, flex_shrink);
 
             // layout the child
-            let size = if child.needs_layout() || child.bc_changed(loosend_bc) || any_changed {
+            let size = if child.needs_layout() || child.bc_changed(bc) || any_changed {
                 let old_size = child.size();
 
                 let size = child.layout(cx, loosend_bc);
+                child.set_last_bc(bc);
 
                 any_changed |= size != old_size;
                 size
@@ -263,7 +279,7 @@ impl<T: View> Children<T> {
             };
 
             if desired_major == child_majors[i] {
-                //continue;
+                continue;
             }
 
             let child_bc = BoxConstraints {
@@ -271,12 +287,7 @@ impl<T: View> Children<T> {
                 max: axis.pack(desired_major, max_minor),
             };
 
-            let size = if any_changed {
-                child.layout(cx, child_bc)
-            } else {
-                child.size()
-            };
-
+            let size = child.layout(cx, child_bc);
             let (child_major, child_minor) = axis.unpack(size);
 
             // update the major and minor axis

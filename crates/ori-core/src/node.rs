@@ -499,7 +499,14 @@ impl<T: View> Node<T> {
         Self::event_inner(&self.inner, cx, event);
     }
 
-    fn layout_inner(inner: &NodeInner<T>, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    /// Layout the node.
+    pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        let size = self.relayout(cx, bc);
+        self.set_last_bc(bc);
+        size
+    }
+
+    fn relayout_inner(inner: &NodeInner<T>, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
         let node_state = &mut inner.node_state();
         node_state.style = inner.view.style();
         node_state.propagate_up(cx.state);
@@ -556,9 +563,8 @@ impl<T: View> Node<T> {
         size + node_state.margin.size()
     }
 
-    /// Layout the node.
-    pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        Self::layout_inner(&self.inner, cx, bc)
+    pub fn relayout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        Self::relayout_inner(&self.inner, cx, bc)
     }
 
     fn draw_inner(inner: &NodeInner<T>, cx: &mut DrawContext) {

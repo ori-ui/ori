@@ -232,7 +232,6 @@ impl<T: View> Children<T> {
                 let old_size = child.size();
 
                 let size = child.layout(cx, loosend_bc);
-                child.set_last_bc(bc);
 
                 any_changed |= size != old_size;
                 size
@@ -287,7 +286,7 @@ impl<T: View> Children<T> {
                 max: axis.pack(desired_major, max_minor),
             };
 
-            let size = child.layout(cx, child_bc);
+            let size = child.relayout(cx, child_bc);
             let (child_major, child_minor) = axis.unpack(size);
 
             // update the major and minor axis
@@ -317,7 +316,7 @@ impl<T: View> Children<T> {
             // correct size for the child, since we don't know the minor size until we've
             // measured all the children
             let size = if any_changed {
-                child.layout(cx, child_bc)
+                child.relayout(cx, child_bc)
             } else {
                 child.size()
             };

@@ -171,8 +171,8 @@ impl<T: View> Children<T> {
         let (max_major, max_minor) = axis.unpack(bc.max);
 
         let loosend_bc = BoxConstraints {
-            min: axis.pack(0.0, 0.0),
-            max: axis.pack(max_major, max_minor),
+            min: Vec2::ZERO,
+            max: bc.max,
         };
 
         // initialize the major and minor axis
@@ -213,7 +213,7 @@ impl<T: View> Children<T> {
             child_flexes[i] = (flex_grow, flex_shrink);
 
             // layout the child
-            let size = if child.needs_layout() || any_changed || is_flex {
+            let size = if child.needs_layout() || child.bc_changed(loosend_bc) || any_changed {
                 let old_size = child.size();
 
                 let size = child.layout(cx, loosend_bc);
@@ -232,7 +232,7 @@ impl<T: View> Children<T> {
             // update the major and minor axis
             major += child_major;
 
-            if flex_grow.is_none() && flex_shrink.is_none() {
+            if !is_flex {
                 minor = minor.max(child_minor);
             }
         }
@@ -256,28 +256,35 @@ impl<T: View> Children<T> {
             }
 
             // calculate the desired size of the child
-            let desired_major = if remaining_major > 0.0 {
-                px_per_flex * flex_grow.unwrap() + child_majors[i]
+            let desired_major = if should_grow {
+                child_majors[i] + px_per_flex * flex_grow.unwrap()
             } else {
-                px_per_flex * flex_shrink.unwrap() + child_majors[i]
+                child_majors[i] + px_per_flex * flex_shrink.unwrap()
             };
+
+            if desired_major == child_majors[i] {
+                //continue;
+            }
 
             let child_bc = BoxConstraints {
                 min: axis.pack(desired_major, 0.0),
                 max: axis.pack(desired_major, max_minor),
             };
 
-            // layout the flex-child
-            let size = child.layout(cx, child_bc);
+            let size = if any_changed {
+                child.layout(cx, child_bc)
+            } else {
+                child.size()
+            };
 
             let (child_major, child_minor) = axis.unpack(size);
-
-            // store the size
-            child_majors[i] = child_major;
 
             // update the major and minor axis
             minor = minor.max(child_minor);
             major += child_major - child_majors[i];
+
+            // store the size
+            child_majors[i] = child_major;
         }
 
         // we need to re-measure the children to determine their size

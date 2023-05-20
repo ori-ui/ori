@@ -4,13 +4,18 @@ use glam::Vec2;
 
 use crate::{Context, StyleAttributeEnum};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct BoxConstraints {
     pub min: Vec2,
     pub max: Vec2,
 }
 
 impl BoxConstraints {
+    pub const ZERO: Self = Self {
+        min: Vec2::ZERO,
+        max: Vec2::ZERO,
+    };
+
     pub const UNBOUNDED: Self = Self {
         min: Vec2::ZERO,
         max: Vec2::splat(f32::INFINITY),
@@ -59,7 +64,7 @@ impl BoxConstraints {
     }
 
     pub fn constrain(self, size: Vec2) -> Vec2 {
-        size.clamp(self.min, self.max)
+        size.ceil().clamp(self.min, self.max)
     }
 
     pub fn width(self) -> Range<f32> {

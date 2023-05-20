@@ -9,7 +9,7 @@ use crate::{
     EventSink, FromStyleAttribute, Guard, ImageCache, IntoView, LayoutContext, Lock, Lockable,
     Margin, OwnedSignal, PointerEvent, RequestRedrawEvent, Shared, Style, StyleAttribute,
     StyleCache, StyleSelector, StyleSelectors, StyleSpecificity, StyleStates, StyleTransition,
-    Stylesheet, TransitionStates, View, WindowResizeEvent,
+    Stylesheet, TransitionStates, View,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -55,6 +55,7 @@ pub struct NodeState {
     pub last_draw: Instant,
     pub style: Style,
     pub needs_layout: bool,
+    pub last_bc: BoxConstraints,
     pub recreated: OwnedSignal<bool>,
     pub transitions: TransitionStates,
 }
@@ -72,6 +73,7 @@ impl Default for NodeState {
             last_draw: Instant::now(),
             style: Style::default(),
             needs_layout: true,
+            last_bc: BoxConstraints::ZERO,
             recreated: OwnedSignal::new(true),
             transitions: TransitionStates::new(),
         }
@@ -239,6 +241,10 @@ impl NodeState {
         self.transitions.update(self.delta())
     }
 
+    pub fn bc_changed(&mut self, bc: BoxConstraints) -> bool {
+        self.last_bc != bc
+    }
+
     /// Updates `self.last_draw` to the current time.
     fn draw(&mut self) {
         self.last_draw = Instant::now();
@@ -394,6 +400,11 @@ impl<T: View> Node<T> {
         self.node_state().needs_layout
     }
 
+    #[inline]
+    pub fn bc_changed(&self, bc: BoxConstraints) -> bool {
+        self.node_state().bc_changed(bc)
+    }
+
     /// Requests a layout.
     pub fn request_layout(&self) {
         self.node_state().needs_layout = true;
@@ -454,10 +465,6 @@ impl<T: View> Node<T> {
             }
         }
 
-        if event.is::<WindowResizeEvent>() {
-            node_state.needs_layout = true;
-        }
-
         {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
@@ -516,6 +523,18 @@ impl<T: View> Node<T> {
             cx.bc = bc;
 
             let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
+            if size.x.round() > bc.max.x.round() || size.y.round() > bc.max.y.round() {
+                tracing::warn!(
+                    "View {} returned a size ({}, {}) that is larger than the constraints ({}, {}).",
+                    cx.state.selector(),
+                    size.x,
+                    size.y,
+                    bc.max.x,
+                    bc.max.y
+                );
+            }
+
+            cx.state.last_bc = bc;
             Self::update_cursor(&mut cx);
 
             size
@@ -674,6 +693,7 @@ impl<T: View> Node<T> {
 
         let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
 
+        node_state.last_bc = bc;
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
         node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
 

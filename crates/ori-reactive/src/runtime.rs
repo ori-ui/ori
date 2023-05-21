@@ -3,12 +3,10 @@ use std::{
     fmt::Debug,
     mem,
     panic::Location,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
-use nohash_hasher::{IntMap, IsEnabled};
-
-use crate::{Guard, Lock, Lockable, Sendable};
+use sharded::Map;
 
 #[derive(Debug)]
 struct RuntimeScope {
@@ -20,59 +18,52 @@ struct RuntimeScope {
 struct RuntimeResource {
     #[allow(dead_code)]
     creator: &'static Location<'static>,
-    #[cfg(feature = "multi-thread")]
-    data: Box<dyn Any + Send>,
-    #[cfg(not(feature = "multi-thread"))]
-    data: Box<dyn Any>,
-    refs: u32,
+    references: u32,
+    data: Box<dyn Any + Send + Sync>,
 }
 
+impl Debug for RuntimeResource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RuntimeResource")
+            .field("creator", &self.creator)
+            .field("refs", &self.references)
+            .finish()
+    }
+}
+
+/// A runtime that manages scopes and resources.
+///
+/// Scopes are used to manage the lifetime of resources. When a scope is disposed, all resources
+/// that were created in that scope are disposed as well.
+///
+/// Resources are created with [`Runtime::create_resource`]. They are reference counted, and
+/// disposed when their reference count reaches zero.
 #[derive(Default)]
 pub struct Runtime {
-    is_global: bool,
-    scopes: Lock<IntMap<ScopeId, RuntimeScope>>,
-    resources: Lock<IntMap<ResourceId, RuntimeResource>>,
+    scopes: Map<ScopeId, RuntimeScope>,
+    resources: Map<ResourceId, RuntimeResource>,
 }
 
 impl Runtime {
-    fn global() -> Self {
+    fn new_global() -> Self {
         Self {
-            is_global: true,
-            scopes: Lock::new(IntMap::default()),
-            resources: Lock::new(IntMap::default()),
+            scopes: Map::default(),
+            resources: Map::default(),
         }
     }
 
-    #[cfg(feature = "multi-thread")]
-    pub fn with_global_runtime<T>(f: impl FnOnce(&Runtime) -> T) -> T {
+    pub fn global() -> &'static Self {
         lazy_static::lazy_static! {
-            static ref RUNTIME: Runtime = Runtime::global();
+            static ref RUNTIME: Runtime = Runtime::new_global();
         }
 
-        f(&RUNTIME)
-    }
-
-    #[cfg(not(feature = "multi-thread"))]
-    pub fn with_global_runtime<T>(f: impl FnOnce(&Runtime) -> T) -> T {
-        std::thread_local! {
-            static RUNTIME: Runtime = Runtime::global();
-        }
-
-        RUNTIME.with(f)
-    }
-
-    fn scopes(&self) -> Guard<'_, IntMap<ScopeId, RuntimeScope>> {
-        self.scopes.lock_mut()
-    }
-
-    fn resources(&self) -> Guard<'_, IntMap<ResourceId, RuntimeResource>> {
-        self.resources.lock_mut()
+        &RUNTIME
     }
 
     pub fn create_scope(&self, parent: Option<ScopeId>) -> ScopeId {
         let id = ScopeId::new();
-        let mut scopes = self.scopes();
-        scopes.insert(
+
+        self.scopes.insert(
             id,
             RuntimeScope {
                 parent,
@@ -82,7 +73,9 @@ impl Runtime {
         );
 
         if let Some(parent) = parent {
-            if let Some(parent) = scopes.get_mut(&parent) {
+            let (key, mut shard) = self.scopes.write(parent);
+
+            if let Some(parent) = shard.get_mut(key) {
                 parent.children.push(id);
             }
         }
@@ -91,23 +84,22 @@ impl Runtime {
     }
 
     pub fn scope_parent(&self, scope: ScopeId) -> Option<ScopeId> {
-        let scopes = self.scopes();
-        let scope = scopes.get(&scope)?;
-        scope.parent
+        let (key, shard) = self.scopes.read(&scope);
+        shard.get(key)?.parent
     }
 
     pub fn manage_resource(&self, scope: ScopeId, resource: ResourceId) {
         tracing::trace!("managing resource {:?} in scope {:?}", resource, scope);
 
-        let mut scopes = self.scopes();
-        let scope = scopes.get_mut(&scope).unwrap();
-        scope.resources.push(resource);
+        let (key, mut shard) = self.scopes.write(scope);
+        if let Some(scope) = shard.get_mut(key) {
+            scope.resources.push(resource);
+        }
     }
 
     pub fn dispose_scope(&self, scope: ScopeId) {
         let scope = {
-            let mut scopes = self.scopes();
-            match scopes.remove(&scope) {
+            match self.scopes.remove(scope) {
                 Some(scope) => scope,
                 None => return,
             }
@@ -125,19 +117,18 @@ impl Runtime {
     }
 
     #[track_caller]
-    pub fn create_resource<T: Sendable + 'static>(&self, data: T) -> ResourceId {
+    pub fn create_resource<T: Send + Sync + 'static>(&self, data: T) -> ResourceId {
         let id = ResourceId::new();
 
         tracing::trace!("creating resource {:?} at {}", id, Location::caller());
 
-        self.resources().insert(
-            id,
-            RuntimeResource {
-                creator: Location::caller(),
-                data: Box::new(data),
-                refs: 0,
-            },
-        );
+        let resource = RuntimeResource {
+            creator: Location::caller(),
+            data: Box::new(data),
+            references: 0,
+        };
+
+        self.resources.insert(id, resource);
 
         id
     }
@@ -146,17 +137,17 @@ impl Runtime {
     pub fn reference_resource(&self, id: ResourceId) {
         tracing::trace!("referencing resource {:?}", id);
 
-        let mut resources = self.resources();
-        if let Some(resource) = resources.get_mut(&id) {
-            resource.refs += 1;
+        let (key, mut shard) = self.resources.write(id);
+        if let Some(resource) = shard.get_mut(key) {
+            resource.references += 1;
         }
     }
 
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
     pub unsafe fn get_resource<T: Clone + 'static>(&self, id: ResourceId) -> Option<T> {
-        let resources = self.resources();
-        let resource = resources.get(&id)?;
+        let (key, shard) = self.resources.read(&id);
+        let resource = shard.get(key)?;
 
         let ptr = resource.data.as_ref() as *const _ as *const T;
         Some(unsafe { &*ptr }.clone())
@@ -167,14 +158,15 @@ impl Runtime {
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
     #[track_caller]
-    pub unsafe fn set_resource<T: Sendable + 'static>(
+    pub unsafe fn set_resource<T: Send + Sync + 'static>(
         &self,
         id: ResourceId,
         value: T,
     ) -> Result<(), T> {
         tracing::trace!("setting resource {:?} at {}", id, Location::caller());
 
-        let old = match self.resources().get_mut(&id) {
+        let (key, mut shard) = self.resources.write(id);
+        let old = match shard.get_mut(key) {
             Some(resource) => mem::replace(&mut resource.data, Box::new(value)),
             None => return Err(value),
         };
@@ -192,10 +184,7 @@ impl Runtime {
     pub unsafe fn remove_resource<T: 'static>(&self, id: ResourceId) -> Option<T> {
         tracing::trace!("removing resource {:?}, at {}", id, Location::caller());
 
-        let resource = {
-            let mut resources = self.resources();
-            resources.remove(&id)?
-        };
+        let resource = self.resources.remove(id)?;
 
         let ptr = Box::into_raw(resource.data) as *mut T;
         Some(unsafe { *Box::from_raw(ptr) })
@@ -208,53 +197,20 @@ impl Runtime {
         tracing::trace!("disposing resource {:?} at {}", id, Location::caller());
 
         let resource = {
-            let mut resources = self.resources();
+            let (key, mut shard) = self.resources.write(id);
+            let Some(resource) = shard.get_mut(key) else { return };
 
-            let Some(resource) = resources.get_mut(&id) else { return };
-
-            if resource.refs > 0 {
-                resource.refs -= 1;
+            if resource.references > 0 {
+                resource.references -= 1;
                 return;
             }
 
-            resources.remove(&id)
+            drop(shard);
+
+            self.resources.remove(id)
         };
 
         drop(resource);
-    }
-
-    pub fn clear(&self) {
-        tracing::trace!("clearing runtime");
-
-        let scopes = mem::take(&mut *self.scopes());
-        let resources = mem::take(&mut *self.resources());
-
-        drop(scopes);
-        drop(resources);
-    }
-
-    pub fn forget(&self) {
-        tracing::trace!("forgetting runtime");
-
-        let scopes = mem::take(&mut *self.scopes());
-        let resources = mem::take(&mut *self.resources());
-
-        mem::forget(scopes);
-        mem::forget(resources);
-    }
-
-    pub fn stop_global() {
-        Self::with_global_runtime(|runtime| {
-            runtime.clear();
-        });
-    }
-}
-
-impl Drop for Runtime {
-    fn drop(&mut self) {
-        if self.is_global {
-            self.forget();
-        }
     }
 }
 
@@ -263,24 +219,22 @@ macro_rules! define_ids {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $name {
-            id: u64,
+            id: usize,
         }
 
         impl $name {
             pub fn new() -> Self {
-                static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+                static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
                 Self {
                     id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
                 }
             }
 
-            pub fn as_u64(self) -> u64 {
+            pub fn as_usize(self) -> usize {
                 self.id
             }
         }
-
-        impl IsEnabled for $name {}
     )*};
 }
 

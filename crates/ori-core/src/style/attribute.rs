@@ -1,10 +1,11 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 use ori_graphics::{Color, TextAlign};
+use ori_reactive::ReadSignal;
 use smallvec::SmallVec;
 use smol_str::SmolStr;
 
-use crate::{ReadSignal, Sendable, Shared, StyleTransition, Unit};
+use crate::{StyleTransition, Unit};
 
 /// A collection of [`StyleAttribute`]s.
 #[derive(Clone, Debug, Default)]
@@ -150,7 +151,7 @@ struct StyleAttributeInner {
 /// An attribute is a name and a value.
 #[derive(Clone, Debug)]
 pub struct StyleAttribute {
-    inner: Shared<StyleAttributeInner>,
+    inner: Arc<StyleAttributeInner>,
 }
 
 impl StyleAttribute {
@@ -160,7 +161,7 @@ impl StyleAttribute {
         transition: Option<StyleTransition>,
     ) -> Self {
         Self {
-            inner: Shared::new(StyleAttributeInner {
+            inner: Arc::new(StyleAttributeInner {
                 key,
                 value,
                 transition,
@@ -273,7 +274,7 @@ impl From<Color> for StyleAttributeValue {
     }
 }
 
-impl<T: Sendable + 'static> From<ReadSignal<T>> for StyleAttributeValue
+impl<T: Send + Sync + 'static> From<ReadSignal<T>> for StyleAttributeValue
 where
     T: Into<StyleAttributeValue> + Clone,
 {

@@ -8,11 +8,11 @@ use glam::Vec2;
 use ori_graphics::{
     Frame, ImageHandle, ImageSource, Quad, Rect, Renderer, TextHit, TextSection, WeakImageHandle,
 };
+use ori_reactive::EventSink;
 
 use crate::{
-    BoxConstraints, Cursor, EventSink, FromStyleAttribute, NodeState, RequestRedrawEvent,
-    StyleAttribute, StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet,
-    Unit,
+    BoxConstraints, Cursor, FromStyleAttribute, NodeState, RequestRedrawEvent, StyleAttribute,
+    StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet, Unit,
 };
 
 /// A cache for images.
@@ -66,7 +66,7 @@ pub struct EventContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
-    pub style: &'a Stylesheet,
+    pub stylesheet: &'a Stylesheet,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
@@ -79,7 +79,7 @@ pub struct LayoutContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
-    pub style: &'a Stylesheet,
+    pub stylesheet: &'a Stylesheet,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
@@ -152,7 +152,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
                 renderer: self.draw_context.renderer,
                 selectors: self.draw_context.selectors,
                 selectors_hash: self.draw_context.selectors_hash,
-                style: self.draw_context.style,
+                stylesheet: self.draw_context.stylesheet,
                 style_cache: self.draw_context.style_cache,
                 event_sink: self.draw_context.event_sink,
                 image_cache: self.draw_context.image_cache,
@@ -171,7 +171,7 @@ pub struct DrawContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
-    pub style: &'a Stylesheet,
+    pub stylesheet: &'a Stylesheet,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
@@ -592,7 +592,7 @@ macro_rules! context {
     ($name:ident) => {
         impl<'a> Context for $name<'a> {
             fn stylesheet(&self) -> &Stylesheet {
-                self.style
+                self.stylesheet
             }
 
             fn style_cache(&self) -> &StyleCache {

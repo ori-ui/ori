@@ -1,19 +1,21 @@
-use std::{cell::RefCell, fmt::Debug, ops::DerefMut, panic::Location};
+use std::{cell::RefCell, fmt::Debug, ops::DerefMut, panic::Location, sync::Arc};
 
-use crate::{Callback, Lock, Lockable, Resource, Scope, Sendable, Shared, WeakCallbackEmitter};
+use parking_lot::Mutex;
+
+use crate::{Callback, Resource, Scope, WeakCallbackEmitter};
 
 thread_local! {
-    static EFFECTS: RefCell<Vec<*mut EffectState<'static>>> = Default::default();
-    static CAPTURE: RefCell<Option<Vec<Callback<'static, ()>>>> = Default::default();
+    static EFFECT_STACK: RefCell<Vec<*mut EffectState>> = Default::default();
+    static CAPTURED_EFFECTS: RefCell<Option<Vec<Callback<'static, ()>>>> = Default::default();
 }
 
-pub(crate) struct EffectState<'a> {
+pub(crate) struct EffectState {
     location: &'static Location<'static>,
-    callback: Callback<'a>,
+    callback: Callback<'static>,
     dependencies: Vec<WeakCallbackEmitter>,
 }
 
-impl<'a> EffectState<'a> {
+impl EffectState {
     #[track_caller]
     fn empty() -> Self {
         Self {
@@ -34,7 +36,7 @@ impl<'a> EffectState<'a> {
     }
 }
 
-impl<'a> Debug for EffectState<'a> {
+impl Debug for EffectState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EffectState")
             .field("location", &self.location)
@@ -42,18 +44,21 @@ impl<'a> Debug for EffectState<'a> {
     }
 }
 
-pub(crate) fn track_callback(callback: WeakCallbackEmitter) {
-    EFFECTS.with(|effects| {
+/// Subscribes the last effect on the effect stack to the given `emitter`.
+pub fn track_callback(emitter: WeakCallbackEmitter) {
+    EFFECT_STACK.with(|effects| {
         if let Some(effect) = effects.borrow().last() {
-            // SAFETY: effects is a thread local, so this is safe.
+            // SAFETY: EFFECT_STACK is thread local, and no other mutable references to `effect`
+            // can be created while this function is running.
             let effect = unsafe { &mut **effect };
-            effect.dependencies.push(callback);
+            effect.dependencies.push(emitter);
         }
     });
 }
 
-pub(crate) fn untrack<T>(f: impl FnOnce() -> T) -> T {
-    EFFECTS.with(|effects| {
+/// Runs `f` ignoring all calls to [`track_callback`].
+pub fn untrack<T>(f: impl FnOnce() -> T) -> T {
+    EFFECT_STACK.with(|effects| {
         let tmp = effects.take();
         let result = f();
         effects.replace(tmp);
@@ -62,7 +67,7 @@ pub(crate) fn untrack<T>(f: impl FnOnce() -> T) -> T {
 }
 
 fn set_capture(value: Option<Vec<Callback<'static, ()>>>) -> Option<Vec<Callback<'static, ()>>> {
-    CAPTURE.with(|capture| {
+    CAPTURED_EFFECTS.with(|capture| {
         let mut capture = capture.borrow_mut();
         let tmp = capture.take();
         *capture = value;
@@ -70,12 +75,18 @@ fn set_capture(value: Option<Vec<Callback<'static, ()>>>) -> Option<Vec<Callback
     })
 }
 
+/// Captures all effects that are called during the execution of `f`.
+#[must_use]
 pub fn capture_effects(f: impl FnOnce()) -> Vec<Callback<'static, ()>> {
     let tmp = set_capture(Some(Vec::new()));
     f();
     set_capture(tmp).unwrap()
 }
 
+/// Runs `f` and captures all effects that are called during the execution of `f`.
+/// After `f` is done, all captured effects are emitted.
+///
+/// This is useful when an effect might try to lock a resource that is already locked.
 pub fn delay_effects(f: impl FnOnce()) {
     let effects = capture_effects(f);
 
@@ -85,20 +96,20 @@ pub fn delay_effects(f: impl FnOnce()) {
 }
 
 #[track_caller]
-pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static) {
+pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Send + 'static) {
     let caller = Location::caller();
 
-    let effect = Resource::new_leaking(Shared::new(Lock::new(EffectState::empty())));
+    let effect = Resource::new_leaking(Arc::new(Mutex::new(EffectState::empty())));
     effect.manage(cx.id);
 
     let callback = Callback::new(move |()| {
         let mut captured = false;
 
-        CAPTURE.with(|capture| {
+        CAPTURED_EFFECTS.with(|capture| {
             let mut capture = capture.borrow_mut();
 
             if let Some(capture) = capture.as_mut() {
-                let callback = effect.get().unwrap().lock_mut().callback.clone();
+                let callback = effect.get().unwrap().lock().callback.clone();
                 capture.push(callback);
                 captured = true;
             }
@@ -108,13 +119,13 @@ pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static)
             return;
         }
 
-        EFFECTS.with(|effects| {
+        EFFECT_STACK.with(|effects| {
             tracing::trace!("running effect at {}", caller);
 
             let len = effects.borrow().len();
 
             let effect = effect.get().unwrap();
-            let mut effect = effect.lock_mut();
+            let mut effect = effect.lock();
 
             effect.clear_dependencies();
 
@@ -134,7 +145,7 @@ pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Sendable + 'static)
         });
     });
 
-    effect.get().unwrap().lock_mut().callback = callback.clone();
+    effect.get().unwrap().lock().callback = callback.clone();
 
     callback.emit(&());
 }

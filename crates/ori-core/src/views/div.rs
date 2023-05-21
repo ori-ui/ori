@@ -1,9 +1,10 @@
 use glam::Vec2;
 use ori_macro::Build;
+use ori_reactive::{CallbackEmitter, Event, Scope};
 
 use crate::{
-    BindCallback, BoxConstraints, CallbackEmitter, Children, Context, DrawContext, Event,
-    EventContext, FlexLayout, LayoutContext, PointerEvent, Scope, Sendable, Style, View,
+    BindCallback, BoxConstraints, Children, Context, DrawContext, EventContext, FlexLayout,
+    LayoutContext, PointerEvent, Style, View,
 };
 
 #[derive(Default, Build)]
@@ -24,7 +25,7 @@ impl Div {
     pub fn on_press<'a>(
         mut self,
         cx: Scope,
-        callback: impl FnMut(&PointerEvent) + Sendable + 'static,
+        callback: impl FnMut(&PointerEvent) + Send + 'static,
     ) -> Self {
         self.on_press.bind(cx, callback);
 
@@ -34,7 +35,7 @@ impl Div {
     pub fn on_release<'a>(
         mut self,
         cx: Scope,
-        callback: impl FnMut(&PointerEvent) + Sendable + 'static,
+        callback: impl FnMut(&PointerEvent) + Send + 'static,
     ) -> Self {
         self.on_release.bind(cx, callback);
 

@@ -1,8 +1,9 @@
 use glam::Vec2;
+use ori_reactive::Event;
 
 use crate::{
-    BoxConstraints, Div, DrawContext, Event, EventContext, Events, IntoChildren, IntoNode,
-    LayoutContext, Parent, Style, View,
+    BoxConstraints, Div, DrawContext, EventContext, Events, IntoChildren, IntoNode, LayoutContext,
+    Parent, Style, View,
 };
 
 pub struct Button {

@@ -1,10 +1,11 @@
 use glam::Vec2;
 use ori_graphics::{Quad, Rect};
 use ori_macro::Build;
+use ori_reactive::Event;
 
 use crate::{
-    Axis, BoxConstraints, Children, Context, DrawContext, Event, EventContext, FlexLayout,
-    LayoutContext, PointerEvent, Style, View,
+    Axis, BoxConstraints, Children, Context, DrawContext, EventContext, FlexLayout, LayoutContext,
+    PointerEvent, Style, View,
 };
 
 #[derive(Default, Build)]

@@ -14,8 +14,9 @@ pub use stylesheet::*;
 pub use transition::*;
 
 use deref_derive::{Deref, DerefMut};
+use ori_reactive::Event;
 
-use crate::{BoxConstraints, DrawContext, Event, EventContext, LayoutContext, View};
+use crate::{BoxConstraints, DrawContext, EventContext, LayoutContext, View};
 
 #[derive(Clone, Debug, Default)]
 pub struct Style {

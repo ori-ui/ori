@@ -3,7 +3,9 @@ use std::{
     sync::{Mutex, MutexGuard},
 };
 
-use crate::{DebugNode, Event, EventContext, Node, View};
+use ori_reactive::Event;
+
+use crate::{DebugNode, EventContext, Node, View};
 
 #[derive(Debug, Default)]
 pub struct DebugEvent {

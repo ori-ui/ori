@@ -4,11 +4,10 @@ use std::{
 };
 
 use glam::Vec2;
+use ori_reactive::{Event, OwnedSignal};
+use parking_lot::{Mutex, MutexGuard};
 
-use crate::{
-    BoxConstraints, Context, DrawContext, Event, EventContext, Guard, LayoutContext, Lock,
-    Lockable, OwnedSignal, SendSync, Shared, Style,
-};
+use crate::{BoxConstraints, Context, DrawContext, EventContext, LayoutContext, Style};
 
 pub trait IntoView {
     type View: View;
@@ -26,9 +25,9 @@ impl<T: View> IntoView for T {
 
 /// A [`View`] is a component that can be rendered to the screen.
 #[allow(unused_variables)]
-pub trait View: SendSync + 'static {
+pub trait View: Send + Sync + 'static {
     /// The state of the view.
-    type State: SendSync + 'static;
+    type State: Send + Sync + 'static;
 
     /// Builds the state of the view.
     fn build(&self) -> Self::State;
@@ -55,7 +54,7 @@ pub trait View: SendSync + 'static {
 }
 
 pub struct ViewRef<V: View> {
-    view: Shared<Lock<V>>,
+    view: Arc<Mutex<V>>,
     is_dirty: OwnedSignal<bool>,
 }
 
@@ -71,18 +70,18 @@ impl<V: View> Clone for ViewRef<V> {
 impl<V: View> ViewRef<V> {
     pub fn new(view: V) -> Self {
         Self {
-            view: Shared::new(Lock::new(view)),
+            view: Arc::new(Mutex::new(view)),
             is_dirty: OwnedSignal::new(false),
         }
     }
 
-    pub fn lock(&self) -> Guard<'_, V> {
+    pub fn lock(&self) -> MutexGuard<'_, V> {
         self.set_dirty();
-        self.view.lock_mut()
+        self.view.lock()
     }
 
-    pub fn lock_untracked(&self) -> Guard<'_, V> {
-        self.view.lock_mut()
+    pub fn lock_untracked(&self) -> MutexGuard<'_, V> {
+        self.view.lock()
     }
 
     pub fn is_dirty(&self) -> bool {
@@ -140,15 +139,12 @@ impl<V: View> View for ViewRef<V> {
     }
 }
 
-#[cfg(feature = "multi-thread")]
 type AnyViewState = Box<dyn Any + Send + Sync>;
-#[cfg(not(feature = "multi-thread"))]
-type AnyViewState = Box<dyn Any>;
 
 /// A [`View`] that with an unknown state.
 ///
 /// This is used to store a [`View`] in a [`Node`](crate::Node).
-pub trait AnyView: SendSync {
+pub trait AnyView: Send + Sync {
     fn build(&self) -> AnyViewState;
 
     fn style(&self) -> Style;

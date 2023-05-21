@@ -4,16 +4,16 @@ use std::{
     panic::Location,
 };
 
-use crate::{Callback, CallbackEmitter, Resource, Sendable};
+use crate::{Callback, CallbackEmitter, Resource};
 
 use super::effect;
 
-pub struct ReadSignal<T: Sendable + 'static> {
+pub struct ReadSignal<T: 'static> {
     pub(crate) resource: Resource<T>,
     pub(crate) emitter: Resource<CallbackEmitter>,
 }
 
-impl<T: Sendable + 'static> ReadSignal<T> {
+impl<T: Send + Sync> ReadSignal<T> {
     pub fn new_leaking(value: T) -> Self {
         Self {
             resource: Resource::new_leaking(value),
@@ -73,7 +73,7 @@ impl<T: Sendable + 'static> ReadSignal<T> {
     }
 }
 
-impl<T: Sendable> Clone for ReadSignal<T> {
+impl<T> Clone for ReadSignal<T> {
     fn clone(&self) -> Self {
         Self {
             resource: self.resource.clone(),
@@ -82,13 +82,13 @@ impl<T: Sendable> Clone for ReadSignal<T> {
     }
 }
 
-impl<T: Sendable> Copy for ReadSignal<T> {}
+impl<T> Copy for ReadSignal<T> {}
 
-pub struct Signal<T: Sendable + 'static> {
+pub struct Signal<T: 'static> {
     signal: ReadSignal<T>,
 }
 
-impl<T: Sendable> Deref for Signal<T> {
+impl<T> Deref for Signal<T> {
     type Target = ReadSignal<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -96,7 +96,7 @@ impl<T: Sendable> Deref for Signal<T> {
     }
 }
 
-impl<T: Sendable + 'static> Signal<T> {
+impl<T: Send + Sync> Signal<T> {
     pub fn new_leaking(value: T) -> Self {
         Self {
             signal: ReadSignal::new_leaking(value),
@@ -148,7 +148,7 @@ impl<T: Sendable + 'static> Signal<T> {
     }
 }
 
-impl<T: Sendable> Clone for Signal<T> {
+impl<T> Clone for Signal<T> {
     fn clone(&self) -> Self {
         Self {
             signal: self.signal,
@@ -156,14 +156,14 @@ impl<T: Sendable> Clone for Signal<T> {
     }
 }
 
-impl<T: Sendable> Copy for Signal<T> {}
+impl<T> Copy for Signal<T> {}
 
-pub struct Modify<T: Sendable + Clone + 'static> {
+pub struct Modify<T: Send + Sync + 'static> {
     signal: Signal<T>,
     value: Option<T>,
 }
 
-impl<T: Sendable + Clone> Modify<T> {
+impl<T: Send + Sync + Clone> Modify<T> {
     pub fn new(signal: Signal<T>) -> Self {
         Self {
             signal,
@@ -172,7 +172,7 @@ impl<T: Sendable + Clone> Modify<T> {
     }
 }
 
-impl<T: Sendable + Clone> Deref for Modify<T> {
+impl<T: Send + Sync> Deref for Modify<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -180,13 +180,13 @@ impl<T: Sendable + Clone> Deref for Modify<T> {
     }
 }
 
-impl<T: Sendable + Clone> DerefMut for Modify<T> {
+impl<T: Send + Sync> DerefMut for Modify<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.value.as_mut().unwrap()
     }
 }
 
-impl<T: Sendable + Clone> Drop for Modify<T> {
+impl<T: Send + Sync> Drop for Modify<T> {
     fn drop(&mut self) {
         if let Some(value) = self.value.take() {
             self.signal.set(value);
@@ -197,11 +197,11 @@ impl<T: Sendable + Clone> Drop for Modify<T> {
 /// A signal that owns its resources.
 ///
 /// This is useful for signals that aren't bound to a [`Scope`].
-pub struct OwnedSignal<T: Sendable + 'static> {
+pub struct OwnedSignal<T: 'static> {
     signal: Signal<T>,
 }
 
-impl<T: Sendable> Deref for OwnedSignal<T> {
+impl<T> Deref for OwnedSignal<T> {
     type Target = Signal<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -209,7 +209,7 @@ impl<T: Sendable> Deref for OwnedSignal<T> {
     }
 }
 
-impl<T: Sendable> Clone for OwnedSignal<T> {
+impl<T: Send + Sync> Clone for OwnedSignal<T> {
     fn clone(&self) -> Self {
         self.reference();
 
@@ -219,13 +219,13 @@ impl<T: Sendable> Clone for OwnedSignal<T> {
     }
 }
 
-impl<T: Sendable + Default> Default for OwnedSignal<T> {
+impl<T: Send + Sync + Default> Default for OwnedSignal<T> {
     fn default() -> Self {
         Self::new(T::default())
     }
 }
 
-impl<T: Sendable> OwnedSignal<T> {
+impl<T: Send + Sync> OwnedSignal<T> {
     pub fn new(value: T) -> Self {
         Self {
             signal: Signal::new_leaking(value),
@@ -238,13 +238,13 @@ impl<T: Sendable> OwnedSignal<T> {
     }
 }
 
-impl<T: Sendable> From<T> for OwnedSignal<T> {
+impl<T: Send + Sync> From<T> for OwnedSignal<T> {
     fn from(value: T) -> Self {
         Self::new(value)
     }
 }
 
-impl<T: Sendable> Drop for OwnedSignal<T> {
+impl<T> Drop for OwnedSignal<T> {
     #[track_caller]
     fn drop(&mut self) {
         self.resource.dispose();
@@ -255,7 +255,7 @@ impl<T: Sendable> Drop for OwnedSignal<T> {
 macro_rules! impl_signal {
     ($($type:ty),*) => {
         $(
-            impl<T: Sendable + Clone + Debug> Debug for $type {
+            impl<T: Send + Sync + Clone + Debug> Debug for $type {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     f.debug_struct(stringify!($type))
                         .field("resource", &self.resource)
@@ -264,13 +264,13 @@ macro_rules! impl_signal {
                 }
             }
 
-            impl<T: Sendable + Clone + PartialEq> PartialEq for $type {
+            impl<T: Send + Sync + Clone + PartialEq> PartialEq for $type {
                 fn eq(&self, other: &Self) -> bool {
                     self.resource == other.resource
                 }
             }
 
-            impl<T: Sendable + Clone + Eq> Eq for $type {}
+            impl<T: Send + Sync + Clone + Eq> Eq for $type {}
         )*
     };
 }

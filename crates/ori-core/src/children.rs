@@ -3,11 +3,12 @@ use std::{iter, slice};
 use deref_derive::{Deref, DerefMut};
 use glam::Vec2;
 use ori_graphics::Rect;
+use ori_reactive::Event;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    AlignItem, AnyView, Axis, BoxConstraints, Context, DrawContext, Event, EventContext,
-    IntoChildren, IntoNode, JustifyContent, LayoutContext, Node, Padding, Parent, View,
+    AlignItem, AnyView, Axis, BoxConstraints, Context, DrawContext, EventContext, IntoChildren,
+    IntoNode, JustifyContent, LayoutContext, Node, Padding, Parent, View,
 };
 
 /// A layout that lays out children in a flexbox-like manner.

@@ -243,6 +243,7 @@ fn event_setter(input: &DeriveInput) -> TokenStream {
     let (_, fields) = data(input);
 
     let ori_core = find_crate("core");
+    let ori_reactive = find_crate("reactive");
 
     let fields = fields.named.iter().filter_map(|field| {
         let name = field.ident.as_ref().unwrap();
@@ -259,8 +260,8 @@ fn event_setter(input: &DeriveInput) -> TokenStream {
         Some(quote! {
             pub fn #event(
                 &mut self,
-                cx: #ori_core::Scope,
-                #name: impl FnMut(&<#ty as #ori_core::BindCallback>::Event) + #ori_core::Sendable + 'static
+                cx: #ori_reactive::Scope,
+                #name: impl FnMut(&<#ty as #ori_core::BindCallback>::Event) + ::std::marker::Send + 'static
             ) {
                 <#ty as #ori_core::BindCallback>::bind(&mut self.this.#name, cx, #name);
             }
@@ -276,6 +277,7 @@ fn binding_setter(input: &DeriveInput) -> TokenStream {
     let (_, fields) = data(input);
 
     let ori_core = find_crate("core");
+    let ori_reactive = find_crate("reactive");
 
     let fields = fields.named.iter().filter_map(|field| {
         let name = field.ident.as_ref().unwrap();
@@ -292,8 +294,8 @@ fn binding_setter(input: &DeriveInput) -> TokenStream {
         Some(quote! {
             pub fn #event(
                 &mut self,
-                cx: #ori_core::Scope,
-                #name: #ori_core::Signal<<#ty as #ori_core::Bindable>::Item>
+                cx: #ori_reactive::Scope,
+                #name: #ori_reactive::Signal<<#ty as #ori_core::Bindable>::Item>
             ) {
                 <#ty as #ori_core::Bindable>::bind(&mut self.this.#name, cx, #name);
             }

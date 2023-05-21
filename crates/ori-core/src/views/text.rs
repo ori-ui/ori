@@ -59,7 +59,7 @@ impl View for Text {
 
     #[tracing::instrument(name = "Text", skip(self, state, cx, bc))]
     fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let font_size = cx.style_range("font-size", 0.0..bc.max.y);
+        let font_size = cx.style_range("font-size", 0.0..cx.parent_bc.max.y);
         *state = Some(font_size);
 
         let section = TextSection {

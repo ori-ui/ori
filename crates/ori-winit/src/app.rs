@@ -6,12 +6,12 @@ use std::{
 };
 
 use ori_core::{
-    CallbackEmitter, Cursor, Event, EventEmitter, EventSink, ImageCache, KeyboardEvent,
-    LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Runtime, Scope,
-    SetWindowIconEvent, SetWindowTitleEvent, StyleCache, StyleLoader, Stylesheet, Task, Vec2, View,
+    KeyboardEvent, LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, RootNode,
+    SetWindowIconEvent, SetWindowTitleEvent, StyleLoader, Stylesheet, Vec2, View,
     WindowResizeEvent,
 };
-use ori_graphics::{Color, Frame};
+use ori_graphics::{Color, ImageData, ImageSource};
+use ori_reactive::{CallbackEmitter, Event, EventEmitter, EventSink, Scope, Task};
 use winit::{
     dpi::LogicalSize,
     error::OsError,
@@ -60,7 +60,8 @@ pub struct App {
     clear_color: Color,
     event_loop: EventLoop<Event>,
     style_loader: StyleLoader,
-    builder: Option<Box<dyn FnOnce(&EventSink, &CallbackEmitter<Event>) -> Node>>,
+    icon: Option<ImageData>,
+    builder: Option<Box<dyn FnOnce(&EventSink, &CallbackEmitter<Event>) -> RootNode>>,
 }
 
 impl App {
@@ -69,9 +70,10 @@ impl App {
         initialize_log().unwrap();
 
         let builder = Box::new(
-            move |event_sink: &EventSink, event_callbacks: &CallbackEmitter<Event>| {
+            move |event_sink: &EventSink, event_callbacks: &CallbackEmitter<Event>| -> RootNode {
                 let scope = Scope::new(event_sink.clone(), event_callbacks.clone());
-                Node::new(content(scope))
+                let node = Node::new(content(scope));
+                RootNode::new(node, event_sink.clone(), event_callbacks.clone())
             },
         );
 
@@ -82,12 +84,13 @@ impl App {
         let event_loop = EventLoopBuilder::<Event>::with_user_event().build();
 
         Self {
-            title: "Ori App".to_string(),
+            title: String::from("Ori App"),
             size: Vec2::new(800.0, 600.0),
             reziseable: true,
             clear_color: Color::WHITE,
             event_loop,
             style_loader,
+            icon: None,
             builder: Some(builder),
         }
     }
@@ -170,6 +173,11 @@ impl App {
         self.clear_color(Color::TRANSPARENT)
     }
 
+    pub fn icon(mut self, icon: impl Into<ImageSource>) -> Self {
+        self.icon = Some(icon.into().load());
+        self
+    }
+
     /// Create an [`EventSink`] that can be used to send events to the app.
     pub fn event_sink(&self) -> EventSink {
         EventSink::new(EventLoopSender(self.event_loop.create_proxy()))
@@ -178,11 +186,20 @@ impl App {
     fn window(&self) -> Result<Window, OsError> {
         let size = LogicalSize::new(self.size.x, self.size.y);
 
+        let icon = match self.icon {
+            Some(ref icon) => {
+                let pixels = icon.pixels().to_vec();
+                Icon::from_rgba(pixels, icon.width(), icon.height()).ok()
+            }
+            None => None,
+        };
+
         let builder = WindowBuilder::new()
             .with_title(&self.title)
             .with_inner_size(size)
             .with_resizable(self.reziseable)
-            .with_transparent(self.clear_color.is_translucent());
+            .with_transparent(self.clear_color.is_translucent())
+            .with_window_icon(icon);
 
         builder.build(&self.event_loop)
     }
@@ -190,26 +207,18 @@ impl App {
 
 struct AppState {
     window: Arc<Window>,
-    style_loader: StyleLoader,
     mouse_position: Vec2,
     modifiers: Modifiers,
-    root: Node,
-    frame: Frame,
+    root: RootNode,
     clear_color: Color,
-    event_sink: EventSink,
-    event_callbacks: CallbackEmitter<Event>,
-    image_cache: ImageCache,
-    style_cache: StyleCache,
-    cursor_icon: Cursor,
     #[cfg(feature = "wgpu")]
     renderer: ori_wgpu::WgpuRenderer,
 }
 
 impl AppState {
-    fn clean(&mut self) {
-        let icon = convert_cursor_icon(self.cursor_icon);
-        self.window.set_cursor_icon(icon);
-        self.image_cache.clean();
+    fn update_cursor(&mut self) {
+        let cursor = convert_cursor_icon(self.root.cursor);
+        self.window.set_cursor_icon(cursor);
     }
 
     fn resize(&mut self, width: u32, heigth: u32) {
@@ -222,44 +231,14 @@ impl AppState {
 
     #[tracing::instrument(skip(self, event))]
     fn event(&mut self, event: &Event) {
-        self.event_callbacks.emit(&event);
-
-        self.cursor_icon = Cursor::Default;
-
-        ori_core::delay_effects(|| {
-            self.root.event_root(
-                self.style_loader.style(),
-                &mut self.style_cache,
-                &self.renderer,
-                &self.event_sink,
-                event,
-                &mut self.image_cache,
-                &mut self.cursor_icon,
-            );
-        });
-
-        self.clean();
+        self.root.event(&self.renderer, event);
+        self.update_cursor();
     }
 
     #[tracing::instrument(skip(self))]
     fn layout(&mut self) {
-        self.event(&Event::new(()));
-
-        let style = self.style_loader.style();
-
-        self.cursor_icon = Cursor::Default;
-        ori_core::delay_effects(|| {
-            self.root.layout_root(
-                style,
-                &mut self.style_cache,
-                &self.renderer,
-                &self.event_sink,
-                &mut self.image_cache,
-                &mut self.cursor_icon,
-            );
-        });
-
-        self.clean();
+        self.root.layout(&self.renderer);
+        self.update_cursor();
     }
 
     #[tracing::instrument(skip(self))]
@@ -267,29 +246,11 @@ impl AppState {
         #[cfg(feature = "tracy")]
         tracing_tracy::client::frame_mark();
 
-        self.layout();
-
-        self.frame.clear();
-        let style = self.style_loader.style();
-
-        self.cursor_icon = Cursor::Default;
-
-        ori_core::delay_effects(|| {
-            self.root.draw_root(
-                style,
-                &mut self.style_cache,
-                &mut self.frame,
-                &self.renderer,
-                &self.event_sink,
-                &mut self.image_cache,
-                &mut self.cursor_icon,
-            );
-        });
-
-        self.clean();
+        self.root.draw(&self.renderer);
+        self.update_cursor();
 
         #[cfg(feature = "wgpu")]
-        self.renderer.render_frame(&self.frame, self.clear_color);
+        (self.renderer).render_frame(&self.root.frame, self.clear_color);
     }
 }
 
@@ -307,19 +268,16 @@ impl App {
 
         let event_callbacks = CallbackEmitter::new();
         let builder = self.builder.take().unwrap();
+
+        let mut root = builder(&event_sink, &event_callbacks);
+        root.style_loader = self.style_loader;
+
         let mut state = AppState {
             window: window.clone(),
-            style_loader: self.style_loader,
             mouse_position: Vec2::ZERO,
             modifiers: Modifiers::default(),
-            root: builder(&event_sink, &event_callbacks),
-            frame: Frame::new(),
+            root,
             clear_color: self.clear_color,
-            event_sink: event_sink.clone(),
-            event_callbacks,
-            image_cache: ImageCache::new(),
-            style_cache: StyleCache::new(),
-            cursor_icon: Cursor::Default,
             #[cfg(feature = "wgpu")]
             renderer,
         };
@@ -333,15 +291,7 @@ impl App {
                 }
                 WinitEvent::MainEventsCleared
                 | WinitEvent::NewEvents(StartCause::ResumeTimeReached { .. }) => {
-                    match state.style_loader.reload() {
-                        Ok(reload) if reload => {
-                            tracing::info!("style reloaded");
-                            window.request_redraw();
-                            state.style_cache.clear();
-                        }
-                        Err(err) => tracing::error!("failed to reload style: {}", err),
-                        _ => {}
-                    }
+                    state.root.idle();
                 }
                 WinitEvent::UserEvent(event) => {
                     // poll awoken task
@@ -393,9 +343,6 @@ impl App {
                         state.resize(size.width, size.height);
                     }
                     WindowEvent::CloseRequested => {
-                        state.root = Node::empty();
-                        Runtime::stop_global();
-
                         *control_flow = ControlFlow::Exit;
                     }
                     WindowEvent::CursorMoved {

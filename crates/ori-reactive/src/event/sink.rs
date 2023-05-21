@@ -1,8 +1,6 @@
-use std::{
-    any::Any,
-    fmt::Debug,
-    sync::{Arc, Mutex},
-};
+use std::{any::Any, fmt::Debug, sync::Arc};
+
+use parking_lot::Mutex;
 
 use crate::Event;
 
@@ -39,7 +37,7 @@ impl EventSink {
 
     /// Sends an event to the application.
     pub fn emit(&self, event: impl Any + Send + Sync) {
-        self.emitter.lock().unwrap().send_event(Event::new(event));
+        self.emitter.lock().send_event(Event::new(event));
     }
 }
 

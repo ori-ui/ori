@@ -147,7 +147,7 @@ impl StyleLoader {
     }
 
     /// Returns the style.
-    pub fn style(&self) -> &Stylesheet {
+    pub fn stylesheet(&self) -> &Stylesheet {
         &self.cache
     }
 }

@@ -1,15 +1,17 @@
-use std::{any::Any, fmt::Debug, time::Instant};
+use std::{any::Any, fmt::Debug, sync::Arc, time::Instant};
 
 use glam::Vec2;
 use ori_graphics::{Frame, Rect, Renderer};
+use ori_reactive::{Event, EventSink, OwnedSignal};
+use parking_lot::{Mutex, MutexGuard};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, Context, Cursor, DebugEvent, DrawContext, EmptyView, Event,
-    EventContext, EventSink, FromStyleAttribute, Guard, ImageCache, IntoView, LayoutContext, Lock,
-    Lockable, Margin, OwnedSignal, PointerEvent, RequestRedrawEvent, Shared, Style, StyleAttribute,
-    StyleCache, StyleSelector, StyleSelectors, StyleSpecificity, StyleStates, StyleTransition,
-    Stylesheet, TransitionStates, View,
+    AnyView, BoxConstraints, Context, Cursor, DebugEvent, DrawContext, EmptyView, EventContext,
+    FromStyleAttribute, ImageCache, IntoView, LayoutContext, Margin, PointerEvent,
+    RequestRedrawEvent, Style, StyleAttribute, StyleCache, StyleSelector, StyleSelectors,
+    StyleSpecificity, StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
+    WindowResizeEvent,
 };
 
 /// A node identifier. This uses a UUID to ensure that nodes are unique.
@@ -252,8 +254,8 @@ impl NodeState {
 }
 
 struct NodeInner<T: View> {
-    view_state: Lock<T::State>,
-    node_state: Lock<NodeState>,
+    view_state: Mutex<T::State>,
+    node_state: Mutex<NodeState>,
     view: T,
 }
 
@@ -278,9 +280,9 @@ impl<T: IntoView> From<T> for Node<T::View> {
         let node_state = NodeState::new(View::style(&view));
 
         Self {
-            inner: Shared::new(NodeInner {
-                view_state: Lock::new(view_state),
-                node_state: Lock::new(node_state),
+            inner: Arc::new(NodeInner {
+                view_state: Mutex::new(view_state),
+                node_state: Mutex::new(node_state),
                 view,
             }),
         }
@@ -314,7 +316,7 @@ impl<T: View> IntoNode<T, Node<T>> for Node<T> {
 /// A node is a wrapper around a view, and contains the state of the view.
 #[derive(Clone)]
 pub struct Node<T: View = Box<dyn AnyView>> {
-    inner: Shared<NodeInner<T>>,
+    inner: Arc<NodeInner<T>>,
 }
 
 impl Node {
@@ -332,15 +334,15 @@ impl<T: View> Node<T> {
     /// Returns a [`Guard`] to the [`AnyViewState`].
     ///
     /// Be careful when using this, as it can cause deadlocks.
-    pub fn view_state(&self) -> Guard<T::State> {
-        self.inner.view_state.lock_mut()
+    pub fn view_state(&self) -> MutexGuard<T::State> {
+        self.inner.view_state.lock()
     }
 
     /// Returns a [`Guard`] to the [`NodeState`].
     ///
     /// Be careful when using this, as it can cause deadlocks.
-    pub fn node_state(&self) -> Guard<NodeState> {
-        self.inner.node_state.lock_mut()
+    pub fn node_state(&self) -> MutexGuard<NodeState> {
+        self.inner.node_state.lock()
     }
 
     /// Returns a reference to the [`View`].
@@ -467,41 +469,42 @@ impl<T: View> Node<T> {
         res
     }
 
-    fn event_inner(&self, cx: &mut EventContext, event: &Event) {
-        self.with_inner(cx, |state, cx| {
-            if let Some(pointer_event) = event.get::<PointerEvent>() {
-                if Self::handle_pointer_event(state, pointer_event, event.is_handled()) {
-                    cx.request_redraw();
-                }
+    fn event_inner(&self, state: &mut NodeState, cx: &mut EventContext, event: &Event) {
+        if let Some(pointer_event) = event.get::<PointerEvent>() {
+            if Self::handle_pointer_event(state, pointer_event, event.is_handled()) {
+                cx.request_redraw();
             }
+        }
 
-            let selector = state.selector();
-            let selectors = cx.selectors.clone().with(selector);
-            let mut cx = EventContext {
-                state,
-                renderer: cx.renderer,
-                selectors: &selectors,
-                selectors_hash: selectors.hash(),
-                style: cx.style,
-                style_cache: cx.style_cache,
-                event_sink: cx.event_sink,
-                image_cache: cx.image_cache,
-                cursor: cx.cursor,
-            };
+        let selector = state.selector();
+        let selectors = cx.selectors.clone().with(selector);
+        let mut cx = EventContext {
+            state,
+            renderer: cx.renderer,
+            selectors: &selectors,
+            selectors_hash: selectors.hash(),
+            stylesheet: cx.stylesheet,
+            style_cache: cx.style_cache,
+            event_sink: cx.event_sink,
+            image_cache: cx.image_cache,
+            cursor: cx.cursor,
+        };
 
-            if let Some(event) = event.get::<DebugEvent>() {
-                event.with_node(&mut cx, self);
-                return;
-            }
+        if let Some(event) = event.get::<DebugEvent>() {
+            event.with_node(&mut cx, self);
+            return;
+        }
 
-            self.view().event(&mut self.view_state(), &mut cx, event);
-            Self::update_cursor(&mut cx);
-        });
+        self.view().event(&mut self.view_state(), &mut cx, event);
+
+        Self::update_cursor(&mut cx);
     }
 
     /// Handle an event.
     pub fn event(&self, cx: &mut EventContext, event: &Event) {
-        self.event_inner(cx, event);
+        self.with_inner(cx, |node_state, cx| {
+            self.event_inner(node_state, cx, event);
+        });
     }
 
     /// Layout the node.
@@ -511,105 +514,108 @@ impl<T: View> Node<T> {
         size
     }
 
-    fn relayout_inner(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.with_inner(cx, |node_state, cx| {
-            node_state.needs_layout = false;
+    fn relayout_inner(
+        &self,
+        state: &mut NodeState,
+        cx: &mut LayoutContext,
+        bc: BoxConstraints,
+    ) -> Vec2 {
+        state.needs_layout = false;
 
-            let selector = node_state.selector();
-            let selectors = cx.selectors.clone().with(selector);
-            let mut cx = LayoutContext {
-                state: node_state,
-                renderer: cx.renderer,
-                selectors: &selectors,
-                selectors_hash: selectors.hash(),
-                style: cx.style,
-                style_cache: cx.style_cache,
-                event_sink: cx.event_sink,
-                image_cache: cx.image_cache,
-                cursor: cx.cursor,
-                parent_bc: cx.bc,
-                bc,
-            };
+        let selector = state.selector();
+        let selectors = cx.selectors.clone().with(selector);
+        let mut cx = LayoutContext {
+            state,
+            renderer: cx.renderer,
+            selectors: &selectors,
+            selectors_hash: selectors.hash(),
+            stylesheet: cx.stylesheet,
+            style_cache: cx.style_cache,
+            event_sink: cx.event_sink,
+            image_cache: cx.image_cache,
+            cursor: cx.cursor,
+            parent_bc: cx.bc,
+            bc,
+        };
 
-            cx.state.margin = Margin::from_style(&mut cx, bc);
+        cx.state.margin = Margin::from_style(&mut cx, bc);
 
-            let bc = bc.with_margin(cx.state.margin);
-            let bc = cx.style_constraints(bc);
-            cx.bc = bc;
+        let bc = bc.with_margin(cx.state.margin);
+        let bc = cx.style_constraints(bc);
+        cx.bc = bc;
 
-            let size = self.view().layout(&mut self.view_state(), &mut cx, bc);
-            if size.x.round() > bc.max.x.round() || size.y.round() > bc.max.y.round() {
-                tracing::warn!(
-                    "View {} returned a size ({}, {}) that is larger than the constraints ({}, {}).",
-                    cx.state.selector(),
-                    size.x,
-                    size.y,
-                    bc.max.x,
-                    bc.max.y
-                );
-            }
+        let size = self.view().layout(&mut self.view_state(), &mut cx, bc);
+        if size.x.round() > bc.max.x.round() || size.y.round() > bc.max.y.round() {
+            tracing::warn!(
+                "View {} returned a size ({}, {}) that is larger than the constraints ({}, {}).",
+                cx.state.selector(),
+                size.x,
+                size.y,
+                bc.max.x,
+                bc.max.y
+            );
+        }
 
-            Self::update_cursor(&mut cx);
+        Self::update_cursor(&mut cx);
 
-            let local_offset = node_state.local_rect.min + node_state.margin.top_left();
-            let global_offset = node_state.global_rect.min + node_state.margin.top_left();
-            node_state.local_rect = Rect::min_size(local_offset, size);
-            node_state.global_rect = Rect::min_size(global_offset, size);
+        let local_offset = state.local_rect.min + state.margin.top_left();
+        let global_offset = state.global_rect.min + state.margin.top_left();
+        state.local_rect = Rect::min_size(local_offset, size);
+        state.global_rect = Rect::min_size(global_offset, size);
 
-            size + node_state.margin.size()
-        })
+        size + state.margin.size()
     }
 
     pub fn relayout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.relayout_inner(cx, bc)
+        self.with_inner(cx, |node_state, cx| self.relayout_inner(node_state, cx, bc))
     }
 
-    fn draw_inner(&self, cx: &mut DrawContext) {
-        self.with_inner(cx, |node_state, cx| {
-            let selector = node_state.selector();
-            let selectors = cx.selectors.clone().with(selector);
-            let mut cx = DrawContext {
-                state: node_state,
-                frame: cx.frame,
-                renderer: cx.renderer,
-                selectors: &selectors,
-                selectors_hash: selectors.hash(),
-                style: cx.style,
-                style_cache: cx.style_cache,
-                event_sink: cx.event_sink,
-                image_cache: cx.image_cache,
-                cursor: cx.cursor,
-            };
+    fn draw_inner(&self, state: &mut NodeState, cx: &mut DrawContext) {
+        let selector = state.selector();
+        let selectors = cx.selectors.clone().with(selector);
+        let mut cx = DrawContext {
+            state,
+            frame: cx.frame,
+            renderer: cx.renderer,
+            selectors: &selectors,
+            selectors_hash: selectors.hash(),
+            stylesheet: cx.stylesheet,
+            style_cache: cx.style_cache,
+            event_sink: cx.event_sink,
+            image_cache: cx.image_cache,
+            cursor: cx.cursor,
+        };
 
-            self.view().draw(&mut self.view_state(), &mut cx);
+        self.view().draw(&mut self.view_state(), &mut cx);
 
-            if cx.state.update_transitions() {
-                cx.request_redraw();
-                cx.request_layout();
-            }
+        if cx.state.update_transitions() {
+            cx.request_redraw();
+            cx.request_layout();
+        }
 
-            cx.state.draw();
+        cx.state.draw();
 
-            Self::update_cursor(&mut cx);
-        });
+        Self::update_cursor(&mut cx);
     }
 
     /// Draw the node.
     pub fn draw(&self, cx: &mut DrawContext) {
-        self.draw_inner(cx);
+        self.with_inner(cx, |node_state, cx| {
+            self.draw_inner(node_state, cx);
+        });
     }
 }
 
 impl<T: View> Node<T> {
-    fn event_root_inner(
+    pub(crate) fn event_root_inner(
         &self,
-        style: &Stylesheet,
+        stylesheet: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
         event: &Event,
         image_cache: &mut ImageCache,
-        cursor_icon: &mut Cursor,
+        cursor: &mut Cursor,
     ) {
         let node_state = &mut self.node_state();
         node_state.style = self.view().style();
@@ -620,6 +626,10 @@ impl<T: View> Node<T> {
             }
         }
 
+        if event.is::<WindowResizeEvent>() {
+            node_state.needs_layout = true;
+        }
+
         let selector = node_state.selector();
         let selectors = StyleSelectors::new().with(selector);
         let mut cx = EventContext {
@@ -627,11 +637,11 @@ impl<T: View> Node<T> {
             renderer,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
-            style,
-            style_cache,
+            stylesheet,
             event_sink,
+            style_cache,
             image_cache,
-            cursor: cursor_icon,
+            cursor,
         };
 
         if let Some(event) = event.get::<DebugEvent>() {
@@ -641,36 +651,14 @@ impl<T: View> Node<T> {
         self.view().event(&mut self.view_state(), &mut cx, event);
     }
 
-    /// Handle an event on the root node.
-    pub fn event_root(
+    pub(crate) fn layout_root_inner(
         &self,
-        style: &Stylesheet,
-        style_cache: &mut StyleCache,
-        renderer: &dyn Renderer,
-        event_sink: &EventSink,
-        event: &Event,
-        image_cache: &mut ImageCache,
-        cursor_icon: &mut Cursor,
-    ) {
-        self.event_root_inner(
-            style,
-            style_cache,
-            renderer,
-            event_sink,
-            event,
-            image_cache,
-            cursor_icon,
-        );
-    }
-
-    fn layout_root_inner(
-        &self,
-        style: &Stylesheet,
+        stylesheet: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
-        cursor_icon: &mut Cursor,
+        cursor: &mut Cursor,
     ) -> Vec2 {
         let node_state = &mut self.node_state();
         node_state.style = self.view().style();
@@ -685,11 +673,11 @@ impl<T: View> Node<T> {
             renderer,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
-            style,
-            style_cache,
+            stylesheet,
             event_sink,
+            style_cache,
             image_cache,
-            cursor: cursor_icon,
+            cursor,
             parent_bc: bc,
             bc,
         };
@@ -706,35 +694,15 @@ impl<T: View> Node<T> {
         size
     }
 
-    /// Layout the root node.
-    pub fn layout_root(
+    pub(crate) fn draw_root_inner(
         &self,
-        style: &Stylesheet,
-        style_cache: &mut StyleCache,
-        renderer: &dyn Renderer,
-        event_sink: &EventSink,
-        image_cache: &mut ImageCache,
-        cursor_icon: &mut Cursor,
-    ) -> Vec2 {
-        self.layout_root_inner(
-            style,
-            style_cache,
-            renderer,
-            event_sink,
-            image_cache,
-            cursor_icon,
-        )
-    }
-
-    fn draw_root_inner(
-        &self,
-        style: &Stylesheet,
+        stylesheet: &Stylesheet,
         style_cache: &mut StyleCache,
         frame: &mut Frame,
         renderer: &dyn Renderer,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
-        cursor_icon: &mut Cursor,
+        cursor: &mut Cursor,
     ) {
         let node_state = &mut self.node_state();
         node_state.style = self.view().style();
@@ -747,38 +715,16 @@ impl<T: View> Node<T> {
             renderer,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
-            style,
-            style_cache,
+            stylesheet,
             event_sink,
+            style_cache,
             image_cache,
-            cursor: cursor_icon,
+            cursor,
         };
 
         self.view().draw(&mut self.view_state(), &mut cx);
 
         cx.state.draw();
-    }
-
-    /// Draw the root node.
-    pub fn draw_root(
-        &self,
-        style: &Stylesheet,
-        style_cache: &mut StyleCache,
-        frame: &mut Frame,
-        renderer: &dyn Renderer,
-        event_sink: &EventSink,
-        image_cache: &mut ImageCache,
-        cursor_icon: &mut Cursor,
-    ) {
-        self.draw_root_inner(
-            style,
-            style_cache,
-            frame,
-            renderer,
-            event_sink,
-            image_cache,
-            cursor_icon,
-        );
     }
 }
 

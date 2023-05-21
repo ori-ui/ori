@@ -16,6 +16,8 @@ use crate::EventSink;
 pub struct Task(Arc<TaskInner>);
 
 impl Task {
+    /// Spawns a `future` on the event loop. The future will be polled once and
+    /// the waker will send the task to the event loop when it is awoken.
     pub fn spawn(event_sink: EventSink, future: impl Future<Output = ()> + Send + 'static) {
         tracing::trace!("spawning task");
 
@@ -27,8 +29,14 @@ impl Task {
         Self::poll_inner(task_inner);
     }
 
+    /// Polls the task.
+    ///
+    /// # Safety
+    /// - This caller must ensure that there is only one thread polling the task
+    ///  at a time.
     pub unsafe fn poll(&self) {
         tracing::trace!("polling task");
+
         Self::poll_inner(self.0.clone());
     }
 

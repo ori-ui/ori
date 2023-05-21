@@ -1,0 +1,18 @@
+[package]
+name = "ori-reactive"
+version = "0.1.0-alpha.1"
+edition = "2021"
+description = "A reactive programming library for Ori"
+keywords = ["gui", "reactive"]
+categories = ["gui", "reactive"]
+repository = "https://github.com/ChangeCaps/ori"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lazy_static = "1.4"
+nohash-hasher = "0.2"
+parking_lot = "0.12"
+sharded = { version = "0.2", features = ["parking_lot"] }
+tracing = { version = "0.1", default-features = false }

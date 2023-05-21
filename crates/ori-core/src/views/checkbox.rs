@@ -1,10 +1,10 @@
 use glam::Vec2;
 use ori_graphics::{TextAlign, TextSection};
 use ori_macro::Build;
+use ori_reactive::{Event, OwnedSignal, Scope, Signal};
 
 use crate::{
-    BoxConstraints, Context, DrawContext, Event, EventContext, LayoutContext, OwnedSignal,
-    PointerEvent, Scope, Signal, Style, View,
+    BoxConstraints, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
 };
 
 #[derive(Default, Build)]

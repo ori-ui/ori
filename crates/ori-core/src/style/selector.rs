@@ -66,6 +66,7 @@ impl AddAssign for StyleSpecificity {
 ///
 /// A selector is a list of classes and an optional element.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StyleSelectors {
     /// The element name.
     pub selectors: Vec<StyleSelector>,
@@ -88,6 +89,10 @@ impl StyleSelectors {
 
     pub fn push(&mut self, selector: StyleSelector) {
         self.selectors.push(selector);
+    }
+
+    pub fn last(&self) -> Option<&StyleSelector> {
+        self.selectors.last()
     }
 
     pub fn with(mut self, selector: StyleSelector) -> Self {
@@ -172,6 +177,7 @@ pub type StyleElement = SmolStr;
 pub type StyleClass = SmolStr;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StyleSelector {
     pub element: Option<StyleElement>,
     pub classes: StyleClasses,
@@ -219,6 +225,7 @@ impl Display for StyleSelector {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StyleClasses {
     classes: SmallVec<[StyleClass; 2]>,
 }
@@ -295,6 +302,7 @@ impl Display for StyleClasses {
 
 /// A list of style states.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StyleStates {
     elements: SmallVec<[SmolStr; 3]>,
 }

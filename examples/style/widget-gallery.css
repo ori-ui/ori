@@ -1,4 +1,4 @@
-div .widget-gallery {
+div.widget-gallery {
 	width: 100%;
 	height: 100%;
 
@@ -9,7 +9,7 @@ div .widget-gallery {
 	align-items: center;
 }
 
-div .row {
+div.row {
 	gap: 10px;
 
 	direction: row;
@@ -17,7 +17,7 @@ div .row {
 	align-items: center;
 }
 
-div .column {
+div.column {
 	gap: 5px;
 
 	direction: column;
@@ -25,7 +25,7 @@ div .column {
 	align-items: stretch;
 }
 
-text-input .long-text {
+text-input.long-text {
 	font-size: 1em;
 	text-wrap: true;
 	text-align: start;

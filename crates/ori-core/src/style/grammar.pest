@@ -32,10 +32,10 @@ Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 
 // selector
 State = { ":" ~ Identifier }
-Element = { (Identifier | Wildcard) ~ State* }
+Element = { Identifier | Wildcard }
 Class = { "." ~ Identifier }
 Wildcard = { "*" }
-Selector = { (Element ~ Class*) | Class+ }
+Selector = ${ (Element ~ (Class | State)*) | (Class | State)+ }
 Selectors = { Selector+ }
 
 // stylesheet

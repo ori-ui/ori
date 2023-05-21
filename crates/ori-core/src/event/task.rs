@@ -19,23 +19,20 @@ impl Task {
     pub fn spawn(event_sink: EventSink, future: impl Future<Output = ()> + Send + 'static) {
         tracing::trace!("spawning task");
 
-        let task = Self(Arc::new(TaskInner {
+        let task_inner = Arc::new(TaskInner {
             future: UnsafeCell::new(Some(Box::pin(future))),
             event_sink,
-        }));
+        });
 
-        Self::poll_inner(task);
+        Self::poll_inner(task_inner);
     }
 
-    pub fn poll(&self) {
+    pub unsafe fn poll(&self) {
         tracing::trace!("polling task");
-        let task = Self(self.0.clone());
-        Self::poll_inner(task);
+        Self::poll_inner(self.0.clone());
     }
 
-    fn poll_inner(self) {
-        let inner = self.0;
-
+    fn poll_inner(inner: Arc<TaskInner>) {
         // SAFETY: This is safe because only one thread can poll a task at a time.
         let future_slot = unsafe { &mut *inner.future.get() };
         if let Some(mut future) = future_slot.take() {

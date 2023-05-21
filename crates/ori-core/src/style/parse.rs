@@ -113,19 +113,13 @@ fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelector {
         states: StyleStates::new(),
     };
 
-    for pair in element_pairs {
-        match pair.as_rule() {
-            Rule::State => {
-                selector.states.push(parse_state(pair));
-            }
-            _ => unreachable!(),
-        }
-    }
-
     for pair in pairs {
         match pair.as_rule() {
             Rule::Class => {
                 selector.classes.push(parse_class(pair));
+            }
+            Rule::State => {
+                selector.states.push(parse_state(pair));
             }
             _ => unreachable!(),
         }

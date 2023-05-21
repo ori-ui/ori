@@ -1,4 +1,7 @@
+use std::path::Path;
+
 use glam::Vec2;
+use ori_graphics::ImageData;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RequestRedrawEvent;
@@ -24,5 +27,26 @@ impl SetWindowTitleEvent {
         Self {
             title: title.into(),
         }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SetWindowIconEvent {
+    pub icon: Option<ImageData>,
+}
+
+impl SetWindowIconEvent {
+    pub const fn new(icon: ImageData) -> Self {
+        Self { icon: Some(icon) }
+    }
+
+    pub fn load(path: impl AsRef<Path>) -> Self {
+        Self {
+            icon: Some(ImageData::load(path)),
+        }
+    }
+
+    pub const fn none() -> Self {
+        Self { icon: None }
     }
 }

@@ -8,7 +8,8 @@ use std::{
 use ori_core::{
     CallbackEmitter, Cursor, Event, EventEmitter, EventSink, ImageCache, KeyboardEvent,
     LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, Runtime, Scope,
-    SetWindowTitleEvent, StyleCache, StyleLoader, Stylesheet, Task, Vec2, View, WindowResizeEvent,
+    SetWindowIconEvent, SetWindowTitleEvent, StyleCache, StyleLoader, Stylesheet, Task, Vec2, View,
+    WindowResizeEvent,
 };
 use ori_graphics::{Color, Frame};
 use winit::{
@@ -16,7 +17,7 @@ use winit::{
     error::OsError,
     event::{Event as WinitEvent, KeyboardInput, MouseScrollDelta, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
-    window::{Window, WindowBuilder},
+    window::{Icon, Window, WindowBuilder},
 };
 
 use crate::convert::{
@@ -343,16 +344,38 @@ impl App {
                     }
                 }
                 WinitEvent::UserEvent(event) => {
+                    // poll awoken task
                     if let Some(task) = event.get::<Task>() {
-                        task.poll();
+                        unsafe { task.poll() };
                         return;
                     }
 
+                    // set window title
                     if let Some(event) = event.get::<SetWindowTitleEvent>() {
                         window.set_title(&event.title);
                         return;
                     }
 
+                    // set window icon
+                    if let Some(event) = event.get::<SetWindowIconEvent>() {
+                        // if icon is None, remove the icon
+                        let Some(icon) = event.icon.as_ref() else {
+                            window.set_window_icon(None);
+                            return;
+                        };
+
+                        let pixels = icon.pixels().to_vec();
+                        let icon = Icon::from_rgba(pixels, icon.width(), icon.height());
+
+                        match icon {
+                            Ok(icon) => window.set_window_icon(Some(icon)),
+                            Err(err) => tracing::error!("failed to set window icon: {}", err),
+                        }
+
+                        return;
+                    }
+
+                    // request redraw
                     if event.is::<RequestRedrawEvent>() {
                         window.request_redraw();
                         return;

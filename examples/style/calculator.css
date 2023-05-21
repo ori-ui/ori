@@ -1,4 +1,4 @@
-div .result-bar {
+div.result-bar {
 	background-color: #0000;
 	height: 20vh;
 	width: 100%;
@@ -10,12 +10,12 @@ div .result-bar {
 	align-items: center;
 }
 
-div .buttons .column {
+div.buttons.column {
 	flex: 1;
 	background: #404040;
 }
 
-div .buttons .row {
+div.buttons.row {
 	flex-shrink: 1;
 	width: 100%;
 	direction: row;
@@ -32,15 +32,15 @@ button {
 	border-color: #000000a0;
 }
 
-button .number {
+button.number {
 	background-color: #a0e7e5d8;
 }
 
-button:hover .number {
+button:hover.number {
 	background-color: #90d7d5;
 }
 
-button:active .number {
+button:active.number {
 	background-color: #80c7c5 0.02s;
 }
 
@@ -48,7 +48,7 @@ button text {
 	font-size: 2.0em;
 }
 
-text .result {
+text.result {
 	font-size: 3em;
 	color: #ffffff;
 }

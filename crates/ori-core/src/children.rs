@@ -1,3 +1,5 @@
+use std::{iter, slice};
+
 use deref_derive::{Deref, DerefMut};
 use glam::Vec2;
 use ori_graphics::Rect;
@@ -401,7 +403,7 @@ impl<T: View> Children<T> {
 
 impl<T: View> IntoIterator for Children<T> {
     type Item = Node<T>;
-    type IntoIter = std::iter::Flatten<smallvec::IntoIter<[SmallVec<[Self::Item; 1]>; 1]>>;
+    type IntoIter = iter::Flatten<smallvec::IntoIter<[SmallVec<[Self::Item; 1]>; 1]>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.nodes.into_iter().flatten()
@@ -410,7 +412,7 @@ impl<T: View> IntoIterator for Children<T> {
 
 impl<'a, T: View> IntoIterator for &'a Children<T> {
     type Item = &'a Node<T>;
-    type IntoIter = std::iter::Flatten<std::slice::Iter<'a, SmallVec<[Node<T>; 1]>>>;
+    type IntoIter = iter::Flatten<slice::Iter<'a, SmallVec<[Node<T>; 1]>>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.nodes.iter().flatten()
@@ -419,7 +421,7 @@ impl<'a, T: View> IntoIterator for &'a Children<T> {
 
 impl<'a> IntoIterator for &'a mut Children {
     type Item = &'a mut Node;
-    type IntoIter = std::iter::Flatten<std::slice::IterMut<'a, SmallVec<[Node; 1]>>>;
+    type IntoIter = iter::Flatten<slice::IterMut<'a, SmallVec<[Node; 1]>>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.nodes.iter_mut().flatten()

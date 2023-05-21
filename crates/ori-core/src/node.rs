@@ -5,9 +5,9 @@ use ori_graphics::{Frame, Rect, Renderer};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, Context, Cursor, DrawContext, EmptyView, Event, EventContext,
-    EventSink, FromStyleAttribute, Guard, ImageCache, IntoView, LayoutContext, Lock, Lockable,
-    Margin, OwnedSignal, PointerEvent, RequestRedrawEvent, Shared, Style, StyleAttribute,
+    AnyView, BoxConstraints, Context, Cursor, DebugEvent, DrawContext, EmptyView, Event,
+    EventContext, EventSink, FromStyleAttribute, Guard, ImageCache, IntoView, LayoutContext, Lock,
+    Lockable, Margin, OwnedSignal, PointerEvent, RequestRedrawEvent, Shared, Style, StyleAttribute,
     StyleCache, StyleSelector, StyleSelectors, StyleSpecificity, StyleStates, StyleTransition,
     Stylesheet, TransitionStates, View,
 };
@@ -257,16 +257,6 @@ struct NodeInner<T: View> {
     view: T,
 }
 
-impl<T: View> NodeInner<T> {
-    fn view_state(&self) -> Guard<T::State> {
-        self.view_state.lock_mut()
-    }
-
-    fn node_state(&self) -> Guard<NodeState> {
-        self.node_state.lock_mut()
-    }
-}
-
 impl<T: View> Debug for NodeInner<T>
 where
     T: Debug,
@@ -461,22 +451,34 @@ impl<T: View> Node<T> {
         }
     }
 
-    fn event_inner(inner: &NodeInner<T>, cx: &mut EventContext, event: &Event) {
-        let node_state = &mut inner.node_state();
-        node_state.style = inner.view.style();
-        node_state.propagate_up(cx.state);
+    fn with_inner<C: Context, O>(
+        &self,
+        cx: &mut C,
+        f: impl FnOnce(&mut NodeState, &mut C) -> O,
+    ) -> O {
+        let node_state = &mut self.node_state();
+        node_state.style = self.view().style();
+        node_state.propagate_up(cx.state_mut());
 
-        if let Some(pointer_event) = event.get::<PointerEvent>() {
-            if Self::handle_pointer_event(node_state, pointer_event, event.is_handled()) {
-                cx.request_redraw();
+        let res = f(node_state, cx);
+
+        cx.state_mut().propagate_down(node_state);
+
+        res
+    }
+
+    fn event_inner(&self, cx: &mut EventContext, event: &Event) {
+        self.with_inner(cx, |state, cx| {
+            if let Some(pointer_event) = event.get::<PointerEvent>() {
+                if Self::handle_pointer_event(state, pointer_event, event.is_handled()) {
+                    cx.request_redraw();
+                }
             }
-        }
 
-        {
-            let selector = node_state.selector();
+            let selector = state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = EventContext {
-                state: node_state,
+                state,
                 renderer: cx.renderer,
                 selectors: &selectors,
                 selectors_hash: selectors.hash(),
@@ -487,16 +489,19 @@ impl<T: View> Node<T> {
                 cursor: cx.cursor,
             };
 
-            (inner.view).event(&mut inner.view_state(), &mut cx, event);
-            Self::update_cursor(&mut cx);
-        }
+            if let Some(event) = event.get::<DebugEvent>() {
+                event.with_node(&mut cx, self);
+                return;
+            }
 
-        cx.state.propagate_down(node_state);
+            self.view().event(&mut self.view_state(), &mut cx, event);
+            Self::update_cursor(&mut cx);
+        });
     }
 
     /// Handle an event.
     pub fn event(&self, cx: &mut EventContext, event: &Event) {
-        Self::event_inner(&self.inner, cx, event);
+        self.event_inner(cx, event);
     }
 
     /// Layout the node.
@@ -506,14 +511,10 @@ impl<T: View> Node<T> {
         size
     }
 
-    fn relayout_inner(inner: &NodeInner<T>, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let node_state = &mut inner.node_state();
-        node_state.style = inner.view.style();
-        node_state.propagate_up(cx.state);
+    fn relayout_inner(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+        self.with_inner(cx, |node_state, cx| {
+            node_state.needs_layout = false;
 
-        node_state.needs_layout = false;
-
-        let size = {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = LayoutContext {
@@ -536,7 +537,7 @@ impl<T: View> Node<T> {
             let bc = cx.style_constraints(bc);
             cx.bc = bc;
 
-            let size = (inner.view).layout(&mut inner.view_state(), &mut cx, bc);
+            let size = self.view().layout(&mut self.view_state(), &mut cx, bc);
             if size.x.round() > bc.max.x.round() || size.y.round() > bc.max.y.round() {
                 tracing::warn!(
                     "View {} returned a size ({}, {}) that is larger than the constraints ({}, {}).",
@@ -550,29 +551,21 @@ impl<T: View> Node<T> {
 
             Self::update_cursor(&mut cx);
 
-            size
-        };
+            let local_offset = node_state.local_rect.min + node_state.margin.top_left();
+            let global_offset = node_state.global_rect.min + node_state.margin.top_left();
+            node_state.local_rect = Rect::min_size(local_offset, size);
+            node_state.global_rect = Rect::min_size(global_offset, size);
 
-        let local_offset = node_state.local_rect.min + node_state.margin.top_left();
-        let global_offset = node_state.global_rect.min + node_state.margin.top_left();
-        node_state.local_rect = Rect::min_size(local_offset, size);
-        node_state.global_rect = Rect::min_size(global_offset, size);
-
-        cx.state.propagate_down(node_state);
-
-        size + node_state.margin.size()
+            size + node_state.margin.size()
+        })
     }
 
     pub fn relayout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        Self::relayout_inner(&self.inner, cx, bc)
+        self.relayout_inner(cx, bc)
     }
 
-    fn draw_inner(inner: &NodeInner<T>, cx: &mut DrawContext) {
-        let node_state = &mut inner.node_state();
-        node_state.style = inner.view.style();
-        node_state.propagate_up(cx.state);
-
-        {
+    fn draw_inner(&self, cx: &mut DrawContext) {
+        self.with_inner(cx, |node_state, cx| {
             let selector = node_state.selector();
             let selectors = cx.selectors.clone().with(selector);
             let mut cx = DrawContext {
@@ -588,7 +581,7 @@ impl<T: View> Node<T> {
                 cursor: cx.cursor,
             };
 
-            inner.view.draw(&mut inner.view_state(), &mut cx);
+            self.view().draw(&mut self.view_state(), &mut cx);
 
             if cx.state.update_transitions() {
                 cx.request_redraw();
@@ -598,20 +591,18 @@ impl<T: View> Node<T> {
             cx.state.draw();
 
             Self::update_cursor(&mut cx);
-        }
-
-        cx.state.propagate_down(node_state);
+        });
     }
 
     /// Draw the node.
     pub fn draw(&self, cx: &mut DrawContext) {
-        Self::draw_inner(&self.inner, cx);
+        self.draw_inner(cx);
     }
 }
 
 impl<T: View> Node<T> {
     fn event_root_inner(
-        inner: &NodeInner<T>,
+        &self,
         style: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
@@ -620,8 +611,8 @@ impl<T: View> Node<T> {
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
     ) {
-        let node_state = &mut inner.node_state();
-        node_state.style = inner.view.style();
+        let node_state = &mut self.node_state();
+        node_state.style = self.view().style();
 
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if Self::handle_pointer_event(node_state, pointer_event, event.is_handled()) {
@@ -643,7 +634,11 @@ impl<T: View> Node<T> {
             cursor: cursor_icon,
         };
 
-        (inner.view).event(&mut inner.view_state(), &mut cx, event);
+        if let Some(event) = event.get::<DebugEvent>() {
+            event.set_node(&mut cx, self);
+        }
+
+        self.view().event(&mut self.view_state(), &mut cx, event);
     }
 
     /// Handle an event on the root node.
@@ -657,8 +652,7 @@ impl<T: View> Node<T> {
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
     ) {
-        Self::event_root_inner(
-            &self.inner,
+        self.event_root_inner(
             style,
             style_cache,
             renderer,
@@ -670,7 +664,7 @@ impl<T: View> Node<T> {
     }
 
     fn layout_root_inner(
-        inner: &NodeInner<T>,
+        &self,
         style: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
@@ -678,8 +672,8 @@ impl<T: View> Node<T> {
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
     ) -> Vec2 {
-        let node_state = &mut inner.node_state();
-        node_state.style = inner.view.style();
+        let node_state = &mut self.node_state();
+        node_state.style = self.view().style();
         node_state.needs_layout = false;
 
         let bc = BoxConstraints::new(Vec2::ZERO, renderer.window_size());
@@ -703,7 +697,7 @@ impl<T: View> Node<T> {
         let bc = cx.style_constraints(bc);
         cx.bc = bc;
 
-        let size = inner.view.layout(&mut inner.view_state(), &mut cx, bc);
+        let size = self.view().layout(&mut self.view_state(), &mut cx, bc);
 
         node_state.last_bc = bc;
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
@@ -722,8 +716,7 @@ impl<T: View> Node<T> {
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
     ) -> Vec2 {
-        Self::layout_root_inner(
-            &self.inner,
+        self.layout_root_inner(
             style,
             style_cache,
             renderer,
@@ -734,7 +727,7 @@ impl<T: View> Node<T> {
     }
 
     fn draw_root_inner(
-        inner: &NodeInner<T>,
+        &self,
         style: &Stylesheet,
         style_cache: &mut StyleCache,
         frame: &mut Frame,
@@ -743,8 +736,8 @@ impl<T: View> Node<T> {
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
     ) {
-        let node_state = &mut inner.node_state();
-        node_state.style = inner.view.style();
+        let node_state = &mut self.node_state();
+        node_state.style = self.view().style();
 
         let selector = node_state.selector();
         let selectors = StyleSelectors::new().with(selector);
@@ -761,7 +754,7 @@ impl<T: View> Node<T> {
             cursor: cursor_icon,
         };
 
-        inner.view.draw(&mut inner.view_state(), &mut cx);
+        self.view().draw(&mut self.view_state(), &mut cx);
 
         cx.state.draw();
     }
@@ -777,8 +770,7 @@ impl<T: View> Node<T> {
         image_cache: &mut ImageCache,
         cursor_icon: &mut Cursor,
     ) {
-        Self::draw_root_inner(
-            &self.inner,
+        self.draw_root_inner(
             style,
             style_cache,
             frame,

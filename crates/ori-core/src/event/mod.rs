@@ -1,4 +1,5 @@
 mod cursor;
+mod debug;
 mod keyboard;
 mod pointer;
 mod sink;
@@ -6,6 +7,7 @@ mod task;
 mod window;
 
 pub use cursor::*;
+pub use debug::*;
 pub use keyboard::*;
 pub use pointer::*;
 pub use sink::*;

@@ -5,7 +5,7 @@ use syn::{
     parse::{discouraged::Speculative, ParseStream, Parser},
     parse_quote,
     spanned::Spanned,
-    Expr, ExprPath, Token,
+    Expr, ExprPath, Path, Token,
 };
 use syn_rsx::{Node, NodeAttribute, NodeName};
 
@@ -15,19 +15,24 @@ pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (context, rest) = parse_context(input.into());
     let nodes = syn_rsx::parse2(rest).unwrap_or_abort();
 
-    let nodes = nodes.iter().map(|node| view_node(&context, node));
-
     let ori_core = find_crate("core");
 
     let expanded = if nodes.len() == 1 {
+        let nodes = nodes.iter().map(|node| view_node(&context, node));
+
         quote! {
             ::std::sync::Arc::new(#(#nodes)*) as ::std::sync::Arc<dyn #ori_core::AnyView>
         }
     } else {
+        let children = children(&context, parse_quote!(#ori_core::Div), nodes.iter());
+
         quote! {{
-            let mut fragment = #ori_core::Div::new();
-            #( <#ori_core::Div as #ori_core::Parent>::add_child(&mut fragment, #nodes); )*
-            ::std::sync::Arc::new(fragment) as ::std::sync::Arc<dyn #ori_core::AnyView>
+            let mut __view = <#ori_core::Div as ::std::default::Default>::default();
+            let __view_ref = #ori_core::ViewRef::new(__view);
+
+            #(#children)*
+
+            ::std::sync::Arc::new(__view_ref) as ::std::sync::Arc<dyn #ori_core::AnyView>
         }}
     };
 
@@ -60,6 +65,48 @@ fn parse_context(input: TokenStream) -> (Expr, TokenStream) {
     Parser::parse2(parser, input).unwrap_or_abort()
 }
 
+fn children<'a>(
+    context: &'a Expr,
+    name: Path,
+    children: impl Iterator<Item = &'a Node> + 'a,
+) -> impl Iterator<Item = TokenStream> + 'a {
+    let ori_core = find_crate("core");
+
+    children.map(move |node| {
+        let child = view_node(context, node);
+        let is_dynamic = matches!(node, Node::Block(_));
+
+        if is_dynamic {
+            quote! {
+                #context.effect_scoped({
+                    let __view_ref = __view_ref.clone();
+                    let mut __child_index = None;
+                    move |#context| {
+                        let mut __view_ref = __view_ref.lock();
+                        if let Some(__child_index) = __child_index {
+                            <#name as #ori_core::Parent>::set_child(
+                                &mut __view_ref,
+                                __child_index,
+                                #child,
+                            );
+                        } else {
+                            __child_index = Some(<#name as #ori_core::Parent>::add_child(
+                                &mut __view_ref,
+                                #child,
+                            ));
+                        }
+                    }
+                });
+            }
+        } else {
+            quote! {{
+                let mut __view_ref = __view_ref.lock();
+                <#name as #ori_core::Parent>::add_child(&mut __view_ref, #child);
+            }}
+        }
+    })
+}
+
 fn view_node(context: &Expr, node: &Node) -> TokenStream {
     let ori_core = find_crate("core");
 
@@ -75,39 +122,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                 attribute(context, name, attr, &mut attributes, &mut properties);
             }
 
-            let children = element.children.iter().map(|node| {
-                let child = view_node(context, node);
-                let is_dynamic = matches!(node, Node::Block(_));
-
-                if is_dynamic {
-                    quote! {
-                        #context.effect_scoped({
-                            let __view_ref = __view_ref.clone();
-                            let mut __child_index = None;
-                            move |#context| {
-                                let mut __view_ref = __view_ref.lock();
-                                if let Some(__child_index) = __child_index {
-                                    <#name as #ori_core::Parent>::set_child(
-                                        &mut __view_ref,
-                                        __child_index,
-                                        #child,
-                                    );
-                                } else {
-                                    __child_index = Some(<#name as #ori_core::Parent>::add_child(
-                                        &mut __view_ref,
-                                        #child,
-                                    ));
-                                }
-                            }
-                        });
-                    }
-                } else {
-                    quote! {{
-                        let mut __view_ref = __view_ref.lock();
-                        <#name as #ori_core::Parent>::add_child(&mut __view_ref, #child);
-                    }}
-                }
-            });
+            let children = children(context, parse_quote!(#name), element.children.iter());
 
             if attributes.is_empty() {
                 quote! {{
@@ -148,7 +163,16 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                 #ori_core::Comment::new(#comment)
             }
         }
-        _ => unreachable!(),
+        Node::Attribute(_) => todo!(),
+        Node::Text(text) => {
+            let text = text.value.as_ref();
+
+            quote_spanned! {text.span() =>
+                #ori_core::Text::new(#text)
+            }
+        }
+        Node::Doctype(_) => todo!(),
+        Node::Fragment(_) => todo!(),
     }
 }
 

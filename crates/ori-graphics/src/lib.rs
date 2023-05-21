@@ -17,3 +17,12 @@ pub use quad::*;
 pub use rect::*;
 pub use renderer::*;
 pub use text::*;
+
+pub mod prelude {
+    pub use crate::curve::Curve;
+    pub use crate::image::{ImageData, ImageHandle, ImageLoadError, ImageSource};
+    pub use crate::mesh::{Mesh, Vertex};
+    pub use crate::quad::Quad;
+    pub use crate::rect::Rect;
+    pub use crate::text::{TextAlign, TextHit, TextSection};
+}

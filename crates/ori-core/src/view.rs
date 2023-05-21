@@ -7,7 +7,7 @@ use glam::Vec2;
 use ori_reactive::{Event, OwnedSignal};
 use parking_lot::{Mutex, MutexGuard};
 
-use crate::{BoxConstraints, Context, DrawContext, EventContext, LayoutContext, Style};
+use crate::{AvailableSpace, Context, DrawContext, EventContext, LayoutContext, Style};
 
 pub trait IntoView {
     type View: View;
@@ -45,8 +45,13 @@ pub trait View: Send + Sync + 'static {
     /// This method should return a size that fits the [`BoxConstraints`].
     ///
     /// The default implementation returns the minimum size.
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        bc.min
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
+        space.min
     }
 
     /// Draws the view.
@@ -118,14 +123,19 @@ impl<V: View> View for ViewRef<V> {
         self.lock_untracked().event(state, cx, event);
     }
 
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
         if self.is_dirty() {
             self.clear_dirty();
             cx.request_layout();
             cx.request_redraw();
         }
 
-        self.lock_untracked().layout(state, cx, bc)
+        self.lock_untracked().layout(state, cx, space)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
@@ -151,7 +161,7 @@ pub trait AnyView: Send + Sync {
 
     fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event);
 
-    fn layout(&self, state: &mut dyn Any, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2;
+    fn layout(&self, state: &mut dyn Any, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2;
 
     fn draw(&self, state: &mut dyn Any, cx: &mut DrawContext);
 }
@@ -173,12 +183,12 @@ impl<T: View> AnyView for T {
         }
     }
 
-    fn layout(&self, state: &mut dyn Any, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    fn layout(&self, state: &mut dyn Any, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         if let Some(state) = state.downcast_mut::<T::State>() {
-            self.layout(state, cx, bc)
+            self.layout(state, cx, space)
         } else {
             tracing::warn!("invalid state type on {}", any::type_name::<T>());
-            bc.min
+            space.min
         }
     }
 
@@ -226,8 +236,13 @@ impl View for Box<dyn AnyView> {
         self.as_ref().event(state.as_mut(), cx, event);
     }
 
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.as_ref().layout(state.as_mut(), cx, bc)
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
+        self.as_ref().layout(state.as_mut(), cx, space)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
@@ -250,8 +265,13 @@ impl View for Arc<dyn AnyView> {
         self.as_ref().event(state.as_mut(), cx, event);
     }
 
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.as_ref().layout(state.as_mut(), cx, bc)
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
+        self.as_ref().layout(state.as_mut(), cx, space)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {

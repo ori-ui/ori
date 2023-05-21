@@ -6,7 +6,7 @@ use ori_macro::Build;
 use ori_reactive::{Event, OwnedSignal};
 
 use crate::{
-    BoxConstraints, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
+    AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
 };
 
 /// A knob.
@@ -70,10 +70,10 @@ impl View for Knob {
         }
     }
 
-    #[tracing::instrument(name = "Knob", skip(self, cx, bc))]
-    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let size = cx.style_range("size", bc.min.max_element()..bc.max.min_element());
-        bc.constrain(Vec2::splat(size))
+    #[tracing::instrument(name = "Knob", skip(self, cx, space))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
+        let size = cx.style_range("size", space.min.max_element()..space.max.min_element());
+        space.constrain(Vec2::splat(size))
     }
 
     #[tracing::instrument(name = "Knob", skip(self, cx))]

@@ -4,14 +4,14 @@ use ori_macro::Build;
 use ori_reactive::Event;
 
 use crate::{
-    Axis, BoxConstraints, Children, Context, DrawContext, EventContext, FlexLayout, LayoutContext,
+    AvailableSpace, Axis, Children, Context, DrawContext, EventContext, FlexLayout, LayoutContext,
     PointerEvent, Style, View,
 };
 
 #[derive(Default, Build)]
 pub struct Scroll {
     #[children]
-    content: Children,
+    children: Children,
 }
 
 impl Scroll {
@@ -55,7 +55,7 @@ impl Scroll {
     }
 
     fn overflow(&self, cx: &mut impl Context) -> Vec2 {
-        self.content.size() - cx.size()
+        self.children.size() - cx.size()
     }
 
     fn should_show_scrollbar(&self, cx: &mut impl Context) -> bool {
@@ -142,28 +142,24 @@ impl View for Scroll {
             }
         }
 
-        self.content.event(cx, event);
+        self.children.event(cx, event);
     }
 
-    #[tracing::instrument(name = "Scroll", skip(self, cx, bc))]
-    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Scroll", skip(self, cx, space))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         let axis = cx.style::<Axis>("direction");
 
         let flex = FlexLayout {
             axis,
             justify_content: cx.style("justify-content"),
             align_items: cx.style("align-items"),
-            gap: cx.style_range("gap", 0.0..bc.max.min_element() / 2.0),
+            gap: cx.style_range("gap", 0.0..space.max.min_element() / 2.0),
             ..Default::default()
         };
 
-        let content_bc = match axis {
-            Axis::Horizontal => bc.loose_x(),
-            Axis::Vertical => bc.loose_y(),
-        };
-        let size = self.content.flex_layout(cx, content_bc, flex);
+        let size = self.children.flex_layout(cx, space, flex);
 
-        bc.constrain(size)
+        space.constrain(size)
     }
 
     #[tracing::instrument(name = "Scroll", skip(self, state, cx))]
@@ -171,11 +167,12 @@ impl View for Scroll {
         cx.draw_quad();
 
         let overflow = self.overflow(cx);
-        self.content.set_offset(-state.scroll * overflow);
+        let padding = cx.padding().top_left();
+        self.children.set_offset(-state.scroll * overflow + padding);
 
-        let container_rect = cx.rect();
+        let container_rect = cx.rect().translate(padding);
         cx.layer().clip(container_rect).draw(|cx| {
-            self.content.draw(cx);
+            self.children.draw(cx);
         });
 
         if !self.should_show_scrollbar(cx) {

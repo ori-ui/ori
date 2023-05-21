@@ -4,7 +4,7 @@ use ori_macro::Build;
 use ori_reactive::{CallbackEmitter, Event, OwnedSignal, Signal};
 
 use crate::{
-    BoxConstraints, Context, DrawContext, EventContext, Key, KeyboardEvent, LayoutContext,
+    AvailableSpace, Context, DrawContext, EventContext, Key, KeyboardEvent, LayoutContext,
     Modifiers, PointerEvent, Style, View,
 };
 
@@ -65,7 +65,7 @@ impl TextInput {
     fn display_section(
         &self,
         state: &TextInputState,
-        bc: Option<BoxConstraints>,
+        space: Option<AvailableSpace>,
         cx: &mut impl Context,
     ) -> TextSection {
         let color = if self.text.get().is_empty() {
@@ -74,8 +74,8 @@ impl TextInput {
             cx.style("color")
         };
 
-        let rect = if let Some(bc) = bc {
-            Rect::min_size(Vec2::ZERO, bc.max - state.padding * 2.0)
+        let rect = if let Some(space) = space {
+            Rect::min_size(Vec2::ZERO, space.max - state.padding * 2.0)
         } else {
             cx.rect().shrink(state.padding - 1.0)
         };
@@ -334,19 +334,24 @@ impl View for TextInput {
         }
     }
 
-    #[tracing::instrument(name = "TextInput", skip(self, state, cx, bc))]
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let font_size = cx.style_range("font-size", 0.0..bc.max.y);
+    #[tracing::instrument(name = "TextInput", skip(self, state, cx, space))]
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
+        let font_size = cx.style_range("font-size", 0.0..space.max.y);
 
         state.font_size = font_size;
 
-        let padding = cx.style_range("padding", 0.0..bc.max.min_element() / 2.0);
+        let padding = cx.style_range("padding", 0.0..space.max.min_element() / 2.0);
         state.padding = padding;
 
-        let section = self.display_section(state, Some(bc), cx);
+        let section = self.display_section(state, Some(space), cx);
         let mut size = cx.messure_text(&section).unwrap_or_default().size();
         size += padding * 2.0;
-        bc.constrain(size)
+        space.constrain(size)
     }
 
     #[tracing::instrument(name = "TextInput", skip(self, state, cx))]

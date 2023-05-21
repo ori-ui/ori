@@ -2,7 +2,7 @@ use glam::Vec2;
 use ori_reactive::Event;
 
 use crate::{
-    BoxConstraints, Div, DrawContext, EventContext, Events, IntoChildren, IntoNode, LayoutContext,
+    AvailableSpace, Div, DrawContext, EventContext, Events, IntoChildren, IntoNode, LayoutContext,
     Parent, Style, View,
 };
 
@@ -68,9 +68,14 @@ impl View for Button {
         self.content.event(state, cx, event);
     }
 
-    #[tracing::instrument(name = "Button", skip(self, state, cx, bc))]
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.content.layout(state, cx, bc)
+    #[tracing::instrument(name = "Button", skip(self, state, cx, space))]
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
+        self.content.layout(state, cx, space)
     }
 
     #[tracing::instrument(name = "Button", skip(self, state, cx))]

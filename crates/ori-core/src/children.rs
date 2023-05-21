@@ -7,8 +7,8 @@ use ori_reactive::Event;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    AlignItem, AnyView, Axis, BoxConstraints, Context, DrawContext, EventContext, IntoChildren,
-    IntoNode, JustifyContent, LayoutContext, Node, Padding, Parent, View,
+    AlignItem, AnyView, AvailableSpace, Axis, Context, DrawContext, EventContext, IntoChildren,
+    IntoNode, JustifyContent, LayoutContext, Node, Parent, View,
 };
 
 /// A layout that lays out children in a flexbox-like manner.
@@ -71,7 +71,7 @@ impl FlexLayout {
         let axis = cx.style::<Axis>("direction");
         let justify_content = cx.style("justify-content");
         let align_items = cx.style("align-items");
-        let gap = cx.style_range("gap", 0.0..axis.major(cx.parent_bc.max));
+        let gap = cx.style_range("gap", 0.0..axis.major(cx.parent_space.max));
 
         Self {
             axis,
@@ -83,6 +83,7 @@ impl FlexLayout {
     }
 }
 
+/// Children of a [`View`].
 #[derive(Deref, DerefMut)]
 pub struct Children<T: View = Box<dyn AnyView>> {
     nodes: SmallVec<[SmallVec<[Node<T>; 1]>; 1]>,
@@ -156,16 +157,15 @@ impl<T: View> Children<T> {
     pub fn flex_layout(
         &self,
         cx: &mut LayoutContext,
-        bc: BoxConstraints,
+        space: AvailableSpace,
         mut flex: FlexLayout,
     ) -> Vec2 {
-        let padding = Padding::from_style(cx, bc);
-        let padded_bc = bc.shrink(padding.size());
+        let padding = cx.state.padding;
+        let padded_space = space.shrink(padding.size());
         flex.offset += padding.top_left();
 
-        // we need to store the original bc so we can restore it later
-        cx.with_bc(padded_bc, |cx| {
-            self.flex_layout_padded(cx, padded_bc, flex) + padding.size()
+        cx.with_space(padded_space, |cx| {
+            self.flex_layout_padded(cx, padded_space, flex) + padding.size()
         })
     }
 
@@ -173,7 +173,7 @@ impl<T: View> Children<T> {
     fn flex_layout_padded(
         &self,
         cx: &mut LayoutContext,
-        bc: BoxConstraints,
+        space: AvailableSpace,
         flex: FlexLayout,
     ) -> Vec2 {
         let FlexLayout {
@@ -185,13 +185,10 @@ impl<T: View> Children<T> {
         } = flex;
 
         // calculate the bounds of the major and minor axis
-        let (min_major, min_minor) = axis.unpack(bc.min);
-        let (max_major, max_minor) = axis.unpack(bc.max);
+        let (min_major, min_minor) = axis.unpack(space.min);
+        let (max_major, max_minor) = axis.unpack(space.max);
 
-        let loosend_bc = BoxConstraints {
-            min: Vec2::ZERO,
-            max: bc.max,
-        };
+        let loosend_space = space.loosen();
 
         // initialize the major and minor axis
         let mut minor = min_minor;
@@ -231,10 +228,12 @@ impl<T: View> Children<T> {
             child_flexes[i] = (flex_grow, flex_shrink);
 
             // layout the child
-            let size = if child.needs_layout() || child.bc_changed(bc) || any_changed {
+            let needs_layout = child.needs_layout();
+            let space_changed = child.space_changed(loosend_space);
+            let size = if needs_layout || space_changed || any_changed {
                 let old_size = child.size();
 
-                let size = child.layout(cx, loosend_bc);
+                let size = child.layout(cx, loosend_space);
 
                 any_changed |= size != old_size;
                 size
@@ -284,12 +283,12 @@ impl<T: View> Children<T> {
                 continue;
             }
 
-            let child_bc = BoxConstraints {
+            let child_space = AvailableSpace {
                 min: axis.pack(desired_major, 0.0),
                 max: axis.pack(desired_major, max_minor),
             };
 
-            let size = child.relayout(cx, child_bc);
+            let size = child.relayout(cx, child_space);
             let (child_major, child_minor) = axis.unpack(size);
 
             // update the major and minor axis
@@ -310,7 +309,7 @@ impl<T: View> Children<T> {
 
             // calculate the constraints for the child
             let child_major = child_majors[i];
-            let child_bc = BoxConstraints {
+            let child_space = AvailableSpace {
                 min: axis.pack(child_major, minor),
                 max: axis.pack(child_major, minor),
             };
@@ -319,7 +318,7 @@ impl<T: View> Children<T> {
             // correct size for the child, since we don't know the minor size until we've
             // measured all the children
             let size = if any_changed {
-                child.relayout(cx, child_bc)
+                child.relayout(cx, child_space)
             } else {
                 child.size()
             };

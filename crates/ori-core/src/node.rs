@@ -7,8 +7,8 @@ use parking_lot::{Mutex, MutexGuard};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, BoxConstraints, Context, Cursor, DebugEvent, DrawContext, EmptyView, EventContext,
-    FromStyleAttribute, ImageCache, IntoView, LayoutContext, Margin, PointerEvent,
+    AnyView, AvailableSpace, Context, Cursor, DebugEvent, DrawContext, EmptyView, EventContext,
+    FromStyleAttribute, ImageCache, IntoView, LayoutContext, Margin, Padding, PointerEvent,
     RequestRedrawEvent, Style, StyleAttribute, StyleCache, StyleSelector, StyleSelectors,
     StyleSpecificity, StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
     WindowResizeEvent,
@@ -49,6 +49,7 @@ impl Default for NodeId {
 pub struct NodeState {
     pub id: NodeId,
     pub margin: Margin,
+    pub padding: Padding,
     pub local_rect: Rect,
     pub global_rect: Rect,
     pub active: bool,
@@ -57,7 +58,7 @@ pub struct NodeState {
     pub last_draw: Instant,
     pub style: Style,
     pub needs_layout: bool,
-    pub last_bc: BoxConstraints,
+    pub available_space: AvailableSpace,
     pub recreated: OwnedSignal<bool>,
     pub transitions: TransitionStates,
 }
@@ -67,6 +68,7 @@ impl Default for NodeState {
         Self {
             id: NodeId::new(),
             margin: Margin::ZERO,
+            padding: Padding::ZERO,
             local_rect: Rect::ZERO,
             global_rect: Rect::ZERO,
             active: false,
@@ -75,7 +77,7 @@ impl Default for NodeState {
             last_draw: Instant::now(),
             style: Style::default(),
             needs_layout: true,
-            last_bc: BoxConstraints::ZERO,
+            available_space: AvailableSpace::ZERO,
             recreated: OwnedSignal::new(true),
             transitions: TransitionStates::new(),
         }
@@ -243,8 +245,8 @@ impl NodeState {
         self.transitions.update(self.delta())
     }
 
-    pub fn bc_changed(&mut self, bc: BoxConstraints) -> bool {
-        self.last_bc != bc
+    pub fn space_changed(&mut self, space: AvailableSpace) -> bool {
+        self.available_space != space
     }
 
     /// Updates `self.last_draw` to the current time.
@@ -392,16 +394,16 @@ impl<T: View> Node<T> {
         self.node_state().needs_layout
     }
 
-    pub fn last_bc(&self) -> BoxConstraints {
-        self.node_state().last_bc
+    pub fn available_space(&self) -> AvailableSpace {
+        self.node_state().available_space
     }
 
-    pub fn set_last_bc(&self, bc: BoxConstraints) {
-        self.node_state().last_bc = bc;
+    pub fn set_available_space(&self, space: AvailableSpace) {
+        self.node_state().available_space = space;
     }
 
-    pub fn bc_changed(&self, bc: BoxConstraints) -> bool {
-        self.node_state().bc_changed(bc)
+    pub fn space_changed(&self, space: AvailableSpace) -> bool {
+        self.node_state().space_changed(space)
     }
 
     /// Requests a layout.
@@ -508,9 +510,9 @@ impl<T: View> Node<T> {
     }
 
     /// Layout the node.
-    pub fn layout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let size = self.relayout(cx, bc);
-        self.set_last_bc(bc);
+    pub fn layout(&self, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
+        let size = self.relayout(cx, space);
+        self.set_available_space(space);
         size
     }
 
@@ -518,7 +520,7 @@ impl<T: View> Node<T> {
         &self,
         state: &mut NodeState,
         cx: &mut LayoutContext,
-        bc: BoxConstraints,
+        space: AvailableSpace,
     ) -> Vec2 {
         state.needs_layout = false;
 
@@ -534,27 +536,18 @@ impl<T: View> Node<T> {
             event_sink: cx.event_sink,
             image_cache: cx.image_cache,
             cursor: cx.cursor,
-            parent_bc: cx.bc,
-            bc,
+            parent_space: cx.space,
+            space,
         };
 
-        cx.state.margin = Margin::from_style(&mut cx, bc);
+        cx.state.margin = Margin::from_style(&mut cx, space);
+        cx.state.padding = Padding::from_style(&mut cx, space);
 
-        let bc = bc.with_margin(cx.state.margin);
-        let bc = cx.style_constraints(bc);
-        cx.bc = bc;
+        let space = space.apply_margin(cx.state.margin);
+        let space = cx.style_constraints(space);
+        cx.space = space;
 
-        let size = self.view().layout(&mut self.view_state(), &mut cx, bc);
-        if size.x.round() > bc.max.x.round() || size.y.round() > bc.max.y.round() {
-            tracing::warn!(
-                "View {} returned a size ({}, {}) that is larger than the constraints ({}, {}).",
-                cx.state.selector(),
-                size.x,
-                size.y,
-                bc.max.x,
-                bc.max.y
-            );
-        }
+        let size = self.view().layout(&mut self.view_state(), &mut cx, space);
 
         Self::update_cursor(&mut cx);
 
@@ -566,8 +559,10 @@ impl<T: View> Node<T> {
         size + state.margin.size()
     }
 
-    pub fn relayout(&self, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        self.with_inner(cx, |node_state, cx| self.relayout_inner(node_state, cx, bc))
+    pub fn relayout(&self, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
+        self.with_inner(cx, |node_state, cx| {
+            self.relayout_inner(node_state, cx, space)
+        })
     }
 
     fn draw_inner(&self, state: &mut NodeState, cx: &mut DrawContext) {
@@ -664,7 +659,7 @@ impl<T: View> Node<T> {
         node_state.style = self.view().style();
         node_state.needs_layout = false;
 
-        let bc = BoxConstraints::new(Vec2::ZERO, renderer.window_size());
+        let space = AvailableSpace::new(Vec2::ZERO, renderer.window_size());
 
         let selector = node_state.selector();
         let selectors = StyleSelectors::new().with(selector);
@@ -678,16 +673,19 @@ impl<T: View> Node<T> {
             style_cache,
             image_cache,
             cursor,
-            parent_bc: bc,
-            bc,
+            parent_space: space,
+            space: space,
         };
 
-        let bc = cx.style_constraints(bc);
-        cx.bc = bc;
+        cx.state.margin = Margin::from_style(&mut cx, space);
+        cx.state.padding = Padding::from_style(&mut cx, space);
 
-        let size = self.view().layout(&mut self.view_state(), &mut cx, bc);
+        let space = cx.style_constraints(space);
+        cx.space = space;
 
-        node_state.last_bc = bc;
+        let size = self.view().layout(&mut self.view_state(), &mut cx, space);
+
+        node_state.available_space = space;
         node_state.local_rect = Rect::min_size(node_state.local_rect.min, size);
         node_state.global_rect = Rect::min_size(node_state.global_rect.min, size);
 

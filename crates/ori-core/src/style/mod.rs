@@ -8,6 +8,7 @@ mod transition;
 
 pub use attribute::*;
 pub use cache::*;
+use glam::Vec2;
 pub use loader::*;
 pub use selector::*;
 pub use stylesheet::*;
@@ -16,8 +17,9 @@ pub use transition::*;
 use deref_derive::{Deref, DerefMut};
 use ori_reactive::Event;
 
-use crate::{BoxConstraints, DrawContext, EventContext, LayoutContext, View};
+use crate::{AvailableSpace, DrawContext, EventContext, LayoutContext, View};
 
+/// Styling for a single element.
 #[derive(Clone, Debug, Default)]
 pub struct Style {
     pub element: Option<&'static str>,
@@ -118,9 +120,9 @@ impl<T: View> View for Styled<T> {
         &self,
         state: &mut Self::State,
         cx: &mut LayoutContext,
-        bc: BoxConstraints,
-    ) -> glam::Vec2 {
-        self.value.layout(state, cx, bc)
+        space: AvailableSpace,
+    ) -> Vec2 {
+        self.value.layout(state, cx, space)
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
@@ -130,7 +132,7 @@ impl<T: View> View for Styled<T> {
 
 /// A trait for adding style attributes to a value.
 pub trait Styleable<T> {
-    /// Converts the `self` into a [`Styled<Self>`](Styled) value.
+    /// Converts the `self` into a [`Styled<T>`](Styled) value.
     fn styled(self) -> Styled<T>;
 
     /// Adds a class.

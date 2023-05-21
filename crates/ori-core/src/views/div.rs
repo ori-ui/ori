@@ -3,7 +3,7 @@ use ori_macro::Build;
 use ori_reactive::{CallbackEmitter, Event, Scope};
 
 use crate::{
-    BindCallback, BoxConstraints, Children, Context, DrawContext, EventContext, FlexLayout,
+    AvailableSpace, BindCallback, Children, Context, DrawContext, EventContext, FlexLayout,
     LayoutContext, PointerEvent, Style, View,
 };
 
@@ -89,10 +89,10 @@ impl View for Div {
         }
     }
 
-    #[tracing::instrument(name = "Div", skip(self, cx, bc))]
-    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Div", skip(self, cx, space))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         let flex = FlexLayout::from_style(cx);
-        bc.constrain(self.children.flex_layout(cx, bc, flex))
+        space.constrain(self.children.flex_layout(cx, space, flex))
     }
 
     #[tracing::instrument(name = "Div", skip(self, cx))]
@@ -100,9 +100,7 @@ impl View for Div {
         cx.draw_quad();
 
         cx.layer().draw(|cx| {
-            for child in &self.children {
-                child.draw(cx);
-            }
+            self.children.draw(cx);
         });
     }
 }

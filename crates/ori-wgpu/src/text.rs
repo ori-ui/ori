@@ -51,11 +51,7 @@ impl Fonts {
 
         let mut font_system = self.font_system.lock().unwrap();
         let mut buffer = Buffer::new(&mut font_system, metrics);
-        buffer.set_size(
-            &mut font_system,
-            section.rect.width(),
-            section.rect.height(),
-        );
+        buffer.set_size(&mut font_system, section.rect.width(), f32::INFINITY);
         buffer.set_text(&mut font_system, &section.text, Self::create_attrs(section));
 
         let wrap = if section.wrap { Wrap::Word } else { Wrap::None };

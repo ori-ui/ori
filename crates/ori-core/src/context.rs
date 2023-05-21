@@ -11,8 +11,9 @@ use ori_graphics::{
 use ori_reactive::EventSink;
 
 use crate::{
-    BoxConstraints, Cursor, FromStyleAttribute, NodeState, RequestRedrawEvent, StyleAttribute,
-    StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet, Unit,
+    AvailableSpace, Cursor, FromStyleAttribute, Margin, NodeState, Padding, RequestRedrawEvent,
+    StyleAttribute, StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet,
+    Unit,
 };
 
 /// A cache for images.
@@ -84,30 +85,30 @@ pub struct LayoutContext<'a> {
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
     pub cursor: &'a mut Cursor,
-    pub parent_bc: BoxConstraints,
-    pub bc: BoxConstraints,
+    pub parent_space: AvailableSpace,
+    pub space: AvailableSpace,
 }
 
 impl<'a> LayoutContext<'a> {
-    pub fn style_constraints(&mut self, bc: BoxConstraints) -> BoxConstraints {
-        let parent_bc = self.parent_bc;
-        let min_width = self.style_range_group(&["min-width", "width"], parent_bc.width());
-        let max_width = self.style_range_group(&["max-width", "width"], parent_bc.width());
+    pub fn style_constraints(&mut self, space: AvailableSpace) -> AvailableSpace {
+        let parent_space = self.parent_space;
+        let min_width = self.style_range_group(&["min-width", "width"], parent_space.x_axis());
+        let max_width = self.style_range_group(&["max-width", "width"], parent_space.x_axis());
 
-        let min_height = self.style_range_group(&["min-height", "height"], parent_bc.height());
-        let max_height = self.style_range_group(&["max-height", "height"], parent_bc.height());
+        let min_height = self.style_range_group(&["min-height", "height"], parent_space.y_axis());
+        let max_height = self.style_range_group(&["max-height", "height"], parent_space.y_axis());
 
-        let min_size = bc.constrain(Vec2::new(min_width, min_height));
-        let max_size = bc.constrain(Vec2::new(max_width, max_height));
+        let min_size = space.constrain(Vec2::new(min_width, min_height));
+        let max_size = space.constrain(Vec2::new(max_width, max_height));
 
-        BoxConstraints::new(min_size, max_size)
+        AvailableSpace::new(min_size, max_size)
     }
 
-    pub fn with_bc<T>(&mut self, bc: BoxConstraints, f: impl FnOnce(&mut Self) -> T) -> T {
-        let tmp = self.bc;
-        self.bc = bc;
+    pub fn with_space<T>(&mut self, space: AvailableSpace, f: impl FnOnce(&mut Self) -> T) -> T {
+        let tmp = self.space;
+        self.space = space;
         let result = f(self);
-        self.bc = tmp;
+        self.space = tmp;
         result
     }
 
@@ -552,6 +553,16 @@ pub trait Context {
     /// Returns the global rect of the node.
     fn rect(&self) -> Rect {
         self.state().global_rect
+    }
+
+    /// Returns the margin of the node.
+    fn margin(&self) -> Margin {
+        self.state().margin
+    }
+
+    /// Returns the padding of the node.
+    fn padding(&self) -> Padding {
+        self.state().padding
     }
 
     /// Returns the size of the node.

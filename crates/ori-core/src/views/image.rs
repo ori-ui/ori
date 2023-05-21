@@ -2,7 +2,7 @@ use glam::Vec2;
 use ori_graphics::{ImageHandle, ImageSource, Mesh};
 use ori_macro::Build;
 
-use crate::{BoxConstraints, Context, DrawContext, LayoutContext, Style, View};
+use crate::{AvailableSpace, Context, DrawContext, LayoutContext, Style, View};
 
 /// A view that displays an image.
 #[derive(Clone, Default, Debug, Build)]
@@ -49,16 +49,21 @@ impl View for Image {
         Style::new("image")
     }
 
-    #[tracing::instrument(name = "Image", skip(self, state, cx, bc))]
-    fn layout(&self, state: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
-        let min_width = cx.style_range_group(&["min-width", "width"], bc.width());
-        let max_width = cx.style_range_group(&["max-width", "width"], bc.width());
+    #[tracing::instrument(name = "Image", skip(self, state, cx, space))]
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
+        let min_width = cx.style_range_group(&["min-width", "width"], space.x_axis());
+        let max_width = cx.style_range_group(&["max-width", "width"], space.x_axis());
 
-        let min_height = cx.style_range_group(&["min-width", "height"], bc.height());
-        let max_height = cx.style_range_group(&["min-height", "height"], bc.height());
+        let min_height = cx.style_range_group(&["min-width", "height"], space.y_axis());
+        let max_height = cx.style_range_group(&["min-height", "height"], space.y_axis());
 
-        let min_size = bc.constrain(Vec2::new(min_width, min_height));
-        let max_size = bc.constrain(Vec2::new(max_width, max_height));
+        let min_size = space.constrain(Vec2::new(min_width, min_height));
+        let max_size = space.constrain(Vec2::new(max_width, max_height));
 
         let handle = state.update(cx, &self.src);
 

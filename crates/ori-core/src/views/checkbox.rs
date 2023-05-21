@@ -4,7 +4,7 @@ use ori_macro::Build;
 use ori_reactive::{Event, OwnedSignal, Scope, Signal};
 
 use crate::{
-    BoxConstraints, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
+    AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
 };
 
 #[derive(Default, Build)]
@@ -57,13 +57,13 @@ impl View for Checkbox {
         }
     }
 
-    #[tracing::instrument(name = "Checkbox", skip(self, cx, bc))]
-    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Checkbox", skip(self, cx, space))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         cx.state.active = self.checked.get();
 
-        let width = cx.style_range("width", bc.width());
-        let height = cx.style_range("height", bc.height());
-        bc.constrain(Vec2::new(width, height))
+        let width = cx.style_range("width", space.x_axis());
+        let height = cx.style_range("height", space.y_axis());
+        space.constrain(Vec2::new(width, height))
     }
 
     #[tracing::instrument(name = "Checkbox", skip(self, cx))]

@@ -4,7 +4,7 @@ use ori_macro::Build;
 use ori_reactive::{Event, OwnedSignal};
 
 use crate::{
-    Axis, BoxConstraints, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style,
+    AvailableSpace, Axis, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style,
     View,
 };
 
@@ -126,15 +126,15 @@ impl View for Slider {
         }
     }
 
-    #[tracing::instrument(name = "Slider", skip(self, cx, bc))]
-    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, bc: BoxConstraints) -> Vec2 {
+    #[tracing::instrument(name = "Slider", skip(self, cx, space))]
+    fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         let axis = cx.style::<Axis>("direction");
-        let track_size = cx.style_range("track-size", 0.0..axis.minor(bc.max));
-        let knob_size = cx.style_range("knob-size", 0.0..axis.minor(bc.max));
-        let length = cx.style_range("length", 0.0..axis.major(bc.max));
+        let track_size = cx.style_range("track-size", 0.0..axis.minor(space.max));
+        let knob_size = cx.style_range("knob-size", 0.0..axis.minor(space.max));
+        let length = cx.style_range("length", 0.0..axis.major(space.max));
 
         let size = f32::max(track_size, knob_size);
-        bc.constrain(axis.pack(length, size))
+        space.constrain(axis.pack(length, size))
     }
 
     #[tracing::instrument(name = "Slider", skip(self, cx))]

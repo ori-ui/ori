@@ -1,16 +1,17 @@
 use std::ops::Range;
 
 use glam::Vec2;
+use ori_graphics::Rect;
 
 use crate::{Context, StyleAttributeEnum};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct BoxConstraints {
+pub struct AvailableSpace {
     pub min: Vec2,
     pub max: Vec2,
 }
 
-impl BoxConstraints {
+impl AvailableSpace {
     pub const ZERO: Self = Self {
         min: Vec2::ZERO,
         max: Vec2::ZERO,
@@ -35,24 +36,10 @@ impl BoxConstraints {
         }
     }
 
-    pub fn loose(self) -> Self {
+    pub fn loosen(self) -> Self {
         Self {
-            min: self.min,
-            max: Vec2::splat(f32::INFINITY),
-        }
-    }
-
-    pub fn loose_x(self) -> Self {
-        Self {
-            min: self.min,
-            max: Vec2::new(f32::INFINITY, self.max.y),
-        }
-    }
-
-    pub fn loose_y(self) -> Self {
-        Self {
-            min: self.min,
-            max: Vec2::new(self.max.x, f32::INFINITY),
+            min: Vec2::ZERO,
+            max: self.max,
         }
     }
 
@@ -72,15 +59,22 @@ impl BoxConstraints {
         size.cmpge(self.min).all() && size.cmple(self.max).all()
     }
 
-    pub fn width(self) -> Range<f32> {
+    pub fn x_axis(self) -> Range<f32> {
         self.min.x..self.max.x
     }
 
-    pub fn height(self) -> Range<f32> {
+    pub fn y_axis(self) -> Range<f32> {
         self.min.y..self.max.y
     }
 
-    pub fn with_margin(self, margin: Margin) -> Self {
+    pub fn apply_padding(self, padding: Padding) -> Self {
+        Self {
+            min: Vec2::max(self.min - padding.size(), Vec2::ZERO),
+            max: Vec2::max(self.max - padding.size(), Vec2::ZERO),
+        }
+    }
+
+    pub fn apply_margin(self, margin: Margin) -> Self {
         Self {
             min: Vec2::max(self.min - margin.size(), Vec2::ZERO),
             max: Vec2::max(self.max - margin.size(), Vec2::ZERO),
@@ -108,11 +102,11 @@ impl Padding {
         }
     }
 
-    pub fn from_style(context: &mut impl Context, bc: BoxConstraints) -> Self {
-        let left = context.style_range_group(&["padding-left", "padding"], 0.0..bc.max.x);
-        let right = context.style_range_group(&["padding-right", "padding"], 0.0..bc.max.x);
-        let top = context.style_range_group(&["padding-top", "padding"], 0.0..bc.max.y);
-        let bottom = context.style_range_group(&["padding-bottom", "padding"], 0.0..bc.max.y);
+    pub fn from_style(context: &mut impl Context, space: AvailableSpace) -> Self {
+        let left = context.style_range_group(&["padding-left", "padding"], 0.0..space.max.x);
+        let right = context.style_range_group(&["padding-right", "padding"], 0.0..space.max.x);
+        let top = context.style_range_group(&["padding-top", "padding"], 0.0..space.max.y);
+        let bottom = context.style_range_group(&["padding-bottom", "padding"], 0.0..space.max.y);
 
         Self {
             left,
@@ -128,6 +122,13 @@ impl Padding {
 
     pub fn size(self) -> Vec2 {
         Vec2::new(self.left + self.right, self.top + self.bottom)
+    }
+
+    pub fn apply(self, rect: Rect) -> Rect {
+        Rect {
+            min: rect.min + self.top_left(),
+            max: rect.max - self.size(),
+        }
     }
 }
 
@@ -151,11 +152,11 @@ impl Margin {
         }
     }
 
-    pub fn from_style(context: &mut impl Context, bc: BoxConstraints) -> Self {
-        let left = context.style_range_group(&["margin-left", "margin"], 0.0..bc.max.x);
-        let right = context.style_range_group(&["margin-right", "margin"], 0.0..bc.max.x);
-        let top = context.style_range_group(&["margin-top", "margin"], 0.0..bc.max.y);
-        let bottom = context.style_range_group(&["margin-bottom", "margin"], 0.0..bc.max.y);
+    pub fn from_style(context: &mut impl Context, space: AvailableSpace) -> Self {
+        let left = context.style_range_group(&["margin-left", "margin"], 0.0..space.max.x);
+        let right = context.style_range_group(&["margin-right", "margin"], 0.0..space.max.x);
+        let top = context.style_range_group(&["margin-top", "margin"], 0.0..space.max.y);
+        let bottom = context.style_range_group(&["margin-bottom", "margin"], 0.0..space.max.y);
 
         Self {
             left,
@@ -171,6 +172,13 @@ impl Margin {
 
     pub fn size(self) -> Vec2 {
         Vec2::new(self.left + self.right, self.top + self.bottom)
+    }
+
+    pub fn apply(self, rect: Rect) -> Rect {
+        Rect {
+            min: rect.min - self.top_left(),
+            max: rect.max + self.size(),
+        }
     }
 }
 

@@ -21,6 +21,7 @@ pub use text::*;
 pub use glam::*;
 
 pub mod prelude {
+    pub use crate::color::Color;
     pub use crate::curve::Curve;
     pub use crate::image::{ImageData, ImageHandle, ImageLoadError, ImageSource};
     pub use crate::mesh::{Mesh, Vertex};

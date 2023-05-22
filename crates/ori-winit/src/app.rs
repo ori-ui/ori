@@ -12,6 +12,7 @@ use ori_core::{
 };
 use ori_graphics::{Color, ImageData, ImageSource};
 use ori_reactive::{CallbackEmitter, Event, EventEmitter, EventSink, Scope, Task};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 use winit::{
     dpi::LogicalSize,
     error::OsError,
@@ -60,6 +61,7 @@ pub struct App {
     clear_color: Color,
     event_loop: EventLoop<Event>,
     style_loader: StyleLoader,
+    parent_window: Option<RawWindowHandle>,
     icon: Option<ImageData>,
     builder: Option<Box<dyn FnOnce(&EventSink, &CallbackEmitter<Event>) -> RootNode>>,
 }
@@ -67,6 +69,44 @@ pub struct App {
 impl App {
     /// Create a new [`App`] with the given content.
     pub fn new<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
+        let event_loop = EventLoopBuilder::<Event>::with_user_event().build();
+        Self::new_with_event_loop(event_loop, content)
+    }
+
+    pub fn new_any_thread<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
+        let mut builder = EventLoopBuilder::<Event>::with_user_event();
+
+        #[cfg(target_os = "windows")]
+        {
+            use winit::platform::windows::EventLoopBuilderExtWindows;
+            builder.with_any_thread(true);
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            use winit::platform::x11::EventLoopBuilderExtX11;
+            builder.with_any_thread(true);
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            use winit::platform::wayland::EventLoopBuilderExtWayland;
+            builder.with_any_thread(true);
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            use winit::platform::macos::EventLoopBuilderExtMacOS;
+            builder.with_any_thread(true);
+        }
+
+        Self::new_with_event_loop(builder.build(), content)
+    }
+
+    pub fn new_with_event_loop<T: View>(
+        event_loop: EventLoop<Event>,
+        content: impl FnOnce(Scope) -> T + 'static,
+    ) -> Self {
         initialize_log().unwrap();
 
         let builder = Box::new(
@@ -81,8 +121,6 @@ impl App {
 
         style_loader.add_style(Stylesheet::day_theme()).unwrap();
 
-        let event_loop = EventLoopBuilder::<Event>::with_user_event().build();
-
         Self {
             title: String::from("Ori App"),
             size: Vec2::new(800.0, 600.0),
@@ -90,6 +128,7 @@ impl App {
             clear_color: Color::WHITE,
             event_loop,
             style_loader,
+            parent_window: None,
             icon: None,
             builder: Some(builder),
         }
@@ -173,8 +212,18 @@ impl App {
         self.clear_color(Color::TRANSPARENT)
     }
 
+    /// Set the icon of the window.
     pub fn icon(mut self, icon: impl Into<ImageSource>) -> Self {
         self.icon = Some(icon.into().load());
+        self
+    }
+
+    /// Set the parent window of the window.
+    ///
+    /// # Safety
+    /// - See [`WindowBuilder::with_parent_window`].
+    pub unsafe fn parent_window(mut self, parent: &impl HasRawWindowHandle) -> Self {
+        self.parent_window = Some(parent.raw_window_handle());
         self
     }
 
@@ -183,7 +232,7 @@ impl App {
         EventSink::new(EventLoopSender(self.event_loop.create_proxy()))
     }
 
-    fn window(&self) -> Result<Window, OsError> {
+    fn build_window(&self) -> Result<Window, OsError> {
         let size = LogicalSize::new(self.size.x, self.size.y);
 
         let icon = match self.icon {
@@ -194,12 +243,14 @@ impl App {
             None => None,
         };
 
-        let builder = WindowBuilder::new()
+        let mut builder = WindowBuilder::new()
             .with_title(&self.title)
             .with_inner_size(size)
             .with_resizable(self.reziseable)
             .with_transparent(self.clear_color.is_translucent())
             .with_window_icon(icon);
+
+        builder = unsafe { builder.with_parent_window(self.parent_window) };
 
         builder.build(&self.event_loop)
     }
@@ -257,7 +308,7 @@ impl AppState {
 impl App {
     /// Run the app.
     pub fn run(mut self) -> ! {
-        let window = Arc::new(self.window().unwrap());
+        let window = Arc::new(self.build_window().unwrap());
         let event_sink = self.event_sink();
 
         #[cfg(feature = "wgpu")]

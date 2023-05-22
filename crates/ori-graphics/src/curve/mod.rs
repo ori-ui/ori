@@ -1,8 +1,14 @@
-use std::f32::consts::PI;
+use std::{
+    f32::consts::PI,
+    ops::{Index, IndexMut},
+    slice::SliceIndex,
+};
 
 use glam::Vec2;
 
 use crate::{Color, Mesh, Vertex};
+
+mod triangulate;
 
 /// A curve.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -12,6 +18,9 @@ pub struct Curve {
 }
 
 impl Curve {
+    /// The resolution of the curve, measured in pixels per point.
+    pub const RESOLUTION: f32 = 10.0;
+
     /// Creates an empty curve.
     pub const fn new() -> Self {
         Self { points: vec![] }
@@ -29,7 +38,7 @@ impl Curve {
 
         let length = (end_angle - start_angle).abs() * radius;
         // calculate the step in radians for a distance of 1 pixel
-        let step = 1.0 / length;
+        let step = Self::RESOLUTION / length;
 
         if step <= f32::EPSILON {
             return curve;
@@ -63,10 +72,13 @@ impl Curve {
             curve.add_point(point);
 
             let epsilon = 0.0001;
-            let gradient = (f(t + epsilon / 2.0) - f(t - epsilon / 2.0)) / epsilon;
+            let half = epsilon / 2.0;
+            let gradient = (f(t + half) - f(t - half)) / epsilon;
 
-            t += 1.0 / gradient.length();
+            t += Self::RESOLUTION / gradient.length();
         }
+
+        curve.add_point(f(end));
 
         curve
     }
@@ -96,8 +108,29 @@ impl Curve {
         self.points.clear();
     }
 
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = Vec2> + '_ {
+        self.points.iter().copied()
+    }
+
+    pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = &mut Vec2> {
+        self.points.iter_mut()
+    }
+
+    /// Returns true if the curve in counter-clockwise winding order, when interpreted as a polygon.
+    ///
+    /// This uses the shoelace formula, this runs in O(n) time.
+    pub fn is_ccw(&self) -> bool {
+        let mut sum = 0.0;
+        for i in 0..self.len() {
+            let a = self[i];
+            let b = self[(i + 1) % self.len()];
+            sum += (b.x - a.x) * (b.y + a.y);
+        }
+        sum > 0.0
+    }
+
     /// Creates a mesh with rounded ends.
-    pub fn rounded_mesh(&self, thickness: f32, color: Color) -> Mesh {
+    pub fn stroke(&self, thickness: f32, color: Color) -> Mesh {
         if self.is_empty() {
             return Mesh::new();
         }
@@ -249,5 +282,19 @@ impl<'a> IntoIterator for &'a mut Curve {
 
     fn into_iter(self) -> Self::IntoIter {
         self.points.iter_mut()
+    }
+}
+
+impl<I: SliceIndex<[Vec2]>> Index<I> for Curve {
+    type Output = I::Output;
+
+    fn index(&self, index: I) -> &Self::Output {
+        &self.points[index]
+    }
+}
+
+impl<I: SliceIndex<[Vec2]>> IndexMut<I> for Curve {
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        &mut self.points[index]
     }
 }

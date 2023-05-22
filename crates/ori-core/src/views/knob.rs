@@ -93,7 +93,7 @@ impl View for Knob {
 
         let ring_track =
             Curve::arc_center_angle(cx.rect().center(), diameter * 0.65, -PI * 1.25, PI * 0.25);
-        let mesh = ring_track.rounded_mesh(diameter * 0.075, cx.style("background-color"));
+        let mesh = ring_track.stroke(diameter * 0.075, cx.style("background-color"));
         cx.draw(mesh);
 
         let range = self.max - self.min;
@@ -102,14 +102,14 @@ impl View for Knob {
         let angle = -PI * 1.25 + t * PI * 1.5;
 
         let ring = Curve::arc_center_angle(cx.rect().center(), diameter * 0.65, -PI * 1.25, angle);
-        let mesh = ring.rounded_mesh(diameter * 0.075, cx.style("color"));
+        let mesh = ring.stroke(diameter * 0.075, cx.style("color"));
         cx.draw(mesh);
 
         let mut arm = Curve::new();
         arm.add_point(cx.rect().center());
         arm.add_point(cx.rect().center() + Vec2::new(angle.cos(), angle.sin()) * diameter * 0.65);
 
-        let mesh = arm.rounded_mesh(diameter * 0.075, cx.style("color"));
+        let mesh = arm.stroke(diameter * 0.075, cx.style("color"));
         cx.draw(mesh);
     }
 }

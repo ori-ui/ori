@@ -16,10 +16,11 @@ ori-graphics = { path = "../ori-graphics", version = "0.1.0-alpha.0" }
 ori-reactive = { path = "../ori-reactive", version = "0.1.0-alpha.0" }
 ori-wgpu = { path = "../ori-wgpu", version = "0.1.0-alpha.0", optional = true }
 
+raw-window-handle = "0.5"
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-tracy = { version = "0.10", optional = true }
-winit = { version = "0.28.0", features = ["x11"] }
+winit = { version = "0.28.0" }
 
 [features]
 default = []

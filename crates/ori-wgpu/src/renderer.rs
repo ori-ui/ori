@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ori_graphics::{
     Color, Frame, Glyph, ImageData, ImageHandle, Line, Primitive, PrimitiveKind, Rect, Renderer,
     TextSection, Vec2,
@@ -21,8 +23,8 @@ const ICON_FONT: &[u8] = include_bytes!("../fonts/MaterialIcons-Regular.ttf");
 
 #[allow(dead_code)]
 pub struct WgpuRenderer {
-    device: Device,
-    queue: Queue,
+    device: Arc<Device>,
+    queue: Arc<Queue>,
     config: SurfaceConfiguration,
     surface: Surface,
     msaa_texture: Texture,
@@ -83,8 +85,8 @@ impl WgpuRenderer {
         let staging_belt = StagingBelt::new(1024);
 
         Self {
-            device,
-            queue,
+            device: Arc::new(device),
+            queue: Arc::new(queue),
             config,
             surface,
             msaa_texture,
@@ -220,6 +222,14 @@ impl WgpuRenderer {
 
     pub fn queue(&self) -> &Queue {
         &self.queue
+    }
+
+    pub fn device_arc(&self) -> Arc<Device> {
+        self.device.clone()
+    }
+
+    pub fn queue_arc(&self) -> Arc<Queue> {
+        self.queue.clone()
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {

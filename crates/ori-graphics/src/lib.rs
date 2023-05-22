@@ -18,6 +18,8 @@ pub use rect::*;
 pub use renderer::*;
 pub use text::*;
 
+pub use glam::*;
+
 pub mod prelude {
     pub use crate::curve::Curve;
     pub use crate::image::{ImageData, ImageHandle, ImageLoadError, ImageSource};

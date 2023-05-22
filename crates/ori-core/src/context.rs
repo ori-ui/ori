@@ -459,14 +459,14 @@ pub trait Context {
     }
 
     /// Loads an image from the given `source` and returns a handle to it.
-    fn load_image(&mut self, source: &ImageSource) -> ImageHandle {
-        if let Some(handle) = self.image_cache().get(source) {
+    fn load_image(&mut self, source: ImageSource) -> ImageHandle {
+        if let Some(handle) = self.image_cache().get(&source) {
             return handle;
         }
 
-        let data = source.load();
+        let data = source.clone().load();
         let image = self.renderer().create_image(&data);
-        self.image_cache_mut().insert(source.clone(), image.clone());
+        self.image_cache_mut().insert(source, image.clone());
         image
     }
 

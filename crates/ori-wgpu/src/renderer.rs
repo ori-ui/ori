@@ -1,7 +1,6 @@
-use ori_core::Vec2;
 use ori_graphics::{
     Color, Frame, Glyph, ImageData, ImageHandle, Line, Primitive, PrimitiveKind, Rect, Renderer,
-    TextSection,
+    TextSection, Vec2,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{

@@ -1,6 +1,6 @@
 use std::{
     any::Any,
-    fmt::Debug,
+    fmt::{Debug, Display},
     io,
     path::{Path, PathBuf},
     sync::{Arc, Weak},
@@ -18,6 +18,7 @@ macro_rules! include_image {
 #[derive(Debug)]
 pub enum ImageLoadError {
     Io(io::Error),
+    #[cfg(feature = "image")]
     Image(image::ImageError),
 }
 
@@ -27,14 +28,26 @@ impl From<io::Error> for ImageLoadError {
     }
 }
 
+#[cfg(feature = "image")]
 impl From<image::ImageError> for ImageLoadError {
     fn from(err: image::ImageError) -> Self {
         Self::Image(err)
     }
 }
 
+impl Display for ImageLoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Io(err) => write!(f, "IO error: {}", err),
+            #[cfg(feature = "image")]
+            Self::Image(err) => write!(f, "Image error: {}", err),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ImageSource {
+    #[cfg(feature = "image")]
     Path(PathBuf),
     Data(ImageData),
 }
@@ -45,24 +58,28 @@ impl Default for ImageSource {
     }
 }
 
+#[cfg(feature = "image")]
 impl From<PathBuf> for ImageSource {
     fn from(path: PathBuf) -> Self {
         Self::Path(path)
     }
 }
 
+#[cfg(feature = "image")]
 impl From<&Path> for ImageSource {
     fn from(path: &Path) -> Self {
         Self::Path(path.into())
     }
 }
 
+#[cfg(feature = "image")]
 impl From<String> for ImageSource {
     fn from(path: String) -> Self {
         Self::Path(path.into())
     }
 }
 
+#[cfg(feature = "image")]
 impl From<&str> for ImageSource {
     fn from(path: &str) -> Self {
         Self::Path(path.into())
@@ -75,6 +92,7 @@ impl From<ImageData> for ImageSource {
     }
 }
 
+#[cfg(feature = "image")]
 impl From<&[u8]> for ImageSource {
     fn from(bytes: &[u8]) -> Self {
         Self::Data(ImageData::from_bytes(bytes))
@@ -82,17 +100,19 @@ impl From<&[u8]> for ImageSource {
 }
 
 impl ImageSource {
-    pub fn try_load(&self) -> Result<ImageData, ImageLoadError> {
+    pub fn try_load(self) -> Result<ImageData, ImageLoadError> {
         match self {
+            Self::Data(image) => Ok(image),
+            #[cfg(feature = "image")]
             Self::Path(path) => Ok(ImageData::try_load(path)?),
-            Self::Data(image) => Ok(image.clone()),
         }
     }
 
-    pub fn load(&self) -> ImageData {
+    pub fn load(self) -> ImageData {
         match self {
+            Self::Data(image) => image,
+            #[cfg(feature = "image")]
             Self::Path(path) => ImageData::load(path),
-            Self::Data(image) => image.clone(),
         }
     }
 }
@@ -113,7 +133,8 @@ impl ImageData {
         }
     }
 
-    pub fn try_load(path: impl AsRef<Path>) -> image::ImageResult<Self> {
+    #[cfg(feature = "image")]
+    pub fn try_load(path: impl AsRef<Path>) -> Result<Self, ImageLoadError> {
         let image = image::open(path)?;
         let width = image.width();
         let height = image.height();
@@ -126,6 +147,7 @@ impl ImageData {
         })
     }
 
+    #[cfg(feature = "image")]
     pub fn load(path: impl AsRef<Path>) -> Self {
         match Self::try_load(path) {
             Ok(image) => image,
@@ -136,7 +158,8 @@ impl ImageData {
         }
     }
 
-    pub fn try_from_bytes(bytes: &[u8]) -> image::ImageResult<Self> {
+    #[cfg(feature = "image")]
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, ImageLoadError> {
         let image = image::load_from_memory(bytes)?;
         let width = image.width();
         let height = image.height();
@@ -149,6 +172,7 @@ impl ImageData {
         })
     }
 
+    #[cfg(feature = "image")]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         match Self::try_from_bytes(bytes) {
             Ok(image) => image,

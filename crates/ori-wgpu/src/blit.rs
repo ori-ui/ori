@@ -47,7 +47,7 @@ impl BlitPipeline {
             ..Default::default()
         });
 
-        let shader = device.create_shader_module(include_wgsl!("blit.wgsl"));
+        let shader = device.create_shader_module(include_wgsl!("shader/blit.wgsl"));
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Blit Pipeline"),

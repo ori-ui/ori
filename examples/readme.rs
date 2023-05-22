@@ -1,3 +1,5 @@
+//! This is the example from the readme.
+
 use ori::prelude::*;
 
 fn ui(cx: Scope) -> impl View {

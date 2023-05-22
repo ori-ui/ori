@@ -4,8 +4,7 @@ use glyphon::{
     fontdb::Source, Attrs, Buffer, Family, FontSystem, Metrics, Stretch, Style, SwashCache,
     TextArea, TextAtlas, TextBounds, TextRenderer, Weight, Wrap,
 };
-use ori_core::Vec2;
-use ori_graphics::{Rect, TextAlign, TextSection};
+use ori_graphics::{Rect, TextAlign, TextSection, Vec2};
 use wgpu::{Device, MultisampleState, Queue, RenderPass, TextureFormat};
 
 pub struct Fonts {

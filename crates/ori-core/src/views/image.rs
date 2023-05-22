@@ -31,7 +31,7 @@ impl ImageState {
     pub fn update(&mut self, context: &mut impl Context, src: &ImageSource) -> &ImageHandle {
         if self.src != *src || self.handle.is_none() {
             self.src = src.clone();
-            self.handle = Some(context.load_image(src));
+            self.handle = Some(context.load_image(src.clone()));
         }
 
         self.handle.as_ref().unwrap()

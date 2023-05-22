@@ -15,7 +15,7 @@ impl StyleSelectorsHash {
     pub fn new(selectors: &StyleSelectors) -> Self {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = twox_hash::XxHash::default();
+        let mut hasher = seahash::SeaHasher::default();
         Hash::hash(&selectors, &mut hasher);
 
         Self {
@@ -50,7 +50,7 @@ impl StyleCache {
     fn hash(hash: StyleSelectorsHash, key: &str) -> u64 {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = twox_hash::XxHash::default();
+        let mut hasher = seahash::SeaHasher::default();
         Hash::hash(key, &mut hasher);
 
         hasher.finish() ^ hash.hash

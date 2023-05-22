@@ -1,8 +1,7 @@
 use std::{mem, num::NonZeroU64};
 
 use bytemuck::{Pod, Zeroable};
-use ori_core::Vec2;
-use ori_graphics::{Color, Quad, Rect};
+use ori_graphics::{Color, Quad, Rect, Vec2};
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt, StagingBelt},
@@ -94,7 +93,7 @@ pub struct QuadPipeline {
 
 impl QuadPipeline {
     pub fn new(device: &Device, format: TextureFormat) -> Self {
-        let shader = device.create_shader_module(include_wgsl!("quad.wgsl"));
+        let shader = device.create_shader_module(include_wgsl!("shader/quad.wgsl"));
 
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Quad Uniform Buffer"),

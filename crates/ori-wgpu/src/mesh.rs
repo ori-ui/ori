@@ -1,8 +1,7 @@
 use std::{mem, num::NonZeroU64};
 
 use bytemuck::{Pod, Zeroable};
-use ori_core::Vec2;
-use ori_graphics::{ImageHandle, Mesh, Rect, Vertex};
+use ori_graphics::{ImageHandle, Mesh, Rect, Vec2, Vertex};
 use wgpu::{
     include_wgsl, util::StagingBelt, vertex_attr_array, BindGroup, BindGroupDescriptor,
     BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,
@@ -137,7 +136,7 @@ impl MeshPipeline {
         image_bind_group_layout: &BindGroupLayout,
         format: TextureFormat,
     ) -> Self {
-        let shader = device.create_shader_module(include_wgsl!("mesh.wgsl"));
+        let shader = device.create_shader_module(include_wgsl!("shader/mesh.wgsl"));
 
         let uniform_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("Mesh Uniform Buffer"),

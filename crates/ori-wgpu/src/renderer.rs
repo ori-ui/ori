@@ -342,7 +342,7 @@ impl WgpuRenderer {
         layer
     }
 
-    pub fn render(
+    fn render(
         &self,
         encoder: &mut CommandEncoder,
         view: &TextureView,

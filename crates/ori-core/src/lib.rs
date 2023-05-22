@@ -37,7 +37,7 @@ pub mod prelude {
     pub use crate::include_stylesheet;
     pub use crate::layout::{AlignItem, AvailableSpace, Axis, JustifyContent, Margin, Padding};
     pub use crate::node::Node;
-    pub use crate::style::{Style, Styleable, Stylesheet};
+    pub use crate::style::{trans, Style, Styleable, Stylesheet};
     pub use crate::unit::*;
     pub use crate::view::View;
     pub use crate::views::*;

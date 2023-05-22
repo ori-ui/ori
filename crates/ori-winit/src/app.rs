@@ -228,6 +228,7 @@ impl App {
     }
 
     /// Create an [`EventSink`] that can be used to send events to the app.
+    #[must_use]
     pub fn event_sink(&self) -> EventSink {
         EventSink::new(EventLoopSender(self.event_loop.create_proxy()))
     }

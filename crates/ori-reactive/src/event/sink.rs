@@ -8,7 +8,7 @@ use crate::Event;
 ///
 /// This is usually implemented by the application shell and
 /// should not be implemented by the user.
-pub trait EventEmitter: Send + 'static {
+pub trait EventEmitter: Any + Send {
     fn send_event(&mut self, event: Event);
 }
 
@@ -32,6 +32,15 @@ impl EventSink {
     pub fn new(sender: impl EventEmitter) -> Self {
         Self {
             emitter: Arc::new(Mutex::new(sender)),
+        }
+    }
+
+    pub fn downcast_with<T: EventEmitter>(&self, f: impl FnOnce(&mut T)) {
+        let emitter = &*self.emitter.lock();
+
+        if emitter.type_id() == std::any::TypeId::of::<T>() {
+            let mut emitter = unsafe { &mut *(emitter as *const dyn EventEmitter as *mut T) };
+            f(&mut emitter);
         }
     }
 

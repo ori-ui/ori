@@ -1,0 +1,31 @@
+[package]
+name = "ori-baseview"
+version = "0.1.0-alpha.1"
+edition = "2021"
+description = "Baseview backend for Ori"
+keywords = ["gui", "graphics", "reactive", "native"]
+categories = ["gui", "graphics"]
+repository = "https://github.com/ChangeCaps/ori"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ori-core = { path = "../ori-core", version = "0.1.0-alpha.0" }
+ori-graphics = { path = "../ori-graphics", version = "0.1.0-alpha.0" }
+ori-reactive = { path = "../ori-reactive", version = "0.1.0-alpha.0" }
+
+ori-wgpu = { path = "../ori-wgpu", version = "0.1.0-alpha.0", optional = true }
+
+keyboard-types = "0.6"
+old-raw-window-handle = { version = "0.4", package = "raw-window-handle" }
+raw-window-handle = "0.5"
+
+[dependencies.baseview]
+git = "https://github.com/RustAudio/baseview.git"
+rev = "eae4033e7d2cc9c31ccaa2794d5d08eedf2f510c"
+
+[features]
+default = ["wgpu"]
+
+wgpu = ["ori-wgpu"]

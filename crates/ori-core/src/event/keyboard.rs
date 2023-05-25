@@ -28,6 +28,7 @@ impl KeyboardEvent {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Key {
+    // Alphabetical keys
     A,
     B,
     C,
@@ -54,6 +55,7 @@ pub enum Key {
     X,
     Y,
     Z,
+    // Number keys
     Key0,
     Key1,
     Key2,
@@ -64,16 +66,7 @@ pub enum Key {
     Key7,
     Key8,
     Key9,
-    Num0,
-    Num1,
-    Num2,
-    Num3,
-    Num4,
-    Num5,
-    Num6,
-    Num7,
-    Num8,
-    Num9,
+    // Function keys
     F1,
     F2,
     F3,
@@ -86,6 +79,17 @@ pub enum Key {
     F10,
     F11,
     F12,
+    // Symbol keys
+    Plus,
+    Minus,
+    Comma,
+    Period,
+    // Arrow keys
+    Left,
+    Right,
+    Up,
+    Down,
+    // Special keys
     Escape,
     Tab,
     Space,
@@ -97,21 +101,10 @@ pub enum Key {
     End,
     PageUp,
     PageDown,
-    Left,
-    Right,
-    Up,
-    Down,
     CapsLock,
-    ScrollLock,
-    NumLock,
-    PrintScreen,
-    Pause,
-    LeftShift,
-    RightShift,
-    LeftCtrl,
-    RightCtrl,
-    LeftAlt,
-    RightAlt,
-    LeftMeta,
-    Menu,
+    // Modifier keys
+    Shift,
+    Ctrl,
+    Alt,
+    Meta,
 }

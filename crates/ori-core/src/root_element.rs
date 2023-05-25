@@ -1,10 +1,10 @@
 use ori_graphics::{Frame, Renderer};
 use ori_reactive::{CallbackEmitter, Event, EventSink};
 
-use crate::{Cursor, ImageCache, Node, RequestRedrawEvent, StyleCache, StyleLoader};
+use crate::{Cursor, Element, ImageCache, RequestRedrawEvent, StyleCache, StyleLoader};
 
-/// The root node of the application.
-pub struct RootNode {
+/// The root element of the application.
+pub struct RootElement {
     pub style_loader: StyleLoader,
     pub event_sink: EventSink,
     pub event_callbacks: CallbackEmitter<Event>,
@@ -12,11 +12,15 @@ pub struct RootNode {
     pub image_cache: ImageCache,
     pub cursor: Cursor,
     pub frame: Frame,
-    pub node: Node,
+    pub element: Element,
 }
 
-impl RootNode {
-    pub fn new(node: Node, event_sink: EventSink, event_callbacks: CallbackEmitter<Event>) -> Self {
+impl RootElement {
+    pub fn new(
+        element: Element,
+        event_sink: EventSink,
+        event_callbacks: CallbackEmitter<Event>,
+    ) -> Self {
         Self {
             style_loader: StyleLoader::new(),
             event_sink,
@@ -25,7 +29,7 @@ impl RootNode {
             image_cache: ImageCache::new(),
             cursor: Cursor::default(),
             frame: Frame::new(),
-            node,
+            element,
         }
     }
 
@@ -62,7 +66,7 @@ impl RootNode {
         self.cursor = Cursor::default();
 
         ori_reactive::delay_effects(|| {
-            self.node.event_root_inner(
+            self.element.event_root_inner(
                 &self.style_loader.stylesheet(),
                 &mut self.style_cache,
                 renderer,
@@ -82,7 +86,7 @@ impl RootNode {
         self.event(renderer, &Event::new(()));
 
         ori_reactive::delay_effects(|| {
-            self.node.layout_root_inner(
+            self.element.layout_root_inner(
                 &self.style_loader.stylesheet(),
                 &mut self.style_cache,
                 renderer,
@@ -102,7 +106,7 @@ impl RootNode {
         self.frame.clear();
 
         ori_reactive::delay_effects(|| {
-            self.node.draw_root_inner(
+            self.element.draw_root_inner(
                 &self.style_loader.stylesheet(),
                 &mut self.style_cache,
                 &mut self.frame,

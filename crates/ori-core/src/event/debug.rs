@@ -5,57 +5,57 @@ use std::{
 
 use ori_reactive::Event;
 
-use crate::{DebugNode, EventContext, Node, View};
+use crate::{DebugElement, Element, ElementView, EventContext};
 
 #[derive(Debug, Default)]
 pub struct DebugEvent {
-    node: Mutex<DebugNode>,
+    element: Mutex<DebugElement>,
 }
 
 impl DebugEvent {
-    pub fn new(node: DebugNode) -> Self {
+    pub fn new(element: DebugElement) -> Self {
         Self {
-            node: Mutex::new(node),
+            element: Mutex::new(element),
         }
     }
 
-    pub fn take(&self) -> DebugNode {
-        mem::take(&mut self.node.lock().unwrap())
+    pub fn take(&self) -> DebugElement {
+        mem::take(&mut self.element.lock().unwrap())
     }
 
-    pub fn node(&self) -> MutexGuard<DebugNode> {
-        self.node.lock().unwrap()
+    pub fn element(&self) -> MutexGuard<DebugElement> {
+        self.element.lock().unwrap()
     }
 
-    pub fn add_child(&self, child: DebugNode) {
-        self.node.lock().unwrap().children.push(child);
+    pub fn add_child(&self, child: DebugElement) {
+        self.element.lock().unwrap().children.push(child);
     }
 
-    /// Sets the root node of the current debug tree.
-    pub fn set_node<T: View>(&self, cx: &mut EventContext, node: &Node<T>) {
-        let debug_node = DebugNode {
+    /// Sets the root element of the current debug tree.
+    pub fn set_element<T: ElementView>(&self, cx: &mut EventContext, element: &Element<T>) {
+        let debug_element = DebugElement {
             selectors: cx.selectors.clone(),
-            local_rect: node.local_rect(),
-            global_rect: node.global_rect(),
+            local_rect: element.local_rect(),
+            global_rect: element.global_rect(),
             children: Vec::new(),
         };
 
-        *self.node.lock().unwrap() = debug_node;
+        *self.element.lock().unwrap() = debug_element;
     }
 
-    /// This method is used to add a child node to the debug tree.
+    /// This method is used to add a child element to the debug tree.
     ///
     /// This will call the `event` method.
-    pub fn with_node<T: View>(&self, cx: &mut EventContext, node: &Node<T>) {
-        let debug_node = DebugNode {
+    pub fn with_element<T: ElementView>(&self, cx: &mut EventContext, element: &Element<T>) {
+        let debug_element = DebugElement {
             selectors: cx.selectors.clone(),
-            local_rect: node.local_rect(),
-            global_rect: node.global_rect(),
+            local_rect: element.local_rect(),
+            global_rect: element.global_rect(),
             children: Vec::new(),
         };
 
-        let event = Event::new(DebugEvent::new(debug_node));
-        node.view().event(&mut node.view_state(), cx, &event);
+        let event = Event::new(DebugEvent::new(debug_element));
+        element.view().event(&mut element.view_state(), cx, &event);
 
         let child = event.get::<DebugEvent>().unwrap().take();
         self.add_child(child);

@@ -2,21 +2,31 @@ use glam::Vec2;
 use ori_graphics::{Rect, TextSection};
 use ori_macro::Build;
 
-use crate::{AvailableSpace, Context, DrawContext, IntoView, LayoutContext, Style, View};
+use crate::{
+    AvailableSpace, Context, DrawContext, Element, IntoElement, LayoutContext, Style, View,
+};
 
-impl IntoView for String {
-    type View = Text;
-
-    fn into_view(self) -> Self::View {
-        Text::new(self)
+impl IntoElement<Text> for String {
+    fn into_element(self) -> Element<Text> {
+        Element::new(Text::new(self))
     }
 }
 
-impl IntoView for &str {
-    type View = Text;
+impl IntoElement for String {
+    fn into_element(self) -> Element {
+        Element::new(Text::new(self))
+    }
+}
 
-    fn into_view(self) -> Self::View {
-        Text::new(self)
+impl IntoElement<Text> for &str {
+    fn into_element(self) -> Element<Text> {
+        Element::new(Text::new(self))
+    }
+}
+
+impl IntoElement for &str {
+    fn into_element(self) -> Element {
+        Element::new(Text::new(self))
     }
 }
 

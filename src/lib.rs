@@ -27,8 +27,6 @@ pub use ori_core as core;
 pub use ori_graphics as graphics;
 pub use ori_reactive as reactive;
 
-#[cfg(feature = "baseview")]
-pub use ori_baseview as baseview;
 #[cfg(feature = "winit")]
 pub use ori_winit as winit;
 
@@ -44,7 +42,4 @@ pub mod prelude {
 
     #[cfg(feature = "winit")]
     pub use ori_winit::App;
-
-    #[cfg(feature = "baseview")]
-    pub use ori_baseview::App;
 }

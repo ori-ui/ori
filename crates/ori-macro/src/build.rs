@@ -179,25 +179,19 @@ fn children(input: &DeriveInput) -> TokenStream {
                     self.#field_name.clear_children();
                 }
 
-                fn add_child<I: ::std::iter::IntoIterator, U: ?Sized>(
+                fn add_children(
                     &mut self,
-                    child: impl #ori_core::IntoChildren<I>,
-                ) -> ::std::primitive::usize
-                where
-                    I::Item: #ori_core::IntoNode<Self::Child, U>,
-                {
-                    self.#field_name.add_child(child)
+                    child: impl ::std::iter::Iterator<Item = #ori_core::Element<Self::Child>>,
+                ) -> ::std::primitive::usize {
+                    self.#field_name.add_children(child)
                 }
 
-                fn set_child<I: ::std::iter::IntoIterator, U: ?Sized>(
+                fn set_children(
                     &mut self,
-                    index: ::std::primitive::usize,
-                    child: impl #ori_core::IntoChildren<I>,
-                )
-                where
-                    I::Item: #ori_core::IntoNode<Self::Child, U>,
-                {
-                    self.#field_name.set_child(index, child);
+                    slot: ::std::primitive::usize,
+                    child: impl ::std::iter::Iterator<Item = #ori_core::Element<Self::Child>>,
+                ) {
+                    self.#field_name.set_children(slot, child);
                 }
             }
         })

@@ -2,7 +2,7 @@ use ori::prelude::*;
 
 const LONG_TEXT: &str = include_str!("long_text.txt");
 
-fn ui(cx: Scope) -> impl View {
+fn ui(cx: Scope) -> Element {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
     let knob_value = cx.signal(0.0);

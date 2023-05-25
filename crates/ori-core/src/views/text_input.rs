@@ -362,7 +362,7 @@ impl View for TextInput {
         cx.draw(section.clone());
 
         if state.cursor.is_some() {
-            state.blink += cx.state.delta() * 10.0;
+            state.blink += cx.state.delta_time() * 10.0;
             cx.request_redraw();
 
             let rect = self.cursor_rect(state, cx);

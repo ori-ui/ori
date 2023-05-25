@@ -1,6 +1,6 @@
 use ori::prelude::*;
 
-fn ui(_cx: Scope) -> impl View {
+fn ui(_cx: Scope) -> Element {
     let mut div = Div::new().class("row");
 
     for _ in 0..40 {

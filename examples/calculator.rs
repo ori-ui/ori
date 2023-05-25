@@ -99,7 +99,7 @@ fn result_bar(
     operator: Signal<Operator>,
     result: Signal<Number>,
     rhs: Signal<Number>,
-) -> impl View {
+) -> Element {
     let text = cx.memo(move || {
         let result = result.get();
         let operator = operator.get();
@@ -126,7 +126,7 @@ fn bar0(
     operator: Signal<Operator>,
     result: Signal<Number>,
     rhs: Signal<Number>,
-) -> impl View {
+) -> Element {
     let clear_all = move |_: &PointerEvent| {
         operator.set(Operator::None);
         result.set(Number::new(0.0));
@@ -191,7 +191,7 @@ fn bar1(
     operator: Signal<Operator>,
     result: Signal<Number>,
     rhs: Signal<Number>,
-) -> impl View {
+) -> Element {
     let multiply = move |_: &PointerEvent| {
         operator.set(Operator::Multiply);
     };
@@ -219,7 +219,7 @@ fn bar2(
     operator: Signal<Operator>,
     result: Signal<Number>,
     rhs: Signal<Number>,
-) -> impl View {
+) -> Element {
     let subtract = move |_: &PointerEvent| {
         operator.set(Operator::Subtract);
     };
@@ -247,7 +247,7 @@ fn bar3(
     operator: Signal<Operator>,
     result: Signal<Number>,
     rhs: Signal<Number>,
-) -> impl View {
+) -> Element {
     let add = move |_: &PointerEvent| {
         operator.set(Operator::Add);
     };
@@ -275,7 +275,7 @@ fn bar4(
     operator: Signal<Operator>,
     result: Signal<Number>,
     rhs: Signal<Number>,
-) -> impl View {
+) -> Element {
     let negate = move |_: &PointerEvent| {
         if result.get().value == 0.0 {
             return;
@@ -348,7 +348,7 @@ fn buttons(
     operator: Signal<Operator>,
     result: Signal<Number>,
     rhs: Signal<Number>,
-) -> impl View {
+) -> Element {
     view! {
         <Div class="buttons column">
             { bar0(cx, operator, result, rhs) }
@@ -360,7 +360,7 @@ fn buttons(
     }
 }
 
-fn ui(cx: Scope) -> impl View {
+fn ui(cx: Scope) -> Element {
     let operator = cx.signal(Operator::None);
     let result = cx.signal(Number::new(0.0));
     let rhs = cx.signal(Number::new(0.0));

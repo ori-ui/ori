@@ -6,8 +6,8 @@ use std::{
 };
 
 use ori_core::{
-    KeyboardEvent, LoadedStyleKind, Modifiers, Node, PointerEvent, RequestRedrawEvent, RootNode,
-    SetWindowIconEvent, SetWindowTitleEvent, StyleLoader, Stylesheet, Vec2, View,
+    Element, KeyboardEvent, LoadedStyleKind, Modifiers, PointerEvent, RequestRedrawEvent,
+    RootElement, SetWindowIconEvent, SetWindowTitleEvent, StyleLoader, Stylesheet, Vec2,
     WindowResizeEvent,
 };
 use ori_graphics::{Color, ImageData, ImageSource};
@@ -63,17 +63,17 @@ pub struct App {
     style_loader: StyleLoader,
     parent_window: Option<RawWindowHandle>,
     icon: Option<ImageData>,
-    builder: Option<Box<dyn FnOnce(&EventSink, &CallbackEmitter<Event>) -> RootNode>>,
+    builder: Option<Box<dyn FnOnce(&EventSink, &CallbackEmitter<Event>) -> RootElement>>,
 }
 
 impl App {
     /// Create a new [`App`] with the given content.
-    pub fn new<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
+    pub fn new(content: impl FnOnce(Scope) -> Element + 'static) -> Self {
         let event_loop = EventLoopBuilder::<Event>::with_user_event().build();
         Self::new_with_event_loop(event_loop, content)
     }
 
-    pub fn new_any_thread<T: View>(content: impl FnOnce(Scope) -> T + 'static) -> Self {
+    pub fn new_any_thread(content: impl FnOnce(Scope) -> Element + 'static) -> Self {
         let mut builder = EventLoopBuilder::<Event>::with_user_event();
 
         #[cfg(target_os = "windows")]
@@ -103,17 +103,18 @@ impl App {
         Self::new_with_event_loop(builder.build(), content)
     }
 
-    pub fn new_with_event_loop<T: View>(
+    pub fn new_with_event_loop(
         event_loop: EventLoop<Event>,
-        content: impl FnOnce(Scope) -> T + 'static,
+        content: impl FnOnce(Scope) -> Element + 'static,
     ) -> Self {
         initialize_log().unwrap();
 
         let builder = Box::new(
-            move |event_sink: &EventSink, event_callbacks: &CallbackEmitter<Event>| -> RootNode {
+            move |event_sink: &EventSink,
+                  event_callbacks: &CallbackEmitter<Event>|
+                  -> RootElement {
                 let scope = Scope::new(event_sink.clone(), event_callbacks.clone());
-                let node = Node::new(content(scope));
-                RootNode::new(node, event_sink.clone(), event_callbacks.clone())
+                RootElement::new(content(scope), event_sink.clone(), event_callbacks.clone())
             },
         );
 
@@ -261,7 +262,7 @@ struct AppState {
     window: Arc<Window>,
     mouse_position: Vec2,
     modifiers: Modifiers,
-    root: RootNode,
+    root: RootElement,
     clear_color: Color,
     #[cfg(feature = "ash")]
     renderer: ori_ash::AshRenderer,

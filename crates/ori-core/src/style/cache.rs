@@ -4,7 +4,7 @@ use crate::{StyleAttribute, StyleSelectors, StyleSpecificity};
 
 /// A hash of [`StyleSelectors`](StyleSelectors).
 ///
-/// This is used to cache the style of a node.
+/// This is used to cache the style of a element.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct StyleSelectorsHash {

@@ -11,7 +11,7 @@ use ori_graphics::{
 use ori_reactive::EventSink;
 
 use crate::{
-    AvailableSpace, Cursor, FromStyleAttribute, Margin, NodeState, Padding, RequestRedrawEvent,
+    AvailableSpace, Cursor, ElementState, FromStyleAttribute, Margin, Padding, RequestRedrawEvent,
     StyleAttribute, StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet,
     Unit,
 };
@@ -63,7 +63,7 @@ impl ImageCache {
 
 /// A context for [`View::event`].
 pub struct EventContext<'a> {
-    pub state: &'a mut NodeState,
+    pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
@@ -76,7 +76,7 @@ pub struct EventContext<'a> {
 
 /// A context for [`View::layout`].
 pub struct LayoutContext<'a> {
-    pub state: &'a mut NodeState,
+    pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
@@ -167,7 +167,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
 
 /// A context for [`View::draw`].
 pub struct DrawContext<'a> {
-    pub state: &'a mut NodeState,
+    pub state: &'a mut ElementState,
     pub frame: &'a mut Frame,
     pub renderer: &'a dyn Renderer,
     pub selectors: &'a StyleSelectors,
@@ -262,19 +262,19 @@ pub trait Context {
     /// Returns the [`StyleCache`] of the application.
     fn style_cache_mut(&mut self) -> &mut StyleCache;
 
-    /// Returns the [`NodeState`] of the current node.
-    fn state(&self) -> &NodeState;
+    /// Returns the [`NodeState`] of the current element.
+    fn state(&self) -> &ElementState;
 
-    /// Returns the [`NodeState`] of the current node.
-    fn state_mut(&mut self) -> &mut NodeState;
+    /// Returns the [`NodeState`] of the current element.
+    fn state_mut(&mut self) -> &mut ElementState;
 
     /// Returns the [`Renderer`] of the application.
     fn renderer(&self) -> &dyn Renderer;
 
-    /// Returns the [`StyleSelectors`] of the current node.
+    /// Returns the [`StyleSelectors`] of the current element.
     fn selectors(&self) -> &StyleSelectors;
 
-    /// Returns the [`StyleSelectorsHash`] of the current node.
+    /// Returns the [`StyleSelectorsHash`] of the current element.
     fn selectors_hash(&self) -> StyleSelectorsHash;
 
     /// Returns the [`EventSink`] of the application.
@@ -470,22 +470,22 @@ pub trait Context {
         image
     }
 
-    /// Returns `true` if the node is active.
+    /// Returns `true` if the element is active.
     fn active(&self) -> bool {
         self.state().active
     }
 
-    /// Returns `true` if the node is hovered.
+    /// Returns `true` if the element is hovered.
     fn hovered(&self) -> bool {
         self.state().hovered
     }
 
-    /// Returns `true` if the node is focused.
+    /// Returns `true` if the element is focused.
     fn focused(&self) -> bool {
         self.state().focused
     }
 
-    /// Focuses the node, this will also request a redraw.
+    /// Focuses the element, this will also request a redraw.
     fn focus(&mut self) {
         if self.focused() {
             return;
@@ -495,7 +495,7 @@ pub trait Context {
         self.request_redraw();
     }
 
-    /// Unfocuses the node, this will also request a redraw.
+    /// Unfocuses the element, this will also request a redraw.
     fn unfocus(&mut self) {
         if !self.focused() {
             return;
@@ -505,7 +505,7 @@ pub trait Context {
         self.request_redraw();
     }
 
-    /// Hovers the node, this will also request a redraw.
+    /// Hovers the element, this will also request a redraw.
     fn hover(&mut self) {
         if self.hovered() {
             return;
@@ -515,7 +515,7 @@ pub trait Context {
         self.request_redraw();
     }
 
-    /// Unhovers the node, this will also request a redraw.
+    /// Unhovers the element, this will also request a redraw.
     fn unhover(&mut self) {
         if !self.hovered() {
             return;
@@ -525,7 +525,7 @@ pub trait Context {
         self.request_redraw();
     }
 
-    /// Activates the node, this will also request a redraw.
+    /// Activates the element, this will also request a redraw.
     fn activate(&mut self) {
         if self.active() {
             return;
@@ -535,7 +535,7 @@ pub trait Context {
         self.request_redraw();
     }
 
-    /// Deactivates the node, this will also request a redraw.
+    /// Deactivates the element, this will also request a redraw.
     fn deactivate(&mut self) {
         if !self.active() {
             return;
@@ -545,27 +545,27 @@ pub trait Context {
         self.request_redraw();
     }
 
-    /// Returns the local rect of the node.
+    /// Returns the local rect of the element.
     fn local_rect(&self) -> Rect {
         self.state().local_rect
     }
 
-    /// Returns the global rect of the node.
+    /// Returns the global rect of the element.
     fn rect(&self) -> Rect {
         self.state().global_rect
     }
 
-    /// Returns the margin of the node.
+    /// Returns the margin of the element.
     fn margin(&self) -> Margin {
         self.state().margin
     }
 
-    /// Returns the padding of the node.
+    /// Returns the padding of the element.
     fn padding(&self) -> Padding {
         self.state().padding
     }
 
-    /// Returns the size of the node.
+    /// Returns the size of the element.
     fn size(&self) -> Vec2 {
         self.state().local_rect.size()
     }
@@ -595,7 +595,7 @@ pub trait Context {
 
     /// Returns the time in seconds since the last frame.
     fn delta_time(&self) -> f32 {
-        self.state().delta()
+        self.state().delta_time()
     }
 }
 
@@ -614,11 +614,11 @@ macro_rules! context {
                 self.style_cache
             }
 
-            fn state(&self) -> &NodeState {
+            fn state(&self) -> &ElementState {
                 self.state
             }
 
-            fn state_mut(&mut self) -> &mut NodeState {
+            fn state_mut(&mut self) -> &mut ElementState {
                 self.state
             }
 

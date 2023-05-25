@@ -1,27 +1,9 @@
-use std::{
-    any::{self, Any},
-    sync::Arc,
-};
+use std::any::{self, Any, TypeId};
 
 use glam::Vec2;
-use ori_reactive::{Event, OwnedSignal};
-use parking_lot::{Mutex, MutexGuard};
+use ori_reactive::Event;
 
-use crate::{AvailableSpace, Context, DrawContext, EventContext, LayoutContext, Style};
-
-pub trait IntoView {
-    type View: View;
-
-    fn into_view(self) -> Self::View;
-}
-
-impl<T: View> IntoView for T {
-    type View = T;
-
-    fn into_view(self) -> Self::View {
-        self
-    }
-}
+use crate::{AvailableSpace, DrawContext, EventContext, LayoutContext, Style};
 
 /// A [`View`] is a component that can be rendered to the screen.
 #[allow(unused_variables)]
@@ -58,104 +40,11 @@ pub trait View: Send + Sync + 'static {
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {}
 }
 
-pub struct ViewRef<V: View> {
-    view: Arc<Mutex<V>>,
-    is_dirty: OwnedSignal<bool>,
-}
-
-impl<V: View> Clone for ViewRef<V> {
-    fn clone(&self) -> Self {
-        Self {
-            view: self.view.clone(),
-            is_dirty: self.is_dirty.clone(),
-        }
-    }
-}
-
-impl<V: View> ViewRef<V> {
-    pub fn new(view: V) -> Self {
-        Self {
-            view: Arc::new(Mutex::new(view)),
-            is_dirty: OwnedSignal::new(false),
-        }
-    }
-
-    pub fn lock(&self) -> MutexGuard<'_, V> {
-        self.set_dirty();
-        self.view.lock()
-    }
-
-    pub fn lock_untracked(&self) -> MutexGuard<'_, V> {
-        self.view.lock()
-    }
-
-    pub fn is_dirty(&self) -> bool {
-        self.is_dirty.get_untracked()
-    }
-
-    pub fn set_dirty(&self) {
-        self.is_dirty.set(true);
-    }
-
-    pub fn clear_dirty(&self) {
-        self.is_dirty.set(false);
-    }
-}
-
-impl<V: View> View for ViewRef<V> {
-    type State = V::State;
-
-    fn build(&self) -> Self::State {
-        self.lock_untracked().build()
-    }
-
-    fn style(&self) -> Style {
-        self.lock_untracked().style()
-    }
-
-    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        if self.is_dirty() {
-            self.clear_dirty();
-            cx.request_layout();
-            cx.request_redraw();
-        }
-
-        self.lock_untracked().event(state, cx, event);
-    }
-
-    fn layout(
-        &self,
-        state: &mut Self::State,
-        cx: &mut LayoutContext,
-        space: AvailableSpace,
-    ) -> Vec2 {
-        if self.is_dirty() {
-            self.clear_dirty();
-            cx.request_layout();
-            cx.request_redraw();
-        }
-
-        self.lock_untracked().layout(state, cx, space)
-    }
-
-    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        if self.is_dirty() {
-            self.clear_dirty();
-            cx.request_layout();
-            cx.request_redraw();
-        }
-
-        self.lock_untracked().draw(state, cx);
-    }
-}
-
-type AnyViewState = Box<dyn Any + Send + Sync>;
-
 /// A [`View`] that with an unknown state.
 ///
 /// This is used to store a [`View`] in a [`Node`](crate::Node).
-pub trait AnyView: Send + Sync {
-    fn build(&self) -> AnyViewState;
+pub trait AnyView: Any + Send + Sync {
+    fn build(&self) -> Box<dyn Any + Send + Sync>;
 
     fn style(&self) -> Style;
 
@@ -167,7 +56,7 @@ pub trait AnyView: Send + Sync {
 }
 
 impl<T: View> AnyView for T {
-    fn build(&self) -> AnyViewState {
+    fn build(&self) -> Box<dyn Any + Send + Sync> {
         Box::new(self.build())
     }
 
@@ -203,7 +92,7 @@ impl<T: View> AnyView for T {
 
 impl dyn AnyView {
     pub fn downcast_ref<T: AnyView>(&self) -> Option<&T> {
-        if any::type_name::<T>() == any::type_name::<Self>() {
+        if self.type_id() == TypeId::of::<T>() {
             // SAFETY: `T` and `Self` are the same type
             unsafe { Some(&*(self as *const dyn AnyView as *const T)) }
         } else {
@@ -212,70 +101,12 @@ impl dyn AnyView {
     }
 
     pub fn downcast_mut<T: AnyView>(&mut self) -> Option<&mut T> {
-        if any::type_name::<T>() == any::type_name::<Self>() {
+        if <dyn AnyView>::type_id(self) == TypeId::of::<T>() {
             // SAFETY: `T` and `Self` are the same type
             unsafe { Some(&mut *(self as *mut dyn AnyView as *mut T)) }
         } else {
             None
         }
-    }
-}
-
-impl View for Box<dyn AnyView> {
-    type State = AnyViewState;
-
-    fn build(&self) -> Self::State {
-        self.as_ref().build()
-    }
-
-    fn style(&self) -> Style {
-        self.as_ref().style()
-    }
-
-    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        self.as_ref().event(state.as_mut(), cx, event);
-    }
-
-    fn layout(
-        &self,
-        state: &mut Self::State,
-        cx: &mut LayoutContext,
-        space: AvailableSpace,
-    ) -> Vec2 {
-        self.as_ref().layout(state.as_mut(), cx, space)
-    }
-
-    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        self.as_ref().draw(state.as_mut(), cx);
-    }
-}
-
-impl View for Arc<dyn AnyView> {
-    type State = AnyViewState;
-
-    fn build(&self) -> Self::State {
-        self.as_ref().build()
-    }
-
-    fn style(&self) -> Style {
-        self.as_ref().style()
-    }
-
-    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        self.as_ref().event(state.as_mut(), cx, event);
-    }
-
-    fn layout(
-        &self,
-        state: &mut Self::State,
-        cx: &mut LayoutContext,
-        space: AvailableSpace,
-    ) -> Vec2 {
-        self.as_ref().layout(state.as_mut(), cx, space)
-    }
-
-    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
-        self.as_ref().draw(state.as_mut(), cx);
     }
 }
 

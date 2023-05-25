@@ -22,7 +22,6 @@ ori-reactive = { path = "crates/ori-reactive", version = "0.1.0-alpha.1" }
 ori-ash = { path = "crates/ori-ash", version = "0.1.0-alpha.1", optional = true }
 ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1", optional = true }
 ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1", optional = true }
-ori-baseview = { path = "crates/ori-baseview", version = "0.1.0-alpha.1", optional = true }
 
 [features]
 default = ["winit-wgpu"]
@@ -32,10 +31,7 @@ image = ["ori-graphics/image"]
 ash = ["ori-ash"]
 wgpu = ["ori-wgpu"]
 
-baseview = ["ori-baseview"]
 winit = ["ori-winit"]
-
-baseview-wgpu = ["baseview", "wgpu", "ori-baseview/wgpu"]
 
 winit-ash = ["winit", "ash", "ori-winit/ash"]
 winit-wgpu = ["winit", "wgpu", "ori-winit/wgpu"]

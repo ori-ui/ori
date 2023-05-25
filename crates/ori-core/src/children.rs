@@ -7,8 +7,8 @@ use ori_reactive::Event;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    AlignItem, AnyView, AvailableSpace, Axis, Context, DrawContext, EventContext, IntoChildren,
-    IntoNode, JustifyContent, LayoutContext, Node, Parent, View,
+    AlignItem, AnyView, AvailableSpace, Axis, Context, DrawContext, Element, ElementView,
+    EventContext, JustifyContent, LayoutContext, Parent,
 };
 
 /// A layout that lays out children in a flexbox-like manner.
@@ -85,61 +85,42 @@ impl FlexLayout {
 
 /// Children of a [`View`].
 #[derive(Deref, DerefMut)]
-pub struct Children<T: View = Box<dyn AnyView>> {
-    nodes: SmallVec<[SmallVec<[Node<T>; 1]>; 1]>,
+pub struct Children<T: ElementView = Box<dyn AnyView>> {
+    elements: SmallVec<[SmallVec<[Element<T>; 1]>; 1]>,
 }
 
-impl<T: View> Default for Children<T> {
+impl<T: ElementView> Default for Children<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: View> Parent for Children<T> {
+impl<T: ElementView> Parent for Children<T> {
     type Child = T;
 
     fn clear_children(&mut self) {
-        self.nodes.clear();
+        self.elements.clear();
     }
 
-    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>) -> usize
-    where
-        I::Item: IntoNode<Self::Child, U>,
-    {
-        let children = child
-            .into_children()
-            .into_iter()
-            .map(IntoNode::into_node)
-            .collect();
-
-        let index = self.nodes.len();
-        self.nodes.push(children);
-        index
+    fn add_children(&mut self, children: impl Iterator<Item = Element<Self::Child>>) -> usize {
+        self.elements.push(children.collect());
+        self.elements.len() - 1
     }
 
-    fn set_child<I: IntoIterator, U: ?Sized>(&mut self, index: usize, child: impl IntoChildren<I>)
-    where
-        I::Item: IntoNode<Self::Child, U>,
-    {
-        let children = child
-            .into_children()
-            .into_iter()
-            .map(IntoNode::into_node)
-            .collect();
-
-        self.nodes[index] = children;
+    fn set_children(&mut self, slot: usize, children: impl Iterator<Item = Element<Self::Child>>) {
+        self.elements[slot] = children.collect();
     }
 }
 
-impl<T: View> Children<T> {
+impl<T: ElementView> Children<T> {
     pub const fn new() -> Self {
         Self {
-            nodes: SmallVec::new_const(),
+            elements: SmallVec::new_const(),
         }
     }
 
     pub fn len(&self) -> usize {
-        self.nodes.iter().map(SmallVec::len).sum()
+        self.elements.iter().map(SmallVec::len).sum()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -396,34 +377,34 @@ impl<T: View> Children<T> {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
-        self.nodes.iter().flatten()
+    pub fn iter(&self) -> impl Iterator<Item = &Element<T>> {
+        self.elements.iter().flatten()
     }
 }
 
-impl<T: View> IntoIterator for Children<T> {
-    type Item = Node<T>;
+impl<T: ElementView> IntoIterator for Children<T> {
+    type Item = Element<T>;
     type IntoIter = iter::Flatten<smallvec::IntoIter<[SmallVec<[Self::Item; 1]>; 1]>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.nodes.into_iter().flatten()
+        self.elements.into_iter().flatten()
     }
 }
 
-impl<'a, T: View> IntoIterator for &'a Children<T> {
-    type Item = &'a Node<T>;
-    type IntoIter = iter::Flatten<slice::Iter<'a, SmallVec<[Node<T>; 1]>>>;
+impl<'a, T: ElementView> IntoIterator for &'a Children<T> {
+    type Item = &'a Element<T>;
+    type IntoIter = iter::Flatten<slice::Iter<'a, SmallVec<[Element<T>; 1]>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.nodes.iter().flatten()
+        self.elements.iter().flatten()
     }
 }
 
 impl<'a> IntoIterator for &'a mut Children {
-    type Item = &'a mut Node;
-    type IntoIter = iter::Flatten<slice::IterMut<'a, SmallVec<[Node; 1]>>>;
+    type Item = &'a mut Element;
+    type IntoIter = iter::Flatten<slice::IterMut<'a, SmallVec<[Element; 1]>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.nodes.iter_mut().flatten()
+        self.elements.iter_mut().flatten()
     }
 }

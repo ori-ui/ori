@@ -1,6 +1,6 @@
 use ori_reactive::{Callback, CallbackEmitter, OwnedSignal, Scope, Signal};
 
-use crate::{IntoNode, IntoView, View};
+use crate::{Element, ElementView};
 
 pub trait Properties {
     type Setter<'a>
@@ -56,41 +56,12 @@ impl<'a, T: Send + Sync + Clone + 'static> Bindable<'a> for OwnedSignal<T> {
     }
 }
 
-pub trait IntoChildren<I: IntoIterator> {
-    fn into_children(self) -> I;
-}
-
-impl<T: IntoView> IntoChildren<std::iter::Once<T>> for T {
-    fn into_children(self) -> std::iter::Once<T> {
-        std::iter::once(self)
-    }
-}
-
-impl<T: IntoIterator> IntoChildren<T> for T {
-    fn into_children(self) -> T {
-        self
-    }
-}
-
 pub trait Parent {
-    type Child: View;
+    type Child: ElementView;
 
     fn clear_children(&mut self);
 
-    fn add_child<I: IntoIterator, U: ?Sized>(&mut self, child: impl IntoChildren<I>) -> usize
-    where
-        I::Item: IntoNode<Self::Child, U>;
+    fn add_children(&mut self, child: impl Iterator<Item = Element<Self::Child>>) -> usize;
 
-    fn set_child<I: IntoIterator, U: ?Sized>(&mut self, index: usize, child: impl IntoChildren<I>)
-    where
-        I::Item: IntoNode<Self::Child, U>;
-
-    fn with_child<I: IntoIterator, U: ?Sized>(mut self, child: impl IntoChildren<I>) -> Self
-    where
-        Self: Sized,
-        I::Item: IntoNode<Self::Child, U>,
-    {
-        self.add_child(child);
-        self
-    }
+    fn set_children(&mut self, slot: usize, child: impl Iterator<Item = Element<Self::Child>>);
 }

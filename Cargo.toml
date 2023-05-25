@@ -24,7 +24,7 @@ ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1", optional = tru
 ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1", optional = true }
 
 [features]
-default = ["winit-ash"]
+default = ["winit-wgpu"]
 tracy = ["ori-winit/tracy"]
 image = ["ori-graphics/image"]
 

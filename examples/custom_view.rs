@@ -38,7 +38,7 @@ impl View for CustomView {
             PI,
         );
 
-        cx.draw(curve.stroke(5.0, Color::BLUE));
+        cx.draw(curve.fill(Color::BLUE));
     }
 }
 

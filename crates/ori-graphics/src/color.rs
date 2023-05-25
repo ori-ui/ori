@@ -4,6 +4,7 @@ use std::{
 };
 
 use bytemuck::{Pod, Zeroable};
+use glam::Vec4;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -132,6 +133,30 @@ impl Into<[f32; 4]> for Color {
 impl From<[f32; 4]> for Color {
     fn from([r, g, b, a]: [f32; 4]) -> Self {
         Self { r, g, b, a }
+    }
+}
+
+impl Into<(f32, f32, f32, f32)> for Color {
+    fn into(self) -> (f32, f32, f32, f32) {
+        (self.r, self.g, self.b, self.a)
+    }
+}
+
+impl From<(f32, f32, f32, f32)> for Color {
+    fn from((r, g, b, a): (f32, f32, f32, f32)) -> Self {
+        Self { r, g, b, a }
+    }
+}
+
+impl Into<Vec4> for Color {
+    fn into(self) -> Vec4 {
+        Vec4::new(self.r, self.g, self.b, self.a)
+    }
+}
+
+impl From<Vec4> for Color {
+    fn from(vec: Vec4) -> Self {
+        Self::rgba(vec.x, vec.y, vec.z, vec.w)
     }
 }
 

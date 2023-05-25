@@ -19,11 +19,15 @@ pub struct Curve {
 
 impl Curve {
     /// The resolution of the curve, measured in pixels per point.
-    pub const RESOLUTION: f32 = 10.0;
+    pub const RESOLUTION: f32 = 5.0;
 
     /// Creates an empty curve.
     pub const fn new() -> Self {
         Self { points: vec![] }
+    }
+
+    pub fn extend(&mut self, other: impl IntoIterator<Item = Vec2>) {
+        self.points.extend(other);
     }
 
     /// Creates an arc.
@@ -37,7 +41,6 @@ impl Curve {
         let mut curve = Curve::new();
 
         let length = (end_angle - start_angle).abs() * radius;
-        // calculate the step in radians for a distance of 1 pixel
         let step = Self::RESOLUTION / length;
 
         if step <= f32::EPSILON {
@@ -53,6 +56,11 @@ impl Curve {
 
             angle += step;
         }
+
+        curve.add_point(Vec2::new(
+            center.x + radius * end_angle.cos(),
+            center.y + radius * end_angle.sin(),
+        ));
 
         curve
     }

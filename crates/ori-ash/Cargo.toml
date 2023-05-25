@@ -1,0 +1,21 @@
+[package]
+name = "ori-ash"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ori-graphics = { path = "../ori-graphics", version = "0.1.0-alpha.0" }
+
+ash = "0.37"
+ash-window = "0.12"
+bytemuck = { version = "1.13", features = ["derive"] }
+cosmic-text = "0.8"
+gpu-alloc = "0.5"
+gpu-alloc-ash = "0.5"
+tracing = "0.1"
+raw-window-handle = "0.5"
+
+[target.'cfg(macos)'.dependencies]
+ash-molten = "0.15"

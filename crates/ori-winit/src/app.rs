@@ -82,13 +82,13 @@ impl App {
             builder.with_any_thread(true);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", feature = "x11"))]
         {
             use winit::platform::x11::EventLoopBuilderExtX11;
             builder.with_any_thread(true);
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "linux", feature = "wayland"))]
         {
             use winit::platform::wayland::EventLoopBuilderExtWayland;
             builder.with_any_thread(true);
@@ -263,6 +263,8 @@ struct AppState {
     modifiers: Modifiers,
     root: RootNode,
     clear_color: Color,
+    #[cfg(feature = "ash")]
+    renderer: ori_ash::AshRenderer,
     #[cfg(feature = "wgpu")]
     renderer: ori_wgpu::WgpuRenderer,
 }
@@ -274,7 +276,6 @@ impl AppState {
     }
 
     fn resize(&mut self, width: u32, heigth: u32) {
-        #[cfg(feature = "wgpu")]
         self.renderer.resize(width, heigth);
 
         let size = Vec2::new(width as f32, heigth as f32);
@@ -301,6 +302,14 @@ impl AppState {
         self.root.draw(&self.renderer);
         self.update_cursor();
 
+        #[cfg(feature = "ash")]
+        unsafe {
+            match (self.renderer).render_frame(&self.root.frame, self.clear_color) {
+                Ok(_) => {}
+                Err(err) => tracing::error!("failed to render frame: {}", err),
+            }
+        };
+
         #[cfg(feature = "wgpu")]
         (self.renderer).render_frame(&self.root.frame, self.clear_color);
     }
@@ -311,6 +320,12 @@ impl App {
     pub fn run(mut self) -> ! {
         let window = Arc::new(self.build_window().unwrap());
         let event_sink = self.event_sink();
+
+        #[cfg(feature = "ash")]
+        let renderer = {
+            let size = window.inner_size();
+            unsafe { ori_ash::AshRenderer::new(window.as_ref(), size.width, size.height).unwrap() }
+        };
 
         #[cfg(feature = "wgpu")]
         let renderer = {
@@ -330,7 +345,6 @@ impl App {
             modifiers: Modifiers::default(),
             root,
             clear_color: self.clear_color,
-            #[cfg(feature = "wgpu")]
             renderer,
         };
 
@@ -391,7 +405,6 @@ impl App {
                         new_inner_size: &mut size,
                         ..
                     } => {
-                        #[cfg(feature = "wgpu")]
                         state.resize(size.width, size.height);
                     }
                     WindowEvent::CloseRequested => {

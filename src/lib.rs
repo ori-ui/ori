@@ -26,10 +26,14 @@
 pub use ori_core as core;
 pub use ori_graphics as graphics;
 pub use ori_reactive as reactive;
-#[cfg(feature = "wgpu")]
-pub use ori_wgpu as wgpu;
+
 #[cfg(feature = "winit")]
 pub use ori_winit as winit;
+
+#[cfg(feature = "ash")]
+pub use ori_ash as ash;
+#[cfg(feature = "wgpu")]
+pub use ori_wgpu as wgpu;
 
 pub mod prelude {
     pub use ori_core::prelude::*;

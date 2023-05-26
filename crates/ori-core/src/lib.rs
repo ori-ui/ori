@@ -28,6 +28,7 @@ pub use glam::*;
 pub use tracing::{debug, error, info, trace, warn};
 
 pub mod prelude {
+    pub use crate::build::Parent;
     pub use crate::children::{Children, FlexLayout};
     pub use crate::context::{Context, DrawContext, EventContext, LayoutContext};
     pub use crate::element::Element;

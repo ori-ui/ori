@@ -1,6 +1,6 @@
 use ori_reactive::{Callback, CallbackEmitter, OwnedSignal, Scope, Signal};
 
-use crate::{Element, ElementView};
+use crate::{Element, ElementView, IntoElement};
 
 pub trait Properties {
     type Setter<'a>
@@ -64,4 +64,24 @@ pub trait Parent {
     fn add_children(&mut self, child: impl Iterator<Item = Element<Self::Child>>) -> usize;
 
     fn set_children(&mut self, slot: usize, child: impl Iterator<Item = Element<Self::Child>>);
+
+    fn add_child(&mut self, child: impl IntoElement<Self::Child>) -> usize {
+        self.add_children(std::iter::once(child.into_element()))
+    }
+
+    fn with_children(mut self, children: impl Iterator<Item = Element<Self::Child>>) -> Self
+    where
+        Self: Sized,
+    {
+        self.add_children(children);
+        self
+    }
+
+    fn with_child(mut self, child: impl IntoElement<Self::Child>) -> Self
+    where
+        Self: Sized,
+    {
+        self.add_child(child);
+        self
+    }
 }

@@ -7,7 +7,7 @@
 //! ```no_run
 //! use ori::prelude::*;
 //!
-//! fn ui(cx: Scope) -> impl View {
+//! fn ui(cx: Scope) -> Element {
 //!     let counter = cx.signal(0);
 //!
 //!     view! {
@@ -30,8 +30,6 @@ pub use ori_reactive as reactive;
 #[cfg(feature = "winit")]
 pub use ori_winit as winit;
 
-#[cfg(feature = "ash")]
-pub use ori_ash as ash;
 #[cfg(feature = "wgpu")]
 pub use ori_wgpu as wgpu;
 

@@ -13,7 +13,7 @@ fn ui(_cx: Scope) -> Element {
         div.add_child(child);
     }
 
-    div
+    Element::new(div)
 }
 
 fn main() {

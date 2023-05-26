@@ -2,18 +2,19 @@ use glam::Vec2;
 use ori_reactive::Event;
 
 use crate::{
-    AvailableSpace, Div, DrawContext, Element, EventContext, Events, LayoutContext, Parent, Style,
-    View,
+    AvailableSpace, Div, DrawContext, Element, EventContext, Events, IntoElement, LayoutContext,
+    Parent, Style, View,
 };
 
+#[derive(Default)]
 pub struct Button {
     pub content: Div,
 }
 
-impl Default for Button {
-    fn default() -> Self {
+impl Button {
+    pub fn new(child: impl IntoElement) -> Self {
         Self {
-            content: Div::new(),
+            content: Div::new().with_child(child),
         }
     }
 }

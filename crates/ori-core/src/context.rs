@@ -61,7 +61,7 @@ impl ImageCache {
     }
 }
 
-/// A context for [`View::event`].
+/// A context for [`View::event`](crate::View::event).
 pub struct EventContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
@@ -74,7 +74,7 @@ pub struct EventContext<'a> {
     pub cursor: &'a mut Cursor,
 }
 
-/// A context for [`View::layout`].
+/// A context for [`View::layout`](crate::View::layout).
 pub struct LayoutContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
@@ -165,7 +165,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
     }
 }
 
-/// A context for [`View::draw`].
+/// A context for [`View::draw`](crate::View::draw).
 pub struct DrawContext<'a> {
     pub state: &'a mut ElementState,
     pub frame: &'a mut Frame,
@@ -262,10 +262,10 @@ pub trait Context {
     /// Returns the [`StyleCache`] of the application.
     fn style_cache_mut(&mut self) -> &mut StyleCache;
 
-    /// Returns the [`NodeState`] of the current element.
+    /// Returns the [`ElementState`] of the current element.
     fn state(&self) -> &ElementState;
 
-    /// Returns the [`NodeState`] of the current element.
+    /// Returns the [`ElementState`] of the current element.
     fn state_mut(&mut self) -> &mut ElementState;
 
     /// Returns the [`Renderer`] of the application.

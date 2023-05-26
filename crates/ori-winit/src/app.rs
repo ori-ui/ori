@@ -6,9 +6,9 @@ use std::{
 };
 
 use ori_core::{
-    Element, KeyboardEvent, LoadedStyleKind, Modifiers, PointerEvent, RequestRedrawEvent,
-    RootElement, SetWindowIconEvent, SetWindowTitleEvent, StyleLoader, Stylesheet, Vec2,
-    WindowResizeEvent,
+    math::Vec2, Element, KeyboardEvent, LoadedStyleKind, Modifiers, PointerEvent,
+    RequestRedrawEvent, RootElement, SetWindowIconEvent, SetWindowTitleEvent, StyleLoader,
+    Stylesheet, WindowResizeEvent,
 };
 use ori_graphics::{Color, ImageData, ImageSource};
 use ori_reactive::{CallbackEmitter, Event, EventEmitter, EventSink, Scope, Task};

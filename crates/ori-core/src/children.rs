@@ -83,7 +83,7 @@ impl FlexLayout {
     }
 }
 
-/// Children of a [`View`].
+/// Children of a [`View`](crate::View).
 #[derive(Deref, DerefMut)]
 pub struct Children<T: ElementView = Box<dyn AnyView>> {
     elements: SmallVec<[SmallVec<[Element<T>; 1]>; 1]>,

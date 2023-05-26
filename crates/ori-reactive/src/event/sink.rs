@@ -28,7 +28,7 @@ impl EventSink {
         Self::new(())
     }
 
-    /// Creates a new event sink from an [`EventSender`].
+    /// Creates a new event sink from an [`EventEmitter`].
     pub fn new(sender: impl EventEmitter) -> Self {
         Self {
             emitter: Arc::new(Mutex::new(sender)),

@@ -1,7 +1,7 @@
 use std::{mem, num::NonZeroU64};
 
 use bytemuck::{Pod, Zeroable};
-use ori_graphics::{ImageHandle, Mesh, Rect, Vec2, Vertex};
+use ori_graphics::{math::Vec2, ImageHandle, Mesh, Rect, Vertex};
 use wgpu::{
     include_wgsl, util::StagingBelt, vertex_attr_array, BindGroup, BindGroupDescriptor,
     BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType,

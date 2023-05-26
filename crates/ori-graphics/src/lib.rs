@@ -18,7 +18,7 @@ pub use rect::*;
 pub use renderer::*;
 pub use text::*;
 
-pub use glam::*;
+pub use glam as math;
 
 pub mod prelude {
     pub use crate::color::Color;
@@ -28,4 +28,6 @@ pub mod prelude {
     pub use crate::quad::Quad;
     pub use crate::rect::Rect;
     pub use crate::text::{TextAlign, TextHit, TextSection};
+
+    pub use glam::*;
 }

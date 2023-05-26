@@ -196,7 +196,7 @@ impl<T: Send + Sync> Drop for Modify<T> {
 
 /// A signal that owns its resources.
 ///
-/// This is useful for signals that aren't bound to a [`Scope`].
+/// This is useful for signals that aren't bound to a [`Scope`](crate::Scope).
 pub struct OwnedSignal<T: 'static> {
     signal: Signal<T>,
 }

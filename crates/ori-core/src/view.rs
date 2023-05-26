@@ -24,7 +24,7 @@ pub trait View: Send + Sync + 'static {
 
     /// Handle layout and returns the size of the view.
     ///
-    /// This method should return a size that fits the [`BoxConstraints`].
+    /// This method should return a size that fits the [`AvailableSpace`].
     ///
     /// The default implementation returns the minimum size.
     fn layout(
@@ -42,7 +42,7 @@ pub trait View: Send + Sync + 'static {
 
 /// A [`View`] that with an unknown state.
 ///
-/// This is used to store a [`View`] in a [`Node`](crate::Node).
+/// This is used to store a [`View`] in a [`Element`](crate::Element).
 pub trait AnyView: Any + Send + Sync {
     fn build(&self) -> Box<dyn Any + Send + Sync>;
 

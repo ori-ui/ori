@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ori_graphics::{
-    Color, Frame, Glyph, ImageData, ImageHandle, Line, Primitive, PrimitiveKind, Rect, Renderer,
-    TextSection, Vec2,
+    math::Vec2, Color, Frame, Glyph, ImageData, ImageHandle, Line, Primitive, PrimitiveKind, Rect,
+    Renderer, TextSection,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{

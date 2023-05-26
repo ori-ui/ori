@@ -227,7 +227,7 @@ impl ElementState {
 
     /// Transition a value.
     ///
-    /// If the value is an [`f32`], or a [`Color`], then it will be transitioned.
+    /// If the value is an [`f32`], or a [`Color`](ori_graphics::Color), then it will be transitioned.
     pub fn transition<T: 'static>(
         &mut self,
         name: &str,
@@ -437,21 +437,21 @@ impl<T: ElementView> Element<T> {
         }
     }
 
-    /// Returns a [`Guard`] to the [`AnyViewState`].
+    /// Returns a [`MutexGuard`] to the state of the `T`.
     ///
     /// Be careful when using this, as it can cause deadlocks.
     pub fn view_state(&self) -> MutexGuard<'_, T::State> {
         self.inner.view_state.lock()
     }
 
-    /// Returns a [`Guard`] to the [`NodeState`].
+    /// Returns a [`MutexGuard`] to the [`ElementState`].
     ///
     /// Be careful when using this, as it can cause deadlocks.
     pub fn element_state(&self) -> MutexGuard<'_, ElementState> {
         self.inner.element_state.lock()
     }
 
-    /// Returns a [`Guard`] to the [`View`].
+    /// Returns a [`MutexGuard`] to the `T`.
     pub fn view(&self) -> MutexGuard<'_, T> {
         self.inner.view.lock()
     }

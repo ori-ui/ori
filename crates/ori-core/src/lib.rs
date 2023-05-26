@@ -24,8 +24,7 @@ pub use unit::*;
 pub use view::*;
 pub use views::*;
 
-pub use glam::*;
-pub use tracing::{debug, error, info, trace, warn};
+pub use glam as math;
 
 pub mod prelude {
     pub use crate::build::Parent;

@@ -155,18 +155,12 @@ fn bar0(
 
     view! {
         <Div class="buttons row">
-            <Button on:press=clear_all>
-                <Text text="CE" />
-            </Button>
-            <Button on:press=clear>
-                <Text text="C" />
-            </Button>
+            <Button on:press=clear_all>"CE"</Button>
+            <Button on:press=clear>"C"</Button>
             <Button on:press=remove_digit>
                 <Text text="\u{e14a}" style:font="icon" />
             </Button>
-            <Button on:press=divide>
-                <Text text="÷" />
-            </Button>
+            <Button on:press=divide>"÷"</Button>
         </Div>
     }
 }
@@ -198,18 +192,10 @@ fn bar1(
 
     view! {
         <Div class="buttons row">
-            <Button class="number" on:press=add_digit(operator, result, rhs, 7)>
-                <Text text="7" />
-            </Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 8)>
-                <Text text="8" />
-            </Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 9)>
-                <Text text="9" />
-            </Button>
-            <Button on:press=multiply>
-                <Text text="×" />
-            </Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 7)>"7"</Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 8)>"8"</Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 9)>"9"</Button>
+            <Button on:press=multiply>"×"</Button>
         </Div>
     }
 }
@@ -226,18 +212,10 @@ fn bar2(
 
     view! {
         <Div class="buttons row">
-            <Button class="number" on:press=add_digit(operator, result, rhs, 4)>
-                <Text text="4" />
-            </Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 5)>
-                <Text text="5" />
-            </Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 6)>
-                <Text text="6" />
-            </Button>
-            <Button on:press=subtract>
-                <Text text="-" />
-            </Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 4)>"4"</Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 5)>"5"</Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 6)>"6"</Button>
+            <Button on:press=subtract>"-"</Button>
         </Div>
     }
 }
@@ -254,18 +232,10 @@ fn bar3(
 
     view! {
         <Div class="buttons row">
-            <Button class="number" on:press=add_digit(operator, result, rhs, 1)>
-                <Text text="1" />
-            </Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 2)>
-                <Text text="2" />
-            </Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 3)>
-                <Text text="3" />
-            </Button>
-            <Button on:press=add>
-                <Text text="+" />
-            </Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 1)>"1"</Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 2)>"2"</Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 3)>"3"</Button>
+            <Button on:press=add>"+"</Button>
         </Div>
     }
 }
@@ -327,18 +297,10 @@ fn bar4(
 
     view! {
         <Div class="buttons row">
-            <Button on:press=negate>
-                <Text text="±" />
-            </Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 0)>
-                <Text text="0" />
-            </Button>
-            <Button on:press=add_point>
-                <Text text="." />
-            </Button>
-            <Button on:press=equals>
-                <Text text="=" />
-            </Button>
+            <Button on:press=negate>"±"</Button>
+            <Button class="number" on:press=add_digit(operator, result, rhs, 0)>"0"</Button>
+            <Button on:press=add_point>"."</Button>
+            <Button on:press=equals>"="</Button>
         </Div>
     }
 }

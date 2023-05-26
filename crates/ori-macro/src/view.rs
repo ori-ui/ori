@@ -191,7 +191,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
             let text = text.value.as_ref();
 
             quote_spanned! {text.span() =>
-                #ori_core::Text::new(#text)
+                #ori_core::Element::new(#text)
             }
         }
         Node::Doctype(_) => todo!(),

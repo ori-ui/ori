@@ -93,7 +93,7 @@ impl<T: Send + Sync> AtomRef<T> {
     /// Returns a mutable reference to the value.
     pub fn write(&self) -> AtomWriteGuard<'_, T> {
         AtomWriteGuard {
-            guard: self.lock().write(),
+            guard: Some(self.lock().write()),
             emitter: self.emitter(),
         }
     }
@@ -117,7 +117,7 @@ impl<'a, T> Deref for AtomReadGuard<'a, T> {
 /// A guard that tracks the [`CallbackEmitter`] when read, and emits it when
 /// dropped.
 pub struct AtomWriteGuard<'a, T> {
-    guard: RwLockWriteGuard<'a, T>,
+    guard: Option<RwLockWriteGuard<'a, T>>,
     emitter: &'a CallbackEmitter,
 }
 
@@ -126,20 +126,20 @@ impl<'a, T> Deref for AtomWriteGuard<'a, T> {
 
     fn deref(&self) -> &Self::Target {
         crate::effect::track_callback(self.emitter.downgrade());
-        &*self.guard
+        self.guard.as_ref().unwrap()
     }
 }
 
 impl<'a, T> DerefMut for AtomWriteGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         crate::effect::track_callback(self.emitter.downgrade());
-        &mut *self.guard
+        self.guard.as_mut().unwrap()
     }
 }
 
 impl<'a, T> Drop for AtomWriteGuard<'a, T> {
     fn drop(&mut self) {
-        unsafe { std::ptr::drop_in_place(&mut self.guard) };
+        self.guard.take();
         self.emitter.emit(&());
     }
 }

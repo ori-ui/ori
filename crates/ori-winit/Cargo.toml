@@ -15,7 +15,6 @@ ori-core = { path = "../ori-core", version = "0.1.0-alpha.0" }
 ori-graphics = { path = "../ori-graphics", version = "0.1.0-alpha.0" }
 ori-reactive = { path = "../ori-reactive", version = "0.1.0-alpha.0" }
 
-ori-ash = { path = "../ori-ash", version = "0.1.0-alpha.0", optional = true }
 ori-wgpu = { path = "../ori-wgpu", version = "0.1.0-alpha.0", optional = true }
 
 raw-window-handle = "0.5"
@@ -33,5 +32,4 @@ x11 = ["winit/x11"]
 wayland = ["winit/wayland", "winit/wayland-dlopen"]
 
 # rendering backends
-ash = ["dep:ori-ash"]
 wgpu = ["dep:ori-wgpu"]

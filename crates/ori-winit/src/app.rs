@@ -264,8 +264,6 @@ struct AppState {
     modifiers: Modifiers,
     root: RootElement,
     clear_color: Color,
-    #[cfg(feature = "ash")]
-    renderer: ori_ash::AshRenderer,
     #[cfg(feature = "wgpu")]
     renderer: ori_wgpu::WgpuRenderer,
 }
@@ -303,14 +301,6 @@ impl AppState {
         self.root.draw(&self.renderer);
         self.update_cursor();
 
-        #[cfg(feature = "ash")]
-        unsafe {
-            match (self.renderer).render_frame(&self.root.frame, self.clear_color) {
-                Ok(_) => {}
-                Err(err) => tracing::error!("failed to render frame: {}", err),
-            }
-        };
-
         #[cfg(feature = "wgpu")]
         (self.renderer).render_frame(&self.root.frame, self.clear_color);
     }
@@ -321,12 +311,6 @@ impl App {
     pub fn run(mut self) -> ! {
         let window = Arc::new(self.build_window().unwrap());
         let event_sink = self.event_sink();
-
-        #[cfg(feature = "ash")]
-        let renderer = {
-            let size = window.inner_size();
-            unsafe { ori_ash::AshRenderer::new(window.as_ref(), size.width, size.height).unwrap() }
-        };
 
         #[cfg(feature = "wgpu")]
         let renderer = {

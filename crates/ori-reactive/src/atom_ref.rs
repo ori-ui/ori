@@ -139,7 +139,7 @@ impl<'a, T> DerefMut for AtomWriteGuard<'a, T> {
 
 impl<'a, T> Drop for AtomWriteGuard<'a, T> {
     fn drop(&mut self) {
-        unsafe { std::ptr::drop_in_place(self.guard.deref_mut()) };
+        unsafe { std::ptr::drop_in_place(&mut self.guard) };
         self.emitter.emit(&());
     }
 }

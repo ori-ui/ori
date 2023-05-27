@@ -140,6 +140,6 @@ impl<'a, T> DerefMut for AtomWriteGuard<'a, T> {
 impl<'a, T> Drop for AtomWriteGuard<'a, T> {
     fn drop(&mut self) {
         self.guard.take();
-        self.emitter.emit(&());
+        self.emitter.clear_and_emit(&());
     }
 }

@@ -2,6 +2,22 @@ use ori::prelude::*;
 
 const LONG_TEXT: &str = include_str!("long_text.txt");
 
+fn popup_ui(cx: Scope) -> Element {
+    // use an Atom to store the counter value, so that it persists when popup closes
+    static COUNTER: Atom<i32> = atom!(0);
+
+    view! {
+        <Div class="widget-gallery">
+            <Div class="popup">
+                <Button on:press=move |_| *COUNTER.modify() += 1>
+                    "Click me!"
+                </Button>
+                { format!("Clicked {} times", COUNTER.get()) }
+            </Div>
+        </Div>
+    }
+}
+
 fn ui(cx: Scope) -> Element {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
@@ -9,8 +25,28 @@ fn ui(cx: Scope) -> Element {
     let long_text = cx.signal(String::from(LONG_TEXT));
     let text = cx.signal(String::new());
 
-    let text_size = cx.memo(move || if checked.get() { Em(2.0) } else { Em(1.5) });
+    // popup state
+    let popup_open = cx.signal(false);
+    let popup_window = cx.signal(None);
 
+    // when popup_open changes, open or close the popup window
+    cx.effect(move || {
+        if popup_open.get() {
+            let id = OpenWindowEvent::new(popup_ui)
+                .title("Widget Gallery Popup")
+                .size(300.0, 300.0)
+                .open(cx);
+
+            popup_window.set(Some(id));
+        } else {
+            if let Some(id) = popup_window.get() {
+                cx.emit_event(CloseWindowEvent::new().window(id));
+                popup_window.set(None);
+            }
+        }
+    });
+
+    let text_size = cx.memo(move || if checked.get() { Em(2.0) } else { Em(1.5) });
     let on_click = move |_: &PointerEvent| counter.set(counter.get() + 1);
 
     view! {
@@ -19,6 +55,11 @@ fn ui(cx: Scope) -> Element {
                 <Div class="row">
                     <Text text="Toggle me" style:font-size=trans(text_size.get(), 0.25) />
                     <Checkbox bind:checked=checked />
+                </Div>
+
+                <Div class="row" style:justify-content=JustifyContent::End>
+                    "Popup"
+                    <Checkbox bind:checked=popup_open />
                 </Div>
 
                 <Button on:press=on_click>

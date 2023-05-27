@@ -39,5 +39,5 @@ pub mod prelude {
     pub use ori_reactive::prelude::*;
 
     #[cfg(feature = "winit")]
-    pub use ori_winit::App;
+    pub use ori_winit::prelude::*;
 }

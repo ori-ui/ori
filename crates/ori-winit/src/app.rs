@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     error::Error,
     fmt::Display,
     sync::Arc,
@@ -6,9 +7,9 @@ use std::{
 };
 
 use ori_core::{
-    math::Vec2, Element, KeyboardEvent, LoadedStyleKind, Modifiers, PointerEvent,
+    math::Vec2, CloseWindowEvent, Element, KeyboardEvent, LoadedStyleKind, Modifiers, PointerEvent,
     RequestRedrawEvent, RootElement, SetWindowIconEvent, SetWindowTitleEvent, StyleLoader,
-    Stylesheet, WindowResizeEvent,
+    Stylesheet, WindowId, WindowResizeEvent,
 };
 use ori_graphics::{Color, ImageData, ImageSource};
 use ori_reactive::{CallbackEmitter, Event, EventEmitter, EventSink, Scope, Task};
@@ -18,18 +19,30 @@ use winit::{
     error::OsError,
     event::{Event as WinitEvent, KeyboardInput, MouseScrollDelta, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
-    window::{Icon, Window, WindowBuilder},
+    window::{Icon, Window, WindowBuilder, WindowId as WinitWindowId},
 };
 
-use crate::convert::{
-    convert_cursor_icon, convert_device_id, convert_key, convert_mouse_button, is_pressed,
+use crate::{
+    convert::{
+        convert_cursor_icon, convert_device_id, convert_key, convert_mouse_button, is_pressed,
+    },
+    OpenWindowEvent,
 };
 
-struct EventLoopSender(EventLoopProxy<Event>);
+struct EventLoopSender {
+    window: WinitWindowId,
+    proxy: EventLoopProxy<(WinitWindowId, Event)>,
+}
+
+impl EventLoopSender {
+    fn new(window: WinitWindowId, proxy: EventLoopProxy<(WinitWindowId, Event)>) -> Self {
+        Self { window, proxy }
+    }
+}
 
 impl EventEmitter for EventLoopSender {
     fn send_event(&mut self, event: Event) {
-        let _ = self.0.send_event(event);
+        let _ = self.proxy.send_event((self.window, event));
     }
 }
 
@@ -59,7 +72,7 @@ pub struct App {
     size: Vec2,
     reziseable: bool,
     clear_color: Color,
-    event_loop: EventLoop<Event>,
+    event_loop: EventLoop<(WinitWindowId, Event)>,
     style_loader: StyleLoader,
     parent_window: Option<RawWindowHandle>,
     icon: Option<ImageData>,
@@ -69,12 +82,12 @@ pub struct App {
 impl App {
     /// Create a new [`App`] with the given content.
     pub fn new(content: impl FnOnce(Scope) -> Element + 'static) -> Self {
-        let event_loop = EventLoopBuilder::<Event>::with_user_event().build();
+        let event_loop = EventLoopBuilder::with_user_event().build();
         Self::new_with_event_loop(event_loop, content)
     }
 
     pub fn new_any_thread(content: impl FnOnce(Scope) -> Element + 'static) -> Self {
-        let mut builder = EventLoopBuilder::<Event>::with_user_event();
+        let mut builder = EventLoopBuilder::with_user_event();
 
         #[cfg(target_os = "windows")]
         {
@@ -104,7 +117,7 @@ impl App {
     }
 
     pub fn new_with_event_loop(
-        event_loop: EventLoop<Event>,
+        event_loop: EventLoop<(WinitWindowId, Event)>,
         content: impl FnOnce(Scope) -> Element + 'static,
     ) -> Self {
         initialize_log().unwrap();
@@ -230,8 +243,9 @@ impl App {
 
     /// Create an [`EventSink`] that can be used to send events to the app.
     #[must_use]
-    pub fn event_sink(&self) -> EventSink {
-        EventSink::new(EventLoopSender(self.event_loop.create_proxy()))
+    fn event_sink(&self, window: WinitWindowId) -> EventSink {
+        let proxy = self.event_loop.create_proxy();
+        EventSink::new(EventLoopSender::new(window, proxy))
     }
 
     fn build_window(&self) -> Result<Window, OsError> {
@@ -269,6 +283,36 @@ struct AppState {
 }
 
 impl AppState {
+    fn new(
+        window: Window,
+        event_sink: EventSink,
+        style_loader: StyleLoader,
+        clear_color: Color,
+        builder: impl FnOnce(&EventSink, &CallbackEmitter<Event>) -> RootElement,
+    ) -> Self {
+        let window = Arc::new(window);
+
+        #[cfg(feature = "wgpu")]
+        let renderer = {
+            let size = window.inner_size();
+            unsafe { ori_wgpu::WgpuRenderer::new(window.as_ref(), size.width, size.height) }
+        };
+
+        let event_callbacks = CallbackEmitter::new();
+        let mut root = builder(&event_sink, &event_callbacks);
+        root.style_loader = style_loader;
+
+        Self {
+            window,
+            mouse_position: Vec2::ZERO,
+            modifiers: Modifiers::default(),
+            root,
+            clear_color,
+            #[cfg(feature = "wgpu")]
+            renderer,
+        }
+    }
+
     fn update_cursor(&mut self) {
         let cursor = convert_cursor_icon(self.root.cursor);
         self.window.set_cursor_icon(cursor);
@@ -309,59 +353,89 @@ impl AppState {
 impl App {
     /// Run the app.
     pub fn run(mut self) -> ! {
-        let window = Arc::new(self.build_window().unwrap());
-        let event_sink = self.event_sink();
+        let mut window_ids: HashMap<WindowId, winit::window::WindowId> = HashMap::new();
+        let mut windows: HashMap<winit::window::WindowId, AppState> = HashMap::new();
 
-        #[cfg(feature = "wgpu")]
-        let renderer = {
-            let size = window.inner_size();
-            unsafe { ori_wgpu::WgpuRenderer::new(window.as_ref(), size.width, size.height) }
-        };
-
-        let event_callbacks = CallbackEmitter::new();
+        let window = self.build_window().unwrap();
+        let event_sink = self.event_sink(window.id());
         let builder = self.builder.take().unwrap();
 
-        let mut root = builder(&event_sink, &event_callbacks);
-        root.style_loader = self.style_loader;
+        let main_window = AppState::new(
+            window,
+            event_sink,
+            self.style_loader.clone(),
+            self.clear_color,
+            builder,
+        );
 
-        let mut state = AppState {
-            window: window.clone(),
-            mouse_position: Vec2::ZERO,
-            modifiers: Modifiers::default(),
-            root,
-            clear_color: self.clear_color,
-            renderer,
-        };
+        let proxy = self.event_loop.create_proxy();
+        window_ids.insert(WindowId::main(), main_window.window.id());
+        windows.insert(main_window.window.id(), main_window);
 
-        self.event_loop.run(move |event, _, control_flow| {
+        self.event_loop.run(move |event, target, control_flow| {
             *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(10));
 
             match event {
-                WinitEvent::RedrawRequested(_) => {
-                    state.draw();
+                WinitEvent::RedrawRequested(window) => {
+                    if let Some(state) = windows.get_mut(&window) {
+                        state.draw();
+                    }
                 }
                 WinitEvent::MainEventsCleared
                 | WinitEvent::NewEvents(StartCause::ResumeTimeReached { .. }) => {
-                    state.root.idle();
+                    for state in windows.values_mut() {
+                        state.layout();
+                    }
                 }
-                WinitEvent::UserEvent(event) => {
+                WinitEvent::UserEvent((window, event)) => {
                     // poll awoken task
                     if let Some(task) = event.get::<Task>() {
                         unsafe { task.poll() };
                         return;
                     }
 
+                    // handle open window event
+                    if let Some(event) = event.get::<OpenWindowEvent>() {
+                        let window = event.window_builder().build(target).unwrap();
+                        let event_sender = EventLoopSender::new(window.id(), proxy.clone());
+                        let event_sink = EventSink::new(event_sender);
+                        let builder = event.builder();
+
+                        let state = AppState::new(
+                            window,
+                            event_sink,
+                            self.style_loader.clone(),
+                            self.clear_color,
+                            builder,
+                        );
+
+                        window_ids.insert(event.id(), state.window.id());
+                        windows.insert(state.window.id(), state);
+                        return;
+                    }
+
                     // set window title
                     if let Some(event) = event.get::<SetWindowTitleEvent>() {
-                        window.set_title(&event.title);
+                        let state = match event.window {
+                            Some(window) => windows.get_mut(&window_ids[&window]).unwrap(),
+                            None => windows.get_mut(&window).unwrap(),
+                        };
+
+                        state.window.set_title(&event.title);
+
                         return;
                     }
 
                     // set window icon
                     if let Some(event) = event.get::<SetWindowIconEvent>() {
+                        let state = match event.window {
+                            Some(window) => windows.get_mut(&window_ids[&window]).unwrap(),
+                            None => windows.get_mut(&window).unwrap(),
+                        };
+
                         // if icon is None, remove the icon
                         let Some(icon) = event.icon.as_ref() else {
-                            window.set_window_icon(None);
+                            state.window.set_window_icon(None);
                             return;
                         };
 
@@ -369,8 +443,26 @@ impl App {
                         let icon = Icon::from_rgba(pixels, icon.width(), icon.height());
 
                         match icon {
-                            Ok(icon) => window.set_window_icon(Some(icon)),
+                            Ok(icon) => state.window.set_window_icon(Some(icon)),
                             Err(err) => tracing::error!("failed to set window icon: {}", err),
+                        }
+
+                        return;
+                    }
+
+                    // close window
+                    if let Some(event) = event.get::<CloseWindowEvent>() {
+                        match event.window {
+                            Some(window) => {
+                                windows.remove(&window_ids[&window]);
+                            }
+                            None => {
+                                windows.remove(&window);
+                            }
+                        }
+
+                        if windows.is_empty() {
+                            *control_flow = ControlFlow::Exit;
                         }
 
                         return;
@@ -378,28 +470,47 @@ impl App {
 
                     // request redraw
                     if event.is::<RequestRedrawEvent>() {
-                        window.request_redraw();
+                        if let Some(state) = windows.get_mut(&window) {
+                            state.window.request_redraw();
+                        }
+
                         return;
                     }
 
-                    state.event(&event);
+                    if let Some(state) = windows.get_mut(&window) {
+                        state.event(&event);
+                    }
                 }
-                WinitEvent::WindowEvent { event, .. } => match event {
+                WinitEvent::WindowEvent {
+                    event,
+                    window_id: window,
+                    ..
+                } => match event {
                     WindowEvent::Resized(size)
                     | WindowEvent::ScaleFactorChanged {
                         new_inner_size: &mut size,
                         ..
                     } => {
-                        state.resize(size.width, size.height);
+                        if let Some(state) = windows.get_mut(&window) {
+                            state.resize(size.width, size.height);
+                        }
                     }
                     WindowEvent::CloseRequested => {
-                        *control_flow = ControlFlow::Exit;
+                        windows.remove(&window);
+
+                        if windows.is_empty() {
+                            *control_flow = ControlFlow::Exit;
+                        }
                     }
                     WindowEvent::CursorMoved {
                         position,
                         device_id,
                         ..
                     } => {
+                        let Some(state) = windows.get_mut(&window) else {
+                            return;
+                        };
+
                         state.mouse_position.x = position.x as f32;
                         state.mouse_position.y = position.y as f32;
 
@@ -413,6 +524,10 @@ impl App {
                         state.event(&Event::new(event));
                     }
                     WindowEvent::CursorLeft { device_id } => {
+                        let Some(state) = windows.get_mut(&window) else {
+                            return;
+                        };
+
                         let event = PointerEvent {
                             id: convert_device_id(device_id),
                             position: state.mouse_position,
@@ -429,6 +544,10 @@ impl App {
                         device_id,
                         ..
                     } => {
+                        let Some(state) = windows.get_mut(&window) else {
+                            return;
+                        };
+
                         let event = PointerEvent {
                             id: convert_device_id(device_id),
                             position: state.mouse_position,
@@ -445,6 +564,10 @@ impl App {
                         device_id,
                         ..
                     } => {
+                        let Some(state) = windows.get_mut(&window) else {
+                            return;
+                        };
+
                         let event = PointerEvent {
                             id: convert_device_id(device_id),
                             position: state.mouse_position,
@@ -464,6 +587,10 @@ impl App {
                             },
                         ..
                     } => {
+                        let Some(state) = windows.get_mut(&window) else {
+                            return;
+                        };
+
                         let event = KeyboardEvent {
                             key: convert_key(virtual_keycode),
                             pressed: is_pressed(element_state),
@@ -474,6 +601,10 @@ impl App {
                         state.event(&Event::new(event));
                     }
                     WindowEvent::ReceivedCharacter(c) => {
+                        let Some(state) = windows.get_mut(&window) else {
+                            return;
+                        };
+
                         let event = KeyboardEvent {
                             text: Some(c),
                             modifiers: state.modifiers,
@@ -483,6 +614,10 @@ impl App {
                         state.event(&Event::new(event));
                     }
                     WindowEvent::ModifiersChanged(new_modifiers) => {
+                        let Some(state) = windows.get_mut(&window) else {
+                            return;
+                        };
+
                         state.modifiers = Modifiers {
                             shift: new_modifiers.shift(),
                             ctrl: new_modifiers.ctrl(),

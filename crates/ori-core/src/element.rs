@@ -582,6 +582,10 @@ impl<T: ElementView> Element<T> {
         element_state.style = self.view().style();
         element_state.propagate_up(cx.state_mut());
 
+        if element_state.needs_layout {
+            cx.request_redraw();
+        }
+
         let res = f(element_state, cx);
 
         cx.state_mut().propagate_down(element_state);

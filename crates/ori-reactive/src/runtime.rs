@@ -88,6 +88,7 @@ impl Runtime {
         shard.get(key)?.parent
     }
 
+    #[track_caller]
     pub fn manage_resource(&self, scope: ScopeId, resource: ResourceId) {
         tracing::trace!("managing resource {:?} in scope {:?}", resource, scope);
 
@@ -97,6 +98,7 @@ impl Runtime {
         }
     }
 
+    #[track_caller]
     pub fn dispose_scope(&self, scope: ScopeId) {
         let scope = {
             match self.scopes.remove(scope) {
@@ -134,6 +136,7 @@ impl Runtime {
     }
 
     /// Adds a reference to the resource at `id`.
+    #[track_caller]
     pub fn reference_resource(&self, id: ResourceId) {
         tracing::trace!("referencing resource {:?}", id);
 
@@ -145,7 +148,10 @@ impl Runtime {
 
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
+    #[track_caller]
     pub unsafe fn get_resource<T: Clone + 'static>(&self, id: ResourceId) -> Option<T> {
+        tracing::trace!("getting resource {:?} at {}", id, Location::caller());
+
         let (key, shard) = self.resources.read(&id);
         let resource = shard.get(key)?;
 

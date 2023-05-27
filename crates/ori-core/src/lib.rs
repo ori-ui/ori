@@ -32,8 +32,8 @@ pub mod prelude {
     pub use crate::context::{Context, DrawContext, EventContext, LayoutContext};
     pub use crate::element::Element;
     pub use crate::event::{
-        Cursor, Key, KeyboardEvent, Modifiers, PointerButton, PointerEvent, RequestRedrawEvent,
-        SetWindowIconEvent, SetWindowTitleEvent, WindowResizeEvent,
+        CloseWindowEvent, Cursor, Key, KeyboardEvent, Modifiers, PointerButton, PointerEvent,
+        RequestRedrawEvent, SetWindowIconEvent, SetWindowTitleEvent, WindowId, WindowResizeEvent,
     };
     pub use crate::include_stylesheet;
     pub use crate::layout::{AlignItem, AvailableSpace, Axis, JustifyContent, Margin, Padding};

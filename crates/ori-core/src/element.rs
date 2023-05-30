@@ -4,6 +4,7 @@ use glam::Vec2;
 use ori_graphics::{cosmic_text::FontSystem, Frame, Rect, Renderer};
 use ori_reactive::{Event, EventSink};
 use parking_lot::{Mutex, MutexGuard};
+use tracing::trace_span;
 use uuid::Uuid;
 
 use crate::{
@@ -581,6 +582,8 @@ impl<T: ElementView> Element<T> {
         let element_state = &mut self.element_state();
         element_state.style = self.view().style();
         element_state.propagate_up(cx.state_mut());
+
+        let _span = trace_span!("element", selector = %element_state.selector()).entered();
 
         if element_state.needs_layout {
             cx.request_redraw();

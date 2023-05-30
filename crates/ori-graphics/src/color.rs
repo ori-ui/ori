@@ -6,6 +6,7 @@ use std::{
 use bytemuck::{Pod, Zeroable};
 use glam::Vec4;
 
+/// A color with red, green, blue and alpha components in linear space.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct Color {
@@ -15,6 +16,7 @@ pub struct Color {
     pub a: f32,
 }
 
+#[allow(missing_docs)]
 impl Color {
     pub const TRANSPARENT: Self = Self::rgba(0.0, 0.0, 0.0, 0.0);
     pub const BLACK: Self = Self::rgb(0.0, 0.0, 0.0);
@@ -27,15 +29,20 @@ impl Color {
     pub const YELLOW: Self = Self::rgb(1.0, 1.0, 0.0);
     pub const CYAN: Self = Self::rgb(0.0, 1.0, 1.0);
     pub const MAGENTA: Self = Self::rgb(1.0, 0.0, 1.0);
+}
 
+impl Color {
+    /// Returns a new color with the given red, green, blue and alpha components.
     pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 
+    /// Returns a new color with the given red, green and blue components.
     pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
         Self { r, g, b, a: 1.0 }
     }
 
+    /// Returns a new color with the given red, green, blue and alpha components.
     pub fn rgba8(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self::rgba(
             r as f32 / 255.0,
@@ -45,10 +52,12 @@ impl Color {
         )
     }
 
+    /// Returns a new color with the given red, green and blue components.
     pub fn rgb8(r: u8, g: u8, b: u8) -> Self {
         Self::rgba8(r, g, b, 255)
     }
 
+    /// Try to parse a color from a hex string.
     pub fn try_hex(hex: &str) -> Option<Self> {
         let hex = hex.trim_start_matches('#');
 
@@ -88,10 +97,15 @@ impl Color {
         Some(color)
     }
 
+    /// Parse a color from a hex string.
+    ///
+    /// # Panics
+    /// - If the string is not a valid hex color.
     pub fn hex(hex: &str) -> Self {
         Self::try_hex(hex).expect("Invalid hex color")
     }
 
+    /// Convert the color to a hex string.
     pub fn to_hex(self) -> String {
         format!(
             "#{:02x}{:02x}{:02x}",
@@ -101,26 +115,16 @@ impl Color {
         )
     }
 
+    /// Returns true if the color is translucent.
     pub fn is_translucent(self) -> bool {
         self.a < 1.0
     }
 
-    pub fn to_linear(self) -> [f32; 4] {
-        // https://en.wikipedia.org/wiki/SRGB#The_reverse_transformation
-        fn linear_component(c: f32) -> f32 {
-            if c <= 0.04045 {
-                c / 12.92
-            } else {
-                ((c + 0.055) / 1.055).powf(2.4)
-            }
-        }
-
-        [
-            linear_component(self.r),
-            linear_component(self.g),
-            linear_component(self.b),
-            self.a,
-        ]
+    /// Convert the color to sRGB.
+    ///
+    /// See <https://en.wikipedia.org/wiki/SRGB>.
+    pub fn to_srgb(self) -> [f32; 4] {
+        [self.r.powf(2.2), self.g.powf(2.2), self.b.powf(2.2), self.a]
     }
 }
 

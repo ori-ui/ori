@@ -8,6 +8,7 @@ use std::{
 
 use glam::Vec2;
 
+/// Includes [`ImageData`] from a file.
 #[macro_export]
 macro_rules! include_image {
     ($($tt:tt)*) => {
@@ -15,9 +16,12 @@ macro_rules! include_image {
     };
 }
 
+/// An error that can occur when loading an image.
 #[derive(Debug)]
 pub enum ImageLoadError {
+    /// An IO error occurred.
     Io(io::Error),
+    /// An [`image::ImageError`] error occurred.
     #[cfg(feature = "image")]
     Image(image::ImageError),
 }
@@ -45,10 +49,15 @@ impl Display for ImageLoadError {
     }
 }
 
+/// A source for an image.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ImageSource {
+    /// A path to an image.
+    ///
+    /// Requires the `image` feature.
     #[cfg(feature = "image")]
     Path(PathBuf),
+    /// Image data.
     Data(ImageData),
 }
 
@@ -100,6 +109,7 @@ impl From<&[u8]> for ImageSource {
 }
 
 impl ImageSource {
+    /// Tries to load the [`ImageData`] from the source.
     pub fn try_load(self) -> Result<ImageData, ImageLoadError> {
         match self {
             Self::Data(image) => Ok(image),
@@ -108,6 +118,10 @@ impl ImageSource {
         }
     }
 
+    /// Loads the [`ImageData`] from the source.
+    ///
+    /// # Panics
+    /// - If loading the image fails.
     pub fn load(self) -> ImageData {
         match self {
             Self::Data(image) => image,
@@ -117,6 +131,7 @@ impl ImageSource {
     }
 }
 
+/// Image data, see [`ImageSource`] and [`ImageHandle`].
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ImageData {
     width: u32,
@@ -125,14 +140,28 @@ pub struct ImageData {
 }
 
 impl ImageData {
+    /// Creates a new image.
+    ///
+    /// # Panics
+    /// - If the length of `pixels` is not equal to `width * height * 4`.
     pub fn new(width: u32, height: u32, pixels: impl Into<Arc<[u8]>>) -> Self {
+        let pixels = pixels.into();
+
+        assert!(
+            pixels.len() == (width * height * 4) as usize,
+            "The length of `pixels` must be equal to `width * height * 4`"
+        );
+
         Self {
             width,
             height,
-            pixels: pixels.into(),
+            pixels,
         }
     }
 
+    /// Tries to load an image from a path.
+    ///
+    /// Requires the `image` feature.
     #[cfg(feature = "image")]
     pub fn try_load(path: impl AsRef<Path>) -> Result<Self, ImageLoadError> {
         let image = image::open(path)?;
@@ -147,6 +176,12 @@ impl ImageData {
         })
     }
 
+    /// Loads an image from a path.
+    ///
+    /// # Panics
+    /// - If loading the image fails.
+    ///
+    /// Requires the `image` feature.
     #[cfg(feature = "image")]
     pub fn load(path: impl AsRef<Path>) -> Self {
         match Self::try_load(path) {
@@ -158,6 +193,9 @@ impl ImageData {
         }
     }
 
+    /// Tries to load an image from bytes.
+    ///
+    /// Requires the `image` feature.
     #[cfg(feature = "image")]
     pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, ImageLoadError> {
         let image = image::load_from_memory(bytes)?;
@@ -172,6 +210,12 @@ impl ImageData {
         })
     }
 
+    /// Loads an image from bytes.
+    ///
+    /// # Panics
+    /// - If loading the image fails.
+    ///
+    /// Requires the `image` feature.
     #[cfg(feature = "image")]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         match Self::try_from_bytes(bytes) {
@@ -183,18 +227,22 @@ impl ImageData {
         }
     }
 
+    /// Returns the width of the image.
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Returns the height of the image.
     pub fn height(&self) -> u32 {
         self.height
     }
 
+    /// Returns the size of the image.
     pub fn size(&self) -> Vec2 {
         Vec2::new(self.width as f32, self.height as f32)
     }
 
+    /// Returns the pixels of the image.
     pub fn pixels(&self) -> &[u8] {
         &self.pixels
     }
@@ -220,6 +268,7 @@ impl Debug for ImageData {
     }
 }
 
+/// A handle to a loaded image.
 #[derive(Clone, Debug)]
 pub struct ImageHandle {
     width: u32,
@@ -228,6 +277,8 @@ pub struct ImageHandle {
 }
 
 impl ImageHandle {
+    /// Creates a new image handle. This is called by [`Renderer::create_image`](crate::Renderer::create_image)
+    /// and should usually not be called manually.
     pub fn new<T: Any + Send + Sync>(handle: T, width: u32, height: u32) -> Self {
         Self {
             width,
@@ -236,6 +287,7 @@ impl ImageHandle {
         }
     }
 
+    /// Downgrades the image handle to a [`WeakImageHandle`].
     pub fn downgrade(&self) -> WeakImageHandle {
         WeakImageHandle {
             width: self.width,
@@ -244,27 +296,33 @@ impl ImageHandle {
         }
     }
 
+    /// Tries to downcast the image handle to a concrete type.
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         self.handle.downcast_ref()
     }
 
+    /// Tries to downcast the image handle to a concrete type.
     pub fn downcast_arc<T: Any + Send + Sync>(self) -> Option<Arc<T>> {
         Arc::downcast(self.handle).ok()
     }
 
+    /// Returns the width of the image.
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Returns the height of the image.
     pub fn height(&self) -> u32 {
         self.height
     }
 
+    /// Returns the size of the image.
     pub fn size(&self) -> Vec2 {
         Vec2::new(self.width as f32, self.height as f32)
     }
 }
 
+/// A weak handle to a loaded image, see [`ImageHandle::downgrade`].
 #[derive(Clone, Debug)]
 pub struct WeakImageHandle {
     width: u32,
@@ -273,6 +331,7 @@ pub struct WeakImageHandle {
 }
 
 impl WeakImageHandle {
+    /// Upgrades the image handle to an [`ImageHandle`].
     pub fn upgrade(&self) -> Option<ImageHandle> {
         Some(ImageHandle {
             width: self.width,
@@ -281,18 +340,22 @@ impl WeakImageHandle {
         })
     }
 
+    /// Returns true if the image is still alive, and can be upgraded.
     pub fn is_alive(&self) -> bool {
         self.handle.strong_count() > 0
     }
 
+    /// Returns the width of the image.
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    /// Returns the height of the image.
     pub fn height(&self) -> u32 {
         self.height
     }
 
+    /// Returns the size of the image.
     pub fn size(&self) -> Vec2 {
         Vec2::new(self.width as f32, self.height as f32)
     }

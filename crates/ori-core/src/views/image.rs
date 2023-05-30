@@ -49,7 +49,6 @@ impl View for Image {
         Style::new("image")
     }
 
-    #[tracing::instrument(name = "Image", skip(self, state, cx, space))]
     fn layout(
         &self,
         state: &mut Self::State,
@@ -95,7 +94,6 @@ impl View for Image {
         size
     }
 
-    #[tracing::instrument(name = "Image", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let handle = state.update(cx, &self.src);
         let mesh = Mesh::image(cx.rect(), handle.clone());

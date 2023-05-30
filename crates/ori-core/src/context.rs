@@ -115,8 +115,8 @@ impl<'a> LayoutContext<'a> {
         result
     }
 
-    pub fn messure_text(&mut self, text: &TextSection) -> Rect {
-        text.messure(self.font_system)
+    pub fn measure_text(&mut self, text: &TextSection) -> Rect {
+        text.measure(self.font_system)
     }
 }
 

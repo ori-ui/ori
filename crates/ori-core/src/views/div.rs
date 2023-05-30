@@ -76,7 +76,6 @@ impl View for Div {
         Style::new("div")
     }
 
-    #[tracing::instrument(name = "Div", skip(self, cx, event))]
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
         for child in &self.children {
             child.event(cx, event);
@@ -89,13 +88,11 @@ impl View for Div {
         }
     }
 
-    #[tracing::instrument(name = "Div", skip(self, cx, space))]
     fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         let flex = FlexLayout::from_style(cx);
         space.constrain(self.children.flex_layout(cx, space, flex))
     }
 
-    #[tracing::instrument(name = "Div", skip(self, cx))]
     fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 

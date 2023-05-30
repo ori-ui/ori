@@ -43,7 +43,6 @@ impl View for Checkbox {
         Style::new("checkbox")
     }
 
-    #[tracing::instrument(name = "Checkbox", skip(self, cx, event))]
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
         cx.state.active = self.checked.get();
 
@@ -61,7 +60,6 @@ impl View for Checkbox {
         }
     }
 
-    #[tracing::instrument(name = "Checkbox", skip(self, cx, space))]
     fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         cx.state.active = self.checked.get();
 
@@ -70,7 +68,6 @@ impl View for Checkbox {
         space.constrain(Vec2::new(width, height))
     }
 
-    #[tracing::instrument(name = "Checkbox", skip(self, cx))]
     fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         cx.state.active = self.checked.get();
 

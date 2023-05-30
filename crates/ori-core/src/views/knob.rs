@@ -41,7 +41,6 @@ impl View for Knob {
         Style::new("knob")
     }
 
-    #[tracing::instrument(name = "Knob", skip(self, state, cx, event))]
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if pointer_event.is_press() && cx.hovered() {
@@ -70,13 +69,11 @@ impl View for Knob {
         }
     }
 
-    #[tracing::instrument(name = "Knob", skip(self, cx, space))]
     fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         let size = cx.style_range("size", space.min.max_element()..space.max.min_element());
         space.constrain(Vec2::splat(size))
     }
 
-    #[tracing::instrument(name = "Knob", skip(self, cx))]
     fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         let size = cx.rect().size().min_element();
 

@@ -30,6 +30,8 @@ fn ui(cx: Scope) -> Element {
 
     // when popup_open changes, open or close the popup window
     let toggle_popup = move |_: &PointerEvent| {
+        info!("toggle popup");
+
         if popup_window.get().is_none() {
             let window = Window::new().title("Widget Gallery Popup").size(300, 300);
             let id = cx.open_window(window, popup_ui);

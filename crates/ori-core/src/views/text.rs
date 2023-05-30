@@ -67,7 +67,6 @@ impl View for Text {
         Style::new("text")
     }
 
-    #[tracing::instrument(name = "Text", skip(self, state, cx, space))]
     fn layout(
         &self,
         state: &mut Self::State,
@@ -88,11 +87,10 @@ impl View for Text {
             color: cx.style("color"),
         };
 
-        let text_rect = cx.messure_text(&section);
+        let text_rect = cx.measure_text(&section);
         space.constrain(text_rect.size())
     }
 
-    #[tracing::instrument(name = "Text", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         let section = TextSection {
             rect: cx.rect().ceil(),

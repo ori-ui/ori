@@ -52,12 +52,10 @@ impl View for Button {
         Style::new("button")
     }
 
-    #[tracing::instrument(name = "Button", skip(self, state, cx, event))]
     fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
         self.content.event(state, cx, event);
     }
 
-    #[tracing::instrument(name = "Button", skip(self, state, cx, space))]
     fn layout(
         &self,
         state: &mut Self::State,
@@ -67,7 +65,6 @@ impl View for Button {
         self.content.layout(state, cx, space)
     }
 
-    #[tracing::instrument(name = "Button", skip(self, state, cx))]
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
         self.content.draw(state, cx);
     }

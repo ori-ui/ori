@@ -89,7 +89,6 @@ impl View for Slider {
         Style::new("slider")
     }
 
-    #[tracing::instrument(name = "Slider", skip(self, cx, event))]
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if pointer_event.is_press() && cx.hovered() && self.draggable {
@@ -126,7 +125,6 @@ impl View for Slider {
         }
     }
 
-    #[tracing::instrument(name = "Slider", skip(self, cx, space))]
     fn layout(&self, _: &mut Self::State, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         let axis = cx.style::<Axis>("direction");
         let track_size = cx.style_range("track-size", 0.0..axis.minor(space.max));
@@ -137,7 +135,6 @@ impl View for Slider {
         space.constrain(axis.pack(length, size))
     }
 
-    #[tracing::instrument(name = "Slider", skip(self, cx))]
     fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         let range = 0.0..cx.rect().size().min_element();
 

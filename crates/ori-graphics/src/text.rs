@@ -5,11 +5,15 @@ use glam::Vec2;
 
 use crate::{Color, Rect};
 
+/// Alignment of text within its bounds.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum TextAlign {
+    /// Align text to the left, or top.
     #[default]
     Start,
+    /// Align text to the center.
     Center,
+    /// Align text to the right, or bottom.
     End,
 }
 
@@ -37,6 +41,7 @@ impl FromStr for TextAlign {
 }
 
 impl TextAlign {
+    /// Align a point within a range.
     pub fn align(&self, start: f32, end: f32) -> f32 {
         match self {
             TextAlign::Start => start,
@@ -46,15 +51,26 @@ impl TextAlign {
     }
 }
 
+/// A section of text to display.
+///
+/// Text is rendered using the [`cosmic_text`] crate.
 #[derive(Clone, Debug)]
 pub struct TextSection {
+    /// The rectangle to display the text in.
     pub rect: Rect,
+    /// The scale of the text in pixels.
     pub scale: f32,
+    /// Horizontal alignment of the text.
     pub h_align: TextAlign,
+    /// Vertical alignment of the text.
     pub v_align: TextAlign,
+    /// Whether to wrap the text.
     pub wrap: bool,
+    /// The text to display.
     pub text: String,
+    /// The font family to use.
     pub font_family: Option<String>,
+    /// The color of the text.
     pub color: Color,
 }
 
@@ -74,14 +90,7 @@ impl Default for TextSection {
 }
 
 impl TextSection {
-    pub fn aligned_rect(&self) -> Rect {
-        let x = self.h_align.align(self.rect.min.x, self.rect.max.x);
-        let y = self.v_align.align(self.rect.min.y, self.rect.max.y);
-        let position = Vec2::new(x, y);
-
-        Rect::min_size(position, self.rect.size())
-    }
-
+    /// Creates a [`Buffer`] for this section of text.
     pub fn buffer(&self, font_system: &mut FontSystem) -> Buffer {
         let metrics = Metrics {
             font_size: self.scale,
@@ -117,6 +126,7 @@ impl TextSection {
         buffer
     }
 
+    /// Messures the bounds of a [`Buffer`] for this section of text.
     pub fn messure_buffer(&self, font_system: &mut FontSystem, buffer: &Buffer) -> Rect {
         // TODO: i have no idea what this is doing
         // this is just a copy paste from
@@ -159,28 +169,40 @@ impl TextSection {
         }
     }
 
-    pub fn messure(&self, font_system: &mut FontSystem) -> Rect {
+    /// Measures the bounds of this section of text.
+    pub fn measure(&self, font_system: &mut FontSystem) -> Rect {
         let buffer = self.buffer(font_system);
         self.messure_buffer(font_system, &buffer)
     }
 }
 
+/// A laid out glyph in a [`TextSection`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Glyph {
+    /// The byte index of the glyph in the text.
     pub index: usize,
+    /// The byte index of the next glyph in the text.
     pub rect: Rect,
 }
 
+/// A laid out line in a [`TextSection`].
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Line {
+    /// The byte index of the first glyph in the line.
     pub index: usize,
+    /// The [`Glyph`]s in the line.
     pub glyphs: Vec<Glyph>,
+    /// The bounds of the line.
     pub rect: Rect,
 }
 
+/// A hit in a [`TextSection`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextHit {
+    /// The byte index of the hit.
     pub index: usize,
+    /// Whether the hit is inside a glyph.
     pub inside: bool,
+    /// The delta between the hit and the center of the glyph.
     pub delta: Vec2,
 }

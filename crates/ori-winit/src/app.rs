@@ -23,11 +23,13 @@ use crate::{
 fn initialize_log() -> Result<(), Box<dyn Error>> {
     use tracing_subscriber::layer::SubscriberExt;
 
-    let filter = tracing_subscriber::EnvFilter::from_default_env()
-        .add_directive("wgpu=warn".parse()?)
-        .add_directive("naga=warn".parse()?)
-        .add_directive("winit=warn".parse()?)
-        .add_directive("mio=warn".parse()?);
+    let filter = tracing_subscriber::EnvFilter::builder()
+        .with_default_directive("wgpu=warn".parse()?)
+        .with_default_directive("naga=warn".parse()?)
+        .with_default_directive("winit=warn".parse()?)
+        .with_default_directive("mio=warn".parse()?)
+        .with_default_directive("debug".parse()?)
+        .from_env()?;
 
     let subscriber = tracing_subscriber::registry().with(filter);
     let subscriber = subscriber.with(tracing_subscriber::fmt::Layer::default());

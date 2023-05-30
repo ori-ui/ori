@@ -350,7 +350,7 @@ where
         if let Some(event) = event.get::<OpenWindow>() {
             match self.create_window(target, event.window(), event.take_ui()) {
                 Ok(_) => {
-                    tracing::info!("New Window opened");
+                    tracing::info!("Window opened");
                 }
                 Err(err) => {
                     tracing::error!("Failed to create window: {:?}", err);

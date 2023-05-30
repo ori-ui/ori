@@ -1,3 +1,12 @@
+//! Graphics library for Ori.
+//!
+//! This crate provides all the necessary types and traits for rendering graphics.
+//! - [`Color`]
+//! - [`Curve`]
+//! - [`PrimitiveKind`], [`Primitive`] and [`Frame`]
+//! - [`ImageSource`], [`ImageData`] and [`ImageHandle`]
+//! - [`Mesh`] and [`Vertex`]
+
 mod color;
 mod curve;
 mod frame;
@@ -22,6 +31,8 @@ pub use cosmic_text;
 pub use glam as math;
 
 pub mod prelude {
+    //! A collection of commonly used types and traits.
+
     pub use crate::color::Color;
     pub use crate::curve::Curve;
     pub use crate::image::{ImageData, ImageHandle, ImageLoadError, ImageSource};

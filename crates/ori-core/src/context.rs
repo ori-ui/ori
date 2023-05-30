@@ -6,14 +6,15 @@ use std::{
 
 use glam::Vec2;
 use ori_graphics::{
-    Frame, ImageHandle, ImageSource, Quad, Rect, Renderer, TextHit, TextSection, WeakImageHandle,
+    cosmic_text::FontSystem, Frame, ImageHandle, ImageSource, Quad, Rect, Renderer, TextSection,
+    WeakImageHandle,
 };
 use ori_reactive::EventSink;
 
 use crate::{
-    AvailableSpace, Cursor, ElementState, FromStyleAttribute, Margin, Padding, RequestRedrawEvent,
+    AvailableSpace, ElementState, FromStyleAttribute, Margin, Padding, RequestRedrawEvent,
     StyleAttribute, StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet,
-    Unit,
+    Unit, Window,
 };
 
 /// A cache for images.
@@ -65,26 +66,28 @@ impl ImageCache {
 pub struct EventContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
+    pub window: &'a mut Window,
+    pub font_system: &'a mut FontSystem,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
     pub stylesheet: &'a Stylesheet,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
-    pub cursor: &'a mut Cursor,
 }
 
 /// A context for [`View::layout`](crate::View::layout).
 pub struct LayoutContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
+    pub window: &'a mut Window,
+    pub font_system: &'a mut FontSystem,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
     pub stylesheet: &'a Stylesheet,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
-    pub cursor: &'a mut Cursor,
     pub parent_space: AvailableSpace,
     pub space: AvailableSpace,
 }
@@ -112,12 +115,8 @@ impl<'a> LayoutContext<'a> {
         result
     }
 
-    pub fn messure_text(&self, section: &TextSection) -> Option<Rect> {
-        self.renderer.messure_text(section)
-    }
-
-    pub fn hit_text(&self, section: &TextSection, pos: Vec2) -> Option<TextHit> {
-        self.renderer.hit_text(section, pos)
+    pub fn messure_text(&mut self, text: &TextSection) -> Rect {
+        text.messure(self.font_system)
     }
 }
 
@@ -151,13 +150,14 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
                 state: self.draw_context.state,
                 frame,
                 renderer: self.draw_context.renderer,
+                window: self.draw_context.window,
+                font_system: self.draw_context.font_system,
                 selectors: self.draw_context.selectors,
                 selectors_hash: self.draw_context.selectors_hash,
                 stylesheet: self.draw_context.stylesheet,
                 style_cache: self.draw_context.style_cache,
                 event_sink: self.draw_context.event_sink,
                 image_cache: self.draw_context.image_cache,
-                cursor: self.draw_context.cursor,
             };
 
             f(&mut child);
@@ -170,13 +170,14 @@ pub struct DrawContext<'a> {
     pub state: &'a mut ElementState,
     pub frame: &'a mut Frame,
     pub renderer: &'a dyn Renderer,
+    pub window: &'a mut Window,
+    pub font_system: &'a mut FontSystem,
     pub selectors: &'a StyleSelectors,
     pub selectors_hash: StyleSelectorsHash,
     pub stylesheet: &'a Stylesheet,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
-    pub cursor: &'a mut Cursor,
 }
 
 impl<'a> DrawContext<'a> {
@@ -271,6 +272,18 @@ pub trait Context {
     /// Returns the [`Renderer`] of the application.
     fn renderer(&self) -> &dyn Renderer;
 
+    /// Returns the [`Window`] of the application.
+    fn window(&self) -> &Window;
+
+    /// Returns the [`Window`] of the application.
+    fn window_mut(&mut self) -> &mut Window;
+
+    /// Returns the [`FontSystem`] of the application.
+    fn font_system(&self) -> &FontSystem;
+
+    /// Returns the [`FontSystem`] of the application.
+    fn font_system_mut(&mut self) -> &mut FontSystem;
+
     /// Returns the [`StyleSelectors`] of the current element.
     fn selectors(&self) -> &StyleSelectors;
 
@@ -285,12 +298,6 @@ pub trait Context {
 
     /// Returns the [`ImageCache`] of the application.
     fn image_cache_mut(&mut self) -> &mut ImageCache;
-
-    /// Returns the current [`Cursor`].
-    fn cursor(&self) -> Cursor;
-
-    /// Sets the [`Cursor`].
-    fn set_cursor(&mut self, icon: Cursor);
 
     /// Gets the [`StyleAttribute`] for the given `key`.
     fn get_style_attribute(&mut self, key: &str) -> Option<StyleAttribute> {
@@ -392,11 +399,7 @@ pub trait Context {
         let value = Unit::from_attribute(attribute.value().clone())?;
         let transition = attribute.transition();
 
-        let pixels = value.pixels(
-            range,
-            self.renderer().scale(),
-            self.renderer().window_size(),
-        );
+        let pixels = value.pixels(range, self.window().scale, self.window().size.as_vec2());
 
         Some((self.state_mut()).transition(key, pixels, transition))
     }
@@ -411,11 +414,7 @@ pub trait Context {
         let value = Unit::from_attribute(attribute.value().clone())?;
         let transition = attribute.transition();
 
-        let pixels = value.pixels(
-            range,
-            self.renderer().scale(),
-            self.renderer().window_size(),
-        );
+        let pixels = value.pixels(range, self.window().scale, self.window().size.as_vec2());
 
         Some((
             (self.state_mut()).transition(key, pixels, transition),
@@ -626,6 +625,22 @@ macro_rules! context {
                 self.renderer
             }
 
+            fn window(&self) -> &Window {
+                self.window
+            }
+
+            fn window_mut(&mut self) -> &mut Window {
+                self.window
+            }
+
+            fn font_system(&self) -> &FontSystem {
+                self.font_system
+            }
+
+            fn font_system_mut(&mut self) -> &mut FontSystem {
+                self.font_system
+            }
+
             fn selectors(&self) -> &StyleSelectors {
                 &self.selectors
             }
@@ -644,14 +659,6 @@ macro_rules! context {
 
             fn image_cache_mut(&mut self) -> &mut ImageCache {
                 &mut self.image_cache
-            }
-
-            fn cursor(&self) -> Cursor {
-                *self.cursor
-            }
-
-            fn set_cursor(&mut self, cursor: Cursor) {
-                *self.cursor = cursor;
             }
         }
     };

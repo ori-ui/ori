@@ -3,8 +3,8 @@ use std::{any::Any, future::Future, mem, sync::Arc};
 use parking_lot::Mutex;
 
 use crate::{
-    Callback, CallbackEmitter, Event, EventSink, OwnedSignal, ReadSignal, Resource, Runtime,
-    ScopeId, Signal, Task,
+    Callback, CallbackEmitter, Contexts, Event, EventSink, OwnedSignal, ReadSignal, Resource,
+    Runtime, ScopeId, Signal, Task,
 };
 
 use super::effect;
@@ -12,31 +12,40 @@ use super::effect;
 #[derive(Clone, Copy, Debug)]
 pub struct Scope {
     pub(crate) id: ScopeId,
+    pub(crate) contexts: Resource<Contexts>,
     pub(crate) event_sink: Resource<EventSink>,
     pub(crate) event_callbacks: Resource<CallbackEmitter<Event>>,
 }
 
 impl Scope {
     pub fn new(event_sink: EventSink, event_callback: CallbackEmitter<Event>) -> Self {
+        let contexts = Resource::new_leaking(Contexts::new());
         let event_sink = Resource::new_leaking(event_sink);
         let event_callbacks = Resource::new_leaking(event_callback);
 
         let id = Runtime::global().create_scope(None);
+        Runtime::global().manage_resource(id, contexts.id());
         Runtime::global().manage_resource(id, event_sink.id());
         Runtime::global().manage_resource(id, event_callbacks.id());
 
         Self {
             id,
+            contexts,
             event_sink,
             event_callbacks,
         }
     }
 
     pub fn child(self) -> Scope {
+        let contexts = self.contexts.get().unwrap_or_default().clone();
+        let contexts = Resource::new_leaking(contexts);
+
         let id = Runtime::global().create_scope(Some(self.id));
+        Runtime::global().manage_resource(id, contexts.id());
 
         Scope {
             id,
+            contexts,
             event_sink: self.event_sink,
             event_callbacks: self.event_callbacks,
         }
@@ -89,6 +98,23 @@ impl Scope {
         let callback = Callback::new(callback);
         self.event_callbacks().subscribe(&callback);
         self.manage_callback(callback);
+    }
+
+    pub fn with_context<C: Send + Sync + 'static>(self, context: C) -> Self {
+        self.contexts.with_mut(|contexts| {
+            contexts.push(context);
+        });
+        self
+    }
+
+    pub fn get_context<'a, C: Clone + Send + Sync + 'static>(self) -> Option<C> {
+        let contexts = self.contexts.get()?;
+        contexts.get()
+    }
+
+    #[track_caller]
+    pub fn context<C: Clone + Send + Sync + 'static>(self) -> C {
+        self.get_context().expect("context not found")
     }
 
     pub fn spawn(self, future: impl Future<Output = ()> + Send + 'static) {
@@ -222,6 +248,7 @@ impl Scope {
         signal.as_ref().unwrap().clone()
     }
 
+    #[track_caller]
     pub fn dispose(self) {
         Runtime::global().dispose_scope(self.id);
     }

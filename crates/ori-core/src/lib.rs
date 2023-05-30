@@ -5,11 +5,11 @@ mod debug;
 mod element;
 mod event;
 mod layout;
-mod root_element;
 mod style;
 mod unit;
 mod view;
 mod views;
+mod window;
 
 pub use build::*;
 pub use children::*;
@@ -18,11 +18,11 @@ pub use debug::*;
 pub use element::*;
 pub use event::*;
 pub use layout::*;
-pub use root_element::*;
 pub use style::*;
 pub use unit::*;
 pub use view::*;
 pub use views::*;
+pub use window::*;
 
 pub use glam as math;
 
@@ -32,8 +32,8 @@ pub mod prelude {
     pub use crate::context::{Context, DrawContext, EventContext, LayoutContext};
     pub use crate::element::Element;
     pub use crate::event::{
-        CloseWindowEvent, Cursor, Key, KeyboardEvent, Modifiers, PointerButton, PointerEvent,
-        RequestRedrawEvent, SetWindowIconEvent, SetWindowTitleEvent, WindowId, WindowResizeEvent,
+        CloseWindow, Cursor, Key, KeyboardEvent, Modifiers, OpenWindow, PointerButton,
+        PointerEvent, RequestRedrawEvent, WindowClosedEvent, WindowResizedEvent,
     };
     pub use crate::include_stylesheet;
     pub use crate::layout::{AlignItem, AvailableSpace, Axis, JustifyContent, Margin, Padding};
@@ -41,6 +41,7 @@ pub mod prelude {
     pub use crate::unit::*;
     pub use crate::view::View;
     pub use crate::views::*;
+    pub use crate::window::{ScopeWindowExt, Window, WindowId};
 
     pub use glam::*;
     pub use tracing::{debug, error, info, trace, warn};

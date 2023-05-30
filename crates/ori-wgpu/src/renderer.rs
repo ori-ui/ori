@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
-use ori_graphics::{
-    math::Vec2, Color, Frame, Glyph, ImageData, ImageHandle, Line, Primitive, PrimitiveKind, Rect,
-    Renderer, TextSection,
-};
+use glyphon::FontSystem;
+use ori_graphics::{Color, Frame, ImageData, ImageHandle, Primitive, PrimitiveKind, Renderer};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use wgpu::{
     util::{DeviceExt, StagingBelt},
@@ -16,10 +14,7 @@ use wgpu::{
     TextureViewDimension,
 };
 
-use crate::{BlitPipeline, Fonts, MeshPipeline, QuadPipeline, TextPipeline, WgpuImage};
-
-const TEXT_FONT: &[u8] = include_bytes!("../fonts/NotoSans-Medium.ttf");
-const ICON_FONT: &[u8] = include_bytes!("../fonts/MaterialIcons-Regular.ttf");
+use crate::{BlitPipeline, MeshPipeline, QuadPipeline, TextPipeline, WgpuImage};
 
 #[allow(dead_code)]
 pub struct WgpuRenderer {
@@ -34,7 +29,6 @@ pub struct WgpuRenderer {
     mesh_pipeline: MeshPipeline,
     quad_pipeline: QuadPipeline,
     text_pipeline: TextPipeline,
-    fonts: Fonts,
     staging_belt: StagingBelt,
 }
 
@@ -78,10 +72,6 @@ impl WgpuRenderer {
         let quad_pipeline = QuadPipeline::new(&device, config.format);
         let text_pipeline = TextPipeline::new(&device, &queue, config.format);
 
-        let fonts = Fonts::default();
-        fonts.load_font_data(TEXT_FONT.to_vec());
-        fonts.load_font_data(ICON_FONT.to_vec());
-
         let staging_belt = StagingBelt::new(1024);
 
         Self {
@@ -96,13 +86,12 @@ impl WgpuRenderer {
             text_pipeline,
             image_bind_group_layout,
             default_image,
-            fonts,
             staging_belt,
         }
     }
 
     pub unsafe fn new(
-        window: &(impl HasRawWindowHandle + HasRawDisplayHandle),
+        window: &(impl HasRawDisplayHandle + HasRawWindowHandle),
         width: u32,
         height: u32,
     ) -> Self {
@@ -232,18 +221,6 @@ impl WgpuRenderer {
         self.queue.clone()
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.config.width = width;
-        self.config.height = height;
-        self.surface.configure(&self.device, &self.config);
-        self.msaa_texture = Self::create_msaa_texture(
-            &self.device,
-            self.config.format,
-            self.config.width,
-            self.config.height,
-        );
-    }
-
     #[allow(dead_code)]
     fn blit_texture(
         &mut self,
@@ -255,7 +232,12 @@ impl WgpuRenderer {
     }
 
     /// Primitives must be sorted by their z-index.
-    pub fn prepare(&mut self, encoder: &mut CommandEncoder, primitives: &[&Primitive]) -> usize {
+    pub fn prepare(
+        &mut self,
+        encoder: &mut CommandEncoder,
+        font_system: &mut FontSystem,
+        primitives: &[&Primitive],
+    ) -> usize {
         let mut z_index = f32::NEG_INFINITY;
         let mut layer = 0;
         let mut quads = Vec::new();
@@ -287,8 +269,8 @@ impl WgpuRenderer {
                 self.text_pipeline.prepare(
                     &self.device,
                     &self.queue,
+                    font_system,
                     layer,
-                    &self.fonts,
                     self.config.width,
                     self.config.height,
                     &text_sections,
@@ -332,8 +314,8 @@ impl WgpuRenderer {
         self.text_pipeline.prepare(
             &self.device,
             &self.queue,
+            font_system,
             layer,
-            &self.fonts,
             self.config.width,
             self.config.height,
             &text_sections,
@@ -376,35 +358,19 @@ impl WgpuRenderer {
             self.text_pipeline.render(&mut pass, layer);
         }
     }
-
-    pub fn render_frame(&mut self, frame: &Frame, clear_color: Color) {
-        let target = self.surface.get_current_texture().unwrap();
-        let view = target.texture.create_view(&Default::default());
-
-        let mut encoder = self.device.create_command_encoder(&Default::default());
-
-        // create render pass
-        let mut primitives: Vec<_> = frame.primitives().iter().collect();
-        primitives.sort_by(|a, b| a.z_index.partial_cmp(&b.z_index).unwrap());
-
-        let layers = self.prepare(&mut encoder, &primitives);
-        self.render(&mut encoder, &view, clear_color, layers);
-
-        // submit and present
-        self.staging_belt.finish();
-        self.queue.submit(Some(encoder.finish()));
-        target.present();
-        self.staging_belt.recall();
-    }
 }
 
 impl Renderer for WgpuRenderer {
-    fn window_size(&self) -> Vec2 {
-        Vec2::new(self.config.width as f32, self.config.height as f32)
-    }
-
-    fn scale(&self) -> f32 {
-        1.0
+    fn resize(&mut self, width: u32, height: u32) {
+        self.config.width = width;
+        self.config.height = height;
+        self.surface.configure(&self.device, &self.config);
+        self.msaa_texture = Self::create_msaa_texture(
+            &self.device,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
     }
 
     fn create_image(&self, data: &ImageData) -> ImageHandle {
@@ -420,78 +386,23 @@ impl Renderer for WgpuRenderer {
         ImageHandle::new(image, data.width(), data.height())
     }
 
-    fn messure_text(&self, section: &TextSection) -> Option<Rect> {
-        let buffer = self.fonts.create_buffer(section);
-        Some(self.fonts.measure_text(section, &buffer))
-    }
+    fn render_frame(&mut self, font_system: &mut FontSystem, frame: &Frame, clear_color: Color) {
+        let target = self.surface.get_current_texture().unwrap();
+        let view = target.texture.create_view(&Default::default());
 
-    fn text_glyphs(&self, section: &TextSection) -> Vec<Glyph> {
-        let buffer = self.fonts.create_buffer(section);
+        let mut encoder = self.device.create_command_encoder(&Default::default());
 
-        let mut line_index = 0;
-        let mut line_offset = 0;
-        buffer
-            .layout_runs()
-            .flat_map(|run| {
-                let line_height = buffer.metrics().line_height;
-                let y = run.line_y - line_height;
+        // create render pass
+        let mut primitives: Vec<_> = frame.primitives().iter().collect();
+        primitives.sort_by(|a, b| a.z_index.partial_cmp(&b.z_index).unwrap());
 
-                if line_index < run.line_i {
-                    line_offset += buffer.lines[line_index].text().len();
-                    line_index = run.line_i;
-                }
+        let layers = self.prepare(&mut encoder, font_system, &primitives);
+        self.render(&mut encoder, &view, clear_color, layers);
 
-                run.glyphs.iter().map(move |glyph| {
-                    let position = section.rect.top_left() + Vec2::new(glyph.x, y);
-                    let size = Vec2::new(glyph.w, line_height);
-
-                    Glyph {
-                        index: line_offset + glyph.start,
-                        rect: Rect::min_size(position, size),
-                    }
-                })
-            })
-            .collect()
-    }
-
-    fn text_lines(&self, section: &TextSection) -> Vec<Line> {
-        let buffer = self.fonts.create_buffer(section);
-
-        let mut line_index = 0;
-        let mut line_offset = 0;
-        buffer
-            .layout_runs()
-            .map(|run| {
-                let line_height = buffer.metrics().line_height;
-                let y = run.line_y - line_height;
-                let position = section.rect.top_left() + Vec2::new(0.0, y);
-
-                if line_index < run.line_i {
-                    line_offset += buffer.lines[line_index].text().len();
-                    line_index = run.line_i;
-                }
-
-                let mut glyphs = Vec::with_capacity(run.glyphs.len());
-                for glyph in run.glyphs {
-                    let position = Vec2::new(glyph.x, y);
-
-                    glyphs.push(Glyph {
-                        index: line_offset + glyph.start,
-                        rect: Rect::min_size(
-                            section.rect.top_left() + position,
-                            Vec2::new(glyph.w, line_height),
-                        ),
-                    });
-                }
-
-                let size = Vec2::new(run.line_w, line_height);
-
-                Line {
-                    index: line_offset,
-                    glyphs,
-                    rect: Rect::min_size(position, size),
-                }
-            })
-            .collect()
+        // submit and present
+        self.staging_belt.finish();
+        self.queue.submit(Some(encoder.finish()));
+        target.present();
+        self.staging_belt.recall();
     }
 }

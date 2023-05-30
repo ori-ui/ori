@@ -1,6 +1,7 @@
 mod atom;
 mod atom_ref;
 mod callback;
+mod context;
 mod effect;
 mod event;
 mod resource;
@@ -11,6 +12,7 @@ mod signal;
 pub use atom::*;
 pub use atom_ref::*;
 pub use callback::*;
+pub use context::*;
 pub use effect::*;
 pub use event::*;
 pub use resource::*;

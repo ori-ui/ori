@@ -159,6 +159,40 @@ impl Runtime {
         Some(unsafe { &*ptr }.clone())
     }
 
+    /// # Safety
+    /// - The caller must ensure that the resource stored at `id` is of type `T`.
+    #[track_caller]
+    pub unsafe fn with_resource<T: 'static, U>(
+        &self,
+        id: ResourceId,
+        f: impl FnOnce(&T) -> U,
+    ) -> Option<U> {
+        tracing::trace!("getting resource {:?} at {}", id, Location::caller());
+
+        let (key, shard) = self.resources.read(&id);
+        let resource = shard.get(key)?;
+
+        let ptr = resource.data.as_ref() as *const _ as *const T;
+        Some(f(&*ptr))
+    }
+
+    /// # Safety
+    /// - The caller must ensure that the resource stored at `id` is of type `T`.
+    #[track_caller]
+    pub unsafe fn with_resource_mut<T: 'static, U>(
+        &self,
+        id: ResourceId,
+        f: impl FnOnce(&mut T) -> U,
+    ) -> Option<U> {
+        tracing::trace!("getting resource {:?} at {}", id, Location::caller());
+
+        let (key, mut shard) = self.resources.write(id);
+        let resource = shard.get_mut(key)?;
+
+        let ptr = resource.data.as_mut() as *mut _ as *mut T;
+        Some(f(unsafe { &mut *ptr }))
+    }
+
     /// Sets the resource at `id` to `value`. This ignores the reference count.
     ///
     /// # Safety

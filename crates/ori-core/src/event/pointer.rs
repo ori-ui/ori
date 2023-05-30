@@ -17,7 +17,7 @@ pub enum PointerButton {
 #[derive(Clone, Debug, Default)]
 pub struct PointerEvent {
     /// The unique id of the pointer.
-    pub id: u64,
+    pub device: u64,
     /// The position of the pointer.
     pub position: Vec2,
     /// The delta of the pointer wheel.

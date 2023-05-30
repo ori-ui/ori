@@ -1,10 +1,11 @@
 use std::{
-    cell::UnsafeCell,
     future::Future,
     pin::Pin,
     sync::Arc,
     task::{Context, Wake, Waker},
 };
+
+use parking_lot::Mutex;
 
 use crate::EventSink;
 
@@ -22,7 +23,7 @@ impl Task {
         tracing::trace!("spawning task");
 
         let task_inner = Arc::new(TaskInner {
-            future: UnsafeCell::new(Some(Box::pin(future))),
+            future: Mutex::new(Some(Box::pin(future))),
             event_sink,
         });
 
@@ -30,11 +31,7 @@ impl Task {
     }
 
     /// Polls the task.
-    ///
-    /// # Safety
-    /// - This caller must ensure that there is only one thread polling the task
-    ///  at a time.
-    pub unsafe fn poll(&self) {
+    pub fn poll(&self) {
         tracing::trace!("polling task");
 
         Self::poll_inner(self.0.clone());
@@ -42,7 +39,7 @@ impl Task {
 
     fn poll_inner(inner: Arc<TaskInner>) {
         // SAFETY: This is safe because only one thread can poll a task at a time.
-        let future_slot = unsafe { &mut *inner.future.get() };
+        let future_slot = &mut *inner.future.lock();
         if let Some(mut future) = future_slot.take() {
             let waker = Waker::from(inner.clone());
             let context = &mut Context::from_waker(&waker);
@@ -57,7 +54,7 @@ impl Task {
 type BoxFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
 
 struct TaskInner {
-    future: UnsafeCell<Option<BoxFuture>>,
+    future: Mutex<Option<BoxFuture>>,
     event_sink: EventSink,
 }
 

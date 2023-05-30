@@ -10,7 +10,7 @@ use crate::{
 #[derive(Default, Build)]
 pub struct Div {
     #[event]
-    pub on_press: CallbackEmitter<PointerEvent>,
+    pub on_click: CallbackEmitter<PointerEvent>,
     #[event]
     pub on_release: CallbackEmitter<PointerEvent>,
     #[children]
@@ -27,7 +27,7 @@ impl Div {
         cx: Scope,
         callback: impl FnMut(&PointerEvent) + Send + 'static,
     ) -> Self {
-        self.on_press.bind(cx, callback);
+        self.on_click.bind(cx, callback);
 
         self
     }
@@ -49,9 +49,9 @@ impl Div {
         handled: bool,
     ) -> bool {
         if event.is_press() && cx.hovered() && !handled {
-            if !self.on_press.is_empty() {
+            if !self.on_click.is_empty() {
                 cx.activate();
-                self.on_press.emit(event);
+                self.on_click.emit(event);
             }
         } else if event.is_release() && cx.state.active {
             cx.deactivate();

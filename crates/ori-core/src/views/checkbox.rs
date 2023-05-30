@@ -1,7 +1,7 @@
 use glam::Vec2;
 use ori_graphics::{TextAlign, TextSection};
 use ori_macro::Build;
-use ori_reactive::{Event, OwnedSignal, Scope, Signal};
+use ori_reactive::{CallbackEmitter, Event, OwnedSignal, Scope, Signal};
 
 use crate::{
     AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
@@ -9,8 +9,11 @@ use crate::{
 
 #[derive(Default, Build)]
 pub struct Checkbox {
+    #[prop]
     #[bind]
     checked: OwnedSignal<bool>,
+    #[event]
+    on_click: CallbackEmitter<PointerEvent>,
 }
 
 impl Checkbox {
@@ -51,6 +54,7 @@ impl View for Checkbox {
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if pointer_event.is_press() {
                 self.checked.set(!self.checked.get());
+                self.on_click.emit(pointer_event);
                 event.handle();
                 cx.request_redraw();
             }

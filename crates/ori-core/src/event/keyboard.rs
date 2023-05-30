@@ -4,7 +4,7 @@ use crate::Modifiers;
 pub struct KeyboardEvent {
     pub pressed: bool,
     pub key: Option<Key>,
-    pub text: Option<char>,
+    pub text: Option<String>,
     pub modifiers: Modifiers,
 }
 

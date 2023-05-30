@@ -1,17 +1,17 @@
 use std::{any::Any, fmt::Debug, sync::Arc, time::Instant};
 
 use glam::Vec2;
-use ori_graphics::{Frame, Rect, Renderer};
+use ori_graphics::{cosmic_text::FontSystem, Frame, Rect, Renderer};
 use ori_reactive::{Event, EventSink};
 use parking_lot::{Mutex, MutexGuard};
 use uuid::Uuid;
 
 use crate::{
-    AnyView, AvailableSpace, Context, Cursor, DebugEvent, DrawContext, EmptyView, EventContext,
+    AnyView, AvailableSpace, Context, DebugEvent, DrawContext, EmptyView, EventContext,
     FromStyleAttribute, ImageCache, LayoutContext, Margin, Padding, PointerEvent,
     RequestRedrawEvent, Style, StyleAttribute, StyleCache, StyleSelector, StyleSelectors,
-    StyleSpecificity, StyleStates, StyleTransition, Stylesheet, TransitionStates, View,
-    WindowResizeEvent,
+    StyleSpecificity, StyleStates, StyleTransition, Stylesheet, TransitionStates, View, Window,
+    WindowResizedEvent,
 };
 
 /// An element identifier. This uses a UUID to ensure that elements are unique.
@@ -569,7 +569,7 @@ impl<T: ElementView> Element<T> {
         };
 
         if cx.hovered() || cx.active() {
-            cx.set_cursor(cursor);
+            cx.window_mut().cursor = cursor;
         }
     }
 
@@ -605,13 +605,14 @@ impl<T: ElementView> Element<T> {
         let mut cx = EventContext {
             state,
             renderer: cx.renderer,
+            window: cx.window,
+            font_system: cx.font_system,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
             stylesheet: cx.stylesheet,
             style_cache: cx.style_cache,
             event_sink: cx.event_sink,
             image_cache: cx.image_cache,
-            cursor: cx.cursor,
         };
 
         if let Some(event) = event.get::<DebugEvent>() {
@@ -651,13 +652,14 @@ impl<T: ElementView> Element<T> {
         let mut cx = LayoutContext {
             state,
             renderer: cx.renderer,
+            window: cx.window,
+            font_system: cx.font_system,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
             stylesheet: cx.stylesheet,
             style_cache: cx.style_cache,
             event_sink: cx.event_sink,
             image_cache: cx.image_cache,
-            cursor: cx.cursor,
             parent_space: cx.space,
             space,
         };
@@ -694,13 +696,14 @@ impl<T: ElementView> Element<T> {
             state,
             frame: cx.frame,
             renderer: cx.renderer,
+            window: cx.window,
+            font_system: cx.font_system,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
             stylesheet: cx.stylesheet,
             style_cache: cx.style_cache,
             event_sink: cx.event_sink,
             image_cache: cx.image_cache,
-            cursor: cx.cursor,
         };
 
         self.view().draw(&mut self.view_state(), &mut cx);
@@ -729,10 +732,11 @@ impl<T: ElementView> Element<T> {
         stylesheet: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
+        window: &mut Window,
+        font_system: &mut FontSystem,
         event_sink: &EventSink,
         event: &Event,
         image_cache: &mut ImageCache,
-        cursor: &mut Cursor,
     ) {
         let element_state = &mut self.element_state();
         element_state.style = self.view().style();
@@ -743,7 +747,7 @@ impl<T: ElementView> Element<T> {
             }
         }
 
-        if event.is::<WindowResizeEvent>() {
+        if event.is::<WindowResizedEvent>() {
             element_state.needs_layout = true;
         }
 
@@ -752,13 +756,14 @@ impl<T: ElementView> Element<T> {
         let mut cx = EventContext {
             state: element_state,
             renderer,
+            window,
+            font_system,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
             stylesheet,
             event_sink,
             style_cache,
             image_cache,
-            cursor,
         };
 
         if let Some(event) = event.get::<DebugEvent>() {
@@ -773,28 +778,30 @@ impl<T: ElementView> Element<T> {
         stylesheet: &Stylesheet,
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
+        window: &mut Window,
+        font_system: &mut FontSystem,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
-        cursor: &mut Cursor,
     ) -> Vec2 {
         let element_state = &mut self.element_state();
         element_state.style = self.view().style();
         element_state.needs_layout = false;
 
-        let space = AvailableSpace::new(Vec2::ZERO, renderer.window_size());
+        let space = AvailableSpace::new(Vec2::ZERO, window.size.as_vec2());
 
         let selector = element_state.selector();
         let selectors = StyleSelectors::new().with(selector);
         let mut cx = LayoutContext {
             state: element_state,
             renderer,
+            window,
+            font_system,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
             stylesheet,
             event_sink,
             style_cache,
             image_cache,
-            cursor,
             parent_space: space,
             space,
         };
@@ -820,9 +827,10 @@ impl<T: ElementView> Element<T> {
         style_cache: &mut StyleCache,
         frame: &mut Frame,
         renderer: &dyn Renderer,
+        window: &mut Window,
+        font_system: &mut FontSystem,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
-        cursor: &mut Cursor,
     ) {
         let element_state = &mut self.element_state();
         element_state.style = self.view().style();
@@ -833,13 +841,14 @@ impl<T: ElementView> Element<T> {
             state: element_state,
             frame,
             renderer,
+            window,
+            font_system,
             selectors: &selectors,
             selectors_hash: selectors.hash(),
             stylesheet,
             event_sink,
             style_cache,
             image_cache,
-            cursor,
         };
 
         self.view().draw(&mut self.view_state(), &mut cx);

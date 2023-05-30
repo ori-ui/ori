@@ -88,8 +88,8 @@ impl View for Text {
             color: cx.style("color"),
         };
 
-        let bounds = cx.messure_text(&section).unwrap_or_default();
-        space.constrain(bounds.size())
+        let text_rect = cx.messure_text(&section);
+        space.constrain(text_rect.size())
     }
 
     #[tracing::instrument(name = "Text", skip(self, state, cx))]

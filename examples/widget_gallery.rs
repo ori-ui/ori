@@ -9,7 +9,7 @@ fn popup_ui(cx: Scope) -> Element {
     view! {
         <Div class="widget-gallery">
             <Div class="popup">
-                <Button on:press=move |_| *COUNTER.modify() += 1>
+                <Button on:click=move |_| *COUNTER.modify() += 1>
                     "Click me!"
                 </Button>
                 { format!("Clicked {} times", COUNTER.get()) }
@@ -26,28 +26,31 @@ fn ui(cx: Scope) -> Element {
     let text = cx.signal(String::new());
 
     // popup state
-    let popup_open = cx.signal(false);
     let popup_window = cx.signal(None);
 
     // when popup_open changes, open or close the popup window
-    cx.effect(move || {
-        if popup_open.get() {
-            let id = OpenWindowEvent::new(popup_ui)
-                .title("Widget Gallery Popup")
-                .size(300.0, 300.0)
-                .open(cx);
+    let toggle_popup = move |_: &PointerEvent| {
+        if popup_window.get().is_none() {
+            let window = Window::new().title("Widget Gallery Popup").size(300, 300);
+            let id = cx.open_window(window, popup_ui);
 
             popup_window.set(Some(id));
         } else {
             if let Some(id) = popup_window.get() {
-                cx.emit_event(CloseWindowEvent::new().window(id));
+                cx.emit_event(CloseWindow::window(id));
                 popup_window.set(None);
             }
+        }
+    };
+
+    cx.on_event(move |event| {
+        if event.is::<WindowClosedEvent>() {
+            popup_window.set(None);
         }
     });
 
     let text_size = cx.memo(move || if checked.get() { Em(2.0) } else { Em(1.5) });
-    let on_click = move |_: &PointerEvent| counter.set(counter.get() + 1);
+    let on_click = move |_: &PointerEvent| *counter.modify() += 1;
 
     view! {
         <Div class="widget-gallery">
@@ -59,22 +62,22 @@ fn ui(cx: Scope) -> Element {
 
                 <Div class="row" style:justify-content=JustifyContent::End>
                     "Popup"
-                    <Checkbox bind:checked=popup_open />
+                    <Checkbox checked=popup_window.get().is_some() on:click=toggle_popup />
                 </Div>
 
-                <Button on:press=on_click>
+                <Button on:click=on_click>
                     { format!("Counter: {}", counter.get()) }
                 </Button>
 
                 <Image src="examples/images/image.jpg" />
 
-                <TextInput bind:text=text />
+                <Text text=text.get() />
 
                 { format!("Input: {}", text.get()) }
             </Div>
             <Scroll style:max-height=Em(14.0)>
                 <Div style:max-width=Em(8.0)>
-                    <TextInput class="long-text" bind:text=long_text />
+                    <Text class="long-text" text=long_text.get() />
                 </Div>
             </Scroll>
             <Div class="column">

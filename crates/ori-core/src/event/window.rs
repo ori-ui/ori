@@ -1,110 +1,70 @@
-use std::{
-    path::Path,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::{mem, sync::Mutex};
 
 use glam::Vec2;
-use ori_graphics::ImageData;
+use ori_reactive::Scope;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct WindowId {
-    id: u64,
-}
-
-impl WindowId {
-    pub const fn main() -> Self {
-        Self { id: 0 }
-    }
-
-    pub fn new() -> Self {
-        static NEXT_ID: AtomicU64 = AtomicU64::new(1);
-
-        Self {
-            id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
-        }
-    }
-}
+use crate::{Element, Window, WindowId};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RequestRedrawEvent;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct WindowResizeEvent {
+pub struct WindowResizedEvent {
     pub size: Vec2,
 }
 
-impl WindowResizeEvent {
+impl WindowResizedEvent {
     pub fn new(size: Vec2) -> Self {
         Self { size }
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SetWindowTitleEvent {
-    pub title: String,
-    pub window: Option<WindowId>,
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct WindowClosedEvent {
+    pub window: WindowId,
 }
 
-impl SetWindowTitleEvent {
-    pub fn new(title: impl Into<String>) -> Self {
-        Self {
-            title: title.into(),
-            window: None,
-        }
-    }
-
-    pub fn window(mut self, id: WindowId) -> Self {
-        self.window = Some(id);
-        self
+impl WindowClosedEvent {
+    pub fn new(id: WindowId) -> Self {
+        Self { window: id }
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SetWindowIconEvent {
-    pub icon: Option<ImageData>,
-    pub window: Option<WindowId>,
+pub struct OpenWindow {
+    window: Window,
+    ui: Mutex<Box<dyn FnOnce(Scope) -> Element + Send + Sync>>,
 }
 
-impl SetWindowIconEvent {
-    pub const fn new(icon: ImageData) -> Self {
+impl OpenWindow {
+    pub fn new(window: Window, ui: impl FnOnce(Scope) -> Element + Send + Sync + 'static) -> Self {
         Self {
-            icon: Some(icon),
-            window: None,
+            window,
+            ui: Mutex::new(Box::new(ui)),
         }
     }
 
-    pub fn load(path: impl AsRef<Path>) -> Self {
-        Self {
-            icon: Some(ImageData::load(path)),
-            window: None,
-        }
+    pub fn window(&self) -> &Window {
+        &self.window
     }
 
-    pub const fn none() -> Self {
-        Self {
-            icon: None,
-            window: None,
-        }
-    }
-
-    pub fn window(mut self, id: WindowId) -> Self {
-        self.window = Some(id);
-        self
+    pub fn take_ui(&self) -> Box<dyn FnOnce(Scope) -> Element + Send + Sync> {
+        mem::replace(&mut self.ui.lock().unwrap(), Box::new(|_| Element::empty()))
     }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct CloseWindowEvent {
+pub struct CloseWindow {
     pub window: Option<WindowId>,
 }
 
-impl CloseWindowEvent {
+impl CloseWindow {
     pub const fn new() -> Self {
         Self { window: None }
     }
 
-    pub fn window(mut self, id: WindowId) -> Self {
-        self.window = Some(id);
-        self
+    pub fn window(window: WindowId) -> Self {
+        Self {
+            window: Some(window),
+        }
     }
 }

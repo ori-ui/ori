@@ -56,6 +56,18 @@ impl<T: Send + Sync> Resource<T> {
     }
 
     #[track_caller]
+    pub fn with<U>(self, f: impl FnOnce(&T) -> U) -> Option<U> {
+        // SAFETY: The resource was inserted with the same type as the one we're trying to get.
+        unsafe { Runtime::global().with_resource(self.id, f) }
+    }
+
+    #[track_caller]
+    pub fn with_mut<U>(self, f: impl FnOnce(&mut T) -> U) -> Option<U> {
+        // SAFETY: The resource was inserted with the same type as the one we're trying to get.
+        unsafe { Runtime::global().with_resource_mut(self.id, f) }
+    }
+
+    #[track_caller]
     pub fn set(self, data: T) -> Result<(), T> {
         // SAFETY: The resource was inserted with the same type as the one we're trying to set.
         unsafe { Runtime::global().set_resource(self.id, data) }

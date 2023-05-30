@@ -1,50 +1,24 @@
 use std::{
-    collections::HashMap,
     error::Error,
     fmt::Display,
-    sync::Arc,
     time::{Duration, Instant},
 };
 
 use ori_core::{
-    math::Vec2, CloseWindowEvent, Element, KeyboardEvent, LoadedStyleKind, Modifiers, PointerEvent,
-    RequestRedrawEvent, RootElement, SetWindowIconEvent, SetWindowTitleEvent, StyleLoader,
-    Stylesheet, WindowId, WindowResizeEvent,
+    math::Vec2, Element, LoadedStyleKind, Modifiers, StyleLoader, Stylesheet, Window, Windows,
 };
-use ori_graphics::{Color, ImageData, ImageSource};
-use ori_reactive::{CallbackEmitter, Event, EventEmitter, EventSink, Scope, Task};
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use ori_graphics::{prelude::UVec2, Color, ImageSource};
+use ori_reactive::{Event, Scope};
 use winit::{
-    dpi::LogicalSize,
-    error::OsError,
     event::{Event as WinitEvent, KeyboardInput, MouseScrollDelta, StartCause, WindowEvent},
-    event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy},
-    window::{Icon, Window, WindowBuilder, WindowId as WinitWindowId},
+    event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
+    window::WindowId as WinitWindowId,
 };
 
 use crate::{
-    convert::{
-        convert_cursor_icon, convert_device_id, convert_key, convert_mouse_button, is_pressed,
-    },
-    OpenWindowEvent,
+    backend::WinitBackend,
+    convert::{convert_device_id, convert_key, convert_mouse_button, is_pressed},
 };
-
-struct EventLoopSender {
-    window: WinitWindowId,
-    proxy: EventLoopProxy<(WinitWindowId, Event)>,
-}
-
-impl EventLoopSender {
-    fn new(window: WinitWindowId, proxy: EventLoopProxy<(WinitWindowId, Event)>) -> Self {
-        Self { window, proxy }
-    }
-}
-
-impl EventEmitter for EventLoopSender {
-    fn send_event(&mut self, event: Event) {
-        let _ = self.proxy.send_event((self.window, event));
-    }
-}
 
 fn initialize_log() -> Result<(), Box<dyn Error>> {
     use tracing_subscriber::layer::SubscriberExt;
@@ -68,15 +42,10 @@ fn initialize_log() -> Result<(), Box<dyn Error>> {
 
 /// A app using [`winit`] as the windowing backend.
 pub struct App {
-    title: String,
-    size: Vec2,
-    reziseable: bool,
-    clear_color: Color,
-    event_loop: EventLoop<(WinitWindowId, Event)>,
+    window: Window,
     style_loader: StyleLoader,
-    parent_window: Option<RawWindowHandle>,
-    icon: Option<ImageData>,
-    builder: Option<Box<dyn FnOnce(&EventSink, &CallbackEmitter<Event>) -> RootElement>>,
+    event_loop: EventLoop<(WinitWindowId, Event)>,
+    builder: Option<Box<dyn FnOnce(Scope) -> Element>>,
 }
 
 impl App {
@@ -86,6 +55,110 @@ impl App {
         Self::new_with_event_loop(event_loop, content)
     }
 
+    pub fn new_with_event_loop(
+        event_loop: EventLoop<(WinitWindowId, Event)>,
+        content: impl FnOnce(Scope) -> Element + 'static,
+    ) -> Self {
+        initialize_log().unwrap();
+
+        let mut style_loader = StyleLoader::new();
+
+        style_loader.add_style(Stylesheet::day_theme()).unwrap();
+
+        Self {
+            window: Window::default(),
+            style_loader,
+            event_loop,
+            builder: Some(Box::new(content)),
+        }
+    }
+
+    /// Set the default theme to night theme, this will clear all the styles
+    /// that have been added before, and should therefore be called before
+    /// [`App::style`].
+    pub fn night_theme(mut self) -> Self {
+        self.style_loader.clear();
+        self.style_loader
+            .add_style(Stylesheet::night_theme())
+            .unwrap();
+        self
+    }
+
+    /// Set the default theme to day theme, this will clear all the styles
+    /// that have been added before, and should therefore be called before
+    /// [`App::style`].
+    pub fn day_theme(mut self) -> Self {
+        self.style_loader.clear();
+        self.style_loader
+            .add_style(Stylesheet::day_theme())
+            .unwrap();
+        self
+    }
+
+    /// Set the title of the window.
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.window.title = title.into();
+        self
+    }
+
+    /// Add a style to the app, this can be called multiple times to add
+    /// multiple styles.
+    pub fn style<T>(mut self, style: T) -> Self
+    where
+        T: TryInto<LoadedStyleKind>,
+        T::Error: Display,
+    {
+        match self.style_loader.add_style(style) {
+            Err(err) => tracing::error!("failed to load style: {}", err),
+            _ => {}
+        };
+
+        self
+    }
+
+    /// Set the size of the window.
+    pub fn size(mut self, width: u32, height: u32) -> Self {
+        self.window.size = UVec2::new(width, height);
+        self
+    }
+
+    /// Set the width of the window.
+    pub fn width(mut self, width: u32) -> Self {
+        self.window.size.x = width;
+        self
+    }
+
+    /// Set the height of the window.
+    pub fn height(mut self, height: u32) -> Self {
+        self.window.size.y = height;
+        self
+    }
+
+    /// Set the window to be resizable or not.
+    pub fn resizable(mut self, resizable: bool) -> Self {
+        self.window.resizable = resizable;
+        self
+    }
+
+    /// Set the clear color of the window.
+    pub fn clear_color(mut self, color: Color) -> Self {
+        self.window.clear_color = color;
+        self
+    }
+
+    /// Set the clear color of the window to transparent.
+    pub fn transparent(self) -> Self {
+        self.clear_color(Color::TRANSPARENT)
+    }
+
+    /// Set the icon of the window.
+    pub fn icon(mut self, icon: impl Into<ImageSource>) -> Self {
+        self.window.icon = Some(icon.into().load());
+        self
+    }
+}
+
+impl App {
     pub fn new_any_thread(content: impl FnOnce(Scope) -> Element + 'static) -> Self {
         let mut builder = EventLoopBuilder::with_user_event();
 
@@ -115,518 +188,131 @@ impl App {
 
         Self::new_with_event_loop(builder.build(), content)
     }
-
-    pub fn new_with_event_loop(
-        event_loop: EventLoop<(WinitWindowId, Event)>,
-        content: impl FnOnce(Scope) -> Element + 'static,
-    ) -> Self {
-        initialize_log().unwrap();
-
-        let builder = Box::new(
-            move |event_sink: &EventSink,
-                  event_callbacks: &CallbackEmitter<Event>|
-                  -> RootElement {
-                let scope = Scope::new(event_sink.clone(), event_callbacks.clone());
-                RootElement::new(content(scope), event_sink.clone(), event_callbacks.clone())
-            },
-        );
-
-        let mut style_loader = StyleLoader::new();
-
-        style_loader.add_style(Stylesheet::day_theme()).unwrap();
-
-        Self {
-            title: String::from("Ori App"),
-            size: Vec2::new(800.0, 600.0),
-            reziseable: true,
-            clear_color: Color::WHITE,
-            event_loop,
-            style_loader,
-            parent_window: None,
-            icon: None,
-            builder: Some(builder),
-        }
-    }
-
-    /// Set the default theme to night theme, this will clear all the styles
-    /// that have been added before, and should therefore be called before
-    /// [`App::style`].
-    pub fn night_theme(mut self) -> Self {
-        self.style_loader.clear();
-        self.style_loader
-            .add_style(Stylesheet::night_theme())
-            .unwrap();
-        self
-    }
-
-    /// Set the default theme to day theme, this will clear all the styles
-    /// that have been added before, and should therefore be called before
-    /// [`App::style`].
-    pub fn day_theme(mut self) -> Self {
-        self.style_loader.clear();
-        self.style_loader
-            .add_style(Stylesheet::day_theme())
-            .unwrap();
-        self
-    }
-
-    /// Set the title of the window.
-    pub fn title(mut self, title: impl Into<String>) -> Self {
-        self.title = title.into();
-        self
-    }
-
-    /// Add a style to the app, this can be called multiple times to add
-    /// multiple styles.
-    pub fn style<T>(mut self, style: T) -> Self
-    where
-        T: TryInto<LoadedStyleKind>,
-        T::Error: Display,
-    {
-        match self.style_loader.add_style(style) {
-            Err(err) => tracing::error!("failed to load style: {}", err),
-            _ => {}
-        };
-
-        self
-    }
-
-    /// Set the size of the window.
-    pub fn size(mut self, width: f32, height: f32) -> Self {
-        self.size = Vec2::new(width, height);
-        self
-    }
-
-    /// Set the width of the window.
-    pub fn width(mut self, width: f32) -> Self {
-        self.size.x = width;
-        self
-    }
-
-    /// Set the height of the window.
-    pub fn height(mut self, height: f32) -> Self {
-        self.size.y = height;
-        self
-    }
-
-    /// Set the window to be resizable or not.
-    pub fn reziseable(mut self, reziseable: bool) -> Self {
-        self.reziseable = reziseable;
-        self
-    }
-
-    /// Set the clear color of the window.
-    pub fn clear_color(mut self, color: Color) -> Self {
-        self.clear_color = color;
-        self
-    }
-
-    /// Set the clear color of the window to transparent.
-    pub fn transparent(self) -> Self {
-        self.clear_color(Color::TRANSPARENT)
-    }
-
-    /// Set the icon of the window.
-    pub fn icon(mut self, icon: impl Into<ImageSource>) -> Self {
-        self.icon = Some(icon.into().load());
-        self
-    }
-
-    /// Set the parent window of the window.
-    ///
-    /// # Safety
-    /// - See [`WindowBuilder::with_parent_window`].
-    pub unsafe fn parent_window(mut self, parent: &impl HasRawWindowHandle) -> Self {
-        self.parent_window = Some(parent.raw_window_handle());
-        self
-    }
-
-    /// Create an [`EventSink`] that can be used to send events to the app.
-    #[must_use]
-    fn event_sink(&self, window: WinitWindowId) -> EventSink {
-        let proxy = self.event_loop.create_proxy();
-        EventSink::new(EventLoopSender::new(window, proxy))
-    }
-
-    fn build_window(&self) -> Result<Window, OsError> {
-        let size = LogicalSize::new(self.size.x, self.size.y);
-
-        let icon = match self.icon {
-            Some(ref icon) => {
-                let pixels = icon.pixels().to_vec();
-                Icon::from_rgba(pixels, icon.width(), icon.height()).ok()
-            }
-            None => None,
-        };
-
-        let mut builder = WindowBuilder::new()
-            .with_title(&self.title)
-            .with_inner_size(size)
-            .with_resizable(self.reziseable)
-            .with_transparent(self.clear_color.is_translucent())
-            .with_window_icon(icon);
-
-        builder = unsafe { builder.with_parent_window(self.parent_window) };
-
-        builder.build(&self.event_loop)
-    }
-}
-
-struct AppState {
-    window: Arc<Window>,
-    mouse_position: Vec2,
-    modifiers: Modifiers,
-    root: RootElement,
-    clear_color: Color,
-    #[cfg(feature = "wgpu")]
-    renderer: ori_wgpu::WgpuRenderer,
-}
-
-impl AppState {
-    fn new(
-        window: Window,
-        event_sink: EventSink,
-        style_loader: StyleLoader,
-        clear_color: Color,
-        builder: impl FnOnce(&EventSink, &CallbackEmitter<Event>) -> RootElement,
-    ) -> Self {
-        let window = Arc::new(window);
-
-        #[cfg(feature = "wgpu")]
-        let renderer = {
-            let size = window.inner_size();
-            unsafe { ori_wgpu::WgpuRenderer::new(window.as_ref(), size.width, size.height) }
-        };
-
-        let event_callbacks = CallbackEmitter::new();
-        let mut root = builder(&event_sink, &event_callbacks);
-        root.style_loader = style_loader;
-
-        Self {
-            window,
-            mouse_position: Vec2::ZERO,
-            modifiers: Modifiers::default(),
-            root,
-            clear_color,
-            #[cfg(feature = "wgpu")]
-            renderer,
-        }
-    }
-
-    fn update_cursor(&mut self) {
-        let cursor = convert_cursor_icon(self.root.cursor);
-        self.window.set_cursor_icon(cursor);
-    }
-
-    fn resize(&mut self, width: u32, heigth: u32) {
-        self.renderer.resize(width, heigth);
-
-        let size = Vec2::new(width as f32, heigth as f32);
-        self.event(&Event::new(WindowResizeEvent::new(size)));
-    }
-
-    #[tracing::instrument(skip(self, event))]
-    fn event(&mut self, event: &Event) {
-        self.root.event(&self.renderer, event);
-        self.update_cursor();
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn layout(&mut self) {
-        self.root.layout(&self.renderer);
-        self.update_cursor();
-    }
-
-    #[tracing::instrument(skip(self))]
-    fn draw(&mut self) {
-        #[cfg(feature = "tracy")]
-        tracing_tracy::client::frame_mark();
-
-        self.root.draw(&self.renderer);
-        self.update_cursor();
-
-        #[cfg(feature = "wgpu")]
-        (self.renderer).render_frame(&self.root.frame, self.clear_color);
-    }
 }
 
 impl App {
     /// Run the app.
     pub fn run(mut self) -> ! {
-        let mut window_ids: HashMap<WindowId, winit::window::WindowId> = HashMap::new();
-        let mut windows: HashMap<winit::window::WindowId, AppState> = HashMap::new();
+        let window_backend = WinitBackend::new(self.event_loop.create_proxy());
+        #[cfg(feature = "wgpu")]
+        let render_backend = ori_wgpu::WgpuBackend::new();
 
-        let window = self.build_window().unwrap();
-        let event_sink = self.event_sink(window.id());
-        let builder = self.builder.take().unwrap();
-
-        let main_window = AppState::new(
-            window,
-            event_sink,
-            self.style_loader.clone(),
-            self.clear_color,
-            builder,
-        );
-
-        let proxy = self.event_loop.create_proxy();
-        window_ids.insert(WindowId::main(), main_window.window.id());
-        windows.insert(main_window.window.id(), main_window);
+        let mut windows = Windows::new(window_backend, render_backend);
+        windows.style_loader = self.style_loader;
+        let ui = self.builder.take().unwrap();
+        (windows.create_window(&self.event_loop, &self.window, ui)).unwrap();
 
         self.event_loop.run(move |event, target, control_flow| {
             *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(10));
 
             match event {
                 WinitEvent::RedrawRequested(window) => {
-                    if let Some(state) = windows.get_mut(&window) {
-                        state.draw();
+                    if let Some(id) = windows.window_backend.id(window) {
+                        windows.draw(id);
                     }
                 }
                 WinitEvent::MainEventsCleared
-                | WinitEvent::NewEvents(StartCause::ResumeTimeReached { .. }) => {
-                    for state in windows.values_mut() {
-                        state.layout();
-                    }
-                }
+                | WinitEvent::NewEvents(StartCause::ResumeTimeReached { .. }) => {}
                 WinitEvent::UserEvent((window, event)) => {
-                    // poll awoken task
-                    if let Some(task) = event.get::<Task>() {
-                        unsafe { task.poll() };
+                    let Some(id) = windows.window_backend.id(window) else {
                         return;
-                    }
+                    };
 
-                    // handle open window event
-                    if let Some(event) = event.get::<OpenWindowEvent>() {
-                        let window = event.window_builder().build(target).unwrap();
-                        let event_sender = EventLoopSender::new(window.id(), proxy.clone());
-                        let event_sink = EventSink::new(event_sender);
-                        let builder = event.builder();
+                    windows.event(target, id, &event);
 
-                        let state = AppState::new(
-                            window,
-                            event_sink,
-                            self.style_loader.clone(),
-                            self.clear_color,
-                            builder,
-                        );
-
-                        window_ids.insert(event.id(), state.window.id());
-                        windows.insert(state.window.id(), state);
-                        return;
-                    }
-
-                    // set window title
-                    if let Some(event) = event.get::<SetWindowTitleEvent>() {
-                        let state = match event.window {
-                            Some(window) => windows.get_mut(&window_ids[&window]).unwrap(),
-                            None => windows.get_mut(&window).unwrap(),
-                        };
-
-                        state.window.set_title(&event.title);
-
-                        return;
-                    }
-
-                    // set window icon
-                    if let Some(event) = event.get::<SetWindowIconEvent>() {
-                        let state = match event.window {
-                            Some(window) => windows.get_mut(&window_ids[&window]).unwrap(),
-                            None => windows.get_mut(&window).unwrap(),
-                        };
-
-                        // if icon is None, remove the icon
-                        let Some(icon) = event.icon.as_ref() else {
-                            state.window.set_window_icon(None);
-                            return;
-                        };
-
-                        let pixels = icon.pixels().to_vec();
-                        let icon = Icon::from_rgba(pixels, icon.width(), icon.height());
-
-                        match icon {
-                            Ok(icon) => state.window.set_window_icon(Some(icon)),
-                            Err(err) => tracing::error!("failed to set window icon: {}", err),
-                        }
-
-                        return;
-                    }
-
-                    // close window
-                    if let Some(event) = event.get::<CloseWindowEvent>() {
-                        match event.window {
-                            Some(window) => {
-                                windows.remove(&window_ids[&window]);
-                            }
-                            None => {
-                                windows.remove(&window);
-                            }
-                        }
-
-                        if windows.is_empty() {
-                            *control_flow = ControlFlow::Exit;
-                        }
-
-                        return;
-                    }
-
-                    // request redraw
-                    if event.is::<RequestRedrawEvent>() {
-                        if let Some(state) = windows.get_mut(&window) {
-                            state.window.request_redraw();
-                        }
-
-                        return;
-                    }
-
-                    if let Some(state) = windows.get_mut(&window) {
-                        state.event(&event);
+                    if windows.is_empty() {
+                        *control_flow = ControlFlow::Exit;
                     }
                 }
                 WinitEvent::WindowEvent {
                     event,
                     window_id: window,
                     ..
-                } => match event {
-                    WindowEvent::Resized(size)
-                    | WindowEvent::ScaleFactorChanged {
-                        new_inner_size: &mut size,
-                        ..
-                    } => {
-                        if let Some(state) = windows.get_mut(&window) {
-                            state.resize(size.width, size.height);
+                } => {
+                    let Some(window) = windows.window_backend.id(window) else {
+                        return;
+                    };
+
+                    match event {
+                        WindowEvent::Resized(size)
+                        | WindowEvent::ScaleFactorChanged {
+                            new_inner_size: &mut size,
+                            ..
+                        } => {
+                            windows.resize_window(window, size.width, size.height);
                         }
-                    }
-                    WindowEvent::CloseRequested => {
-                        windows.remove(&window);
+                        WindowEvent::CloseRequested => {
+                            windows.close_window(window);
 
-                        if windows.is_empty() {
-                            *control_flow = ControlFlow::Exit;
+                            if windows.is_empty() {
+                                *control_flow = ControlFlow::Exit;
+                            }
                         }
+                        WindowEvent::CursorMoved {
+                            position,
+                            device_id,
+                            ..
+                        } => {
+                            let device = convert_device_id(device_id);
+                            let position = Vec2::new(position.x as f32, position.y as f32);
+                            windows.pointer_moved(window, device, position);
+                        }
+                        WindowEvent::CursorLeft { device_id } => {
+                            let device = convert_device_id(device_id);
+                            windows.pointer_left(window, device);
+                        }
+                        WindowEvent::MouseInput {
+                            button,
+                            state: element_state,
+                            device_id,
+                            ..
+                        } => {
+                            let device = convert_device_id(device_id);
+                            let button = convert_mouse_button(button);
+                            let pressed = is_pressed(element_state);
+                            windows.pointer_button(window, device, button, pressed);
+                        }
+                        WindowEvent::MouseWheel {
+                            delta: MouseScrollDelta::LineDelta(x, y),
+                            device_id,
+                            ..
+                        } => {
+                            let device = convert_device_id(device_id);
+                            let delta = Vec2::new(x as f32, y as f32);
+                            windows.pointer_scroll(window, device, delta);
+                        }
+                        WindowEvent::KeyboardInput {
+                            input:
+                                KeyboardInput {
+                                    virtual_keycode: Some(virtual_keycode),
+                                    state: element_state,
+                                    ..
+                                },
+                            ..
+                        } => {
+                            let key = convert_key(virtual_keycode);
+                            let pressed = is_pressed(element_state);
+
+                            if let Some(key) = key {
+                                windows.key(window, key, pressed);
+                            }
+                        }
+                        WindowEvent::ReceivedCharacter(c) => {
+                            windows.text(window, String::from(c));
+                        }
+                        WindowEvent::ModifiersChanged(new_modifiers) => {
+                            let modifiers = Modifiers {
+                                shift: new_modifiers.shift(),
+                                ctrl: new_modifiers.ctrl(),
+                                alt: new_modifiers.alt(),
+                                meta: new_modifiers.logo(),
+                            };
+
+                            windows.modifiers_changed(window, modifiers);
+                        }
+                        _ => {}
                     }
-                    WindowEvent::CursorMoved {
-                        position,
-                        device_id,
-                        ..
-                    } => {
-                        let Some(state) = windows.get_mut(&window) else {
-                            return;
-                        };
-
-                        state.mouse_position.x = position.x as f32;
-                        state.mouse_position.y = position.y as f32;
-
-                        let event = PointerEvent {
-                            id: convert_device_id(device_id),
-                            position: state.mouse_position,
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::CursorLeft { device_id } => {
-                        let Some(state) = windows.get_mut(&window) else {
-                            return;
-                        };
-
-                        let event = PointerEvent {
-                            id: convert_device_id(device_id),
-                            position: state.mouse_position,
-                            left: true,
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::MouseInput {
-                        button,
-                        state: element_state,
-                        device_id,
-                        ..
-                    } => {
-                        let Some(state) = windows.get_mut(&window) else {
-                            return;
-                        };
-
-                        let event = PointerEvent {
-                            id: convert_device_id(device_id),
-                            position: state.mouse_position,
-                            button: Some(convert_mouse_button(button)),
-                            pressed: is_pressed(element_state),
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::MouseWheel {
-                        delta: MouseScrollDelta::LineDelta(x, y),
-                        device_id,
-                        ..
-                    } => {
-                        let Some(state) = windows.get_mut(&window) else {
-                            return;
-                        };
-
-                        let event = PointerEvent {
-                            id: convert_device_id(device_id),
-                            position: state.mouse_position,
-                            scroll_delta: Vec2::new(x, y),
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(virtual_keycode),
-                                state: element_state,
-                                ..
-                            },
-                        ..
-                    } => {
-                        let Some(state) = windows.get_mut(&window) else {
-                            return;
-                        };
-
-                        let event = KeyboardEvent {
-                            key: convert_key(virtual_keycode),
-                            pressed: is_pressed(element_state),
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::ReceivedCharacter(c) => {
-                        let Some(state) = windows.get_mut(&window) else {
-                            return;
-                        };
-
-                        let event = KeyboardEvent {
-                            text: Some(c),
-                            modifiers: state.modifiers,
-                            ..Default::default()
-                        };
-
-                        state.event(&Event::new(event));
-                    }
-                    WindowEvent::ModifiersChanged(new_modifiers) => {
-                        let Some(state) = windows.get_mut(&window) else {
-                            return;
-                        };
-
-                        state.modifiers = Modifiers {
-                            shift: new_modifiers.shift(),
-                            ctrl: new_modifiers.ctrl(),
-                            alt: new_modifiers.alt(),
-                            meta: new_modifiers.logo(),
-                        };
-                    }
-                    _ => {}
-                },
+                }
                 _ => {}
             }
         });

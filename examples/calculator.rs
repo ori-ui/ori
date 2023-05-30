@@ -155,12 +155,12 @@ fn bar0(
 
     view! {
         <Div class="buttons row">
-            <Button on:press=clear_all>"CE"</Button>
-            <Button on:press=clear>"C"</Button>
-            <Button on:press=remove_digit>
+            <Button on:click=clear_all>"CE"</Button>
+            <Button on:click=clear>"C"</Button>
+            <Button on:click=remove_digit>
                 <Text text="\u{e14a}" style:font="icon" />
             </Button>
-            <Button on:press=divide>"÷"</Button>
+            <Button on:click=divide>"÷"</Button>
         </Div>
     }
 }
@@ -192,10 +192,10 @@ fn bar1(
 
     view! {
         <Div class="buttons row">
-            <Button class="number" on:press=add_digit(operator, result, rhs, 7)>"7"</Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 8)>"8"</Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 9)>"9"</Button>
-            <Button on:press=multiply>"×"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 7)>"7"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 8)>"8"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 9)>"9"</Button>
+            <Button on:click=multiply>"×"</Button>
         </Div>
     }
 }
@@ -212,10 +212,10 @@ fn bar2(
 
     view! {
         <Div class="buttons row">
-            <Button class="number" on:press=add_digit(operator, result, rhs, 4)>"4"</Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 5)>"5"</Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 6)>"6"</Button>
-            <Button on:press=subtract>"-"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 4)>"4"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 5)>"5"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 6)>"6"</Button>
+            <Button on:click=subtract>"-"</Button>
         </Div>
     }
 }
@@ -232,10 +232,10 @@ fn bar3(
 
     view! {
         <Div class="buttons row">
-            <Button class="number" on:press=add_digit(operator, result, rhs, 1)>"1"</Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 2)>"2"</Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 3)>"3"</Button>
-            <Button on:press=add>"+"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 1)>"1"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 2)>"2"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 3)>"3"</Button>
+            <Button on:click=add>"+"</Button>
         </Div>
     }
 }
@@ -297,10 +297,10 @@ fn bar4(
 
     view! {
         <Div class="buttons row">
-            <Button on:press=negate>"±"</Button>
-            <Button class="number" on:press=add_digit(operator, result, rhs, 0)>"0"</Button>
-            <Button on:press=add_point>"."</Button>
-            <Button on:press=equals>"="</Button>
+            <Button on:click=negate>"±"</Button>
+            <Button class="number" on:click=add_digit(operator, result, rhs, 0)>"0"</Button>
+            <Button on:click=add_point>"."</Button>
+            <Button on:click=equals>"="</Button>
         </Div>
     }
 }
@@ -337,8 +337,8 @@ fn main() {
     App::new(ui)
         .title("Calculator (examples/calculator.rs)")
         .style("examples/style/calculator.css")
-        .reziseable(false)
+        .resizable(false)
         .transparent()
-        .size(300.0, 400.0)
+        .size(300, 400)
         .run();
 }

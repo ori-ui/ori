@@ -1,6 +1,5 @@
 use crate::{Mesh, Quad, Rect, TextSection};
 
-#[derive(Clone, Debug)]
 pub enum PrimitiveKind {
     Text(TextSection),
     Quad(Quad),
@@ -25,7 +24,6 @@ impl From<Mesh> for PrimitiveKind {
     }
 }
 
-#[derive(Clone, Debug)]
 pub struct Primitive {
     pub kind: PrimitiveKind,
     pub z_index: f32,

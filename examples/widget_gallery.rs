@@ -37,13 +37,13 @@ fn ui(cx: Scope) -> Element {
             popup_window.set(Some(id));
         } else {
             if let Some(id) = popup_window.get() {
-                cx.emit_event(CloseWindow::window(id));
+                cx.emit(CloseWindow::window(id));
                 popup_window.set(None);
             }
         }
     };
 
-    cx.on_event(move |event| {
+    cx.on(move |event| {
         if event.is::<WindowClosedEvent>() {
             popup_window.set(None);
         }

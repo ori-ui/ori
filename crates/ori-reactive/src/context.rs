@@ -29,7 +29,7 @@ impl Contexts {
     }
 
     pub fn get<T: Clone + Send + Sync + 'static>(&self) -> Option<T> {
-        for context in &self.contexts {
+        for context in self.contexts.iter().rev() {
             if let Some(context) = context.as_ref().downcast_ref::<T>() {
                 return Some(context.clone());
             }
@@ -39,7 +39,7 @@ impl Contexts {
     }
 
     pub fn get_arc<T: Any + Send + Sync>(&self) -> Option<Arc<T>> {
-        for context in &self.contexts {
+        for context in self.contexts.iter().rev() {
             if !context.as_ref().is::<T>() {
                 continue;
             }

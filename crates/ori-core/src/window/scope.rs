@@ -22,7 +22,7 @@ impl ScopeWindowExt for Scope {
         ui: impl FnOnce(Scope) -> Element + Send + Sync + 'static,
     ) -> WindowId {
         let id = window.id();
-        self.emit_event(OpenWindow::new(window, ui));
+        self.emit(OpenWindow::new(window, ui));
         id
     }
 }

@@ -280,7 +280,8 @@ impl Runtime {
 }
 
 macro_rules! define_ids {
-    ($($name:ident),* $(,)?) => {$(
+    ($($(#[$meta:meta])* $name:ident),* $(,)?) => {$(
+        $(#[$meta])*
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $name {
@@ -288,6 +289,11 @@ macro_rules! define_ids {
         }
 
         impl $name {
+            /// Creates a new unique ID. Ids are created by the [`Runtime`] and should usually
+            /// not be created manually.
+            ///
+            /// Ids are created by incrementing, starting at 0, and are thus guaranteed to be
+            /// unique.
             #[inline(always)]
             pub fn new() -> Self {
                 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
@@ -297,6 +303,7 @@ macro_rules! define_ids {
                 }
             }
 
+            /// Converts this ID into a [`usize`].
             pub const fn as_usize(self) -> usize {
                 self.id
             }
@@ -304,4 +311,13 @@ macro_rules! define_ids {
     )*};
 }
 
-define_ids!(ScopeId, ResourceId);
+define_ids!(
+    /// A unique id for a [`Scope`](crate::Scope).
+    ///
+    /// See [`Runtime::create_scope`].
+    ScopeId,
+    /// A unique id for a [`Resource`](crate::Resource).
+    ///
+    /// See [`Runtime::create_resource`].
+    ResourceId,
+);

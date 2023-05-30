@@ -73,8 +73,6 @@ impl<T: Send + Sync> Deref for Atom<T> {
 /// If the expression is prefixed with `ref`, then an [`AtomRef`] will be created,
 /// otherwise, an [`Atom`] will be created.
 ///
-/// For more information, see the [`Atom`] and [`AtomRef`] documentation.
-///
 /// [`AtomRef`]: crate::AtomRef
 #[macro_export]
 macro_rules! atom {

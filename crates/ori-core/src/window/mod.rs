@@ -374,7 +374,7 @@ where
 
             let mut window = ui.scope.window().get();
 
-            ori_reactive::delay_effects(|| {
+            ori_reactive::effect::delay_effects(|| {
                 ui.element.event_root_inner(
                     self.style_loader.stylesheet(),
                     &mut self.style_cache,
@@ -397,7 +397,7 @@ where
         if let Some(ui) = self.window_ui.get_mut(&id) {
             let mut window = ui.scope.window().get();
 
-            ori_reactive::delay_effects(|| {
+            ori_reactive::effect::delay_effects(|| {
                 ui.element.layout_root_inner(
                     self.style_loader.stylesheet(),
                     &mut self.style_cache,
@@ -421,7 +421,7 @@ where
 
             let mut window = ui.scope.window().get();
 
-            ori_reactive::delay_effects(|| {
+            ori_reactive::effect::delay_effects(|| {
                 ui.element.draw_root_inner(
                     self.style_loader.stylesheet(),
                     &mut self.style_cache,

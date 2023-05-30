@@ -22,7 +22,6 @@ mod signal;
 pub use atom::*;
 pub use atom_ref::*;
 pub use callback::*;
-pub use effect::*;
 pub use event::*;
 pub use resource::*;
 pub use runtime::*;
@@ -30,6 +29,8 @@ pub use scope::*;
 pub use signal::*;
 
 pub mod prelude {
+    //! A collection of commonly used types and traits.
+
     pub use crate::atom;
 
     pub use crate::atom::Atom;

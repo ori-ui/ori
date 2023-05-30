@@ -91,7 +91,7 @@ impl Scope {
         resource
     }
 
-    /// Manages a [`Callback`], this will ensure that all [`WeakCallback`]s created from this
+    /// Manages a [`Callback`], this will ensure that all [`WeakCallback`](crate::WeakCallback)s created from this
     /// `callback` will be able to upgrade.
     pub fn manage_callback<T>(self, callback: Callback<'static, T>) {
         // do not think about this too much, it will drive you mad

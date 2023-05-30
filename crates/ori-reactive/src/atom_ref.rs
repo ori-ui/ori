@@ -110,7 +110,7 @@ impl<'a, T> Deref for AtomReadGuard<'a, T> {
 
     fn deref(&self) -> &Self::Target {
         crate::effect::track_callback(self.emitter.downgrade());
-        &*self.guard
+        &self.guard
     }
 }
 

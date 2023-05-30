@@ -4,9 +4,11 @@ use ori_graphics::Rect;
 
 use crate::StyleSelectors;
 
+/// Debug information about the current state of the UI.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Debug {
+    /// The root element of the UI.
     pub tree: DebugElement,
 }
 
@@ -16,12 +18,17 @@ impl Display for Debug {
     }
 }
 
+/// Debug information about a single element.
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DebugElement {
+    /// The selectors of the element.
     pub selectors: StyleSelectors,
+    /// The local rect of the element.
     pub local_rect: Rect,
+    /// The global rect of the element.
     pub global_rect: Rect,
+    /// The children of the element.
     pub children: Vec<DebugElement>,
 }
 

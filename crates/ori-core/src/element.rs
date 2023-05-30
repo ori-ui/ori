@@ -139,6 +139,7 @@ impl ElementState {
         self.last_draw.elapsed().as_secs_f32()
     }
 
+    /// Gets the style attribute for the given key.
     pub fn get_style_attribyte(
         &mut self,
         cx: &mut impl Context,
@@ -148,6 +149,7 @@ impl ElementState {
             .map(|(attribute, _)| attribute)
     }
 
+    /// Gets the style attribute and specificity for the given key.
     pub fn get_style_attribute_specificity(
         &mut self,
         cx: &mut impl Context,
@@ -178,6 +180,7 @@ impl ElementState {
         }
     }
 
+    /// Gets the style attribute for the given key, and converts it to the given type.
     pub fn get_style_specificity<T: FromStyleAttribute + 'static>(
         &mut self,
         cx: &mut impl Context,
@@ -190,6 +193,7 @@ impl ElementState {
         Some((self.transition(key, value, transition), specificity))
     }
 
+    /// Gets the style attribute for the given key, and converts it to the given type.
     pub fn get_style<T: FromStyleAttribute + 'static>(
         &mut self,
         cx: &mut impl Context,
@@ -198,6 +202,7 @@ impl ElementState {
         self.get_style_specificity(cx, key).map(|(value, _)| value)
     }
 
+    /// Gets the style attribute for the given key, and converts it to the given type.
     pub fn style<T: FromStyleAttribute + Default + 'static>(
         &mut self,
         cx: &mut impl Context,
@@ -206,6 +211,7 @@ impl ElementState {
         self.get_style(cx, key).unwrap_or_default()
     }
 
+    /// Gets the style for a group of keys.
     pub fn style_group<T: FromStyleAttribute + Default + 'static>(
         &mut self,
         cx: &mut impl Context,
@@ -244,6 +250,7 @@ impl ElementState {
         self.transitions.update(self.delta_time())
     }
 
+    /// Returns `true` if the available space has changed.
     pub fn space_changed(&mut self, space: AvailableSpace) -> bool {
         self.available_space != space
     }
@@ -351,6 +358,7 @@ where
     }
 }
 
+/// A trait for types that can be converted into an [`Element`].
 pub trait IntoElement<V: ElementView = Box<dyn AnyView>> {
     fn into_element(self) -> Element<V>;
 }
@@ -373,8 +381,11 @@ impl<T: ElementView> IntoElement<T> for Element<T> {
     }
 }
 
+/// A trait for downcasting a [`Element`] to a specific [`ElementView`].
 pub trait DowncastElement<T: ElementView> {
+    /// Downcast the [`Element`] to `&T`.
     fn downcast_ref(&self) -> Option<&T>;
+    /// Downcast the [`Element`] to `&mut T`.
     fn downcast_mut(&mut self) -> Option<&mut T>;
 }
 
@@ -398,9 +409,7 @@ impl<T: View> DowncastElement<T> for Box<dyn AnyView> {
     }
 }
 
-/// A element in the ui tree.
-///
-/// A element is a wrapper around a view, and contains the state of the view.
+/// An element in the UI tree.
 pub struct Element<T: ElementView = Box<dyn AnyView>> {
     inner: Arc<ElementInner<T>>,
 }
@@ -414,6 +423,7 @@ impl<T: ElementView> Clone for Element<T> {
 }
 
 impl Element {
+    /// Creates an empty [`Element`].
     pub fn empty() -> Self {
         Self::new(EmptyView)
     }
@@ -425,6 +435,7 @@ impl<T: ElementView> Element<T> {
         view.into_element()
     }
 
+    /// Create a new element with the given [`View`].
     pub fn from_view(view: T) -> Self {
         let view_state = ElementView::build(&view);
         let element_state = ElementState::new(ElementView::style(&view));
@@ -457,12 +468,13 @@ impl<T: ElementView> Element<T> {
         self.inner.view.lock()
     }
 
+    /// Downcasts `T` to `U` and calls the given function with the `U`.
     pub fn with_view<U: ElementView>(&self, f: impl FnOnce(&mut U))
     where
         T: DowncastElement<U>,
     {
-        if let Some(mut view) = self.view().downcast_mut() {
-            f(&mut view);
+        if let Some(view) = self.view().downcast_mut() {
+            f(view);
         } else {
             tracing::error!("Failed to downcast view");
         }
@@ -478,6 +490,7 @@ impl<T: ElementView> Element<T> {
         element_state.local_rect = Rect::min_size(element_state.margin.top_left() + offset, size);
     }
 
+    /// Get the style of the element, for a given key.
     pub fn get_style<S: FromStyleAttribute + 'static>(
         &self,
         cx: &mut impl Context,
@@ -486,6 +499,7 @@ impl<T: ElementView> Element<T> {
         self.element_state().get_style(cx, key)
     }
 
+    /// Get the style of the element, for a given key. If the style is not found, `S::default()` is returned.
     pub fn style<S: FromStyleAttribute + Default + 'static>(
         &self,
         cx: &mut impl Context,
@@ -494,6 +508,7 @@ impl<T: ElementView> Element<T> {
         self.get_style(cx, key).unwrap_or_default()
     }
 
+    /// Get the style of the element, for a group of keys. If the style is not found, `S::default()` is returned.
     pub fn style_group<S: FromStyleAttribute + Default + 'static>(
         &self,
         cx: &mut impl Context,
@@ -512,14 +527,17 @@ impl<T: ElementView> Element<T> {
         self.element_state().needs_layout
     }
 
+    /// Returns the available space for the element.
     pub fn available_space(&self) -> AvailableSpace {
         self.element_state().available_space
     }
 
+    /// Sets the available space for the element.
     pub fn set_available_space(&self, space: AvailableSpace) {
         self.element_state().available_space = space;
     }
 
+    /// Returns true if the available space for the element has changed.
     pub fn space_changed(&self, space: AvailableSpace) -> bool {
         self.element_state().space_changed(space)
     }
@@ -547,7 +565,7 @@ impl<T: ElementView> Element<T> {
 }
 
 impl<T: ElementView> Element<T> {
-    /// Returns true if the element should be redrawn.
+    // returns true if the element should be redrawn.
     fn handle_pointer_event(
         element_state: &mut ElementState,
         event: &PointerEvent,
@@ -563,7 +581,7 @@ impl<T: ElementView> Element<T> {
         }
     }
 
-    /// Update the cursor.
+    // updates the cursor of the window.
     fn update_cursor(cx: &mut impl Context) {
         let Some(cursor) = cx.style("cursor") else {
             return;
@@ -686,6 +704,12 @@ impl<T: ElementView> Element<T> {
         size + state.margin.size()
     }
 
+    /// Relayout the element.
+    ///
+    /// This should be called when the element needs to be relayouted, for example when the
+    /// when flex layout has left over space, and flex elements need to fill that space.
+    ///
+    /// For more context see the implementation of [`Children::flex_layout`](crate::Children::flex_layout).
     pub fn relayout(&self, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2 {
         self.with_inner(cx, |element_state, cx| {
             self.relayout_inner(element_state, cx, space)
@@ -730,6 +754,7 @@ impl<T: ElementView> Element<T> {
 }
 
 impl<T: ElementView> Element<T> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn event_root_inner(
         &self,
         stylesheet: &Stylesheet,
@@ -776,6 +801,7 @@ impl<T: ElementView> Element<T> {
         self.view().event(&mut self.view_state(), &mut cx, event);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn layout_root_inner(
         &self,
         stylesheet: &Stylesheet,
@@ -824,6 +850,7 @@ impl<T: ElementView> Element<T> {
         size
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw_root_inner(
         &self,
         stylesheet: &Stylesheet,

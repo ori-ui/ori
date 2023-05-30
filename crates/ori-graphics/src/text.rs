@@ -98,7 +98,7 @@ impl TextSection {
         };
 
         let family = match self.font_family {
-            Some(ref name) => Family::Name(&name),
+            Some(ref name) => Family::Name(name),
             None => Family::SansSerif,
         };
 

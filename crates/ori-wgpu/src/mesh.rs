@@ -170,7 +170,7 @@ impl MeshPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Mesh Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout, &image_bind_group_layout],
+            bind_group_layouts: &[&bind_group_layout, image_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -256,6 +256,7 @@ impl MeshPipeline {
         buffer.copy_from_slice(bytes);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
         device: &Device,
@@ -281,7 +282,7 @@ impl MeshPipeline {
 
         let screen_rect = Rect::new(Vec2::ZERO, Vec2::new(width as f32, height as f32));
 
-        for ((mesh, clip), instance) in meshes.into_iter().zip(&mut layer.instances) {
+        for ((mesh, clip), instance) in meshes.iter().zip(&mut layer.instances) {
             if mesh.vertices.is_empty() || mesh.indices.is_empty() {
                 instance.draw = false;
                 continue;

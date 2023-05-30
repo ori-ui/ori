@@ -52,13 +52,7 @@ impl StyleAttributes {
     }
 
     pub fn get(&self, name: &str) -> Option<&StyleAttribute> {
-        for attribute in self.attributes.iter() {
-            if attribute.key() == name {
-                return Some(&attribute);
-            }
-        }
-
-        None
+        self.attributes.iter().rev().find(|attr| attr.key() == name)
     }
 
     pub fn get_value<T: FromStyleAttribute>(&self, name: &str) -> Option<T> {

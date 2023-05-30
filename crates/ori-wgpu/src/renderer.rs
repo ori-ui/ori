@@ -33,6 +33,10 @@ pub struct WgpuRenderer {
 }
 
 impl WgpuRenderer {
+    /// Creates a new renderer asynchronously.
+    ///
+    /// # Safety
+    /// - `window` must be a valid see [`Instance::create_surface`] for more information.
     pub async unsafe fn new_async(
         window: &(impl HasRawWindowHandle + HasRawDisplayHandle),
         width: u32,
@@ -90,6 +94,10 @@ impl WgpuRenderer {
         }
     }
 
+    /// Creates a new renderer.
+    ///
+    /// # Safety
+    /// - `window` must be a valid see [`Instance::create_surface`] for more information.
     pub unsafe fn new(
         window: &(impl HasRawDisplayHandle + HasRawWindowHandle),
         width: u32,
@@ -337,7 +345,7 @@ impl WgpuRenderer {
             label: Some("Ily Main Render Pass"),
             color_attachments: &[Some(RenderPassColorAttachment {
                 view: &msaa_view,
-                resolve_target: Some(&view),
+                resolve_target: Some(view),
                 ops: Operations {
                     load: LoadOp::Clear(wgpu::Color {
                         r: clear_color.r as f64,

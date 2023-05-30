@@ -2,25 +2,34 @@ use ori_reactive::{Callback, CallbackEmitter, OwnedSignal, Scope, Signal};
 
 use crate::{Element, ElementView, IntoElement};
 
+/// A trait for setting properties on an element.
 pub trait Properties {
+    /// The setter type.
     type Setter<'a>
     where
         Self: 'a;
 
+    /// Returns [`Self::Setter`].
     fn setter(&mut self) -> Self::Setter<'_>;
 }
 
+/// A trait for setting events on an element.
 pub trait Events {
+    /// The setter type.
     type Setter<'a>
     where
         Self: 'a;
 
+    /// Returns [`Self::Setter`].
     fn setter(&mut self) -> Self::Setter<'_>;
 }
 
+/// A trait that is implemented for every type a callback can be subscribed to.
 pub trait BindCallback {
+    /// The event type.
     type Event;
 
+    /// Binds a callback to the signal.
     fn bind(&mut self, cx: Scope, callback: impl FnMut(&Self::Event) + Send + 'static);
 }
 
@@ -34,17 +43,23 @@ impl<T> BindCallback for CallbackEmitter<T> {
     }
 }
 
+/// A trait for setting bindings on an element.
 pub trait Bindings {
+    /// The setter type.
     type Setter<'a>
     where
         Self: 'a;
 
+    /// Returns [`Self::Setter`].
     fn setter(&mut self) -> Self::Setter<'_>;
 }
 
+/// A trait implemented for every type that can be bound to a signal.
 pub trait Bindable<'a> {
+    /// The item type.
     type Item: Send;
 
+    /// Binds the signal to the value.
     fn bind(&mut self, cx: Scope, signal: Signal<Self::Item>);
 }
 
@@ -56,19 +71,26 @@ impl<'a, T: Send + Sync + Clone + 'static> Bindable<'a> for OwnedSignal<T> {
     }
 }
 
+/// A trait for setting children on an element.
 pub trait Parent {
+    /// The child type.
     type Child: ElementView;
 
+    /// Clears all children.
     fn clear_children(&mut self);
 
-    fn add_children(&mut self, child: impl Iterator<Item = Element<Self::Child>>) -> usize;
+    /// Adds `children` to a new slot and returns the slot index.
+    fn add_children(&mut self, children: impl Iterator<Item = Element<Self::Child>>) -> usize;
 
-    fn set_children(&mut self, slot: usize, child: impl Iterator<Item = Element<Self::Child>>);
+    /// Sets the children of `slot` to `children`.
+    fn set_children(&mut self, slot: usize, children: impl Iterator<Item = Element<Self::Child>>);
 
+    /// Adds `child` to a new slot and returns the slot index.
     fn add_child(&mut self, child: impl IntoElement<Self::Child>) -> usize {
         self.add_children(std::iter::once(child.into_element()))
     }
 
+    /// Adds `children` to a new slot.
     fn with_children(mut self, children: impl Iterator<Item = Element<Self::Child>>) -> Self
     where
         Self: Sized,
@@ -77,6 +99,7 @@ pub trait Parent {
         self
     }
 
+    /// Adds `child` to a new slot.
     fn with_child(mut self, child: impl IntoElement<Self::Child>) -> Self
     where
         Self: Sized,

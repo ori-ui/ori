@@ -76,7 +76,7 @@ fn data(input: &DeriveInput) -> (&DataStruct, &FieldsNamed) {
 
 fn properties(input: &DeriveInput) -> TokenStream {
     let name = &input.ident;
-    let setter = prop_setter(&input);
+    let setter = prop_setter(input);
 
     let ori_core = find_crate("core");
 
@@ -103,7 +103,7 @@ fn properties(input: &DeriveInput) -> TokenStream {
 
 fn events(input: &DeriveInput) -> TokenStream {
     let name = &input.ident;
-    let setter = event_setter(&input);
+    let setter = event_setter(input);
 
     let ori_core = find_crate("core");
 
@@ -130,7 +130,7 @@ fn events(input: &DeriveInput) -> TokenStream {
 
 fn bindings(input: &DeriveInput) -> TokenStream {
     let name = &input.ident;
-    let setter = binding_setter(&input);
+    let setter = binding_setter(input);
 
     let ori_core = find_crate("core");
 
@@ -157,7 +157,7 @@ fn bindings(input: &DeriveInput) -> TokenStream {
 
 fn children(input: &DeriveInput) -> TokenStream {
     let name = &input.ident;
-    let (_, fields) = data(&input);
+    let (_, fields) = data(input);
 
     let ori_core = find_crate("core");
 
@@ -241,7 +241,7 @@ fn event_setter(input: &DeriveInput) -> TokenStream {
 
     let fields = fields.named.iter().filter_map(|field| {
         let name = field.ident.as_ref().unwrap();
-        let event = event_name(&name);
+        let event = event_name(name);
 
         let ty = &field.ty;
 
@@ -275,7 +275,7 @@ fn binding_setter(input: &DeriveInput) -> TokenStream {
 
     let fields = fields.named.iter().filter_map(|field| {
         let name = field.ident.as_ref().unwrap();
-        let event = event_name(&name);
+        let event = event_name(name);
 
         let ty = &field.ty;
 

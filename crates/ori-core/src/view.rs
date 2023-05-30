@@ -40,18 +40,21 @@ pub trait View: Send + Sync + 'static {
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {}
 }
 
-/// A [`View`] that with an unknown state.
-///
-/// This is used to store a [`View`] in a [`Element`](crate::Element).
+/// A type-erased [`View`].
 pub trait AnyView: Any + Send + Sync {
+    /// Builds the state of the view.
     fn build(&self) -> Box<dyn Any + Send + Sync>;
 
+    /// Returns the style of the view.
     fn style(&self) -> Style;
 
+    /// Handles an event.
     fn event(&self, state: &mut dyn Any, cx: &mut EventContext, event: &Event);
 
+    /// Layout the view.
     fn layout(&self, state: &mut dyn Any, cx: &mut LayoutContext, space: AvailableSpace) -> Vec2;
 
+    /// Draws the view.
     fn draw(&self, state: &mut dyn Any, cx: &mut DrawContext);
 }
 

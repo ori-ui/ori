@@ -78,8 +78,7 @@ impl StyleCache {
     }
 
     pub fn insert_none(&mut self, hash: StyleSelectorsHash, key: &str) {
-        let hash = Self::hash(hash, &key);
-
+        let hash = Self::hash(hash, key);
         self.attributes.insert(hash, None);
     }
 
@@ -89,10 +88,6 @@ impl StyleCache {
         key: &str,
     ) -> Option<Option<(StyleAttribute, StyleSpecificity)>> {
         let hash = Self::hash(hash, key);
-
-        match self.attributes.get(&hash) {
-            Some(result) => Some(result.clone()),
-            None => None,
-        }
+        self.attributes.get(&hash).cloned()
     }
 }

@@ -265,6 +265,7 @@ impl QuadPipeline {
         buffer.copy_from_slice(bytes);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
         device: &Device,
@@ -290,7 +291,7 @@ impl QuadPipeline {
 
         let screen_rect = Rect::new(Vec2::ZERO, Vec2::new(width as f32, height as f32));
 
-        for ((quad, clip), instance) in quads.into_iter().zip(&mut layer.instances) {
+        for ((quad, clip), instance) in quads.iter().zip(&mut layer.instances) {
             instance.clip = match clip {
                 Some(clip) => clip.intersect(screen_rect),
                 None => screen_rect,

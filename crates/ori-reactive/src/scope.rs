@@ -65,7 +65,7 @@ impl Scope {
     /// dropped, but its parent's contexts are not. This is called internally in
     /// [`Scope::effect_scoped`].
     pub fn child(self) -> Scope {
-        let contexts = self.contexts.get().unwrap_or_default().clone();
+        let contexts = self.contexts.get().unwrap_or_default();
         let contexts = Resource::new_leaking(contexts);
 
         let id = Runtime::global().create_scope(Some(self.id));
@@ -163,7 +163,7 @@ impl Scope {
     }
 
     /// Gets a context from this scope.
-    pub fn get_context<'a, C: Clone + Send + Sync + 'static>(self) -> Option<C> {
+    pub fn get_context<C: Clone + Send + Sync + 'static>(self) -> Option<C> {
         let contexts = self.contexts.get()?;
         contexts.get()
     }

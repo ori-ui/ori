@@ -128,9 +128,9 @@ impl Color {
     }
 }
 
-impl Into<[f32; 4]> for Color {
-    fn into(self) -> [f32; 4] {
-        [self.r, self.g, self.b, self.a]
+impl From<Color> for [f32; 4] {
+    fn from(val: Color) -> Self {
+        [val.r, val.g, val.b, val.a]
     }
 }
 
@@ -140,9 +140,9 @@ impl From<[f32; 4]> for Color {
     }
 }
 
-impl Into<(f32, f32, f32, f32)> for Color {
-    fn into(self) -> (f32, f32, f32, f32) {
-        (self.r, self.g, self.b, self.a)
+impl From<Color> for (f32, f32, f32, f32) {
+    fn from(val: Color) -> Self {
+        (val.r, val.g, val.b, val.a)
     }
 }
 
@@ -152,9 +152,9 @@ impl From<(f32, f32, f32, f32)> for Color {
     }
 }
 
-impl Into<Vec4> for Color {
-    fn into(self) -> Vec4 {
-        Vec4::new(self.r, self.g, self.b, self.a)
+impl From<Color> for Vec4 {
+    fn from(val: Color) -> Self {
+        Vec4::new(val.r, val.g, val.b, val.a)
     }
 }
 

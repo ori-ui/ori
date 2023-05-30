@@ -192,10 +192,10 @@ impl Curve {
                 // add indices for prev center
                 mesh.indices.push(i - 2);
                 mesh.indices.push(i - 1);
-                mesh.indices.push(i + 0);
+                mesh.indices.push(i);
                 mesh.indices.push(i - 1);
                 mesh.indices.push(i + 1);
-                mesh.indices.push(i + 0);
+                mesh.indices.push(i);
             } else if i > 0 {
                 let prev = self.points[i - 1];
                 let center = self.points[i];
@@ -219,10 +219,10 @@ impl Curve {
                 // add indices for prev center
                 mesh.indices.push(i - 2);
                 mesh.indices.push(i - 1);
-                mesh.indices.push(i + 0);
+                mesh.indices.push(i);
                 mesh.indices.push(i - 1);
                 mesh.indices.push(i + 1);
-                mesh.indices.push(i + 0);
+                mesh.indices.push(i);
             } else {
                 let center = self.points[i];
                 let next = self.points[i + 1];

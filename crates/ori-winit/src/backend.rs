@@ -138,7 +138,7 @@ impl WindowBackend for WinitBackend {
 
     fn get_size(&self, id: WindowId) -> UVec2 {
         let size = self.windows[&id].inner_size();
-        UVec2::new(size.width as u32, size.height as u32)
+        UVec2::new(size.width, size.height)
     }
 
     fn set_size(&mut self, id: WindowId, size: UVec2) {

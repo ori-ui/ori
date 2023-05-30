@@ -153,7 +153,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
             let mut properties = Vec::new();
 
             for node in &element.attributes {
-                let attr = get_attribute(&node);
+                let attr = get_attribute(node);
                 attribute(context, name, attr, &mut attributes, &mut properties);
             }
 
@@ -218,11 +218,11 @@ fn attribute(
         let Some(ref value) = attr.value else { return };
 
         if path.path == parse_quote!(class) {
-            attributes.push(class(context, name, &value));
+            attributes.push(class(context, name, value));
             return;
         }
 
-        properties.push(property(context, name, &path, &value));
+        properties.push(property(context, name, path, value));
         return;
     }
 
@@ -233,7 +233,7 @@ fn attribute(
             "on" => {
                 if let Some(ref value) = attr.value {
                     let key = Ident::new(&key, punct.span());
-                    properties.push(event(context, name, &key, &value));
+                    properties.push(event(context, name, &key, value));
                 } else {
                     abort!(punct, "expected event handler");
                 }
@@ -241,22 +241,20 @@ fn attribute(
             "bind" => {
                 if let Some(ref value) = attr.value {
                     let key = Ident::new(&key, punct.span());
-                    properties.push(binding(context, name, &key, &value));
+                    properties.push(binding(context, name, &key, value));
                 } else {
                     abort!(punct, "expected binding");
                 }
             }
             "style" => {
                 if let Some(ref value) = attr.value {
-                    attributes.push(style(context, name, &key, &value));
+                    attributes.push(style(context, name, &key, value));
                 } else {
                     abort!(punct, "expected attribute");
                 }
             }
             _ => abort!(kind, "invalid attribute kind"),
         }
-
-        return;
     }
 }
 
@@ -298,7 +296,7 @@ fn attribute_kind(attribute: &NodeAttribute) -> (String, String) {
 
 fn is_dynamic(value: &Expr) -> bool {
     match value {
-        Expr::Array(expr) => expr.elems.iter().any(|expr| is_dynamic(expr)),
+        Expr::Array(expr) => expr.elems.iter().any(is_dynamic),
         Expr::Assign(_) | Expr::AssignOp(_) => false,
         Expr::Unary(expr) => is_dynamic(&expr.expr),
         Expr::Binary(expr) => is_dynamic(&expr.left) || is_dynamic(&expr.right),
@@ -313,7 +311,7 @@ fn is_dynamic(value: &Expr) -> bool {
         Expr::Reference(expr) => is_dynamic(&expr.expr),
         Expr::Repeat(expr) => is_dynamic(&expr.expr),
         Expr::Try(expr) => is_dynamic(&expr.expr),
-        Expr::Tuple(expr) => expr.elems.iter().any(|expr| is_dynamic(expr)),
+        Expr::Tuple(expr) => expr.elems.iter().any(is_dynamic),
         Expr::Type(_) => false,
         _ => true,
     }

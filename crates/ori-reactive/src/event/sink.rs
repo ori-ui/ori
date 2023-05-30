@@ -26,6 +26,9 @@ impl EventEmitter for Sender<Event> {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct EventSinkDowncastError;
+
 /// An event sink, that can send events to the application.
 #[derive(Clone)]
 pub struct EventSink {
@@ -50,16 +53,19 @@ impl EventSink {
     /// **Note** this will lock the [`EventSink`] for the duration of the
     /// closure, meaning that using the event sink inside the closure will
     /// result in a deadlock.
-    pub fn downcast_with<T: EventEmitter>(&self, f: impl FnOnce(&mut T)) -> Result<(), ()> {
-        let emitter = &*self.emitter.lock();
+    pub fn downcast_with<T: EventEmitter>(
+        &self,
+        f: impl FnOnce(&mut T),
+    ) -> Result<(), EventSinkDowncastError> {
+        let emitter = &mut *self.emitter.lock();
 
-        if emitter.type_id() == std::any::TypeId::of::<T>() {
-            let mut emitter = unsafe { &mut *(emitter as *const dyn EventEmitter as *mut T) };
-            f(&mut emitter);
+        if <dyn EventEmitter>::type_id(emitter) == std::any::TypeId::of::<T>() {
+            let emitter = unsafe { &mut *(emitter as *mut dyn EventEmitter as *mut T) };
+            f(emitter);
 
             Ok(())
         } else {
-            Err(())
+            Err(EventSinkDowncastError)
         }
     }
 

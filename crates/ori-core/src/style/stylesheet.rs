@@ -110,7 +110,7 @@ impl Stylesheet {
 
     pub fn get_attribute(&self, selectors: &StyleSelectors, name: &str) -> Option<StyleAttribute> {
         let (attribute, _) = self.get_attribute_specificity(selectors, name)?;
-        Some(attribute.clone())
+        Some(attribute)
     }
 
     pub fn get_attribute_specificity(
@@ -136,10 +136,7 @@ impl Stylesheet {
             }
         }
 
-        match result {
-            Some((attribute, specificity)) => Some((attribute.clone(), specificity)),
-            None => None,
-        }
+        result.map(|(attribute, _)| (attribute.clone(), specificity))
     }
 
     /// Loads a style sheet from a file.

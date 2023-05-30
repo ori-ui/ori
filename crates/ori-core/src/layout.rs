@@ -5,18 +5,23 @@ use ori_graphics::Rect;
 
 use crate::{Context, StyleAttributeEnum};
 
+/// The amount of space a [`View`](crate::View) is allowed to take up.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct AvailableSpace {
+    /// The minimum size the view can be.
     pub min: Vec2,
+    /// The maximum size the view can be.
     pub max: Vec2,
 }
 
 impl AvailableSpace {
+    #[allow(missing_docs)]
     pub const ZERO: Self = Self {
         min: Vec2::ZERO,
         max: Vec2::ZERO,
     };
 
+    #[allow(missing_docs)]
     pub const UNBOUNDED: Self = Self {
         min: Vec2::ZERO,
         max: Vec2::splat(f32::INFINITY),

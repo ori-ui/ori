@@ -288,6 +288,12 @@ macro_rules! define_ids {
             id: usize,
         }
 
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+
         impl $name {
             /// Creates a new unique ID. Ids are created by the [`Runtime`] and should usually
             /// not be created manually.

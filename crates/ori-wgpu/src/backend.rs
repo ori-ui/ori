@@ -9,17 +9,23 @@ struct WgpuSurface(RawDisplayHandle, RawWindowHandle);
 
 unsafe impl HasRawDisplayHandle for WgpuSurface {
     fn raw_display_handle(&self) -> RawDisplayHandle {
-        self.0.clone()
+        self.0
     }
 }
 
 unsafe impl HasRawWindowHandle for WgpuSurface {
     fn raw_window_handle(&self) -> RawWindowHandle {
-        self.1.clone()
+        self.1
     }
 }
 
 pub struct WgpuBackend {}
+
+impl Default for WgpuBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl WgpuBackend {
     pub fn new() -> Self {

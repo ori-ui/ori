@@ -63,6 +63,7 @@ impl ImageCache {
 }
 
 /// A context for [`View::event`](crate::View::event).
+#[allow(missing_docs)]
 pub struct EventContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
@@ -77,6 +78,7 @@ pub struct EventContext<'a> {
 }
 
 /// A context for [`View::layout`](crate::View::layout).
+#[allow(missing_docs)]
 pub struct LayoutContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
@@ -93,6 +95,7 @@ pub struct LayoutContext<'a> {
 }
 
 impl<'a> LayoutContext<'a> {
+    /// Gets the available space, constrained by the element's style.
     pub fn style_constraints(&mut self, space: AvailableSpace) -> AvailableSpace {
         let parent_space = self.parent_space;
         let min_width = self.style_range_group(&["min-width", "width"], parent_space.x_axis());
@@ -107,6 +110,7 @@ impl<'a> LayoutContext<'a> {
         AvailableSpace::new(min_size, max_size)
     }
 
+    /// Calls `f`, temporarily changing the available space.
     pub fn with_space<T>(&mut self, space: AvailableSpace, f: impl FnOnce(&mut Self) -> T) -> T {
         let tmp = self.space;
         self.space = space;
@@ -115,11 +119,13 @@ impl<'a> LayoutContext<'a> {
         result
     }
 
+    /// Measure the bounds of a text section.
     pub fn measure_text(&mut self, text: &TextSection) -> Rect {
         text.measure(self.font_system)
     }
 }
 
+/// A layer for drawing, see [`DrawContext::layer`](DrawContext::layer).
 pub struct DrawLayer<'a, 'b> {
     draw_context: &'b mut DrawContext<'a>,
     z_index: f32,
@@ -127,16 +133,19 @@ pub struct DrawLayer<'a, 'b> {
 }
 
 impl<'a, 'b> DrawLayer<'a, 'b> {
+    /// Set the z-index of the layer.
     pub fn z_index(mut self, depth: f32) -> Self {
         self.z_index = depth;
         self
     }
 
+    /// Set the clipping rectangle for the layer.
     pub fn clip(mut self, clip: Rect) -> Self {
         self.clip = Some(clip.round());
         self
     }
 
+    /// Draw the layer.
     pub fn draw(self, f: impl FnOnce(&mut DrawContext)) {
         let layer = self
             .draw_context
@@ -166,6 +175,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
 }
 
 /// A context for [`View::draw`](crate::View::draw).
+#[allow(missing_docs)]
 pub struct DrawContext<'a> {
     pub state: &'a mut ElementState,
     pub frame: &'a mut Frame,
@@ -181,10 +191,12 @@ pub struct DrawContext<'a> {
 }
 
 impl<'a> DrawContext<'a> {
+    /// Returns the frame.
     pub fn frame(&mut self) -> &mut Frame {
         self.frame
     }
 
+    /// Returns a new layer, see [`Frame::layer`].
     pub fn layer<'b>(&'b mut self) -> DrawLayer<'a, 'b> {
         DrawLayer {
             draw_context: self,

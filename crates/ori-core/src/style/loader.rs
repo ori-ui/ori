@@ -93,7 +93,7 @@ impl TryFrom<&Path> for LoadedStyleKind {
 /// A style loader that can load styles from files and inline styles.
 ///
 /// Styles that are loaded from files are reloaded when the file is modified.
-#[derive(Clone, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct StyleLoader {
     styles: Vec<LoadedStyleKind>,
     cache: Stylesheet,
@@ -102,12 +102,10 @@ pub struct StyleLoader {
 impl StyleLoader {
     /// Creates a new style loader.
     pub fn new() -> Self {
-        Self {
-            styles: Vec::new(),
-            cache: Stylesheet::new(),
-        }
+        Self::default()
     }
 
+    /// Clears the loader.
     pub fn clear(&mut self) {
         self.styles.clear();
         self.cache = Stylesheet::new();

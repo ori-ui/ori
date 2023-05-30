@@ -13,7 +13,7 @@ fn found_crate(krate: FoundCrate) -> TokenStream {
 }
 
 pub fn find_crate(krate: &str) -> TokenStream {
-    let ident = Ident::new(&krate, Span::call_site());
+    let ident = Ident::new(krate, Span::call_site());
     let krate = format!("ori-{}", krate);
 
     match proc_macro_crate::crate_name(&krate) {

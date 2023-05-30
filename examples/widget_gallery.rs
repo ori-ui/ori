@@ -37,11 +37,9 @@ fn ui(cx: Scope) -> Element {
             let id = cx.open_window(window, popup_ui);
 
             popup_window.set(Some(id));
-        } else {
-            if let Some(id) = popup_window.get() {
-                cx.emit(CloseWindow::window(id));
-                popup_window.set(None);
-            }
+        } else if let Some(id) = popup_window.get() {
+            cx.emit(CloseWindow::window(id));
+            popup_window.set(None);
         }
     };
 

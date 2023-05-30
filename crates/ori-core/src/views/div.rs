@@ -22,7 +22,7 @@ impl Div {
         Self::default()
     }
 
-    pub fn on_press<'a>(
+    pub fn on_press(
         mut self,
         cx: Scope,
         callback: impl FnMut(&PointerEvent) + Send + 'static,
@@ -32,7 +32,7 @@ impl Div {
         self
     }
 
-    pub fn on_release<'a>(
+    pub fn on_release(
         mut self,
         cx: Scope,
         callback: impl FnMut(&PointerEvent) + Send + 'static,

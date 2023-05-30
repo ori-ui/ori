@@ -20,7 +20,7 @@ use crate::{
     convert::{convert_device_id, convert_key, convert_mouse_button, is_pressed},
 };
 
-fn initialize_log() -> Result<(), Box<dyn Error>> {
+fn init_tracing() -> Result<(), Box<dyn Error>> {
     use tracing_subscriber::layer::SubscriberExt;
 
     let filter = tracing_subscriber::EnvFilter::builder()
@@ -47,21 +47,21 @@ pub struct App {
     window: Window,
     style_loader: StyleLoader,
     event_loop: EventLoop<(WinitWindowId, Event)>,
-    builder: Option<Box<dyn FnOnce(Scope) -> Element>>,
+    builder: Option<Box<dyn FnMut(Scope) -> Element + Send>>,
 }
 
 impl App {
     /// Create a new [`App`] with the given content.
-    pub fn new(content: impl FnOnce(Scope) -> Element + 'static) -> Self {
+    pub fn new(content: impl FnMut(Scope) -> Element + Send + 'static) -> Self {
         let event_loop = EventLoopBuilder::with_user_event().build();
         Self::new_with_event_loop(event_loop, content)
     }
 
     pub fn new_with_event_loop(
         event_loop: EventLoop<(WinitWindowId, Event)>,
-        content: impl FnOnce(Scope) -> Element + 'static,
+        content: impl FnMut(Scope) -> Element + Send + 'static,
     ) -> Self {
-        initialize_log().unwrap();
+        init_tracing().unwrap();
 
         let mut style_loader = StyleLoader::new();
 
@@ -110,6 +110,7 @@ impl App {
         T: TryInto<LoadedStyleKind>,
         T::Error: Display,
     {
+        #[allow(clippy::single_match)]
         match self.style_loader.add_style(style) {
             Err(err) => tracing::error!("failed to load style: {}", err),
             _ => {}
@@ -161,7 +162,7 @@ impl App {
 }
 
 impl App {
-    pub fn new_any_thread(content: impl FnOnce(Scope) -> Element + 'static) -> Self {
+    pub fn new_any_thread(content: impl FnMut(Scope) -> Element + Send + 'static) -> Self {
         let mut builder = EventLoopBuilder::with_user_event();
 
         #[cfg(target_os = "windows")]
@@ -280,7 +281,7 @@ impl App {
                             ..
                         } => {
                             let device = convert_device_id(device_id);
-                            let delta = Vec2::new(x as f32, y as f32);
+                            let delta = Vec2::new(x, y);
                             windows.pointer_scroll(window, device, delta);
                         }
                         WindowEvent::KeyboardInput {

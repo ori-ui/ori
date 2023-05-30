@@ -30,18 +30,10 @@ impl IntoElement for &str {
     }
 }
 
-#[derive(Clone, Debug, Build)]
+#[derive(Clone, Debug, Default, Build)]
 pub struct Text {
     #[prop]
     text: String,
-}
-
-impl Default for Text {
-    fn default() -> Self {
-        Self {
-            text: String::new(),
-        }
-    }
 }
 
 impl Text {

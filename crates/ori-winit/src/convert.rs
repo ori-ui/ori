@@ -1,7 +1,4 @@
-use std::{
-    collections::hash_map::RandomState,
-    hash::{BuildHasher, Hash, Hasher},
-};
+use std::hash::{Hash, Hasher};
 
 use ori_core::{Cursor, Key, PointerButton};
 use winit::{
@@ -10,7 +7,7 @@ use winit::{
 };
 
 pub(crate) fn convert_device_id(device_id: DeviceId) -> u64 {
-    let mut hasher = RandomState::new().build_hasher();
+    let mut hasher = seahash::SeaHasher::new();
     device_id.hash(&mut hasher);
     hasher.finish()
 }

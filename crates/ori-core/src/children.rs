@@ -41,10 +41,12 @@ impl Default for FlexLayout {
 }
 
 impl FlexLayout {
+    /// Create a new flex layout.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Creates a new vertical flex layout.
     pub fn vertical() -> Self {
         Self {
             axis: Axis::Vertical,
@@ -52,6 +54,7 @@ impl FlexLayout {
         }
     }
 
+    /// Creates a new horizontal flex layout.
     pub fn horizontal() -> Self {
         Self {
             axis: Axis::Horizontal,
@@ -59,14 +62,17 @@ impl FlexLayout {
         }
     }
 
+    /// Creates a new row flex layout.
     pub fn row() -> Self {
         Self::horizontal()
     }
 
+    /// Creates a new column flex layout.
     pub fn column() -> Self {
         Self::vertical()
     }
 
+    /// Gets the flex layout from the style of an element.
     pub fn from_style(cx: &mut LayoutContext) -> Self {
         let axis = cx.style::<Axis>("direction");
         let justify_content = cx.style("justify-content");
@@ -113,25 +119,21 @@ impl<T: ElementView> Parent for Children<T> {
 }
 
 impl<T: ElementView> Children<T> {
+    /// Create a new children.
     pub const fn new() -> Self {
         Self {
             elements: SmallVec::new_const(),
         }
     }
 
+    /// Returns the amount of children.
     pub fn len(&self) -> usize {
         self.elements.iter().map(SmallVec::len).sum()
     }
 
+    /// Returns `true` if there are no children.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    /// Call the `event` method on all the children.
-    pub fn event(&self, cx: &mut EventContext, event: &Event) {
-        for child in self.iter() {
-            child.event(cx, event);
-        }
     }
 
     /// Layout the children using a FlexLayout.
@@ -332,6 +334,7 @@ impl<T: ElementView> Children<T> {
         axis.pack(major, minor)
     }
 
+    /// Returns the local rect of the flex container.
     pub fn local_rect(&self) -> Rect {
         let mut rect = None;
 
@@ -343,6 +346,7 @@ impl<T: ElementView> Children<T> {
         rect.unwrap_or_default()
     }
 
+    /// Returns the global rect of the flex container.
     pub fn rect(&self) -> Rect {
         let mut rect = None;
 
@@ -354,10 +358,12 @@ impl<T: ElementView> Children<T> {
         rect.unwrap_or_default()
     }
 
+    /// Returns the size of the flex container.
     pub fn size(&self) -> Vec2 {
         self.rect().size()
     }
 
+    /// Returns the offset of the flex container.
     pub fn set_offset(&self, offset: Vec2) {
         if self.is_empty() {
             return;
@@ -371,13 +377,22 @@ impl<T: ElementView> Children<T> {
         }
     }
 
+    /// Call the `event` method on all the children.
+    pub fn event(&self, cx: &mut EventContext, event: &Event) {
+        for child in self.iter() {
+            child.event(cx, event);
+        }
+    }
+
+    /// Draws the flex container.
     pub fn draw(&self, cx: &mut DrawContext) {
         for child in self.iter() {
             child.draw(cx);
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Element<T>> {
+    /// Returns the number of children in the flex container.
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Element<T>> {
         self.elements.iter().flatten()
     }
 }

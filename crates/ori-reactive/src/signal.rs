@@ -111,10 +111,7 @@ impl<T: Send + Sync> ReadSignal<T> {
 
 impl<T> Clone for ReadSignal<T> {
     fn clone(&self) -> Self {
-        Self {
-            resource: self.resource.clone(),
-            emitter: self.emitter.clone(),
-        }
+        *self
     }
 }
 

@@ -36,8 +36,10 @@ struct Triangulation<'a> {
 
 impl<'a> Triangulation<'a> {
     fn triangulate_curve(curve: &'a Curve) -> Vec<u32> {
-        let mut this = Self::default();
-        this.points = &curve.points;
+        let mut this = Self {
+            points: &curve.points,
+            ..Default::default()
+        };
 
         for i in 0..curve.len() {
             let prev = (i + curve.points.len() - 1) % curve.points.len();
@@ -115,7 +117,7 @@ impl<'a> Triangulation<'a> {
         let v20 = p0 - p2;
 
         for &i in &self.concave {
-            if i == prev_index || i == i || i == next_index {
+            if i == prev_index || i == next_index {
                 continue;
             }
 
@@ -147,12 +149,10 @@ impl<'a> Triangulation<'a> {
                     self.ears.insert(i);
                 }
             }
+        } else if self.is_ear(i) {
+            self.ears.insert(i);
         } else {
-            if self.is_ear(i) {
-                self.ears.insert(i);
-            } else {
-                self.ears.remove(&i);
-            }
+            self.ears.remove(&i);
         }
     }
 }

@@ -13,8 +13,8 @@ use crate::{
 #[grammar = "style/grammar.pest"]
 pub struct StyleParser;
 
-pub type StyleParseError = Error<Rule>;
-pub type SelectorParseError = Error<Rule>;
+pub type StyleParseError = Box<Error<Rule>>;
+pub type SelectorParseError = Box<Error<Rule>>;
 
 fn parse_number(pair: Pair<'_, Rule>) -> f32 {
     pair.as_str().parse().unwrap()
@@ -171,7 +171,7 @@ fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {
     rule
 }
 
-fn parse_style(input: &str) -> Result<Stylesheet, Error<Rule>> {
+fn parse_style(input: &str) -> Result<Stylesheet, StyleParseError> {
     let pairs = StyleParser::parse(Rule::Style, input)?.next().unwrap();
     let mut style = Stylesheet::new();
 

@@ -29,6 +29,7 @@ struct WindowUi<R: Renderer> {
     element: Element,
     scope: Scope,
     event_sink: EventSink,
+    event_emitter: CallbackEmitter<Event>,
     modifiers: Modifiers,
     pointers: HashMap<u64, Vec2>,
 }
@@ -98,7 +99,6 @@ where
     pub style_cache: StyleCache,
     pub image_cache: ImageCache,
     pub style_loader: StyleLoader,
-    pub event_emitter: CallbackEmitter<Event>,
 
     window_ui: HashMap<WindowId, WindowUi<R::Renderer>>,
 }
@@ -121,7 +121,6 @@ where
             style_cache: StyleCache::new(),
             image_cache: ImageCache::new(),
             style_loader: StyleLoader::new(),
-            event_emitter: CallbackEmitter::new(),
 
             window_ui: HashMap::new(),
         }
@@ -152,7 +151,8 @@ where
             .create_event_sink(window.id())
             .map_err(WindowError::WindowBackend)?;
 
-        let scope = Scope::new(event_sink.clone(), self.event_emitter.clone());
+        let event_emitter = CallbackEmitter::new();
+        let scope = Scope::new(event_sink.clone(), event_emitter.clone());
 
         let window_signal = Signal::new_leaking(window.clone());
         scope.with_context::<Signal<Window>>(window_signal);
@@ -165,6 +165,7 @@ where
             element,
             scope,
             event_sink,
+            event_emitter,
             modifiers: Modifiers::default(),
             pointers: HashMap::new(),
         };
@@ -213,10 +214,13 @@ where
             ui.scope.dispose();
         }
 
-        let windows = self.window_ui.keys().copied().collect::<Vec<_>>();
-        for window in windows {
+        for window in self.window_ids() {
             self.event_inner(window, &Event::new(WindowClosedEvent::new(id)));
         }
+    }
+
+    pub fn window_ids(&self) -> Vec<WindowId> {
+        self.window_ui.keys().copied().collect()
     }
 
     pub fn get_pointer_position(&mut self, window: WindowId, device: u64) -> Option<Vec2> {
@@ -359,13 +363,15 @@ where
             return;
         }
 
-        self.event_inner(id, event);
+        for id in self.window_ids() {
+            self.event_inner(id, event);
+        }
     }
 
     fn event_inner(&mut self, id: WindowId, event: &Event) {
-        self.event_emitter.emit(event);
-
         if let Some(ui) = self.window_ui.get_mut(&id) {
+            ui.event_emitter.emit(event);
+
             let mut window = ui.scope.window().get();
 
             ori_reactive::delay_effects(|| {

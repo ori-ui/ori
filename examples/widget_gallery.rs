@@ -43,10 +43,8 @@ fn ui(cx: Scope) -> Element {
         }
     };
 
-    cx.on(move |event| {
-        if event.is::<WindowClosedEvent>() {
-            popup_window.set(None);
-        }
+    cx.on(move |_: &WindowClosedEvent| {
+        popup_window.set(None);
     });
 
     let text_size = cx.memo(move || if checked.get() { Em(2.0) } else { Em(1.5) });

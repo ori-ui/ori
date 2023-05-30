@@ -1,14 +1,14 @@
 use std::{any::Any, fmt::Debug, sync::Arc};
 
 #[derive(Clone, Default)]
-pub struct Contexts {
+pub(crate) struct Contexts {
     contexts: Vec<Arc<dyn Any + Send + Sync>>,
 }
 
 impl Debug for Contexts {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Contexts")
-            .field("contexts", &self.contexts.len())
+            .field("len", &self.contexts.len())
             .finish()
     }
 }
@@ -21,7 +21,7 @@ impl Contexts {
     }
 
     pub fn contains<T: Any + Send + Sync>(&self) -> bool {
-        self.contexts.iter().any(|context| context.is::<T>())
+        self.contexts.iter().rev().any(|context| context.is::<T>())
     }
 
     pub fn push(&mut self, context: impl Any + Send + Sync + 'static) {

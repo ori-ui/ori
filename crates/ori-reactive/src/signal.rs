@@ -8,6 +8,7 @@ use crate::{Callback, CallbackEmitter, Resource};
 
 use super::effect;
 
+/// A signal that can be read from.
 pub struct ReadSignal<T: 'static> {
     pub(crate) resource: Resource<T>,
     pub(crate) emitter: Resource<CallbackEmitter>,

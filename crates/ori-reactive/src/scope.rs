@@ -3,8 +3,8 @@ use std::{any::Any, future::Future, mem, sync::Arc};
 use parking_lot::Mutex;
 
 use crate::{
-    Callback, CallbackEmitter, Contexts, Event, EventSink, OwnedSignal, ReadSignal, Resource,
-    Runtime, ScopeId, Signal, Task,
+    context::Contexts, Callback, CallbackEmitter, Event, EventSink, OwnedSignal, ReadSignal,
+    Resource, Runtime, ScopeId, Signal, Task,
 };
 
 use super::effect;
@@ -42,6 +42,20 @@ impl Scope {
             event_sink,
             event_emitter,
         }
+    }
+
+    /// Runs `f` in a new scope that is immediately disposed when `f` returns.
+    ///
+    /// This is primarily used for testing.
+    pub fn immediate<T>(f: impl FnOnce(Scope) -> T) -> T {
+        let event_sink = EventSink::new(());
+        let event_emitter = CallbackEmitter::new();
+
+        let scope = Scope::new(event_sink, event_emitter);
+        let result = f(scope);
+        scope.dispose();
+
+        result
     }
 
     /// Creates a child scope.
@@ -141,6 +155,13 @@ impl Scope {
         self
     }
 
+    /// Returns `true` if this scope has a context of type `C`.
+    pub fn has_context<C: Send + Sync + 'static>(self) -> bool {
+        self.contexts
+            .with(|contexts| contexts.contains::<C>())
+            .unwrap_or(false)
+    }
+
     /// Gets a context from this scope.
     pub fn get_context<'a, C: Clone + Send + Sync + 'static>(self) -> Option<C> {
         let contexts = self.contexts.get()?;
@@ -193,7 +214,7 @@ impl Scope {
     /// Creates an effect that will be rerun every time a dependency changes.
     #[track_caller]
     pub fn effect(self, effect: impl FnMut() + Send + 'static) {
-        effect::create_effect(self, effect);
+        effect::create_effect(self.id, effect);
     }
 
     /// Creates an effect that will be rerun every time a dependency changes.

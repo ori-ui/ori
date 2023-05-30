@@ -52,6 +52,7 @@ impl Runtime {
         }
     }
 
+    /// Returns a reference to the global runtime.
     pub fn global() -> &'static Self {
         lazy_static::lazy_static! {
             static ref RUNTIME: Runtime = Runtime::new_global();
@@ -60,6 +61,7 @@ impl Runtime {
         &RUNTIME
     }
 
+    /// Creates a new scope.
     pub fn create_scope(&self, parent: Option<ScopeId>) -> ScopeId {
         let id = ScopeId::new();
 
@@ -83,11 +85,13 @@ impl Runtime {
         id
     }
 
+    /// Returns the parent of the scope at `scope`.
     pub fn scope_parent(&self, scope: ScopeId) -> Option<ScopeId> {
         let (key, shard) = self.scopes.read(&scope);
         shard.get(key)?.parent
     }
 
+    /// Manages the resource at `resource` in the scope at `scope`.
     #[track_caller]
     pub fn manage_resource(&self, scope: ScopeId, resource: ResourceId) {
         tracing::trace!("managing resource {:?} in scope {:?}", resource, scope);
@@ -98,6 +102,7 @@ impl Runtime {
         }
     }
 
+    /// Disposes the scope at `scope`.
     #[track_caller]
     pub fn dispose_scope(&self, scope: ScopeId) {
         let scope = {
@@ -118,15 +123,18 @@ impl Runtime {
         }
     }
 
+    /// Creates a new resource with the given `value`.
+    ///
+    /// Resources are reference counted, and are disposed when their reference count reaches zero.
     #[track_caller]
-    pub fn create_resource<T: Send + Sync + 'static>(&self, data: T) -> ResourceId {
+    pub fn create_resource<T: Send + Sync + 'static>(&self, value: T) -> ResourceId {
         let id = ResourceId::new();
 
         tracing::trace!("creating resource {:?} at {}", id, Location::caller());
 
         let resource = RuntimeResource {
             creator: Location::caller(),
-            data: Box::new(data),
+            data: Box::new(value),
             references: 0,
         };
 
@@ -146,19 +154,29 @@ impl Runtime {
         }
     }
 
+    /// Gets the reference count of the resource at `id`.
+    #[track_caller]
+    pub fn get_reference_count(&self, id: ResourceId) -> Option<u32> {
+        let (key, shard) = self.resources.read(&id);
+        shard.get(key).map(|r| r.references + 1)
+    }
+
+    /// Gets and clone of the value of the resource at `id`.
+    ///
+    /// **Note** that if `T::clone` accesses the runtime, a deadlock is likely to occur.
+    ///
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
     #[track_caller]
     pub unsafe fn get_resource<T: Clone + 'static>(&self, id: ResourceId) -> Option<T> {
-        tracing::trace!("getting resource {:?} at {}", id, Location::caller());
-
-        let (key, shard) = self.resources.read(&id);
-        let resource = shard.get(key)?;
-
-        let ptr = resource.data.as_ref() as *const _ as *const T;
-        Some(unsafe { &*ptr }.clone())
+        self.with_resource(id, T::clone)
     }
 
+    /// Runs `f` with a reference to the resource at `id`.
+    ///
+    /// **Note** that accessing the runtime from within `f` should be avoided at all costs, as it
+    /// is likely to cause a deadlock.
+    ///
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
     #[track_caller]
@@ -176,6 +194,11 @@ impl Runtime {
         Some(f(&*ptr))
     }
 
+    /// Runs `f` with a mutable reference to the resource at `id`.
+    ///
+    /// **Note** that accessing the runtime from within `f` should be avoided at all costs, as it
+    /// is likely to cause a deadlock.
+    ///
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
     #[track_caller]
@@ -216,7 +239,9 @@ impl Runtime {
         Ok(())
     }
 
-    /// Takes the resource out of the runtime, returning it. This ignores the reference count.
+    /// Takes the resource out of the runtime, returning it.
+    ///
+    /// **Note** that this ignores the reference count, and should therefore be used with caution.
     ///
     /// # Safety
     /// - The caller must ensure that the resource stored at `id` is of type `T`.
@@ -263,6 +288,7 @@ macro_rules! define_ids {
         }
 
         impl $name {
+            #[inline(always)]
             pub fn new() -> Self {
                 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -271,7 +297,7 @@ macro_rules! define_ids {
                 }
             }
 
-            pub fn as_usize(self) -> usize {
+            pub const fn as_usize(self) -> usize {
                 self.id
             }
         }

@@ -10,17 +10,17 @@ use crate::{Callback, WeakCallback};
 
 use super::CallbackPtr;
 
-struct CallbackCollection<T> {
+struct CallbackSet<T> {
     callbacks: Vec<WeakCallback<T>>,
 }
 
-impl<T> Default for CallbackCollection<T> {
+impl<T> Default for CallbackSet<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> CallbackCollection<T> {
+impl<T> CallbackSet<T> {
     fn new() -> Self {
         Self {
             callbacks: Vec::new(),
@@ -57,7 +57,7 @@ impl<T> CallbackCollection<T> {
     }
 }
 
-impl<T> IntoIterator for CallbackCollection<T> {
+impl<T> IntoIterator for CallbackSet<T> {
     type Item = WeakCallback<T>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -66,7 +66,7 @@ impl<T> IntoIterator for CallbackCollection<T> {
     }
 }
 
-impl<T> Debug for CallbackCollection<T> {
+impl<T> Debug for CallbackSet<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CallbackCollection")
             .field("callbacks", &self.callbacks)
@@ -74,7 +74,7 @@ impl<T> Debug for CallbackCollection<T> {
     }
 }
 
-type Callbacks<T> = Mutex<CallbackCollection<T>>;
+type Callbacks<T> = Mutex<CallbackSet<T>>;
 
 /// A [`Callback`] emitter.
 ///
@@ -87,7 +87,7 @@ pub struct CallbackEmitter<T = ()> {
 impl<T> Default for CallbackEmitter<T> {
     fn default() -> Self {
         Self {
-            callbacks: Arc::new(Mutex::new(CallbackCollection::new())),
+            callbacks: Arc::new(Mutex::new(CallbackSet::new())),
         }
     }
 }

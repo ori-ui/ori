@@ -1,8 +1,34 @@
+//! Effects are closures that are re-run when their dependencies change.
+//!
+//! Here is a list of common dependencies:
+//! - [`Signal`](crate::Signal)
+//! - [`ReadSignal`](crate::ReadSignal)
+//! - [`OwnedSignal`](crate::OwnedSignal)
+//! - [`Atom`](crate::Atom)
+//! - [`AtomRef`](crate::AtomRef)
+//!
+//! # Example
+//! ```
+//! # use ori_reactive::prelude::*;
+//! # Scope::immediate(|cx| {
+//! // create a signal
+//! let counter = cx.signal(1);
+//! // when the effect is run once when created
+//! cx.effect(move || *counter.modify() *= 2);
+//!
+//! assert_eq!(counter.get(), 2);
+//!
+//! // and again when `counter` is modified
+//! counter.set(4);
+//! assert_eq!(counter.get(), 8);
+//! });
+//! ```
+
 use std::{cell::RefCell, fmt::Debug, ops::DerefMut, panic::Location, sync::Arc};
 
 use parking_lot::Mutex;
 
-use crate::{Callback, Resource, Scope, WeakCallbackEmitter};
+use crate::{Callback, Resource, ScopeId, WeakCallbackEmitter};
 
 thread_local! {
     static EFFECT_STACK: RefCell<Vec<*mut EffectState>> = Default::default();
@@ -95,12 +121,16 @@ pub fn delay_effects(f: impl FnOnce()) {
     }
 }
 
+/// Creates a new effect. The effect is managed by the given `scope`, and when the scope is
+/// disposed, the effect is disposed as well, meaning it can no longer run.
+///
+/// For more information, see the [module-level documentation](crate::effect).
 #[track_caller]
-pub(crate) fn create_effect(cx: Scope, mut f: impl FnMut() + Send + 'static) {
+pub fn create_effect(scope: ScopeId, mut f: impl FnMut() + Send + 'static) {
     let caller = Location::caller();
 
     let effect = Resource::new_leaking(Arc::new(Mutex::new(EffectState::empty())));
-    effect.manage(cx.id);
+    effect.manage(scope);
 
     let callback = Callback::new(move |()| {
         let mut captured = false;

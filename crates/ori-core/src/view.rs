@@ -2,8 +2,9 @@ use std::any::{self, Any, TypeId};
 
 use glam::Vec2;
 use ori_reactive::Event;
+use ori_style::{Style, Styled};
 
-use crate::{AvailableSpace, DrawContext, EventContext, LayoutContext, Style};
+use crate::{AvailableSpace, DrawContext, EventContext, LayoutContext};
 
 /// A [`View`] is a component that can be rendered to the screen.
 #[allow(unused_variables)]
@@ -110,6 +111,38 @@ impl dyn AnyView {
         } else {
             None
         }
+    }
+}
+
+impl<V: View> View for Styled<V> {
+    type State = V::State;
+
+    fn build(&self) -> Self::State {
+        self.value.build()
+    }
+
+    fn style(&self) -> Style {
+        let mut style = self.value.style();
+        style.classes.extend(self.classes.clone());
+        style.attributes.extend(self.attributes.clone());
+        style
+    }
+
+    fn event(&self, state: &mut Self::State, cx: &mut EventContext, event: &Event) {
+        self.value.event(state, cx, event)
+    }
+
+    fn layout(
+        &self,
+        state: &mut Self::State,
+        cx: &mut LayoutContext,
+        space: AvailableSpace,
+    ) -> Vec2 {
+        self.value.layout(state, cx, space)
+    }
+
+    fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        self.value.draw(state, cx)
     }
 }
 

@@ -1,9 +1,10 @@
 use glam::Vec2;
 use ori_reactive::Event;
+use ori_style::Style;
 
 use crate::{
     AvailableSpace, Div, DrawContext, EventContext, Events, IntoNode, LayoutContext, Node, Parent,
-    Style, View,
+    View,
 };
 
 /// A button view.

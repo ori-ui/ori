@@ -7,6 +7,7 @@ pub use backend::*;
 pub use descriptor::*;
 pub use id::*;
 use ori_macro::view;
+use ori_style::{StyleCache, StyleLoader};
 pub use scope::*;
 
 use glam::{UVec2, Vec2};
@@ -17,8 +18,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use crate::{
     Body, CloseWindow, Element, ImageCache, Key, KeyboardEvent, Modifiers, Node, OpenWindow,
-    PointerButton, PointerEvent, RequestRedrawEvent, StyleCache, StyleLoader, WindowClosedEvent,
-    WindowResizedEvent,
+    PointerButton, PointerEvent, RequestRedrawEvent, WindowClosedEvent, WindowResizedEvent,
 };
 
 const TEXT_FONT: &[u8] = include_bytes!("../../fonts/NotoSans-Medium.ttf");
@@ -487,5 +487,9 @@ where
             let clear_color = window.clear_color;
             (ui.renderer).render_frame(&mut self.font_system, &self.frame, clear_color);
         }
+    }
+
+    pub fn style_loader(&self) -> &StyleLoader {
+        &self.style_loader
     }
 }

@@ -2,10 +2,10 @@ use glam::Vec2;
 use ori_graphics::{Quad, Rect};
 use ori_macro::Build;
 use ori_reactive::{Event, OwnedSignal};
+use ori_style::Style;
 
 use crate::{
-    AvailableSpace, Axis, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style,
-    View,
+    AvailableSpace, Axis, Context, DrawContext, EventContext, LayoutContext, PointerEvent, View,
 };
 
 /// A slider view.

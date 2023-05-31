@@ -2,8 +2,9 @@ use std::ops::Range;
 
 use glam::Vec2;
 use ori_graphics::Rect;
+use ori_style::StyleAttributeEnum;
 
-use crate::{Context, StyleAttributeEnum};
+use crate::Context;
 
 /// The amount of space a [`View`](crate::View) is allowed to take up.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

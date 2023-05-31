@@ -1,10 +1,11 @@
 use glam::Vec2;
 use ori_macro::Build;
 use ori_reactive::{CallbackEmitter, Event, Scope};
+use ori_style::Style;
 
 use crate::{
     AvailableSpace, BindCallback, Children, Context, DrawContext, EventContext, FlexLayout,
-    LayoutContext, PointerEvent, Style, View,
+    LayoutContext, PointerEvent, View,
 };
 
 /// A div view.

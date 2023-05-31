@@ -1,10 +1,9 @@
 use glam::Vec2;
 use ori_macro::Build;
 use ori_reactive::Event;
+use ori_style::Style;
 
-use crate::{
-    AvailableSpace, Children, DrawContext, EventContext, FlexLayout, LayoutContext, Style, View,
-};
+use crate::{AvailableSpace, Children, DrawContext, EventContext, FlexLayout, LayoutContext, View};
 
 /// The body of the ui.
 #[derive(Default, Build)]

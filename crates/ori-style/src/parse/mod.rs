@@ -5,34 +5,36 @@ use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
 
 use crate::{
-    StyleAttribute, StyleAttributeKey, StyleAttributeValue, StyleClasses, StyleElement, StyleRule,
-    StyleSelector, StyleSelectors, StyleStates, StyleTransition, Stylesheet, Unit,
+    Length, StyleAttribute, StyleAttributeKey, StyleAttributeValue, StyleClasses, StyleElement,
+    StyleElementSelector, StyleSelector, StyleSelectorCombinator, StyleTags, StyleTransition,
+    Stylesheet, StylesheetRule,
 };
 
+/// A parser for [`Stylesheet`]s.
 #[derive(Parser)]
-#[grammar = "style/grammar.pest"]
+#[grammar = "parse/grammar.pest"]
 pub struct StyleParser;
 
-pub type StyleParseError = Box<Error<Rule>>;
-pub type SelectorParseError = Box<Error<Rule>>;
+/// An error that occurred while parsing a [`Stylesheet`].
+pub type StyleheetParseError = Box<Error<Rule>>;
 
 fn parse_number(pair: Pair<'_, Rule>) -> f32 {
     pair.as_str().parse().unwrap()
 }
 
-fn parse_unit(pair: Pair<'_, Rule>) -> Unit {
+fn parse_length(pair: Pair<'_, Rule>) -> Length {
     let mut pairs = pair.into_inner();
 
     let number_pair = pairs.next().unwrap();
     let number = parse_number(number_pair);
 
     match pairs.next().as_ref().map(Pair::as_rule) {
-        Some(Rule::Px) | None => Unit::Px(number),
-        Some(Rule::Pt) => Unit::Pt(number),
-        Some(Rule::Pc) => Unit::Pc(number),
-        Some(Rule::Vw) => Unit::Vw(number),
-        Some(Rule::Vh) => Unit::Vh(number),
-        Some(Rule::Em) => Unit::Em(number),
+        Some(Rule::Px) | None => Length::Px(number),
+        Some(Rule::Pt) => Length::Pt(number),
+        Some(Rule::Pc) => Length::Pc(number),
+        Some(Rule::Vw) => Length::Vw(number),
+        Some(Rule::Vh) => Length::Vh(number),
+        Some(Rule::Em) => Length::Em(number),
         _ => unreachable!(),
     }
 }
@@ -80,7 +82,7 @@ fn parse_value(pair: Pair<'_, Rule>) -> (StyleAttributeValue, Option<StyleTransi
             StyleAttributeValue::String(value.to_string())
         }
         Rule::Enum => StyleAttributeValue::Enum(value.as_str().to_string()),
-        Rule::Unit => StyleAttributeValue::Unit(parse_unit(value)),
+        Rule::Length => StyleAttributeValue::Length(parse_length(value)),
         Rule::Color => StyleAttributeValue::Color(parse_color(value)),
         _ => unreachable!(),
     };
@@ -92,11 +94,11 @@ fn parse_class(pair: Pair<'_, Rule>) -> String {
     pair.into_inner().as_str().to_string()
 }
 
-fn parse_state(pair: Pair<'_, Rule>) -> String {
+fn parse_tag(pair: Pair<'_, Rule>) -> String {
     pair.into_inner().as_str().to_string()
 }
 
-fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelector {
+fn parse_element_selector(pair: Pair<'_, Rule>) -> StyleElementSelector {
     let mut pairs = pair.into_inner();
 
     let mut element_pairs = pairs.next().unwrap().into_inner();
@@ -107,10 +109,10 @@ fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelector {
         _ => unreachable!(),
     };
 
-    let mut selector = StyleSelector {
+    let mut selector = StyleElementSelector {
         element,
         classes: StyleClasses::new(),
-        states: StyleStates::new(),
+        tags: StyleTags::new(),
     };
 
     for pair in pairs {
@@ -118,8 +120,8 @@ fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelector {
             Rule::Class => {
                 selector.classes.push(parse_class(pair));
             }
-            Rule::State => {
-                selector.states.push(parse_state(pair));
+            Rule::Tag => {
+                selector.tags.push(parse_tag(pair));
             }
             _ => unreachable!(),
         }
@@ -128,16 +130,44 @@ fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelector {
     selector
 }
 
-fn parse_selectors(pair: Pair<'_, Rule>) -> StyleSelectors {
-    let mut selectors = StyleSelectors::new();
+fn parse_combinator(pair: Pair<'_, Rule>) -> StyleSelectorCombinator {
+    let pair = pair.into_inner().next().unwrap();
+
+    match pair.as_rule() {
+        Rule::Descendant => StyleSelectorCombinator::Descendant,
+        Rule::Child => StyleSelectorCombinator::Child,
+        _ => unreachable!("{:?} is not a combinator", pair),
+    }
+}
+
+fn parse_selector(pair: Pair<'_, Rule>) -> StyleSelector {
+    let mut iter = pair.into_inner();
+
+    let mut combinators = Vec::new();
+    let mut element = parse_element_selector(iter.next().unwrap());
+
+    loop {
+        let Some(pair) = iter.next() else {
+            break;
+        };
+
+        let combinator = parse_combinator(pair);
+        let element_selector = parse_element_selector(iter.next().unwrap());
+        combinators.push((element, combinator));
+        element = element_selector;
+    }
+
+    StyleSelector {
+        combinators: combinators.into(),
+        element,
+    }
+}
+
+fn parse_selectors(pair: Pair<'_, Rule>) -> Vec<StyleSelector> {
+    let mut selectors = Vec::new();
 
     for pair in pair.into_inner() {
-        match pair.as_rule() {
-            Rule::Selector => {
-                selectors.push(parse_selector(pair));
-            }
-            _ => unreachable!(),
-        }
+        selectors.push(parse_selector(pair));
     }
 
     selectors
@@ -153,25 +183,28 @@ fn parse_attribute(pair: Pair<'_, Rule>) -> StyleAttribute {
     StyleAttribute::new(key, value, transition)
 }
 
-fn parse_style_rule(pair: Pair<'_, Rule>) -> StyleRule {
+fn parse_style_rule(pair: Pair<'_, Rule>) -> StylesheetRule {
     let mut iter = pair.into_inner();
 
     let selector = parse_selectors(iter.next().unwrap());
-    let mut rule = StyleRule::new(selector);
+    let mut rules = Vec::new();
 
     for pair in iter {
         match pair.as_rule() {
             Rule::Attribute => {
-                rule.attributes.add(parse_attribute(pair));
+                rules.push(parse_attribute(pair));
             }
             _ => unreachable!(),
         }
     }
 
-    rule
+    StylesheetRule {
+        selectors: selector.into(),
+        attributes: rules.into(),
+    }
 }
 
-fn parse_style(input: &str) -> Result<Stylesheet, StyleParseError> {
+fn parse_style(input: &str) -> Result<Stylesheet, StyleheetParseError> {
     let pairs = StyleParser::parse(Rule::Style, input)?.next().unwrap();
     let mut style = Stylesheet::new();
 
@@ -189,28 +222,9 @@ fn parse_style(input: &str) -> Result<Stylesheet, StyleParseError> {
 }
 
 impl FromStr for Stylesheet {
-    type Err = StyleParseError;
+    type Err = StyleheetParseError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         parse_style(input)
-    }
-}
-
-impl FromStr for StyleSelectors {
-    type Err = SelectorParseError;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let pair = StyleParser::parse(Rule::Selector, input)?.next().unwrap();
-        Ok(parse_selectors(pair))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        parse_style(include_str!("test.css")).unwrap();
     }
 }

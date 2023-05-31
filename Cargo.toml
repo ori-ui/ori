@@ -18,6 +18,7 @@ members = ["crates/*"]
 ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
 ori-graphics = { path = "crates/ori-graphics", version = "0.1.0-alpha.1" }
 ori-reactive = { path = "crates/ori-reactive", version = "0.1.0-alpha.1" }
+ori-style = { path = "crates/ori-style", version = "0.1.0-alpha.1", features = ["tracing"] }
 
 ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1", optional = true }
 ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1", optional = true }

@@ -4,11 +4,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use ori_core::{
-    math::Vec2, LoadedStyleKind, Modifiers, Node, StyleLoader, Stylesheet, Window, Windows,
-};
+use ori_core::{math::Vec2, Modifiers, Node, Window, Windows};
 use ori_graphics::{prelude::UVec2, Color, ImageSource};
 use ori_reactive::{Event, Scope};
+use ori_style::{LoadedStyleKind, StyleLoader, Stylesheet};
 use winit::{
     event::{Event as WinitEvent, KeyboardInput, MouseScrollDelta, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder},

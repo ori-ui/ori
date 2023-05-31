@@ -4,9 +4,10 @@ use glam::Vec2;
 use ori_graphics::{Curve, Quad, Rect};
 use ori_macro::Build;
 use ori_reactive::{Event, OwnedSignal};
+use ori_style::Style;
 
 use crate::{
-    AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
+    AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, View,
 };
 
 /// A knob.

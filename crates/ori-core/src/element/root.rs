@@ -1,11 +1,11 @@
 use glam::Vec2;
 use ori_graphics::{cosmic_text::FontSystem, Frame, Rect, Renderer};
 use ori_reactive::{Event, EventSink};
+use ori_style::{StyleCache, StyleTree, Stylesheet};
 
 use crate::{
     AvailableSpace, DebugEvent, DrawContext, Element, ElementView, EventContext, ImageCache,
-    LayoutContext, Margin, Padding, PointerEvent, RequestRedrawEvent, StyleCache, StyleSelectors,
-    Stylesheet, Window, WindowResizedEvent,
+    LayoutContext, Margin, Padding, PointerEvent, RequestRedrawEvent, Window, WindowResizedEvent,
 };
 
 impl<T: ElementView> Element<T> {
@@ -34,16 +34,14 @@ impl<T: ElementView> Element<T> {
             element_state.needs_layout = true;
         }
 
-        let selector = element_state.selector();
-        let selectors = StyleSelectors::new().with(selector);
+        let mut style_tree = StyleTree::new(element_state.selector());
         let mut cx = EventContext {
             state: element_state,
             renderer,
             window,
             font_system,
-            selectors: &selectors,
-            selectors_hash: selectors.hash(),
             stylesheet,
+            style_tree: &mut style_tree,
             event_sink,
             style_cache,
             image_cache,
@@ -73,16 +71,14 @@ impl<T: ElementView> Element<T> {
 
         let space = AvailableSpace::new(Vec2::ZERO, window.size.as_vec2());
 
-        let selector = element_state.selector();
-        let selectors = StyleSelectors::new().with(selector);
+        let mut style_tree = StyleTree::new(element_state.selector());
         let mut cx = LayoutContext {
             state: element_state,
             renderer,
             window,
             font_system,
-            selectors: &selectors,
-            selectors_hash: selectors.hash(),
             stylesheet,
+            style_tree: &mut style_tree,
             event_sink,
             style_cache,
             image_cache,
@@ -120,17 +116,15 @@ impl<T: ElementView> Element<T> {
         let element_state = &mut self.element_state();
         element_state.style = self.view().style();
 
-        let selector = element_state.selector();
-        let selectors = StyleSelectors::new().with(selector);
+        let mut style_tree = StyleTree::new(element_state.selector());
         let mut cx = DrawContext {
             state: element_state,
             frame,
             renderer,
             window,
             font_system,
-            selectors: &selectors,
-            selectors_hash: selectors.hash(),
             stylesheet,
+            style_tree: &mut style_tree,
             event_sink,
             style_cache,
             image_cache,

@@ -1,8 +1,9 @@
 use glam::Vec2;
 use ori_graphics::{ImageHandle, ImageSource, Mesh};
 use ori_macro::Build;
+use ori_style::Style;
 
-use crate::{AvailableSpace, Context, DrawContext, LayoutContext, Style, View};
+use crate::{AvailableSpace, Context, DrawContext, LayoutContext, View};
 
 /// A view that displays an image.
 #[derive(Clone, Default, Debug, Build)]

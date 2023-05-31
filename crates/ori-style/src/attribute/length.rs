@@ -5,12 +5,11 @@ use std::{
     ops::Range,
 };
 
-use glam::Vec2;
-pub use Unit::*;
+pub use Length::*;
 
-/// A unit of measurement. (eg. 10px, 10pt, 10%)
+/// A length. (eg. 10px, 10pt, 10%)
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub enum Unit {
+pub enum Length {
     /// Unit of measurement in pixels. (eg. 10px)
     ///
     /// This is the default unit.
@@ -35,9 +34,9 @@ pub enum Unit {
     Em(f32),
 }
 
-impl Eq for Unit {}
+impl Eq for Length {}
 
-impl Hash for Unit {
+impl Hash for Length {
     fn hash<H: Hasher>(&self, state: &mut H) {
         mem::discriminant(self).hash(state);
 
@@ -52,22 +51,28 @@ impl Hash for Unit {
     }
 }
 
-impl Default for Unit {
+impl Default for Length {
     fn default() -> Self {
         Self::ZERO
     }
 }
 
-impl Unit {
+impl Length {
     pub const ZERO: Self = Px(0.0);
 
-    pub fn pixels(self, range: Range<f32>, scale: f32, window_size: Vec2) -> f32 {
+    pub fn pixels(
+        self,
+        range: Range<f32>,
+        scale: f32,
+        window_width: f32,
+        window_height: f32,
+    ) -> f32 {
         match self {
             Px(value) => value,
             Pt(value) => value * 96.0 / 72.0 * scale,
             Pc(value) => range.start + (range.end - range.start) * value / 100.0,
-            Vw(value) => value * window_size.x / 100.0,
-            Vh(value) => value * window_size.y / 100.0,
+            Vw(value) => value * window_width / 100.0,
+            Vh(value) => value * window_height / 100.0,
             Em(value) => value * 16.0 * scale,
         }
     }
@@ -84,7 +89,7 @@ impl Unit {
     }
 }
 
-impl Display for Unit {
+impl Display for Length {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Px(value) => write!(f, "{}px", value),

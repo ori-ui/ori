@@ -30,6 +30,7 @@
 pub use ori_core as core;
 pub use ori_graphics as graphics;
 pub use ori_reactive as reactive;
+pub use ori_style as style;
 
 #[cfg(feature = "winit")]
 pub use ori_winit as winit;
@@ -43,6 +44,7 @@ pub mod prelude {
     pub use ori_core::prelude::*;
     pub use ori_graphics::prelude::*;
     pub use ori_reactive::prelude::*;
+    pub use ori_style::prelude::*;
 
     #[cfg(feature = "winit")]
     pub use ori_winit::prelude::*;

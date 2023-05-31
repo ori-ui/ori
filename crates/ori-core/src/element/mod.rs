@@ -6,6 +6,7 @@ mod view;
 
 pub use downcast::*;
 pub use into::*;
+use ori_style::{FromStyleAttribute, StyleTags};
 pub use state::*;
 pub use view::*;
 
@@ -19,7 +20,7 @@ use tracing::trace_span;
 
 use crate::{
     AnyView, AvailableSpace, Context, DebugEvent, DrawContext, EmptyView, EventContext,
-    FromStyleAttribute, LayoutContext, Margin, Padding, PointerEvent, StyleStates,
+    LayoutContext, Margin, Padding, PointerEvent,
 };
 
 struct ElementInner<T: ElementView> {
@@ -167,9 +168,9 @@ impl<T: ElementView> Element<T> {
         self.element_state().style_group(cx, key)
     }
 
-    /// Returns the [`StyleStates`].
-    pub fn style_states(&self) -> StyleStates {
-        self.element_state().style_states()
+    /// Returns the [`StyleTags`].
+    pub fn style_tags(&self) -> StyleTags {
+        self.element_state().style_tags()
     }
 
     /// Returns true if the element needs to be laid out.
@@ -257,7 +258,11 @@ impl<T: ElementView> Element<T> {
             cx.request_redraw();
         }
 
+        cx.style_tree_mut().push(element_state.selector());
+
         let res = f(element_state, cx);
+
+        cx.style_tree_mut().pop();
 
         cx.state_mut().propagate_down(element_state);
 
@@ -271,16 +276,13 @@ impl<T: ElementView> Element<T> {
             }
         }
 
-        let selector = state.selector();
-        let selectors = cx.selectors.clone().with(selector);
         let mut cx = EventContext {
             state,
             renderer: cx.renderer,
             window: cx.window,
             font_system: cx.font_system,
-            selectors: &selectors,
-            selectors_hash: selectors.hash(),
             stylesheet: cx.stylesheet,
+            style_tree: cx.style_tree,
             style_cache: cx.style_cache,
             event_sink: cx.event_sink,
             image_cache: cx.image_cache,
@@ -318,16 +320,13 @@ impl<T: ElementView> Element<T> {
     ) -> Vec2 {
         state.needs_layout = false;
 
-        let selector = state.selector();
-        let selectors = cx.selectors.clone().with(selector);
         let mut cx = LayoutContext {
             state,
             renderer: cx.renderer,
             window: cx.window,
             font_system: cx.font_system,
-            selectors: &selectors,
-            selectors_hash: selectors.hash(),
             stylesheet: cx.stylesheet,
+            style_tree: cx.style_tree,
             style_cache: cx.style_cache,
             event_sink: cx.event_sink,
             image_cache: cx.image_cache,
@@ -367,17 +366,14 @@ impl<T: ElementView> Element<T> {
     }
 
     fn draw_inner(&self, state: &mut ElementState, cx: &mut DrawContext) {
-        let selector = state.selector();
-        let selectors = cx.selectors.clone().with(selector);
         let mut cx = DrawContext {
             state,
             frame: cx.frame,
             renderer: cx.renderer,
             window: cx.window,
             font_system: cx.font_system,
-            selectors: &selectors,
-            selectors_hash: selectors.hash(),
             stylesheet: cx.stylesheet,
+            style_tree: cx.style_tree,
             style_cache: cx.style_cache,
             event_sink: cx.event_sink,
             image_cache: cx.image_cache,

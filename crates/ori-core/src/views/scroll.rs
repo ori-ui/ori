@@ -2,10 +2,11 @@ use glam::Vec2;
 use ori_graphics::{Quad, Rect};
 use ori_macro::Build;
 use ori_reactive::Event;
+use ori_style::Style;
 
 use crate::{
     AvailableSpace, Axis, Children, Context, DrawContext, EventContext, FlexLayout, LayoutContext,
-    PointerEvent, Style, View,
+    PointerEvent, View,
 };
 
 /// A scroll view.

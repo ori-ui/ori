@@ -14,7 +14,7 @@ Pc = { "pc" | "%" }
 Vw = { "vw" }
 Vh = { "vh" }
 Em = { "em" }
-Unit = { Number ~ (Px | Pt | Pc | Vw | Vh | Em)? }
+Length = { Number ~ (Px | Pt | Pc | Vw | Vh | Em)? }
 HexColor = @{ "#" ~ (ASCII_HEX_DIGIT{8} | ASCII_HEX_DIGIT{6} | ASCII_HEX_DIGIT{3, 4}) }
 RgbColor = { "rgb(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
 RgbaColor = { "rgba(" ~ Number ~ "," ~ Number ~ "," ~ Number ~ "," ~ Number ~ ")" }
@@ -26,17 +26,23 @@ String = { "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 Transition = _{ Number ~ "s" }
 
 // attribute
-Transitionable = _{ Unit | Color }
+Transitionable = _{ Length | Color }
 AttributeValue = { Transitionable ~ Transition? | Enum | String }
 Attribute = { Identifier ~ ":" ~ AttributeValue ~ ";" }
 
-// selector
-State = { ":" ~ Identifier }
+// element selector
+Tag = { ":" ~ Identifier }
 Element = { Identifier | Wildcard }
 Class = { "." ~ Identifier }
 Wildcard = { "*" }
-Selector = ${ (Element ~ (Class | State)*) | (Class | State)+ }
-Selectors = { Selector+ }
+ElementSelector = ${ (Element ~ (Class | Tag)*) | (Class | Tag)+ }
+
+// combinator
+Descendant = { WHITESPACE }
+Child = { WHITESPACE ~ ">" ~ WHITESPACE }
+Combinator = { Descendant | Child }
+Selector = ${ ElementSelector ~ (Combinator ~ ElementSelector)* }
+Selectors = { (Selector ~ ",")* ~ Selector }
 
 // stylesheet
 StyleRule = { Selectors ~ "{" ~ Attribute* ~ "}" }

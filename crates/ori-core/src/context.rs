@@ -10,12 +10,12 @@ use ori_graphics::{
     WeakImageHandle,
 };
 use ori_reactive::EventSink;
-
-use crate::{
-    AvailableSpace, ElementState, FromStyleAttribute, Margin, Padding, RequestRedrawEvent,
-    StyleAttribute, StyleCache, StyleSelectors, StyleSelectorsHash, StyleSpecificity, Stylesheet,
-    Unit, Window,
+use ori_style::{
+    FromStyleAttribute, Length, StyleAttribute, StyleCache, StyleCacheHash, StyleSpec, StyleTree,
+    Stylesheet,
 };
+
+use crate::{AvailableSpace, ElementState, Margin, Padding, RequestRedrawEvent, Window};
 
 /// A cache for images.
 ///
@@ -69,9 +69,8 @@ pub struct EventContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub window: &'a mut Window,
     pub font_system: &'a mut FontSystem,
-    pub selectors: &'a StyleSelectors,
-    pub selectors_hash: StyleSelectorsHash,
     pub stylesheet: &'a Stylesheet,
+    pub style_tree: &'a mut StyleTree,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
@@ -84,9 +83,8 @@ pub struct LayoutContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub window: &'a mut Window,
     pub font_system: &'a mut FontSystem,
-    pub selectors: &'a StyleSelectors,
-    pub selectors_hash: StyleSelectorsHash,
     pub stylesheet: &'a Stylesheet,
+    pub style_tree: &'a mut StyleTree,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
@@ -161,9 +159,8 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
                 renderer: self.draw_context.renderer,
                 window: self.draw_context.window,
                 font_system: self.draw_context.font_system,
-                selectors: self.draw_context.selectors,
-                selectors_hash: self.draw_context.selectors_hash,
                 stylesheet: self.draw_context.stylesheet,
+                style_tree: self.draw_context.style_tree,
                 style_cache: self.draw_context.style_cache,
                 event_sink: self.draw_context.event_sink,
                 image_cache: self.draw_context.image_cache,
@@ -182,9 +179,8 @@ pub struct DrawContext<'a> {
     pub renderer: &'a dyn Renderer,
     pub window: &'a mut Window,
     pub font_system: &'a mut FontSystem,
-    pub selectors: &'a StyleSelectors,
-    pub selectors_hash: StyleSelectorsHash,
     pub stylesheet: &'a Stylesheet,
+    pub style_tree: &'a mut StyleTree,
     pub style_cache: &'a mut StyleCache,
     pub event_sink: &'a EventSink,
     pub image_cache: &'a mut ImageCache,
@@ -296,11 +292,11 @@ pub trait Context {
     /// Returns the [`FontSystem`] of the application.
     fn font_system_mut(&mut self) -> &mut FontSystem;
 
-    /// Returns the [`StyleSelectors`] of the current element.
-    fn selectors(&self) -> &StyleSelectors;
+    /// Returns the [`StyleTree`] of the current element.
+    fn style_tree(&self) -> &StyleTree;
 
-    /// Returns the [`StyleSelectorsHash`] of the current element.
-    fn selectors_hash(&self) -> StyleSelectorsHash;
+    /// Returns the [`StyleTree`] of the current element.
+    fn style_tree_mut(&mut self) -> &mut StyleTree;
 
     /// Returns the [`EventSink`] of the application.
     fn event_sink(&self) -> &EventSink;
@@ -317,28 +313,27 @@ pub trait Context {
             .map(|(attribute, _)| attribute)
     }
 
-    /// Gets the [`StyleAttribute`] and [`StyleSpecificity`] for the given `key`.
+    /// Gets the [`StyleAttribute`] and [`StyleSpec`] for the given `key`.
     fn get_style_attribute_specificity(
         &mut self,
         key: &str,
-    ) -> Option<(StyleAttribute, StyleSpecificity)> {
+    ) -> Option<(StyleAttribute, StyleSpec)> {
         // get inline style attribute
-        if let Some(attribute) = self.state().style.attributes.get(key) {
-            return Some((attribute.clone(), StyleSpecificity::INLINE));
+        if let Some(attribute) = self.state().style.get_attribute(key) {
+            return Some((attribute.clone(), StyleSpec::INLINE));
         }
 
-        let hash = self.selectors_hash();
+        let hash = StyleCacheHash::new(self.style_tree());
 
         // try to get cached attribute
-        if let Some(result) = self.style_cache().get_attribute(hash, key) {
+        if let Some(result) = self.style_cache().get(hash, key) {
             return result;
         }
 
         let stylesheet = self.stylesheet();
-        let selectors = self.selectors();
 
         // get attribute from stylesheet
-        match stylesheet.get_attribute_specificity(selectors, key) {
+        match stylesheet.get_attribute_specificity(self.style_tree(), key) {
             Some((attribute, specificity)) => {
                 // cache result
                 (self.style_cache_mut()).insert(hash, attribute.clone(), specificity);
@@ -356,7 +351,7 @@ pub trait Context {
     fn get_style_specificity<T: FromStyleAttribute + 'static>(
         &mut self,
         key: &str,
-    ) -> Option<(T, StyleSpecificity)> {
+    ) -> Option<(T, StyleSpec)> {
         let (attribute, specificity) = self.get_style_attribute_specificity(key)?;
         let value = T::from_attribute(attribute.value().clone())?;
         let transition = attribute.transition();
@@ -408,25 +403,31 @@ pub trait Context {
     /// This will also transition the value if the attribute has a transition.
     fn get_style_range(&mut self, key: &str, range: Range<f32>) -> Option<f32> {
         let attribute = self.get_style_attribute(key)?;
-        let value = Unit::from_attribute(attribute.value().clone())?;
+        let value = Length::from_attribute(attribute.value().clone())?;
         let transition = attribute.transition();
 
-        let pixels = value.pixels(range, self.window().scale, self.window().size.as_vec2());
+        let scale = self.window().scale;
+        let width = self.window().size.x as f32;
+        let height = self.window().size.y as f32;
+        let pixels = value.pixels(range, scale, width, height);
 
         Some((self.state_mut()).transition(key, pixels, transition))
     }
 
-    /// Gets the value of a style attribute in pixels and [`StyleSpecificity`] for the given `key`.
+    /// Gets the value of a style attribute in pixels and [`StyleSpec`] for the given `key`.
     fn get_style_range_specificity(
         &mut self,
         key: &str,
         range: Range<f32>,
-    ) -> Option<(f32, StyleSpecificity)> {
+    ) -> Option<(f32, StyleSpec)> {
         let (attribute, specificity) = self.get_style_attribute_specificity(key)?;
-        let value = Unit::from_attribute(attribute.value().clone())?;
+        let value = Length::from_attribute(attribute.value().clone())?;
         let transition = attribute.transition();
 
-        let pixels = value.pixels(range, self.window().scale, self.window().size.as_vec2());
+        let scale = self.window().scale;
+        let width = self.window().size.x as f32;
+        let height = self.window().size.y as f32;
+        let pixels = value.pixels(range, scale, width, height);
 
         Some((
             (self.state_mut()).transition(key, pixels, transition),
@@ -653,12 +654,12 @@ macro_rules! context {
                 self.font_system
             }
 
-            fn selectors(&self) -> &StyleSelectors {
-                &self.selectors
+            fn style_tree(&self) -> &StyleTree {
+                self.style_tree
             }
 
-            fn selectors_hash(&self) -> StyleSelectorsHash {
-                self.selectors_hash
+            fn style_tree_mut(&mut self) -> &mut StyleTree {
+                self.style_tree
             }
 
             fn event_sink(&self) -> &EventSink {

@@ -1,12 +1,13 @@
 use std::time::Instant;
 
 use ori_graphics::Rect;
+use ori_style::{
+    FromStyleAttribute, Style, StyleAttribute, StyleCacheHash, StyleElementSelector, StyleSpec,
+    StyleTags, StyleTransition, StyleTransitionStates,
+};
 use uuid::Uuid;
 
-use crate::{
-    AvailableSpace, Context, FromStyleAttribute, Margin, Padding, Style, StyleAttribute,
-    StyleSelector, StyleSpecificity, StyleStates, StyleTransition, TransitionStates,
-};
+use crate::{AvailableSpace, Context, Margin, Padding};
 
 /// An element identifier. This uses a UUID to ensure that elements are unique.
 #[repr(transparent)]
@@ -53,7 +54,7 @@ pub struct ElementState {
     pub style: Style,
     pub needs_layout: bool,
     pub available_space: AvailableSpace,
-    pub transitions: TransitionStates,
+    pub transitions: StyleTransitionStates,
 }
 
 impl Default for ElementState {
@@ -71,7 +72,7 @@ impl Default for ElementState {
             style: Style::default(),
             needs_layout: true,
             available_space: AvailableSpace::ZERO,
-            transitions: TransitionStates::new(),
+            transitions: StyleTransitionStates::new(),
         }
     }
 }
@@ -100,8 +101,8 @@ impl ElementState {
     }
 
     /// Returns the [`StyleStates´].
-    pub fn style_states(&self) -> StyleStates {
-        let mut states = StyleStates::new();
+    pub fn style_tags(&self) -> StyleTags {
+        let mut states = StyleTags::new();
 
         if self.active {
             states.push("active");
@@ -118,12 +119,12 @@ impl ElementState {
         states
     }
 
-    /// Returns the [`StyleSelector`].
-    pub fn selector(&self) -> StyleSelector {
-        StyleSelector {
+    /// Returns the [`StyleElementSelector`] for the element.
+    pub fn selector(&self) -> StyleElementSelector {
+        StyleElementSelector {
             element: self.style.element.map(Into::into),
             classes: self.style.classes.clone(),
-            states: self.style_states(),
+            tags: self.style_tags(),
         }
     }
 
@@ -147,21 +148,22 @@ impl ElementState {
         &mut self,
         cx: &mut impl Context,
         key: &str,
-    ) -> Option<(StyleAttribute, StyleSpecificity)> {
+    ) -> Option<(StyleAttribute, StyleSpec)> {
         if let Some(attribute) = self.style.attributes.get(key) {
-            return Some((attribute.clone(), StyleSpecificity::INLINE));
+            return Some((attribute.clone(), StyleSpec::INLINE));
         }
 
-        let selectors = cx.selectors().clone().with(self.selector());
-        let hash = selectors.hash();
+        let mut style_tree = cx.style_tree().clone();
+        style_tree.push(self.selector());
+        let hash = StyleCacheHash::new(&style_tree);
 
-        if let Some(result) = cx.style_cache().get_attribute(hash, key) {
+        if let Some(result) = cx.style_cache().get(hash, key) {
             return result;
         }
 
         let stylesheet = cx.stylesheet();
 
-        match stylesheet.get_attribute_specificity(&selectors, key) {
+        match stylesheet.get_attribute_specificity(&style_tree, key) {
             Some((attribute, specificity)) => {
                 (cx.style_cache_mut()).insert(hash, attribute.clone(), specificity);
                 Some((attribute, specificity))
@@ -178,7 +180,7 @@ impl ElementState {
         &mut self,
         cx: &mut impl Context,
         key: &str,
-    ) -> Option<(T, StyleSpecificity)> {
+    ) -> Option<(T, StyleSpec)> {
         let (attribute, specificity) = self.get_style_attribute_specificity(cx, key)?;
         let value = T::from_attribute(attribute.value().clone())?;
         let transition = attribute.transition();
@@ -231,11 +233,10 @@ impl ElementState {
     pub fn transition<T: 'static>(
         &mut self,
         name: &str,
-        mut value: T,
+        value: T,
         transition: Option<StyleTransition>,
     ) -> T {
-        (self.transitions).transition_any(name, &mut value, transition);
-        value
+        self.transitions.transition_any(name, value, transition)
     }
 
     /// Update the transitions.

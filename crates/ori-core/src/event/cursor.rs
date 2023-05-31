@@ -1,4 +1,4 @@
-use crate::StyleAttributeEnum;
+use ori_style::StyleAttributeEnum;
 
 /// A mouse cursor.
 #[allow(missing_docs)]

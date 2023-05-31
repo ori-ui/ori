@@ -1,8 +1,9 @@
 use glam::Vec2;
 use ori_graphics::{Rect, TextSection};
 use ori_macro::Build;
+use ori_style::Style;
 
-use crate::{AvailableSpace, Context, DrawContext, IntoNode, LayoutContext, Node, Style, View};
+use crate::{AvailableSpace, Context, DrawContext, IntoNode, LayoutContext, Node, View};
 
 impl IntoNode for String {
     fn into_node(self) -> Node {

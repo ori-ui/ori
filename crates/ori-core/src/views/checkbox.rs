@@ -2,9 +2,10 @@ use glam::Vec2;
 use ori_graphics::{TextAlign, TextSection};
 use ori_macro::Build;
 use ori_reactive::{CallbackEmitter, Event, OwnedSignal, Signal};
+use ori_style::Style;
 
 use crate::{
-    AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
+    AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, View,
 };
 
 /// A checkbox view.

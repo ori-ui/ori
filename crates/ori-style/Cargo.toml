@@ -1,0 +1,28 @@
+[package]
+name = "ori-style"
+version = "0.1.0-alpha.1"
+edition = "2021"
+description = "Styling crate for Ori."
+keywords = ["gui", "graphics", "reactive", "native"]
+categories = ["gui", "graphics"]
+repository = "https://github.com/ChangeCaps/ori"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ori-graphics = { version = "0.1.0-alpha.1", path = "../ori-graphics", default-features = false }
+
+pest = "2.6"
+pest_derive = "2.6"
+seahash = "4.1"
+smallvec = { version = "1", features = ["union", "const_generics", "const_new"] }
+smol_str = "0.2"
+
+serde = { version = "1.0", features = ["derive"], optional = true }
+tracing = { version = "0.1", default-features = false, optional = true }
+
+[features]
+default = []
+serde = ["dep:serde", "smol_str/serde", "smallvec/serde"]
+tracing = ["dep:tracing"]

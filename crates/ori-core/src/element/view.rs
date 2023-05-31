@@ -2,8 +2,9 @@ use std::any::Any;
 
 use glam::Vec2;
 use ori_reactive::Event;
+use ori_style::Style;
 
-use crate::{AnyView, AvailableSpace, DrawContext, EventContext, LayoutContext, Style, View};
+use crate::{AnyView, AvailableSpace, DrawContext, EventContext, LayoutContext, View};
 
 /// A view that can be used as an element.
 ///

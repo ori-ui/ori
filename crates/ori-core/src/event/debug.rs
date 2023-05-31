@@ -41,7 +41,7 @@ impl DebugEvent {
     /// Sets the root element of the current debug tree.
     pub fn set_element<T: ElementView>(&self, cx: &mut EventContext, element: &Element<T>) {
         let debug_element = DebugElement {
-            selectors: cx.selectors.clone(),
+            selector: cx.style_tree.element.clone(),
             local_rect: element.local_rect(),
             global_rect: element.global_rect(),
             children: Vec::new(),
@@ -55,7 +55,7 @@ impl DebugEvent {
     /// This will call the `event` method.
     pub fn with_element<T: ElementView>(&self, cx: &mut EventContext, element: &Element<T>) {
         let debug_element = DebugElement {
-            selectors: cx.selectors.clone(),
+            selector: cx.style_tree.element.clone(),
             local_rect: element.local_rect(),
             global_rect: element.global_rect(),
             children: Vec::new(),

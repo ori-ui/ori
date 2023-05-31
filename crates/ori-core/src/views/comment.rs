@@ -1,4 +1,6 @@
-use crate::{Style, View};
+use ori_style::Style;
+
+use crate::View;
 
 /// A comment view.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

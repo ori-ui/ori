@@ -1,4 +1,4 @@
-//! A [`wgpu`] backend for [`ori`].
+//! A [`wgpu`] backend for Ori.
 //!
 //! See [`WgpuBackend`] for more information.
 

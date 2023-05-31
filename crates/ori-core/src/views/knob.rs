@@ -12,10 +12,13 @@ use crate::{
 /// A knob.
 #[derive(Clone, Debug, Build)]
 pub struct Knob {
+    /// The value of the knob.
     #[bind]
     pub value: OwnedSignal<f32>,
+    /// The minimum value of the knob.
     #[prop]
     pub min: f32,
+    /// The maximum value of the knob.
     #[prop]
     pub max: f32,
 }

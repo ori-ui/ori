@@ -44,7 +44,9 @@ impl LoadedStyle {
 /// A style that can be loaded from a file or be an inline style.
 #[derive(Clone, Debug)]
 pub enum LoadedStyleKind {
+    /// A style that has been loaded from a file.
     Loaded(LoadedStyle),
+    /// An inline style.
     Inline(Stylesheet),
 }
 

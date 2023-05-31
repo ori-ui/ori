@@ -24,6 +24,7 @@ impl StyleSelectorsHash {
     }
 }
 
+/// A cache of style attributes.
 #[derive(Debug, Default)]
 pub struct StyleCache {
     attributes: IntMap<u64, Option<(StyleAttribute, StyleSpecificity)>>,
@@ -38,10 +39,12 @@ impl Clone for StyleCache {
 }
 
 impl StyleCache {
+    /// Create a new style cache.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Clear the style cache.
     pub fn clear(&mut self) {
         tracing::trace!("Clearing style cache");
         self.attributes.clear();
@@ -56,6 +59,7 @@ impl StyleCache {
         hasher.finish() ^ hash.hash
     }
 
+    /// Insert a style attribute into the cache.
     pub fn insert(
         &mut self,
         hash: StyleSelectorsHash,
@@ -77,11 +81,13 @@ impl StyleCache {
         self.attributes.insert(hash, Some((attribute, specificity)));
     }
 
+    /// Insert None into the cache.
     pub fn insert_none(&mut self, hash: StyleSelectorsHash, key: &str) {
         let hash = Self::hash(hash, key);
         self.attributes.insert(hash, None);
     }
 
+    /// Get a style attribute from the cache.
     pub fn get_attribute(
         &self,
         hash: StyleSelectorsHash,

@@ -34,6 +34,7 @@ impl Display for StyleLoadError {
     }
 }
 
+/// Includes a style sheet from a file.
 #[macro_export]
 macro_rules! include_stylesheet {
     ($($tt:tt)*) => {
@@ -43,6 +44,7 @@ macro_rules! include_stylesheet {
 
 macro_rules! theme {
     ($name:ident, $folder:literal => $($style:literal),* $(,)?) => {
+        #[allow(missing_docs)]
         pub const $name: &str = concat!(
             $(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/style/", $folder, "/", $style))),*
         );
@@ -90,10 +92,12 @@ impl Stylesheet {
         Self { rules: Vec::new() }
     }
 
+    /// Loads the default day theme.
     pub fn day_theme() -> Self {
         Self::from_str(DAY_THEME).expect("Failed to parse day theme, this is a bug with ori")
     }
 
+    /// Loads the default night theme.
     pub fn night_theme() -> Self {
         Self::from_str(NIGHT_THEME).expect("Failed to parse night theme, this is a bug with ori")
     }
@@ -108,11 +112,13 @@ impl Stylesheet {
         self.rules.extend(rules);
     }
 
+    /// Get an attribute from the style sheet.
     pub fn get_attribute(&self, selectors: &StyleSelectors, name: &str) -> Option<StyleAttribute> {
         let (attribute, _) = self.get_attribute_specificity(selectors, name)?;
         Some(attribute)
     }
 
+    /// Get and attribute and its specificity from the style sheet.
     pub fn get_attribute_specificity(
         &self,
         selectors: &StyleSelectors,

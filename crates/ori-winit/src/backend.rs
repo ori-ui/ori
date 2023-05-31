@@ -31,6 +31,7 @@ impl EventEmitter for EventLoopSender {
     }
 }
 
+/// A window backend using winit.
 pub struct WinitBackend {
     pub(crate) proxy: EventLoopProxy<(winit::window::WindowId, Event)>,
     pub(crate) windows: HashMap<WindowId, WinitWindow>,
@@ -38,6 +39,7 @@ pub struct WinitBackend {
 }
 
 impl WinitBackend {
+    /// Create a new winit backend.
     pub fn new(proxy: EventLoopProxy<(winit::window::WindowId, Event)>) -> Self {
         Self {
             proxy,
@@ -46,6 +48,7 @@ impl WinitBackend {
         }
     }
 
+    /// Convert a [`winit::window::WindowId`] to a [`WindowId`].
     pub fn id(&self, id: WinitWindowId) -> Option<WindowId> {
         self.ids.get(&id).copied()
     }

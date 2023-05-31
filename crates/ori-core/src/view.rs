@@ -113,6 +113,7 @@ impl dyn AnyView {
     }
 }
 
+/// A [`View`] that does nothing.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct EmptyView;
 

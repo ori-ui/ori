@@ -8,13 +8,20 @@ use crate::{
     PointerEvent, Style, View,
 };
 
+/// A scroll view.
 #[derive(Default, Build)]
 pub struct Scroll {
+    /// The children of the scroll.
     #[children]
-    children: Children,
+    pub children: Children,
 }
 
 impl Scroll {
+    /// Create a new scroll.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     fn scrollbar_rect(&self, state: &ScrollState, cx: &mut impl Context) -> Rect {
         let axis = cx.style::<Axis>("direction");
         let max_width = axis.major(cx.rect().size());
@@ -118,6 +125,7 @@ impl Scroll {
     }
 }
 
+/// The state of a scroll view.
 #[derive(Default)]
 pub struct ScrollState {
     scroll: Vec2,

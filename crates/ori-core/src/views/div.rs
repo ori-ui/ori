@@ -7,21 +7,27 @@ use crate::{
     LayoutContext, PointerEvent, Style, View,
 };
 
+/// A div view.
 #[derive(Default, Build)]
 pub struct Div {
+    /// On click callback.
     #[event]
     pub on_click: CallbackEmitter<PointerEvent>,
+    /// On release callback.
     #[event]
     pub on_release: CallbackEmitter<PointerEvent>,
+    /// The children of the div.
     #[children]
     pub children: Children,
 }
 
 impl Div {
+    /// Create a new div.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Bind the on click callback.
     pub fn on_press(
         mut self,
         cx: Scope,
@@ -32,6 +38,7 @@ impl Div {
         self
     }
 
+    /// Bind the on release callback.
     pub fn on_release(
         mut self,
         cx: Scope,

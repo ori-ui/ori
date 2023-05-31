@@ -37,8 +37,8 @@ impl Default for ElementId {
 
 /// The state of a element, which is used to store information about the element.
 ///
-/// This should almost never be used directly, and instead should be used through the [`Element`]
-/// struct.
+/// This should almost never be used directly, and instead should be used through
+/// the [`Element`](crate::Element) struct.
 #[derive(Clone, Debug)]
 pub struct ElementState {
     pub id: ElementId,

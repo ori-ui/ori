@@ -9,16 +9,22 @@ use smol_str::SmolStr;
 
 use crate::StyleSelectorsHash;
 
+/// The specificity of a [`StyleSelectors`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct StyleSpecificity {
+    /// The number of classes in the selector.
     pub class: u16,
+    /// The number of tags in the selector.
     pub tag: u16,
 }
 
 impl StyleSpecificity {
+    #[allow(missing_docs)]
     pub const MAX: Self = Self::new(u16::MAX, u16::MAX);
+    #[allow(missing_docs)]
     pub const INLINE: Self = Self::MAX;
 
+    /// Create a new [`StyleSpecificity`].
     pub const fn new(class: u16, tag: u16) -> Self {
         Self { class, tag }
     }
@@ -73,37 +79,45 @@ pub struct StyleSelectors {
 }
 
 impl StyleSelectors {
+    /// Creates an empty [`StyleSelectors`].
     pub const fn new() -> Self {
         Self {
             selectors: Vec::new(),
         }
     }
 
+    /// Returns the number of selectors.
     pub fn len(&self) -> usize {
         self.selectors.len()
     }
 
+    /// Returns true if there are no selectors.
     pub fn is_empty(&self) -> bool {
         self.selectors.is_empty()
     }
 
+    /// Pushes a selector to the end of the list.
     pub fn push(&mut self, selector: StyleSelector) {
         self.selectors.push(selector);
     }
 
+    /// Gets the last selector.
     pub fn last(&self) -> Option<&StyleSelector> {
         self.selectors.last()
     }
 
+    /// Pushes a selector to the end of the list and returns `self`.
     pub fn with(mut self, selector: StyleSelector) -> Self {
         self.push(selector);
         self
     }
 
+    /// Returns the hash of the selectors.
     pub fn hash(&self) -> StyleSelectorsHash {
         StyleSelectorsHash::new(self)
     }
 
+    /// Returns the specificity of the selectors.
     pub fn specificity(&self) -> StyleSpecificity {
         let mut specificity = StyleSpecificity::default();
 
@@ -129,6 +143,7 @@ impl StyleSelectors {
         true
     }
 
+    /// Returns an iterator over the selectors.
     pub fn iter(&self) -> impl DoubleEndedIterator<Item = &StyleSelector> {
         self.selectors.iter()
     }
@@ -176,15 +191,20 @@ impl Display for StyleSelectors {
 pub type StyleElement = SmolStr;
 pub type StyleClass = SmolStr;
 
+/// A style selector.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StyleSelector {
+    /// The element name.
     pub element: Option<StyleElement>,
+    /// The classes.
     pub classes: StyleClasses,
+    /// The states.
     pub states: StyleStates,
 }
 
 impl StyleSelector {
+    /// Creates a new [`StyleSelector`].
     pub fn new(element: Option<StyleElement>, classes: StyleClasses, states: StyleStates) -> Self {
         Self {
             element,
@@ -193,6 +213,7 @@ impl StyleSelector {
         }
     }
 
+    /// Returns the specificity of the selector.
     pub fn specificity(&self) -> StyleSpecificity {
         StyleSpecificity {
             class: self.classes.len() as u16 + self.states.len() as u16,
@@ -200,6 +221,7 @@ impl StyleSelector {
         }
     }
 
+    /// Returns true if `other` is a subset of `self`.
     pub fn select(&self, other: &Self) -> bool {
         if other.element.is_some() && self.element != other.element {
             return false;
@@ -224,6 +246,7 @@ impl Display for StyleSelector {
     }
 }
 
+/// A set of style classes.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StyleClasses {
@@ -231,32 +254,39 @@ pub struct StyleClasses {
 }
 
 impl StyleClasses {
+    /// Creates an empty [`StyleClasses`].
     pub const fn new() -> Self {
         Self {
             classes: SmallVec::new_const(),
         }
     }
 
+    /// Returns the number of classes.
     pub fn len(&self) -> usize {
         self.classes.len()
     }
 
+    /// Returns true if there are no classes.
     pub fn is_empty(&self) -> bool {
         self.classes.is_empty()
     }
 
+    /// Clears the classes.
     pub fn clear(&mut self) {
         self.classes.clear();
     }
 
+    /// Pushes a class to the end of the list.
     pub fn push(&mut self, class: impl Into<SmolStr>) {
         self.classes.push(class.into());
     }
 
+    /// Extends the list with the given classes.
     pub fn extend(&mut self, classes: impl IntoIterator<Item = impl Into<StyleClass>>) {
         self.classes.extend(classes.into_iter().map(Into::into));
     }
 
+    /// Returns an iterator over the classes.
     pub fn iter(&self) -> impl Iterator<Item = &SmolStr> {
         self.classes.iter()
     }

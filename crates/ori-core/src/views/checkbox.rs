@@ -1,34 +1,40 @@
 use glam::Vec2;
 use ori_graphics::{TextAlign, TextSection};
 use ori_macro::Build;
-use ori_reactive::{CallbackEmitter, Event, OwnedSignal, Scope, Signal};
+use ori_reactive::{CallbackEmitter, Event, OwnedSignal, Signal};
 
 use crate::{
     AvailableSpace, Context, DrawContext, EventContext, LayoutContext, PointerEvent, Style, View,
 };
 
+/// A checkbox view.
 #[derive(Default, Build)]
 pub struct Checkbox {
+    /// Whether the checkbox is checked.
     #[prop]
     #[bind]
-    checked: OwnedSignal<bool>,
+    pub checked: OwnedSignal<bool>,
+    /// On click callback.
     #[event]
-    on_click: CallbackEmitter<PointerEvent>,
+    pub on_click: CallbackEmitter<PointerEvent>,
 }
 
 impl Checkbox {
     const CHECKMARK: &'static str = "\u{e876}";
 
+    /// Create a new checkbox.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Set the checked state of the checkbox.
     pub fn checked(self, checked: bool) -> Self {
         self.checked.set(checked);
         self
     }
 
-    pub fn bind_checked(mut self, _cx: Scope, binding: Signal<bool>) -> Self {
+    /// Bind the checked state of the checkbox to a signal.
+    pub fn bind_checked(mut self, binding: Signal<bool>) -> Self {
         self.checked.bind(binding);
         self
     }

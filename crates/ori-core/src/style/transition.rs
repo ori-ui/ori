@@ -14,10 +14,12 @@ pub struct StyleTransition {
 }
 
 impl StyleTransition {
+    /// Create a new style transition.
     pub const fn new(duration: f32) -> Self {
         Self { duration }
     }
 
+    /// Create a new instant style transition.
     pub const fn instant() -> Self {
         Self::new(0.0)
     }
@@ -145,6 +147,7 @@ impl<T: Transitionable> TransitionState<T> {
     }
 }
 
+/// A collection of transition states.
 #[derive(Clone, Debug, Default)]
 pub struct TransitionStates {
     units: SmallVec<[(SmolStr, TransitionState<f32>); 4]>,

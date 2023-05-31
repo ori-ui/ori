@@ -1,3 +1,7 @@
+//! A [`wgpu`] backend for [`ori`].
+//!
+//! See [`WgpuBackend`] for more information.
+
 mod backend;
 mod blit;
 mod image;

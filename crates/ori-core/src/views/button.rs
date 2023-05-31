@@ -2,17 +2,20 @@ use glam::Vec2;
 use ori_reactive::Event;
 
 use crate::{
-    AvailableSpace, Div, DrawContext, EventContext, Events, IntoElement, LayoutContext, Node,
-    Parent, Style, View,
+    AvailableSpace, Div, DrawContext, EventContext, Events, IntoNode, LayoutContext, Node, Parent,
+    Style, View,
 };
 
+/// A button view.
 #[derive(Default)]
 pub struct Button {
+    /// The content of the button.
     pub content: Div,
 }
 
 impl Button {
-    pub fn new(child: impl IntoElement) -> Self {
+    /// Create a new button.
+    pub fn new(child: impl IntoNode) -> Self {
         Self {
             content: Div::new().with_child(child),
         }

@@ -1,5 +1,7 @@
 use crate::StyleAttributeEnum;
 
+/// A mouse cursor.
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Cursor {
     #[default]

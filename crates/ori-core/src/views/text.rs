@@ -28,13 +28,16 @@ impl IntoNode<Text> for &str {
     }
 }
 
+/// A text view.
 #[derive(Clone, Debug, Default, Build)]
 pub struct Text {
+    /// The text to display.
     #[prop]
-    text: String,
+    pub text: String,
 }
 
 impl Text {
+    /// Create a new text view.
     pub fn new(text: impl Into<String>) -> Self {
         Self { text: text.into() }
     }

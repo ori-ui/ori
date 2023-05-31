@@ -1,13 +1,14 @@
 use crate::{AnyView, ElementView, View};
 
+/// An error that occurs when downcasting an [`Element`](crate::Element) fails.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ElementDowncastError;
 
-/// A trait for downcasting a [`Element`] to a specific [`ElementView`].
+/// A trait for downcasting a [`Element`](crate::Element) to a specific [`ElementView`].
 pub trait DowncastElement<T: ElementView> {
-    /// Downcast the [`Element`] to `&T`.
+    /// Downcast the [`Element`](crate::Element) to `&T`.
     fn downcast_ref(&self) -> Option<&T>;
-    /// Downcast the [`Element`] to `&mut T`.
+    /// Downcast the [`Element`](crate::Element) to `&mut T`.
     fn downcast_mut(&mut self) -> Option<&mut T>;
 }
 

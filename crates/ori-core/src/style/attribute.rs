@@ -14,28 +14,34 @@ pub struct StyleAttributes {
 }
 
 impl StyleAttributes {
+    /// Create a new empty collection of [`StyleAttribute`]s.
     pub const fn new() -> Self {
         Self {
             attributes: SmallVec::new_const(),
         }
     }
 
+    /// Returns the number of attributes in the collection.
     pub fn len(&self) -> usize {
         self.attributes.len()
     }
 
+    /// Returns `true` if the collection contains no attributes.
     pub fn is_empty(&self) -> bool {
         self.attributes.is_empty()
     }
 
+    /// Removes all attributes from the collection.
     pub fn clear(&mut self) {
         self.attributes.clear();
     }
 
+    /// Add an attribute to the collection.
     pub fn add(&mut self, attribute: StyleAttribute) {
         self.attributes.push(attribute);
     }
 
+    /// Set an attribute in the collection.
     pub fn set(&mut self, attribute: StyleAttribute) {
         for attr in self.attributes.iter_mut() {
             if attr.key() == attribute.key() {
@@ -47,14 +53,17 @@ impl StyleAttributes {
         self.attributes.push(attribute);
     }
 
+    /// Extend the collection with the given attributes.
     pub fn extend(&mut self, attributes: impl IntoIterator<Item = StyleAttribute>) {
         self.attributes.extend(attributes);
     }
 
+    /// Get an attribute from the collection.
     pub fn get(&self, name: &str) -> Option<&StyleAttribute> {
         self.attributes.iter().rev().find(|attr| attr.key() == name)
     }
 
+    /// Get an attribute from the collection.
     pub fn get_value<T: FromStyleAttribute>(&self, name: &str) -> Option<T> {
         for attribute in self.attributes.iter().rev() {
             if attribute.key() != name {
@@ -76,6 +85,7 @@ impl StyleAttributes {
         None
     }
 
+    /// Get an attribute from the collection.
     pub fn get_value_transition<T: FromStyleAttribute>(
         &self,
         name: &str,
@@ -100,6 +110,7 @@ impl StyleAttributes {
         None
     }
 
+    /// Get an iterator over the attributes in the collection.
     pub fn iter(&self) -> impl Iterator<Item = &StyleAttribute> {
         self.attributes.iter()
     }
@@ -149,6 +160,7 @@ pub struct StyleAttribute {
 }
 
 impl StyleAttribute {
+    /// Create a new attribute.
     pub fn new(
         key: StyleAttributeKey,
         value: StyleAttributeValue,
@@ -163,20 +175,25 @@ impl StyleAttribute {
         }
     }
 
+    /// Get the key of the attribute.
     pub fn key(&self) -> &StyleAttributeKey {
         &self.inner.key
     }
 
+    /// Get the value of the attribute.
     pub fn value(&self) -> &StyleAttributeValue {
         &self.inner.value
     }
 
+    /// Get the transition of the attribute.
     pub fn transition(&self) -> Option<StyleTransition> {
         self.inner.transition
     }
 }
 
+/// A trait for types that can be converted into a [`StyleAttribute`].
 pub trait StyleAttributeBuilder {
+    /// Create a new [`StyleAttribute`], with the given `key`.
     fn attribute(self, key: impl Into<StyleAttributeKey>) -> StyleAttribute;
 }
 
@@ -214,6 +231,7 @@ pub enum StyleAttributeValue {
 }
 
 impl StyleAttributeValue {
+    /// Check if the value is `none`.
     pub fn is_none(&self) -> bool {
         matches!(self, Self::Enum(value) if value == "none")
     }
@@ -283,7 +301,9 @@ impl<T: StyleAttributeEnum> From<T> for StyleAttributeValue {
     }
 }
 
+/// A trait for types that can be converted from a [`StyleAttributeValue`].
 pub trait FromStyleAttribute: Sized {
+    /// Convert the given [`StyleAttributeValue`] into `Self`.
     fn from_attribute(value: StyleAttributeValue) -> Option<Self>;
 }
 
@@ -342,8 +362,11 @@ impl FromStyleAttribute for f32 {
     }
 }
 
+/// A trait for types that can be represented as a string enum, for a [`StyleAttributeValue`].
 pub trait StyleAttributeEnum: Sized {
+    /// Convert the given string into `Self`.
     fn from_str(s: &str) -> Option<Self>;
+    /// Convert `Self` into a string.
     fn to_str(&self) -> &str;
 }
 

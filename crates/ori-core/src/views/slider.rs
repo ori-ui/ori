@@ -8,17 +8,23 @@ use crate::{
     View,
 };
 
+/// A slider view.
 #[derive(Clone, Debug, Build)]
 pub struct Slider {
+    /// The value of the slider.
     #[bind]
     #[prop]
     pub value: OwnedSignal<f32>,
+    /// Whether the slider is draggable.
     #[prop]
     pub draggable: bool,
+    /// The minimum value of the slider.
     #[prop]
     pub min: f32,
+    /// The maximum value of the slider.
     #[prop]
     pub max: f32,
+    /// The step of the slider.
     #[prop]
     pub step: f32,
 }
@@ -36,6 +42,11 @@ impl Default for Slider {
 }
 
 impl Slider {
+    /// Creates a new slider.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     fn track_rect(cx: &mut impl Context) -> Rect {
         let axis = cx.style::<Axis>("direction");
 

@@ -6,13 +6,16 @@ use crate::{
     AvailableSpace, Children, DrawContext, EventContext, FlexLayout, LayoutContext, Style, View,
 };
 
+/// The body of the ui.
 #[derive(Default, Build)]
 pub struct Body {
     #[children]
+    /// The children of the body.
     pub children: Children,
 }
 
 impl Body {
+    /// Create a new body.
     pub fn new() -> Self {
         Self::default()
     }

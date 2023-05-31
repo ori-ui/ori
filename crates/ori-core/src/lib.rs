@@ -1,3 +1,5 @@
+//! The core crate for the Ori UI framework.
+
 mod build;
 mod children;
 mod context;
@@ -29,6 +31,8 @@ pub use window::*;
 pub use glam as math;
 
 pub mod prelude {
+    //! A collection of commonly used types and traits.
+
     pub use crate::build::Parent;
     pub use crate::children::{Children, FlexLayout};
     pub use crate::context::{Context, DrawContext, EventContext, LayoutContext};

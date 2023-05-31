@@ -75,12 +75,12 @@ impl Element {
 }
 
 impl<T: ElementView> Element<T> {
-    /// Create a new element with the given [`View`].
+    /// Create a new element with the given [`View`](crate::View).
     pub fn new(view: impl IntoElement<T>) -> Self {
         view.into_element()
     }
 
-    /// Create a new element with the given [`View`].
+    /// Create a new element with the given [`View`](crate::View).
     pub fn from_view(view: T) -> Self {
         let view_state = ElementView::build(&view);
         let element_state = ElementState::new(ElementView::style(&view));

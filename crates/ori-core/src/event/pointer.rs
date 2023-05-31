@@ -2,6 +2,7 @@ use glam::Vec2;
 
 use crate::Modifiers;
 
+/// A pointer button.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerButton {
     /// The primary button, usually the left mouse button or the touch screen.
@@ -14,6 +15,7 @@ pub enum PointerButton {
     Other(u16),
 }
 
+/// A pointer event.
 #[derive(Clone, Debug, Default)]
 pub struct PointerEvent {
     /// The unique id of the pointer.

@@ -38,6 +38,8 @@ pub use ori_winit as winit;
 pub use ori_wgpu as wgpu;
 
 pub mod prelude {
+    //! A collection of commonly used types and traits.
+
     pub use ori_core::prelude::*;
     pub use ori_graphics::prelude::*;
     pub use ori_reactive::prelude::*;

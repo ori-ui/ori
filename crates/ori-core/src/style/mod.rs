@@ -22,12 +22,16 @@ use crate::{AvailableSpace, DrawContext, EventContext, LayoutContext, View};
 /// Styling for a single element.
 #[derive(Clone, Debug, Default)]
 pub struct Style {
+    /// The element name.
     pub element: Option<&'static str>,
+    /// The classes to apply.
     pub classes: StyleClasses,
+    /// The attributes to apply.
     pub attributes: StyleAttributes,
 }
 
 impl Style {
+    /// Creates a new style with the given `element` name.
     pub const fn new(element: &'static str) -> Self {
         Self {
             element: Some(element),
@@ -36,17 +40,20 @@ impl Style {
         }
     }
 
-    pub fn with_element(mut self, name: &'static str) -> Self {
-        self.element = Some(name);
+    /// Sets the element name.
+    pub fn with_element(mut self, element: &'static str) -> Self {
+        self.element = Some(element);
         self
     }
 
+    /// Adds classes to the style.
     pub fn with_class(mut self, class: &str) -> Self {
         let classes = class.split_whitespace().map(StyleClass::from);
         self.classes.extend(classes);
         self
     }
 
+    /// Adds classes to the style.
     pub fn with_classes(
         mut self,
         classes: impl IntoIterator<Item = impl Into<StyleClass>>,
@@ -55,12 +62,14 @@ impl Style {
         self
     }
 
+    /// Adds attributes to the style.
     pub fn with_attr(mut self, key: &str, builder: impl StyleAttributeBuilder) -> Self {
         let attr = builder.attribute(key);
         self.attributes.add(attr);
         self
     }
 
+    /// Adds attributes to the style.
     pub fn with_attrs(mut self, attrs: impl IntoIterator<Item = StyleAttribute>) -> Self {
         self.attributes.extend(attrs);
         self
@@ -70,9 +79,12 @@ impl Style {
 /// A value with associated style [`StyleAttributes`].
 #[derive(Clone, Debug, Default, Deref, DerefMut)]
 pub struct Styled<T> {
+    /// The value to be styled.
     #[deref]
     pub value: T,
+    /// The classes to apply.
     pub classes: StyleClasses,
+    /// The attributes to apply.
     pub attributes: StyleAttributes,
 }
 
@@ -86,6 +98,7 @@ impl<T> Styled<T> {
         }
     }
 
+    /// Sets the classes to apply.
     pub fn set_class(&mut self, class: impl AsRef<str>) {
         self.classes.clear();
 
@@ -93,6 +106,7 @@ impl<T> Styled<T> {
         self.classes.extend(classes);
     }
 
+    /// Adds attributes to the style.
     pub fn set_attr(&mut self, key: &str, builder: impl StyleAttributeBuilder) {
         self.attributes.set(builder.attribute(key));
     }

@@ -17,9 +17,8 @@ ori-reactive = { path = "../ori-reactive", version = "0.1.0-alpha.1" }
 
 deref-derive = "0.1"
 glam = "0.24"
-lazy_static = "1.4"
-nohash-hasher = "0.2"
-parking_lot = "0.12"
+# deliberately not using the latest version of parking_lot because ori-reactive uses an older version
+parking_lot = "0.11"
 pest = "2.5"
 pest_derive = "2.5"
 smallvec = { version = "1.10", features = ["union", "const_generics", "const_new"] }

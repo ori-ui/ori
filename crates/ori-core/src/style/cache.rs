@@ -1,4 +1,8 @@
-use nohash_hasher::IntMap;
+use std::{
+    collections::HashMap,
+    hash::{BuildHasher, Hash, Hasher},
+    mem::MaybeUninit,
+};
 
 use crate::{StyleAttribute, StyleSelectors, StyleSpecificity};
 
@@ -13,8 +17,6 @@ pub struct StyleSelectorsHash {
 
 impl StyleSelectorsHash {
     pub fn new(selectors: &StyleSelectors) -> Self {
-        use std::hash::{Hash, Hasher};
-
         let mut hasher = seahash::SeaHasher::default();
         Hash::hash(&selectors, &mut hasher);
 
@@ -24,10 +26,54 @@ impl StyleSelectorsHash {
     }
 }
 
+#[repr(transparent)]
+#[derive(Clone, Copy)]
+struct StyleCacheHasher {
+    hash: MaybeUninit<u64>,
+}
+
+impl Default for StyleCacheHasher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl StyleCacheHasher {
+    pub const fn new() -> Self {
+        Self {
+            hash: MaybeUninit::uninit(),
+        }
+    }
+}
+
+impl Hasher for StyleCacheHasher {
+    fn write(&mut self, _bytes: &[u8]) {
+        unimplemented!()
+    }
+
+    #[inline(always)]
+    fn write_u64(&mut self, i: u64) {
+        self.hash = MaybeUninit::new(i);
+    }
+
+    #[inline(always)]
+    fn finish(&self) -> u64 {
+        unsafe { self.hash.assume_init() }
+    }
+}
+
+impl BuildHasher for StyleCacheHasher {
+    type Hasher = Self;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        Self::new()
+    }
+}
+
 /// A cache of style attributes.
 #[derive(Debug, Default)]
 pub struct StyleCache {
-    attributes: IntMap<u64, Option<(StyleAttribute, StyleSpecificity)>>,
+    attributes: HashMap<u64, Option<(StyleAttribute, StyleSpecificity)>, StyleCacheHasher>,
 }
 
 impl Clone for StyleCache {
@@ -51,8 +97,6 @@ impl StyleCache {
     }
 
     fn hash(hash: StyleSelectorsHash, key: &str) -> u64 {
-        use std::hash::{Hash, Hasher};
-
         let mut hasher = seahash::SeaHasher::default();
         Hash::hash(key, &mut hasher);
 
@@ -69,13 +113,11 @@ impl StyleCache {
         let hash = Self::hash(hash, attribute.key());
 
         #[cfg(debug_assertions)]
-        {
-            if self.attributes.contains_key(&hash) {
-                tracing::warn!(
-                    "Overwriting style cache entry for {}, this might be a hash collision",
-                    attribute.key()
-                );
-            }
+        if self.attributes.contains_key(&hash) {
+            tracing::warn!(
+                "Overwriting style cache entry for {}, this might be a hash collision",
+                attribute.key()
+            );
         }
 
         self.attributes.insert(hash, Some((attribute, specificity)));

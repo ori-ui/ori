@@ -9,8 +9,8 @@ use crate::{
 /// The body of the ui.
 #[derive(Default, Build)]
 pub struct Body {
-    #[children]
     /// The children of the body.
+    #[children]
     pub children: Children,
 }
 

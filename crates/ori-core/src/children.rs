@@ -8,7 +8,7 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{
     AlignItem, AnyView, AvailableSpace, Axis, Context, DrawContext, Element, ElementView,
-    EventContext, JustifyContent, LayoutContext, Parent,
+    EventContext, JustifyContent, LayoutContext, Node, Parent,
 };
 
 /// A layout that lays out children in a flexbox-like manner.
@@ -92,7 +92,7 @@ impl FlexLayout {
 /// Children of a [`View`](crate::View).
 #[derive(Deref, DerefMut)]
 pub struct Children<T: ElementView = Box<dyn AnyView>> {
-    elements: SmallVec<[SmallVec<[Element<T>; 1]>; 1]>,
+    elements: SmallVec<[SmallVec<[Node<T>; 1]>; 1]>,
 }
 
 impl<T: ElementView> Default for Children<T> {
@@ -108,12 +108,12 @@ impl<T: ElementView> Parent for Children<T> {
         self.elements.clear();
     }
 
-    fn add_children(&mut self, children: impl Iterator<Item = Element<Self::Child>>) -> usize {
+    fn add_children(&mut self, children: impl Iterator<Item = Node<Self::Child>>) -> usize {
         self.elements.push(children.collect());
         self.elements.len() - 1
     }
 
-    fn set_children(&mut self, slot: usize, children: impl Iterator<Item = Element<Self::Child>>) {
+    fn set_children(&mut self, slot: usize, children: impl Iterator<Item = Node<Self::Child>>) {
         self.elements[slot] = children.collect();
     }
 }
@@ -128,12 +128,17 @@ impl<T: ElementView> Children<T> {
 
     /// Returns the amount of children.
     pub fn len(&self) -> usize {
-        self.elements.iter().map(SmallVec::len).sum()
+        self.iter().map(Node::len).sum()
     }
 
     /// Returns `true` if there are no children.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Returns an iterator over the children.
+    pub fn extend(&mut self, children: impl IntoIterator<Item = Node<T>>) {
+        self.elements.push(children.into_iter().collect());
     }
 
     /// Layout the children using a FlexLayout.
@@ -179,14 +184,14 @@ impl<T: ElementView> Children<T> {
         let mut flex_grow_sum = 0.0;
         let mut flex_shrink_sum = 0.0;
 
-        // first we need to measure the fixed-sized children to determine their size
-        //
         // NOTE: using a SmallVec here is a bit faster than using a Vec, but it's not a huge
         // difference
         let mut any_changed = false;
         let mut child_majors: SmallVec<[f32; 4]> = smallvec![0.0; self.len()];
         let mut child_flexes: SmallVec<[_; 4]> = smallvec![(None, None); self.len()];
-        for (i, child) in self.iter().enumerate() {
+
+        // first we need to measure the fixed-sized children to determine their size
+        for (i, child) in self.elements().enumerate() {
             // get the flex grow and shrink factors
             let flex_grow = child.style::<Option<f32>>(cx, "flex-grow");
             let flex_shrink = child.style::<Option<f32>>(cx, "flex-shrink");
@@ -248,7 +253,7 @@ impl<T: ElementView> Children<T> {
             remaining_major / flex_shrink_sum
         };
 
-        for (i, child) in self.iter().enumerate() {
+        for (i, child) in self.elements().enumerate() {
             // if the child has a flex property, now is the time
             let (flex_grow, flex_shrink) = child_flexes[i];
             if flex_grow.is_none() && should_grow || flex_shrink.is_none() && !should_grow {
@@ -283,7 +288,7 @@ impl<T: ElementView> Children<T> {
         }
 
         // we need to re-measure the children to determine their size
-        for (i, child) in self.iter().enumerate() {
+        for (i, child) in self.elements().enumerate() {
             let align_self = child.style::<Option<AlignItem>>(cx, "align-self");
 
             if align_items != AlignItem::Stretch && align_self != Some(AlignItem::Stretch) {
@@ -314,7 +319,7 @@ impl<T: ElementView> Children<T> {
         let child_offsets = justify_content.justify(&child_majors, major, gap);
 
         // now we can layout the children
-        for (child, align_major) in self.iter().zip(child_offsets) {
+        for (child, align_major) in self.elements().zip(child_offsets) {
             // get the align item for the child
             let align_item = match child.style::<Option<AlignItem>>(cx, "align-self") {
                 Some(align) => align,
@@ -338,7 +343,7 @@ impl<T: ElementView> Children<T> {
     pub fn local_rect(&self) -> Rect {
         let mut rect = None;
 
-        for child in self.iter() {
+        for child in self.elements() {
             let rect = rect.get_or_insert_with(|| child.local_rect());
             *rect = rect.union(child.local_rect());
         }
@@ -350,7 +355,7 @@ impl<T: ElementView> Children<T> {
     pub fn rect(&self) -> Rect {
         let mut rect = None;
 
-        for child in self.iter() {
+        for child in self.elements() {
             let rect = rect.get_or_insert_with(|| child.global_rect());
             *rect = rect.union(child.global_rect());
         }
@@ -371,7 +376,7 @@ impl<T: ElementView> Children<T> {
 
         let min = self.local_rect().min;
 
-        for child in self.iter() {
+        for child in self.elements() {
             let child_offset = child.local_rect().min - min;
             child.set_offset(offset + child_offset);
         }
@@ -379,26 +384,30 @@ impl<T: ElementView> Children<T> {
 
     /// Call the `event` method on all the children.
     pub fn event(&self, cx: &mut EventContext, event: &Event) {
-        for child in self.iter() {
+        for child in self.elements() {
             child.event(cx, event);
         }
     }
 
     /// Draws the flex container.
     pub fn draw(&self, cx: &mut DrawContext) {
-        for child in self.iter() {
+        for child in self.elements() {
             child.draw(cx);
         }
     }
 
     /// Returns the number of children in the flex container.
-    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Element<T>> {
-        self.elements.iter().flatten()
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Node<T>> {
+        self.into_iter()
+    }
+
+    pub fn elements(&self) -> impl DoubleEndedIterator<Item = Element<T>> + '_ {
+        self.iter().flat_map(|child| child.flatten())
     }
 }
 
 impl<T: ElementView> IntoIterator for Children<T> {
-    type Item = Element<T>;
+    type Item = Node<T>;
     type IntoIter = iter::Flatten<smallvec::IntoIter<[SmallVec<[Self::Item; 1]>; 1]>>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -407,19 +416,10 @@ impl<T: ElementView> IntoIterator for Children<T> {
 }
 
 impl<'a, T: ElementView> IntoIterator for &'a Children<T> {
-    type Item = &'a Element<T>;
-    type IntoIter = iter::Flatten<slice::Iter<'a, SmallVec<[Element<T>; 1]>>>;
+    type Item = &'a Node<T>;
+    type IntoIter = iter::Flatten<slice::Iter<'a, SmallVec<[Node<T>; 1]>>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.elements.iter().flatten()
-    }
-}
-
-impl<'a> IntoIterator for &'a mut Children {
-    type Item = &'a mut Element;
-    type IntoIter = iter::Flatten<slice::IterMut<'a, SmallVec<[Element; 1]>>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.elements.iter_mut().flatten()
     }
 }

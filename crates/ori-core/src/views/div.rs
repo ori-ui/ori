@@ -77,9 +77,7 @@ impl View for Div {
     }
 
     fn event(&self, _: &mut Self::State, cx: &mut EventContext, event: &Event) {
-        for child in &self.children {
-            child.event(cx, event);
-        }
+        self.children.event(cx, event);
 
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(cx, pointer_event, event.is_handled()) {
@@ -96,7 +94,7 @@ impl View for Div {
     fn draw(&self, _: &mut Self::State, cx: &mut DrawContext) {
         cx.draw_quad();
 
-        cx.layer().draw(|cx| {
+        cx.draw_layer(|cx| {
             self.children.draw(cx);
         });
     }

@@ -1,6 +1,6 @@
 use ori_reactive::{Callback, CallbackEmitter, OwnedSignal, Scope, Signal};
 
-use crate::{Element, ElementView, IntoElement};
+use crate::{ElementView, IntoElement, Node};
 
 /// A trait for setting properties on an element.
 pub trait Properties {
@@ -80,18 +80,18 @@ pub trait Parent {
     fn clear_children(&mut self);
 
     /// Adds `children` to a new slot and returns the slot index.
-    fn add_children(&mut self, children: impl Iterator<Item = Element<Self::Child>>) -> usize;
+    fn add_children(&mut self, children: impl Iterator<Item = Node<Self::Child>>) -> usize;
 
     /// Sets the children of `slot` to `children`.
-    fn set_children(&mut self, slot: usize, children: impl Iterator<Item = Element<Self::Child>>);
+    fn set_children(&mut self, slot: usize, children: impl Iterator<Item = Node<Self::Child>>);
 
     /// Adds `child` to a new slot and returns the slot index.
     fn add_child(&mut self, child: impl IntoElement<Self::Child>) -> usize {
-        self.add_children(std::iter::once(child.into_element()))
+        self.add_children(std::iter::once(Node::element(child.into_element())))
     }
 
     /// Adds `children` to a new slot.
-    fn with_children(mut self, children: impl Iterator<Item = Element<Self::Child>>) -> Self
+    fn with_children(mut self, children: impl Iterator<Item = Node<Self::Child>>) -> Self
     where
         Self: Sized,
     {

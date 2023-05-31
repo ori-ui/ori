@@ -42,7 +42,7 @@ impl View for CustomView {
     }
 }
 
-fn ui(_cx: Scope) -> Element {
+fn ui(_cx: Scope) -> Node {
     view! {
         <CustomView />
     }

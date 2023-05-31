@@ -6,17 +6,18 @@ mod scope;
 pub use backend::*;
 pub use descriptor::*;
 pub use id::*;
+use ori_macro::view;
 pub use scope::*;
 
 use glam::{UVec2, Vec2};
 use ori_graphics::{cosmic_text::FontSystem, Frame, RenderBackend, Renderer};
-use ori_reactive::{CallbackEmitter, Event, EventSink, OwnedSignal, Scope, Signal, Task};
+use ori_reactive::{CallbackEmitter, Event, EventSink, Scope, Task};
 
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::{
-    CloseWindow, Element, ImageCache, Key, KeyboardEvent, Modifiers, OpenWindow, PointerButton,
-    PointerEvent, RequestRedrawEvent, StyleCache, StyleLoader, WindowClosedEvent,
+    Body, CloseWindow, Element, ImageCache, Key, KeyboardEvent, Modifiers, Node, OpenWindow,
+    PointerButton, PointerEvent, RequestRedrawEvent, StyleCache, StyleLoader, WindowClosedEvent,
     WindowResizedEvent,
 };
 
@@ -26,7 +27,7 @@ const ICON_FONT: &[u8] = include_bytes!("../../fonts/MaterialIcons-Regular.ttf")
 struct WindowUi<R: Renderer> {
     renderer: R,
     window: Window,
-    element: OwnedSignal<Element>,
+    element: Element,
     scope: Scope,
     event_sink: EventSink,
     event_emitter: CallbackEmitter<Event>,
@@ -160,7 +161,7 @@ where
         &mut self,
         target: W::Target<'_>,
         window: &Window,
-        ui: impl FnMut(Scope) -> Element + Send + 'static,
+        mut ui: impl FnMut(Scope) -> Node + Send + 'static,
     ) -> Result<(), WindowError<W, R>> {
         self.window_backend
             .create_window(target, window)
@@ -183,16 +184,18 @@ where
 
         let event_emitter = CallbackEmitter::new();
         let scope = Scope::new(event_sink.clone(), event_emitter.clone());
+        scope.with_context(scope.signal(window.clone()));
 
-        let window_signal = Signal::new_leaking(window.clone());
-        scope.with_context::<Signal<Window>>(window_signal);
-
-        let element = scope.owned_memo_scoped(ui);
+        let element = view! {scope,
+            <Body>
+                { ui(scope) }
+            </Body>
+        };
 
         let window_ui = WindowUi {
             renderer,
             window: window.clone(),
-            element,
+            element: element.into_element().unwrap(),
             scope,
             event_sink,
             event_emitter,
@@ -416,7 +419,7 @@ where
             let mut window = ui.scope.window().get();
 
             ori_reactive::effect::delay_effects(|| {
-                ui.element.get().event_root_inner(
+                ui.element.event_root_inner(
                     self.style_loader.stylesheet(),
                     &mut self.style_cache,
                     &ui.renderer,
@@ -440,7 +443,7 @@ where
             let mut window = ui.scope.window().get();
 
             ori_reactive::effect::delay_effects(|| {
-                ui.element.get().layout_root_inner(
+                ui.element.layout_root_inner(
                     self.style_loader.stylesheet(),
                     &mut self.style_cache,
                     &ui.renderer,
@@ -465,7 +468,7 @@ where
             let mut window = ui.scope.window().get();
 
             ori_reactive::effect::delay_effects(|| {
-                ui.element.get().draw_root_inner(
+                ui.element.draw_root_inner(
                     self.style_loader.stylesheet(),
                     &mut self.style_cache,
                     &mut self.frame,

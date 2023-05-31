@@ -39,7 +39,7 @@ pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         let tokens = match content {
             Content::For(expr) => quote!(::std::iter::IntoIterator::into_iter(#expr)),
-            Content::Expr(expr) => quote!(::std::iter::once(#ori_core::Element::new(#expr))),
+            Content::Expr(expr) => quote!(::std::iter::once(#ori_core::Node::new(#expr))),
         };
 
         Ok(Some(tokens))
@@ -55,17 +55,32 @@ pub fn view(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             #(#nodes)*
         }
     } else {
-        let children = children(&context, parse_quote!(#ori_core::Div), nodes.iter());
+        let elements = nodes.iter().map(|node| {
+            let element = view_node(&context, node);
+            let is_dynamic = matches!(node, Node::Block(_));
+
+            if is_dynamic {
+                quote! {
+                    let __dynamic = #context.owned_memo_scoped(move |#context| {
+                        let nodes = ::std::iter::Iterator::collect::<::std::vec::Vec<_>>(#element);
+                        #ori_core::Node::fragment(nodes)
+                    });
+
+                    __nodes.push(#ori_core::Node::dynamic(__dynamic));
+                }
+            } else {
+                quote! {
+                    __nodes.push(#element);
+                }
+            }
+        });
 
         quote! {{
-            let mut __view =  <#ori_core::Div as #ori_core::Styleable<_>>::styled(
-                <#ori_core::Div as ::std::default::Default>::default()
-            );
-            let __element = #ori_core::Element::new(__view);
+            let mut __nodes = ::std::vec::Vec::new();
 
-            #(#children)*
+            #(#elements)*
 
-            __element
+            #ori_core::Node::fragment(__nodes)
         }}
     };
 
@@ -115,7 +130,7 @@ fn children<'a>(
                     let __element = __element.clone();
                     let mut __child_index = None;
                     move |#context| {
-                        __element.with_view::<#ori_core::Styled<#name>>(|__view| {
+                        let _ = __element.with_view::<#ori_core::Styled<#name>, ()>(|__view| {
                             if let Some(__child_index) = __child_index {
                                 <#name as #ori_core::Parent>::set_children(
                                     __view,
@@ -134,7 +149,7 @@ fn children<'a>(
             }
         } else {
             quote! {{
-                __element.with_view::<#ori_core::Styled<#name>>(|__view| {
+                let _ = __element.with_view::<#ori_core::Styled<#name>, ()>(|__view| {
                     <#name as #ori_core::Parent>::add_children(__view, ::std::iter::once(#child));
                 });
             }}
@@ -169,7 +184,7 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                 #(#properties)*
                 #(#attributes)*
 
-                __element
+                #ori_core::Node::element(__element)
             }}
         }
         Node::Block(block) => {
@@ -186,16 +201,14 @@ fn view_node(context: &Expr, node: &Node) -> TokenStream {
                 #ori_core::Comment::new(#comment)
             }
         }
-        Node::Attribute(_) => todo!(),
         Node::Text(text) => {
             let text = text.value.as_ref();
 
             quote_spanned! {text.span() =>
-                #ori_core::Element::new(#text)
+                #ori_core::Node::new(#text)
             }
         }
-        Node::Doctype(_) => todo!(),
-        Node::Fragment(_) => todo!(),
+        _ => unreachable!(),
     }
 }
 
@@ -330,7 +343,7 @@ fn class(context: &Expr, name: &NodeName, value: &Expr) -> TokenStream {
     let ori_core = find_crate("core");
 
     let tt = quote_spanned! {value.span() =>
-        __element.with_view::<#ori_core::Styled<#name>>(|__view| {
+        let _ = __element.with_view::<#ori_core::Styled<#name>, ()>(|__view| {
             #ori_core::Styled::<#name>::set_class(__view, #value);
         });
     };
@@ -350,7 +363,7 @@ fn property(context: &Expr, name: &NodeName, key: &ExprPath, value: &Expr) -> To
     };
 
     let tt = quote_spanned! {value.span() =>
-        __element.with_view::<#ori_core::Styled<#name>>(|__view| {
+        let _ = __element.with_view::<#ori_core::Styled<#name>, ()>(|__view| {
             <#name as #ori_core::Properties>::setter(__view).#key(#value);
         });
     };
@@ -366,7 +379,7 @@ fn event(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenStr
     let ori_core = find_crate("core");
 
     let tt = quote_spanned! {value.span() =>
-        __element.with_view::<#ori_core::Styled<#name>>(|__view| {
+        let _ = __element.with_view::<#ori_core::Styled<#name>, ()>(|__view| {
             <#name as #ori_core::Events>::setter(__view).#key(#context, #value);
         });
     };
@@ -382,7 +395,7 @@ fn binding(context: &Expr, name: &NodeName, key: &Ident, value: &Expr) -> TokenS
     let ori_core = find_crate("core");
 
     let tt = quote_spanned! {value.span() =>
-        __element.with_view::<#ori_core::Styled<#name>>(|__view| {
+        let _ = __element.with_view::<#ori_core::Styled<#name>, ()>(|__view| {
             <#name as #ori_core::Bindings>::setter(__view).#key(#context, #value);
         });
     };
@@ -398,7 +411,7 @@ fn style(context: &Expr, name: &NodeName, key: &str, value: &Expr) -> TokenStrea
     let ori_core = find_crate("core");
 
     let tt = quote_spanned! {value.span() =>
-        __element.with_view::<#ori_core::Styled<#name>>(|__view| {
+        let _ = __element.with_view::<#ori_core::Styled<#name>, ()>(|__view| {
             #ori_core::Styled::<#name>::set_attr(__view, #key, #value);
         });
     };

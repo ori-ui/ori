@@ -7,9 +7,12 @@
 //! ```no_run
 //! use ori::prelude::*;
 //!
-//! fn ui(cx: Scope) -> Element {
+//! // ui is a function that takes a Scope returns a Node
+//! fn ui(cx: Scope) -> Node {
+//!     // create a signal that will hold the state of the counter
 //!     let counter = cx.signal(0);
 //!
+//!     // render the ui using the view! macro
 //!     view! {
 //!         <Button on:click=move |_| *counter.modify() += 1>
 //!             "Click me!"
@@ -19,7 +22,8 @@
 //! }
 //!
 //! fn main() {
-//!    App::new(ui).run();
+//!     // start the application
+//!     App::new(ui).run();
 //! }
 //! ```
 

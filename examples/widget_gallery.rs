@@ -2,7 +2,7 @@ use ori::prelude::*;
 
 const LONG_TEXT: &str = include_str!("long_text.txt");
 
-fn popup_ui(cx: Scope) -> Element {
+fn popup_ui(cx: Scope) -> Node {
     // use an Atom to store the counter value, so that it persists when popup closes
     static COUNTER: Atom<i32> = atom!(0);
 
@@ -18,7 +18,7 @@ fn popup_ui(cx: Scope) -> Element {
     }
 }
 
-fn ui(cx: Scope) -> Element {
+fn ui(cx: Scope) -> Node {
     let counter = cx.signal(1);
     let checked = cx.signal(false);
     let knob_value = cx.signal(0.0);

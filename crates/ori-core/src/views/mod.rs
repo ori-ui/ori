@@ -1,3 +1,4 @@
+mod body;
 mod button;
 mod checkbox;
 mod comment;
@@ -8,6 +9,7 @@ mod scroll;
 mod slider;
 mod text;
 
+pub use body::*;
 pub use button::*;
 pub use checkbox::*;
 pub use comment::*;

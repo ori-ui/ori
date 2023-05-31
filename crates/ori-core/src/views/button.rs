@@ -2,7 +2,7 @@ use glam::Vec2;
 use ori_reactive::Event;
 
 use crate::{
-    AvailableSpace, Div, DrawContext, Element, EventContext, Events, IntoElement, LayoutContext,
+    AvailableSpace, Div, DrawContext, EventContext, Events, IntoElement, LayoutContext, Node,
     Parent, Style, View,
 };
 
@@ -34,11 +34,11 @@ impl Parent for Button {
         self.content.clear_children();
     }
 
-    fn add_children(&mut self, child: impl Iterator<Item = Element<Self::Child>>) -> usize {
+    fn add_children(&mut self, child: impl Iterator<Item = Node<Self::Child>>) -> usize {
         self.content.add_children(child)
     }
 
-    fn set_children(&mut self, slot: usize, child: impl Iterator<Item = Element<Self::Child>>) {
+    fn set_children(&mut self, slot: usize, child: impl Iterator<Item = Node<Self::Child>>) {
         self.content.set_children(slot, child)
     }
 }

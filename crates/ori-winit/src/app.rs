@@ -5,7 +5,7 @@ use std::{
 };
 
 use ori_core::{
-    math::Vec2, Element, LoadedStyleKind, Modifiers, StyleLoader, Stylesheet, Window, Windows,
+    math::Vec2, LoadedStyleKind, Modifiers, Node, StyleLoader, Stylesheet, Window, Windows,
 };
 use ori_graphics::{prelude::UVec2, Color, ImageSource};
 use ori_reactive::{Event, Scope};
@@ -47,19 +47,19 @@ pub struct App {
     window: Window,
     style_loader: StyleLoader,
     event_loop: EventLoop<(WinitWindowId, Event)>,
-    builder: Option<Box<dyn FnMut(Scope) -> Element + Send>>,
+    builder: Option<Box<dyn FnMut(Scope) -> Node + Send>>,
 }
 
 impl App {
     /// Create a new [`App`] with the given content.
-    pub fn new(content: impl FnMut(Scope) -> Element + Send + 'static) -> Self {
+    pub fn new(content: impl FnMut(Scope) -> Node + Send + 'static) -> Self {
         let event_loop = EventLoopBuilder::with_user_event().build();
         Self::new_with_event_loop(event_loop, content)
     }
 
     pub fn new_with_event_loop(
         event_loop: EventLoop<(WinitWindowId, Event)>,
-        content: impl FnMut(Scope) -> Element + Send + 'static,
+        content: impl FnMut(Scope) -> Node + Send + 'static,
     ) -> Self {
         init_tracing().unwrap();
 
@@ -162,7 +162,7 @@ impl App {
 }
 
 impl App {
-    pub fn new_any_thread(content: impl FnMut(Scope) -> Element + Send + 'static) -> Self {
+    pub fn new_any_thread(content: impl FnMut(Scope) -> Node + Send + 'static) -> Self {
         let mut builder = EventLoopBuilder::with_user_event();
 
         #[cfg(target_os = "windows")]

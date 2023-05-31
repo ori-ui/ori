@@ -227,6 +227,8 @@ where
     pub fn idle(&mut self) {
         match self.style_loader.reload() {
             Ok(true) => {
+                self.style_cache.clear();
+
                 for &ui in self.window_ui.keys() {
                     self.window_backend.request_redraw(ui);
                 }

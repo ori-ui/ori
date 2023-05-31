@@ -215,7 +215,9 @@ impl App {
                     }
                 }
                 WinitEvent::MainEventsCleared
-                | WinitEvent::NewEvents(StartCause::ResumeTimeReached { .. }) => {}
+                | WinitEvent::NewEvents(StartCause::ResumeTimeReached { .. }) => {
+                    windows.idle();
+                }
                 WinitEvent::UserEvent((window, event)) => {
                     let Some(id) = windows.window_backend.id(window) else {
                         return;

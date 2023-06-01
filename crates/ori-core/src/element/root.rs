@@ -1,11 +1,11 @@
 use glam::Vec2;
-use ori_graphics::{cosmic_text::FontSystem, Frame, Rect, Renderer};
+use ori_graphics::{cosmic_text::FontSystem, Frame, ImageCache, Rect, Renderer};
 use ori_reactive::{Event, EventSink};
 use ori_style::{StyleCache, StyleTree, Stylesheet};
 
 use crate::{
-    AvailableSpace, DebugEvent, DrawContext, Element, ElementView, EventContext, ImageCache,
-    LayoutContext, Margin, Padding, PointerEvent, RequestRedrawEvent, Window, WindowResizedEvent,
+    AvailableSpace, DebugEvent, DrawContext, Element, ElementView, EventContext, LayoutContext,
+    Margin, Padding, PointerEvent, RequestRedrawEvent, Window, WindowResizedEvent,
 };
 
 impl<T: ElementView> Element<T> {

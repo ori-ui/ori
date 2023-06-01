@@ -11,14 +11,14 @@ use ori_style::{StyleCache, StyleLoader};
 pub use scope::*;
 
 use glam::{UVec2, Vec2};
-use ori_graphics::{cosmic_text::FontSystem, Frame, RenderBackend, Renderer};
+use ori_graphics::{cosmic_text::FontSystem, Frame, ImageCache, RenderBackend, Renderer};
 use ori_reactive::{CallbackEmitter, Event, EventSink, Scope, Task};
 
 use std::{collections::HashMap, fmt::Debug};
 
 use crate::{
-    Body, CloseWindow, Element, ImageCache, Key, KeyboardEvent, Modifiers, Node, OpenWindow,
-    PointerButton, PointerEvent, RequestRedrawEvent, WindowClosedEvent, WindowResizedEvent,
+    Body, CloseWindow, Element, Key, KeyboardEvent, Modifiers, Node, OpenWindow, PointerButton,
+    PointerEvent, RequestRedrawEvent, WindowClosedEvent, WindowResizedEvent,
 };
 
 const TEXT_FONT: &[u8] = include_bytes!("../../fonts/NotoSans-Medium.ttf");
@@ -225,6 +225,8 @@ where
     ///
     /// This will reload styles if necessary, among other things.
     pub fn idle(&mut self) {
+        self.image_cache.clean();
+
         match self.style_loader.reload() {
             Ok(true) => {
                 self.style_cache.clear();

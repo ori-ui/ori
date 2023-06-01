@@ -26,7 +26,7 @@ impl Debug for RuntimeResource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RuntimeResource")
             .field("creator", &self.creator)
-            .field("refs", &self.references)
+            .field("references", &self.references)
             .finish()
     }
 }

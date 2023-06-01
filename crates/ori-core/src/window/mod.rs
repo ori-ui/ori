@@ -11,7 +11,7 @@ use ori_style::{StyleCache, StyleLoader};
 pub use scope::*;
 
 use glam::{UVec2, Vec2};
-use ori_graphics::{cosmic_text::FontSystem, Frame, ImageCache, RenderBackend, Renderer};
+use ori_graphics::{Fonts, Frame, ImageCache, RenderBackend, Renderer};
 use ori_reactive::{CallbackEmitter, Event, EventSink, Scope, Task};
 
 use std::{collections::HashMap, fmt::Debug};
@@ -103,8 +103,8 @@ where
     pub render_backend: R,
     /// The current frame, this is only stored here to avoid allocations.
     pub frame: Frame,
-    /// The font system, see [`FontSystem`] for more information.
-    pub font_system: FontSystem,
+    /// The font system, see [`Fonts`] for more information.
+    pub fonts: Fonts,
     /// The style cache, see [`StyleCache`] for more information.
     pub style_cache: StyleCache,
     /// The image cache, see [`ImageCache`] for more information.
@@ -124,19 +124,19 @@ where
     ///
     /// **Note** that `W` and `R` need to have the same `Surface` type.
     pub fn new(window_backend: W, render_backend: R) -> Self {
-        let mut font_system = FontSystem::new();
-        font_system.db_mut().load_font_data(TEXT_FONT.to_vec());
-        font_system.db_mut().load_font_data(ICON_FONT.to_vec());
+        let mut fonts = Fonts::new();
+        fonts.load_system_fonts();
+        fonts.load_font_data(TEXT_FONT.to_vec());
+        fonts.load_font_data(ICON_FONT.to_vec());
 
         Self {
             window_backend,
             render_backend,
             frame: Frame::new(),
-            font_system,
+            fonts,
             style_cache: StyleCache::new(),
             image_cache: ImageCache::new(),
             style_loader: StyleLoader::new(),
-
             window_ui: HashMap::new(),
         }
     }
@@ -428,7 +428,7 @@ where
                     &mut self.style_cache,
                     &ui.renderer,
                     &mut window,
-                    &mut self.font_system,
+                    &mut self.fonts,
                     &ui.event_sink,
                     event,
                     &mut self.image_cache,
@@ -452,7 +452,7 @@ where
                     &mut self.style_cache,
                     &ui.renderer,
                     &mut window,
-                    &mut self.font_system,
+                    &mut self.fonts,
                     &ui.event_sink,
                     &mut self.image_cache,
                 );
@@ -478,7 +478,7 @@ where
                     &mut self.frame,
                     &ui.renderer,
                     &mut window,
-                    &mut self.font_system,
+                    &mut self.fonts,
                     &ui.event_sink,
                     &mut self.image_cache,
                 );
@@ -487,7 +487,7 @@ where
             ui.update_window(&mut self.window_backend, &window);
 
             let clear_color = window.clear_color;
-            (ui.renderer).render_frame(&mut self.font_system, &self.frame, clear_color);
+            (ui.renderer).render_frame(&self.frame, clear_color);
         }
     }
 

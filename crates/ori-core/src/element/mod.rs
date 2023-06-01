@@ -139,6 +139,7 @@ impl<T: ElementView> Element<T> {
 
         let size = element_state.local_rect.size();
         element_state.local_rect = Rect::min_size(element_state.margin.top_left() + offset, size);
+        element_state.local_rect = element_state.local_rect.round();
     }
 
     /// Get the style of the element, for a given key.
@@ -280,7 +281,7 @@ impl<T: ElementView> Element<T> {
             state,
             renderer: cx.renderer,
             window: cx.window,
-            font_system: cx.font_system,
+            fonts: cx.fonts,
             stylesheet: cx.stylesheet,
             style_tree: cx.style_tree,
             style_cache: cx.style_cache,
@@ -324,7 +325,7 @@ impl<T: ElementView> Element<T> {
             state,
             renderer: cx.renderer,
             window: cx.window,
-            font_system: cx.font_system,
+            fonts: cx.fonts,
             stylesheet: cx.stylesheet,
             style_tree: cx.style_tree,
             style_cache: cx.style_cache,
@@ -350,7 +351,7 @@ impl<T: ElementView> Element<T> {
         state.local_rect = Rect::min_size(local_offset, size);
         state.global_rect = Rect::min_size(global_offset, size);
 
-        size + state.margin.size()
+        Vec2::round(size + state.margin.size())
     }
 
     /// Relayout the element.
@@ -371,7 +372,7 @@ impl<T: ElementView> Element<T> {
             frame: cx.frame,
             renderer: cx.renderer,
             window: cx.window,
-            font_system: cx.font_system,
+            fonts: cx.fonts,
             stylesheet: cx.stylesheet,
             style_tree: cx.style_tree,
             style_cache: cx.style_cache,

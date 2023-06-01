@@ -5,8 +5,7 @@ use std::{
 
 use glam::Vec2;
 use ori_graphics::{
-    cosmic_text::FontSystem, Frame, ImageCache, ImageHandle, ImageSource, Quad, Rect, Renderer,
-    TextSection,
+    Fonts, Frame, ImageCache, ImageHandle, ImageSource, Quad, Rect, Renderer, TextSection,
 };
 use ori_reactive::EventSink;
 use ori_style::{
@@ -22,7 +21,7 @@ pub struct EventContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
     pub window: &'a mut Window,
-    pub font_system: &'a mut FontSystem,
+    pub fonts: &'a mut Fonts,
     pub stylesheet: &'a Stylesheet,
     pub style_tree: &'a mut StyleTree,
     pub style_cache: &'a mut StyleCache,
@@ -36,7 +35,7 @@ pub struct LayoutContext<'a> {
     pub state: &'a mut ElementState,
     pub renderer: &'a dyn Renderer,
     pub window: &'a mut Window,
-    pub font_system: &'a mut FontSystem,
+    pub fonts: &'a mut Fonts,
     pub stylesheet: &'a Stylesheet,
     pub style_tree: &'a mut StyleTree,
     pub style_cache: &'a mut StyleCache,
@@ -69,11 +68,6 @@ impl<'a> LayoutContext<'a> {
         let result = f(self);
         self.space = tmp;
         result
-    }
-
-    /// Measure the bounds of a text section.
-    pub fn measure_text(&mut self, text: &TextSection) -> Rect {
-        text.measure(self.font_system)
     }
 }
 
@@ -112,7 +106,7 @@ impl<'a, 'b> DrawLayer<'a, 'b> {
                 frame,
                 renderer: self.draw_context.renderer,
                 window: self.draw_context.window,
-                font_system: self.draw_context.font_system,
+                fonts: self.draw_context.fonts,
                 stylesheet: self.draw_context.stylesheet,
                 style_tree: self.draw_context.style_tree,
                 style_cache: self.draw_context.style_cache,
@@ -132,7 +126,7 @@ pub struct DrawContext<'a> {
     pub frame: &'a mut Frame,
     pub renderer: &'a dyn Renderer,
     pub window: &'a mut Window,
-    pub font_system: &'a mut FontSystem,
+    pub fonts: &'a mut Fonts,
     pub stylesheet: &'a Stylesheet,
     pub style_tree: &'a mut StyleTree,
     pub style_cache: &'a mut StyleCache,
@@ -160,6 +154,13 @@ impl<'a> DrawContext<'a> {
     /// `offset` should almost always be `1.0`.
     pub fn draw_layer(&mut self, f: impl FnOnce(&mut DrawContext)) {
         self.layer().draw(f);
+    }
+
+    /// Draws the given text.
+    pub fn draw_text(&mut self, text: &TextSection<'_>) {
+        if let Some(mesh) = self.fonts.text_mesh(self.renderer, text) {
+            self.draw(mesh);
+        }
     }
 
     /// Draws the quad at the current layout rect.
@@ -240,11 +241,11 @@ pub trait Context {
     /// Returns the [`Window`] of the application.
     fn window_mut(&mut self) -> &mut Window;
 
-    /// Returns the [`FontSystem`] of the application.
-    fn font_system(&self) -> &FontSystem;
+    /// Returns the [`Fonts`] of the application.
+    fn fonts(&self) -> &Fonts;
 
-    /// Returns the [`FontSystem`] of the application.
-    fn font_system_mut(&mut self) -> &mut FontSystem;
+    /// Returns the [`Fonts`] of the application.
+    fn fonts_mut(&mut self) -> &mut Fonts;
 
     /// Returns the [`StyleTree`] of the current element.
     fn style_tree(&self) -> &StyleTree;
@@ -417,6 +418,14 @@ pub trait Context {
         }
 
         result.unwrap_or_default()
+    }
+
+    /// Measures the given text.
+    fn measure_text(&mut self, text: &TextSection<'_>) -> Rect {
+        match self.fonts_mut().measure_text(text) {
+            Some(rect) => rect,
+            None => Rect::min_size(text.rect.min, Vec2::ZERO),
+        }
     }
 
     /// Tries to downcast the `renderer` to the given type.
@@ -600,12 +609,12 @@ macro_rules! context {
                 self.window
             }
 
-            fn font_system(&self) -> &FontSystem {
-                self.font_system
+            fn fonts(&self) -> &Fonts {
+                self.fonts
             }
 
-            fn font_system_mut(&mut self) -> &mut FontSystem {
-                self.font_system
+            fn fonts_mut(&mut self) -> &mut Fonts {
+                self.fonts
             }
 
             fn style_tree(&self) -> &StyleTree {

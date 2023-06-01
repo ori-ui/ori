@@ -1,17 +1,9 @@
-use crate::{Mesh, Quad, Rect, TextSection};
+use crate::{Mesh, Quad, Rect};
 
 /// A primitive that can be drawn to the screen, see [`Primitive`] for more information.
-#[derive(Clone, Debug)]
 pub enum PrimitiveKind {
-    Text(TextSection),
     Quad(Quad),
     Mesh(Mesh),
-}
-
-impl From<TextSection> for PrimitiveKind {
-    fn from(text: TextSection) -> Self {
-        Self::Text(text)
-    }
 }
 
 impl From<Quad> for PrimitiveKind {
@@ -33,7 +25,6 @@ impl From<Mesh> for PrimitiveKind {
 /// the order they are added to the frame.
 ///
 /// Primitives can be clipped to a rectangle, see [`Frame::clip`] for more information.
-#[derive(Clone, Debug)]
 pub struct Primitive {
     pub kind: PrimitiveKind,
     pub z_index: f32,
@@ -41,7 +32,7 @@ pub struct Primitive {
 }
 
 /// A collection of primitives that can be drawn to the screen.
-#[derive(Clone, Debug, Default)]
+#[derive(Default)]
 pub struct Frame {
     primitives: Vec<Primitive>,
     z_index: f32,

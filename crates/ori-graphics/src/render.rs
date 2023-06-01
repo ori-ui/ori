@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
 };
 
-use cosmic_text::FontSystem;
+use glam::UVec2;
 
 use crate::{Color, Frame, ImageData, ImageHandle};
 
@@ -20,7 +20,7 @@ pub trait RenderBackend {
 
     /// Create a [`Renderer`] from a surface, width and height.
     fn create_renderer(
-        &self,
+        &mut self,
         surface: Self::Surface,
         width: u32,
         height: u32,
@@ -33,8 +33,10 @@ pub trait Renderer: Any {
     fn resize(&mut self, width: u32, height: u32);
     /// Create an image from the given data.
     fn create_image(&self, data: &ImageData) -> ImageHandle;
+    /// Write image data to an existing image.
+    fn write_image(&self, handle: &ImageHandle, offset: UVec2, data: &ImageData);
     /// Render a frame.
-    fn render_frame(&mut self, font_system: &mut FontSystem, frame: &Frame, clear_color: Color);
+    fn render_frame(&mut self, frame: &Frame, clear_color: Color);
 }
 
 impl dyn Renderer {

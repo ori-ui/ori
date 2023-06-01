@@ -17,8 +17,3 @@ bytemuck = { version = "1.13", features = ["derive"] }
 pollster = "0.3"
 raw-window-handle = "0.5"
 wgpu = "0.16"
-
-# wait for 0.3, we need to be able to set MultisampleState::count
-[dependencies.glyphon]
-git = "https://github.com/grovesNL/glyphon"
-rev = "80e8465"

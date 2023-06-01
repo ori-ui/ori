@@ -23,6 +23,7 @@ impl ImageData {
     ///
     /// # Panics
     /// - If the length of `pixels` is not equal to `width * height * 4`.
+    #[track_caller]
     pub fn new(width: u32, height: u32, pixels: impl Into<Arc<[u8]>>) -> Self {
         let pixels = pixels.into();
 

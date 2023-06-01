@@ -158,7 +158,7 @@ fn bar0(
             <Button on:click=clear_all>"CE"</Button>
             <Button on:click=clear>"C"</Button>
             <Button on:click=remove_digit>
-                <Text text="\u{e14a}" style:font="icon" />
+                <Text text="\u{e14a}" style:font-family="Material Icons" />
             </Button>
             <Button on:click=divide>"÷"</Button>
         </Div>

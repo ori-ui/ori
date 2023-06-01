@@ -1,5 +1,5 @@
 use glam::Vec2;
-use ori_graphics::{TextAlign, TextSection};
+use ori_graphics::{FontFamily, TextAlign, TextSection};
 use ori_macro::Build;
 use ori_reactive::{CallbackEmitter, Event, OwnedSignal, Signal};
 use ori_style::Style;
@@ -82,17 +82,17 @@ impl View for Checkbox {
 
         if self.checked.get() {
             let section = TextSection {
-                rect: cx.rect(),
-                scale: cx.rect().size().min_element() * 0.8,
+                text: Self::CHECKMARK,
+                font_size: cx.rect().size().min_element() * 0.8,
+                font_family: FontFamily::Name(String::from("Material Icons")),
                 h_align: TextAlign::Center,
                 v_align: TextAlign::Center,
-                text: String::from(Self::CHECKMARK),
-                font_family: Some(String::from("Material Icons")),
                 color: cx.style("color"),
+                rect: cx.rect(),
                 ..Default::default()
             };
 
-            cx.draw(section);
+            cx.draw_text(&section);
         }
     }
 }

@@ -309,6 +309,10 @@ impl QuadPipeline {
         pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
 
         for instance in &layer.instances[..layer.instance_count] {
+            if instance.clip.width() == 0.0 || instance.clip.height() == 0.0 {
+                continue;
+            }
+
             pass.set_scissor_rect(
                 instance.clip.min.x as u32,
                 instance.clip.min.y as u32,

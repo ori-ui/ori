@@ -71,14 +71,18 @@ impl View for Text {
         *state = Some(font_size);
 
         let section = TextSection {
-            rect: Rect::min_size(Vec2::ZERO, space.max),
-            scale: font_size,
+            text: &self.text,
+            font_size,
+            font_family: cx.style("font-family"),
+            font_weight: cx.style("font-weight"),
+            font_stretch: cx.style("font-stretch"),
+            font_style: cx.style("font-style"),
+            color: cx.style("color"),
             h_align: cx.style("text-align"),
             v_align: cx.style("text-valign"),
+            line_height: cx.style("line-height"),
             wrap: cx.style("text-wrap"),
-            text: self.text.clone(),
-            font_family: cx.style("font-family"),
-            color: cx.style("color"),
+            rect: Rect::min_size(Vec2::ZERO, space.max),
         };
 
         let text_rect = cx.measure_text(&section);
@@ -86,17 +90,22 @@ impl View for Text {
     }
 
     fn draw(&self, state: &mut Self::State, cx: &mut DrawContext) {
+        let font_size = state.unwrap_or(16.0);
         let section = TextSection {
-            rect: cx.rect().ceil(),
-            scale: state.unwrap_or(16.0),
+            text: &self.text,
+            font_size,
+            font_family: cx.style("font-family"),
+            font_weight: cx.style("font-weight"),
+            font_stretch: cx.style("font-stretch"),
+            font_style: cx.style("font-style"),
+            color: cx.style("color"),
             h_align: cx.style("text-align"),
             v_align: cx.style("text-valign"),
+            line_height: cx.style("line-height"),
             wrap: cx.style("text-wrap"),
-            text: self.text.clone(),
-            font_family: cx.style("font-family"),
-            color: cx.style("color"),
+            rect: cx.rect(),
         };
 
-        cx.draw(section);
+        cx.draw_text(&section);
     }
 }

@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use ori_graphics::RenderBackend;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
 };
+use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterOptions, RequestDeviceError, Surface};
 
 use crate::WgpuRenderer;
 
@@ -19,33 +22,96 @@ unsafe impl HasRawWindowHandle for WgpuSurface {
     }
 }
 
-pub struct WgpuBackend {}
+#[derive(Debug)]
+pub enum WgpuBackendError {
+    NoAdapter,
+    RequestDevice(RequestDeviceError),
+    IncompatibleSurface,
+}
 
-impl Default for WgpuBackend {
-    fn default() -> Self {
-        Self::new()
-    }
+struct WgpuBackendState {
+    adapter: Adapter,
+    device: Arc<Device>,
+    queue: Arc<Queue>,
+}
+
+#[derive(Default)]
+pub struct WgpuBackend {
+    instance: Instance,
+    state: Option<WgpuBackendState>,
 }
 
 impl WgpuBackend {
+    async fn crate_state_async(
+        &self,
+        surface: &Surface,
+    ) -> Result<WgpuBackendState, WgpuBackendError> {
+        let adapter = self
+            .instance
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: Default::default(),
+                compatible_surface: Some(surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .unwrap();
+
+        let (device, queue) = adapter
+            .request_device(&Default::default(), None)
+            .await
+            .unwrap();
+
+        Ok(WgpuBackendState {
+            adapter,
+            device: Arc::new(device),
+            queue: Arc::new(queue),
+        })
+    }
+
+    fn crate_state(&self, surface: &Surface) -> Result<WgpuBackendState, WgpuBackendError> {
+        pollster::block_on(self.crate_state_async(surface))
+    }
+
+    fn state(&mut self, surface: &Surface) -> Result<&WgpuBackendState, WgpuBackendError> {
+        if let Some(ref state) = self.state {
+            return Ok(state);
+        }
+
+        self.state = Some(self.crate_state(surface)?);
+        Ok(self.state.as_ref().unwrap())
+    }
+
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 
 impl RenderBackend for WgpuBackend {
     type Surface = (RawDisplayHandle, RawWindowHandle);
     type Renderer = WgpuRenderer;
-    type Error = ();
+    type Error = WgpuBackendError;
 
     fn create_renderer(
-        &self,
+        &mut self,
         (display, surface): Self::Surface,
         width: u32,
         height: u32,
     ) -> Result<Self::Renderer, Self::Error> {
-        let surface = WgpuSurface(display, surface);
-        let renderer = unsafe { WgpuRenderer::new(&surface, width, height) };
-        Ok(renderer)
+        let wgpu_surface = WgpuSurface(display, surface);
+        let surface = unsafe { self.instance.create_surface(&wgpu_surface).unwrap() };
+        let state = self.state(&surface)?;
+
+        if !state.adapter.is_surface_supported(&surface) {
+            return Err(WgpuBackendError::IncompatibleSurface);
+        }
+
+        Ok(WgpuRenderer::new(
+            &state.adapter,
+            state.device.clone(),
+            state.queue.clone(),
+            surface,
+            width,
+            height,
+        ))
     }
 }

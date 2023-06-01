@@ -1,6 +1,8 @@
 text {
 	font-size: 1em;
+	font-family: sans-serif;
 	color: #d8d8d8;
+	line-height: 0.8;
 	text-wrap: true;
 	text-align: start;
 	text-valign: start;

@@ -1,5 +1,5 @@
 use glam::Vec2;
-use ori_graphics::{cosmic_text::FontSystem, Frame, ImageCache, Rect, Renderer};
+use ori_graphics::{Fonts, Frame, ImageCache, Rect, Renderer};
 use ori_reactive::{Event, EventSink};
 use ori_style::{StyleCache, StyleTree, Stylesheet};
 
@@ -16,7 +16,7 @@ impl<T: ElementView> Element<T> {
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         window: &mut Window,
-        font_system: &mut FontSystem,
+        fonts: &mut Fonts,
         event_sink: &EventSink,
         event: &Event,
         image_cache: &mut ImageCache,
@@ -39,7 +39,7 @@ impl<T: ElementView> Element<T> {
             state: element_state,
             renderer,
             window,
-            font_system,
+            fonts,
             stylesheet,
             style_tree: &mut style_tree,
             event_sink,
@@ -61,7 +61,7 @@ impl<T: ElementView> Element<T> {
         style_cache: &mut StyleCache,
         renderer: &dyn Renderer,
         window: &mut Window,
-        font_system: &mut FontSystem,
+        fonts: &mut Fonts,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
     ) -> Vec2 {
@@ -76,7 +76,7 @@ impl<T: ElementView> Element<T> {
             state: element_state,
             renderer,
             window,
-            font_system,
+            fonts,
             stylesheet,
             style_tree: &mut style_tree,
             event_sink,
@@ -109,7 +109,7 @@ impl<T: ElementView> Element<T> {
         frame: &mut Frame,
         renderer: &dyn Renderer,
         window: &mut Window,
-        font_system: &mut FontSystem,
+        fonts: &mut Fonts,
         event_sink: &EventSink,
         image_cache: &mut ImageCache,
     ) {
@@ -122,7 +122,7 @@ impl<T: ElementView> Element<T> {
             frame,
             renderer,
             window,
-            font_system,
+            fonts,
             stylesheet,
             style_tree: &mut style_tree,
             event_sink,

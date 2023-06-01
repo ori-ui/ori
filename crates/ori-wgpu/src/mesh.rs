@@ -314,7 +314,7 @@ impl MeshPipeline {
         pass.set_bind_group(0, &self.uniform_bind_group, &[]);
 
         for instance in &layer.instances[..layer.instance_count] {
-            if !instance.draw {
+            if !instance.draw || instance.clip.width() < 1.0 || instance.clip.height() < 1.0 {
                 continue;
             }
 

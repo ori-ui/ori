@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
-use glyphon::FontSystem;
-use ori_graphics::{Color, Frame, ImageData, ImageHandle, Primitive, PrimitiveKind, Renderer};
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+use ori_graphics::{
+    prelude::UVec2, Color, Frame, ImageData, ImageHandle, Primitive, PrimitiveKind, Renderer,
+};
 use wgpu::{
     util::{DeviceExt, StagingBelt},
-    BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+    Adapter, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
     BindGroupLayoutEntry, BindingResource, BindingType, CommandEncoder, CompositeAlphaMode, Device,
-    Extent3d, FilterMode, Instance, LoadOp, Operations, PresentMode, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RequestAdapterOptions, SamplerBindingType,
-    SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, Texture, TextureDescriptor,
-    TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureView,
-    TextureViewDimension,
+    Extent3d, FilterMode, ImageCopyTexture, ImageDataLayout, LoadOp, Operations, Origin3d,
+    PresentMode, Queue, RenderPassColorAttachment, RenderPassDescriptor, SamplerBindingType,
+    SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, Texture, TextureAspect,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
+    TextureView, TextureViewDimension,
 };
 
-use crate::{BlitPipeline, MeshPipeline, QuadPipeline, TextPipeline, WgpuImage};
+use crate::{BlitPipeline, MeshPipeline, QuadPipeline, WgpuImage};
 
 #[allow(dead_code)]
 pub struct WgpuRenderer {
@@ -28,38 +28,20 @@ pub struct WgpuRenderer {
     blit_pipeline: BlitPipeline,
     mesh_pipeline: MeshPipeline,
     quad_pipeline: QuadPipeline,
-    text_pipeline: TextPipeline,
     staging_belt: StagingBelt,
 }
 
 impl WgpuRenderer {
-    /// Creates a new renderer asynchronously.
-    ///
-    /// # Safety
-    /// - `window` must be a valid see [`Instance::create_surface`] for more information.
-    pub async unsafe fn new_async(
-        window: &(impl HasRawWindowHandle + HasRawDisplayHandle),
+    /// Creates a new renderer.
+    pub fn new(
+        adapter: &Adapter,
+        device: Arc<Device>,
+        queue: Arc<Queue>,
+        surface: Surface,
         width: u32,
         height: u32,
     ) -> Self {
-        let instance = Instance::new(Default::default());
-        let surface = instance.create_surface(window).unwrap();
-
-        let adapter = instance
-            .request_adapter(&RequestAdapterOptions {
-                power_preference: Default::default(),
-                compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
-            })
-            .await
-            .unwrap();
-
-        let (device, queue) = adapter
-            .request_device(&Default::default(), None)
-            .await
-            .unwrap();
-
-        let mut config = surface.get_default_config(&adapter, width, height).unwrap();
+        let mut config = surface.get_default_config(adapter, width, height).unwrap();
         config.format = TextureFormat::Bgra8Unorm;
         config.alpha_mode = CompositeAlphaMode::Auto;
         config.usage |= TextureUsages::TEXTURE_BINDING;
@@ -74,36 +56,22 @@ impl WgpuRenderer {
         let blit_pipeline = BlitPipeline::new(&device, config.format);
         let mesh_pipeline = MeshPipeline::new(&device, &image_bind_group_layout, config.format);
         let quad_pipeline = QuadPipeline::new(&device, config.format);
-        let text_pipeline = TextPipeline::new(&device, &queue, config.format);
 
         let staging_belt = StagingBelt::new(1024);
 
         Self {
-            device: Arc::new(device),
-            queue: Arc::new(queue),
+            device,
+            queue,
             config,
             surface,
             msaa_texture,
             blit_pipeline,
             mesh_pipeline,
             quad_pipeline,
-            text_pipeline,
             image_bind_group_layout,
             default_image,
             staging_belt,
         }
-    }
-
-    /// Creates a new renderer.
-    ///
-    /// # Safety
-    /// - `window` must be a valid see [`Instance::create_surface`] for more information.
-    pub unsafe fn new(
-        window: &(impl HasRawDisplayHandle + HasRawWindowHandle),
-        width: u32,
-        height: u32,
-    ) -> Self {
-        pollster::block_on(Self::new_async(window, width, height))
     }
 
     fn create_msaa_texture(
@@ -240,17 +208,11 @@ impl WgpuRenderer {
     }
 
     /// Primitives must be sorted by their z-index.
-    pub fn prepare(
-        &mut self,
-        encoder: &mut CommandEncoder,
-        font_system: &mut FontSystem,
-        primitives: &[&Primitive],
-    ) -> usize {
+    pub fn prepare(&mut self, encoder: &mut CommandEncoder, primitives: &[&Primitive]) -> usize {
         let mut z_index = f32::NEG_INFINITY;
         let mut layer = 0;
         let mut quads = Vec::new();
         let mut meshes = Vec::new();
-        let mut text_sections = Vec::new();
 
         for primitive in primitives {
             if primitive.z_index != z_index {
@@ -274,28 +236,16 @@ impl WgpuRenderer {
                     &meshes,
                 );
 
-                self.text_pipeline.prepare(
-                    &self.device,
-                    &self.queue,
-                    font_system,
-                    layer,
-                    self.config.width,
-                    self.config.height,
-                    &text_sections,
-                );
-
                 z_index = primitive.z_index;
                 layer += 1;
 
                 quads.clear();
                 meshes.clear();
-                text_sections.clear();
             }
 
             match primitive.kind {
                 PrimitiveKind::Quad(ref quad) => quads.push((quad, primitive.clip)),
                 PrimitiveKind::Mesh(ref mesh) => meshes.push((mesh, primitive.clip)),
-                PrimitiveKind::Text(ref text) => text_sections.push((text, primitive.clip)),
             }
         }
 
@@ -317,16 +267,6 @@ impl WgpuRenderer {
             self.config.height,
             layer,
             &meshes,
-        );
-
-        self.text_pipeline.prepare(
-            &self.device,
-            &self.queue,
-            font_system,
-            layer,
-            self.config.width,
-            self.config.height,
-            &text_sections,
         );
 
         layer
@@ -360,10 +300,8 @@ impl WgpuRenderer {
         });
 
         for layer in 0..=layers {
-            self.quad_pipeline.render(&mut pass, layer);
+            (self.quad_pipeline).render(&mut pass, layer);
             (self.mesh_pipeline).render(&mut pass, layer, &self.default_image);
-            pass.set_scissor_rect(0, 0, self.config.width, self.config.height);
-            self.text_pipeline.render(&mut pass, layer);
         }
     }
 }
@@ -394,7 +332,35 @@ impl Renderer for WgpuRenderer {
         ImageHandle::new(image, data.width(), data.height())
     }
 
-    fn render_frame(&mut self, font_system: &mut FontSystem, frame: &Frame, clear_color: Color) {
+    fn write_image(&self, handle: &ImageHandle, offset: UVec2, data: &ImageData) {
+        let Some(image) = handle.downcast_ref::<WgpuImage>() else { return };
+
+        self.queue.write_texture(
+            ImageCopyTexture {
+                texture: &image.texture,
+                mip_level: 0,
+                origin: Origin3d {
+                    x: offset.x,
+                    y: offset.y,
+                    z: 0,
+                },
+                aspect: TextureAspect::All,
+            },
+            data.pixels(),
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(data.width() * 4),
+                rows_per_image: None,
+            },
+            Extent3d {
+                width: data.width(),
+                height: data.height(),
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    fn render_frame(&mut self, frame: &Frame, clear_color: Color) {
         let target = self.surface.get_current_texture().unwrap();
         let view = target.texture.create_view(&Default::default());
 
@@ -404,7 +370,7 @@ impl Renderer for WgpuRenderer {
         let mut primitives: Vec<_> = frame.primitives().iter().collect();
         primitives.sort_by(|a, b| a.z_index.partial_cmp(&b.z_index).unwrap());
 
-        let layers = self.prepare(&mut encoder, font_system, &primitives);
+        let layers = self.prepare(&mut encoder, &primitives);
         self.render(&mut encoder, &view, clear_color, layers);
 
         // submit and present

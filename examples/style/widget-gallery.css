@@ -9,6 +9,10 @@ div.widget-gallery {
 	align-items: center;
 }
 
+div.popup {
+	align-items: stretch;
+}
+
 div.row {
 	gap: 10px;
 

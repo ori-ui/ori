@@ -15,6 +15,7 @@ mod mesh;
 mod quad;
 mod rect;
 mod render;
+#[cfg(feature = "text")]
 mod text;
 
 pub use self::image::*;
@@ -25,9 +26,9 @@ pub use mesh::*;
 pub use quad::*;
 pub use rect::*;
 pub use render::*;
+#[cfg(feature = "text")]
 pub use text::*;
 
-pub use cosmic_text;
 pub use glam as math;
 
 pub mod prelude {
@@ -39,7 +40,9 @@ pub mod prelude {
     pub use crate::mesh::{Mesh, Vertex};
     pub use crate::quad::Quad;
     pub use crate::rect::Rect;
-    pub use crate::text::TextAlign;
+    pub use crate::text::{
+        FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextSection, TextWrap,
+    };
 
     pub use glam::*;
 }

@@ -115,7 +115,7 @@ impl<T: ElementView> Element<T> {
     }
 
     /// Downcasts `T` to `U` and calls the given function with the `U`.
-    pub fn with_view<U: ElementView, V>(
+    pub fn downcast<U: ElementView, V>(
         &self,
         f: impl FnOnce(&mut U) -> V,
     ) -> Result<V, ElementDowncastError>

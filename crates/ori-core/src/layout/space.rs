@@ -1,7 +1,7 @@
 use crate::Size;
 
 /// Space available to lay out a view.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Space {
     /// Minimum size the view can be.
     pub min: Size,
@@ -9,56 +9,76 @@ pub struct Space {
     pub max: Size,
 }
 
+impl Default for Space {
+    fn default() -> Self {
+        Self::UNBOUNDED
+    }
+}
+
 impl Space {
+    /// The zero space.
+    pub const ZERO: Self = Self {
+        min: Size::ZERO,
+        max: Size::ZERO,
+    };
+
+    /// The unbounded space.
+    pub const UNBOUNDED: Self = Self {
+        min: Size::ZERO,
+        max: Size::UNBOUNDED,
+    };
+
+    /// The infinite space.
+    pub const INFINITE: Self = Self {
+        min: Size::UNBOUNDED,
+        max: Size::UNBOUNDED,
+    };
+
     /// Create a new space.
-    pub fn new(min: Size, max: Size) -> Self {
-        Self {
-            min: min.max(Size::ZERO),
-            max: max.max(Size::ZERO),
-        }
+    pub const fn new(min: Size, max: Size) -> Self {
+        Self { min, max }
+    }
+
+    /// Create a new space with the same minimum and maximum size.
+    pub fn from_size(size: Size) -> Self {
+        Self::new(size, size)
     }
 
     /// Shrink the space by `size`.
     pub fn shrink(&self, size: Size) -> Self {
-        Self::new(self.min - size, self.max - size)
+        let min = self.min - size;
+        let max = self.max - size;
+
+        Self::new(min.max(Size::ZERO), max.max(Size::ZERO))
+    }
+
+    /// Expand the space by `size`.
+    pub fn expand(&self, size: Size) -> Self {
+        Self::new(self.min + size, self.max + size)
+    }
+
+    /// Get the most constraning space between `self` and `other
+    pub fn with(&self, other: Self) -> Self {
+        let min = self.min.max(other.min);
+        let max = self.max.min(other.max);
+
+        Self::new(min.min(max), max)
     }
 
     /// Clamp a size to the space.
     pub fn fit(&self, size: Size) -> Size {
-        size.clamp(self.min, self.max)
-    }
-
-    pub fn fit_container(&self, content: Size, size: Size) -> Size {
-        let width = if size.height.is_infinite() {
-            if self.max.height.is_infinite() {
-                content.width.max(self.min.width)
-            } else {
-                self.max.width
-            }
+        let width = if self.min.width.is_finite() {
+            size.width.max(self.min.width)
         } else {
-            let width = size.width.max(content.width);
-            width.clamp(self.min.width, self.max.width)
+            size.width
         };
 
-        let height = if size.height.is_infinite() {
-            if self.max.height.is_infinite() {
-                content.height.max(self.min.height)
-            } else {
-                self.max.height
-            }
+        let height = if self.min.height.is_finite() {
+            size.height.max(self.min.height)
         } else {
-            let height = size.height.max(content.height);
-            height.clamp(self.min.height, self.max.height)
+            size.height
         };
 
-        if width.is_infinite() {
-            tracing::warn!("width is infinite");
-        }
-
-        if height.is_infinite() {
-            tracing::warn!("height is infinite");
-        }
-
-        Size::new(width, height)
+        Size::new(width.min(self.max.width), height.min(self.max.height))
     }
 }

@@ -8,6 +8,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::TEXT_SIZE;
+
 use super::Key;
 
 thread_local! {
@@ -85,15 +87,23 @@ impl Debug for ThemeEntry {
 }
 
 /// A map of style values.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Theme {
     values: HashMap<&'static str, ThemeEntry>,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Self::new().with(TEXT_SIZE, 16.0)
+    }
 }
 
 impl Theme {
     /// Create a new theme.
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            values: Default::default(),
+        }
     }
 
     /// Set a value in the theme.

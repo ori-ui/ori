@@ -29,6 +29,11 @@ impl Event {
         self.name
     }
 
+    /// Check whether the event is of the given type.
+    pub fn is<T: Any>(&self) -> bool {
+        self.event.is::<T>()
+    }
+
     /// Try to downcast the event to the given type.
     pub fn get<T: Any>(&self) -> Option<&T> {
         self.event.as_ref().downcast_ref::<T>()

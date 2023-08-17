@@ -3,19 +3,22 @@ use std::collections::HashMap;
 use glam::Vec2;
 
 use crate::{
-    BaseCx, Code, Event, Fonts, KeyboardEvent, Modifiers, Palette, PointerButton, PointerEvent,
-    PointerId, SceneRender, Theme, UiBuilder, Window, WindowId, WindowUi,
+    BaseCx, Code, Delegate, Event, Fonts, KeyboardEvent, Modifiers, Palette, PointerButton,
+    PointerEvent, PointerId, SceneRender, Theme, UiBuilder, Window, WindowId, WindowUi,
 };
 
+/// State for running a user interface.
 pub struct Ui<T, R: SceneRender> {
     windows: HashMap<WindowId, WindowUi<T, R>>,
     modifiers: Modifiers,
+    delegate: Box<dyn Delegate<T>>,
     pub fonts: Fonts,
     pub theme: Theme,
     pub data: T,
 }
 
 impl<T, R: SceneRender> Ui<T, R> {
+    /// Create a new [`Ui`] with the given data.
     pub fn new(data: T) -> Self {
         let mut fonts = Fonts::default();
         fonts.load_system_fonts();
@@ -26,20 +29,33 @@ impl<T, R: SceneRender> Ui<T, R> {
         Self {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
+            delegate: Box::new(()),
             fonts,
             theme,
             data,
         }
     }
 
+    /// Override the delegate.
+    pub fn set_delegate<D: Delegate<T> + 'static>(&mut self, delegate: D) {
+        self.delegate = Box::new(delegate);
+    }
+
+    /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
         Theme::with_global(&mut self.theme, || {
-            let mut base = BaseCx::new(&mut self.fonts);
+            let mut commands = Vec::new();
+            let mut base = BaseCx::new(&mut self.fonts, &mut commands);
 
             let window_id = window.id();
             let window_ui = WindowUi::new(builder, &mut base, &mut self.data, window, render);
             self.windows.insert(window_id, window_ui);
         });
+    }
+
+    /// Remove a window.
+    pub fn remove_window(&mut self, window_id: WindowId) {
+        self.windows.remove(&window_id);
     }
 
     #[track_caller]
@@ -150,20 +166,22 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     pub fn event(&mut self, window_id: WindowId, event: &Event) {
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            let mut base = BaseCx::new(&mut self.fonts);
+            let mut commands = Vec::new();
+            let mut base = BaseCx::new(&mut self.fonts, &mut commands);
 
             Theme::with_global(&mut self.theme, || {
-                window_ui.event(&mut base, &mut self.data, event);
+                window_ui.event(&mut *self.delegate, &mut base, &mut self.data, event);
             });
         }
     }
 
     pub fn render(&mut self, window_id: WindowId) {
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            let mut base = BaseCx::new(&mut self.fonts);
+            let mut commands = Vec::new();
+            let mut base = BaseCx::new(&mut self.fonts, &mut commands);
 
             Theme::with_global(&mut self.theme, || {
-                window_ui.render(&mut base, &mut self.data);
+                window_ui.render(&mut *self.delegate, &mut base, &mut self.data);
             });
         }
     }

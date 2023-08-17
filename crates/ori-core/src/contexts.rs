@@ -1,26 +1,29 @@
-use std::time::Duration;
+use std::{any::Any, time::Duration};
 
 use glam::Vec2;
 
-use crate::{Affine, Fonts, Glyphs, Mesh, Rect, Size, TextSection, ViewState};
+use crate::{Affine, Command, Fonts, Glyphs, Mesh, Rect, Size, TextSection, ViewState};
 
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
-    fonts: &'a mut Fonts,
-    delta_time: Duration,
+    pub(crate) fonts: &'a mut Fonts,
+    pub(crate) commands: &'a mut Vec<Command>,
 }
 
 impl<'a> BaseCx<'a> {
-    pub(crate) fn set_delta_time(&mut self, delta_time: Duration) {
-        self.delta_time = delta_time;
+    /// Create a new base context.
+    pub fn new(fonts: &'a mut Fonts, commands: &'a mut Vec<Command>) -> Self {
+        Self { fonts, commands }
     }
 
-    /// Create a new base context.
-    pub fn new(fonts: &'a mut Fonts) -> Self {
-        Self {
-            fonts,
-            delta_time: Duration::ZERO,
-        }
+    /// Get the [`Fonts`].
+    pub fn fonts(&mut self) -> &mut Fonts {
+        self.fonts
+    }
+
+    /// Emit a command.
+    pub fn cmd<T: Any>(&mut self, command: T) {
+        self.commands.push(Command::new(command));
     }
 }
 
@@ -44,11 +47,20 @@ impl<'a, 'b> BuildCx<'a, 'b> {
 pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) delta_time: Duration,
 }
 
 impl<'a, 'b> RebuildCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
-        Self { base, view_state }
+    pub(crate) fn new(
+        base: &'a mut BaseCx<'b>,
+        view_state: &'a mut ViewState,
+        delta_time: Duration,
+    ) -> Self {
+        Self {
+            base,
+            view_state,
+            delta_time,
+        }
     }
 
     /// Create a child context.
@@ -56,6 +68,7 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         RebuildCx {
             base: self.base,
             view_state: self.view_state,
+            delta_time: self.delta_time,
         }
     }
 
@@ -69,16 +82,22 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
 pub struct EventCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) delta_time: Duration,
     pub(crate) transform: Affine,
 }
 
 impl<'a, 'b> EventCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
+    pub(crate) fn new(
+        base: &'a mut BaseCx<'b>,
+        view_state: &'a mut ViewState,
+        delta_time: Duration,
+    ) -> Self {
         let transform = view_state.transform;
 
         Self {
             base,
             view_state,
+            delta_time,
             transform,
         }
     }
@@ -88,6 +107,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
         EventCx {
             base: self.base,
             view_state: self.view_state,
+            delta_time: self.delta_time,
             transform: self.transform,
         }
     }
@@ -107,11 +127,20 @@ impl<'a, 'b> EventCx<'a, 'b> {
 pub struct LayoutCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) delta_time: Duration,
 }
 
 impl<'a, 'b> LayoutCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
-        Self { base, view_state }
+    pub(crate) fn new(
+        base: &'a mut BaseCx<'b>,
+        view_state: &'a mut ViewState,
+        delta_time: Duration,
+    ) -> Self {
+        Self {
+            base,
+            view_state,
+            delta_time,
+        }
     }
 
     /// Create a child context.
@@ -119,6 +148,7 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
         LayoutCx {
             base: self.base,
             view_state: self.view_state,
+            delta_time: self.delta_time,
         }
     }
 }
@@ -127,11 +157,20 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
 pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) delta_time: Duration,
 }
 
 impl<'a, 'b> DrawCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
-        Self { base, view_state }
+    pub(crate) fn new(
+        base: &'a mut BaseCx<'b>,
+        view_state: &'a mut ViewState,
+        delta_time: Duration,
+    ) -> Self {
+        Self {
+            base,
+            view_state,
+            delta_time,
+        }
     }
 
     /// Create a child context.
@@ -139,6 +178,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         DrawCx {
             base: self.base,
             view_state: self.view_state,
+            delta_time: self.delta_time,
         }
     }
 
@@ -175,14 +215,19 @@ impl_context! {EventCx<'_, '_>, DrawCx<'_, '_> {
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the fonts.
     pub fn fonts(&mut self) -> &mut Fonts {
-        self.base.fonts
+        self.base.fonts()
+    }
+
+    /// Emit a command.
+    pub fn cmd<T: Any>(&mut self, command: T) {
+        self.base.cmd(command);
     }
 }}
 
 impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the delta time in seconds.
     pub fn dt(&self) -> f32 {
-        self.base.delta_time.as_secs_f32()
+        self.delta_time.as_secs_f32()
     }
 
     /// Get whether the view is hot.

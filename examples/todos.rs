@@ -2,14 +2,22 @@ use ori::prelude::*;
 
 const BORDER_TOP: Key<BorderWidth> = Key::new("todos.border_top");
 
+// the selection of the todos
 #[derive(Clone, Copy, Default, PartialEq)]
 enum Selection {
+    // show all todos
     #[default]
     All,
+    // show active todos
     Active,
+    // show completed todos
     Completed,
 }
 
+// here we define a custom command we can send to the delegate
+struct RemoveTodo(usize);
+
+// a todo
 struct Todo {
     text: String,
     completed: bool,
@@ -28,18 +36,23 @@ impl Todo {
     }
 }
 
+// data for the app
 #[derive(Default)]
 struct Data {
     todos: Vec<Todo>,
-    text: String,
     selection: Selection,
 }
 
 impl Data {
-    fn input(&mut self) {
-        let todo = Todo::new(self.text.clone());
+    fn input(&mut self, title: String) {
+        info!("Added todo '{}'", title);
+
+        let todo = Todo::new(title);
         self.todos.insert(0, todo);
-        self.text = String::new();
+    }
+
+    fn remove_todo(&mut self, index: usize) {
+        self.todos.remove(index);
     }
 }
 
@@ -48,16 +61,16 @@ fn title() -> impl View<Data> {
 }
 
 fn input() -> impl View<Data> {
-    let input = text_input(|data: &mut Data| &mut data.text)
-        .on_submit(Data::input)
+    let input = text_input()
         .placeholder("What needs to be done?")
+        .on_submit(|_, data: &mut Data, text| data.input(text))
         .font_size(20.0);
 
     container(input).padding((em(4.0), em(1.0))).width(em(28.0))
 }
 
-fn todo(todo: &mut Todo) -> impl View<Todo> {
-    let completed = checkbox(todo.completed, Todo::toggle);
+fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
+    let completed = checkbox(todo.completed, |_, data: &mut Todo| data.toggle());
 
     let title_color = if todo.completed {
         style(Palette::TEXT_BRIGHTER)
@@ -67,9 +80,21 @@ fn todo(todo: &mut Todo) -> impl View<Todo> {
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
 
-    let left = hstack![completed, title].center_items().gap(em(1.5));
+    let remove = button(text("×"), move |cx, _: &mut Todo| {
+        // because we don't have access to the Data struct here
+        // we send a command to the delegate
+        cx.cmd(RemoveTodo(index));
+    })
+    .fancy(4.0)
+    .padding((em(0.4), em(0.1)))
+    .color(hsl(353.0, 0.6, 0.72));
 
-    container(left)
+    let left = hstack![completed, title].center_items().gap(em(1.5));
+    let row = hstack![left, remove]
+        .center_items()
+        .justify_content(Justify::SpaceBetween);
+
+    container(row)
         .padding(em(1.0))
         .border_width(style(BORDER_TOP))
         .width(em(28.0))
@@ -85,7 +110,10 @@ fn todos(data: &mut Data) -> impl View<Data> {
             _ => {}
         }
 
-        let todo = focus(move |data: &mut Data| &mut data.todos[i], todo(item));
+        let todo = focus(
+            move |data: &mut Data, lens| lens(&mut data.todos[i]),
+            todo(i, item),
+        );
         todos.push(todo);
     }
 
@@ -101,7 +129,7 @@ fn active_count(data: &mut Data) -> impl View<Data> {
         format!("{} items left", active)
     };
 
-    Text::new(active_text).font_size(14.0)
+    text(active_text).font_size(14.0)
 }
 
 fn selection(data: &mut Data) -> impl View<Data> {
@@ -117,35 +145,35 @@ fn selection(data: &mut Data) -> impl View<Data> {
         }
     }
 
-    let all = button(text("All"), |data: &mut Data| {
+    let all = button(text("All"), |_, data: &mut Data| {
         data.selection = Selection::All
     })
     .fancy(4.0)
     .color(color(data.selection, Selection::All))
     .padding((5.0, 3.0));
 
-    let active = button(text("Active"), |data: &mut Data| {
+    let active = button(text("Active"), |_, data: &mut Data| {
         data.selection = Selection::Active
     })
     .fancy(4.0)
     .color(color(data.selection, Selection::Active))
     .padding((5.0, 3.0));
 
-    let completed = button(text("Completed"), |data: &mut Data| {
+    let completed = button(text("Completed"), |_, data: &mut Data| {
         data.selection = Selection::Completed
     })
     .fancy(4.0)
     .color(color(data.selection, Selection::Completed))
     .padding((5.0, 3.0));
 
-    let items = hstack![active_count(data), all, active, completed]
-        .justify_content(Justify::SpaceAround)
+    let items = hstack![all, active, completed].gap(em(1.0));
+    let row = hstack![active_count(data), items]
         .center_items()
-        .gap(em(1.0));
+        .justify_content(Justify::SpaceBetween);
 
-    any(container(items)
+    any(container(row)
         .width(em(26.0))
-        .padding(em(0.5))
+        .padding((em(1.0), em(0.5)))
         .border_width(style(BORDER_TOP)))
 }
 
@@ -168,12 +196,25 @@ fn theme() -> Theme {
         .with(container::BORDER_RADIUS, BorderRadius::all(0.0))
         .with(container::BORDER_COLOR, Palette::SECONDARY_DARK)
         .with(BORDER_TOP, BorderWidth::new(1.0, 0.0, 0.0, 0.0))
-        .with(checkbox::BORDER_RADIUS, BorderRadius::all(12.0))
+        .with(checkbox::BORDER_RADIUS, BorderRadius::all(em(0.75)))
+}
+
+// we define a delegate to handle the custom command
+fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
+    // when we receive the command we remove the todo
+    if let Some(remove) = event.get::<RemoveTodo>() {
+        data.remove_todo(remove.0);
+        info!("Removed todo #{}", remove.0);
+
+        event.handle();
+        cx.request_rebuild();
+    }
 }
 
 fn main() {
     App::new(app, Data::default())
         .title("Todos (examples/todos.rs)")
         .theme(theme())
+        .delegate(delegate)
         .run();
 }

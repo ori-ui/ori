@@ -9,12 +9,13 @@ use crate::{
     ViewSequence, ViewState,
 };
 
-pub struct PodSequenceState<T, V: ViewSequence<T>> {
+/// The state of a [`ContentSequence`].
+pub struct ContentSequenceState<T, V: ViewSequence<T>> {
     content: V::State,
     view_state: Vec<ViewState>,
 }
 
-impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> Index<S> for PodSequenceState<T, V> {
+impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> Index<S> for ContentSequenceState<T, V> {
     type Output = S::Output;
 
     fn index(&self, index: S) -> &Self::Output {
@@ -22,117 +23,130 @@ impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> Index<S> for PodSequence
     }
 }
 
-impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> IndexMut<S> for PodSequenceState<T, V> {
+impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> IndexMut<S> for ContentSequenceState<T, V> {
     fn index_mut(&mut self, index: S) -> &mut Self::Output {
         &mut self.view_state[index]
     }
 }
 
-pub struct PodSequence<T, V> {
-    content: V,
+/// Contents of a view, in a sequence.
+///
+/// This is useful for views that contain multiple pieces of content.
+/// See [`ViewSequence`] for more information.
+///
+/// This is strictly necessary for any view that contains any content.
+/// If you don't wrap your content in this, you're in strange waters my friend,
+/// and I wish you the best of luck.
+#[repr(transparent)]
+pub struct ContentSequence<T, V> {
+    views: V,
     marker: PhantomData<fn() -> T>,
 }
 
-impl<T, V> PodSequence<T, V> {
-    pub fn new(content: V) -> Self {
+impl<T, V> ContentSequence<T, V> {
+    /// Create a new [`ContentSequence`].
+    pub fn new(views: V) -> Self {
         Self {
-            content,
+            views,
             marker: PhantomData,
         }
     }
 }
 
-impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
-    type State = PodSequenceState<T, V>;
+impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
+    type State = ContentSequenceState<T, V>;
 
     fn len(&self) -> usize {
-        self.content.len()
+        self.views.len()
     }
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        PodSequenceState {
-            content: self.content.build(cx, data),
-            view_state: vec![ViewState::default(); self.content.len()],
+        ContentSequenceState {
+            content: self.views.build(cx, data),
+            view_state: vec![ViewState::default(); self.views.len()],
         }
     }
 
-    fn rebuild(
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut BuildCx, data: &mut T, old: &Self) {
+        (state.view_state).resize_with(self.views.len(), ViewState::default);
+
+        (self.views).rebuild(&mut state.content, cx, data, &old.views);
+    }
+
+    fn rebuild_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
     ) {
-        (state.view_state).resize_with(self.content.len(), ViewState::default);
-
-        state.view_state[index].update.remove(Update::TREE);
+        state.view_state[n].update.remove(Update::TREE);
 
         let mut new_cx = cx.child();
-        new_cx.view_state = &mut state.view_state[index];
+        new_cx.view_state = &mut state.view_state[n];
+        (self.views).rebuild_nth(n, &mut state.content, &mut new_cx, data, &old.views);
 
-        (self.content).rebuild(index, &mut state.content, &mut new_cx, data, &old.content);
-
-        cx.view_state.propagate(&mut state.view_state[index]);
+        cx.view_state.propagate(&mut state.view_state[n]);
     }
 
-    fn event(
+    fn event_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     ) {
         let mut new_cx = cx.child();
-        new_cx.transform *= state.view_state[index].transform;
-        new_cx.view_state = &mut state.view_state[index];
+        new_cx.transform *= state.view_state[n].transform;
+        new_cx.view_state = &mut state.view_state[n];
 
-        (self.content).event(index, &mut state.content, &mut new_cx, data, event);
+        (self.views).event_nth(n, &mut state.content, &mut new_cx, data, event);
 
-        cx.view_state.propagate(&mut state.view_state[index]);
+        cx.view_state.propagate(&mut state.view_state[n]);
     }
 
-    fn layout(
+    fn layout_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
-        state.view_state[index].update.remove(Update::LAYOUT);
+        state.view_state[n].update.remove(Update::LAYOUT);
 
         let mut new_cx = cx.child();
-        new_cx.view_state = &mut state.view_state[index];
+        new_cx.view_state = &mut state.view_state[n];
 
-        let size = (self.content).layout(index, &mut state.content, &mut new_cx, data, space);
+        let size = (self.views).layout_nth(n, &mut state.content, &mut new_cx, data, space);
 
-        state.view_state[index].size = size;
+        state.view_state[n].size = size;
 
-        cx.view_state.propagate(&mut state.view_state[index]);
+        cx.view_state.propagate(&mut state.view_state[n]);
 
         size
     }
 
-    fn draw(
+    fn draw_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        state.view_state[index].update.remove(Update::DRAW);
+        state.view_state[n].update.remove(Update::DRAW);
 
         let mut canvas = canvas.layer();
-        canvas.transform *= state.view_state[index].transform;
+        canvas.transform *= state.view_state[n].transform;
 
         let mut new_cx = cx.layer();
-        new_cx.view_state = &mut state.view_state[index];
+        new_cx.view_state = &mut state.view_state[n];
 
-        (self.content).draw(index, &mut state.content, &mut new_cx, data, &mut canvas);
+        (self.views).draw_nth(n, &mut state.content, &mut new_cx, data, &mut canvas);
 
-        cx.view_state.propagate(&mut state.view_state[index]);
+        cx.view_state.propagate(&mut state.view_state[n]);
     }
 }

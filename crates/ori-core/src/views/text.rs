@@ -168,7 +168,8 @@ impl<T> View<T> for Text {
 
         *state = cx.layout_text(&section);
 
-        state.as_ref().map(|g| g.size()).unwrap_or(space.max)
+        let text_size = state.as_ref().map(|g| g.size()).unwrap_or(space.max);
+        space.fit(text_size)
     }
 
     fn draw(

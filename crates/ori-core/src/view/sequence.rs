@@ -1,46 +1,58 @@
 use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, View};
 
+/// A sequence of views.
 pub trait ViewSequence<T> {
+    /// The state of the sequence.
     type State;
 
+    /// The length of the sequence.
     fn len(&self) -> usize;
 
+    /// Whether the sequence is empty.
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
+    /// Build the sequence state.
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State;
 
-    fn rebuild(
+    /// Rebuild the sequence state.
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut BuildCx, data: &mut T, old: &Self);
+
+    /// Rebuild the nth view.
+    fn rebuild_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
     );
 
-    fn event(
+    /// Handle an event for the nth view.
+    fn event_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     );
 
-    fn layout(
+    /// Layout the nth view.
+    fn layout_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size;
 
-    fn draw(
+    /// Draw the nth view.
+    fn draw_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
@@ -59,58 +71,60 @@ impl<T, V: View<T>> ViewSequence<T> for Vec<V> {
         self.iter_mut().map(|v| v.build(cx, data)).collect()
     }
 
-    fn rebuild(
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut BuildCx, data: &mut T, _old: &Self) {
+        if self.len() < state.len() {
+            state.truncate(self.len());
+        } else {
+            for item in self.iter_mut().skip(state.len()) {
+                state.push(item.build(cx, data));
+            }
+        }
+    }
+
+    fn rebuild_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
     ) {
-        if let Some(old) = old.get(index) {
-            self[index].rebuild(&mut state[index], cx, data, old);
-        }
-
-        if self.len() < old.len() {
-            state.truncate(self.len());
-        } else {
-            for item in self.iter_mut().skip(old.len()) {
-                state.push(item.build(&mut cx.build_cx(), data));
-            }
+        if let Some(old) = old.get(n) {
+            self[n].rebuild(&mut state[n], cx, data, old);
         }
     }
 
-    fn event(
+    fn event_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     ) {
-        self[index].event(&mut state[index], cx, data, event);
+        self[n].event(&mut state[n], cx, data, event);
     }
 
-    fn layout(
+    fn layout_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
-        self[index].layout(&mut state[index], cx, data, space)
+        self[n].layout(&mut state[n], cx, data, space)
     }
 
-    fn draw(
+    fn draw_nth(
         &mut self,
-        index: usize,
+        n: usize,
         state: &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        self[index].draw(&mut state[index], cx, data, canvas);
+        self[n].draw(&mut state[n], cx, data, canvas);
     }
 }
 
@@ -123,9 +137,12 @@ impl<T> ViewSequence<T> for () {
 
     fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {}
 
-    fn rebuild(
+    fn rebuild(&mut self, _state: &mut Self::State, _cx: &mut BuildCx, _data: &mut T, _old: &Self) {
+    }
+
+    fn rebuild_nth(
         &mut self,
-        _index: usize,
+        _n: usize,
         _state: &mut Self::State,
         _cx: &mut RebuildCx,
         _data: &mut T,
@@ -133,9 +150,9 @@ impl<T> ViewSequence<T> for () {
     ) {
     }
 
-    fn event(
+    fn event_nth(
         &mut self,
-        _index: usize,
+        _n: usize,
         _state: &mut Self::State,
         _cx: &mut EventCx,
         _data: &mut T,
@@ -143,9 +160,9 @@ impl<T> ViewSequence<T> for () {
     ) {
     }
 
-    fn layout(
+    fn layout_nth(
         &mut self,
-        _index: usize,
+        _n: usize,
         _state: &mut Self::State,
         _cx: &mut LayoutCx,
         _data: &mut T,
@@ -154,9 +171,9 @@ impl<T> ViewSequence<T> for () {
         space.min
     }
 
-    fn draw(
+    fn draw_nth(
         &mut self,
-        _index: usize,
+        _n: usize,
         _state: &mut Self::State,
         _cx: &mut DrawCx,
         _data: &mut T,
@@ -180,55 +197,64 @@ macro_rules! impl_tuple {
 
             fn rebuild(
                 &mut self,
-                index: usize,
+                _state: &mut Self::State,
+                _cx: &mut BuildCx,
+                _data: &mut T,
+                _old: &Self,
+            ) {
+            }
+
+            fn rebuild_nth(
+                &mut self,
+                n: usize,
                 state: &mut Self::State,
                 cx: &mut RebuildCx,
                 data: &mut T,
                 old: &Self,
             ) {
-                match index {
+                match n {
                     $($index => self.$index.rebuild(&mut state.$index, cx, data, &old.$index),)*
                     _ => {},
                 }
             }
 
-            fn event(
+            fn event_nth(
                 &mut self,
-                index: usize,
+                n: usize,
                 state: &mut Self::State,
                 cx: &mut EventCx,
                 data: &mut T,
                 event: &Event,
             ) {
-                match index {
+                match n {
                     $($index => self.$index.event(&mut state.$index, cx, data, event),)*
                     _ => {},
                 }
             }
 
-            fn layout(
+            fn layout_nth(
                 &mut self,
-                index: usize,
+                n: usize,
                 state: &mut Self::State,
                 cx: &mut LayoutCx,
                 data: &mut T,
                 space: Space,
             ) -> Size {
-                match index {
+                match n {
                     $($index => self.$index.layout(&mut state.$index, cx, data, space),)*
                     _ => Size::ZERO,
                 }
             }
 
-            fn draw(
+            fn draw_nth(
                 &mut self,
-                index: usize,
+                n: usize,
                 state: &mut Self::State,
                 cx: &mut DrawCx,
                 data: &mut T,
                 canvas: &mut Canvas,
             ) {
-                match index {
+                match n {
                     $($index => self.$index.draw(&mut state.$index, cx, data, canvas),)*
                     _ => {},
                 }

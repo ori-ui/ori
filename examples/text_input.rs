@@ -19,18 +19,18 @@ fn input(data: &mut Data) -> impl View<Data> {
         .min_width(150.0);
 
     pad(8.0, input)
-        .background(sette::SECONDARY))
+        .background(style(Palette::SECONDARY))
         .border_radius(6.0)
 }
 
 fn clear_button() -> impl View<Data> {
-    button(text("Clear"), |data: &mut Data| data.text.clear()).fancy(4.0)
+    button(text("Clear"), |_, data: &mut Data| data.text.clear()).fancy(4.0)
 }
 
 fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
     hstack![
         text("Multiline"),
-        checkbox(data.multiline, |data: &mut Data| data.toogle_multiline())
+        checkbox(data.multiline, |_, data: &mut Data| data.toogle_multiline())
     ]
     .align_items(AlignItems::Center)
 }

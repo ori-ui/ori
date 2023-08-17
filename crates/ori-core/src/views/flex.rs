@@ -1,4 +1,6 @@
-use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, Pod, PodState, Space, View};
+use crate::{
+    BuildCx, Canvas, Content, ContentState, DrawCx, Event, EventCx, LayoutCx, Space, View,
+};
 
 /// Create a new [`Flex`].
 pub fn flex<T, V: View<T>>(flex: f32, content: V) -> Flex<T, V> {
@@ -9,21 +11,22 @@ pub fn flex<T, V: View<T>>(flex: f32, content: V) -> Flex<T, V> {
 ///
 /// When used in a stack, will shrink or grow to fill the remaining space.
 pub struct Flex<T, V> {
-    pub content: Pod<T, V>,
+    pub content: Content<T, V>,
     pub flex: f32,
 }
 
 impl<T, V> Flex<T, V> {
+    /// Create a new [`Flex`].
     pub fn new(flex: f32, content: V) -> Self {
         Self {
-            content: Pod::new(content),
+            content: Content::new(content),
             flex,
         }
     }
 }
 
 impl<T, V: View<T>> View<T> for Flex<T, V> {
-    type State = PodState<T, V>;
+    type State = ContentState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         self.content.build(cx, data)

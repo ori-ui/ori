@@ -6,7 +6,10 @@ use crate::{
 };
 
 /// Create a new [`Checkbox`].
-pub fn checkbox<T>(checked: bool, on_press: impl FnMut(&mut T) + 'static) -> Checkbox<T> {
+pub fn checkbox<T>(
+    checked: bool,
+    on_press: impl FnMut(&mut EventCx, &mut T) + 'static,
+) -> Checkbox<T> {
     Checkbox::new(checked, on_press)
 }
 
@@ -17,7 +20,8 @@ pub struct Checkbox<T> {
     #[rebuild(draw)]
     pub checked: bool,
     /// The callback for when the checkbox is pressed.
-    pub on_press: Box<dyn FnMut(&mut T)>,
+    #[allow(clippy::type_complexity)]
+    pub on_press: Box<dyn FnMut(&mut EventCx, &mut T)>,
     /// The transition of the checkbox.
     #[rebuild(draw)]
     pub transition: Transition,
@@ -46,7 +50,7 @@ pub struct Checkbox<T> {
 
 impl<T> Checkbox<T> {
     /// Create a new [`Checkbox`].
-    pub fn new(checked: bool, on_press: impl FnMut(&mut T) + 'static) -> Self {
+    pub fn new(checked: bool, on_press: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
         Self {
             checked,
             on_press: Box::new(on_press),
@@ -135,7 +139,7 @@ impl<T> View<T> for Checkbox<T> {
             }
 
             if over && pointer.is_press() {
-                (self.on_press)(data);
+                (self.on_press)(cx, data);
 
                 cx.set_active(true);
                 cx.request_rebuild();
@@ -162,7 +166,7 @@ impl<T> View<T> for Checkbox<T> {
     }
 
     fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T, canvas: &mut Canvas) {
-        if self.transition.step(t, cx.is_hot(), cx.dt()) {
+        if (self.transition).step(t, cx.is_hot() || self.checked, cx.dt()) {
             cx.request_draw();
         }
 

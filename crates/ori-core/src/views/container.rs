@@ -2,15 +2,15 @@ use glam::Vec2;
 
 use crate::{
     builtin::container, style, Affine, Align, BorderRadius, BorderWidth, BuildCx, Canvas, Color,
-    DrawCx, Event, EventCx, LayoutCx, Padding, Pod, PodState, Rebuild, RebuildCx, Size, Space,
-    View,
+    Content, ContentState, DrawCx, Event, EventCx, LayoutCx, Padding, Rebuild, RebuildCx, Size,
+    Space, View,
 };
 
 /// A container view.
 #[derive(Rebuild)]
 pub struct Container<T, V> {
     /// The content.
-    pub content: Pod<T, V>,
+    pub content: Content<T, V>,
     /// The padding, applied before everything else.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -47,7 +47,7 @@ impl<T, V> Container<T, V> {
     /// Create a new [`Container`].
     pub fn new(content: V) -> Self {
         Self {
-            content: Pod::new(content),
+            content: Content::new(content),
             padding: Padding::default(),
             space: Space::default(),
             alignment: None,
@@ -165,7 +165,7 @@ impl<T, V> Container<T, V> {
 }
 
 impl<T, V: View<T>> View<T> for Container<T, V> {
-    type State = PodState<T, V>;
+    type State = ContentState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         self.content.build(cx, data)

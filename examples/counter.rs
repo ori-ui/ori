@@ -6,7 +6,7 @@ struct Data {
 }
 
 fn counter_button() -> impl View<Data> {
-    button(text("Click me!"), |data: &mut Data| data.counter += 1.0).fancy(4.0)
+    button(text("Click me!"), |_, data: &mut Data| data.counter += 1.0).fancy(4.0)
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
@@ -15,7 +15,7 @@ fn app(data: &mut Data) -> impl View<Data> {
             counter_button(),
             text(format!("Clicked {} time(s)", data.counter))
         ]
-        .align_items(AlignItems::Center),
+        .center_items(),
     )
 }
 

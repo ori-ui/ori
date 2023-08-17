@@ -107,6 +107,21 @@ impl ViewState {
         self.update |= Update::DRAW;
     }
 
+    /// Get whether the view needs to be rebuilt.
+    pub fn needs_rebuild(&self) -> bool {
+        self.update.contains(Update::TREE)
+    }
+
+    /// Get whether the view needs to be laid out.
+    pub fn needs_layout(&self) -> bool {
+        self.update.contains(Update::LAYOUT)
+    }
+
+    /// Get whether the view needs to be drawn.
+    pub fn needs_draw(&self) -> bool {
+        self.update.contains(Update::DRAW)
+    }
+
     /// Get the [`Update`] of the view.
     pub fn update(&self) -> Update {
         self.update

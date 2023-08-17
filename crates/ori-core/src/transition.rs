@@ -68,7 +68,7 @@ impl Transition {
         let to = if on { 1.0 } else { 0.0 };
 
         if *t == from {
-            *t += sign * f32::EPSILON;
+            *t += sign * 0.0001;
             return true;
         }
 

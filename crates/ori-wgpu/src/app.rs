@@ -1,4 +1,4 @@
-use ori_core::{FontSource, Image, Theme, Ui, UiBuilder, View, WindowDescriptor};
+use ori_core::{Delegate, FontSource, Image, Theme, Ui, UiBuilder, View, WindowDescriptor};
 
 use crate::{Error, Render};
 
@@ -35,6 +35,12 @@ impl<T: 'static> App<T> {
             eprintln!("Failed to load font: {:?}", err);
         }
 
+        self
+    }
+
+    /// Set the delegate of the application.
+    pub fn delegate(mut self, delegate: impl Delegate<T> + 'static) -> Self {
+        self.ui.set_delegate(delegate);
         self
     }
 

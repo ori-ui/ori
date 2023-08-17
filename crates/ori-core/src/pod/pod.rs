@@ -9,14 +9,16 @@ use crate::{
     View, ViewState,
 };
 
-pub type AnyPod<T> = Pod<T, BoxedView<T>>;
+/// A [`Content`] with a [`BoxedView`] as its content.
+pub type AnyContent<T> = Content<T, BoxedView<T>>;
 
-pub struct PodState<T, V: View<T>> {
+/// The state of a [`Content`].
+pub struct ContentState<T, V: View<T>> {
     content: V::State,
     view_state: ViewState,
 }
 
-impl<T, V: View<T>> Deref for PodState<T, V> {
+impl<T, V: View<T>> Deref for ContentState<T, V> {
     type Target = ViewState;
 
     fn deref(&self) -> &Self::Target {
@@ -24,32 +26,39 @@ impl<T, V: View<T>> Deref for PodState<T, V> {
     }
 }
 
-impl<T, V: View<T>> DerefMut for PodState<T, V> {
+impl<T, V: View<T>> DerefMut for ContentState<T, V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.view_state
     }
 }
 
-pub struct Pod<T, V> {
-    content: V,
+/// Contents of a view.
+///
+/// This is strictly necessary for any view that contains any content.
+/// If you don't wrap your content in this, you're in strange waters my friend,
+/// and I wish you the best of luck.
+#[repr(transparent)]
+pub struct Content<T, V> {
+    view: V,
     marker: PhantomData<fn() -> T>,
 }
 
-impl<T, V> Pod<T, V> {
-    pub const fn new(content: V) -> Self {
+impl<T, V> Content<T, V> {
+    /// Create a new [`Content`].
+    pub const fn new(view: V) -> Self {
         Self {
-            content,
+            view,
             marker: PhantomData,
         }
     }
 }
 
-impl<T, V: View<T>> View<T> for Pod<T, V> {
-    type State = PodState<T, V>;
+impl<T, V: View<T>> View<T> for Content<T, V> {
+    type State = ContentState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        PodState {
-            content: self.content.build(cx, data),
+        ContentState {
+            content: self.view.build(cx, data),
             view_state: ViewState::default(),
         }
     }
@@ -60,7 +69,7 @@ impl<T, V: View<T>> View<T> for Pod<T, V> {
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
-        (self.content).rebuild(&mut state.content, &mut new_cx, data, &old.content);
+        (self.view).rebuild(&mut state.content, &mut new_cx, data, &old.view);
 
         cx.view_state.propagate(&mut state.view_state);
     }
@@ -70,7 +79,7 @@ impl<T, V: View<T>> View<T> for Pod<T, V> {
         new_cx.transform *= state.view_state.transform;
         new_cx.view_state = &mut state.view_state;
 
-        (self.content).event(&mut state.content, &mut new_cx, data, event);
+        (self.view).event(&mut state.content, &mut new_cx, data, event);
 
         cx.view_state.propagate(&mut state.view_state);
     }
@@ -87,7 +96,7 @@ impl<T, V: View<T>> View<T> for Pod<T, V> {
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
-        let size = (self.content).layout(&mut state.content, &mut new_cx, data, space);
+        let size = (self.view).layout(&mut state.content, &mut new_cx, data, space);
         state.view_state.size = size;
 
         cx.view_state.propagate(&mut state.view_state);
@@ -113,48 +122,46 @@ impl<T, V: View<T>> View<T> for Pod<T, V> {
         new_cx.view_state = &mut state.view_state;
 
         // draw the content
-        (self.content).draw(&mut state.content, &mut new_cx, data, &mut canvas);
+        (self.view).draw(&mut state.content, &mut new_cx, data, &mut canvas);
 
         // propagate the view state
         cx.view_state.propagate(&mut state.view_state);
     }
 }
 
-impl<T, V: Debug> Debug for Pod<T, V> {
+impl<T, V: Debug> Debug for Content<T, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Pod")
-            .field("content", &self.content)
-            .finish()
+        f.debug_struct("Pod").field("content", &self.view).finish()
     }
 }
 
-impl<T, V: Clone> Clone for Pod<T, V> {
+impl<T, V: Clone> Clone for Content<T, V> {
     fn clone(&self) -> Self {
         Self {
-            content: self.content.clone(),
+            view: self.view.clone(),
             marker: PhantomData,
         }
     }
 }
 
-impl<T, V: Copy> Copy for Pod<T, V> {}
+impl<T, V: Copy> Copy for Content<T, V> {}
 
-impl<T, V: Default> Default for Pod<T, V> {
+impl<T, V: Default> Default for Content<T, V> {
     fn default() -> Self {
         Self::new(V::default())
     }
 }
 
-impl<T, V> Deref for Pod<T, V> {
+impl<T, V> Deref for Content<T, V> {
     type Target = V;
 
     fn deref(&self) -> &Self::Target {
-        &self.content
+        &self.view
     }
 }
 
-impl<T, V> DerefMut for Pod<T, V> {
+impl<T, V> DerefMut for Content<T, V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.content
+        &mut self.view
     }
 }

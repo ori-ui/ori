@@ -1,13 +1,16 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::button, style, BorderRadius, BorderWidth, BuildCx, Canvas, Color, DrawCx, Event,
-    EventCx, LayoutCx, Padding, Pod, PodState, PointerEvent, Rebuild, RebuildCx, Size, Space,
-    Transition, View,
+    builtin::button, style, BorderRadius, BorderWidth, BuildCx, Canvas, Color, Content,
+    ContentState, DrawCx, Event, EventCx, LayoutCx, Padding, PointerEvent, Rebuild, RebuildCx,
+    Size, Space, Transition, View,
 };
 
 /// Create a new [`Button`].
-pub fn button<T, V: View<T>>(content: V, on_click: impl Fn(&mut T) + 'static) -> Button<T, V> {
+pub fn button<T, V: View<T>>(
+    content: V,
+    on_click: impl Fn(&mut EventCx, &mut T) + 'static,
+) -> Button<T, V> {
     Button::new(content, on_click)
 }
 
@@ -15,9 +18,10 @@ pub fn button<T, V: View<T>>(content: V, on_click: impl Fn(&mut T) + 'static) ->
 #[derive(Rebuild)]
 pub struct Button<T, V> {
     /// The content.
-    pub content: Pod<T, V>,
+    pub content: Content<T, V>,
     /// The callback for when the button is pressed.
-    pub on_press: Box<dyn Fn(&mut T)>,
+    #[allow(clippy::type_complexity)]
+    pub on_press: Box<dyn FnMut(&mut EventCx, &mut T)>,
     /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -42,9 +46,9 @@ pub struct Button<T, V> {
 }
 
 impl<T, V: View<T>> Button<T, V> {
-    pub fn new(content: V, on_click: impl Fn(&mut T) + 'static) -> Self {
+    pub fn new(content: V, on_click: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
         Self {
-            content: Pod::new(content),
+            content: Content::new(content),
             on_press: Box::new(on_click),
             padding: Padding::all(8.0),
             fancy: 0.0,
@@ -85,36 +89,10 @@ impl<T, V: View<T>> Button<T, V> {
         self.border_color = border_color.into();
         self
     }
-
-    fn handle_pointer_event(&self, cx: &mut EventCx, data: &mut T, event: &PointerEvent) -> bool {
-        let local = cx.local(event.position);
-        let over = cx.rect().contains(local) && !event.left;
-
-        if cx.set_hot(over) {
-            cx.request_draw();
-        }
-
-        if over && event.is_press() {
-            (self.on_press)(data);
-
-            cx.set_active(true);
-            cx.request_rebuild();
-            cx.request_draw();
-
-            return true;
-        } else if cx.is_active() && event.is_release() {
-            cx.set_active(false);
-            cx.request_draw();
-
-            return true;
-        }
-
-        false
-    }
 }
 
 impl<T, V: View<T>> View<T> for Button<T, V> {
-    type State = (f32, PodState<T, V>);
+    type State = (f32, ContentState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         (0.0, self.content.build(cx, data))
@@ -145,8 +123,26 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
             return;
         }
 
-        if let Some(pointer_event) = event.get::<PointerEvent>() {
-            if self.handle_pointer_event(cx, data, pointer_event) {
+        if let Some(pointer) = event.get::<PointerEvent>() {
+            let local = cx.local(pointer.position);
+            let over = cx.rect().contains(local) && !pointer.left;
+
+            if cx.set_hot(over) {
+                cx.request_draw();
+            }
+
+            if over && pointer.is_press() {
+                (self.on_press)(cx, data);
+
+                cx.set_active(true);
+                cx.request_rebuild();
+                cx.request_draw();
+
+                event.handle();
+            } else if cx.is_active() && pointer.is_release() {
+                cx.set_active(false);
+                cx.request_draw();
+
                 event.handle();
             }
         }
@@ -182,8 +178,6 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         let bright = self.color.brighten(0.05);
         let dark = self.color.darken(0.1);
 
-        let float = Vec2::Y * -self.transition.on(*t) * 4.0;
-
         let color = if self.fancy != 0.0 {
             self.color.mix(dark, self.transition.on(*t))
         } else {
@@ -196,6 +190,8 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
             self.content.draw(state, cx, data, canvas);
             return;
         }
+
+        let float = Vec2::Y * -self.transition.on(*t) * 4.0;
 
         let mut layer = canvas.layer();
         layer.translate(float);

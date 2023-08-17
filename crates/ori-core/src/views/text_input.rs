@@ -7,18 +7,20 @@ use crate::{
     TextSection, TextWrap, View,
 };
 
-pub fn text_input<T>(text: impl FnMut(&mut T) -> &mut String + 'static) -> TextInput<T> {
-    TextInput::new(text)
+/// Create a new [`TextInput`].
+pub fn text_input<T>() -> TextInput<T> {
+    TextInput::new()
 }
 
 /// A text input.
 #[derive(Rebuild)]
 pub struct TextInput<T> {
     /// A function that returns the text to display.
-    pub text: Box<dyn FnMut(&mut T) -> &mut String>,
+    #[allow(clippy::type_complexity)]
+    pub text: Option<Box<dyn FnMut(&mut T) -> &mut String>>,
     /// A function that is called when the input is submitted.
     #[allow(clippy::type_complexity)]
-    pub on_submit: Option<Box<dyn FnMut(&mut T)>>,
+    pub on_submit: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
     /// The space to fill.
     pub space: Space,
     /// Placeholder text to display when the input is empty.
@@ -61,11 +63,17 @@ pub struct TextInput<T> {
     pub wrap: TextWrap,
 }
 
+impl<T> Default for TextInput<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> TextInput<T> {
     /// Create a new text input view.
-    pub fn new(text: impl FnMut(&mut T) -> &mut String + 'static) -> Self {
+    pub fn new() -> Self {
         Self {
-            text: Box::new(text),
+            text: None,
             on_submit: None,
             space: Space::UNBOUNDED,
             placeholder: String::from("Text..."),
@@ -83,8 +91,16 @@ impl<T> TextInput<T> {
         }
     }
 
+    pub fn text(mut self, text: impl FnMut(&mut T) -> &mut String + 'static) -> Self {
+        self.text = Some(Box::new(text));
+        self
+    }
+
     /// Set the on submit callback.
-    pub fn on_submit(mut self, on_submit: impl FnMut(&mut T) + 'static) -> Self {
+    pub fn on_submit(
+        mut self,
+        on_submit: impl FnMut(&mut EventCx, &mut T, String) + 'static,
+    ) -> Self {
         self.on_submit = Some(Box::new(on_submit));
         self
     }
@@ -205,8 +221,34 @@ impl<T> TextInput<T> {
         self
     }
 
-    fn hit_text(&self, state: &mut TextInputState, text: &str, local: Vec2) -> usize {
-        if text.is_empty() {
+    fn get_text<'a>(&'a mut self, state: &'a TextInputState, data: &'a mut T) -> &'a str {
+        match self.text {
+            Some(ref mut text) => text(data),
+            None => &state.text,
+        }
+    }
+
+    fn get_text_mut<'a>(
+        &'a mut self,
+        state: &'a mut TextInputState,
+        data: &'a mut T,
+    ) -> &'a mut String {
+        match self.text {
+            Some(ref mut text) => text(data),
+            None => &mut state.text,
+        }
+    }
+
+    fn request_update(&mut self, cx: &mut EventCx) {
+        if self.text.is_some() {
+            cx.request_rebuild();
+        } else {
+            cx.request_layout();
+        }
+    }
+
+    fn hit_text(&mut self, state: &mut TextInputState, data: &mut T, local: Vec2) -> usize {
+        if self.get_text(state, data).is_empty() {
             return 0;
         }
 
@@ -250,10 +292,10 @@ impl<T> TextInput<T> {
     }
 
     fn handle_pointer_event(
-        &self,
+        &mut self,
         state: &mut TextInputState,
         cx: &mut EventCx,
-        text: &str,
+        data: &mut T,
         event: &PointerEvent,
     ) -> bool {
         let local = cx.local(event.position);
@@ -262,7 +304,7 @@ impl<T> TextInput<T> {
 
         if event.is_press() && hovered {
             cx.set_active(true);
-            state.cursor_index = self.hit_text(state, text, local);
+            state.cursor_index = self.hit_text(state, data, local);
             cx.request_draw();
             return true;
         }
@@ -275,12 +317,13 @@ impl<T> TextInput<T> {
         false
     }
 
-    fn prev_char(&self, state: &TextInputState, text: &str) -> Option<char> {
+    fn prev_char(&mut self, state: &mut TextInputState, data: &mut T) -> Option<char> {
         for i in 1..=4 {
             if state.cursor_index < i {
                 continue;
             }
 
+            let text = self.get_text(state, data);
             if text.is_char_boundary(state.cursor_index - i) {
                 return text[state.cursor_index - i..].chars().next();
             }
@@ -289,15 +332,17 @@ impl<T> TextInput<T> {
         None
     }
 
-    fn next_char(&self, state: &TextInputState, text: &str) -> Option<char> {
-        text[state.cursor_index..].chars().next()
+    fn next_char(&mut self, state: &mut TextInputState, data: &mut T) -> Option<char> {
+        self.get_text(state, data)[state.cursor_index..]
+            .chars()
+            .next()
     }
 
     fn input_text(
-        &self,
+        &mut self,
         state: &mut TextInputState,
         cx: &mut EventCx,
-        text: &mut String,
+        data: &mut T,
         input: &str,
     ) {
         let mut input = input.replace('\x08', "");
@@ -306,11 +351,14 @@ impl<T> TextInput<T> {
             input = input.replace(['\n', '\r'], "");
         }
 
-        text.insert_str(state.cursor_index, &input);
+        let index = state.cursor_index;
+        let text = self.get_text_mut(state, data);
+        text.insert_str(index, &input);
+
         state.cursor_index += input.len();
         state.cursor_blink = 0.0;
 
-        cx.request_rebuild();
+        self.request_update(cx);
     }
 
     fn input_key(
@@ -336,13 +384,30 @@ impl<T> TextInput<T> {
     }
 
     fn input_backspace(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
-        let text = (self.text)(data);
-        let Some(prev_char) = self.prev_char(state, text) else { return };
-        text.remove(state.cursor_index - prev_char.len_utf8());
+        let Some(prev_char) = self.prev_char(state, data) else { return };
+
+        let index = state.cursor_index;
+        let text = self.get_text_mut(state, data);
+        text.remove(index - prev_char.len_utf8());
+
         state.cursor_index -= prev_char.len_utf8();
         state.cursor_blink = 0.0;
 
-        cx.request_rebuild();
+        self.request_update(cx);
+    }
+
+    fn submit(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
+        let text = String::from(self.get_text(state, data));
+
+        if let Some(ref mut on_submit) = self.on_submit {
+            on_submit(cx, data, text);
+            cx.set_active(false);
+            cx.request_rebuild();
+
+            if self.text.is_none() {
+                state.text.clear();
+            }
+        }
     }
 
     fn input_enter(
@@ -352,42 +417,32 @@ impl<T> TextInput<T> {
         data: &mut T,
         modifiers: Modifiers,
     ) {
-        if modifiers.shift {
+        if self.on_submit.is_none() || modifiers.shift {
             return;
         }
 
         if !self.multiline {
-            if let Some(ref mut on_submit) = self.on_submit {
-                on_submit(data);
-                cx.set_active(false);
-                cx.request_rebuild();
-            }
+            self.submit(state, cx, data);
 
             return;
         }
 
-        let text = (self.text)(data);
+        let text = self.get_text(state, data);
 
         if state.cursor_index == text.len() {
-            if let Some(ref mut on_submit) = self.on_submit {
-                on_submit(data);
-                cx.set_active(false);
-                cx.request_rebuild();
-            }
+            self.submit(state, cx, data);
         }
     }
 
     fn input_left(&mut self, state: &mut TextInputState, _cx: &mut EventCx, data: &mut T) {
-        let text = (self.text)(data);
-        if let Some(prev_char) = self.prev_char(state, text) {
+        if let Some(prev_char) = self.prev_char(state, data) {
             state.cursor_index -= prev_char.len_utf8();
             state.cursor_blink = 0.0;
         }
     }
 
     fn input_right(&mut self, state: &mut TextInputState, _cx: &mut EventCx, data: &mut T) {
-        let text = (self.text)(data);
-        if let Some(next_char) = self.next_char(state, text) {
+        if let Some(next_char) = self.next_char(state, data) {
             state.cursor_index += next_char.len_utf8();
             state.cursor_blink = 0.0;
         }
@@ -397,8 +452,7 @@ impl<T> TextInput<T> {
         if let Some(position) = self.cursor_position(state, cx.rect()) {
             let line_offset = Vec2::NEG_Y * self.font_size * self.line_height * 0.8;
 
-            let text = (self.text)(data);
-            state.cursor_index = self.hit_text(state, text, position + line_offset);
+            state.cursor_index = self.hit_text(state, data, position + line_offset);
             cx.request_draw();
         }
     }
@@ -407,8 +461,7 @@ impl<T> TextInput<T> {
         if let Some(position) = self.cursor_position(state, cx.rect()) {
             let line_offset = Vec2::Y * self.font_size * self.line_height * 0.8;
 
-            let text = (self.text)(data);
-            state.cursor_index = self.hit_text(state, text, position + line_offset);
+            state.cursor_index = self.hit_text(state, data, position + line_offset);
             cx.request_draw();
         }
     }
@@ -425,8 +478,7 @@ impl<T> TextInput<T> {
         }
 
         if let Some(ref input) = event.text {
-            let text = (self.text)(data);
-            self.input_text(state, cx, text, input);
+            self.input_text(state, cx, data, input);
             return true;
         }
 
@@ -474,16 +526,20 @@ pub struct TextInputState {
     glyphs: Option<Glyphs>,
     cursor_blink: f32,
     cursor_index: usize,
-    old_text: String,
+    text: String,
 }
 
 impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, _cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let text = (self.text)(data);
+        let text = match self.text {
+            Some(ref mut text) => text(data).clone(),
+            None => String::new(),
+        };
+
         TextInputState {
-            old_text: text.clone(),
+            text,
             ..Default::default()
         }
     }
@@ -491,17 +547,19 @@ impl<T> View<T> for TextInput<T> {
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
-        let text = (self.text)(data);
-        if state.old_text != *text {
-            state.old_text = text.clone();
-            cx.request_layout();
+        if let Some(ref mut text) = self.text {
+            let new_text = text(data).clone();
+
+            if new_text != state.text {
+                state.text = new_text;
+                cx.request_layout();
+            }
         }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         if let Some(pointer_event) = event.get::<PointerEvent>() {
-            let text = (self.text)(data);
-            if self.handle_pointer_event(state, cx, text, pointer_event) {
+            if self.handle_pointer_event(state, cx, data, pointer_event) {
                 event.handle();
             }
         }
@@ -522,7 +580,7 @@ impl<T> View<T> for TextInput<T> {
     ) -> Size {
         let mut color = self.color;
 
-        let text = (self.text)(data);
+        let text = self.get_text(state, data);
         if text.is_empty() {
             color = color.brighten(0.3);
         }
@@ -530,7 +588,7 @@ impl<T> View<T> for TextInput<T> {
         let mut text = if text.is_empty() {
             self.placeholder.clone()
         } else {
-            text.clone()
+            String::from(text)
         };
 
         text.push(' ');

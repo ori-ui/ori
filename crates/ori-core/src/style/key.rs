@@ -51,7 +51,7 @@ impl<T> Key<T> {
     }
 
     /// Get the name of the key.
-    pub const fn name(&self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         self.name
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    style, Color, FontFamily, FontStretch, FontStyle, FontWeight, Palette, TextAlign, TextWrap,
-    Theme, Transition,
+    style, BorderRadius, BorderWidth, Color, FontFamily, FontStretch, FontStyle, FontWeight,
+    Palette, TextAlign, TextWrap, Theme, Transition, TEXT_SIZE,
 };
 
 style! {
@@ -63,9 +63,9 @@ style! {
         /// The color.
         const COLOR: Color = Palette::PRIMARY;
         /// The border radius.
-        const BORDER_RADIUS: [f32; 4] = [8.0; 4];
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(8.0);
         /// The border width.
-        const BORDER_WIDTH: [f32; 4] = [0.0; 4];
+        const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
         /// The border color.
         const BORDER_COLOR: Color = Color::TRANSPARENT;
     }
@@ -77,11 +77,33 @@ style! {
         /// The background color.
         const BACKGROUND: Color = Color::TRANSPARENT;
         /// The border radius.
-        const BORDER_RADIUS: [f32; 4] = [0.0; 4];
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(0.0);
         /// The border width.
-        const BORDER_WIDTH: [f32; 4] = [0.0; 4];
+        const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
         /// The border color.
         const BORDER_COLOR: Color = Color::TRANSPARENT;
+    }
+}
+
+style! {
+    /// Styles for [`Checkbox`](crate::views::Checkbox)s.
+    pub checkbox {
+        /// The transition when the checkbox is hovered.
+        const TRANSITION: Transition = Transition::ease(0.1);
+        /// The size of the checkbox.
+        const SIZE: f32 = 24.0;
+        /// The color of the checkmark.
+        const COLOR: Color = Palette::ACCENT;
+        /// The stroke width of the checkmark.
+        const STROKE: f32 = 1.0;
+        /// The background color.
+        const BACKGROUND: Color = Color::TRANSPARENT;
+        /// The border radius.
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(6.0);
+        /// The border width.
+        const BORDER_WIDTH: BorderWidth = BorderWidth::all(1.0);
+        /// The border color.
+        const BORDER_COLOR: Color = Palette::TEXT_BRIGHTER;
     }
 }
 
@@ -93,6 +115,9 @@ impl Theme {
         theme.extend(text_input::default_theme());
         theme.extend(button::default_theme());
         theme.extend(container::default_theme());
+        theme.extend(checkbox::default_theme());
+
+        theme.set(TEXT_SIZE, 16.0);
 
         theme
     }

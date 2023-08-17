@@ -312,7 +312,7 @@ impl Fonts {
                 } else {
                     Metrics::default()
                 };
-                let advance = metrics.advance_width.ceil();
+                let advance = metrics.advance_width;
 
                 let min = Vec2::new(glyph.x, glyph.y) + offset;
                 let size = Size::new(metrics.width as f32, metrics.height as f32);
@@ -398,7 +398,7 @@ impl Fonts {
         let mut mesh = Mesh::new();
 
         for (glyph, uv) in glyphs.iter().zip(uvs) {
-            let rect = Rect::round(glyph.rect + rect.min + offset);
+            let rect = glyph.rect + rect.min + offset;
             let index = mesh.vertices.len() as u32;
 
             mesh.vertices.push(Vertex {

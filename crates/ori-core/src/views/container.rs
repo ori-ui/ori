@@ -1,8 +1,9 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::container, style, Affine, Align, BuildCx, Canvas, Color, DrawCx, Event, EventCx,
-    LayoutCx, Padding, Pod, PodState, Rebuild, RebuildCx, Size, Space, View,
+    builtin::container, style, Affine, Align, BorderRadius, BorderWidth, BuildCx, Canvas, Color,
+    DrawCx, Event, EventCx, LayoutCx, Padding, Pod, PodState, Rebuild, RebuildCx, Size, Space,
+    View,
 };
 
 /// A container view.
@@ -33,10 +34,10 @@ pub struct Container<T, V> {
     pub background: Color,
     /// The border radius.
     #[rebuild(draw)]
-    pub border_radius: [f32; 4],
+    pub border_radius: BorderRadius,
     /// The border width.
     #[rebuild(draw)]
-    pub border_width: [f32; 4],
+    pub border_width: BorderWidth,
     /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
@@ -145,13 +146,13 @@ impl<T, V> Container<T, V> {
     }
 
     /// Set the border radius.
-    pub fn border_radius(mut self, border_radius: impl Into<[f32; 4]>) -> Self {
+    pub fn border_radius(mut self, border_radius: impl Into<BorderRadius>) -> Self {
         self.border_radius = border_radius.into();
         self
     }
 
     /// Set the border width.
-    pub fn border_width(mut self, border_width: impl Into<[f32; 4]>) -> Self {
+    pub fn border_width(mut self, border_width: impl Into<BorderWidth>) -> Self {
         self.border_width = border_width.into();
         self
     }
@@ -187,7 +188,7 @@ impl<T, V: View<T>> View<T> for Container<T, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let content_space = space.shrink(self.padding.size());
+        let content_space = self.space.with(space).shrink(self.padding.size());
         let mut content_size = self.content.layout(state, cx, data, content_space);
         content_size += self.padding.size();
 

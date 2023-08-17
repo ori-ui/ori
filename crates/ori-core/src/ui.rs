@@ -10,9 +10,9 @@ use crate::{
 pub struct Ui<T, R: SceneRender> {
     windows: HashMap<WindowId, WindowUi<T, R>>,
     modifiers: Modifiers,
-    fonts: Fonts,
-    theme: Theme,
-    data: T,
+    pub fonts: Fonts,
+    pub theme: Theme,
+    pub data: T,
 }
 
 impl<T, R: SceneRender> Ui<T, R> {

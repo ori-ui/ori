@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use glam::Vec2;
 
-use crate::{Pointer, PointerId, RawWindow, Size};
+use crate::{Image, Pointer, PointerId, RawWindow, Size, WindowDescriptor};
 
 /// A unique identifier for a window.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -29,12 +29,22 @@ pub struct Window {
 
 impl Window {
     /// Create a new window with the given raw window implementation.
-    pub fn new(id: WindowId, raw: Box<dyn RawWindow>) -> Self {
-        Self {
-            id,
+    pub fn new(raw: Box<dyn RawWindow>, desc: WindowDescriptor) -> Self {
+        let mut window = Self {
+            id: desc.id,
             raw,
             pointers: Vec::new(),
-        }
+        };
+
+        window.set_title(&desc.title);
+        window.set_icon(desc.icon.as_ref());
+        window.set_size(desc.width, desc.height);
+        window.set_resizable(desc.resizable);
+        window.set_decorated(desc.decorated);
+        window.set_maximized(desc.maximized);
+        window.set_visible(desc.visible);
+
+        window
     }
 
     /// Get the [`WindowId`].
@@ -78,6 +88,11 @@ impl Window {
     /// Set the title of the window.
     pub fn set_title(&mut self, title: &str) {
         self.raw.set_title(title);
+    }
+
+    /// Set the icon of the window.
+    pub fn set_icon(&mut self, icon: Option<&Image>) {
+        self.raw.set_icon(icon);
     }
 
     /// Get the size of the window.

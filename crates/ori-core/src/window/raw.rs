@@ -1,8 +1,12 @@
 use std::fmt::Debug;
 
+use crate::Image;
+
 pub trait RawWindow {
     fn title(&self) -> String;
     fn set_title(&mut self, title: &str);
+
+    fn set_icon(&mut self, icon: Option<&Image>);
 
     fn size(&self) -> (u32, u32);
     fn set_size(&mut self, width: u32, height: u32);

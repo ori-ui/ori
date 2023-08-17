@@ -45,7 +45,7 @@ impl Space {
     }
 
     /// Shrink the space by `size`.
-    pub fn shrink(&self, size: Size) -> Self {
+    pub fn shrink(self, size: Size) -> Self {
         let min = self.min - size;
         let max = self.max - size;
 
@@ -53,12 +53,17 @@ impl Space {
     }
 
     /// Expand the space by `size`.
-    pub fn expand(&self, size: Size) -> Self {
+    pub fn expand(self, size: Size) -> Self {
         Self::new(self.min + size, self.max + size)
     }
 
+    /// Loosen the space, setting the minimum size to zero.
+    pub fn loosen(self) -> Self {
+        Self::new(Size::ZERO, self.max)
+    }
+
     /// Get the most constraning space between `self` and `other
-    pub fn with(&self, other: Self) -> Self {
+    pub fn with(self, other: Self) -> Self {
         let min = self.min.max(other.min);
         let max = self.max.min(other.max);
 
@@ -66,7 +71,7 @@ impl Space {
     }
 
     /// Clamp a size to the space.
-    pub fn fit(&self, size: Size) -> Size {
+    pub fn fit(self, size: Size) -> Size {
         let width = if self.min.width.is_finite() {
             size.width.max(self.min.width)
         } else {

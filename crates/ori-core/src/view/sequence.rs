@@ -67,7 +67,17 @@ impl<T, V: View<T>> ViewSequence<T> for Vec<V> {
         data: &mut T,
         old: &Self,
     ) {
-        self[index].rebuild(&mut state[index], cx, data, &old[index]);
+        if let Some(old) = old.get(index) {
+            self[index].rebuild(&mut state[index], cx, data, old);
+        }
+
+        if self.len() < old.len() {
+            state.truncate(self.len());
+        } else {
+            for item in self.iter_mut().skip(old.len()) {
+                state.push(item.build(&mut cx.build_cx(), data));
+            }
+        }
     }
 
     fn event(

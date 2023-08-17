@@ -8,15 +8,21 @@ use std::{
     sync::Arc,
 };
 
-use crate::Key;
+use super::Key;
 
 thread_local! {
     static THEME: RefCell<Theme> = Default::default();
 }
 
+impl<T: Clone + Default + Any> Key<T> {
+    pub fn get(&self) -> T {
+        THEME.with(|theme| theme.borrow().get(*self))
+    }
+}
+
 /// Get a value from the current theme.
 pub fn style<T: Clone + Default + Any>(key: Key<T>) -> T {
-    THEME.with(|theme| theme.borrow().get(key))
+    key.get()
 }
 
 #[derive(Default)]

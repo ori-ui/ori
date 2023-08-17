@@ -96,7 +96,7 @@ impl Justify {
                 }
             }
             Justify::SpaceAround => {
-                let gap = (size - total_size) / sizes.len() as f32;
+                let gap = (size - total_size) / (sizes.len() - 1) as f32;
                 let mut position = gap / 2.0;
 
                 for (i, size) in sizes.enumerate() {

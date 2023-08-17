@@ -27,6 +27,11 @@ impl Size {
         Self { width, height }
     }
 
+    /// Create a new size with the same width and height.
+    pub const fn splat(value: f32) -> Self {
+        Self::new(value, value)
+    }
+
     /// Get the min of self and other by element.
     pub fn min(self, other: Self) -> Self {
         Self::new(self.width.min(other.width), self.height.min(other.height))
@@ -151,5 +156,33 @@ impl Sub<Size> for Vec2 {
 impl SubAssign<Size> for Vec2 {
     fn sub_assign(&mut self, rhs: Size) {
         *self = *self - rhs;
+    }
+}
+
+impl Mul<Size> for Vec2 {
+    type Output = Self;
+
+    fn mul(self, rhs: Size) -> Self::Output {
+        Self::new(self.x * rhs.width, self.y * rhs.height)
+    }
+}
+
+impl MulAssign<Size> for Vec2 {
+    fn mul_assign(&mut self, rhs: Size) {
+        *self = *self * rhs;
+    }
+}
+
+impl Div<Size> for Vec2 {
+    type Output = Self;
+
+    fn div(self, rhs: Size) -> Self::Output {
+        Self::new(self.x / rhs.width, self.y / rhs.height)
+    }
+}
+
+impl DivAssign<Size> for Vec2 {
+    fn div_assign(&mut self, rhs: Size) {
+        *self = *self / rhs;
     }
 }

@@ -1,5 +1,5 @@
-use ori_core::RawWindow;
-use winit::dpi::PhysicalSize;
+use ori_core::{Image, RawWindow};
+use winit::{dpi::PhysicalSize, window::Icon};
 
 pub struct WinitWindow {
     window: winit::window::Window,
@@ -18,6 +18,17 @@ impl RawWindow for WinitWindow {
 
     fn set_title(&mut self, title: &str) {
         self.window.set_title(title);
+    }
+
+    fn set_icon(&mut self, icon: Option<&Image>) {
+        let icon = match icon {
+            Some(image) => {
+                Icon::from_rgba(image.pixels().to_vec(), image.width(), image.height()).ok()
+            }
+            None => None,
+        };
+
+        self.window.set_window_icon(icon);
     }
 
     fn size(&self) -> (u32, u32) {

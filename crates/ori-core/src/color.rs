@@ -5,6 +5,31 @@ use std::{
 
 use glam::Vec4;
 
+/// Create a new color, with the given `red`, `green` and `blue` components.
+pub fn rgb(r: f32, g: f32, b: f32) -> Color {
+    Color::rgb(r, g, b)
+}
+
+/// Create a new color, with the given `red`, `green`, `blue` and alpha components.
+pub fn rgba(r: f32, g: f32, b: f32, a: f32) -> Color {
+    Color::rgba(r, g, b, a)
+}
+
+/// Create a new color, with the given `hue`, `saturation` and `lightness` components.
+pub fn hsl(h: f32, s: f32, l: f32) -> Color {
+    Color::hsl(h, s, l)
+}
+
+/// Create a new color, with the given `hue`, `saturation`, `lightness` and alpha components.
+pub fn hsla(h: f32, s: f32, l: f32, a: f32) -> Color {
+    Color::hsla(h, s, l, a)
+}
+
+/// Create a new color, with the given hex string.
+pub fn hex(hex: &str) -> Color {
+    Color::hex(hex)
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Color {

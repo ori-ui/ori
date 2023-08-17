@@ -1,9 +1,9 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::text_input, style, BuildCx, Canvas, Code, Color, DrawCx, Event, EventCx, FontFamily,
-    FontStretch, FontStyle, FontWeight, Fragment, Glyph, Glyphs, KeyboardEvent, LayoutCx,
-    Modifiers, PointerEvent, Primitive, Quad, Rebuild, RebuildCx, Rect, Size, Space, TextAlign,
+    builtin::text_input, style, BorderRadius, BorderWidth, BuildCx, Canvas, Code, Color, DrawCx,
+    Event, EventCx, FontFamily, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, KeyboardEvent,
+    LayoutCx, Modifiers, PointerEvent, Quad, Rebuild, RebuildCx, Rect, Size, Space, TextAlign,
     TextSection, TextWrap, View,
 };
 
@@ -14,7 +14,13 @@ pub fn text_input<T>(text: impl FnMut(&mut T) -> &mut String + 'static) -> TextI
 /// A text input.
 #[derive(Rebuild)]
 pub struct TextInput<T> {
+    /// A function that returns the text to display.
     pub text: Box<dyn FnMut(&mut T) -> &mut String>,
+    /// A function that is called when the input is submitted.
+    #[allow(clippy::type_complexity)]
+    pub on_submit: Option<Box<dyn FnMut(&mut T)>>,
+    /// The space to fill.
+    pub space: Space,
     /// Placeholder text to display when the input is empty.
     #[rebuild(layout)]
     pub placeholder: String,
@@ -60,6 +66,8 @@ impl<T> TextInput<T> {
     pub fn new(text: impl FnMut(&mut T) -> &mut String + 'static) -> Self {
         Self {
             text: Box::new(text),
+            on_submit: None,
+            space: Space::UNBOUNDED,
             placeholder: String::from("Text..."),
             multiline: false,
             font_size: style(text_input::FONT_SIZE),
@@ -73,6 +81,56 @@ impl<T> TextInput<T> {
             line_height: style(text_input::LINE_HEIGHT),
             wrap: style(text_input::WRAP),
         }
+    }
+
+    /// Set the on submit callback.
+    pub fn on_submit(mut self, on_submit: impl FnMut(&mut T) + 'static) -> Self {
+        self.on_submit = Some(Box::new(on_submit));
+        self
+    }
+
+    /// Set the size.
+    pub fn size(mut self, size: impl Into<Size>) -> Self {
+        self.space = Space::from_size(size.into());
+        self
+    }
+
+    /// Set the width.
+    pub fn width(mut self, width: f32) -> Self {
+        self.space.min.width = width;
+        self.space.max.width = width;
+        self
+    }
+
+    /// Set the height.
+    pub fn height(mut self, height: f32) -> Self {
+        self.space.min.height = height;
+        self.space.max.height = height;
+        self
+    }
+
+    /// Set the minimum width.
+    pub fn min_width(mut self, min_width: f32) -> Self {
+        self.space.min.width = min_width;
+        self
+    }
+
+    /// Set the minimum height.
+    pub fn min_height(mut self, min_height: f32) -> Self {
+        self.space.min.height = min_height;
+        self
+    }
+
+    /// Set the maximum width.
+    pub fn max_width(mut self, max_width: f32) -> Self {
+        self.space.max.width = max_width;
+        self
+    }
+
+    /// Set the maximum height.
+    pub fn max_height(mut self, max_height: f32) -> Self {
+        self.space.max.height = max_height;
+        self
     }
 
     /// Set the placeholder text.
@@ -147,26 +205,26 @@ impl<T> TextInput<T> {
         self
     }
 
-    fn cursor_select(&self, state: &mut TextInputState, cx: &mut EventCx, text: &str, local: Vec2) {
+    fn hit_text(&self, state: &mut TextInputState, text: &str, local: Vec2) -> usize {
         if text.is_empty() {
-            state.cursor_index = 0;
-            return;
+            return 0;
         }
 
         let mut line = None;
         let mut dist = f32::MAX;
+        let mut cursor = 0;
 
         for glyph in state.glyphs.iter().flatten() {
             let delta = local - glyph.rect.center();
 
             if glyph.rect.contains(local) {
-                state.cursor_index = glyph.byte_offset;
+                cursor = glyph.byte_offset;
 
                 if delta.x > 0.0 {
-                    state.cursor_index += glyph.code.len_utf8();
+                    cursor = glyph.code.len_utf8();
                 }
 
-                break;
+                return cursor;
             }
 
             if line != Some(glyph.line) && line.is_some() {
@@ -184,12 +242,11 @@ impl<T> TextInput<T> {
                 line = Some(glyph.line);
                 dist = delta.length_squared();
 
-                state.cursor_index = glyph.byte_offset;
+                cursor = glyph.byte_offset;
             }
         }
 
-        state.cursor_blink = 0.0;
-        cx.request_draw();
+        cursor
     }
 
     fn handle_pointer_event(
@@ -205,7 +262,7 @@ impl<T> TextInput<T> {
 
         if event.is_press() && hovered {
             cx.set_active(true);
-            self.cursor_select(state, cx, text, local);
+            state.cursor_index = self.hit_text(state, text, local);
             cx.request_draw();
             return true;
         }
@@ -253,55 +310,106 @@ impl<T> TextInput<T> {
         state.cursor_index += input.len();
         state.cursor_blink = 0.0;
 
-        cx.request_layout();
+        cx.request_rebuild();
     }
 
     fn input_key(
         &mut self,
         state: &mut TextInputState,
         cx: &mut EventCx,
-        text: &mut String,
+        data: &mut T,
         modifiers: Modifiers,
         key: Code,
-    ) -> bool {
+    ) {
         match key {
             Code::Escape => {
                 cx.set_active(false);
             }
-            Code::Backspace => self.input_backspace(state, cx, text),
-            Code::Enter => self.input_enter(state, text, modifiers),
-            Code::Left => self.input_left(state, cx, text),
-            Code::Right => self.input_right(state, cx, text),
-            _ => return false,
+            Code::Backspace => self.input_backspace(state, cx, data),
+            Code::Enter => self.input_enter(state, cx, data, modifiers),
+            Code::Left => self.input_left(state, cx, data),
+            Code::Right => self.input_right(state, cx, data),
+            Code::Up => self.input_up(state, cx, data),
+            Code::Down => self.input_down(state, cx, data),
+            _ => {}
         }
-
-        true
     }
 
-    fn input_backspace(&mut self, state: &mut TextInputState, cx: &mut EventCx, text: &mut String) {
+    fn input_backspace(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
+        let text = (self.text)(data);
         let Some(prev_char) = self.prev_char(state, text) else { return };
         text.remove(state.cursor_index - prev_char.len_utf8());
         state.cursor_index -= prev_char.len_utf8();
         state.cursor_blink = 0.0;
 
-        cx.request_layout();
+        cx.request_rebuild();
     }
 
-    fn input_enter(&mut self, _state: &mut TextInputState, _text: &mut str, _modifiers: Modifiers) {
-        todo!()
+    fn input_enter(
+        &mut self,
+        state: &mut TextInputState,
+        cx: &mut EventCx,
+        data: &mut T,
+        modifiers: Modifiers,
+    ) {
+        if modifiers.shift {
+            return;
+        }
+
+        if !self.multiline {
+            if let Some(ref mut on_submit) = self.on_submit {
+                on_submit(data);
+                cx.set_active(false);
+                cx.request_rebuild();
+            }
+
+            return;
+        }
+
+        let text = (self.text)(data);
+
+        if state.cursor_index == text.len() {
+            if let Some(ref mut on_submit) = self.on_submit {
+                on_submit(data);
+                cx.set_active(false);
+                cx.request_rebuild();
+            }
+        }
     }
 
-    fn input_left(&mut self, state: &mut TextInputState, _cx: &mut EventCx, text: &str) {
+    fn input_left(&mut self, state: &mut TextInputState, _cx: &mut EventCx, data: &mut T) {
+        let text = (self.text)(data);
         if let Some(prev_char) = self.prev_char(state, text) {
             state.cursor_index -= prev_char.len_utf8();
             state.cursor_blink = 0.0;
         }
     }
 
-    fn input_right(&mut self, state: &mut TextInputState, _cx: &mut EventCx, text: &str) {
+    fn input_right(&mut self, state: &mut TextInputState, _cx: &mut EventCx, data: &mut T) {
+        let text = (self.text)(data);
         if let Some(next_char) = self.next_char(state, text) {
             state.cursor_index += next_char.len_utf8();
             state.cursor_blink = 0.0;
+        }
+    }
+
+    fn input_up(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
+        if let Some(position) = self.cursor_position(state, cx.rect()) {
+            let line_offset = Vec2::NEG_Y * self.font_size * self.line_height * 0.8;
+
+            let text = (self.text)(data);
+            state.cursor_index = self.hit_text(state, text, position + line_offset);
+            cx.request_draw();
+        }
+    }
+
+    fn input_down(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
+        if let Some(position) = self.cursor_position(state, cx.rect()) {
+            let line_offset = Vec2::Y * self.font_size * self.line_height * 0.8;
+
+            let text = (self.text)(data);
+            state.cursor_index = self.hit_text(state, text, position + line_offset);
+            cx.request_draw();
         }
     }
 
@@ -309,7 +417,7 @@ impl<T> TextInput<T> {
         &mut self,
         state: &mut TextInputState,
         cx: &mut EventCx,
-        text: &mut String,
+        data: &mut T,
         event: &KeyboardEvent,
     ) -> bool {
         if !cx.is_active() {
@@ -317,17 +425,19 @@ impl<T> TextInput<T> {
         }
 
         if let Some(ref input) = event.text {
+            let text = (self.text)(data);
             self.input_text(state, cx, text, input);
             return true;
         }
 
         if let Some(key) = event.key {
             if event.is_press() {
-                return self.input_key(state, cx, text, event.modifiers, key);
+                self.input_key(state, cx, data, event.modifiers, key);
+                return true;
             }
         }
 
-        true
+        false
     }
 
     fn find_glyph(&self, state: &TextInputState) -> Option<Glyph> {
@@ -339,13 +449,22 @@ impl<T> TextInput<T> {
             .copied()
     }
 
-    fn cursor_position(&self, state: &TextInputState) -> Option<Vec2> {
+    fn glyph_position(&self, state: &TextInputState) -> Option<Vec2> {
         let glyph = self.find_glyph(state)?;
 
         Some(Vec2::new(
             glyph.rect.min.x,
             glyph.baseline - (glyph.line_ascent + glyph.line_descent) / 2.0,
         ))
+    }
+
+    fn cursor_position(&self, state: &TextInputState, rect: Rect) -> Option<Vec2> {
+        let offset = state.glyphs.as_ref()?.offset(rect);
+
+        match self.glyph_position(state) {
+            Some(position) => Some(position + offset),
+            None => Some(rect.left()),
+        }
     }
 }
 
@@ -388,8 +507,7 @@ impl<T> View<T> for TextInput<T> {
         }
 
         if let Some(keyboard_event) = event.get::<KeyboardEvent>() {
-            let text = (self.text)(data);
-            if self.handle_keyboard_event(state, cx, text, keyboard_event) {
+            if self.handle_keyboard_event(state, cx, data, keyboard_event) {
                 event.handle();
             }
         }
@@ -417,6 +535,7 @@ impl<T> View<T> for TextInput<T> {
 
         text.push(' ');
 
+        let space = self.space.with(space);
         let section = TextSection {
             text: &text,
             font_size: self.font_size,
@@ -433,7 +552,8 @@ impl<T> View<T> for TextInput<T> {
         };
 
         state.glyphs = cx.layout_text(&section);
-        state.glyphs.as_ref().map_or(Size::ZERO, Glyphs::size)
+        let text_size = state.glyphs.as_ref().map_or(Size::ZERO, Glyphs::size);
+        space.fit(text_size)
     }
 
     fn draw(
@@ -446,7 +566,7 @@ impl<T> View<T> for TextInput<T> {
         let Some(ref glyphs) = state.glyphs else { return };
 
         if let Some(mesh) = cx.text_mesh(glyphs, cx.rect()) {
-            canvas.draw(mesh);
+            canvas.draw_pixel_perfect(mesh);
         }
 
         if !cx.is_active() {
@@ -455,12 +575,7 @@ impl<T> View<T> for TextInput<T> {
 
         cx.request_draw();
 
-        let offset = glyphs.offset(cx.rect());
-        let cursor_center = match self.cursor_position(state) {
-            Some(position) => position + offset,
-            None => cx.rect().left(),
-        };
-
+        let cursor_center = self.cursor_position(state, cx.rect()).unwrap();
         let cursor_size = Size::new(1.0, self.font_size);
         let cursor_min = cursor_center - cursor_size / 2.0;
 
@@ -469,19 +584,12 @@ impl<T> View<T> for TextInput<T> {
         let mut color = self.color;
         color.a = state.cursor_blink.sin() * 0.5 + 0.5;
 
-        let quad = Quad {
+        canvas.draw_pixel_perfect(Quad {
             rect: Rect::min_size(cursor_min.round(), cursor_size),
             color,
-            border_radius: [0.0; 4],
-            border_width: [0.0; 4],
+            border_radius: BorderRadius::ZERO,
+            border_width: BorderWidth::ZERO,
             border_color: Color::TRANSPARENT,
-        };
-
-        canvas.draw_fragment(Fragment {
-            primitive: Primitive::Quad(quad),
-            transform: canvas.transform.round(),
-            depth: canvas.depth,
-            clip: canvas.clip,
         });
     }
 }

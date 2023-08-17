@@ -1,11 +1,11 @@
-use crate::{Color, Mesh, Rect};
+use crate::{BorderRadius, BorderWidth, Color, Mesh, Rect};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Quad {
     pub rect: Rect,
     pub color: Color,
-    pub border_radius: [f32; 4],
-    pub border_width: [f32; 4],
+    pub border_radius: BorderRadius,
+    pub border_width: BorderWidth,
     pub border_color: Color,
 }
 

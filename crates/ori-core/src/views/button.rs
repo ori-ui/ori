@@ -1,8 +1,9 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::button, style, BuildCx, Canvas, Color, DrawCx, Event, EventCx, LayoutCx, Padding, Pod,
-    PodState, PointerEvent, Rebuild, RebuildCx, Size, Space, Transition, View,
+    builtin::button, style, BorderRadius, BorderWidth, BuildCx, Canvas, Color, DrawCx, Event,
+    EventCx, LayoutCx, Padding, Pod, PodState, PointerEvent, Rebuild, RebuildCx, Size, Space,
+    Transition, View,
 };
 
 /// Create a new [`Button`].
@@ -13,20 +14,29 @@ pub fn button<T, V: View<T>>(content: V, on_click: impl Fn(&mut T) + 'static) ->
 /// A button.
 #[derive(Rebuild)]
 pub struct Button<T, V> {
+    /// The content.
     pub content: Pod<T, V>,
+    /// The callback for when the button is pressed.
     pub on_press: Box<dyn Fn(&mut T)>,
+    /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,
+    /// The distance of the fancy effect.
     #[rebuild(draw)]
     pub fancy: f32,
+    /// The transition of the button.
     #[rebuild(draw)]
     pub transition: Transition,
+    /// The color of the button.
     #[rebuild(draw)]
     pub color: Color,
+    /// The border radius.
     #[rebuild(draw)]
-    pub border_radius: [f32; 4],
+    pub border_radius: BorderRadius,
+    /// The border width.
     #[rebuild(draw)]
-    pub border_width: [f32; 4],
+    pub border_width: BorderWidth,
+    /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
 }
@@ -61,12 +71,12 @@ impl<T, V: View<T>> Button<T, V> {
         self
     }
 
-    pub fn border_radius(mut self, border_radius: impl Into<[f32; 4]>) -> Self {
+    pub fn border_radius(mut self, border_radius: impl Into<BorderRadius>) -> Self {
         self.border_radius = border_radius.into();
         self
     }
 
-    pub fn border_width(mut self, border_width: impl Into<[f32; 4]>) -> Self {
+    pub fn border_width(mut self, border_width: impl Into<BorderWidth>) -> Self {
         self.border_width = border_width.into();
         self
     }
@@ -89,6 +99,7 @@ impl<T, V: View<T>> Button<T, V> {
 
             cx.set_active(true);
             cx.request_rebuild();
+            cx.request_draw();
 
             return true;
         } else if cx.is_active() && event.is_release() {

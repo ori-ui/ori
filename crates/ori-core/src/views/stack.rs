@@ -133,7 +133,7 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let size = self.content.layout(i, content, cx, data, space);
+            let size = self.content.layout(i, content, cx, data, space.loosen());
             let (child_major, child_minor) = self.axis.unpack(size);
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
@@ -344,7 +344,7 @@ impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
         let content_minor = state.minor(gap_minor).max(min_minor);
 
         let content_size = self.axis.pack(content_major, content_minor);
-        let size = content_size;
+        let size = space.fit(content_size);
 
         let (major, minor) = self.axis.unpack(size);
 

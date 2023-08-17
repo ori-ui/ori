@@ -51,16 +51,17 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         Self { base, view_state }
     }
 
-    pub(crate) fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base)
-    }
-
     /// Create a child context.
     pub fn child(&mut self) -> RebuildCx<'_, 'b> {
         RebuildCx {
             base: self.base,
             view_state: self.view_state,
         }
+    }
+
+    /// Get a build context.
+    pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
+        BuildCx::new(self.base)
     }
 }
 

@@ -132,8 +132,8 @@ impl Instance {
             min: quad.rect.min.into(),
             max: quad.rect.max.into(),
             color: quad.color.into(),
-            border_radius: quad.border_radius,
-            border_width: quad.border_width,
+            border_radius: quad.border_radius.into(),
+            border_width: quad.border_width.into(),
             border_color: quad.border_color.into(),
         };
 

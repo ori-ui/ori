@@ -18,3 +18,6 @@ ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1", optional = tru
 [features]
 default = ["wgpu"]
 wgpu = ["dep:ori-wgpu"]
+
+[profile.dev]
+debug = false

@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use ori_core::{Fragment, Primitive, Scene, Size};
 use wgpu::{
-    CommandEncoder, CommandEncoderDescriptor, Device, LoadOp, Operations, Queue, RenderPass,
-    RenderPassColorAttachment, RenderPassDescriptor, Surface, SurfaceConfiguration, SurfaceError,
-    TextureDimension, TextureFormat, TextureUsages, TextureView,
+    CommandEncoder, CommandEncoderDescriptor, CompositeAlphaMode, Device, LoadOp, Operations,
+    PresentMode, Queue, RenderPass, RenderPassColorAttachment, RenderPassDescriptor, Surface,
+    SurfaceConfiguration, SurfaceError, TextureDimension, TextureFormat, TextureUsages,
+    TextureView,
 };
 
 use crate::{ImageCache, MeshRender, QuadRender, RenderError, RenderInstance};
@@ -28,12 +29,14 @@ impl Render {
         width: u32,
         height: u32,
     ) -> Result<Self, RenderError> {
-        let config = surface.get_default_config(&instance.adapter, width, height);
-        let config = config.ok_or(RenderError::SurfaceIncompatible)?;
-
         let device = instance.device.clone();
         let queue = instance.queue.clone();
 
+        let config = surface.get_default_config(&instance.adapter, width, height);
+        let mut config = config.ok_or(RenderError::SurfaceIncompatible)?;
+        config.format = TextureFormat::Bgra8Unorm;
+        config.alpha_mode = CompositeAlphaMode::Auto;
+        config.present_mode = PresentMode::AutoVsync;
         surface.configure(&device, &config);
 
         let cache = ImageCache::new(&device);

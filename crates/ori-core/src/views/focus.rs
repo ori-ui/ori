@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::{
-    Canvas, DrawCx, Event, EventCx, LayoutCx, Pod, PodState, RebuildCx, Size, Space, View,
+    BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, Pod, PodState, RebuildCx, Size, Space, View,
 };
 
 pub fn focus<T, U, V: View<U>>(
@@ -30,24 +30,34 @@ impl<T, U, V> Focus<T, U, V> {
 impl<T, U, V: View<U>> View<T> for Focus<T, U, V> {
     type State = PodState<U, V>;
 
-    fn build(&self) -> Self::State {
-        self.content.build()
-    }
-
-    fn rebuild(&mut self, cx: &mut RebuildCx, old: &Self, state: &mut Self::State) {
-        self.content.rebuild(cx, &old.content, state);
-    }
-
-    fn event(&mut self, cx: &mut EventCx, state: &mut Self::State, data: &mut T, event: &Event) {
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let data = (self.focus)(data);
-        self.content.event(cx, state, data, event);
+        self.content.build(cx, data)
     }
 
-    fn layout(&mut self, cx: &mut LayoutCx, state: &mut Self::State, space: Space) -> Size {
-        self.content.layout(cx, state, space)
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        let data = (self.focus)(data);
+        self.content.rebuild(state, cx, data, &old.content);
     }
 
-    fn draw(&mut self, cx: &mut DrawCx, state: &mut Self::State, scene: &mut Canvas) {
-        self.content.draw(cx, state, scene);
+    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        let data = (self.focus)(data);
+        self.content.event(state, cx, data, event);
+    }
+
+    fn layout(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size {
+        let data = (self.focus)(data);
+        self.content.layout(state, cx, data, space)
+    }
+
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T, scene: &mut Canvas) {
+        let data = (self.focus)(data);
+        self.content.draw(state, cx, data, scene);
     }
 }

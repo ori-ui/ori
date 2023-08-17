@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    BoxedView, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, Update, View,
-    ViewState,
+    BoxedView, BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, Update,
+    View, ViewState,
 };
 
 pub type AnyPod<T> = Pod<T, BoxedView<T>>;
@@ -47,41 +47,47 @@ impl<T, V> Pod<T, V> {
 impl<T, V: View<T>> View<T> for Pod<T, V> {
     type State = PodState<T, V>;
 
-    fn build(&self) -> Self::State {
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         PodState {
-            content: self.content.build(),
+            content: self.content.build(cx, data),
             view_state: ViewState::default(),
         }
     }
 
-    fn rebuild(&mut self, cx: &mut RebuildCx, old: &Self, state: &mut Self::State) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         state.view_state.update.remove(Update::TREE);
 
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
-        (self.content).rebuild(&mut new_cx, &old.content, &mut state.content);
+        (self.content).rebuild(&mut state.content, &mut new_cx, data, &old.content);
 
         cx.view_state.propagate(&mut state.view_state);
     }
 
-    fn event(&mut self, cx: &mut EventCx, state: &mut Self::State, data: &mut T, event: &Event) {
+    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         let mut new_cx = cx.child();
         new_cx.transform *= state.view_state.transform;
         new_cx.view_state = &mut state.view_state;
 
-        (self.content).event(&mut new_cx, &mut state.content, data, event);
+        (self.content).event(&mut state.content, &mut new_cx, data, event);
 
         cx.view_state.propagate(&mut state.view_state);
     }
 
-    fn layout(&mut self, cx: &mut LayoutCx, state: &mut Self::State, space: Space) -> Size {
+    fn layout(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size {
         state.view_state.update.remove(Update::LAYOUT);
 
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
-        let size = self.content.layout(&mut new_cx, &mut state.content, space);
+        let size = (self.content).layout(&mut state.content, &mut new_cx, data, space);
         state.view_state.size = size;
 
         cx.view_state.propagate(&mut state.view_state);
@@ -89,7 +95,13 @@ impl<T, V: View<T>> View<T> for Pod<T, V> {
         size
     }
 
-    fn draw(&mut self, cx: &mut DrawCx, state: &mut Self::State, canvas: &mut Canvas) {
+    fn draw(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
+        canvas: &mut Canvas,
+    ) {
         state.view_state.update.remove(Update::DRAW);
 
         // create the canvas layer
@@ -101,7 +113,7 @@ impl<T, V: View<T>> View<T> for Pod<T, V> {
         new_cx.view_state = &mut state.view_state;
 
         // draw the content
-        (self.content).draw(&mut new_cx, &mut state.content, &mut canvas);
+        (self.content).draw(&mut state.content, &mut new_cx, data, &mut canvas);
 
         // propagate the view state
         cx.view_state.propagate(&mut state.view_state);

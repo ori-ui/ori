@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use ori_core::{math::Vec2, Modifiers, PointerId, Ui, Window, WindowId};
+use ori_core::{math::Vec2, Modifiers, PointerId, Ui, Window, WindowDescriptor};
 use winit::{
+    dpi::PhysicalSize,
     event::{Event, KeyboardInput, MouseScrollDelta, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
     window::WindowBuilder,
 };
 
@@ -15,13 +16,32 @@ use crate::{
 
 use crate::App;
 
+fn build_window(
+    window_target: &EventLoopWindowTarget<()>,
+    desc: &WindowDescriptor,
+) -> Result<winit::window::Window, Error> {
+    WindowBuilder::new()
+        .with_title(&desc.title)
+        .with_inner_size(PhysicalSize::new(
+            desc.size.width as u32,
+            desc.size.height as u32,
+        ))
+        .with_resizable(desc.resizable)
+        .with_decorations(desc.decorated)
+        .with_transparent(desc.transparent)
+        .with_maximized(desc.maximized)
+        .with_visible(desc.visible)
+        .build(window_target)
+        .map_err(Into::into)
+}
+
 pub(crate) fn run<T: 'static>(app: App<T>) -> Result<(), Error> {
     if let Err(err) = init_tracing() {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop)?;
+    let window = build_window(&event_loop, &app.window)?;
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
 
@@ -34,11 +54,10 @@ pub(crate) fn run<T: 'static>(app: App<T>) -> Result<(), Error> {
     let mut ids = HashMap::new();
     let mut ui = Ui::<T, Render>::new(app.data);
 
-    let window_id = WindowId::next();
-    ids.insert(window.id(), window_id);
+    ids.insert(window.id(), app.window.id);
 
     let raw_window = Box::new(WinitWindow::from(window));
-    let window = Window::new(window_id, raw_window);
+    let window = Window::new(app.window.id, raw_window);
     let render = Render::new(&instance, surface, window.width(), window.height())?;
 
     ui.add_window(app.builder, window, render);

@@ -34,8 +34,10 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
         Theme::with_global(&mut self.theme, || {
+            let mut base = BaseCx::new(&mut self.fonts);
+
             let window_id = window.id();
-            let window_ui = WindowUi::new(builder, &mut self.data, window, render);
+            let window_ui = WindowUi::new(builder, &mut base, &mut self.data, window, render);
             self.windows.insert(window_id, window_ui);
         });
     }

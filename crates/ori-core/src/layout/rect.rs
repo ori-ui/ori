@@ -49,8 +49,8 @@ impl Rect {
     /// Round the rectangle's minimum point down and its maximum point up.
     pub fn round(self) -> Self {
         Self {
-            min: self.min.floor(),
-            max: self.max.ceil(),
+            min: self.min.round(),
+            max: self.max.round(),
         }
     }
 
@@ -69,9 +69,19 @@ impl Rect {
         self.max.y - self.min.y
     }
 
+    /// Get the center point of the rectangle.
+    pub fn center(self) -> Vec2 {
+        self.min + self.size() / 2.0
+    }
+
     /// Get the top left point of the rectangle.
     pub fn top_left(self) -> Vec2 {
         self.min
+    }
+
+    /// Get the top center point of the rectangle.
+    pub fn top(self) -> Vec2 {
+        Vec2::new(self.center().x, self.min.y)
     }
 
     /// Get the top right point of the rectangle.
@@ -79,9 +89,24 @@ impl Rect {
         Vec2::new(self.max.x, self.min.y)
     }
 
+    /// Get the left center point of the rectangle.
+    pub fn left(self) -> Vec2 {
+        Vec2::new(self.min.x, self.center().y)
+    }
+
+    /// Get the right center point of the rectangle.
+    pub fn right(self) -> Vec2 {
+        Vec2::new(self.max.x, self.center().y)
+    }
+
     /// Get the bottom left point of the rectangle.
     pub fn bottom_left(self) -> Vec2 {
         Vec2::new(self.min.x, self.max.y)
+    }
+
+    /// Get the bottom center point of the rectangle.
+    pub fn bottom(self) -> Vec2 {
+        Vec2::new(self.center().x, self.max.y)
     }
 
     /// Get the bottom right point of the rectangle.

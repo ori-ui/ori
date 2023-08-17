@@ -1,8 +1,9 @@
 use crate::{
-    AlignItems, Axis, Canvas, DrawCx, Event, EventCx, Justify, LayoutCx, PodSequence,
+    AlignItems, Axis, BuildCx, Canvas, DrawCx, Event, EventCx, Justify, LayoutCx, PodSequence,
     PodSequenceState, Rebuild, RebuildCx, Size, Space, View, ViewSequence,
 };
 
+/// Create a horizontal [`Stack`].
 #[macro_export]
 macro_rules! hstack {
     ($($child:expr),* $(,)?) => {
@@ -10,6 +11,7 @@ macro_rules! hstack {
     };
 }
 
+/// Create a vertical [`Stack`].
 #[macro_export]
 macro_rules! vstack {
     ($($child:expr),* $(,)?) => {
@@ -17,10 +19,12 @@ macro_rules! vstack {
     };
 }
 
+/// Create a horizontal stack.
 pub fn hstack<T, V: ViewSequence<T>>(content: V) -> Stack<T, V> {
     Stack::hstack(content)
 }
 
+/// Create a vertical stack.
 pub fn vstack<T, V: ViewSequence<T>>(content: V) -> Stack<T, V> {
     Stack::vstack(content)
 }
@@ -30,6 +34,7 @@ pub struct Stack<T, V> {
     pub content: PodSequence<T, V>,
     #[rebuild(layout)]
     pub size: Option<Size>,
+    #[rebuild(layout)]
     pub axis: Axis,
     #[rebuild(layout)]
     pub justify_content: Justify,
@@ -75,6 +80,16 @@ impl<T, V> Stack<T, V> {
         self
     }
 
+    pub fn center_items(mut self) -> Self {
+        self.align_items = AlignItems::Center;
+        self
+    }
+
+    pub fn stretch_items(mut self) -> Self {
+        self.align_items = AlignItems::Stretch;
+        self
+    }
+
     pub fn align_content(mut self, align: impl Into<Justify>) -> Self {
         self.align_content = align.into();
         self
@@ -98,10 +113,12 @@ impl<T, V> Stack<T, V> {
 }
 
 impl<T, V: ViewSequence<T>> Stack<T, V> {
+    #[allow(clippy::too_many_arguments)]
     fn measure_fixed(
         &mut self,
         state: &mut StackState,
         content: &mut PodSequenceState<T, V>,
+        data: &mut T,
         cx: &mut LayoutCx,
         gap_major: f32,
         max_major: f32,
@@ -116,7 +133,7 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let size = self.content.layout(i, cx, content, space);
+            let size = self.content.layout(i, content, cx, data, space);
             let (child_major, child_minor) = self.axis.unpack(size);
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
@@ -152,10 +169,12 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
         });
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn measure_flex(
         &mut self,
         state: &mut StackState,
         content: &mut PodSequenceState<T, V>,
+        data: &mut T,
         cx: &mut LayoutCx,
         min_major: f32,
         max_major: f32,
@@ -196,7 +215,7 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
                     )
                 };
 
-                let size = self.content.layout(i, cx, content, space);
+                let size = self.content.layout(i, content, cx, data, space);
                 let (child_major, child_minor) = self.axis.unpack(size);
 
                 line.major += child_major - state.majors[i];
@@ -258,11 +277,20 @@ impl StackState {
 impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
     type State = (StackState, PodSequenceState<T, V>);
 
-    fn build(&self) -> Self::State {
-        (StackState::new(self.content.len()), self.content.build())
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        (
+            StackState::new(self.content.len()),
+            self.content.build(cx, data),
+        )
     }
 
-    fn rebuild(&mut self, cx: &mut RebuildCx, old: &Self, (state, content): &mut Self::State) {
+    fn rebuild(
+        &mut self,
+        (state, content): &mut Self::State,
+        cx: &mut RebuildCx,
+        data: &mut T,
+        old: &Self,
+    ) {
         Rebuild::rebuild(self, cx, old);
 
         if self.content.len() != old.content.len() {
@@ -271,26 +299,27 @@ impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
         }
 
         for i in 0..self.content.len() {
-            self.content.rebuild(i, cx, &old.content, content)
+            self.content.rebuild(i, content, cx, data, &old.content)
         }
     }
 
     fn event(
         &mut self,
-        cx: &mut EventCx,
         (_, content): &mut Self::State,
+        cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     ) {
         for i in 0..self.content.len() {
-            self.content.event(i, cx, content, data, event);
+            self.content.event(i, content, cx, data, event);
         }
     }
 
     fn layout(
         &mut self,
-        cx: &mut LayoutCx,
         (state, content): &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
         space: Space,
     ) -> Size {
         let content_space = space;
@@ -300,8 +329,16 @@ impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
 
         let (gap_major, gap_minor) = self.axis.unpack((self.column_gap, self.row_gap));
 
-        self.measure_fixed(state, content, cx, gap_major, max_major, content_space);
-        self.measure_flex(state, content, cx, min_major, max_major, max_minor);
+        self.measure_fixed(
+            state,
+            content,
+            data,
+            cx,
+            gap_major,
+            max_major,
+            content_space,
+        );
+        self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);
 
         let content_major = state.major().min(max_major);
         let content_minor = state.minor(gap_minor).max(min_minor);
@@ -340,9 +377,15 @@ impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
         size
     }
 
-    fn draw(&mut self, cx: &mut DrawCx, (_, content): &mut Self::State, scene: &mut Canvas) {
+    fn draw(
+        &mut self,
+        (_, content): &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
+        scene: &mut Canvas,
+    ) {
         for i in 0..self.content.len() {
-            self.content.draw(i, cx, content, scene);
+            self.content.draw(i, content, cx, data, scene);
         }
     }
 }

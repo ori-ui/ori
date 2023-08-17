@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, Update, ViewSequence,
-    ViewState,
+    BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, Update,
+    ViewSequence, ViewState,
 };
 
 pub struct PodSequenceState<T, V: ViewSequence<T>> {
@@ -49,14 +49,21 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
         self.content.len()
     }
 
-    fn build(&self) -> Self::State {
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         PodSequenceState {
-            content: self.content.build(),
+            content: self.content.build(cx, data),
             view_state: vec![ViewState::default(); self.content.len()],
         }
     }
 
-    fn rebuild(&mut self, index: usize, cx: &mut RebuildCx, old: &Self, state: &mut Self::State) {
+    fn rebuild(
+        &mut self,
+        index: usize,
+        state: &mut Self::State,
+        cx: &mut RebuildCx,
+        data: &mut T,
+        old: &Self,
+    ) {
         (state.view_state).resize_with(self.content.len(), ViewState::default);
 
         state.view_state[index].update.remove(Update::TREE);
@@ -64,7 +71,7 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state[index];
 
-        (self.content).rebuild(index, &mut new_cx, &old.content, &mut state.content);
+        (self.content).rebuild(index, &mut state.content, &mut new_cx, data, &old.content);
 
         cx.view_state.propagate(&mut state.view_state[index]);
     }
@@ -72,8 +79,8 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
     fn event(
         &mut self,
         index: usize,
-        cx: &mut EventCx,
         state: &mut Self::State,
+        cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     ) {
@@ -81,7 +88,7 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
         new_cx.transform *= state.view_state[index].transform;
         new_cx.view_state = &mut state.view_state[index];
 
-        (self.content).event(index, &mut new_cx, &mut state.content, data, event);
+        (self.content).event(index, &mut state.content, &mut new_cx, data, event);
 
         cx.view_state.propagate(&mut state.view_state[index]);
     }
@@ -89,8 +96,9 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
     fn layout(
         &mut self,
         index: usize,
-        cx: &mut LayoutCx,
         state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
         space: Space,
     ) -> Size {
         state.view_state[index].update.remove(Update::LAYOUT);
@@ -98,7 +106,7 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state[index];
 
-        let size = (self.content).layout(index, &mut new_cx, &mut state.content, space);
+        let size = (self.content).layout(index, &mut state.content, &mut new_cx, data, space);
 
         state.view_state[index].size = size;
 
@@ -110,8 +118,9 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
     fn draw(
         &mut self,
         index: usize,
-        cx: &mut DrawCx,
         state: &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
         canvas: &mut Canvas,
     ) {
         state.view_state[index].update.remove(Update::DRAW);
@@ -122,7 +131,7 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for PodSequence<T, V> {
         let mut new_cx = cx.layer();
         new_cx.view_state = &mut state.view_state[index];
 
-        (self.content).draw(index, &mut new_cx, &mut state.content, &mut canvas);
+        (self.content).draw(index, &mut state.content, &mut new_cx, data, &mut canvas);
 
         cx.view_state.propagate(&mut state.view_state[index]);
     }

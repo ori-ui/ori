@@ -1,14 +1,16 @@
 use glam::Vec2;
 
 use crate::{
-    button, style, Canvas, Color, DrawCx, Event, EventCx, LayoutCx, Padding, Pod, PodState,
-    PointerEvent, Rebuild, RebuildCx, Size, Space, Transition, View,
+    builtin::button, style, BuildCx, Canvas, Color, DrawCx, Event, EventCx, LayoutCx, Padding, Pod,
+    PodState, PointerEvent, Rebuild, RebuildCx, Size, Space, Transition, View,
 };
 
+/// Create a new [`Button`].
 pub fn button<T, V: View<T>>(content: V, on_click: impl Fn(&mut T) + 'static) -> Button<T, V> {
     Button::new(content, on_click)
 }
 
+/// A button.
 #[derive(Rebuild)]
 pub struct Button<T, V> {
     pub content: Pod<T, V>,
@@ -103,24 +105,30 @@ impl<T, V: View<T>> Button<T, V> {
 impl<T, V: View<T>> View<T> for Button<T, V> {
     type State = (f32, PodState<T, V>);
 
-    fn build(&self) -> Self::State {
-        (0.0, self.content.build())
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        (0.0, self.content.build(cx, data))
     }
 
-    fn rebuild(&mut self, cx: &mut RebuildCx, old: &Self, (_t, state): &mut Self::State) {
+    fn rebuild(
+        &mut self,
+        (_t, state): &mut Self::State,
+        cx: &mut RebuildCx,
+        data: &mut T,
+        old: &Self,
+    ) {
         Rebuild::rebuild(self, cx, old);
 
-        self.content.rebuild(cx, &old.content, state);
+        self.content.rebuild(state, cx, data, &old.content);
     }
 
     fn event(
         &mut self,
-        cx: &mut EventCx,
         (_t, state): &mut Self::State,
+        cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     ) {
-        self.content.event(cx, state, data, event);
+        self.content.event(state, cx, data, event);
 
         if event.is_handled() {
             return;
@@ -133,16 +141,28 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         }
     }
 
-    fn layout(&mut self, cx: &mut LayoutCx, (_t, state): &mut Self::State, space: Space) -> Size {
+    fn layout(
+        &mut self,
+        (_t, state): &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size {
         let content_space = space.shrink(self.padding.size());
-        let content_size = self.content.layout(cx, state, content_space);
+        let content_size = self.content.layout(state, cx, data, content_space);
 
         state.translate(self.padding.offset());
 
         space.fit(content_size + self.padding.size())
     }
 
-    fn draw(&mut self, cx: &mut DrawCx, (t, state): &mut Self::State, canvas: &mut Canvas) {
+    fn draw(
+        &mut self,
+        (t, state): &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
+        canvas: &mut Canvas,
+    ) {
         let on = cx.is_hot() && !cx.is_active();
         if self.transition.step(t, on, cx.dt()) {
             cx.request_draw();
@@ -162,7 +182,7 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         canvas.draw_quad(cx.rect(), color, [6.0; 4], [0.0; 4], Color::TRANSPARENT);
 
         if *t == 0.0 || self.fancy == 0.0 {
-            self.content.draw(cx, state, canvas);
+            self.content.draw(state, cx, data, canvas);
             return;
         }
 
@@ -170,13 +190,13 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         layer.translate(float);
 
         layer.draw_quad(
-            cx.rect() + float,
+            cx.rect(),
             self.color.mix(bright, self.transition.on(*t)),
             [6.0; 4],
             [0.0; 4],
             Color::TRANSPARENT,
         );
 
-        self.content.draw(cx, state, &mut layer);
+        self.content.draw(state, cx, data, &mut layer);
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, View};
+use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, View};
 
 pub trait ViewSequence<T> {
     type State;
@@ -9,15 +9,22 @@ pub trait ViewSequence<T> {
         self.len() == 0
     }
 
-    fn build(&self) -> Self::State;
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State;
 
-    fn rebuild(&mut self, index: usize, cx: &mut RebuildCx, old: &Self, state: &mut Self::State);
+    fn rebuild(
+        &mut self,
+        index: usize,
+        state: &mut Self::State,
+        cx: &mut RebuildCx,
+        data: &mut T,
+        old: &Self,
+    );
 
     fn event(
         &mut self,
         index: usize,
-        cx: &mut EventCx,
         state: &mut Self::State,
+        cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     );
@@ -25,12 +32,20 @@ pub trait ViewSequence<T> {
     fn layout(
         &mut self,
         index: usize,
-        cx: &mut LayoutCx,
         state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
         space: Space,
     ) -> Size;
 
-    fn draw(&mut self, index: usize, cx: &mut DrawCx, state: &mut Self::State, scene: &mut Canvas);
+    fn draw(
+        &mut self,
+        index: usize,
+        state: &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
+        scene: &mut Canvas,
+    );
 }
 
 impl<T, V: View<T>> ViewSequence<T> for Vec<V> {
@@ -40,43 +55,52 @@ impl<T, V: View<T>> ViewSequence<T> for Vec<V> {
         self.len()
     }
 
-    fn build(&self) -> Self::State {
-        self.iter().map(|v| v.build()).collect()
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        self.iter_mut().map(|v| v.build(cx, data)).collect()
     }
 
-    fn rebuild(&mut self, index: usize, cx: &mut RebuildCx, old: &Self, state: &mut Self::State) {
-        self[index].rebuild(cx, &old[index], &mut state[index]);
+    fn rebuild(
+        &mut self,
+        index: usize,
+        state: &mut Self::State,
+        cx: &mut RebuildCx,
+        data: &mut T,
+        old: &Self,
+    ) {
+        self[index].rebuild(&mut state[index], cx, data, &old[index]);
     }
 
     fn event(
         &mut self,
         index: usize,
-        cx: &mut EventCx,
         state: &mut Self::State,
+        cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     ) {
-        self[index].event(cx, &mut state[index], data, event);
+        self[index].event(&mut state[index], cx, data, event);
     }
 
     fn layout(
         &mut self,
         index: usize,
-        cx: &mut LayoutCx,
         state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
         space: Space,
     ) -> Size {
-        self[index].layout(cx, &mut state[index], space)
+        self[index].layout(&mut state[index], cx, data, space)
     }
 
     fn draw(
         &mut self,
         index: usize,
-        cx: &mut DrawCx,
         state: &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
         canvas: &mut Canvas,
     ) {
-        self[index].draw(cx, &mut state[index], canvas);
+        self[index].draw(&mut state[index], cx, data, canvas);
     }
 }
 
@@ -87,22 +111,23 @@ impl<T> ViewSequence<T> for () {
         0
     }
 
-    fn build(&self) -> Self::State {}
+    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {}
 
     fn rebuild(
         &mut self,
         _index: usize,
-        _cx: &mut RebuildCx,
-        _old: &Self,
         _state: &mut Self::State,
+        _cx: &mut RebuildCx,
+        _data: &mut T,
+        _old: &Self,
     ) {
     }
 
     fn event(
         &mut self,
         _index: usize,
-        _cx: &mut EventCx,
         _state: &mut Self::State,
+        _cx: &mut EventCx,
         _data: &mut T,
         _event: &Event,
     ) {
@@ -111,8 +136,9 @@ impl<T> ViewSequence<T> for () {
     fn layout(
         &mut self,
         _index: usize,
-        _cx: &mut LayoutCx,
         _state: &mut Self::State,
+        _cx: &mut LayoutCx,
+        _data: &mut T,
         space: Space,
     ) -> Size {
         space.min
@@ -121,8 +147,9 @@ impl<T> ViewSequence<T> for () {
     fn draw(
         &mut self,
         _index: usize,
-        _cx: &mut DrawCx,
         _state: &mut Self::State,
+        _cx: &mut DrawCx,
+        _data: &mut T,
         _canvas: &mut Canvas,
     ) {
     }
@@ -137,13 +164,20 @@ macro_rules! impl_tuple {
                 0$(.max($index + 1))*
             }
 
-            fn build(&self) -> Self::State {
-                ($(self.$index.build(),)*)
+            fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+                ($(self.$index.build(cx, data),)*)
             }
 
-            fn rebuild(&mut self, index: usize, cx: &mut RebuildCx, old: &Self, state: &mut Self::State) {
+            fn rebuild(
+                &mut self,
+                index: usize,
+                state: &mut Self::State,
+                cx: &mut RebuildCx,
+                data: &mut T,
+                old: &Self,
+            ) {
                 match index {
-                    $($index => self.$index.rebuild(cx, &old.$index, &mut state.$index),)*
+                    $($index => self.$index.rebuild(&mut state.$index, cx, data, &old.$index),)*
                     _ => {},
                 }
             }
@@ -151,13 +185,13 @@ macro_rules! impl_tuple {
             fn event(
                 &mut self,
                 index: usize,
-                cx: &mut EventCx,
                 state: &mut Self::State,
+                cx: &mut EventCx,
                 data: &mut T,
                 event: &Event,
             ) {
                 match index {
-                    $($index => self.$index.event(cx, &mut state.$index, data, event),)*
+                    $($index => self.$index.event(&mut state.$index, cx, data, event),)*
                     _ => {},
                 }
             }
@@ -165,12 +199,13 @@ macro_rules! impl_tuple {
             fn layout(
                 &mut self,
                 index: usize,
-                cx: &mut LayoutCx,
                 state: &mut Self::State,
+                cx: &mut LayoutCx,
+                data: &mut T,
                 space: Space,
             ) -> Size {
                 match index {
-                    $($index => self.$index.layout(cx, &mut state.$index, space),)*
+                    $($index => self.$index.layout(&mut state.$index, cx, data, space),)*
                     _ => Size::ZERO,
                 }
             }
@@ -178,12 +213,13 @@ macro_rules! impl_tuple {
             fn draw(
                 &mut self,
                 index: usize,
-                cx: &mut DrawCx,
                 state: &mut Self::State,
+                cx: &mut DrawCx,
+                data: &mut T,
                 canvas: &mut Canvas,
             ) {
                 match index {
-                    $($index => self.$index.draw(cx, &mut state.$index, canvas),)*
+                    $($index => self.$index.draw(&mut state.$index, cx, data, canvas),)*
                     _ => {},
                 }
             }

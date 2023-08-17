@@ -24,6 +24,22 @@ impl<'a> BaseCx<'a> {
     }
 }
 
+/// A context for building the view tree.
+pub struct BuildCx<'a, 'b> {
+    pub(crate) base: &'a mut BaseCx<'b>,
+}
+
+impl<'a, 'b> BuildCx<'a, 'b> {
+    pub(crate) fn new(base: &'a mut BaseCx<'b>) -> Self {
+        Self { base }
+    }
+
+    /// Create a child context.
+    pub fn child(&mut self) -> BuildCx<'_, 'b> {
+        BuildCx { base: self.base }
+    }
+}
+
 /// A context for rebuilding the view tree.
 pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
@@ -33,6 +49,10 @@ pub struct RebuildCx<'a, 'b> {
 impl<'a, 'b> RebuildCx<'a, 'b> {
     pub(crate) fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
         Self { base, view_state }
+    }
+
+    pub(crate) fn build_cx(&mut self) -> BuildCx<'_, 'b> {
+        BuildCx::new(self.base)
     }
 
     /// Create a child context.
@@ -151,12 +171,14 @@ impl_context! {EventCx<'_, '_>, DrawCx<'_, '_> {
     }
 }}
 
-impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
+impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the fonts.
     pub fn fonts(&mut self) -> &mut Fonts {
         self.base.fonts
     }
+}}
 
+impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the delta time in seconds.
     pub fn dt(&self) -> f32 {
         self.base.delta_time.as_secs_f32()

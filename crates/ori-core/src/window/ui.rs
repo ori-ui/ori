@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
 use crate::{
-    AnyState, BaseCx, BoxedView, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Scene,
-    SceneRender, Size, Space, Update, View, ViewState, Window,
+    AnyState, BaseCx, BoxedView, BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx,
+    Scene, SceneRender, Size, Space, Update, View, ViewState, Window,
 };
 
 pub type UiBuilder<T> = Box<dyn FnMut(&mut T) -> BoxedView<T>>;
@@ -59,9 +59,16 @@ pub struct WindowUi<T, R: SceneRender> {
 
 impl<T, R: SceneRender> WindowUi<T, R> {
     /// Create a new [´WindowUi´] for the given window.
-    pub fn new(mut builder: UiBuilder<T>, data: &mut T, window: Window, render: R) -> Self {
-        let view = builder(data);
-        let state = view.build();
+    pub fn new(
+        mut builder: UiBuilder<T>,
+        base: &mut BaseCx,
+        data: &mut T,
+        window: Window,
+        render: R,
+    ) -> Self {
+        let mut view = builder(data);
+        let mut cx = BuildCx::new(base);
+        let state = view.build(&mut cx, data);
 
         Self {
             builder,
@@ -121,7 +128,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         base.set_delta_time(self.timers.rebuild());
         let mut cx = RebuildCx::new(base, &mut self.view_state);
-        new_view.rebuild(&mut cx, &self.view, &mut self.state);
+        new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
 
         self.view = new_view;
 
@@ -139,36 +146,37 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         }
 
         if self.needs_layout() {
-            self.layout(base);
+            self.layout(base, data);
         }
 
         base.set_delta_time(self.timers.event());
         let mut cx = EventCx::new(base, &mut self.view_state);
-        self.view.event(&mut cx, &mut self.state, data, event);
+        self.view.event(&mut self.state, &mut cx, data, event);
 
         if self.needs_rebuild() {
             self.rebuild(base, data);
         }
 
         if self.needs_layout() {
-            self.layout(base);
+            self.layout(base, data);
         }
 
         if self.needs_draw() {
-            self.draw(base);
+            self.draw(base, data);
             self.window.request_draw();
         }
     }
 
     /// Layout the view.
-    pub fn layout(&mut self, base: &mut BaseCx) {
+    pub fn layout(&mut self, base: &mut BaseCx, data: &mut T) {
         self.view_state.update.remove(Update::LAYOUT);
 
         base.set_delta_time(self.timers.layout());
         let mut cx = LayoutCx::new(base, &mut self.view_state);
         let size = self.view.layout(
-            &mut cx,
             &mut self.state,
+            &mut cx,
+            data,
             Space::new(Size::ZERO, self.window.size()),
         );
         self.view_state.size = size;
@@ -179,7 +187,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     }
 
     /// Draw the view.
-    pub fn draw(&mut self, base: &mut BaseCx) {
+    pub fn draw(&mut self, base: &mut BaseCx, data: &mut T) {
         self.view_state.update.remove(Update::DRAW);
 
         self.scene.clear();
@@ -187,7 +195,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         base.set_delta_time(self.timers.draw());
         let mut cx = DrawCx::new(base, &mut self.view_state);
-        self.view.draw(&mut cx, &mut self.state, &mut canvas);
+        self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
 
         if self.needs_draw() {
             self.window.request_draw();
@@ -203,11 +211,11 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         }
 
         if self.needs_layout() {
-            self.layout(base);
+            self.layout(base, data);
         }
 
         if self.needs_draw() {
-            self.draw(base);
+            self.draw(base, data);
         }
 
         let width = self.window.width();

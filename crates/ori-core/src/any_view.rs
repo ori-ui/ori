@@ -1,26 +1,57 @@
 use std::any::Any;
 
-use crate::{Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, View};
+use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, View};
 
+/// The state of a [`BoxedView`].
 pub type AnyState = Box<dyn Any>;
+/// A boxed dynamic view.
 pub type BoxedView<T> = Box<dyn AnyView<T>>;
 
+/// Create a new [`BoxedView`].
+///
+/// This is useful for when you need to create a view that needs
+/// to change its type dynamically.
 pub fn any<T>(view: impl AnyView<T> + 'static) -> BoxedView<T> {
     Box::new(view)
 }
 
+/// A view that supports dynamic dispatch.
 pub trait AnyView<T> {
+    /// Get a reference to the underlying [`Any`] object.
     fn as_any(&self) -> &dyn Any;
 
-    fn dyn_build(&self) -> Box<dyn Any>;
+    /// Build the view.
+    fn dyn_build(&mut self, cx: &mut BuildCx, data: &mut T) -> Box<dyn Any>;
 
-    fn dyn_rebuild(&mut self, cx: &mut RebuildCx, old: &dyn AnyView<T>, state: &mut AnyState);
+    /// Rebuild the view.
+    fn dyn_rebuild(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut RebuildCx,
+        data: &mut T,
+        old: &dyn AnyView<T>,
+    );
 
-    fn dyn_event(&mut self, cx: &mut EventCx, state: &mut AnyState, data: &mut T, event: &Event);
+    /// Handle an event.
+    fn dyn_event(&mut self, state: &mut AnyState, cx: &mut EventCx, data: &mut T, event: &Event);
 
-    fn dyn_layout(&mut self, cx: &mut LayoutCx, state: &mut AnyState, space: Space) -> Size;
+    /// Calculate the layout.
+    fn dyn_layout(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size;
 
-    fn dyn_draw(&mut self, cx: &mut DrawCx, state: &mut AnyState, canvas: &mut Canvas);
+    /// Draw the view.
+    fn dyn_draw(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut DrawCx,
+        data: &mut T,
+        canvas: &mut Canvas,
+    );
 }
 
 impl<T, V> AnyView<T> for V
@@ -32,44 +63,62 @@ where
         self
     }
 
-    fn dyn_build(&self) -> Box<dyn Any> {
-        Box::new(self.build())
+    fn dyn_build(&mut self, cx: &mut BuildCx, data: &mut T) -> Box<dyn Any> {
+        Box::new(self.build(cx, data))
     }
 
-    fn dyn_rebuild(&mut self, cx: &mut RebuildCx, old: &dyn AnyView<T>, state: &mut AnyState) {
+    fn dyn_rebuild(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut RebuildCx,
+        data: &mut T,
+        old: &dyn AnyView<T>,
+    ) {
         if let Some(old) = old.as_any().downcast_ref::<V>() {
             if let Some(state) = state.downcast_mut::<V::State>() {
-                self.rebuild(cx, old, state);
+                self.rebuild(state, cx, data, old);
             } else {
                 eprintln!("Failed to downcast state");
             }
         } else {
-            *state = self.dyn_build();
+            *state = self.dyn_build(&mut cx.build_cx(), data);
             cx.request_layout();
             cx.request_draw();
         }
     }
 
-    fn dyn_event(&mut self, cx: &mut EventCx, state: &mut AnyState, data: &mut T, event: &Event) {
+    fn dyn_event(&mut self, state: &mut AnyState, cx: &mut EventCx, data: &mut T, event: &Event) {
         if let Some(state) = state.downcast_mut::<V::State>() {
-            self.event(cx, state, data, event);
+            self.event(state, cx, data, event);
         } else {
             eprintln!("Failed to downcast state");
         }
     }
 
-    fn dyn_layout(&mut self, cx: &mut LayoutCx, state: &mut AnyState, space: Space) -> Size {
+    fn dyn_layout(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size {
         if let Some(state) = state.downcast_mut::<V::State>() {
-            self.layout(cx, state, space)
+            self.layout(state, cx, data, space)
         } else {
             eprintln!("Failed to downcast state");
             Size::ZERO
         }
     }
 
-    fn dyn_draw(&mut self, cx: &mut DrawCx, state: &mut AnyState, canvas: &mut Canvas) {
+    fn dyn_draw(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut DrawCx,
+        data: &mut T,
+        canvas: &mut Canvas,
+    ) {
         if let Some(state) = state.downcast_mut::<V::State>() {
-            self.draw(cx, state, canvas);
+            self.draw(state, cx, data, canvas);
         } else {
             eprintln!("Failed to downcast state");
         }
@@ -79,23 +128,35 @@ where
 impl<T> View<T> for BoxedView<T> {
     type State = AnyState;
 
-    fn build(&self) -> Self::State {
-        self.as_ref().dyn_build()
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        self.as_mut().dyn_build(cx, data)
     }
 
-    fn rebuild(&mut self, cx: &mut RebuildCx, old: &Self, state: &mut Self::State) {
-        self.as_mut().dyn_rebuild(cx, old.as_ref(), state);
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        self.as_mut().dyn_rebuild(state, cx, data, old.as_ref());
     }
 
-    fn event(&mut self, cx: &mut EventCx, state: &mut Self::State, data: &mut T, event: &Event) {
-        self.as_mut().dyn_event(cx, state, data, event);
+    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        self.as_mut().dyn_event(state, cx, data, event);
     }
 
-    fn layout(&mut self, cx: &mut LayoutCx, state: &mut Self::State, space: Space) -> Size {
-        self.as_mut().dyn_layout(cx, state, space)
+    fn layout(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size {
+        self.as_mut().dyn_layout(state, cx, data, space)
     }
 
-    fn draw(&mut self, cx: &mut DrawCx, state: &mut Self::State, canvas: &mut Canvas) {
-        self.as_mut().dyn_draw(cx, state, canvas);
+    fn draw(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
+        canvas: &mut Canvas,
+    ) {
+        self.as_mut().dyn_draw(state, cx, data, canvas);
     }
 }

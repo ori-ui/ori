@@ -41,6 +41,13 @@ impl Affine {
         }
     }
 
+    pub fn round(self) -> Self {
+        Self {
+            translation: self.translation.round(),
+            matrix: self.matrix,
+        }
+    }
+
     pub fn inverse(self) -> Self {
         let matrix = self.matrix.inverse();
         let translation = matrix * -self.translation;

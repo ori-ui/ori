@@ -36,59 +36,78 @@ impl ViewState {
 }
 
 impl ViewState {
+    /// Get whether the view is hot.
     pub fn is_hot(&self) -> bool {
         self.hot
     }
 
+    /// Set whether the view is hot.
     pub fn set_hot(&mut self, hot: bool) {
         self.hot = hot;
     }
 
+    /// Get whether the view is active.
     pub fn is_active(&self) -> bool {
         self.active
     }
 
+    /// Set whether the view is active.
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
         self.has_active = active;
     }
 
+    /// Get whether the view has an active child.
+    pub fn has_active(&self) -> bool {
+        self.has_active
+    }
+
+    /// Get the flex of the view.
     pub fn flex(&self) -> f32 {
         self.flex
     }
 
+    /// Set the flex of the view.
     pub fn set_flex(&mut self, flex: f32) {
         self.flex = flex;
     }
 
+    /// Get the size of the view.
     pub fn size(&self) -> Size {
         self.size
     }
 
+    /// Get the transform of the view.
     pub fn transform(&self) -> Affine {
         self.transform
     }
 
+    /// Set the transform of the view.
     pub fn set_transform(&mut self, transform: Affine) {
         self.transform = transform;
     }
 
+    /// Translate the transform of the view.
     pub fn translate(&mut self, translation: Vec2) {
         self.transform = Affine::translate(translation);
     }
 
+    /// Scale the transform of the view.
     pub fn request_rebuild(&mut self) {
         self.update |= Update::TREE;
     }
 
+    /// Request a layout of the view tree.
     pub fn request_layout(&mut self) {
-        self.update |= Update::LAYOUT;
+        self.update |= Update::LAYOUT | Update::DRAW;
     }
 
+    /// Request a draw of the view tree.
     pub fn request_draw(&mut self) {
         self.update |= Update::DRAW;
     }
 
+    /// Get the [`Update`] of the view.
     pub fn update(&self) -> Update {
         self.update
     }

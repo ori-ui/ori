@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use glam::Vec2;
 
-use crate::{Affine, Fonts, Glyphs, Mesh, Rect, Size, TextSection, Update, ViewState};
+use crate::{Affine, Fonts, Glyphs, Mesh, Rect, Size, TextSection, ViewState};
 
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
@@ -225,17 +225,17 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
 
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
-        self.view_state.update |= Update::TREE;
+        self.view_state.request_rebuild();
     }
 
     /// Request a layout of the view tree.
     pub fn request_layout(&mut self) {
-        self.view_state.update |= Update::DRAW | Update::LAYOUT;
+        self.view_state.request_layout();
     }
 
     /// Request a draw of the view tree.
     pub fn request_draw(&mut self) {
-        self.view_state.update |= Update::DRAW;
+        self.view_state.request_draw();
     }
 
     /// Layout the given [`TextSection`].

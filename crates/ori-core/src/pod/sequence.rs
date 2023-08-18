@@ -81,8 +81,6 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
         data: &mut T,
         old: &Self,
     ) {
-        state.view_state[n].update.remove(Update::TREE);
-
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state[n];
         (self.views).rebuild_nth(n, &mut state.content, &mut new_cx, data, &old.views);

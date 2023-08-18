@@ -56,6 +56,7 @@ pub struct WindowUi<T, R: SceneRender> {
     state: AnyState,
     scene: Scene,
     view_state: ViewState,
+    needs_rebuild: bool,
     window: Window,
     render: R,
     timers: Timers,
@@ -80,6 +81,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             state,
             scene: Scene::new(),
             view_state: ViewState::default(),
+            needs_rebuild: false,
             window,
             render,
             timers: Timers::default(),
@@ -103,7 +105,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
     /// Get whether the view-tree needs to be rebuilt.
     pub fn needs_rebuild(&self) -> bool {
-        self.view_state.needs_rebuild()
+        self.needs_rebuild
     }
 
     /// Get whether the view-tree needs to be laid out.
@@ -118,7 +120,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
     /// Request a rebuild of the view-tree.
     pub fn request_rebuild(&mut self) {
-        self.view_state.request_rebuild();
+        self.needs_rebuild = true;
     }
 
     /// Request a layout of the view-tree.
@@ -133,14 +135,8 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
     fn handle_commands(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
         for command in mem::take(base.commands) {
-            let mut needs_rebuild = false;
-            let mut cx = DelegateCx::new(base, &mut needs_rebuild);
+            let mut cx = DelegateCx::new(base, &mut self.needs_rebuild);
             let handled = delegate.event(&mut cx, data, command.event());
-
-            if needs_rebuild {
-                self.request_rebuild();
-                *base.needs_rebuild = true;
-            }
 
             if !handled {
                 self.event(delegate, base, data, command.event());
@@ -149,7 +145,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     }
 
     fn rebuild(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
-        self.view_state.update.remove(Update::TREE);
+        self.needs_rebuild = false;
 
         let mut new_view = (self.builder)(data);
         let dt = self.timers.rebuild();
@@ -184,10 +180,6 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         let mut cx = EventCx::new(base, &mut self.view_state, &mut self.window, dt);
         self.view.event(&mut self.state, &mut cx, data, event);
-
-        if self.needs_rebuild() {
-            *base.needs_rebuild = true;
-        }
 
         if !self.view_state.update.is_empty() {
             self.window.request_draw();
@@ -246,10 +238,6 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let width = self.window.width();
         let height = self.window.height();
         self.render.render_scene(&mut self.scene, width, height);
-
-        if self.needs_rebuild() {
-            *base.needs_rebuild = true;
-        }
 
         if !self.view_state.update.is_empty() {
             self.window.request_draw();

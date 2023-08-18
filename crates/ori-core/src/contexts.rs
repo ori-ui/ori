@@ -34,6 +34,11 @@ impl<'a> BaseCx<'a> {
     pub fn cmd<T: Any>(&mut self, command: T) {
         self.commands.push(Command::new(command));
     }
+
+    /// Request a rebuild of the view tree.
+    pub fn request_rebuild(&mut self) {
+        *self.needs_rebuild = true;
+    }
 }
 
 /// A context for building the view tree.
@@ -57,7 +62,7 @@ impl<'a, 'b> BuildCx<'a, 'b> {
 
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
-        *self.base.needs_rebuild = true;
+        self.base.request_rebuild();
     }
 }
 
@@ -309,7 +314,7 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
 
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
-        self.view_state.request_rebuild();
+        self.base.request_rebuild();
     }
 
     /// Request a layout of the view tree.

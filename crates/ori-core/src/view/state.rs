@@ -1,6 +1,18 @@
 use glam::Vec2;
 
-use crate::{Affine, Size, Update};
+use crate::{Affine, Size};
+
+bitflags::bitflags! {
+    /// Flags that indicate what needs to be updated.
+    #[must_use]
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+    pub struct Update: u8 {
+        /// The view needs to be laid out.
+        const LAYOUT = 1 << 0;
+        /// The view needs to be drawn.
+        const DRAW = 1 << 1;
+    }
+}
 
 /// State associated with a [`View`](crate::View).
 #[derive(Clone, Debug)]
@@ -105,11 +117,6 @@ impl ViewState {
         self.depth = depth;
     }
 
-    /// Scale the transform of the view.
-    pub fn request_rebuild(&mut self) {
-        self.update |= Update::TREE;
-    }
-
     /// Request a layout of the view tree.
     pub fn request_layout(&mut self) {
         self.update |= Update::LAYOUT | Update::DRAW;
@@ -118,11 +125,6 @@ impl ViewState {
     /// Request a draw of the view tree.
     pub fn request_draw(&mut self) {
         self.update |= Update::DRAW;
-    }
-
-    /// Get whether the view needs to be rebuilt.
-    pub fn needs_rebuild(&self) -> bool {
-        self.update.contains(Update::TREE)
     }
 
     /// Get whether the view needs to be laid out.

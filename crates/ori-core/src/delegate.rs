@@ -23,6 +23,7 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
 
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
+        self.base.request_rebuild();
         *self.needs_rebuild = true;
     }
 }
@@ -52,6 +53,9 @@ pub trait Delegate<T> {
     /// Handle an event, returning whether it was handled. If true,
     /// the event will not be send to the `view-tree`.
     fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) -> bool;
+
+    /// Called when the event loop is idle.
+    fn idle(&mut self, _cx: &mut DelegateCx, _data: &mut T) {}
 }
 
 impl<T, F> Delegate<T> for F

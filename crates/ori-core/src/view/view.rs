@@ -1,19 +1,5 @@
 use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space};
 
-bitflags::bitflags! {
-    /// Flags that indicate what needs to be updated.
-    #[must_use]
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-    pub struct Update: u8 {
-        /// The view needs to be rebuilt.
-        const TREE = 1 << 0;
-        /// The view needs to be laid out.
-        const LAYOUT = 1 << 1;
-        /// The view needs to be drawn.
-        const DRAW = 1 << 2;
-    }
-}
-
 /// A single UI component.
 ///
 /// This trait is implemented by all UI components. The user interface is built

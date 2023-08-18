@@ -64,8 +64,6 @@ impl<T, V: View<T>> View<T> for Content<T, V> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
-        state.view_state.update.remove(Update::TREE);
-
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 

@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use glam::Vec2;
 
 use crate::{
-    BaseCx, Code, Delegate, Event, Fonts, KeyboardEvent, Modifiers, PointerButton, PointerEvent,
-    PointerId, SceneRender, Theme, UiBuilder, Window, WindowId, WindowUi,
+    BaseCx, Code, Command, Delegate, DelegateCx, Event, Fonts, KeyboardEvent, Modifiers,
+    PointerButton, PointerEvent, PointerId, SceneRender, Theme, UiBuilder, Window, WindowId,
+    WindowUi,
 };
 
 /// State for running a user interface.
@@ -40,12 +41,11 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
+        let mut commands = Vec::new();
         let mut needs_rebuild = false;
+        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
         Theme::with_global(&mut self.theme, || {
-            let mut commands = Vec::new();
-            let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
-
             let window_id = window.id();
             let window_ui = WindowUi::new(builder, &mut base, &mut self.data, window, render);
             self.windows.insert(window_id, window_ui);
@@ -54,6 +54,8 @@ impl<T, R: SceneRender> Ui<T, R> {
         if needs_rebuild {
             self.request_rebuild();
         }
+
+        self.handle_commands(commands);
     }
 
     /// Remove a window.
@@ -85,11 +87,31 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
+    /// Get the Ids of all windows.
+    pub fn window_ids(&self) -> Vec<WindowId> {
+        self.windows.keys().copied().collect()
+    }
+
     /// Tell the UI that the event loop idle.
     pub fn idle(&mut self) {
         for window in self.windows.values_mut() {
             window.idle();
         }
+
+        let mut commands = Vec::new();
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
+        let mut cx = DelegateCx::new(&mut base);
+
+        Theme::with_global(&mut self.theme, || {
+            self.delegate.idle(&mut cx, &mut self.data);
+        });
+
+        if needs_rebuild {
+            self.request_rebuild();
+        }
+
+        self.handle_commands(commands);
     }
 
     /// Request a rebuild of the view tree.
@@ -197,39 +219,70 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.modifiers = modifiers;
     }
 
+    fn handle_command(&mut self, command: Command) {
+        let event = command.event();
+
+        let mut needs_rebuild = false;
+        let mut commands = Vec::new();
+        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
+        let mut cx = DelegateCx::new(&mut base);
+
+        Theme::with_global(&mut self.theme, || {
+            self.delegate.event(&mut cx, &mut self.data, event)
+        });
+
+        if needs_rebuild {
+            self.request_rebuild();
+        }
+
+        if !event.is_handled() {
+            for window_id in self.window_ids() {
+                self.event(window_id, event);
+            }
+        }
+    }
+
+    fn handle_commands(&mut self, commands: Vec<Command>) {
+        for command in commands {
+            self.handle_command(command);
+        }
+    }
+
     /// Handle an event for a window.
     pub fn event(&mut self, window_id: WindowId, event: &Event) {
+        let mut commands = Vec::new();
         let mut needs_rebuild = false;
+        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            let mut commands = Vec::new();
-            let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
-
             Theme::with_global(&mut self.theme, || {
-                window_ui.event(&mut *self.delegate, &mut base, &mut self.data, event);
+                window_ui.event(&mut base, &mut self.data, event);
             });
         }
 
         if needs_rebuild {
             self.request_rebuild();
         }
+
+        self.handle_commands(commands);
     }
 
     /// Render a window.
     pub fn render(&mut self, window_id: WindowId) {
+        let mut commands = Vec::new();
         let mut needs_rebuild = false;
+        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            let mut commands = Vec::new();
-            let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
-
             Theme::with_global(&mut self.theme, || {
-                window_ui.render(&mut *self.delegate, &mut base, &mut self.data);
+                window_ui.render(&mut base, &mut self.data);
             });
         }
 
         if needs_rebuild {
             self.request_rebuild();
         }
+
+        self.handle_commands(commands);
     }
 }

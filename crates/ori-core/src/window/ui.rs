@@ -1,11 +1,8 @@
-use std::{
-    mem,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use crate::{
-    AnyState, BaseCx, BoxedView, BuildCx, Canvas, Delegate, DelegateCx, DrawCx, Event, EventCx,
-    LayoutCx, RebuildCx, Scene, SceneRender, Size, Space, Update, View, ViewState, Window,
+    AnyState, BaseCx, BoxedView, BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx,
+    Scene, SceneRender, Size, Space, Update, View, ViewState, Window,
 };
 
 /// A type that can build a view.
@@ -133,18 +130,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         self.render.idle();
     }
 
-    fn handle_commands(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
-        for command in mem::take(base.commands) {
-            let mut cx = DelegateCx::new(base, &mut self.needs_rebuild);
-            let handled = delegate.event(&mut cx, data, command.event());
-
-            if !handled {
-                self.event(delegate, base, data, command.event());
-            }
-        }
-    }
-
-    fn rebuild(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
+    fn rebuild(&mut self, base: &mut BaseCx, data: &mut T) {
         self.needs_rebuild = false;
 
         let mut new_view = (self.builder)(data);
@@ -154,26 +140,18 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
 
         self.view = new_view;
-
-        self.handle_commands(delegate, base, data);
     }
 
     /// Handle an event.
     ///
     /// This will rebuild or layout the view if necessary.
-    pub fn event(
-        &mut self,
-        delegate: &mut dyn Delegate<T>,
-        base: &mut BaseCx,
-        data: &mut T,
-        event: &Event,
-    ) {
+    pub fn event(&mut self, base: &mut BaseCx, data: &mut T, event: &Event) {
         if self.needs_rebuild() {
-            self.rebuild(delegate, base, data);
+            self.rebuild(base, data);
         }
 
         if self.needs_layout() {
-            self.layout(delegate, base, data);
+            self.layout(base, data);
         }
 
         let dt = self.timers.event();
@@ -185,14 +163,12 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             self.window.request_draw();
         }
 
-        self.handle_commands(delegate, base, data);
-
         if !self.view_state.update.is_empty() {
             self.window.request_draw();
         }
     }
 
-    fn layout(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
+    fn layout(&mut self, base: &mut BaseCx, data: &mut T) {
         self.view_state.update.remove(Update::LAYOUT);
 
         let space = Space::new(Size::ZERO, self.window.size());
@@ -201,11 +177,9 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window, dt);
         let size = self.view.layout(&mut self.state, &mut cx, data, space);
         self.view_state.size = size;
-
-        self.handle_commands(delegate, base, data);
     }
 
-    fn draw(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
+    fn draw(&mut self, base: &mut BaseCx, data: &mut T) {
         self.view_state.update.remove(Update::DRAW);
 
         self.scene.clear();
@@ -215,24 +189,22 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window, dt);
         self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
-
-        self.handle_commands(delegate, base, data);
     }
 
     /// Render the scene.
     ///
     /// This will rebuild, layout or draw the view if necessary.
-    pub fn render(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
+    pub fn render(&mut self, base: &mut BaseCx, data: &mut T) {
         if self.needs_rebuild() {
-            self.rebuild(delegate, base, data);
+            self.rebuild(base, data);
         }
 
         if self.needs_layout() {
-            self.layout(delegate, base, data);
+            self.layout(base, data);
         }
 
         if self.needs_draw() {
-            self.draw(delegate, base, data);
+            self.draw(base, data);
         }
 
         let width = self.window.width();

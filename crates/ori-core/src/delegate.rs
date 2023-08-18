@@ -5,15 +5,11 @@ use crate::{BaseCx, Event};
 /// A context for a [`Delegate`].
 pub struct DelegateCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
-    pub(crate) needs_rebuild: &'a mut bool,
 }
 
 impl<'a, 'b> DelegateCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, needs_rebuild: &'a mut bool) -> Self {
-        Self {
-            base,
-            needs_rebuild,
-        }
+    pub(crate) fn new(base: &'a mut BaseCx<'b>) -> Self {
+        Self { base }
     }
 
     /// Send a command.
@@ -24,7 +20,6 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
         self.base.request_rebuild();
-        *self.needs_rebuild = true;
     }
 }
 

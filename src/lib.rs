@@ -9,6 +9,8 @@ pub use ori_wgpu as wgpu;
 pub mod prelude {
     //! The `ori` prelude.
 
+    pub use crate::wgpu::App;
+
     pub use crate::core::math::*;
     pub use crate::core::tracing::{debug, error, info, trace, warn};
     pub use crate::core::views::{
@@ -28,5 +30,6 @@ pub mod prelude {
     };
     pub use crate::core::{hstack, vstack};
 
-    pub use crate::wgpu::App;
+    #[cfg(feature = "image")]
+    pub use crate::core::image;
 }

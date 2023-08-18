@@ -48,11 +48,12 @@ impl Data {
         info!("Added todo '{}'", title);
 
         let todo = Todo::new(title);
-        self.todos.insert(0, todo);
+        self.todos.push(todo);
     }
 
     fn remove_todo(&mut self, index: usize) {
         self.todos.remove(index);
+        info!("Removed todo #{}", index);
     }
 }
 
@@ -66,7 +67,7 @@ fn input() -> impl View<Data> {
         .on_submit(|_, data: &mut Data, text| data.input(text))
         .font_size(20.0);
 
-    container(input).padding((em(4.0), em(1.0))).width(em(28.0))
+    container(input).padding([em(4.0), em(1.0)]).width(em(28.0))
 }
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
@@ -86,7 +87,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
         cx.cmd(RemoveTodo(index));
     })
     .fancy(4.0)
-    .padding((em(0.4), em(0.1)))
+    .padding([em(0.4), em(0.1)])
     .color(hsl(353.0, 0.6, 0.72));
 
     let left = hstack![completed, title].center_items().gap(em(1.5));
@@ -103,7 +104,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
 fn todos(data: &mut Data) -> impl View<Data> {
     let mut todos = Vec::new();
 
-    for (i, item) in data.todos.iter_mut().enumerate() {
+    for (i, item) in data.todos.iter_mut().enumerate().rev() {
         match data.selection {
             Selection::Active if item.completed => continue,
             Selection::Completed if !item.completed => continue,
@@ -150,21 +151,21 @@ fn selection(data: &mut Data) -> impl View<Data> {
     })
     .fancy(4.0)
     .color(color(data.selection, Selection::All))
-    .padding((5.0, 3.0));
+    .padding([5.0, 3.0]);
 
     let active = button(text("Active"), |_, data: &mut Data| {
         data.selection = Selection::Active
     })
     .fancy(4.0)
     .color(color(data.selection, Selection::Active))
-    .padding((5.0, 3.0));
+    .padding([5.0, 3.0]);
 
     let completed = button(text("Completed"), |_, data: &mut Data| {
         data.selection = Selection::Completed
     })
     .fancy(4.0)
     .color(color(data.selection, Selection::Completed))
-    .padding((5.0, 3.0));
+    .padding([5.0, 3.0]);
 
     let items = hstack![all, active, completed].gap(em(1.0));
     let row = hstack![active_count(data), items]
@@ -173,7 +174,7 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
     any(container(row)
         .width(em(26.0))
-        .padding((em(1.0), em(0.5)))
+        .padding([em(1.0), em(0.5)])
         .border_width(style(BORDER_TOP)))
 }
 
@@ -204,9 +205,7 @@ fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) -> bool {
     // when we receive the command we remove the todo
     if let Some(remove) = event.get::<RemoveTodo>() {
         data.remove_todo(remove.0);
-        info!("Removed todo #{}", remove.0);
 
-        event.handle();
         cx.request_rebuild();
 
         return true;

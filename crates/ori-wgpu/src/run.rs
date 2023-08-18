@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ori_core::{math::Vec2, set_text_size, Modifiers, PointerId, Theme, Window, TEXT_SIZE};
+use ori_core::{math::Vec2, set_text_size, styled, Modifiers, PointerId, Theme, Window, TEXT_SIZE};
 use winit::{
     event::{Event, KeyboardInput, MouseScrollDelta, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -18,17 +18,19 @@ use crate::{
 use crate::App;
 
 fn build_theme<T>(app: &App<T>) -> Theme {
-    set_text_size(app.text_size);
+    styled(|| {
+        set_text_size(app.text_size);
 
-    let mut theme = Theme::new();
+        let mut theme = Theme::new();
 
-    for theme_fn in app.theme.iter() {
-        theme.extend(theme_fn());
-    }
+        for theme_fn in app.theme.iter() {
+            theme.extend(theme_fn());
+        }
 
-    theme.set(TEXT_SIZE, app.text_size);
+        theme.set(TEXT_SIZE, app.text_size);
 
-    theme
+        theme
+    })
 }
 
 pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {

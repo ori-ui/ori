@@ -16,16 +16,39 @@ thread_local! {
     static THEME: RefCell<Theme> = Default::default();
 }
 
-impl<T: Clone + Default + Any> Key<T> {
-    /// Get a value from the global [`Theme`].
-    pub fn get(&self) -> T {
-        THEME.with(|theme| theme.borrow().get(*self))
+impl<T: Any> Key<T> {
+    /// Set a value in the global [`Theme`].
+    pub fn set(self, value: impl Into<Style<T>>) {
+        THEME.with(|theme| theme.borrow_mut().set(self, value));
     }
+
+    /// Get a value from the global [`Theme`].
+    pub fn get(self) -> T
+    where
+        T: Clone + Default,
+    {
+        THEME.with(|theme| theme.borrow().get(self))
+    }
+}
+
+/// Set a value in the current theme.
+pub fn set_style<T: Any>(key: Key<T>, value: impl Into<Style<T>>) {
+    key.set(value);
 }
 
 /// Get a value from the current theme.
 pub fn style<T: Clone + Default + Any>(key: Key<T>) -> T {
     key.get()
+}
+
+/// Run a function with a temporary global theme.
+///
+/// This restores the previous global theme after the function returns.
+pub fn styled<T>(f: impl FnOnce() -> T) -> T {
+    let snapshot = Theme::global_snapshot();
+    let result = f();
+    Theme::make_global(snapshot);
+    result
 }
 
 #[derive(Default)]
@@ -186,6 +209,11 @@ impl Theme {
             let mut theme = theme.borrow_mut();
             f(&mut theme);
         });
+    }
+
+    /// Get a snapshot of the global theme.
+    pub fn global_snapshot() -> Self {
+        THEME.with(|theme| theme.borrow().clone())
     }
 
     /// Make this theme the global theme.

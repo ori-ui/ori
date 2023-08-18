@@ -31,9 +31,14 @@ impl<T: Any> Key<T> {
     }
 }
 
-/// Set a value in the current theme.
+/// Set a value in the global theme.
 pub fn set_style<T: Any>(key: Key<T>, value: impl Into<Style<T>>) {
     key.set(value);
+}
+
+/// Extend the global theme.
+pub fn set_theme(theme: impl Into<Theme>) {
+    Theme::global(|global| global.extend(theme));
 }
 
 /// Get a value from the current theme.

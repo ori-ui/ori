@@ -138,6 +138,7 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
         canvas: &mut Canvas,
     ) {
         state.view_state[n].update.remove(Update::DRAW);
+        state.view_state[n].depth = canvas.depth;
 
         let mut canvas = canvas.layer();
         canvas.transform *= state.view_state[n].transform;

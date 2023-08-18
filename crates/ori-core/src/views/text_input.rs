@@ -91,6 +91,7 @@ impl<T> TextInput<T> {
         }
     }
 
+    /// Set the text.
     pub fn text(mut self, text: impl FnMut(&mut T) -> &mut String + 'static) -> Self {
         self.text = Some(Box::new(text));
         self

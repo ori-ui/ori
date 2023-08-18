@@ -5,9 +5,6 @@ use crate::{
     Space, View,
 };
 
-/// A lens used by [`Focus`].
-pub type Lens<'a, T> = dyn FnMut(&mut T) + 'a;
-
 /// Create a new [`Focus`].
 pub fn focus<T, U, V: View<U>>(
     focus: impl FnMut(&mut T, &mut Lens<U>) + 'static,
@@ -15,6 +12,9 @@ pub fn focus<T, U, V: View<U>>(
 ) -> Focus<T, U, V> {
     Focus::new(content, focus)
 }
+
+/// A lens used by [`Focus`].
+pub type Lens<'a, T> = dyn FnMut(&mut T) + 'a;
 
 /// A view that focuses on a part of the data.
 ///

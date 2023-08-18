@@ -7,8 +7,11 @@ use crate::{
 /// A canvas used for drawing a [`Scene`].
 pub struct Canvas<'a> {
     scene: &'a mut Scene,
+    /// The transform to apply to the canvas.
     pub transform: Affine,
+    /// The depth of the canvas.
     pub depth: f32,
+    /// The clip rectangle of the canvas.
     pub clip: Rect,
 }
 

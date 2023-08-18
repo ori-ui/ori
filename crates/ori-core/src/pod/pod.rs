@@ -112,6 +112,7 @@ impl<T, V: View<T>> View<T> for Content<T, V> {
         canvas: &mut Canvas,
     ) {
         state.view_state.update.remove(Update::DRAW);
+        state.view_state.depth = canvas.depth;
 
         // create the canvas layer
         let mut canvas = canvas.layer();

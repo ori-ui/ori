@@ -15,6 +15,7 @@ pub struct Palette {
     pub accent: Color,
 }
 
+#[allow(missing_docs)]
 impl Palette {
     pub const TEXT: Key<Color> = Key::new("--text");
     pub const BACKGROUND: Key<Color> = Key::new("--background");
@@ -46,7 +47,10 @@ impl Palette {
     pub const ACCENT_DARKER: Key<Color> = Key::new("--accent-darker");
     pub const ACCENT_BRIGHT: Key<Color> = Key::new("--accent-bright");
     pub const ACCENT_BRIGHTER: Key<Color> = Key::new("--accent-brighter");
+}
 
+impl Palette {
+    /// The default light theme.
     pub fn light() -> Self {
         Self {
             text: Color::hsl(0.0, 0.0, 0.2),
@@ -57,6 +61,7 @@ impl Palette {
         }
     }
 
+    /// The default dark theme.
     pub fn dark() -> Self {
         Self {
             text: Color::hsl(0.0, 0.0, 0.8),
@@ -67,6 +72,7 @@ impl Palette {
         }
     }
 
+    /// Convert this palette to a theme.
     pub fn to_theme(&self) -> Theme {
         let mut theme = Theme::new();
 

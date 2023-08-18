@@ -2,6 +2,7 @@ use glam::Vec2;
 
 use crate::{Affine, Size, Update};
 
+/// State associated with a [`View`](crate::View).
 #[derive(Clone, Debug)]
 pub struct ViewState {
     pub(crate) hot: bool,
@@ -12,6 +13,7 @@ pub struct ViewState {
     pub(crate) flex: f32,
     pub(crate) size: Size,
     pub(crate) transform: Affine,
+    pub(crate) depth: f32,
 }
 
 impl Default for ViewState {
@@ -24,6 +26,7 @@ impl Default for ViewState {
             flex: 0.0,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
+            depth: 0.0,
         }
     }
 }
@@ -90,6 +93,16 @@ impl ViewState {
     /// Translate the transform of the view.
     pub fn translate(&mut self, translation: Vec2) {
         self.transform = Affine::translate(translation);
+    }
+
+    /// Get the depth of the view.
+    pub fn depth(&self) -> f32 {
+        self.depth
+    }
+
+    /// Set the depth of the view.
+    pub fn set_depth(&mut self, depth: f32) {
+        self.depth = depth;
     }
 
     /// Scale the transform of the view.

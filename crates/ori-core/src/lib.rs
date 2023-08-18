@@ -1,4 +1,7 @@
 #![allow(clippy::module_inception)]
+#![warn(missing_docs)]
+
+//! Core library for the Ori UI framework.
 
 mod any_view;
 mod canvas;
@@ -34,6 +37,11 @@ pub use ui::*;
 pub use view::*;
 pub use window::*;
 
-pub use glam as math;
 pub use tracing;
 pub mod views;
+
+pub mod math {
+    //! Math types and functions, powered by [`glam`].
+
+    pub use glam::*;
+}

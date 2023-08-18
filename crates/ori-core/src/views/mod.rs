@@ -1,3 +1,5 @@
+//! The builtin views in Ori.
+
 mod button;
 mod checkbox;
 mod container;

@@ -30,12 +30,17 @@ pub fn hex(hex: &str) -> Color {
     Color::hex(hex)
 }
 
+/// A color with red, green, blue and alpha components.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Color {
+    /// The red component of the color.
     pub r: f32,
+    /// The green component of the color.
     pub g: f32,
+    /// The blue component of the color.
     pub b: f32,
+    /// The alpha component of the color.
     pub a: f32,
 }
 
@@ -55,14 +60,17 @@ impl Color {
 }
 
 impl Color {
+    /// Create a new color with the given red, green, blue and alpha components.
     pub const fn rgba(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 
+    /// Create a new color with the given red, green and blue components.
     pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
         Self::rgba(r, g, b, 1.0)
     }
 
+    /// Create a new color with the given gray component.
     pub const fn grayscale(g: f32) -> Self {
         Self::rgb(g, g, g)
     }

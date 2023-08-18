@@ -4,13 +4,15 @@ use crate::{
     TextSection, TextWrap, View,
 };
 
+/// Create a new [`Text`].
 pub fn text(text: impl ToString) -> Text {
     Text::new(text)
 }
 
-/// A text.
+/// A view that displays text.
 #[derive(Rebuild)]
 pub struct Text {
+    /// The text.
     #[rebuild(layout)]
     pub text: String,
     /// The font size of the text.

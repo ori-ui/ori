@@ -1,4 +1,5 @@
 /// A mouse cursor icon.
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Cursor {
     #[default]

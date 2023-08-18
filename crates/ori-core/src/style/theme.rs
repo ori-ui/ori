@@ -17,6 +17,7 @@ thread_local! {
 }
 
 impl<T: Clone + Default + Any> Key<T> {
+    /// Get a value from the global [`Theme`].
     pub fn get(&self) -> T {
         THEME.with(|theme| theme.borrow().get(*self))
     }
@@ -38,9 +39,12 @@ impl BuildHasher for ThemeHasher {
     }
 }
 
+/// A value that in a [`Theme`].
 #[derive(Clone, Debug)]
 pub enum Style<T> {
+    /// A value.
     Val(T),
+    /// A key.
     Key(Key<T>),
 }
 
@@ -94,16 +98,30 @@ pub struct Theme {
 
 impl Default for Theme {
     fn default() -> Self {
-        Self::new().with(TEXT_SIZE, 16.0)
+        Self::empty().with(TEXT_SIZE, 16.0)
     }
 }
 
 impl Theme {
-    /// Create a new theme.
-    pub fn new() -> Self {
+    fn empty() -> Self {
         Self {
             values: Default::default(),
         }
+    }
+
+    /// Create a new theme.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Get the number of values in the theme.
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    /// Get whether the theme is empty.
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
     }
 
     /// Set a value in the theme.
@@ -122,6 +140,7 @@ impl Theme {
         self
     }
 
+    /// Extend the theme with another theme.
     pub fn extend(&mut self, other: impl Into<Self>) {
         self.values.extend(other.into().values);
     }
@@ -173,6 +192,7 @@ impl Theme {
         this
     }
 
+    /// Swap this theme with the global theme.
     pub fn swap_global(this: &mut Self) {
         THEME.with(|theme| {
             let mut theme = theme.borrow_mut();

@@ -124,6 +124,7 @@ pub enum Code {
 }
 
 impl Code {
+    /// Get the digit of the key, if it is a digit.
     pub const fn as_digit(self) -> Option<u8> {
         match self {
             Self::Key0 => Some(0),

@@ -4,15 +4,20 @@ use glam::Vec2;
 
 use crate::{Color, Curve, Image};
 
+/// A vertex in a [`Mesh`].
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vertex {
+    /// The position of the vertex.
     pub position: Vec2,
+    /// The texture coordinates of the vertex.
     pub tex_coords: Vec2,
+    /// The color of the vertex.
     pub color: Color,
 }
 
 impl Vertex {
+    /// Create a new vertex with `position` and color`.
     pub fn new_color(position: Vec2, color: Color) -> Self {
         Self {
             position,
@@ -22,15 +27,19 @@ impl Vertex {
     }
 }
 
-/// A mesh of vertices and indices.
+/// A mesh containing vertices, indices and an optional image.
 #[derive(Clone, Debug, Default)]
 pub struct Mesh {
+    /// The vertices of the mesh.
     pub vertices: Vec<Vertex>,
+    /// The indices of the mesh.
     pub indices: Vec<u32>,
+    /// The image of the mesh.
     pub image: Option<Image>,
 }
 
 impl Mesh {
+    /// Create a new empty mesh.
     pub fn new() -> Self {
         Self::default()
     }
@@ -62,12 +71,14 @@ impl Mesh {
         mesh
     }
 
+    /// Get the bytes of the vertices.
     pub fn vertex_bytes(&self) -> &[u8] {
         let data = self.vertices.as_ptr() as *const u8;
         let len = self.vertices.len() * mem::size_of::<Vertex>();
         unsafe { slice::from_raw_parts(data, len) }
     }
 
+    /// Get the bytes of the indices.
     pub fn index_bytes(&self) -> &[u8] {
         let data = self.indices.as_ptr() as *const u8;
         let len = self.indices.len() * mem::size_of::<u32>();

@@ -11,7 +11,9 @@ pub fn flex<T, V: View<T>>(flex: f32, content: V) -> Flex<T, V> {
 ///
 /// When used in a stack, will shrink or grow to fill the remaining space.
 pub struct Flex<T, V> {
+    /// The content.
     pub content: Content<T, V>,
+    /// The flex.
     pub flex: f32,
 }
 

@@ -1,7 +1,39 @@
+//! Builtin styles.
+
 use crate::{
-    style, BorderRadius, BorderWidth, Color, FontFamily, FontStretch, FontStyle, FontWeight,
-    Palette, TextAlign, TextWrap, Theme, Transition, TEXT_SIZE,
+    BorderRadius, BorderWidth, Color, FontFamily, FontStretch, FontStyle, FontWeight, Palette,
+    TextAlign, TextWrap, Theme, Transition,
 };
+
+macro_rules! style {
+    (
+        $(#[$module_attr:meta])*
+        $module_vis:vis $module:ident {
+            $(
+                $(#[$attr:meta])*
+                const $name:ident : $ty:ty = $expr:expr;
+            )*
+        }
+    ) => {
+        $(#[$module_attr])*
+        $module_vis mod $module {
+            use super::*;
+
+            $(
+                $(#[$attr])*
+                pub const $name: $crate::Key<$ty> = $crate::Key::new(
+                    ::std::concat!(::std::stringify!($module), ".", ::std::stringify!($name))
+                );
+            )*
+
+            /// Get the default theme for this module.
+            pub fn default_theme() -> $crate::Theme {
+                $crate::Theme::new()
+                    $(.with($name, $expr))*
+            }
+        }
+    };
+}
 
 style! {
     /// Styles for [`Text`](crate::views::Text)s.
@@ -108,6 +140,7 @@ style! {
 }
 
 impl Theme {
+    /// Get the builtin theme.
     pub fn builtin() -> Self {
         let mut theme = Self::new();
 
@@ -116,8 +149,6 @@ impl Theme {
         theme.extend(button::default_theme());
         theme.extend(container::default_theme());
         theme.extend(checkbox::default_theme());
-
-        theme.set(TEXT_SIZE, 16.0);
 
         theme
     }

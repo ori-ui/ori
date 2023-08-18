@@ -29,26 +29,36 @@ pub fn vstack<T, V: ViewSequence<T>>(content: V) -> Stack<T, V> {
     Stack::vstack(content)
 }
 
+/// A view that stacks its content in a line.
 #[derive(Rebuild)]
 pub struct Stack<T, V> {
+    /// The content of the stack.
     pub content: ContentSequence<T, V>,
+    /// The size of the stack.
     #[rebuild(layout)]
     pub size: Option<Size>,
+    /// The axis of the stack.
     #[rebuild(layout)]
     pub axis: Axis,
+    /// How to justify the content along the main axis.
     #[rebuild(layout)]
     pub justify_content: Justify,
+    /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
     pub align_items: AlignItems,
+    /// How to align the lines along the cross axis.
     #[rebuild(layout)]
     pub align_content: Justify,
+    /// The gap between columns.
     #[rebuild(layout)]
     pub column_gap: f32,
+    /// The gap between rows.
     #[rebuild(layout)]
     pub row_gap: f32,
 }
 
 impl<T, V> Stack<T, V> {
+    /// Create a new [`Stack`].
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
             content: ContentSequence::new(content),
@@ -62,50 +72,60 @@ impl<T, V> Stack<T, V> {
         }
     }
 
+    /// Create a new horizontal [`Stack`].
     pub fn hstack(content: V) -> Self {
         Self::new(Axis::Horizontal, content)
     }
 
+    /// Create a new vertical [`Stack`].
     pub fn vstack(content: V) -> Self {
         Self::new(Axis::Vertical, content)
     }
 
+    /// Set the justify content.
     pub fn justify_content(mut self, justify: impl Into<Justify>) -> Self {
         self.justify_content = justify.into();
         self
     }
 
+    /// Set the align items.
     pub fn align_items(mut self, align: impl Into<AlignItems>) -> Self {
         self.align_items = align.into();
         self
     }
 
+    /// Align the items at the center.
     pub fn center_items(mut self) -> Self {
         self.align_items = AlignItems::Center;
         self
     }
 
+    /// Stretch the items to fill the cross axis.
     pub fn stretch_items(mut self) -> Self {
         self.align_items = AlignItems::Stretch;
         self
     }
 
+    /// Set the align content.
     pub fn align_content(mut self, align: impl Into<Justify>) -> Self {
         self.align_content = align.into();
         self
     }
 
+    /// Set the gap between columns and rows.
     pub fn gap(mut self, gap: f32) -> Self {
         self.column_gap = gap;
         self.row_gap = gap;
         self
     }
 
+    /// Set the gap between columns.
     pub fn column_gap(mut self, gap: f32) -> Self {
         self.column_gap = gap;
         self
     }
 
+    /// Set the gap between rows.
     pub fn row_gap(mut self, gap: f32) -> Self {
         self.row_gap = gap;
         self

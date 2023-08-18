@@ -115,6 +115,7 @@ impl<'a> Default for TextSection<'a> {
 }
 
 impl<'a> TextSection<'a> {
+    /// Get the font query for this section.
     pub fn font_query(&self) -> FontQuery {
         FontQuery {
             family: self.font_family.clone(),

@@ -20,6 +20,7 @@ fn find_core() -> syn::Path {
     }
 }
 
+/// Derive the `Rebuild` trait.
 #[manyhow::manyhow]
 #[proc_macro_derive(Rebuild, attributes(rebuild))]
 pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {

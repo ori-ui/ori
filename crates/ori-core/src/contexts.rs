@@ -2,7 +2,7 @@ use std::{any::Any, time::Duration};
 
 use glam::Vec2;
 
-use crate::{Affine, Command, Fonts, Glyphs, Mesh, Rect, Size, TextSection, ViewState};
+use crate::{Affine, Command, Fonts, Glyphs, Mesh, Rect, Size, TextSection, ViewState, Window};
 
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
@@ -30,16 +30,20 @@ impl<'a> BaseCx<'a> {
 /// A context for building the view tree.
 pub struct BuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
+    pub(crate) window: &'a mut Window,
 }
 
 impl<'a, 'b> BuildCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>) -> Self {
-        Self { base }
+    pub(crate) fn new(base: &'a mut BaseCx<'b>, window: &'a mut Window) -> Self {
+        Self { base, window }
     }
 
     /// Create a child context.
     pub fn child(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx { base: self.base }
+        BuildCx {
+            base: self.base,
+            window: self.window,
+        }
     }
 }
 
@@ -47,6 +51,7 @@ impl<'a, 'b> BuildCx<'a, 'b> {
 pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) window: &'a mut Window,
     pub(crate) delta_time: Duration,
 }
 
@@ -54,11 +59,13 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
     pub(crate) fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
+        window: &'a mut Window,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
+            window,
             delta_time,
         }
     }
@@ -68,13 +75,14 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         RebuildCx {
             base: self.base,
             view_state: self.view_state,
+            window: self.window,
             delta_time: self.delta_time,
         }
     }
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base)
+        BuildCx::new(self.base, self.window)
     }
 }
 
@@ -82,6 +90,7 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
 pub struct EventCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) window: &'a mut Window,
     pub(crate) delta_time: Duration,
     pub(crate) transform: Affine,
 }
@@ -90,6 +99,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
     pub(crate) fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
+        window: &'a mut Window,
         delta_time: Duration,
     ) -> Self {
         let transform = view_state.transform;
@@ -97,6 +107,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
         Self {
             base,
             view_state,
+            window,
             delta_time,
             transform,
         }
@@ -107,6 +118,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
         EventCx {
             base: self.base,
             view_state: self.view_state,
+            window: self.window,
             delta_time: self.delta_time,
             transform: self.transform,
         }
@@ -127,6 +139,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
 pub struct LayoutCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) window: &'a mut Window,
     pub(crate) delta_time: Duration,
 }
 
@@ -134,11 +147,13 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
     pub(crate) fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
+        window: &'a mut Window,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
+            window,
             delta_time,
         }
     }
@@ -148,6 +163,7 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
         LayoutCx {
             base: self.base,
             view_state: self.view_state,
+            window: self.window,
             delta_time: self.delta_time,
         }
     }
@@ -157,6 +173,7 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
 pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) window: &'a mut Window,
     pub(crate) delta_time: Duration,
 }
 
@@ -164,11 +181,13 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     pub(crate) fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
+        window: &'a mut Window,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
+            window,
             delta_time,
         }
     }
@@ -178,6 +197,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         DrawCx {
             base: self.base,
             view_state: self.view_state,
+            window: self.window,
             delta_time: self.delta_time,
         }
     }
@@ -216,6 +236,11 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// Get the fonts.
     pub fn fonts(&mut self) -> &mut Fonts {
         self.base.fonts()
+    }
+
+    /// Get the window.
+    pub fn window(&mut self) -> &mut Window {
+        self.window
     }
 
     /// Emit a command.

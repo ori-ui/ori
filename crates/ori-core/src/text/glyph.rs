@@ -41,26 +41,32 @@ pub struct Glyphs {
 }
 
 impl Glyphs {
+    /// Get the size of the text as a whole.
     pub fn size(&self) -> Size {
         self.size
     }
 
+    /// Get the font id.
     pub fn font(&self) -> fontdb::ID {
         self.font
     }
 
+    /// Get the text wrap.
     pub fn wrap(&self) -> TextWrap {
         self.wrap
     }
 
+    /// Get the horizontal alignment.
     pub fn h_align(&self) -> TextAlign {
         self.h_align
     }
 
+    /// Get the vertical alignment.
     pub fn v_align(&self) -> TextAlign {
         self.v_align
     }
 
+    /// Compute the offset of the text in a `rect`.
     pub fn offset(&self, rect: Rect) -> Vec2 {
         let x_diff = rect.width() - self.size().width;
         let y_diff = rect.height() - self.size().height;
@@ -87,6 +93,7 @@ impl Glyphs {
         Vec2::new(x_offset, y_offset)
     }
 
+    /// Get the color.
     pub fn color(&self) -> Color {
         self.color
     }

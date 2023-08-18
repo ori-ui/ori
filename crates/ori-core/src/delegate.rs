@@ -56,19 +56,22 @@ impl Command {
 
 /// A delegate for handling events.
 pub trait Delegate<T> {
-    /// Handle an event.
-    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event);
+    /// Handle an event, returning whether it was handled. If true,
+    /// the event will not be send to the `view-tree`.
+    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) -> bool;
 }
 
 impl<T, F> Delegate<T> for F
 where
-    F: FnMut(&mut DelegateCx, &mut T, &Event),
+    F: FnMut(&mut DelegateCx, &mut T, &Event) -> bool,
 {
-    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) {
+    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) -> bool {
         self(cx, data, event)
     }
 }
 
 impl<T> Delegate<T> for () {
-    fn event(&mut self, _: &mut DelegateCx, _: &mut T, _: &Event) {}
+    fn event(&mut self, _: &mut DelegateCx, _: &mut T, _: &Event) -> bool {
+        false
+    }
 }

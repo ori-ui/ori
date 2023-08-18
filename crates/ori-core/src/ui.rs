@@ -12,8 +12,11 @@ pub struct Ui<T, R: SceneRender> {
     windows: HashMap<WindowId, WindowUi<T, R>>,
     modifiers: Modifiers,
     delegate: Box<dyn Delegate<T>>,
+    /// The fonts used by the UI.
     pub fonts: Fonts,
+    /// The theme used by the UI.
     pub theme: Theme,
+    /// The data used by the UI.
     pub data: T,
 }
 
@@ -58,6 +61,10 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.windows.remove(&window_id);
     }
 
+    /// Get a reference to a window.
+    ///
+    /// # Panics
+    /// - If the window does not exist.
     #[track_caller]
     pub fn window(&self, window_id: WindowId) -> &WindowUi<T, R> {
         match self.windows.get(&window_id) {
@@ -66,6 +73,10 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
+    /// Get a mutable reference to a window.
+    ///
+    /// # Panics
+    /// - If the window does not exist.
     #[track_caller]
     pub fn window_mut(&mut self, window_id: WindowId) -> &mut WindowUi<T, R> {
         match self.windows.get_mut(&window_id) {
@@ -74,6 +85,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
+    /// Tell the UI that a window has been resized.
     pub fn resized(&mut self, window_id: WindowId) {
         self.window_mut(window_id).request_layout();
     }
@@ -83,6 +95,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         pointer.map_or(Vec2::ZERO, |p| p.position())
     }
 
+    /// Tell the UI that a pointer has moved.
     pub fn pointer_moved(&mut self, window_id: WindowId, id: PointerId, position: Vec2) {
         let window = self.window_mut(window_id).window_mut();
         window.pointer_moved(id, position);
@@ -96,6 +109,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.event(window_id, &Event::new(event));
     }
 
+    /// Tell the UI that a pointer has left the window.
     pub fn pointer_left(&mut self, window_id: WindowId, id: PointerId) {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
@@ -110,6 +124,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.event(window_id, &Event::new(event));
     }
 
+    /// Tell the UI that a pointer has scrolled.
     pub fn pointer_scroll(&mut self, window_id: WindowId, id: PointerId, delta: Vec2) {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
@@ -121,6 +136,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.event(window_id, &Event::new(event));
     }
 
+    /// Tell the UI that a pointer button has been pressed or released.
     pub fn pointer_button(
         &mut self,
         window_id: WindowId,
@@ -139,6 +155,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.event(window_id, &Event::new(event));
     }
 
+    /// Tell the UI that a keyboard key has been pressed or released.
     pub fn keyboard_key(&mut self, window_id: WindowId, key: Code, pressed: bool) {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
@@ -150,6 +167,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.event(window_id, &Event::new(event));
     }
 
+    /// Tell the UI that a keyboard character has been entered.
     pub fn keyboard_char(&mut self, window_id: WindowId, c: char) {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
@@ -160,10 +178,12 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.event(window_id, &Event::new(event));
     }
 
+    /// Tell the UI that the modifiers have changed.
     pub fn modifiers_changed(&mut self, modifiers: Modifiers) {
         self.modifiers = modifiers;
     }
 
+    /// Handle an event for a window.
     pub fn event(&mut self, window_id: WindowId, event: &Event) {
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             let mut commands = Vec::new();
@@ -175,6 +195,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
+    /// Render a window.
     pub fn render(&mut self, window_id: WindowId) {
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             let mut commands = Vec::new();

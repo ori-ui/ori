@@ -13,8 +13,9 @@ impl Data {
 }
 
 fn input(data: &mut Data) -> impl View<Data> {
-    let input = text_input(|data: &mut Data| &mut data.text)
-        .on_submit(|data| info!("Submitted: {}", data.text))
+    let input = text_input()
+        .text(|data: &mut Data| &mut data.text)
+        .on_submit(|_, _, text| info!("Submitted: {}", text))
         .multiline(data.multiline)
         .min_width(150.0);
 

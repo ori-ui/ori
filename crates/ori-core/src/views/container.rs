@@ -2,15 +2,15 @@ use glam::Vec2;
 
 use crate::{
     builtin::container, style, Affine, Align, BorderRadius, BorderWidth, BuildCx, Canvas, Color,
-    Content, ContentState, DrawCx, Event, EventCx, LayoutCx, Padding, Rebuild, RebuildCx, Size,
-    Space, View,
+    DrawCx, Event, EventCx, LayoutCx, Padding, Rebuild, RebuildCx, Size, Space, State, View,
+    ViewContent,
 };
 
 /// A container view.
 #[derive(Rebuild)]
-pub struct Container<T, V> {
+pub struct Container<V> {
     /// The content.
-    pub content: Content<T, V>,
+    pub content: V,
     /// The padding, applied before everything else.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -43,11 +43,11 @@ pub struct Container<T, V> {
     pub border_color: Color,
 }
 
-impl<T, V> Container<T, V> {
+impl<V> Container<V> {
     /// Create a new [`Container`].
     pub fn new(content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content,
             padding: Padding::default(),
             space: Space::default(),
             alignment: None,
@@ -164,21 +164,21 @@ impl<T, V> Container<T, V> {
     }
 }
 
-impl<T, V: View<T>> View<T> for Container<T, V> {
-    type State = ContentState<T, V>;
+impl<T, V: View<T>> View<T> for Container<V> {
+    type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        self.content.build(cx, data)
+        self.content.build_content(cx, data)
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
-        self.content.rebuild(state, cx, data, &old.content);
+        self.content.rebuild_content(state, cx, data, &old.content);
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        self.content.event(state, cx, data, event);
+        self.content.event_content(state, cx, data, event);
     }
 
     fn layout(
@@ -189,7 +189,7 @@ impl<T, V: View<T>> View<T> for Container<T, V> {
         space: Space,
     ) -> Size {
         let content_space = self.space.with(space).shrink(self.padding.size());
-        let mut content_size = self.content.layout(state, cx, data, content_space);
+        let mut content_size = self.content.layout_content(state, cx, data, content_space);
         content_size += self.padding.size();
 
         if let Some(alignment) = self.alignment {
@@ -222,17 +222,17 @@ impl<T, V: View<T>> View<T> for Container<T, V> {
             self.border_color,
         );
 
-        self.content.draw(state, cx, data, canvas);
+        self.content.draw_content(state, cx, data, canvas);
     }
 }
 
 /// Create a new [`Container`].
-pub fn container<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn container<T, V: View<T>>(content: V) -> Container<V> {
     Container::new(content)
 }
 
 /// Create a new padded [`Container`].
-pub fn pad<T, V: View<T>>(padding: impl Into<Padding>, content: V) -> Container<T, V> {
+pub fn pad<T, V: View<T>>(padding: impl Into<Padding>, content: V) -> Container<V> {
     Container {
         padding: padding.into(),
         ..Container::new(content)
@@ -240,7 +240,7 @@ pub fn pad<T, V: View<T>>(padding: impl Into<Padding>, content: V) -> Container<
 }
 
 /// Create a new sized [`Container`].
-pub fn size<T, V: View<T>>(size: impl Into<Size>, content: V) -> Container<T, V> {
+pub fn size<T, V: View<T>>(size: impl Into<Size>, content: V) -> Container<V> {
     Container {
         space: Space::from_size(size.into()),
         ..Container::new(content)
@@ -248,7 +248,7 @@ pub fn size<T, V: View<T>>(size: impl Into<Size>, content: V) -> Container<T, V>
 }
 
 /// Create a new aligned [`Container`].
-pub fn align<T, V: View<T>>(alignment: impl Into<Align>, content: V) -> Container<T, V> {
+pub fn align<T, V: View<T>>(alignment: impl Into<Align>, content: V) -> Container<V> {
     Container {
         alignment: Some(alignment.into()),
         ..Container::new(content)
@@ -256,7 +256,7 @@ pub fn align<T, V: View<T>>(alignment: impl Into<Align>, content: V) -> Containe
 }
 
 /// Create a new transformed [`Container`].
-pub fn transform<T, V: View<T>>(transform: impl Into<Affine>, content: V) -> Container<T, V> {
+pub fn transform<T, V: View<T>>(transform: impl Into<Affine>, content: V) -> Container<V> {
     Container {
         transform: transform.into(),
         ..Container::new(content)
@@ -264,7 +264,7 @@ pub fn transform<T, V: View<T>>(transform: impl Into<Affine>, content: V) -> Con
 }
 
 /// Create a new translated [`Container`].
-pub fn translate<T, V: View<T>>(translation: impl Into<Vec2>, content: V) -> Container<T, V> {
+pub fn translate<T, V: View<T>>(translation: impl Into<Vec2>, content: V) -> Container<V> {
     Container {
         transform: Affine::translate(translation.into()),
         ..Container::new(content)
@@ -272,7 +272,7 @@ pub fn translate<T, V: View<T>>(translation: impl Into<Vec2>, content: V) -> Con
 }
 
 /// Create a new rotated [`Container`].
-pub fn rotate<T, V: View<T>>(rotation: f32, content: V) -> Container<T, V> {
+pub fn rotate<T, V: View<T>>(rotation: f32, content: V) -> Container<V> {
     Container {
         transform: Affine::rotate(rotation),
         ..Container::new(content)
@@ -280,7 +280,7 @@ pub fn rotate<T, V: View<T>>(rotation: f32, content: V) -> Container<T, V> {
 }
 
 /// Create a new scaled [`Container`].
-pub fn scale<T, V: View<T>>(scale: impl Into<Vec2>, content: V) -> Container<T, V> {
+pub fn scale<T, V: View<T>>(scale: impl Into<Vec2>, content: V) -> Container<V> {
     Container {
         transform: Affine::scale(scale.into()),
         ..Container::new(content)
@@ -288,7 +288,7 @@ pub fn scale<T, V: View<T>>(scale: impl Into<Vec2>, content: V) -> Container<T, 
 }
 
 /// Create a new [`Container`] aligned to the center.
-pub fn align_center<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_center<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::CENTER),
         ..Container::new(content)
@@ -296,7 +296,7 @@ pub fn align_center<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the top left.
-pub fn align_top_left<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_top_left<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP_LEFT),
         ..Container::new(content)
@@ -304,7 +304,7 @@ pub fn align_top_left<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the top.
-pub fn align_top<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_top<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP),
         ..Container::new(content)
@@ -312,7 +312,7 @@ pub fn align_top<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the top right.
-pub fn align_top_right<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_top_right<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP_RIGHT),
         ..Container::new(content)
@@ -320,7 +320,7 @@ pub fn align_top_right<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the left.
-pub fn align_left<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_left<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::LEFT),
         ..Container::new(content)
@@ -328,7 +328,7 @@ pub fn align_left<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the right.
-pub fn align_right<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_right<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::RIGHT),
         ..Container::new(content)
@@ -336,7 +336,7 @@ pub fn align_right<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom left.
-pub fn align_bottom_left<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_bottom_left<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM_LEFT),
         ..Container::new(content)
@@ -344,7 +344,7 @@ pub fn align_bottom_left<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom.
-pub fn align_bottom<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_bottom<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM),
         ..Container::new(content)
@@ -352,7 +352,7 @@ pub fn align_bottom<T, V: View<T>>(content: V) -> Container<T, V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom right.
-pub fn align_bottom_right<T, V: View<T>>(content: V) -> Container<T, V> {
+pub fn align_bottom_right<T, V: View<T>>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM_RIGHT),
         ..Container::new(content)

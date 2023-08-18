@@ -1,9 +1,9 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::button, style, BorderRadius, BorderWidth, BuildCx, Canvas, Color, Content,
-    ContentState, DrawCx, Event, EventCx, LayoutCx, Padding, PointerEvent, Rebuild, RebuildCx,
-    Size, Space, Transition, View,
+    builtin::button, style, BorderRadius, BorderWidth, BuildCx, Canvas, Color, DrawCx, Event,
+    EventCx, LayoutCx, Padding, PointerEvent, Rebuild, RebuildCx, Size, Space, State, Transition,
+    View, ViewContent,
 };
 
 /// Create a new [`Button`].
@@ -18,7 +18,7 @@ pub fn button<T, V: View<T>>(
 #[derive(Rebuild)]
 pub struct Button<T, V> {
     /// The content.
-    pub content: Content<T, V>,
+    pub content: V,
     /// The callback for when the button is pressed.
     #[allow(clippy::type_complexity)]
     pub on_press: Box<dyn FnMut(&mut EventCx, &mut T)>,
@@ -45,11 +45,11 @@ pub struct Button<T, V> {
     pub border_color: Color,
 }
 
-impl<T, V: View<T>> Button<T, V> {
+impl<T, V> Button<T, V> {
     /// Create a new [`Button`].
     pub fn new(content: V, on_click: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
         Self {
-            content: Content::new(content),
+            content,
             on_press: Box::new(on_click),
             padding: Padding::all(8.0),
             fancy: 0.0,
@@ -105,10 +105,10 @@ impl<T, V: View<T>> Button<T, V> {
 }
 
 impl<T, V: View<T>> View<T> for Button<T, V> {
-    type State = (f32, ContentState<T, V>);
+    type State = (f32, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        (0.0, self.content.build(cx, data))
+        (0.0, self.content.build_content(cx, data))
     }
 
     fn rebuild(
@@ -120,7 +120,7 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
     ) {
         Rebuild::rebuild(self, cx, old);
 
-        self.content.rebuild(state, cx, data, &old.content);
+        self.content.rebuild_content(state, cx, data, &old.content);
     }
 
     fn event(
@@ -130,7 +130,7 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         data: &mut T,
         event: &Event,
     ) {
-        self.content.event(state, cx, data, event);
+        self.content.event_content(state, cx, data, event);
 
         if event.is_handled() {
             return;
@@ -169,7 +169,7 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         space: Space,
     ) -> Size {
         let content_space = space.shrink(self.padding.size());
-        let content_size = self.content.layout(state, cx, data, content_space);
+        let content_size = self.content.layout_content(state, cx, data, content_space);
 
         state.translate(self.padding.offset());
 
@@ -200,7 +200,7 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         canvas.draw_quad(cx.rect(), color, [6.0; 4], [0.0; 4], Color::TRANSPARENT);
 
         if *t == 0.0 || self.fancy == 0.0 {
-            self.content.draw(state, cx, data, canvas);
+            self.content.draw_content(state, cx, data, canvas);
             return;
         }
 
@@ -217,6 +217,6 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
             Color::TRANSPARENT,
         );
 
-        self.content.draw(state, cx, data, &mut layer);
+        self.content.draw_content(state, cx, data, &mut layer);
     }
 }

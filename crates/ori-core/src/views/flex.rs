@@ -1,55 +1,46 @@
 use crate::{
-    BuildCx, Canvas, Content, ContentState, DrawCx, Event, EventCx, LayoutCx, Space, View,
+    BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Space, State, View, ViewContent,
 };
 
 /// Create a new [`Flex`].
-pub fn flex<T, V: View<T>>(flex: f32, content: V) -> Flex<T, V> {
+pub fn flex<T, V: View<T>>(flex: f32, content: V) -> Flex<V> {
     Flex::new(flex, content)
 }
 
 /// A flexible view.
 ///
 /// When used in a stack, will shrink or grow to fill the remaining space.
-pub struct Flex<T, V> {
+pub struct Flex<V> {
     /// The content.
-    pub content: Content<T, V>,
+    pub content: V,
     /// The flex.
     pub flex: f32,
 }
 
-impl<T, V> Flex<T, V> {
+impl<V> Flex<V> {
     /// Create a new [`Flex`].
     pub fn new(flex: f32, content: V) -> Self {
-        Self {
-            content: Content::new(content),
-            flex,
-        }
+        Self { content, flex }
     }
 }
 
-impl<T, V: View<T>> View<T> for Flex<T, V> {
-    type State = ContentState<T, V>;
+impl<T, V: View<T>> View<T> for Flex<V> {
+    type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        self.content.build(cx, data)
+        self.content.build_content(cx, data)
     }
 
-    fn rebuild(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut crate::RebuildCx,
-        data: &mut T,
-        old: &Self,
-    ) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         if self.flex != old.flex {
             cx.request_layout();
         }
 
-        self.content.rebuild(state, cx, data, &old.content);
+        self.content.rebuild_content(state, cx, data, &old.content);
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        self.content.event(state, cx, data, event);
+        self.content.event_content(state, cx, data, event);
     }
 
     fn layout(
@@ -61,7 +52,7 @@ impl<T, V: View<T>> View<T> for Flex<T, V> {
     ) -> crate::Size {
         cx.set_flex(self.flex);
 
-        self.content.layout(state, cx, data, space)
+        self.content.layout_content(state, cx, data, space)
     }
 
     fn draw(
@@ -71,6 +62,6 @@ impl<T, V: View<T>> View<T> for Flex<T, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        self.content.draw(state, cx, data, canvas);
+        self.content.draw_content(state, cx, data, canvas);
     }
 }

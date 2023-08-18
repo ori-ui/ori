@@ -20,11 +20,11 @@ pub mod prelude {
     pub use crate::core::{
         any, builtin::*, ease, em, hex, hsl, hsla, linear, rgb, rgba, style, Affine, Align,
         AlignItems, Axis, BaseCx, BorderRadius, BorderWidth, BuildCx, Canvas, Color, Command,
-        Content, ContentSequence, ContentSequenceState, ContentState, Cursor, Curve, Delegate,
-        DelegateCx, DrawCx, Event, EventCx, FontFamily, FontSource, FontStretch, FontStyle,
-        FontWeight, Justify, Key, LayoutCx, Mesh, Padding, Palette, Primitive, Quad, Rebuild,
-        RebuildCx, Rect, Size, Space, TextAlign, TextSection, TextWrap, Theme, Vertex, View,
-        ViewSequence, Window,
+        ContentSequence, ContentSequenceState, Cursor, Curve, Delegate, DelegateCx, DrawCx, Event,
+        EventCx, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Justify, Key,
+        LayoutCx, Mesh, Padding, Palette, Primitive, Quad, Rebuild, RebuildCx, Rect, Size, Space,
+        State, TextAlign, TextSection, TextWrap, Theme, Vertex, View, ViewContent, ViewSequence,
+        Window,
     };
     pub use crate::core::{hstack, vstack};
 

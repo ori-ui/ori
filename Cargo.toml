@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 members = ["crates/*"]
 
 [dependencies]
+# Internal dependencies
 ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
 
 # Optional dependencies
@@ -17,6 +18,9 @@ ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1", optional = tru
 
 [features]
 default = ["wgpu"]
+image = ["ori-core/image"]
+
+# Backend features
 wgpu = ["dep:ori-wgpu"]
 
 [profile.dev]

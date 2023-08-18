@@ -20,6 +20,7 @@ mod ui;
 mod view;
 mod window;
 
+pub use crate::image::*;
 pub use any_view::*;
 pub use canvas::*;
 pub use color::*;
@@ -27,7 +28,6 @@ pub use content::*;
 pub use contexts::*;
 pub use delegate::*;
 pub use event::*;
-pub use image::*;
 pub use layout::*;
 pub use rebuild::*;
 pub use style::*;

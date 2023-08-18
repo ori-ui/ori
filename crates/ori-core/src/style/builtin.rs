@@ -1,8 +1,8 @@
 //! Builtin styles.
 
 use crate::{
-    BorderRadius, BorderWidth, Color, FontFamily, FontStretch, FontStyle, FontWeight, Palette,
-    TextAlign, TextWrap, Theme, Transition,
+    em, BorderRadius, BorderWidth, Color, FontFamily, FontStretch, FontStyle, FontWeight, Palette,
+    TextAlign, TextWrap, Theme, Transition, TEXT_SIZE,
 };
 
 macro_rules! style {
@@ -39,7 +39,7 @@ style! {
     /// Styles for [`Text`](crate::views::Text)s.
     pub text {
         /// The font size.
-        const FONT_SIZE: f32 = 16.0;
+        const FONT_SIZE: f32 = TEXT_SIZE;
         /// The font family.
         const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
         /// The font weight.
@@ -65,7 +65,7 @@ style! {
     /// Styles for [`TextInput`](crate::views::Text)s.
     pub text_input {
         /// The font size.
-        const FONT_SIZE: f32 = 16.0;
+        const FONT_SIZE: f32 = TEXT_SIZE;
         /// The font family.
         const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
         /// The font weight.
@@ -95,7 +95,7 @@ style! {
         /// The color.
         const COLOR: Color = Palette::PRIMARY;
         /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(8.0);
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.5));
         /// The border width.
         const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
         /// The border color.
@@ -123,7 +123,7 @@ style! {
         /// The transition when the checkbox is hovered.
         const TRANSITION: Transition = Transition::ease(0.1);
         /// The size of the checkbox.
-        const SIZE: f32 = 24.0;
+        const SIZE: f32 = em(1.5);
         /// The color of the checkmark.
         const COLOR: Color = Palette::ACCENT;
         /// The stroke width of the checkmark.
@@ -131,7 +131,7 @@ style! {
         /// The background color.
         const BACKGROUND: Color = Color::TRANSPARENT;
         /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(6.0);
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.4));
         /// The border width.
         const BORDER_WIDTH: BorderWidth = BorderWidth::all(1.0);
         /// The border color.

@@ -1,16 +1,19 @@
 use std::any::Any;
 
-use crate::{BaseCx, Event, ViewState};
+use crate::{BaseCx, Event};
 
 /// A context for a [`Delegate`].
 pub struct DelegateCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
-    pub(crate) view_state: &'a mut ViewState,
+    pub(crate) needs_rebuild: &'a mut bool,
 }
 
 impl<'a, 'b> DelegateCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
-        Self { base, view_state }
+    pub(crate) fn new(base: &'a mut BaseCx<'b>, needs_rebuild: &'a mut bool) -> Self {
+        Self {
+            base,
+            needs_rebuild,
+        }
     }
 
     /// Send a command.
@@ -20,17 +23,7 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
 
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
-        self.view_state.request_rebuild();
-    }
-
-    /// Request a layout of the view tree.
-    pub fn request_layout(&mut self) {
-        self.view_state.request_layout();
-    }
-
-    /// Request a draw of the view tree.
-    pub fn request_draw(&mut self) {
-        self.view_state.request_draw();
+        *self.needs_rebuild = true;
     }
 }
 

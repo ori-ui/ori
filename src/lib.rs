@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Ori is a cross-platform declarative UI framework for Rust, with a focus on
 //! simplicity and performance.
 

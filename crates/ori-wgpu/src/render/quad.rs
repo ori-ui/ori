@@ -226,10 +226,6 @@ impl QuadRender {
         })
     }
 
-    pub fn clear(&mut self) {
-        self.instances.clear();
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,

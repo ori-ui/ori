@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use glam::Vec2;
 
 use crate::{
-    BaseCx, Code, Delegate, Event, Fonts, KeyboardEvent, Modifiers, Palette, PointerButton,
-    PointerEvent, PointerId, SceneRender, Theme, UiBuilder, Window, WindowId, WindowUi,
+    BaseCx, Code, Delegate, Event, Fonts, KeyboardEvent, Modifiers, PointerButton, PointerEvent,
+    PointerId, SceneRender, Theme, UiBuilder, Window, WindowId, WindowUi,
 };
 
 /// State for running a user interface.
@@ -23,18 +23,12 @@ pub struct Ui<T, R: SceneRender> {
 impl<T, R: SceneRender> Ui<T, R> {
     /// Create a new [`Ui`] with the given data.
     pub fn new(data: T) -> Self {
-        let mut fonts = Fonts::default();
-        fonts.load_system_fonts();
-
-        let mut theme = Theme::builtin();
-        theme.extend(Palette::light());
-
         Self {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegate: Box::new(()),
-            fonts,
-            theme,
+            fonts: Fonts::default(),
+            theme: Theme::default(),
             data,
         }
     }
@@ -46,14 +40,20 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
+        let mut needs_rebuild = false;
+
         Theme::with_global(&mut self.theme, || {
             let mut commands = Vec::new();
-            let mut base = BaseCx::new(&mut self.fonts, &mut commands);
+            let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
             let window_id = window.id();
             let window_ui = WindowUi::new(builder, &mut base, &mut self.data, window, render);
             self.windows.insert(window_id, window_ui);
         });
+
+        if needs_rebuild {
+            self.request_rebuild();
+        }
     }
 
     /// Remove a window.
@@ -82,6 +82,20 @@ impl<T, R: SceneRender> Ui<T, R> {
         match self.windows.get_mut(&window_id) {
             Some(window) => window,
             None => panic!("window with id {:?} not found", window_id),
+        }
+    }
+
+    /// Tell the UI that the event loop idle.
+    pub fn idle(&mut self) {
+        for window in self.windows.values_mut() {
+            window.idle();
+        }
+    }
+
+    /// Request a rebuild of the view tree.
+    pub fn request_rebuild(&mut self) {
+        for window in self.windows.values_mut() {
+            window.request_rebuild();
         }
     }
 
@@ -185,25 +199,37 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Handle an event for a window.
     pub fn event(&mut self, window_id: WindowId, event: &Event) {
+        let mut needs_rebuild = false;
+
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             let mut commands = Vec::new();
-            let mut base = BaseCx::new(&mut self.fonts, &mut commands);
+            let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
             Theme::with_global(&mut self.theme, || {
                 window_ui.event(&mut *self.delegate, &mut base, &mut self.data, event);
             });
         }
+
+        if needs_rebuild {
+            self.request_rebuild();
+        }
     }
 
     /// Render a window.
     pub fn render(&mut self, window_id: WindowId) {
+        let mut needs_rebuild = false;
+
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             let mut commands = Vec::new();
-            let mut base = BaseCx::new(&mut self.fonts, &mut commands);
+            let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
             Theme::with_global(&mut self.theme, || {
                 window_ui.render(&mut *self.delegate, &mut base, &mut self.data);
             });
+        }
+
+        if needs_rebuild {
+            self.request_rebuild();
         }
     }
 }

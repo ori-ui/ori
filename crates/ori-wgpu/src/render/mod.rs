@@ -5,9 +5,8 @@ mod quad;
 mod render;
 mod scene;
 
-pub use image::*;
+use image::*;
 pub use instance::*;
-pub use mesh::*;
-pub use quad::*;
+use mesh::*;
+use quad::*;
 pub use render::*;
-pub use scene::*;

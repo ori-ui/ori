@@ -1,12 +1,16 @@
-use ori_core::{Delegate, FontSource, Image, Theme, Ui, UiBuilder, View, WindowDescriptor};
+use ori_core::{
+    Delegate, FontSource, Image, Palette, Theme, Ui, UiBuilder, View, WindowDescriptor,
+};
 
-use crate::{Error, Render};
+use crate::{render::Render, Error};
 
 /// An application.
 pub struct App<T> {
     pub(crate) window: WindowDescriptor,
     pub(crate) builder: UiBuilder<T>,
+    pub(crate) theme: Vec<Box<dyn Fn() -> Theme>>,
     pub(crate) ui: Ui<T, Render>,
+    pub(crate) text_size: f32,
 }
 
 impl<T: 'static> App<T> {
@@ -16,16 +20,22 @@ impl<T: 'static> App<T> {
         V: View<T> + 'static,
         V::State: 'static,
     {
-        Self {
+        let mut app = Self {
             window: WindowDescriptor::default(),
             builder: Box::new(move |data| Box::new(builder(data))),
+            theme: Vec::new(),
             ui: Ui::new(data),
-        }
+            text_size: 16.0,
+        };
+
+        app.ui.fonts.load_system_fonts();
+
+        app.theme(Palette::light).theme(Theme::builtin)
     }
 
     /// Append the theme of the application.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.ui.theme.extend(theme);
+    pub fn theme<I: Into<Theme>>(mut self, theme: impl Fn() -> I + 'static) -> Self {
+        self.theme.push(Box::new(move || theme().into()));
         self
     }
 
@@ -35,6 +45,12 @@ impl<T: 'static> App<T> {
             eprintln!("Failed to load font: {:?}", err);
         }
 
+        self
+    }
+
+    /// Set the text size of the application.
+    pub fn text_size(mut self, size: f32) -> Self {
+        self.text_size = size;
         self
     }
 

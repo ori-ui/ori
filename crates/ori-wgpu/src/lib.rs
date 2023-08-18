@@ -1,4 +1,7 @@
 #![allow(clippy::module_inception)]
+#![warn(missing_docs)]
+
+//! WGPU backend for Ori.
 
 mod app;
 mod convert;
@@ -10,5 +13,3 @@ mod window;
 
 pub use app::*;
 pub use error::*;
-pub use render::*;
-pub use window::*;

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ori_core::{math::Vec2, Modifiers, PointerId, Window};
+use ori_core::{math::Vec2, set_text_size, Modifiers, PointerId, Theme, Window, TEXT_SIZE};
 use winit::{
     event::{Event, KeyboardInput, MouseScrollDelta, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -9,11 +9,27 @@ use winit::{
 
 use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
+    render::{Render, RenderInstance},
     tracing::init_tracing,
-    Error, Render, RenderInstance, WinitWindow,
+    window::WinitWindow,
+    Error,
 };
 
 use crate::App;
+
+fn build_theme<T>(app: &App<T>) -> Theme {
+    set_text_size(app.text_size);
+
+    let mut theme = Theme::new();
+
+    for theme_fn in app.theme.iter() {
+        theme.extend(theme_fn());
+    }
+
+    theme.set(TEXT_SIZE, app.text_size);
+
+    theme
+}
 
 pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
     if let Err(err) = init_tracing() {
@@ -34,8 +50,9 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
 
     let _guard = runtime.enter();
 
-    let mut ids = HashMap::new();
+    app.ui.theme = build_theme(&app);
 
+    let mut ids = HashMap::new();
     ids.insert(window.id(), app.window.id);
 
     let raw_window = Box::new(WinitWindow::from(window));
@@ -45,6 +62,9 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
     app.ui.add_window(app.builder, window, render);
 
     event_loop.run(move |event, _, control_flow| match event {
+        Event::RedrawEventsCleared => {
+            app.ui.idle();
+        }
         Event::RedrawRequested(window_id) => {
             let id = ids[&window_id];
             app.ui.render(id);

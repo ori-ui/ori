@@ -47,6 +47,7 @@ impl RenderInstance {
     ///
     /// # Safety
     /// - See the `Safety` section on [`wgpu::Instance::create_surface`].
+    #[allow(dead_code)]
     pub unsafe fn create_surface(
         &self,
         window: &winit::window::Window,

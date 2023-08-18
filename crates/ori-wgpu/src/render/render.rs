@@ -8,7 +8,9 @@ use wgpu::{
     TextureView,
 };
 
-use crate::{ImageCache, MeshRender, QuadRender, RenderError, RenderInstance};
+use crate::RenderError;
+
+use super::{ImageCache, MeshRender, QuadRender, RenderInstance};
 
 #[derive(Debug)]
 pub struct Render {
@@ -74,6 +76,10 @@ impl Render {
         });
 
         texture.create_view(&wgpu::TextureViewDescriptor::default())
+    }
+
+    pub fn clean(&mut self) {
+        self.image.clean();
     }
 
     fn size(&self) -> Size {

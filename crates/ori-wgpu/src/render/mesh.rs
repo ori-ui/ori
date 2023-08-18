@@ -10,7 +10,7 @@ use wgpu::{
     ShaderStages, TextureFormat, VertexBufferLayout, VertexState,
 };
 
-use crate::{CachedImage, ImageCache};
+use super::{CachedImage, ImageCache};
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -183,10 +183,6 @@ impl MeshRender {
             uniform_layout,
             pipeline,
         }
-    }
-
-    pub fn clear(&mut self) {
-        self.instances.clear();
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -8,12 +8,21 @@ use crate::{Affine, Command, Fonts, Glyphs, Mesh, Rect, Size, TextSection, ViewS
 pub struct BaseCx<'a> {
     pub(crate) fonts: &'a mut Fonts,
     pub(crate) commands: &'a mut Vec<Command>,
+    pub(crate) needs_rebuild: &'a mut bool,
 }
 
 impl<'a> BaseCx<'a> {
     /// Create a new base context.
-    pub fn new(fonts: &'a mut Fonts, commands: &'a mut Vec<Command>) -> Self {
-        Self { fonts, commands }
+    pub fn new(
+        fonts: &'a mut Fonts,
+        commands: &'a mut Vec<Command>,
+        needs_rebuild: &'a mut bool,
+    ) -> Self {
+        Self {
+            fonts,
+            commands,
+            needs_rebuild,
+        }
     }
 
     /// Get the [`Fonts`].
@@ -44,6 +53,11 @@ impl<'a, 'b> BuildCx<'a, 'b> {
             base: self.base,
             window: self.window,
         }
+    }
+
+    /// Request a rebuild of the view tree.
+    pub fn request_rebuild(&mut self) {
+        *self.base.needs_rebuild = true;
     }
 }
 

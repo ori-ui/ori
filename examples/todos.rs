@@ -218,7 +218,7 @@ fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) -> bool {
 fn main() {
     App::new(app, Data::default())
         .title("Todos (examples/todos.rs)")
-        .theme(theme())
         .delegate(delegate)
+        .theme(theme)
         .run();
 }

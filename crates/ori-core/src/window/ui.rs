@@ -116,15 +116,31 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         self.view_state.needs_draw()
     }
 
+    /// Request a rebuild of the view-tree.
+    pub fn request_rebuild(&mut self) {
+        self.view_state.request_rebuild();
+    }
+
     /// Request a layout of the view-tree.
     pub fn request_layout(&mut self) {
         self.view_state.request_layout();
     }
 
+    /// Called when the application is idle.
+    pub fn idle(&mut self) {
+        self.render.idle();
+    }
+
     fn handle_commands(&mut self, delegate: &mut dyn Delegate<T>, base: &mut BaseCx, data: &mut T) {
         for command in mem::take(base.commands) {
-            let mut cx = DelegateCx::new(base, &mut self.view_state);
+            let mut needs_rebuild = false;
+            let mut cx = DelegateCx::new(base, &mut needs_rebuild);
             let handled = delegate.event(&mut cx, data, command.event());
+
+            if needs_rebuild {
+                self.request_rebuild();
+                *base.needs_rebuild = true;
+            }
 
             if !handled {
                 self.event(delegate, base, data, command.event());
@@ -169,7 +185,11 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let mut cx = EventCx::new(base, &mut self.view_state, &mut self.window, dt);
         self.view.event(&mut self.state, &mut cx, data, event);
 
-        if self.needs_draw() {
+        if self.needs_rebuild() {
+            *base.needs_rebuild = true;
+        }
+
+        if !self.view_state.update.is_empty() {
             self.window.request_draw();
         }
 
@@ -226,6 +246,10 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let width = self.window.width();
         let height = self.window.height();
         self.render.render_scene(&mut self.scene, width, height);
+
+        if self.needs_rebuild() {
+            *base.needs_rebuild = true;
+        }
 
         if !self.view_state.update.is_empty() {
             self.window.request_draw();

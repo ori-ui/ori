@@ -3,11 +3,16 @@ use std::fmt::Display;
 use wgpu::{CreateSurfaceError, RequestDeviceError};
 use winit::error::OsError;
 
+/// An error that can occur when rendering.
 #[derive(Debug)]
 pub enum RenderError {
+    /// Failed to create a surface.
     CreateSurface(CreateSurfaceError),
+    /// No adapter found.
     AdapterNotFound,
+    /// Failed to request a device.
     RequestDevice(RequestDeviceError),
+    /// Surface incompatible with adapter.
     SurfaceIncompatible,
 }
 
@@ -34,9 +39,12 @@ impl Display for RenderError {
     }
 }
 
+/// An error that can occur when running an application.
 #[derive(Debug)]
 pub enum Error {
+    /// A render error.
     Render(RenderError),
+    /// An OS error.
     OsError(OsError),
 }
 

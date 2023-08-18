@@ -180,6 +180,14 @@ impl Theme {
         }
     }
 
+    /// Get a mutable reference to the global theme.
+    pub fn global(f: impl FnOnce(&mut Self)) {
+        THEME.with(|theme| {
+            let mut theme = theme.borrow_mut();
+            f(&mut theme);
+        });
+    }
+
     /// Make this theme the global theme.
     ///
     /// This returns the previous global theme.

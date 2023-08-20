@@ -4,7 +4,9 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{ImageId, Size};
+use crate::layout::Size;
+
+use super::ImageId;
 
 /// Image data.
 #[derive(Clone, PartialEq, Eq, Hash)]

@@ -1,4 +1,4 @@
-use crate::Size;
+use super::Size;
 
 /// Space available to lay out a view.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::Image;
+use crate::image::Image;
 
 /// A wrapper around a raw window.
 pub trait RawWindow {

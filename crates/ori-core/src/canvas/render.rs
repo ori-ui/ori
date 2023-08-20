@@ -1,4 +1,4 @@
-use crate::Scene;
+use super::Scene;
 
 /// Trait for rendering a scene.
 pub trait SceneRender {

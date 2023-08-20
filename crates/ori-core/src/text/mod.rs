@@ -1,3 +1,5 @@
+//! Text rendering and layouting.
+
 mod atlas;
 mod fonts;
 mod glyph;

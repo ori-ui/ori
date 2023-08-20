@@ -1,4 +1,4 @@
-use crate::Modifiers;
+use super::Modifiers;
 
 /// A keyboard event.
 #[derive(Clone, Debug, Default)]

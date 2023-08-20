@@ -1,3 +1,5 @@
+//! Windowing system abstraction layer.
+
 mod cursor;
 mod descriptor;
 mod raw;

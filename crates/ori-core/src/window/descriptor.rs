@@ -1,4 +1,6 @@
-use crate::{Image, WindowId};
+use crate::image::Image;
+
+use super::WindowId;
 
 /// A descriptor for a window.
 #[derive(Clone, Debug, PartialEq)]

@@ -5,7 +5,10 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use crate::ImageData;
+use super::ImageData;
+
+#[cfg(feature = "image")]
+pub use crate::image;
 
 /// Include an image.
 #[macro_export]

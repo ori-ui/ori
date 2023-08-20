@@ -1,9 +1,12 @@
 //! Builtin styles.
 
 use crate::{
-    em, BorderRadius, BorderWidth, Color, FontFamily, FontStretch, FontStyle, FontWeight, Palette,
-    TextAlign, TextWrap, Theme, Transition, TEXT_SIZE,
+    canvas::{BorderRadius, BorderWidth, Color},
+    text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
+    transition::Transition,
 };
+
+use super::{em, Palette, Theme, TEXT_SIZE};
 
 macro_rules! style {
     (
@@ -21,14 +24,14 @@ macro_rules! style {
 
             $(
                 $(#[$attr])*
-                pub const $name: $crate::Key<$ty> = $crate::Key::new(
+                pub const $name: $crate::style::Key<$ty> = $crate::style::Key::new(
                     ::std::concat!(::std::stringify!($module), ".", ::std::stringify!($name))
                 );
             )*
 
             /// Get the default theme for this module.
-            pub fn default_theme() -> $crate::Theme {
-                $crate::Theme::new()
+            pub fn default_theme() -> $crate::style::Theme {
+                $crate::style::Theme::new()
                     $(.with($name, $expr))*
             }
         }

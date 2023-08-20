@@ -4,7 +4,10 @@ use etagere::{size2, AtlasAllocator};
 use fontdue::{layout::GlyphRasterConfig, Font};
 use glam::UVec2;
 
-use crate::{Image, ImageData, Rect, Size};
+use crate::{
+    image::{Image, ImageData},
+    layout::{Rect, Size},
+};
 
 /// A font atlas managing a texture of rasterized glyphs.
 #[derive(Clone)]

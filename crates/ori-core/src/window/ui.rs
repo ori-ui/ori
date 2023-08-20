@@ -1,9 +1,16 @@
 use std::time::{Duration, Instant};
 
 use crate::{
-    AnyState, BaseCx, BoxedView, BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx,
-    Scene, SceneRender, Size, Space, Update, View, ViewState, Window,
+    canvas::{Canvas, Scene, SceneRender},
+    event::Event,
+    layout::{Size, Space},
+    view::{
+        AnyState, BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, Update, View,
+        ViewState,
+    },
 };
+
+use super::Window;
 
 /// A type that can build a view.
 pub type UiBuilder<T> = Box<dyn FnMut(&mut T) -> BoxedView<T>>;

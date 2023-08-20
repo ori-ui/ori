@@ -1,10 +1,16 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::text_input, style, BorderRadius, BorderWidth, BuildCx, Canvas, Code, Color, DrawCx,
-    Event, EventCx, FontFamily, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, KeyboardEvent,
-    LayoutCx, Modifiers, PointerEvent, Quad, Rebuild, RebuildCx, Rect, Size, Space, TextAlign,
-    TextSection, TextWrap, View,
+    canvas::{BorderRadius, BorderWidth, Canvas, Color, Quad},
+    event::{Code, Event, KeyboardEvent, Modifiers, PointerEvent},
+    layout::{Rect, Size, Space},
+    rebuild::Rebuild,
+    style::{style, text_input},
+    text::{
+        FontFamily, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, TextAlign, TextSection,
+        TextWrap,
+    },
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`TextInput`].

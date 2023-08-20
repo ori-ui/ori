@@ -2,8 +2,6 @@ use std::{env, error::Error};
 
 use tracing_subscriber::{filter::LevelFilter, fmt, layer::SubscriberExt, EnvFilter, Layer};
 
-use ori_core::tracing;
-
 pub fn init_tracing() -> Result<(), Box<dyn Error>> {
     let mut filter = EnvFilter::default()
         .add_directive("wgpu=warn".parse()?)

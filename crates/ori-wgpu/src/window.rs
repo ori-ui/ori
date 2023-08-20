@@ -1,4 +1,4 @@
-use ori_core::{Image, RawWindow};
+use ori_core::{image::Image, window::RawWindow};
 use winit::{dpi::PhysicalSize, window::Icon};
 
 pub struct WinitWindow {

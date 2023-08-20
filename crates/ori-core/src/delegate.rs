@@ -1,6 +1,8 @@
+//! Delegates for handling commands and events for the entire application.
+
 use std::any::Any;
 
-use crate::{BaseCx, Event};
+use crate::{event::Event, view::BaseCx};
 
 /// A context for a [`Delegate`].
 pub struct DelegateCx<'a, 'b> {

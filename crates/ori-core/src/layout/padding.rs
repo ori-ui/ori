@@ -1,6 +1,6 @@
 use glam::Vec2;
 
-use crate::Size;
+use super::Size;
 
 /// A padding of a rectangle.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use glam::Vec2;
 
-use crate::Modifiers;
+use super::Modifiers;
 
 /// A unique pointer id.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

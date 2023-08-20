@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::TEXT_SIZE;
+use super::TEXT_SIZE;
 
 use super::Key;
 
@@ -201,8 +201,7 @@ impl Theme {
         match self.try_get_inner(key.name()).cloned() {
             Ok(value) => value,
             Err(err) => {
-                tracing::warn!("{}", err);
-                println!("{}", err);
+                crate::log::warn_internal!("{}", err);
                 T::default()
             }
         }

@@ -1,5 +1,8 @@
 use crate::{
-    BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Space, State, View, ViewContent,
+    canvas::Canvas,
+    event::Event,
+    layout::{Size, Space},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, State, View, ViewContent},
 };
 
 /// Create a new [`Flex`].
@@ -49,7 +52,7 @@ impl<T, V: View<T>> View<T> for Flex<V> {
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
-    ) -> crate::Size {
+    ) -> Size {
         cx.set_flex(self.flex);
 
         self.content.layout_content(state, cx, data, space)

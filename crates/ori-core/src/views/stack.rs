@@ -1,7 +1,15 @@
 use crate::{
-    AlignItems, Axis, BuildCx, Canvas, ContentSequence, ContentSequenceState, DrawCx, Event,
-    EventCx, Justify, LayoutCx, Rebuild, RebuildCx, Size, Space, View, ViewSequence,
+    canvas::Canvas,
+    event::Event,
+    layout::{AlignItems, Axis, Justify, Size, Space},
+    rebuild::Rebuild,
+    view::{
+        BuildCx, ContentSequence, DrawCx, EventCx, LayoutCx, RebuildCx, SequenceState, View,
+        ViewSequence,
+    },
 };
+
+pub use crate::{hstack, vstack};
 
 /// Create a horizontal [`Stack`].
 #[macro_export]
@@ -137,7 +145,7 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
     fn measure_fixed(
         &mut self,
         state: &mut StackState,
-        content: &mut ContentSequenceState<T, V>,
+        content: &mut SequenceState<T, V>,
         data: &mut T,
         cx: &mut LayoutCx,
         gap_major: f32,
@@ -195,7 +203,7 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
     fn measure_flex(
         &mut self,
         state: &mut StackState,
-        content: &mut ContentSequenceState<T, V>,
+        content: &mut SequenceState<T, V>,
         data: &mut T,
         cx: &mut LayoutCx,
         min_major: f32,
@@ -297,7 +305,7 @@ impl StackState {
 }
 
 impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
-    type State = (StackState, ContentSequenceState<T, V>);
+    type State = (StackState, SequenceState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         (

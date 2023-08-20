@@ -1,6 +1,6 @@
 use glam::Vec2;
 
-use crate::Size;
+use super::Size;
 
 /// Alignment of content inside a container.
 #[repr(C)]

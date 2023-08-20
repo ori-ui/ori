@@ -1,8 +1,10 @@
+//! Rebuild trait and derive macro.
+
 pub use ori_macro::Rebuild;
 
-use crate::RebuildCx;
+use crate::view::RebuildCx;
 
-/// A convenience trait for rebuilding a [`View`](crate::View).
+/// A convenience trait for rebuilding a [`View`](crate::view::View).
 ///
 /// When derived this will detect changes in the fields of the struct and
 /// request a rebuild, layout or draw when necessary. This is done by

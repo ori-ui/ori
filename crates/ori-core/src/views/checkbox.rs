@@ -1,8 +1,13 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::checkbox, style, BorderRadius, BorderWidth, BuildCx, Canvas, Color, Curve, DrawCx,
-    Event, EventCx, LayoutCx, PointerEvent, Rebuild, RebuildCx, Size, Space, Transition, View,
+    canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve},
+    event::{Event, PointerEvent},
+    layout::{Size, Space},
+    rebuild::Rebuild,
+    style::{checkbox, style},
+    transition::Transition,
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`Checkbox`].

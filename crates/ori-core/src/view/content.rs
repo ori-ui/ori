@@ -1,9 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, Update, View,
-    ViewState,
+    canvas::Canvas,
+    event::Event,
+    layout::{Size, Space},
 };
+
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, Update, View, ViewState};
 
 /// The state of a [`ViewContent`].
 pub struct State<T, V: View<T> + ?Sized> {

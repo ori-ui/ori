@@ -1,8 +1,8 @@
 use glam::Vec2;
 
-use crate::{
-    Affine, BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad, Rect, Scene, Size,
-};
+use crate::layout::{Affine, Rect, Size};
+
+use super::{BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad, Scene};
 
 /// A canvas used for drawing a [`Scene`].
 pub struct Canvas<'a> {

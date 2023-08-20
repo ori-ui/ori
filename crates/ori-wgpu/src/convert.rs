@@ -1,4 +1,7 @@
-use ori_core::{Code, Cursor, PointerButton};
+use ori_core::{
+    event::{Code, PointerButton},
+    window::Cursor,
+};
 use winit::{
     event::{ElementState, MouseButton, VirtualKeyCode},
     window::CursorIcon,

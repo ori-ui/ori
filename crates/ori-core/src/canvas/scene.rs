@@ -1,4 +1,6 @@
-use crate::{Affine, Primitive, Rect};
+use crate::layout::{Affine, Rect};
+
+use super::Primitive;
 
 /// A collection of fragments to be rendered.
 #[derive(Clone, Debug)]

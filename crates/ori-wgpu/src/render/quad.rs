@@ -1,7 +1,10 @@
 use std::mem;
 
 use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
-use ori_core::{Affine, Quad, Rect, Size};
+use ori_core::{
+    canvas::Quad,
+    layout::{Affine, Rect, Size},
+};
 use wgpu::{
     include_wgsl,
     util::{BufferInitDescriptor, DeviceExt},

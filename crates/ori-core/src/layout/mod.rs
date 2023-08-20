@@ -1,3 +1,5 @@
+//! Layout of [`View`](crate::view::View)s.
+
 mod affine;
 mod align;
 mod axis;

@@ -1,5 +1,11 @@
 use ori_core::{
-    Delegate, FontSource, Image, Palette, Theme, Ui, UiBuilder, View, WindowDescriptor,
+    delegate::Delegate,
+    image::Image,
+    style::{Palette, Theme},
+    text::FontSource,
+    ui::Ui,
+    view::View,
+    window::{UiBuilder, WindowDescriptor},
 };
 
 use crate::{render::Render, Error};

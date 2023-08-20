@@ -2,7 +2,7 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use glam::Vec2;
 
-use crate::Size;
+use super::Size;
 
 /// A rectangle defined by its minimum and maximum points.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

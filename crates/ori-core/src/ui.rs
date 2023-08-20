@@ -1,11 +1,17 @@
+//! User interface state.
+
 use std::collections::HashMap;
 
 use glam::Vec2;
 
 use crate::{
-    BaseCx, Code, Command, Delegate, DelegateCx, Event, Fonts, KeyboardEvent, Modifiers,
-    PointerButton, PointerEvent, PointerId, SceneRender, Theme, UiBuilder, Window, WindowId,
-    WindowUi,
+    canvas::SceneRender,
+    delegate::{Command, Delegate, DelegateCx},
+    event::{Code, Event, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId},
+    style::Theme,
+    text::Fonts,
+    view::BaseCx,
+    window::{UiBuilder, Window, WindowId, WindowUi},
 };
 
 /// State for running a user interface.

@@ -1,8 +1,10 @@
 use std::marker::PhantomData;
 
 use crate::{
-    BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, State, View,
-    ViewContent,
+    canvas::Canvas,
+    event::Event,
+    layout::{Size, Space},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, State, View, ViewContent},
 };
 
 /// Create a new [`Focus`].

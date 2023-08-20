@@ -1,7 +1,13 @@
 use crate::{
-    builtin::text, style, BuildCx, Canvas, Color, DrawCx, Event, EventCx, FontFamily, FontStretch,
-    FontStyle, FontWeight, Glyphs, LayoutCx, Rebuild, RebuildCx, Size, Space, TextAlign,
-    TextSection, TextWrap, View,
+    canvas::{Canvas, Color},
+    event::Event,
+    layout::{Size, Space},
+    rebuild::Rebuild,
+    style::{style, text},
+    text::{
+        FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
+    },
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`Text`].

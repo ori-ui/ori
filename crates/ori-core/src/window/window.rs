@@ -2,7 +2,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use glam::Vec2;
 
-use crate::{Image, Pointer, PointerId, RawWindow, Size, WindowDescriptor};
+use crate::{
+    event::{Pointer, PointerId},
+    image::Image,
+    layout::Size,
+};
+
+use super::{RawWindow, WindowDescriptor};
 
 /// A unique identifier for a window.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

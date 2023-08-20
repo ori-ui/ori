@@ -1,8 +1,11 @@
+//! Styleing and theming.
+
 pub mod builtin;
 mod key;
 mod palette;
 mod theme;
 
+pub use builtin::*;
 pub use key::*;
 pub use palette::*;
 pub use theme::*;

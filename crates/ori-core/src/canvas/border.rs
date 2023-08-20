@@ -1,4 +1,4 @@
-/// Radi of the corners on a [`Quad`](crate::Quad).
+/// Radi of the corners on a [`Quad`](super::Quad).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct BorderRadius {
     /// The top left corner radius.
@@ -65,7 +65,7 @@ impl From<BorderRadius> for [f32; 4] {
     }
 }
 
-/// The border width of a [`Quad`](crate::Quad).
+/// The border width of a [`Quad`](super::Quad).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct BorderWidth {
     /// The top border width.

@@ -1,3 +1,5 @@
+//! Events and event handling.
+
 mod event;
 mod keyboard;
 mod modifiers;

@@ -1,6 +1,6 @@
 use glam::Vec2;
 
-use crate::{Affine, Size};
+use crate::layout::{Affine, Size};
 
 bitflags::bitflags! {
     /// Flags that indicate what needs to be updated.
@@ -14,7 +14,7 @@ bitflags::bitflags! {
     }
 }
 
-/// State associated with a [`View`](crate::View).
+/// State associated with a [`View`](super::View).
 #[derive(Clone, Debug)]
 pub struct ViewState {
     pub(crate) hot: bool,

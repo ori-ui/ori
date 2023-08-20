@@ -1,9 +1,12 @@
 use glam::Vec2;
 
 use crate::{
-    builtin::container, style, Affine, Align, BorderRadius, BorderWidth, BuildCx, Canvas, Color,
-    DrawCx, Event, EventCx, LayoutCx, Padding, Rebuild, RebuildCx, Size, Space, State, View,
-    ViewContent,
+    canvas::{BorderRadius, BorderWidth, Canvas, Color},
+    event::Event,
+    layout::{Affine, Align, Padding, Size, Space},
+    rebuild::Rebuild,
+    style::{container, style},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, State, View, ViewContent},
 };
 
 /// A container view.

@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use ori_core::{Fragment, Primitive, Scene, Size};
+use ori_core::{
+    canvas::{Fragment, Primitive, Scene},
+    layout::Size,
+};
 use wgpu::{
     CommandEncoder, CommandEncoderDescriptor, CompositeAlphaMode, Device, LoadOp, Operations,
     PresentMode, Queue, RenderPass, RenderPassColorAttachment, RenderPassDescriptor, Surface,

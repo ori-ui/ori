@@ -1,4 +1,6 @@
-use crate::{BorderRadius, BorderWidth, Color, Mesh, Rect};
+use crate::layout::Rect;
+
+use super::{BorderRadius, BorderWidth, Color, Mesh};
 
 /// A quad primitive.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

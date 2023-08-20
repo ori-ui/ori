@@ -1,6 +1,8 @@
 use fontdue::layout::{HorizontalAlign, VerticalAlign, WrapStyle};
 
-use crate::{Color, FontFamily, FontQuery, FontStretch, FontStyle, FontWeight, Size};
+use crate::{canvas::Color, layout::Size};
+
+use super::{FontFamily, FontQuery, FontStretch, FontStyle, FontWeight};
 
 /// Alignment of a section of text.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

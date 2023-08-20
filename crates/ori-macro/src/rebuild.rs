@@ -98,9 +98,9 @@ pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_ma
 
     let expanded = quote! {
         #[automatically_derived]
-        impl #impl_generics #ori_core::Rebuild for #name #ty_generics #where_clause {
+        impl #impl_generics #ori_core::rebuild::Rebuild for #name #ty_generics #where_clause {
             #[allow(unused)]
-            fn rebuild(&self, cx: &mut #ori_core::RebuildCx, old: &Self) {
+            fn rebuild(&self, cx: &mut #ori_core::view::RebuildCx, old: &Self) {
                 #rebuild_impl
             }
         }

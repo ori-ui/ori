@@ -1,3 +1,5 @@
+//! Transition utilities.
+
 /// Create a linear transition with the given `duration`.
 pub fn linear(duration: f32) -> Transition {
     Transition::linear(duration)

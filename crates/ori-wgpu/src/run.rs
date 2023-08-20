@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use ori_core::{math::Vec2, set_text_size, styled, Modifiers, PointerId, Theme, Window, TEXT_SIZE};
+use ori_core::{
+    event::{Modifiers, PointerId},
+    math::Vec2,
+    style::{set_text_size, styled, Theme, TEXT_SIZE},
+    window::Window,
+};
 use winit::{
     event::{Event, KeyboardInput, MouseScrollDelta, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -10,7 +15,6 @@ use winit::{
 use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
     render::{Render, RenderInstance},
-    tracing::init_tracing,
     window::WinitWindow,
     Error,
 };
@@ -34,7 +38,8 @@ fn build_theme<T>(app: &App<T>) -> Theme {
 }
 
 pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
-    if let Err(err) = init_tracing() {
+    #[cfg(feature = "tracing")]
+    if let Err(err) = crate::tracing::init_tracing() {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 

@@ -8,8 +8,10 @@ mod convert;
 mod error;
 mod render;
 mod run;
-mod tracing;
 mod window;
+
+#[cfg(feature = "tracing")]
+mod tracing;
 
 pub use app::*;
 pub use error::*;

@@ -3,7 +3,12 @@ use std::{ops::Deref, vec};
 use fontdue::layout::GlyphRasterConfig;
 use glam::Vec2;
 
-use crate::{Color, Rect, Size, TextAlign, TextWrap};
+use crate::{
+    canvas::Color,
+    layout::{Rect, Size},
+};
+
+use super::{TextAlign, TextWrap};
 
 /// A laid out glyph.
 #[derive(Clone, Copy, Debug, PartialEq)]

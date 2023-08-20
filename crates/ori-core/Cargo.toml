@@ -23,7 +23,9 @@ optional = true
 [dependencies.tracing]
 version = "0.1"
 default-features = false
+optional = true
 
 [features]
 default = []
 image = ["dep:image"]
+tracing = ["dep:tracing"]

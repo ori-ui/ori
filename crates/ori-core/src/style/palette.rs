@@ -1,4 +1,6 @@
-use crate::{Color, Key, Theme};
+use crate::canvas::Color;
+
+use super::{Key, Theme};
 
 /// A color palette.
 #[derive(Clone, Copy, Debug)]

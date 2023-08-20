@@ -2,7 +2,9 @@ use std::{f32::consts::PI, mem, slice};
 
 use glam::Vec2;
 
-use crate::{Color, Curve, Image};
+use crate::image::Image;
+
+use super::{Color, Curve};
 
 /// A vertex in a [`Mesh`].
 #[repr(C)]

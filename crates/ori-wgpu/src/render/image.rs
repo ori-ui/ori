@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ori_core::{Image, ImageId, WeakImage};
+use ori_core::image::{Image, ImageId, WeakImage};
 use wgpu::{
     util::DeviceExt, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Device,

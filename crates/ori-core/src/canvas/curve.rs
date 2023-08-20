@@ -6,7 +6,7 @@ use std::{
 
 use glam::Vec2;
 
-use crate::{Color, Mesh, Vertex};
+use super::{Color, Mesh, Vertex};
 
 /// A curve.
 #[derive(Clone, Debug, Default, PartialEq)]

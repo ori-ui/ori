@@ -12,8 +12,11 @@ use fontdue::{
 use glam::Vec2;
 
 use crate::{
-    FontAtlas, FontQuery, Glyph, Glyphs, Mesh, Rect, Size, TextAlign, TextSection, TextWrap, Vertex,
+    canvas::{Mesh, Vertex},
+    layout::{Rect, Size},
 };
+
+use super::{FontAtlas, FontQuery, Glyph, Glyphs, TextAlign, TextSection, TextWrap};
 
 /// An error that occurred while loading fonts.
 #[derive(Debug)]
@@ -278,7 +281,7 @@ impl Fonts {
         let offset = Vec2::new(x_offset, y_offset);
         let glyphs = self.layout_glyphs_inner(&font, &layout, offset)?;
 
-        Some(crate::Glyphs {
+        Some(Glyphs {
             glyphs,
             size,
             font: id,

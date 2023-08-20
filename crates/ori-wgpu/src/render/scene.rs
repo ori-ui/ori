@@ -1,4 +1,4 @@
-use ori_core::{Scene, SceneRender};
+use ori_core::canvas::{Scene, SceneRender};
 
 use super::Render;
 

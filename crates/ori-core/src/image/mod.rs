@@ -1,3 +1,5 @@
+//! Image data and processing.
+
 mod data;
 mod image;
 

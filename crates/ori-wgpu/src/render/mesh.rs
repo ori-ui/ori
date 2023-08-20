@@ -1,7 +1,10 @@
 use std::{mem, sync::Arc};
 
 use bytemuck::{bytes_of, Pod, Zeroable};
-use ori_core::{Affine, Mesh, Rect, Size, Vertex};
+use ori_core::{
+    canvas::{Mesh, Vertex},
+    layout::{Affine, Rect, Size},
+};
 use wgpu::{
     include_wgsl, vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry,
     BindGroupLayout, BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferBindingType,

@@ -2,7 +2,14 @@ use std::{any::Any, time::Duration};
 
 use glam::Vec2;
 
-use crate::{Affine, Command, Fonts, Glyphs, Mesh, Rect, Size, TextSection, ViewState, Window};
+use crate::{
+    canvas::Mesh,
+    delegate::Command,
+    layout::{Affine, Rect, Size},
+    text::{Fonts, Glyphs, TextSection},
+    view::ViewState,
+    window::Window,
+};
 
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {

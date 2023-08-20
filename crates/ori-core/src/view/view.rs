@@ -1,4 +1,10 @@
-use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space};
+use crate::{
+    canvas::Canvas,
+    event::Event,
+    layout::{Size, Space},
+};
+
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx};
 
 /// A single UI component.
 ///
@@ -12,7 +18,7 @@ use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, 
 /// it in a tuple `(MyState, ContentState)`.
 ///
 /// In case a view contains another view the contents should always be wrapped in
-/// either [`Content`] or [`ContentSequence`]. If this is not done strange issues
+/// either [`State`] or [`SequenceState`]. If this is not done strange issues
 /// are _very_ likely to occur.
 ///
 /// [`View`] has four primary methods:
@@ -33,10 +39,10 @@ use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, 
 ///
 /// For examples see the implementation of views like [`Button`] or [`Checkbox`].
 ///
-/// [`Content`]: crate::Content
-/// [`ContentSequence`]: crate::ContentSequence
-/// [`ViewState`]: crate::ViewState
-/// [`Rebuild`]: crate::Rebuild
+/// [`State`]: super::State
+/// [`SequenceState`]: super::SequenceState
+/// [`ViewState`]: super::ViewState
+/// [`Rebuild`]: crate::rebuild::Rebuild
 /// [`Button`]: crate::views::Button
 /// [`Checkbox`]: crate::views::Checkbox
 pub trait View<T> {

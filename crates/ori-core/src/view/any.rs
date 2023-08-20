@@ -1,6 +1,12 @@
 use std::any::Any;
 
-use crate::{BuildCx, Canvas, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space, View};
+use crate::{
+    canvas::Canvas,
+    event::Event,
+    layout::{Size, Space},
+};
+
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View};
 
 /// The state of a [`BoxedView`].
 pub type AnyState = Box<dyn Any>;
@@ -82,8 +88,7 @@ where
             }
         } else {
             *state = self.dyn_build(&mut cx.build_cx(), data);
-            cx.request_layout();
-            cx.request_draw();
+            *cx.view_state = Default::default();
         }
     }
 

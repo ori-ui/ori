@@ -7,9 +7,6 @@ use std::{
 
 use super::ImageData;
 
-#[cfg(feature = "image")]
-pub use crate::image;
-
 /// Include an image.
 #[macro_export]
 #[cfg(feature = "image")]
@@ -25,6 +22,9 @@ macro_rules! image {
         }
     };
 }
+
+#[cfg(feature = "image")]
+pub use image;
 
 /// A unique identifier for an [`Image`].
 ///

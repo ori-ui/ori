@@ -16,9 +16,16 @@ ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
 # Optional dependencies
 ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1", optional = true }
 
+[dev-dependencies.ori]
+path = "."
+version = "0.1.0-alpha.1"
+features = ["image", "tracing"]
+
+
 [features]
 default = ["wgpu"]
 image = ["ori-core/image"]
+tracing = ["ori-core/tracing"]
 
 # Backend features
 wgpu = ["dep:ori-wgpu"]

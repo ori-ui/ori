@@ -23,7 +23,7 @@ pub fn text_input<T>() -> TextInput<T> {
 pub struct TextInput<T> {
     /// A function that returns the text to display.
     #[allow(clippy::type_complexity)]
-    pub text: Option<Box<dyn FnMut(&mut T) -> &mut String>>,
+    pub bind_text: Option<Box<dyn FnMut(&mut T) -> &mut String>>,
     /// A function that is called when the input is submitted.
     #[allow(clippy::type_complexity)]
     pub on_submit: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
@@ -79,7 +79,7 @@ impl<T> TextInput<T> {
     /// Create a new text input view.
     pub fn new() -> Self {
         Self {
-            text: None,
+            bind_text: None,
             on_submit: None,
             space: Space::UNBOUNDED,
             placeholder: String::from("Text..."),
@@ -98,8 +98,8 @@ impl<T> TextInput<T> {
     }
 
     /// Set the text.
-    pub fn text(mut self, text: impl FnMut(&mut T) -> &mut String + 'static) -> Self {
-        self.text = Some(Box::new(text));
+    pub fn bind_text(mut self, text: impl FnMut(&mut T) -> &mut String + 'static) -> Self {
+        self.bind_text = Some(Box::new(text));
         self
     }
 
@@ -229,7 +229,7 @@ impl<T> TextInput<T> {
     }
 
     fn get_text<'a>(&'a mut self, state: &'a TextInputState, data: &'a mut T) -> &'a str {
-        match self.text {
+        match self.bind_text {
             Some(ref mut text) => text(data),
             None => &state.text,
         }
@@ -240,14 +240,14 @@ impl<T> TextInput<T> {
         state: &'a mut TextInputState,
         data: &'a mut T,
     ) -> &'a mut String {
-        match self.text {
+        match self.bind_text {
             Some(ref mut text) => text(data),
             None => &mut state.text,
         }
     }
 
     fn request_update(&mut self, cx: &mut EventCx) {
-        if self.text.is_some() {
+        if self.bind_text.is_some() {
             cx.request_rebuild();
         } else {
             cx.request_layout();
@@ -411,7 +411,7 @@ impl<T> TextInput<T> {
             cx.set_active(false);
             cx.request_rebuild();
 
-            if self.text.is_none() {
+            if self.bind_text.is_none() {
                 state.text.clear();
             }
         }
@@ -540,7 +540,7 @@ impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, _cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let text = match self.text {
+        let text = match self.bind_text {
             Some(ref mut text) => text(data).clone(),
             None => String::new(),
         };
@@ -554,7 +554,7 @@ impl<T> View<T> for TextInput<T> {
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
-        if let Some(ref mut text) = self.text {
+        if let Some(ref mut text) = self.bind_text {
             let new_text = text(data).clone();
 
             if new_text != state.text {

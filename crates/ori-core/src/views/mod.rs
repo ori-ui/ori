@@ -8,6 +8,7 @@ mod focus;
 mod stack;
 mod text;
 mod text_input;
+mod with_state;
 
 pub use button::*;
 pub use checkbox::*;
@@ -17,3 +18,4 @@ pub use focus::*;
 pub use stack::*;
 pub use text::*;
 pub use text_input::*;
+pub use with_state::*;

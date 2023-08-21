@@ -9,6 +9,13 @@ pub mod core {
     pub use ori_core::*;
 }
 
+#[cfg(feature = "font-awesome")]
+pub mod font_awesome {
+    //! Ori [`font-awesome`](ori_font_awesome) integration.
+
+    pub use ori_font_awesome::*;
+}
+
 #[cfg(feature = "wgpu")]
 pub mod wgpu {
     //! Ori [`wgpu`](ori_wgpu) integration.
@@ -48,6 +55,9 @@ pub mod prelude {
         views::*,
         window::{Cursor, Window, WindowDescriptor, WindowId},
     };
+
+    #[cfg(feature = "font-awesome")]
+    pub use ori_font_awesome::{icon, Icon, IconFont, IconKind};
 
     #[cfg(feature = "image")]
     pub use ori_core::image::image;

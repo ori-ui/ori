@@ -176,7 +176,7 @@ impl<T> View<T> for Text {
 
         *state = cx.layout_text(&section);
 
-        state.as_ref().map(|g| g.size()).unwrap_or(space.min)
+        state.as_ref().map_or(space.min, |glyphs| glyphs.size())
     }
 
     fn draw(

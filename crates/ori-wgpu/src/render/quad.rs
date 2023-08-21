@@ -95,27 +95,27 @@ impl Instance {
     fn vertices(quad: &Quad) -> [Vertex; 6] {
         [
             Vertex {
-                position: quad.rect.top_left().into(),
+                position: quad.rect.top_left().round().into(),
                 tex_coords: [0.0, 0.0],
             },
             Vertex {
-                position: quad.rect.top_right().into(),
+                position: quad.rect.top_right().round().into(),
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
-                position: quad.rect.bottom_right().into(),
+                position: quad.rect.bottom_right().round().into(),
                 tex_coords: [1.0, 1.0],
             },
             Vertex {
-                position: quad.rect.bottom_left().into(),
+                position: quad.rect.bottom_left().round().into(),
                 tex_coords: [0.0, 1.0],
             },
             Vertex {
-                position: quad.rect.bottom_right().into(),
+                position: quad.rect.bottom_right().round().into(),
                 tex_coords: [1.0, 1.0],
             },
             Vertex {
-                position: quad.rect.top_left().into(),
+                position: quad.rect.top_left().round().into(),
                 tex_coords: [0.0, 0.0],
             },
         ]
@@ -130,10 +130,10 @@ impl Instance {
     ) {
         let uniforms = Uniforms {
             resolution: resolution.into(),
-            translation: transform.translation.into(),
+            translation: transform.translation.round().into(),
             matrix: transform.matrix.to_cols_array(),
-            min: quad.rect.min.into(),
-            max: quad.rect.max.into(),
+            min: quad.rect.min.round().into(),
+            max: quad.rect.max.round().into(),
             color: quad.color.into(),
             border_radius: quad.border_radius.into(),
             border_width: quad.border_width.into(),

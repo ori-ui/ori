@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 use fontdue::{
-    layout::{CoordinateSystem, Layout, LayoutSettings, TextStyle},
+    layout::{CoordinateSystem, HorizontalAlign, Layout, LayoutSettings, TextStyle, VerticalAlign},
     Font, FontSettings, Metrics,
 };
 use glam::Vec2;
@@ -11,9 +11,7 @@ use crate::{
     layout::{Rect, Size},
 };
 
-use super::{
-    FontAtlas, FontQuery, FontSource, FontsError, Glyph, Glyphs, TextAlign, TextSection, TextWrap,
-};
+use super::{FontAtlas, FontQuery, FontSource, FontsError, Glyph, Glyphs, TextSection, TextWrap};
 
 /// A collection of loaded fonts.
 #[derive(Clone, Debug, Default)]
@@ -163,8 +161,8 @@ impl Fonts {
             y: 0.0,
             max_width,
             max_height,
-            horizontal_align: text.h_align.to_horizontal(),
-            vertical_align: text.v_align.to_vertical(),
+            horizontal_align: HorizontalAlign::Left,
+            vertical_align: VerticalAlign::Top,
             line_height: text.line_height,
             wrap_style: text.wrap.to_fontdue(),
             wrap_hard_breaks: true,
@@ -192,30 +190,7 @@ impl Fonts {
         let layout = self.text_layout_inner(&font, text)?;
         let size = self.measure_layout(&font, &layout, text)?;
 
-        let x_diff = size.width - text.bounds.width;
-        let x_offset = if text.wrap != TextWrap::None && text.bounds.width.is_finite() {
-            match text.h_align {
-                TextAlign::Left => 0.0,
-                TextAlign::Center => x_diff / 2.0,
-                TextAlign::Right => x_diff,
-            }
-        } else {
-            0.0
-        };
-
-        let y_diff = size.height - text.bounds.height;
-        let y_offset = if text.wrap == TextWrap::None && text.bounds.height.is_finite() {
-            match text.v_align {
-                TextAlign::Top => 0.0,
-                TextAlign::Center => y_diff / 2.0,
-                TextAlign::Bottom => y_diff,
-            }
-        } else {
-            0.0
-        };
-
-        let offset = Vec2::new(x_offset, y_offset);
-        let glyphs = self.layout_glyphs_inner(&font, &layout, offset)?;
+        let glyphs = self.layout_glyphs_inner(&font, &layout)?;
 
         Some(Glyphs {
             glyphs,
@@ -228,12 +203,7 @@ impl Fonts {
         })
     }
 
-    fn layout_glyphs_inner(
-        &self,
-        font: &Font,
-        layout: &Layout,
-        offset: Vec2,
-    ) -> Option<Vec<Glyph>> {
+    fn layout_glyphs_inner(&self, font: &Font, layout: &Layout) -> Option<Vec<Glyph>> {
         if layout.glyphs().is_empty() {
             return None;
         }
@@ -253,7 +223,7 @@ impl Fonts {
                 };
                 let advance = metrics.advance_width;
 
-                let min = Vec2::new(glyph.x, glyph.y) + offset;
+                let min = Vec2::new(glyph.x, glyph.y);
                 let size = Size::new(metrics.width as f32, metrics.height as f32);
 
                 let glyph = Glyph {
@@ -261,7 +231,7 @@ impl Fonts {
                     rect: Rect::min_size(min, size),
                     byte_offset: glyph.byte_offset,
                     line: line_index,
-                    baseline: line.baseline_y + offset.y,
+                    baseline: line.baseline_y,
                     line_descent: line.min_descent,
                     line_ascent: line.max_ascent,
                     advance,
@@ -308,7 +278,7 @@ impl Fonts {
             width = f32::max(width, line_width);
         }
 
-        Some(Size::new(width, layout.height().ceil()))
+        Some(Size::new(width, layout.height()))
     }
 
     /// Creates a mesh for `text`.

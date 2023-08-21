@@ -1,4 +1,4 @@
-use fontdue::layout::{HorizontalAlign, VerticalAlign, WrapStyle};
+use fontdue::layout::WrapStyle;
 
 use crate::{canvas::Color, layout::Size};
 
@@ -24,24 +24,6 @@ impl TextAlign {
     pub const Middle: Self = Self::Center;
     pub const Right: Self = Self::End;
     pub const Bottom: Self = Self::End;
-}
-
-impl TextAlign {
-    pub(crate) fn to_horizontal(self) -> HorizontalAlign {
-        match self {
-            Self::Start => HorizontalAlign::Left,
-            Self::Center => HorizontalAlign::Center,
-            Self::End => HorizontalAlign::Right,
-        }
-    }
-
-    pub(crate) fn to_vertical(self) -> VerticalAlign {
-        match self {
-            TextAlign::Start => VerticalAlign::Bottom,
-            TextAlign::Center => VerticalAlign::Middle,
-            TextAlign::End => VerticalAlign::Top,
-        }
-    }
 }
 
 /// Wrapping of a section of text.

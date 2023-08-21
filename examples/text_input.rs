@@ -17,6 +17,7 @@ fn input(data: &mut Data) -> impl View<Data> {
         .bind_text(|data: &mut Data| &mut data.text)
         .on_submit(|_, _, text| info!("Submitted: {}", text))
         .multiline(data.multiline)
+        .h_align(TextAlign::End)
         .min_width(150.0);
 
     pad(8.0, input)

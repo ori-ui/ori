@@ -81,14 +81,14 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
 
-    let remove = button(text("×"))
+    let remove = button(icon("xmark"))
         .on_press(move |cx, _: &mut Todo| {
             // because we don't have access to the Data struct here
             // we send a command to the delegate
             cx.cmd(RemoveTodo(index));
         })
         .fancy(4.0)
-        .padding([em(0.4), em(0.1)])
+        .padding(em(0.2))
         .color(hsl(353.0, 0.6, 0.72));
 
     let left = hstack![completed, title].center_items().gap(em(1.5));

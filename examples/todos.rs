@@ -88,7 +88,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
             cx.cmd(RemoveTodo(index));
         })
         .fancy(4.0)
-        .padding(em(0.2))
+        .padding(em(0.3))
         .color(hsl(353.0, 0.6, 0.72));
 
     let left = hstack![completed, title].center_items().gap(em(1.5));

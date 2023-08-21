@@ -53,7 +53,7 @@ fn app(data: &mut Data) -> impl View<Data> {
         users.push(user);
     }
 
-    let users = flex(1.0, pad(em(1.0), scroll(vstack(users).stretch_items())));
+    let users = flex(1.0, pad(em(1.0), vscroll(vstack(users).stretch_items())));
 
     center(hstack![form(), users].center_items())
 }

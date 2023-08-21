@@ -10,9 +10,14 @@ use crate::{
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
 
-/// Create a new [`Scroll`].
-pub fn scroll<V>(content: V) -> Scroll<V> {
-    Scroll::new(content)
+/// Create a new horizontal [`Scroll`].
+pub fn hscroll<V>(content: V) -> Scroll<V> {
+    Scroll::new(Axis::Horizontal, content)
+}
+
+/// Create a new vertical [`Scroll`].
+pub fn vscroll<V>(content: V) -> Scroll<V> {
+    Scroll::new(Axis::Vertical, content)
 }
 
 /// A scrollable view.
@@ -44,10 +49,10 @@ pub struct Scroll<V> {
 
 impl<V> Scroll<V> {
     /// Create a new scrollable view.
-    pub fn new(content: V) -> Self {
+    pub fn new(axis: Axis, content: V) -> Self {
         Self {
             content: Content::new(content),
-            axis: Axis::Vertical,
+            axis,
             transition: style(scroll::TRANSITION),
             width: style(scroll::WIDTH),
             inset: style(scroll::INSET),
@@ -228,7 +233,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         scrollbar_layer.draw_quad(
             self.scrollbar_rect(cx.rect()),
-            self.color.fade(0.5).fade(self.transition.on(state.t)),
+            self.color.fade(0.7).fade(self.transition.on(state.t)),
             self.border_radius,
             0.0,
             Color::TRANSPARENT,
@@ -236,7 +241,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         scrollbar_layer.draw_quad(
             self.scrollbar_knob_rect(cx.rect(), overflow, state.scroll),
-            self.knob_color.fade(0.7).fade(self.transition.on(state.t)),
+            self.knob_color.fade(0.9).fade(self.transition.on(state.t)),
             self.border_radius,
             0.0,
             Color::TRANSPARENT,

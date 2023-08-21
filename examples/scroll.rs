@@ -12,7 +12,7 @@ fn square() -> impl View<Data> {
 fn app(_data: &mut Data) -> impl View<Data> {
     center(height(
         400.0,
-        scroll(vstack![
+        vscroll(vstack![
             square(),
             square(),
             square(),

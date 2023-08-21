@@ -34,7 +34,6 @@ font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 tracing = ["ori-core/tracing", "ori-wgpu/tracing"]
 
-
 # Backend features
 wgpu = ["dep:ori-wgpu"]
 

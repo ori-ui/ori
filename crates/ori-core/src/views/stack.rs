@@ -55,6 +55,9 @@ pub struct Stack<V> {
     /// The axis of the stack.
     #[rebuild(layout)]
     pub axis: Axis,
+    /// Whether the stack should wrap its content.
+    #[rebuild(layout)]
+    pub wrap: bool,
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
     pub justify_content: Justify,
@@ -79,6 +82,7 @@ impl<V> Stack<V> {
             content: ContentSeq::new(content),
             space: Space::UNBOUNDED,
             axis,
+            wrap: false,
             justify_content: Justify::Start,
             align_items: AlignItems::Start,
             align_content: Justify::Start,
@@ -144,6 +148,18 @@ impl<V> Stack<V> {
     /// Set the maximum height of the stack.
     pub fn max_height(mut self, max_height: f32) -> Self {
         self.space.max.height = max_height;
+        self
+    }
+
+    /// Set the axis of the stack.
+    pub fn axis(mut self, axis: Axis) -> Self {
+        self.axis = axis;
+        self
+    }
+
+    /// Set whether the stack should wrap its content.
+    pub fn wrap(mut self, wrap: bool) -> Self {
+        self.wrap = wrap;
         self
     }
 
@@ -214,27 +230,25 @@ impl<V> Stack<V> {
         state.lines.clear();
 
         let mut major = 0.0;
-        let mut minor = 0.0;
+        let mut minor = 0.0f32;
         let mut flex_sum = 0.0;
 
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let content_space = Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor));
-
-            let size = (self.content).layout_nth(i, content, cx, data, content_space);
+            let size = (self.content).layout_nth(i, content, cx, data, Space::UNBOUNDED);
             let (child_major, child_minor) = self.axis.unpack(size);
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
 
             let gap = if i > 0 { gap_major } else { 0.0 };
 
-            if major + child_major + gap > max_major {
+            if major + child_major + gap > max_major && self.wrap {
                 state.lines.push(StackLine {
                     start,
                     end: i,
                     major,
-                    minor,
+                    minor: minor.min(max_minor),
                     flex_sum,
                 });
 
@@ -253,7 +267,7 @@ impl<V> Stack<V> {
             start,
             end: self.content.len(),
             major,
-            minor,
+            minor: minor.min(max_minor),
             flex_sum,
         });
     }
@@ -282,10 +296,6 @@ impl<V> Stack<V> {
             } else {
                 0.0
             };
-
-            if px_per_flex == 0.0 && !self.align_items.is_stretch() {
-                continue;
-            }
 
             for i in line.start..line.end {
                 let flex = content[i].flex;
@@ -469,10 +479,13 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         (_, content): &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
-        scene: &mut Canvas,
+        canvas: &mut Canvas,
     ) {
+        let mut layer = canvas.layer();
+        layer.clip = cx.rect().transform(layer.transform);
+
         for i in 0..self.content.len() {
-            self.content.draw_nth(i, content, cx, data, scene);
+            self.content.draw_nth(i, content, cx, data, &mut layer);
         }
     }
 }

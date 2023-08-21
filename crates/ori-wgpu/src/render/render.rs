@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ori_core::{
-    canvas::{Fragment, Primitive, Scene},
+    canvas::{Color, Fragment, Primitive, Scene},
     layout::Size,
 };
 use wgpu::{
@@ -164,6 +164,7 @@ impl Render {
         &'a self,
         encoder: &'a mut CommandEncoder,
         target: &'a TextureView,
+        clear_color: Color,
     ) -> RenderPass<'a> {
         encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("ori_render_pass"),
@@ -171,7 +172,12 @@ impl Render {
                 view: &self.msaa,
                 resolve_target: Some(target),
                 ops: Operations {
-                    load: LoadOp::Clear(wgpu::Color::WHITE),
+                    load: LoadOp::Clear(wgpu::Color {
+                        r: clear_color.r as f64,
+                        g: clear_color.g as f64,
+                        b: clear_color.b as f64,
+                        a: clear_color.a as f64,
+                    }),
                     store: true,
                 },
             })],
@@ -179,7 +185,7 @@ impl Render {
         })
     }
 
-    pub fn render_scene(&mut self, scene: &mut Scene, width: u32, height: u32) {
+    pub fn render_scene(&mut self, scene: &mut Scene, clear_color: Color, width: u32, height: u32) {
         self.resize(width, height);
 
         let fragments = scene.fragments_mut();
@@ -200,7 +206,7 @@ impl Render {
         let target_view = target.texture.create_view(&Default::default());
 
         {
-            let mut pass = self.begin_render_pass(&mut encoder, &target_view);
+            let mut pass = self.begin_render_pass(&mut encoder, &target_view, clear_color);
             self.render_fragments(&mut pass, fragments);
         }
 

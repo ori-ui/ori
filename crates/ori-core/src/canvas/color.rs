@@ -229,6 +229,11 @@ impl Color {
         Self::hsla(h, s, l - amount, a)
     }
 
+    /// Fade the color by the given `amount`.
+    pub fn fade(self, amount: f32) -> Self {
+        Self::rgba(self.r, self.g, self.b, self.a * amount)
+    }
+
     /// Returns true if the color is translucent.
     pub fn is_translucent(self) -> bool {
         self.a < 1.0

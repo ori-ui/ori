@@ -223,6 +223,13 @@ impl MeshRender {
 
         let image_bind_group = &instance.image.as_ref().unwrap().bind_group;
 
+        pass.set_scissor_rect(
+            instance.clip.min.x as u32,
+            instance.clip.min.y as u32,
+            instance.clip.width() as u32,
+            instance.clip.height() as u32,
+        );
+
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &instance.uniform_bind_group, &[]);
         pass.set_bind_group(1, image_bind_group, &[]);

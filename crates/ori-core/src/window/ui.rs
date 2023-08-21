@@ -4,7 +4,7 @@ use crate::{
     canvas::{Canvas, Scene, SceneRender},
     event::Event,
     layout::{Size, Space},
-    style::Theme,
+    style::{Palette, Theme},
     view::{
         AnyState, BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState,
     },
@@ -307,7 +307,8 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         // render the scene to the window
         let width = self.window.width();
         let height = self.window.height();
-        self.render.render_scene(&mut self.scene, width, height);
+        let clear_color = self.theme.get(Palette::BACKGROUND);
+        (self.render).render_scene(&mut self.scene, clear_color, width, height);
 
         // if anything needs to be updated after the draw, we request a drawn
         //

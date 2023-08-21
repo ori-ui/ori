@@ -244,12 +244,12 @@ impl<T, V: View<T>> View<T> for Container<V> {
 }
 
 /// Create a new [`Container`].
-pub fn container<T, V: View<T>>(content: V) -> Container<V> {
+pub fn container<V>(content: V) -> Container<V> {
     Container::new(content)
 }
 
 /// Create a new padded [`Container`].
-pub fn pad<T, V: View<T>>(padding: impl Into<Padding>, content: V) -> Container<V> {
+pub fn pad<V>(padding: impl Into<Padding>, content: V) -> Container<V> {
     Container {
         padding: padding.into(),
         ..Container::new(content)
@@ -257,7 +257,7 @@ pub fn pad<T, V: View<T>>(padding: impl Into<Padding>, content: V) -> Container<
 }
 
 /// Create a new sized [`Container`].
-pub fn size<T, V: View<T>>(size: impl Into<Size>, content: V) -> Container<V> {
+pub fn size<V>(size: impl Into<Size>, content: V) -> Container<V> {
     Container {
         space: Space::from_size(size.into()),
         ..Container::new(content)
@@ -265,7 +265,7 @@ pub fn size<T, V: View<T>>(size: impl Into<Size>, content: V) -> Container<V> {
 }
 
 /// Create a new aligned [`Container`].
-pub fn align<T, V: View<T>>(alignment: impl Into<Align>, content: V) -> Container<V> {
+pub fn align<V>(alignment: impl Into<Align>, content: V) -> Container<V> {
     Container {
         alignment: Some(alignment.into()),
         ..Container::new(content)
@@ -273,7 +273,7 @@ pub fn align<T, V: View<T>>(alignment: impl Into<Align>, content: V) -> Containe
 }
 
 /// Create a new transformed [`Container`].
-pub fn transform<T, V: View<T>>(transform: impl Into<Affine>, content: V) -> Container<V> {
+pub fn transform<V>(transform: impl Into<Affine>, content: V) -> Container<V> {
     Container {
         transform: transform.into(),
         ..Container::new(content)
@@ -281,7 +281,7 @@ pub fn transform<T, V: View<T>>(transform: impl Into<Affine>, content: V) -> Con
 }
 
 /// Create a new translated [`Container`].
-pub fn translate<T, V: View<T>>(translation: impl Into<Vec2>, content: V) -> Container<V> {
+pub fn translate<V>(translation: impl Into<Vec2>, content: V) -> Container<V> {
     Container {
         transform: Affine::translate(translation.into()),
         ..Container::new(content)
@@ -289,7 +289,7 @@ pub fn translate<T, V: View<T>>(translation: impl Into<Vec2>, content: V) -> Con
 }
 
 /// Create a new rotated [`Container`].
-pub fn rotate<T, V: View<T>>(rotation: f32, content: V) -> Container<V> {
+pub fn rotate<V>(rotation: f32, content: V) -> Container<V> {
     Container {
         transform: Affine::rotate(rotation),
         ..Container::new(content)
@@ -297,7 +297,7 @@ pub fn rotate<T, V: View<T>>(rotation: f32, content: V) -> Container<V> {
 }
 
 /// Create a new scaled [`Container`].
-pub fn scale<T, V: View<T>>(scale: impl Into<Vec2>, content: V) -> Container<V> {
+pub fn scale<V>(scale: impl Into<Vec2>, content: V) -> Container<V> {
     Container {
         transform: Affine::scale(scale.into()),
         ..Container::new(content)
@@ -305,7 +305,7 @@ pub fn scale<T, V: View<T>>(scale: impl Into<Vec2>, content: V) -> Container<V> 
 }
 
 /// Create a new [`Container`] aligned to the center.
-pub fn align_center<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_center<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::CENTER),
         ..Container::new(content)
@@ -313,7 +313,7 @@ pub fn align_center<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the top left.
-pub fn align_top_left<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_top_left<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP_LEFT),
         ..Container::new(content)
@@ -321,7 +321,7 @@ pub fn align_top_left<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the top.
-pub fn align_top<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_top<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP),
         ..Container::new(content)
@@ -329,7 +329,7 @@ pub fn align_top<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the top right.
-pub fn align_top_right<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_top_right<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP_RIGHT),
         ..Container::new(content)
@@ -337,7 +337,7 @@ pub fn align_top_right<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the left.
-pub fn align_left<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_left<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::LEFT),
         ..Container::new(content)
@@ -345,7 +345,7 @@ pub fn align_left<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the right.
-pub fn align_right<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_right<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::RIGHT),
         ..Container::new(content)
@@ -353,7 +353,7 @@ pub fn align_right<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom left.
-pub fn align_bottom_left<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_bottom_left<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM_LEFT),
         ..Container::new(content)
@@ -361,7 +361,7 @@ pub fn align_bottom_left<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom.
-pub fn align_bottom<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_bottom<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM),
         ..Container::new(content)
@@ -369,7 +369,7 @@ pub fn align_bottom<T, V: View<T>>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom right.
-pub fn align_bottom_right<T, V: View<T>>(content: V) -> Container<V> {
+pub fn align_bottom_right<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM_RIGHT),
         ..Container::new(content)

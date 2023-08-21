@@ -66,6 +66,12 @@ impl From<[f32; 2]> for Size {
     }
 }
 
+impl From<f32> for Size {
+    fn from(value: f32) -> Self {
+        Self::splat(value)
+    }
+}
+
 impl From<Size> for (f32, f32) {
     fn from(size: Size) -> Self {
         (size.width, size.height)

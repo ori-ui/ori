@@ -91,14 +91,12 @@ style! {
 }
 
 style! {
-    /// Styles for [`Button`](crate::views::Button)s.
-    pub button {
-        /// The transition when the button is hovered.
-        const TRANSITION: Transition = Transition::ease(0.1);
-        /// The color.
-        const COLOR: Color = Palette::PRIMARY;
+    /// Styles for [`Container`](crate::views::Container)s.
+    pub container {
+        /// The background color.
+        const BACKGROUND: Color = Color::TRANSPARENT;
         /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.5));
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(0.0);
         /// The border width.
         const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
         /// The border color.
@@ -107,12 +105,32 @@ style! {
 }
 
 style! {
-    /// Styles for [`Container`](crate::views::Container)s.
-    pub container {
-        /// The background color.
-        const BACKGROUND: Color = Color::TRANSPARENT;
+    /// Styles for [`Scroll`](crate::views::Scroll)s.
+    pub scroll {
+        /// The transition when the scrollbar is hovered.
+        const TRANSITION: Transition = Transition::ease(0.1);
+        /// The width of the scrollbar.
+        const WIDTH: f32 = em(0.5);
+        /// The padding of the scrollbar.
+        const INSET: f32 = em(0.5);
+        /// The border radius of the scrollbar.
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.25));
+        /// The color of the scrollbar.
+        const COLOR: Color = Palette::SECONDARY_DARK;
+        /// The color of the scrollbar knob.
+        const KNOB_COLOR: Color = Palette::SECONDARY_DARKER;
+    }
+}
+
+style! {
+    /// Styles for [`Button`](crate::views::Button)s.
+    pub button {
+        /// The transition when the button is hovered.
+        const TRANSITION: Transition = Transition::ease(0.1);
+        /// The color.
+        const COLOR: Color = Palette::PRIMARY;
         /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(0.0);
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.5));
         /// The border width.
         const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
         /// The border color.
@@ -149,8 +167,9 @@ impl Theme {
 
         theme.extend(text::default_theme());
         theme.extend(text_input::default_theme());
-        theme.extend(button::default_theme());
         theme.extend(container::default_theme());
+        theme.extend(scroll::default_theme());
+        theme.extend(button::default_theme());
         theme.extend(checkbox::default_theme());
 
         theme

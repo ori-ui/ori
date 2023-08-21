@@ -35,12 +35,12 @@ macro_rules! vstack {
 }
 
 /// Create a horizontal stack.
-pub fn hstack<T, V: ViewSeq<T>>(content: V) -> Stack<V> {
+pub fn hstack<V>(content: V) -> Stack<V> {
     Stack::hstack(content)
 }
 
 /// Create a vertical stack.
-pub fn vstack<T, V: ViewSeq<T>>(content: V) -> Stack<V> {
+pub fn vstack<V>(content: V) -> Stack<V> {
     Stack::vstack(content)
 }
 

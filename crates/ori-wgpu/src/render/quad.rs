@@ -254,6 +254,13 @@ impl QuadRender {
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
         let instance = &self.instances[index];
 
+        pass.set_scissor_rect(
+            instance.clip.min.x as u32,
+            instance.clip.min.y as u32,
+            instance.clip.width() as u32,
+            instance.clip.height() as u32,
+        );
+
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &instance.uniform_bind_group, &[]);
         pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);

@@ -15,6 +15,10 @@ pub struct Palette {
     pub secondary: Color,
     /// The accent color.
     pub accent: Color,
+    /// Whether this palette is dark.
+    ///
+    /// When this is `true`, dark and bright colors are swapped.
+    pub is_dark: bool,
 }
 
 #[allow(missing_docs)]
@@ -58,8 +62,9 @@ impl Palette {
             text: Color::hsl(0.0, 0.0, 0.2),
             background: Color::hsl(0.0, 0.0, 1.0),
             primary: Color::hsl(221.0, 1.0, 0.78),
-            secondary: Color::hsl(100.0, 0.03, 0.83),
+            secondary: Color::hsl(100.0, 0.03, 0.88),
             accent: Color::hsl(150.0, 0.82, 0.47),
+            is_dark: false,
         }
     }
 
@@ -69,8 +74,9 @@ impl Palette {
             text: Color::hsl(0.0, 0.0, 0.8),
             background: Color::hsl(0.0, 0.0, 0.2),
             primary: Color::hsl(221.0, 1.0, 0.78),
-            secondary: Color::hsl(0.0, 0.0, 0.98),
+            secondary: Color::hsl(0.0, 0.0, 0.33),
             accent: Color::hsl(334.0, 0.76, 0.47),
+            is_dark: true,
         }
     }
 
@@ -84,7 +90,11 @@ impl Palette {
         theme.set(Self::SECONDARY, self.secondary);
         theme.set(Self::ACCENT, self.accent);
 
-        self.derived_theme(&mut theme, 0.1);
+        if self.is_dark {
+            self.derived_theme(&mut theme, -0.1);
+        } else {
+            self.derived_theme(&mut theme, 0.1);
+        }
 
         theme
     }

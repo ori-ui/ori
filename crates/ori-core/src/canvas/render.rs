@@ -1,9 +1,9 @@
-use super::Scene;
+use super::{Color, Scene};
 
 /// Trait for rendering a scene.
 pub trait SceneRender {
     /// Render a scene.
-    fn render_scene(&mut self, scene: &mut Scene, width: u32, height: u32);
+    fn render_scene(&mut self, scene: &mut Scene, clear_color: Color, width: u32, height: u32);
 
     /// Called when the application is idle.
     ///

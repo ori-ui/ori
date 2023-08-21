@@ -68,25 +68,25 @@ style! {
     /// Styles for [`TextInput`](crate::views::Text)s.
     pub text_input {
         /// The font size.
-        const FONT_SIZE: f32 = em(1.0);
+        const FONT_SIZE: f32 = text::FONT_SIZE;
         /// The font family.
-        const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
+        const FONT_FAMILY: FontFamily = text::FONT_FAMILY;
         /// The font weight.
-        const FONT_WEIGHT: FontWeight = FontWeight::NORMAL;
+        const FONT_WEIGHT: FontWeight = text::FONT_WEIGHT;
         /// The font stretch.
-        const FONT_STRETCH: FontStretch = FontStretch::Normal;
+        const FONT_STRETCH: FontStretch = text::FONT_STRETCH;
         /// The font style.
-        const FONT_STYLE: FontStyle = FontStyle::Normal;
+        const FONT_STYLE: FontStyle = text::FONT_STYLE;
         /// The color.
-        const COLOR: Color = Palette::TEXT;
+        const COLOR: Color = text::COLOR;
         /// The vertical alignment.
         const V_ALIGN: TextAlign = TextAlign::Top;
         /// The horizontal alignment.
         const H_ALIGN: TextAlign = TextAlign::Left;
         /// The line height.
-        const LINE_HEIGHT: f32 = 1.0;
+        const LINE_HEIGHT: f32 = text::LINE_HEIGHT;
         /// The text wrap.
-        const WRAP: TextWrap = TextWrap::Word;
+        const WRAP: TextWrap = text::WRAP;
     }
 }
 

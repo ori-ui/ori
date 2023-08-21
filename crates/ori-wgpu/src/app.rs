@@ -14,7 +14,6 @@ use crate::{render::Render, Error};
 pub struct App<T> {
     pub(crate) window: WindowDescriptor,
     pub(crate) builder: UiBuilder<T>,
-    pub(crate) theme: Vec<Box<dyn Fn() -> Theme>>,
     pub(crate) ui: Ui<T, Render>,
     pub(crate) text_size: f32,
 }
@@ -29,7 +28,6 @@ impl<T: 'static> App<T> {
         let mut app = Self {
             window: WindowDescriptor::default(),
             builder: Box::new(move |data| Box::new(builder(data))),
-            theme: Vec::new(),
             ui: Ui::new(data),
             text_size: 16.0,
         };
@@ -40,8 +38,8 @@ impl<T: 'static> App<T> {
     }
 
     /// Append the theme of the application.
-    pub fn theme<I: Into<Theme>>(mut self, theme: impl Fn() -> I + 'static) -> Self {
-        self.theme.push(Box::new(move || theme().into()));
+    pub fn theme<I: Into<Theme>>(mut self, mut theme: impl FnMut() -> I + 'static) -> Self {
+        self.ui.add_theme(move || theme().into());
         self
     }
 

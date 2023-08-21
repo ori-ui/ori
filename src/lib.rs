@@ -3,12 +3,23 @@
 //! Ori is a cross-platform declarative UI framework for Rust, with a focus on
 //! simplicity and performance.
 
-pub use ori_core as core;
-pub use ori_wgpu as wgpu;
+pub mod core {
+    //! Ori [`core`](ori_core) module.
+
+    pub use ori_core::*;
+}
+
+#[cfg(feature = "wgpu")]
+pub mod wgpu {
+    //! Ori [`wgpu`](ori_wgpu) integration.
+
+    pub use ori_wgpu::*;
+}
 
 pub mod prelude {
-    //! The `ori` prelude.
+    //! Convenient imports for Ori.
 
+    #[cfg(feature = "wgpu")]
     pub use crate::wgpu::App;
 
     pub use ori_core::{

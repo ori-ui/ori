@@ -4,9 +4,9 @@ use crate::{
     canvas::{Canvas, Scene, SceneRender},
     event::Event,
     layout::{Size, Space},
+    style::Theme,
     view::{
-        AnyState, BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, Update, View,
-        ViewState,
+        AnyState, BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState,
     },
 };
 
@@ -59,6 +59,7 @@ pub struct WindowUi<T, R: SceneRender> {
     view: BoxedView<T>,
     state: AnyState,
     scene: Scene,
+    theme: Theme,
     view_state: ViewState,
     needs_rebuild: bool,
     window: Window,
@@ -72,18 +73,23 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         mut builder: UiBuilder<T>,
         base: &mut BaseCx,
         data: &mut T,
+        mut theme: Theme,
         mut window: Window,
         render: R,
     ) -> Self {
-        let mut view = builder(data);
+        // we first build the view tree, with `theme` as the global theme
+        let mut view = Theme::with_global(&mut theme, || builder(data));
+
+        // then we build the state tree, with `theme` as the global theme
         let mut cx = BuildCx::new(base, &mut window);
-        let state = view.build(&mut cx, data);
+        let state = Theme::with_global(&mut theme, || view.build(&mut cx, data));
 
         Self {
             builder,
             view,
             state,
             scene: Scene::new(),
+            theme,
             view_state: ViewState::default(),
             needs_rebuild: false,
             window,
@@ -138,14 +144,20 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     }
 
     fn rebuild(&mut self, base: &mut BaseCx, data: &mut T) {
+        // mark the window as not needing to rebuilt
         self.needs_rebuild = false;
 
-        let mut new_view = (self.builder)(data);
+        // build the new view tree
+        let mut new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
         let dt = self.timers.rebuild();
 
+        // rebuild the new view tree (new_view) comparing it to the old one (self.view)
         let mut cx = RebuildCx::new(base, &mut self.view_state, &mut self.window, dt);
-        new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
+        Theme::with_global(&mut self.theme, || {
+            new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
+        });
 
+        // replace the old view tree with the new one
         self.view = new_view;
     }
 
@@ -153,10 +165,14 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     ///
     /// This will rebuild or layout the view if necessary.
     pub fn event(&mut self, base: &mut BaseCx, data: &mut T, event: &Event) {
+        // if the view tree needs to be rebuilt, we do that first, as the
+        // event and layout might depend on the new view tree
         if self.needs_rebuild() {
             self.rebuild(base, data);
         }
 
+        // if the view tree needs to be laid out, we do that first, as the
+        // event might depend on the new layout
         if self.needs_layout() {
             self.layout(base, data);
         }
@@ -164,60 +180,84 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let dt = self.timers.event();
 
         let mut cx = EventCx::new(base, &mut self.view_state, &mut self.window, dt);
-        self.view.event(&mut self.state, &mut cx, data, event);
 
-        if !self.view_state.update.is_empty() {
-            self.window.request_draw();
-        }
+        // handle the event, with the global theme
+        Theme::with_global(&mut self.theme, || {
+            self.view.event(&mut self.state, &mut cx, data, event);
+        });
 
+        // if anything needs to be updated after the event, we request a draw
+        //
+        // FIXME: this will sometimes cause unnecessary re-renders
         if !self.view_state.update.is_empty() {
             self.window.request_draw();
         }
     }
 
     fn layout(&mut self, base: &mut BaseCx, data: &mut T) {
-        self.view_state.update.remove(Update::LAYOUT);
+        // mark the view tree as not needing to be laid out
+        self.view_state.layed_out();
 
         let space = Space::new(Size::ZERO, self.window.size());
         let dt = self.timers.layout();
 
         let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window, dt);
-        let size = self.view.layout(&mut self.state, &mut cx, data, space);
+
+        // layout the view tree, with the global theme
+        let size = Theme::with_global(&mut self.theme, || {
+            self.view.layout(&mut self.state, &mut cx, data, space)
+        });
+
         self.view_state.size = size;
     }
 
     fn draw(&mut self, base: &mut BaseCx, data: &mut T) {
-        self.view_state.update.remove(Update::DRAW);
+        // mark the view tree as not needing to be drawn
+        self.view_state.drawn();
 
+        // clear the scene and prepare the canvas
         self.scene.clear();
         let mut canvas = Canvas::new(&mut self.scene, self.window.size());
 
         let dt = self.timers.draw();
 
         let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window, dt);
-        self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
+
+        // draw the view tree, with the global theme
+        Theme::with_global(&mut self.theme, || {
+            self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
+        });
     }
 
     /// Render the scene.
     ///
     /// This will rebuild, layout or draw the view if necessary.
     pub fn render(&mut self, base: &mut BaseCx, data: &mut T) {
+        // if the view tree needs to be rebuilt, do that first, as the
+        // layout and draw might depend on the new view tree
         if self.needs_rebuild() {
             self.rebuild(base, data);
         }
 
+        // if the view tree needs to be laid out, do that first, as the
+        // draw might depend on the new layout
         if self.needs_layout() {
             self.layout(base, data);
         }
 
+        // then if the view tree needs to be drawn, do that
         if self.needs_draw() {
             self.draw(base, data);
         }
 
+        // render the scene to the window
         let width = self.window.width();
         let height = self.window.height();
         self.render.render_scene(&mut self.scene, width, height);
 
+        // if anything needs to be updated after the draw, we request a drawn
+        //
+        // FIXME: this will sometimes cause unnecessary re-renders
         if !self.view_state.update.is_empty() {
             self.window.request_draw();
         }

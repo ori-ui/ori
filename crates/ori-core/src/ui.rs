@@ -8,7 +8,7 @@ use crate::{
     canvas::SceneRender,
     delegate::{Command, Delegate, DelegateCx},
     event::{Code, Event, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId},
-    style::Theme,
+    style::{set_text_size, styled, Theme, TEXT_SIZE},
     text::Fonts,
     view::BaseCx,
     window::{UiBuilder, Window, WindowId, WindowUi},
@@ -19,10 +19,9 @@ pub struct Ui<T, R: SceneRender> {
     windows: HashMap<WindowId, WindowUi<T, R>>,
     modifiers: Modifiers,
     delegate: Box<dyn Delegate<T>>,
+    themes: Vec<Box<dyn FnMut() -> Theme>>,
     /// The fonts used by the UI.
     pub fonts: Fonts,
-    /// The theme used by the UI.
-    pub theme: Theme,
     /// The data used by the UI.
     pub data: T,
 }
@@ -34,8 +33,8 @@ impl<T, R: SceneRender> Ui<T, R> {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegate: Box::new(()),
+            themes: Vec::new(),
             fonts: Fonts::default(),
-            theme: Theme::default(),
             data,
         }
     }
@@ -45,17 +44,39 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.delegate = Box::new(delegate);
     }
 
+    /// Add a new theme.
+    pub fn add_theme(&mut self, theme: impl FnMut() -> Theme + 'static) {
+        self.themes.push(Box::new(theme));
+    }
+
+    /// Build the theme.
+    pub fn build_theme(&mut self, text_size: f32) -> Theme {
+        styled(|| {
+            set_text_size(text_size);
+
+            let mut theme = Theme::builtin();
+
+            for theme_fn in &mut self.themes {
+                theme.extend(theme_fn());
+            }
+
+            theme.set(TEXT_SIZE, text_size);
+
+            theme
+        })
+    }
+
     /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
+        let theme = self.build_theme(16.0 * window.scale_factor());
+
         let mut commands = Vec::new();
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
-        Theme::with_global(&mut self.theme, || {
-            let window_id = window.id();
-            let window_ui = WindowUi::new(builder, &mut base, &mut self.data, window, render);
-            self.windows.insert(window_id, window_ui);
-        });
+        let window_id = window.id();
+        let window_ui = WindowUi::new(builder, &mut base, &mut self.data, theme, window, render);
+        self.windows.insert(window_id, window_ui);
 
         if needs_rebuild {
             self.request_rebuild();
@@ -109,9 +130,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
-        Theme::with_global(&mut self.theme, || {
-            self.delegate.idle(&mut cx, &mut self.data);
-        });
+        self.delegate.idle(&mut cx, &mut self.data);
 
         if needs_rebuild {
             self.request_rebuild();
@@ -233,9 +252,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
-        Theme::with_global(&mut self.theme, || {
-            self.delegate.event(&mut cx, &mut self.data, event)
-        });
+        self.delegate.event(&mut cx, &mut self.data, event);
 
         if needs_rebuild {
             self.request_rebuild();
@@ -261,9 +278,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            Theme::with_global(&mut self.theme, || {
-                window_ui.event(&mut base, &mut self.data, event);
-            });
+            window_ui.event(&mut base, &mut self.data, event);
         }
 
         if needs_rebuild {
@@ -280,9 +295,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            Theme::with_global(&mut self.theme, || {
-                window_ui.render(&mut base, &mut self.data);
-            });
+            window_ui.render(&mut base, &mut self.data);
         }
 
         if needs_rebuild {

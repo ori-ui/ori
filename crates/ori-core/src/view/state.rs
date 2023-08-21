@@ -137,6 +137,20 @@ impl ViewState {
         self.update.contains(Update::DRAW)
     }
 
+    /// Mark the view as laid out.
+    ///
+    /// This will remove the [`Update::LAYOUT`] flag.
+    pub fn layed_out(&mut self) {
+        self.update.remove(Update::LAYOUT);
+    }
+
+    /// Mark the view as drawn.
+    ///
+    /// This will remove the [`Update::DRAW`] flag.
+    pub fn drawn(&mut self) {
+        self.update.remove(Update::DRAW);
+    }
+
     /// Get the [`Update`] of the view.
     pub fn update(&self) -> Update {
         self.update

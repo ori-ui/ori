@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use ori_core::{
     event::{Modifiers, PointerId},
     math::Vec2,
-    style::{set_text_size, styled, Theme, TEXT_SIZE},
     window::Window,
 };
 use winit::{
@@ -20,22 +19,6 @@ use crate::{
 };
 
 use crate::App;
-
-fn build_theme<T>(app: &App<T>) -> Theme {
-    styled(|| {
-        set_text_size(app.text_size);
-
-        let mut theme = Theme::new();
-
-        for theme_fn in app.theme.iter() {
-            theme.extend(theme_fn());
-        }
-
-        theme.set(TEXT_SIZE, app.text_size);
-
-        theme
-    })
-}
 
 pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
     #[cfg(feature = "tracing")]
@@ -56,8 +39,6 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
     let (instance, surface) = runtime.block_on(unsafe { RenderInstance::new(&window) })?;
 
     let _guard = runtime.enter();
-
-    app.ui.theme = build_theme(&app);
 
     let mut ids = HashMap::new();
     ids.insert(window.id(), app.window.id);

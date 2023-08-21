@@ -67,7 +67,11 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                     WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit;
                     }
-                    WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                    WindowEvent::Resized(_) => {
+                        app.ui.resized(window_id);
+                    }
+                    WindowEvent::ScaleFactorChanged { .. } => {
+                        app.ui.rebuild_theme(window_id);
                         app.ui.resized(window_id);
                     }
                     WindowEvent::CursorMoved {

@@ -50,7 +50,9 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Build the theme.
-    pub fn build_theme(&mut self, text_size: f32) -> Theme {
+    pub fn build_theme(&mut self, scale_factor: f32) -> Theme {
+        let text_size = 16.0 * scale_factor;
+
         styled(|| {
             set_text_size(text_size);
 
@@ -68,7 +70,7 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
-        let theme = self.build_theme(16.0 * window.scale_factor());
+        let theme = self.build_theme(window.scale_factor());
 
         let mut commands = Vec::new();
         let mut needs_rebuild = false;
@@ -137,6 +139,15 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
 
         self.handle_commands(commands);
+    }
+
+    /// Rebuild the theme for a window.
+    ///
+    /// This should be called when the scale factor of the window changes.
+    pub fn rebuild_theme(&mut self, window_id: WindowId) {
+        let scale_factor = self.window(window_id).window().scale_factor();
+        let theme = self.build_theme(scale_factor);
+        self.window_mut(window_id).set_theme(theme);
     }
 
     /// Request a rebuild of the view tree.

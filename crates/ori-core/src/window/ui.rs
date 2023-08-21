@@ -108,6 +108,11 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         &mut self.window
     }
 
+    /// Set the theme.
+    pub fn set_theme(&mut self, theme: Theme) {
+        self.theme = theme;
+    }
+
     /// Get the scene.
     pub fn scene(&self) -> &Scene {
         &self.scene

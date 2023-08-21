@@ -11,11 +11,8 @@ use crate::{
 };
 
 /// Create a new [`Checkbox`].
-pub fn checkbox<T>(
-    checked: bool,
-    on_press: impl FnMut(&mut EventCx, &mut T) + 'static,
-) -> Checkbox<T> {
-    Checkbox::new(checked, on_press)
+pub fn checkbox<T>(checked: bool) -> Checkbox<T> {
+    Checkbox::new(checked)
 }
 
 /// A checkbox.
@@ -26,7 +23,7 @@ pub struct Checkbox<T> {
     pub checked: bool,
     /// The callback for when the checkbox is pressed.
     #[allow(clippy::type_complexity)]
-    pub on_press: Box<dyn FnMut(&mut EventCx, &mut T)>,
+    pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T)>>,
     /// The transition of the checkbox.
     #[rebuild(draw)]
     pub transition: Transition,
@@ -55,10 +52,10 @@ pub struct Checkbox<T> {
 
 impl<T> Checkbox<T> {
     /// Create a new [`Checkbox`].
-    pub fn new(checked: bool, on_press: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
+    pub fn new(checked: bool) -> Self {
         Self {
             checked,
-            on_press: Box::new(on_press),
+            on_press: None,
             transition: style(checkbox::TRANSITION),
             size: style(checkbox::SIZE),
             color: style(checkbox::COLOR),
@@ -68,6 +65,12 @@ impl<T> Checkbox<T> {
             border_width: style(checkbox::BORDER_WIDTH),
             border_color: style(checkbox::BORDER_COLOR),
         }
+    }
+
+    /// Set the callback for when the checkbox is pressed.
+    pub fn on_press(mut self, on_press: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
+        self.on_press = Some(Box::new(on_press));
+        self
     }
 
     /// Set the transition of the checkbox.
@@ -144,10 +147,12 @@ impl<T> View<T> for Checkbox<T> {
             }
 
             if over && pointer.is_press() {
-                (self.on_press)(cx, data);
+                if let Some(on_press) = &mut self.on_press {
+                    on_press(cx, data);
+                    cx.request_rebuild();
+                }
 
                 cx.set_active(true);
-                cx.request_rebuild();
                 cx.request_draw();
 
                 event.handle();

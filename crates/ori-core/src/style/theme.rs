@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use super::TEXT_SIZE;
+use super::SCALE_FACTOR;
 
 use super::Key;
 
@@ -126,7 +126,7 @@ pub struct Theme {
 
 impl Default for Theme {
     fn default() -> Self {
-        Self::empty().with(TEXT_SIZE, 16.0)
+        Self::empty().with(SCALE_FACTOR, 1.0)
     }
 }
 

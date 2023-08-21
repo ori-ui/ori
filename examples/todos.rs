@@ -58,14 +58,14 @@ impl Data {
 }
 
 fn title() -> impl View<Data> {
-    text("todos").font_size(50.0)
+    text("todos").font_size(pt(50.0))
 }
 
 fn input() -> impl View<Data> {
     let input = text_input()
         .placeholder("What needs to be done?")
         .on_submit(|_, data: &mut Data, text| data.input(text))
-        .font_size(20.0);
+        .font_size(pt(20.0));
 
     container(input).padding([em(4.0), em(1.0)]).width(em(28.0))
 }
@@ -130,7 +130,7 @@ fn active_count(data: &mut Data) -> impl View<Data> {
         format!("{} items left", active)
     };
 
-    text(active_text).font_size(14.0)
+    text(active_text).font_size(pt(14.0))
 }
 
 fn selection(data: &mut Data) -> impl View<Data> {

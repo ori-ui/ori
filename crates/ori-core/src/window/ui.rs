@@ -109,8 +109,12 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     }
 
     /// Set the theme.
+    ///
+    /// This will also request a rebuild of the view-tree, as the theme
+    /// is _very_ likely to affect the view-tree.
     pub fn set_theme(&mut self, theme: Theme) {
         self.theme = theme;
+        self.request_rebuild();
     }
 
     /// Get the scene.

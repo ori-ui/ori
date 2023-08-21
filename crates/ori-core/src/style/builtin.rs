@@ -6,7 +6,7 @@ use crate::{
     transition::Transition,
 };
 
-use super::{em, Palette, Theme, TEXT_SIZE};
+use super::{em, Palette, Theme};
 
 macro_rules! style {
     (
@@ -42,7 +42,7 @@ style! {
     /// Styles for [`Text`](crate::views::Text)s.
     pub text {
         /// The font size.
-        const FONT_SIZE: f32 = TEXT_SIZE;
+        const FONT_SIZE: f32 = em(1.0);
         /// The font family.
         const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
         /// The font weight.
@@ -68,7 +68,7 @@ style! {
     /// Styles for [`TextInput`](crate::views::Text)s.
     pub text_input {
         /// The font size.
-        const FONT_SIZE: f32 = TEXT_SIZE;
+        const FONT_SIZE: f32 = em(1.0);
         /// The font family.
         const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
         /// The font weight.

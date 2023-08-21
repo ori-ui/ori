@@ -8,7 +8,7 @@ use crate::{
     canvas::SceneRender,
     delegate::{Command, Delegate, DelegateCx},
     event::{Code, Event, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId},
-    style::{set_text_size, styled, Theme, TEXT_SIZE},
+    style::{set_style, styled, Theme, SCALE_FACTOR},
     text::Fonts,
     view::BaseCx,
     window::{UiBuilder, Window, WindowId, WindowUi},
@@ -51,10 +51,8 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Build the theme.
     pub fn build_theme(&mut self, scale_factor: f32) -> Theme {
-        let text_size = 16.0 * scale_factor;
-
         styled(|| {
-            set_text_size(text_size);
+            set_style(SCALE_FACTOR, scale_factor);
 
             let mut theme = Theme::builtin();
 
@@ -62,7 +60,7 @@ impl<T, R: SceneRender> Ui<T, R> {
                 theme.extend(theme_fn());
             }
 
-            theme.set(TEXT_SIZE, text_size);
+            theme.set(SCALE_FACTOR, scale_factor);
 
             theme
         })

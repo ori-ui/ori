@@ -10,15 +10,18 @@ pub use key::*;
 pub use palette::*;
 pub use theme::*;
 
-/// The text size in pixels.
-pub const TEXT_SIZE: Key<f32> = Key::new("text.size");
+pub(crate) const SCALE_FACTOR: Key<f32> = Key::new("window.scale_factor");
 
-/// Get a size in pixels, relative to the text size.
-pub fn em(size: f32) -> f32 {
-    size * TEXT_SIZE.get()
+/// Get a size in pixels, relative to the [`scale factor`].
+///
+/// [`scale factor`]: crate::window::Window::scale_factor
+pub fn pt(size: f32) -> f32 {
+    size * SCALE_FACTOR.get()
 }
 
-/// Set the text size in pixels.
-pub fn set_text_size(size: f32) {
-    Theme::global(|theme| theme.set(TEXT_SIZE, size));
+/// Get a size in pixels, relative to the default font size.
+///
+/// This is a shorthand for `pt(size) * 16.0`.
+pub fn em(size: f32) -> f32 {
+    pt(size) * 16.0
 }

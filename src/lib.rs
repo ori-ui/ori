@@ -35,9 +35,7 @@ pub mod prelude {
         layout::{Affine, Align, AlignItems, Axis, Justify, Padding, Rect, Size, Space},
         log::*,
         rebuild::Rebuild,
-        style::{
-            builtin::*, em, set_style, set_text_size, set_theme, style, styled, Key, Palette, Theme,
-        },
+        style::{builtin::*, em, pt, set_style, set_theme, style, styled, Key, Palette, Theme},
         text::{
             FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, TextAlign,
             TextWrap,

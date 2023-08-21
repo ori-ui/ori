@@ -1,3 +1,8 @@
+//! Macros for the Ori crate.
+
+#![warn(missing_docs)]
+
+mod font;
 mod rebuild;
 
 fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
@@ -18,6 +23,15 @@ fn find_core() -> syn::Path {
             Err(_) => syn::parse_quote!(ori::core),
         },
     }
+}
+
+#[manyhow::manyhow]
+#[proc_macro]
+/// Load a font from a file or directory.
+///
+/// The path is relative to the `Cargo.toml` file.
+pub fn font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
+    font::font(input)
 }
 
 /// Derive the `Rebuild` trait.

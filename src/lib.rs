@@ -37,8 +37,8 @@ pub mod prelude {
         rebuild::Rebuild,
         style::{builtin::*, em, pt, set_style, set_theme, style, styled, Key, Palette, Theme},
         text::{
-            FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, TextAlign,
-            TextWrap,
+            font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, FontsError,
+            Glyph, Glyphs, TextAlign, TextSection, TextWrap,
         },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{

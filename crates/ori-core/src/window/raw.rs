@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use crate::image::Image;
 
+use super::Cursor;
+
 /// A wrapper around a raw window.
 pub trait RawWindow {
     /// Get the title of the window.
@@ -44,6 +46,9 @@ pub trait RawWindow {
     fn visible(&self) -> bool;
     /// Set whether the window is visible.
     fn set_visible(&mut self, visible: bool);
+
+    /// Set the cursor of the window.
+    fn set_cursor(&mut self, cursor: Cursor);
 
     /// Get whether the window is focused.
     fn request_draw(&mut self);

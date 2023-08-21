@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-use super::Window;
+use super::{Cursor, Window};
 
 /// A type that can build a view.
 pub type UiBuilder<T> = Box<dyn FnMut(&mut T) -> BoxedView<T>>;
@@ -153,6 +153,8 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     }
 
     fn rebuild(&mut self, base: &mut BaseCx, data: &mut T) {
+        self.view_state.prepare();
+
         // mark the window as not needing to rebuilt
         self.needs_rebuild = false;
 
@@ -160,8 +162,16 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let mut new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
         let dt = self.timers.rebuild();
 
+        let mut cursor = f32::NEG_INFINITY;
+        let mut cx = RebuildCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut cursor,
+            dt,
+        );
+
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
-        let mut cx = RebuildCx::new(base, &mut self.view_state, &mut self.window, dt);
         Theme::with_global(&mut self.theme, || {
             new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
         });
@@ -186,14 +196,27 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             self.layout(base, data);
         }
 
+        self.view_state.prepare();
+
         let dt = self.timers.event();
 
-        let mut cx = EventCx::new(base, &mut self.view_state, &mut self.window, dt);
+        let mut cursor = f32::NEG_INFINITY;
+        let mut cx = EventCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut cursor,
+            dt,
+        );
 
         // handle the event, with the global theme
         Theme::with_global(&mut self.theme, || {
             self.view.event(&mut self.state, &mut cx, data, event);
         });
+
+        if cursor == f32::NEG_INFINITY {
+            self.window_mut().set_cursor(Cursor::default());
+        }
 
         // if anything needs to be updated after the event, we request a draw
         //
@@ -204,13 +227,22 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     }
 
     fn layout(&mut self, base: &mut BaseCx, data: &mut T) {
+        self.view_state.prepare();
+
         // mark the view tree as not needing to be laid out
         self.view_state.layed_out();
 
         let space = Space::new(Size::ZERO, self.window.size());
         let dt = self.timers.layout();
 
-        let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window, dt);
+        let mut cursor = f32::NEG_INFINITY;
+        let mut cx = LayoutCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut cursor,
+            dt,
+        );
 
         // layout the view tree, with the global theme
         let size = Theme::with_global(&mut self.theme, || {
@@ -221,6 +253,8 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     }
 
     fn draw(&mut self, base: &mut BaseCx, data: &mut T) {
+        self.view_state.prepare();
+
         // mark the view tree as not needing to be drawn
         self.view_state.drawn();
 
@@ -230,12 +264,23 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         let dt = self.timers.draw();
 
-        let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window, dt);
+        let mut cursor = f32::NEG_INFINITY;
+        let mut cx = DrawCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut cursor,
+            dt,
+        );
 
         // draw the view tree, with the global theme
         Theme::with_global(&mut self.theme, || {
             self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
         });
+
+        if cursor == f32::NEG_INFINITY {
+            self.window_mut().set_cursor(Cursor::default());
+        }
     }
 
     /// Render the scene.

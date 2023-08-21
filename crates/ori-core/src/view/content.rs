@@ -6,7 +6,7 @@ use crate::{
     layout::{Size, Space},
 };
 
-use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, Update, View, ViewState};
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState};
 
 /// The state of [`Content`].
 pub struct State<T, V: View<T> + ?Sized> {
@@ -77,20 +77,26 @@ impl<T, V: View<T>> View<T> for Content<V> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        state.view_state.prepare();
+
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
         (self.view).rebuild(&mut state.content, &mut new_cx, data, &old.view);
+        new_cx.update_cursor();
 
         cx.view_state.propagate(&mut state.view_state);
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        state.view_state.prepare();
+
         let mut new_cx = cx.child();
         new_cx.transform *= state.view_state.transform;
         new_cx.view_state = &mut state.view_state;
 
         (self.view).event(&mut state.content, &mut new_cx, data, event);
+        new_cx.update_cursor();
 
         cx.view_state.propagate(&mut state.view_state);
     }
@@ -102,14 +108,15 @@ impl<T, V: View<T>> View<T> for Content<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        state.view_state.update.remove(Update::LAYOUT);
+        state.view_state.prepare_layout();
 
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
         let size = (self.view).layout(&mut state.content, &mut new_cx, data, space);
-        state.view_state.size = size;
+        new_cx.update_cursor();
 
+        state.view_state.size = size;
         cx.view_state.propagate(&mut state.view_state);
 
         size
@@ -122,8 +129,7 @@ impl<T, V: View<T>> View<T> for Content<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        state.view_state.update.remove(Update::DRAW);
-        state.view_state.depth = canvas.depth;
+        state.view_state.prepare_draw(canvas);
 
         // create the canvas layer
         let mut canvas = canvas.layer();
@@ -135,6 +141,7 @@ impl<T, V: View<T>> View<T> for Content<V> {
 
         // draw the content
         (self.view).draw(&mut state.content, &mut new_cx, data, &mut canvas);
+        new_cx.update_cursor();
 
         // propagate the view state
         cx.view_state.propagate(&mut state.view_state);

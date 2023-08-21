@@ -10,7 +10,7 @@ use crate::{
     layout::{Size, Space},
 };
 
-use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, Update, View, ViewState};
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState};
 
 /// A sequence of views.
 pub trait ViewSequence<T> {
@@ -361,9 +361,12 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
         data: &mut T,
         old: &Self,
     ) {
+        state.view_state[n].prepare();
+
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state[n];
         (self.views).rebuild_nth(n, &mut state.content, &mut new_cx, data, &old.views);
+        new_cx.update_cursor();
 
         cx.view_state.propagate(&mut state.view_state[n]);
     }
@@ -376,11 +379,14 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
         data: &mut T,
         event: &Event,
     ) {
+        state.view_state[n].prepare();
+
         let mut new_cx = cx.child();
         new_cx.transform *= state.view_state[n].transform;
         new_cx.view_state = &mut state.view_state[n];
 
         (self.views).event_nth(n, &mut state.content, &mut new_cx, data, event);
+        new_cx.update_cursor();
 
         cx.view_state.propagate(&mut state.view_state[n]);
     }
@@ -393,12 +399,13 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        state.view_state[n].update.remove(Update::LAYOUT);
+        state.view_state[n].prepare_layout();
 
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state[n];
 
         let size = (self.views).layout_nth(n, &mut state.content, &mut new_cx, data, space);
+        new_cx.update_cursor();
 
         state.view_state[n].size = size;
 
@@ -415,8 +422,7 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        state.view_state[n].update.remove(Update::DRAW);
-        state.view_state[n].depth = canvas.depth;
+        state.view_state[n].prepare_draw(canvas);
 
         let mut canvas = canvas.layer();
         canvas.transform *= state.view_state[n].transform;
@@ -425,6 +431,7 @@ impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
         new_cx.view_state = &mut state.view_state[n];
 
         (self.views).draw_nth(n, &mut state.content, &mut new_cx, data, &mut canvas);
+        new_cx.update_cursor();
 
         cx.view_state.propagate(&mut state.view_state[n]);
     }

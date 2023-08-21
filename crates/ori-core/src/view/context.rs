@@ -8,7 +8,7 @@ use crate::{
     proxy::{Command, Proxy},
     text::{Fonts, Glyphs, TextSection},
     view::ViewState,
-    window::Window,
+    window::{Cursor, Window},
 };
 
 /// A base context that is shared between all other contexts.
@@ -79,6 +79,7 @@ pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
+    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
 }
 
@@ -87,12 +88,14 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
+        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
+            cursor,
             delta_time,
         }
     }
@@ -103,6 +106,7 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
+            cursor: self.cursor,
             delta_time: self.delta_time,
         }
     }
@@ -118,6 +122,7 @@ pub struct EventCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
+    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
     pub(crate) transform: Affine,
 }
@@ -127,6 +132,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
+        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         let transform = view_state.transform;
@@ -135,6 +141,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base,
             view_state,
             window,
+            cursor,
             delta_time,
             transform,
         }
@@ -146,6 +153,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
+            cursor: self.cursor,
             delta_time: self.delta_time,
             transform: self.transform,
         }
@@ -167,6 +175,7 @@ pub struct LayoutCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
+    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
 }
 
@@ -175,12 +184,14 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
+        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
+            cursor,
             delta_time,
         }
     }
@@ -191,6 +202,7 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
+            cursor: self.cursor,
             delta_time: self.delta_time,
         }
     }
@@ -201,6 +213,7 @@ pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
+    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
 }
 
@@ -209,12 +222,14 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
+        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
+            cursor,
             delta_time,
         }
     }
@@ -225,6 +240,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
+            cursor: self.cursor,
             delta_time: self.delta_time,
         }
     }
@@ -301,6 +317,20 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
         updated
     }
 
+    /// Get whether the view is focused.
+    pub fn is_focused(&self) -> bool {
+        self.view_state.is_focused()
+    }
+
+    /// Set whether the view is focused.
+    ///
+    /// Returns `true` if the focused state changed.
+    pub fn set_focused(&mut self, focused: bool) -> bool {
+        let updated = self.is_focused() != focused;
+        self.view_state.set_focused(focused);
+        updated
+    }
+
     /// Get whether the view is active.
     pub fn is_active(&self) -> bool {
         self.view_state.is_active()
@@ -313,6 +343,18 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
         let updated = self.is_active() != active;
         self.view_state.set_active(active);
         updated
+    }
+
+    /// Set the cursor of the view.
+    pub fn set_cursor(&mut self, cursor: Cursor) {
+        self.view_state.cursor = cursor;
+    }
+
+    pub(crate) fn update_cursor(&mut self) {
+        if self.view_state.depth > *self.cursor && (self.is_hot() || self.is_active()) {
+            *self.cursor = self.view_state.depth;
+            self.window.set_cursor(self.view_state.cursor);
+        }
     }
 
     /// Get the flex of the view.

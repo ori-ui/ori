@@ -11,6 +11,7 @@ use crate::{
         TextWrap,
     },
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    window::Cursor,
 };
 
 /// Create a new [`TextInput`].
@@ -307,17 +308,20 @@ impl<T> TextInput<T> {
     ) -> bool {
         let local = cx.local(event.position);
 
-        let hovered = cx.rect().contains(local);
+        let over = cx.rect().contains(local);
+        cx.set_hot(over);
+        cx.set_cursor(Cursor::Text);
 
-        if event.is_press() && hovered {
-            cx.set_active(true);
+        if event.is_press() && over {
             state.cursor_index = self.hit_text(state, data, local);
+            cx.set_focused(true);
             cx.request_draw();
+
             return true;
         }
 
-        if event.is_press() && !hovered {
-            cx.set_active(false);
+        if event.is_press() && !over {
+            cx.set_focused(false);
             return false;
         }
 
@@ -378,7 +382,7 @@ impl<T> TextInput<T> {
     ) {
         match key {
             Code::Escape => {
-                cx.set_active(false);
+                cx.set_focused(false);
             }
             Code::Backspace => self.input_backspace(state, cx, data),
             Code::Enter => self.input_enter(state, cx, data, modifiers),
@@ -408,7 +412,7 @@ impl<T> TextInput<T> {
 
         if let Some(ref mut on_submit) = self.on_submit {
             on_submit(cx, data, text);
-            cx.set_active(false);
+            cx.set_focused(false);
             cx.request_rebuild();
 
             if self.bind_text.is_none() {
@@ -480,7 +484,7 @@ impl<T> TextInput<T> {
         data: &mut T,
         event: &KeyboardEvent,
     ) -> bool {
-        if !cx.is_active() {
+        if !cx.is_focused() {
             return false;
         }
 
@@ -634,7 +638,7 @@ impl<T> View<T> for TextInput<T> {
             canvas.draw_pixel_perfect(mesh);
         }
 
-        if !cx.is_active() {
+        if !cx.is_focused() {
             return;
         }
 

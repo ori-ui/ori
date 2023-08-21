@@ -1,5 +1,10 @@
-use ori_core::{image::Image, window::RawWindow};
+use ori_core::{
+    image::Image,
+    window::{Cursor, RawWindow},
+};
 use winit::{dpi::PhysicalSize, window::Icon};
+
+use crate::convert::convert_cursor_icon;
 
 pub struct WinitWindow {
     window: winit::window::Window,
@@ -81,6 +86,10 @@ impl RawWindow for WinitWindow {
 
     fn set_visible(&mut self, visible: bool) {
         self.window.set_visible(visible);
+    }
+
+    fn set_cursor(&mut self, cursor: Cursor) {
+        (self.window).set_cursor_icon(convert_cursor_icon(cursor));
     }
 
     fn request_draw(&mut self) {

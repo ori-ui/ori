@@ -8,7 +8,7 @@ use crate::{
     layout::Size,
 };
 
-use super::{RawWindow, WindowDescriptor};
+use super::{Cursor, RawWindow, WindowDescriptor};
 
 /// A unique identifier for a window.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -175,6 +175,11 @@ impl Window {
     /// Set whether the window is visible.
     pub fn set_visible(&mut self, visible: bool) {
         self.raw.set_visible(visible);
+    }
+
+    /// Set the cursor of the window.
+    pub fn set_cursor(&mut self, cursor: Cursor) {
+        self.raw.set_cursor(cursor);
     }
 
     /// Request a redraw of the window.

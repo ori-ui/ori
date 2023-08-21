@@ -1,6 +1,10 @@
 use glam::Vec2;
 
-use crate::layout::{Affine, Size};
+use crate::{
+    canvas::Canvas,
+    layout::{Affine, Size},
+    window::Cursor,
+};
 
 bitflags::bitflags! {
     /// Flags that indicate what needs to be updated.
@@ -18,6 +22,7 @@ bitflags::bitflags! {
 #[derive(Clone, Debug)]
 pub struct ViewState {
     pub(crate) hot: bool,
+    pub(crate) focused: bool,
     pub(crate) active: bool,
     pub(crate) has_active: bool,
     pub(crate) update: Update,
@@ -26,12 +31,15 @@ pub struct ViewState {
     pub(crate) size: Size,
     pub(crate) transform: Affine,
     pub(crate) depth: f32,
+    /* cursor */
+    pub(crate) cursor: Cursor,
 }
 
 impl Default for ViewState {
     fn default() -> Self {
         Self {
             hot: false,
+            focused: false,
             active: false,
             has_active: false,
             update: Update::LAYOUT | Update::DRAW,
@@ -39,11 +47,27 @@ impl Default for ViewState {
             size: Size::ZERO,
             transform: Affine::IDENTITY,
             depth: 0.0,
+            cursor: Cursor::default(),
         }
     }
 }
 
 impl ViewState {
+    pub(crate) fn prepare(&mut self) {
+        self.has_active = self.active;
+    }
+
+    pub(crate) fn prepare_layout(&mut self) {
+        self.prepare();
+        self.layed_out();
+    }
+
+    pub(crate) fn prepare_draw(&mut self, canvas: &mut Canvas) {
+        self.prepare();
+        self.drawn();
+        self.depth = canvas.depth;
+    }
+
     pub(crate) fn propagate(&mut self, child: &mut Self) {
         self.has_active |= child.has_active;
         self.update |= child.update;
@@ -59,6 +83,16 @@ impl ViewState {
     /// Set whether the view is hot.
     pub fn set_hot(&mut self, hot: bool) {
         self.hot = hot;
+    }
+
+    /// Get whether the view is focused.
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    /// Set whether the view is focused.
+    pub fn set_focused(&mut self, focused: bool) {
+        self.focused = focused;
     }
 
     /// Get whether the view is active.

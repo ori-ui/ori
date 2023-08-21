@@ -6,19 +6,29 @@ use std::{
     },
 };
 
+use crate::proxy::Command;
+
 /// An event that can be sent to a view.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Event {
-    event: Arc<dyn Any>,
-    handled: Arc<AtomicBool>,
-    name: &'static str,
+    pub(crate) event: Box<dyn Any>,
+    pub(crate) handled: Arc<AtomicBool>,
+    pub(crate) name: &'static str,
 }
 
 impl Event {
+    pub(crate) fn from_command(command: Command) -> Self {
+        Self {
+            event: command.command,
+            handled: Arc::new(AtomicBool::new(false)),
+            name: command.name,
+        }
+    }
+
     /// Create a new event.
     pub fn new<T: Any>(event: T) -> Self {
         Self {
-            event: Arc::new(event),
+            event: Box::new(event),
             handled: Arc::new(AtomicBool::new(false)),
             name: std::any::type_name::<T>(),
         }

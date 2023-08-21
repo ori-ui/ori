@@ -1,13 +1,14 @@
 //! User interface state.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use glam::Vec2;
 
 use crate::{
     canvas::SceneRender,
-    delegate::{Command, Delegate, DelegateCx},
+    delegate::{Delegate, DelegateCx},
     event::{Code, Event, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId},
+    proxy::{Command, Proxy, ProxyWaker},
     style::{set_style, styled, Theme, SCALE_FACTOR},
     text::Fonts,
     view::BaseCx,
@@ -20,6 +21,7 @@ pub struct Ui<T, R: SceneRender> {
     modifiers: Modifiers,
     delegate: Box<dyn Delegate<T>>,
     themes: Vec<Box<dyn FnMut() -> Theme>>,
+    commands: Proxy,
     /// The fonts used by the UI.
     pub fonts: Fonts,
     /// The data used by the UI.
@@ -28,12 +30,13 @@ pub struct Ui<T, R: SceneRender> {
 
 impl<T, R: SceneRender> Ui<T, R> {
     /// Create a new [`Ui`] with the given data.
-    pub fn new(data: T) -> Self {
+    pub fn new(data: T, waker: Arc<dyn ProxyWaker>) -> Self {
         Self {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegate: Box::new(()),
             themes: Vec::new(),
+            commands: Proxy::new(waker),
             fonts: Fonts::default(),
             data,
         }
@@ -70,9 +73,8 @@ impl<T, R: SceneRender> Ui<T, R> {
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
         let theme = self.build_theme(window.scale_factor());
 
-        let mut commands = Vec::new();
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
 
         let window_id = window.id();
         let window_ui = WindowUi::new(builder, &mut base, &mut self.data, theme, window, render);
@@ -82,7 +84,7 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands(commands);
+        self.handle_commands();
     }
 
     /// Remove a window.
@@ -125,9 +127,8 @@ impl<T, R: SceneRender> Ui<T, R> {
             window.idle();
         }
 
-        let mut commands = Vec::new();
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
         self.delegate.idle(&mut cx, &mut self.data);
@@ -136,7 +137,7 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands(commands);
+        self.handle_commands();
     }
 
     /// Rebuild the theme for a window.
@@ -254,14 +255,13 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     fn handle_command(&mut self, command: Command) {
-        let event = command.event();
+        let event = Event::from_command(command);
 
         let mut needs_rebuild = false;
-        let mut commands = Vec::new();
-        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
-        self.delegate.event(&mut cx, &mut self.data, event);
+        self.delegate.event(&mut cx, &mut self.data, &event);
 
         if needs_rebuild {
             self.request_rebuild();
@@ -269,22 +269,22 @@ impl<T, R: SceneRender> Ui<T, R> {
 
         if !event.is_handled() {
             for window_id in self.window_ids() {
-                self.event(window_id, event);
+                self.event(window_id, &event);
             }
         }
     }
 
-    fn handle_commands(&mut self, commands: Vec<Command>) {
-        for command in commands {
+    /// Handle all pending commands.
+    pub fn handle_commands(&mut self) {
+        while let Ok(command) = self.commands.rx.try_recv() {
             self.handle_command(command);
         }
     }
 
     /// Handle an event for a window.
     pub fn event(&mut self, window_id: WindowId, event: &Event) {
-        let mut commands = Vec::new();
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             window_ui.event(&mut base, &mut self.data, event);
@@ -294,14 +294,13 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands(commands);
+        self.handle_commands();
     }
 
     /// Render a window.
     pub fn render(&mut self, window_id: WindowId) {
-        let mut commands = Vec::new();
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             window_ui.render(&mut base, &mut self.data);
@@ -311,6 +310,6 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands(commands);
+        self.handle_commands();
     }
 }

@@ -7,7 +7,7 @@ use ori_core::{
 };
 use winit::{
     event::{Event, KeyboardInput, MouseScrollDelta, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::ControlFlow,
     window::WindowBuilder,
 };
 
@@ -26,11 +26,10 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
-    let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_visible(false)
         .with_transparent(app.window.transparent)
-        .build(&event_loop)?;
+        .build(&app.event_loop)?;
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
 
@@ -49,7 +48,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
 
     app.ui.add_window(app.builder, window, render);
 
-    event_loop.run(move |event, _, control_flow| {
+    app.event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         match event {
@@ -59,6 +58,9 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
             Event::RedrawRequested(window_id) => {
                 let id = ids[&window_id];
                 app.ui.render(id);
+            }
+            Event::UserEvent(_) => {
+                app.ui.handle_commands();
             }
             Event::WindowEvent { window_id, event } => {
                 let window_id = ids[&window_id];

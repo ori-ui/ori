@@ -6,6 +6,7 @@
 mod app;
 mod convert;
 mod error;
+mod proxy;
 mod render;
 mod run;
 mod window;

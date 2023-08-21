@@ -4,8 +4,8 @@ use glam::Vec2;
 
 use crate::{
     canvas::Mesh,
-    delegate::Command,
     layout::{Affine, Rect, Size},
+    proxy::{Command, Proxy},
     text::{Fonts, Glyphs, TextSection},
     view::ViewState,
     window::Window,
@@ -14,20 +14,16 @@ use crate::{
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
     pub(crate) fonts: &'a mut Fonts,
-    pub(crate) commands: &'a mut Vec<Command>,
+    pub(crate) proxy: &'a mut Proxy,
     pub(crate) needs_rebuild: &'a mut bool,
 }
 
 impl<'a> BaseCx<'a> {
     /// Create a new base context.
-    pub fn new(
-        fonts: &'a mut Fonts,
-        commands: &'a mut Vec<Command>,
-        needs_rebuild: &'a mut bool,
-    ) -> Self {
+    pub fn new(fonts: &'a mut Fonts, proxy: &'a mut Proxy, needs_rebuild: &'a mut bool) -> Self {
         Self {
             fonts,
-            commands,
+            proxy,
             needs_rebuild,
         }
     }
@@ -37,9 +33,14 @@ impl<'a> BaseCx<'a> {
         self.fonts
     }
 
+    /// Get the [`Proxy`].
+    pub fn proxy(&self) -> Proxy {
+        self.proxy.clone()
+    }
+
     /// Emit a command.
-    pub fn cmd<T: Any>(&mut self, command: T) {
-        self.commands.push(Command::new(command));
+    pub fn cmd<T: Any + Send>(&mut self, command: T) {
+        self.proxy.send_internal(Command::new(command));
     }
 
     /// Request a rebuild of the view tree.
@@ -269,8 +270,13 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         self.window
     }
 
+    /// Get a proxy for sending commands.
+    pub fn proxy(&self) -> Proxy {
+        self.base.proxy()
+    }
+
     /// Emit a command.
-    pub fn cmd<T: Any>(&mut self, command: T) {
+    pub fn cmd<T: Any + Send>(&mut self, command: T) {
         self.base.cmd(command);
     }
 }}

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ori_core::{
     delegate::Delegate,
     image::Image,
@@ -7,11 +9,13 @@ use ori_core::{
     view::View,
     window::{UiBuilder, WindowDescriptor},
 };
+use winit::event_loop::EventLoop;
 
-use crate::{render::Render, Error};
+use crate::{proxy::WinitWaker, render::Render, Error};
 
 /// An application.
 pub struct App<T> {
+    pub(crate) event_loop: EventLoop<()>,
     pub(crate) window: WindowDescriptor,
     pub(crate) builder: UiBuilder<T>,
     pub(crate) ui: Ui<T, Render>,
@@ -25,10 +29,17 @@ impl<T: 'static> App<T> {
         V: View<T> + 'static,
         V::State: 'static,
     {
+        let event_loop = EventLoop::new();
+
+        let waker = WinitWaker {
+            proxy: event_loop.create_proxy().into(),
+        };
+
         let mut app = Self {
+            event_loop,
             window: WindowDescriptor::default(),
             builder: Box::new(move |data| Box::new(builder(data))),
-            ui: Ui::new(data),
+            ui: Ui::new(data, Arc::new(waker)),
             text_size: 16.0,
         };
 

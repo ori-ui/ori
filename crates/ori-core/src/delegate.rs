@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use crate::{event::Event, view::BaseCx};
+use crate::{event::Event, proxy::Proxy, view::BaseCx};
 
 /// A context for a [`Delegate`].
 pub struct DelegateCx<'a, 'b> {
@@ -14,34 +14,19 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
         Self { base }
     }
 
+    /// Get a proxy for sending commands.
+    pub fn proxy(&self) -> Proxy {
+        self.base.proxy()
+    }
+
     /// Send a command.
-    pub fn cmd<T: Any>(&mut self, event: T) {
-        self.base.cmd(Command::new(event));
+    pub fn cmd<T: Any + Send>(&mut self, event: T) {
+        self.base.cmd(event);
     }
 
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
         self.base.request_rebuild();
-    }
-}
-
-/// A command for a [`Delegate`].
-#[derive(Clone, Debug)]
-pub struct Command {
-    event: Event,
-}
-
-impl Command {
-    /// Create a new command.
-    pub fn new<T: Any>(event: T) -> Self {
-        Self {
-            event: Event::new(event),
-        }
-    }
-
-    /// Get the name of the event.
-    pub fn event(&self) -> &Event {
-        &self.event
     }
 }
 

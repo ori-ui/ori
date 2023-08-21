@@ -9,6 +9,7 @@ pub mod event;
 pub mod image;
 pub mod layout;
 pub mod log;
+pub mod proxy;
 pub mod rebuild;
 pub mod style;
 pub mod text;

@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 ori-macro = { path = "../ori-macro", version = "0.1.0-alpha.1" }
 
 bitflags = "2.4"
+crossbeam-channel = "0.5"
 etagere = "0.2"
 fontdb = "0.14"
 fontdue = "0.7"

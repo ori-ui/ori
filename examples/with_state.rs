@@ -46,6 +46,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 
         let user = container(fields)
             .padding(em(0.5))
+            .align(Align::CENTER)
             .background(style(Palette::SECONDARY))
             .border_radius(em(0.5));
 

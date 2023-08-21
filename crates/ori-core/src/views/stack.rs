@@ -14,6 +14,11 @@ pub use crate::{hstack, vstack};
 /// Create a horizontal [`Stack`].
 #[macro_export]
 macro_rules! hstack {
+    (for $iter:expr) => {
+        $crate::views::hstack(
+            <::std::vec::Vec<_> as ::std::iter::FromIterator<_>>::from_iter($iter)
+        )
+    };
     ($($child:expr),* $(,)?) => {
         $crate::views::hstack(($($child,)*))
     };
@@ -22,6 +27,11 @@ macro_rules! hstack {
 /// Create a vertical [`Stack`].
 #[macro_export]
 macro_rules! vstack {
+    (for $iter:expr) => {
+        $crate::views::vstack(
+            <::std::vec::Vec<_> as ::std::iter::FromIterator<_>>::from_iter($iter)
+        )
+    };
     ($($child:expr),* $(,)?) => {
         $crate::views::vstack(($($child,)*))
     };

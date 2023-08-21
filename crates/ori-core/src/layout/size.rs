@@ -1,4 +1,7 @@
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use std::{
+    fmt::Display,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+};
 
 use glam::Vec2;
 
@@ -72,6 +75,12 @@ impl From<Size> for (f32, f32) {
 impl From<Size> for [f32; 2] {
     fn from(size: Size) -> Self {
         [size.width, size.height]
+    }
+}
+
+impl Display for Size {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}x{}", self.width, self.height)
     }
 }
 

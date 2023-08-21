@@ -191,23 +191,37 @@ impl<T, V: View<T>> View<T> for Container<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let content_space = self.space.with(space).shrink(self.padding.size());
+        let space = if self.alignment.is_some() {
+            self.space.with(space).loosen()
+        } else {
+            self.space.with(space)
+        };
+
+        // the content must fit within the padding
+        let content_space = space.shrink(self.padding.size());
         let mut content_size = self.content.layout_content(state, cx, data, content_space);
         content_size += self.padding.size();
 
         if let Some(alignment) = self.alignment {
-            let space = self.space.with(space).with(Space::INFINITE);
+            // try to fill the available space, this will be bounded by `self.space`
+            let space = space.with(Space::INFINITE);
             let size = space.fit(content_size);
+
+            // align the content within the self
             let align = alignment.align(content_size, size);
-            state.translate(self.padding.offset() + align);
+
+            // set the transform of the content
+            let affine = Affine::translate(self.padding.offset() + align);
+            state.set_transform(affine * self.transform);
 
             return size;
         }
 
-        let transform = Affine::translate(self.padding.offset()) * self.transform;
-        state.set_transform(transform);
+        // set the transform of the content
+        let affine = Affine::translate(self.padding.offset());
+        state.set_transform(affine * self.transform);
 
-        self.space.with(space).fit(content_size)
+        space.fit(content_size)
     }
 
     fn draw(

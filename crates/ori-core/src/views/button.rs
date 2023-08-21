@@ -206,7 +206,13 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
             self.color.mix(bright, self.transition.on(*t))
         };
 
-        canvas.draw_quad(cx.rect(), color, [6.0; 4], [0.0; 4], Color::TRANSPARENT);
+        canvas.draw_quad(
+            cx.rect(),
+            color,
+            self.border_radius,
+            self.border_width,
+            self.border_color,
+        );
 
         if *t == 0.0 || self.fancy == 0.0 {
             self.content.draw_content(state, cx, data, canvas);
@@ -221,9 +227,9 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
         layer.draw_quad(
             cx.rect(),
             self.color.mix(bright, self.transition.on(*t)),
-            [6.0; 4],
-            [0.0; 4],
-            Color::TRANSPARENT,
+            self.border_radius,
+            self.border_width,
+            self.border_color,
         );
 
         self.content.draw_content(state, cx, data, &mut layer);

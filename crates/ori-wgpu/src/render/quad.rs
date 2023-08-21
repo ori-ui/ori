@@ -4,6 +4,7 @@ use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
 use ori_core::{
     canvas::Quad,
     layout::{Affine, Rect, Size},
+    math::Vec2,
 };
 use wgpu::{
     include_wgsl,
@@ -248,7 +249,7 @@ impl QuadRender {
         let instance = &mut self.instances[index];
         instance.write_vertex_buffer(queue, quad);
         instance.write_uniform_buffer(queue, quad, transform, resolution);
-        instance.clip = clip;
+        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution));
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {

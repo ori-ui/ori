@@ -4,6 +4,7 @@ use bytemuck::{bytes_of, Pod, Zeroable};
 use ori_core::{
     canvas::{Mesh, Vertex},
     layout::{Affine, Rect, Size},
+    math::Vec2,
 };
 use wgpu::{
     include_wgsl, vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry,
@@ -215,7 +216,7 @@ impl MeshRender {
         instance.write_index_buffer(device, queue, mesh);
         instance.write_uniform_buffer(queue, transform, resolution);
         instance.image = Some(image);
-        instance.clip = clip;
+        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution));
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize, mesh: &Mesh) {

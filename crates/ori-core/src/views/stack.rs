@@ -51,7 +51,7 @@ pub struct Stack<V> {
     pub content: ContentSeq<V>,
     /// The size of the stack.
     #[rebuild(layout)]
-    pub size: Option<Size>,
+    pub space: Space,
     /// The axis of the stack.
     #[rebuild(layout)]
     pub axis: Axis,
@@ -77,7 +77,7 @@ impl<V> Stack<V> {
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
             content: ContentSeq::new(content),
-            size: None,
+            space: Space::UNBOUNDED,
             axis,
             justify_content: Justify::Start,
             align_items: AlignItems::Start,
@@ -95,6 +95,56 @@ impl<V> Stack<V> {
     /// Create a new vertical [`Stack`].
     pub fn vstack(content: V) -> Self {
         Self::new(Axis::Vertical, content)
+    }
+
+    /// Set the space of the stack.
+    pub fn space(mut self, space: impl Into<Space>) -> Self {
+        self.space = space.into();
+        self
+    }
+
+    /// Set the size of the stack.
+    pub fn size(mut self, size: impl Into<Size>) -> Self {
+        self.space = Space::from_size(size.into());
+        self
+    }
+
+    /// Set the width of the stack.
+    pub fn width(mut self, width: f32) -> Self {
+        self.space.min.width = width;
+        self.space.max.width = width;
+        self
+    }
+
+    /// Set the height of the stack.
+    pub fn height(mut self, height: f32) -> Self {
+        self.space.min.height = height;
+        self.space.max.height = height;
+        self
+    }
+
+    /// Set the minimum width of the stack.
+    pub fn min_width(mut self, min_width: f32) -> Self {
+        self.space.min.width = min_width;
+        self
+    }
+
+    /// Set the minimum height of the stack.
+    pub fn min_height(mut self, min_height: f32) -> Self {
+        self.space.min.height = min_height;
+        self
+    }
+
+    /// Set the maximum width of the stack.
+    pub fn max_width(mut self, max_width: f32) -> Self {
+        self.space.max.width = max_width;
+        self
+    }
+
+    /// Set the maximum height of the stack.
+    pub fn max_height(mut self, max_height: f32) -> Self {
+        self.space.max.height = max_height;
+        self
     }
 
     /// Set the justify content.
@@ -157,6 +207,7 @@ impl<V> Stack<V> {
         cx: &mut LayoutCx,
         gap_major: f32,
         max_major: f32,
+        max_minor: f32,
     ) where
         V: ViewSeq<T>,
     {
@@ -169,7 +220,9 @@ impl<V> Stack<V> {
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let size = (self.content).layout_nth(i, content, cx, data, Space::UNBOUNDED);
+            let content_space = Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor));
+
+            let size = (self.content).layout_nth(i, content, cx, data, content_space);
             let (child_major, child_minor) = self.axis.unpack(size);
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
@@ -364,14 +417,14 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let content_space = space;
+        let space = self.space.with(space);
 
-        let (max_major, max_minor) = self.axis.unpack(content_space.max);
-        let (min_major, min_minor) = self.axis.unpack(content_space.min);
+        let (max_major, max_minor) = self.axis.unpack(space.max);
+        let (min_major, min_minor) = self.axis.unpack(space.min);
 
         let (gap_major, gap_minor) = self.axis.unpack((self.column_gap, self.row_gap));
 
-        self.measure_fixed(state, content, data, cx, gap_major, max_major);
+        self.measure_fixed(state, content, data, cx, gap_major, max_major, max_minor);
         self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);
 
         let content_major = state.major().min(max_major);

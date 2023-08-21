@@ -79,7 +79,6 @@ pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
 }
 
@@ -88,14 +87,12 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            cursor,
             delta_time,
         }
     }
@@ -106,7 +103,6 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            cursor: self.cursor,
             delta_time: self.delta_time,
         }
     }
@@ -122,7 +118,6 @@ pub struct EventCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
     pub(crate) transform: Affine,
 }
@@ -132,7 +127,6 @@ impl<'a, 'b> EventCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         let transform = view_state.transform;
@@ -141,7 +135,6 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base,
             view_state,
             window,
-            cursor,
             delta_time,
             transform,
         }
@@ -153,7 +146,6 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            cursor: self.cursor,
             delta_time: self.delta_time,
             transform: self.transform,
         }
@@ -175,7 +167,6 @@ pub struct LayoutCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
 }
 
@@ -184,14 +175,12 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            cursor,
             delta_time,
         }
     }
@@ -202,7 +191,6 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            cursor: self.cursor,
             delta_time: self.delta_time,
         }
     }
@@ -213,7 +201,6 @@ pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) cursor: &'a mut f32,
     pub(crate) delta_time: Duration,
 }
 
@@ -222,14 +209,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        cursor: &'a mut f32,
         delta_time: Duration,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            cursor,
             delta_time,
         }
     }
@@ -240,7 +225,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            cursor: self.cursor,
             delta_time: self.delta_time,
         }
     }
@@ -346,14 +330,16 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
     }
 
     /// Set the cursor of the view.
-    pub fn set_cursor(&mut self, cursor: Cursor) {
-        self.view_state.cursor = cursor;
+    pub fn set_cursor(&mut self, cursor: impl Into<Option<Cursor>>) {
+        self.view_state.cursor = cursor.into();
     }
 
-    pub(crate) fn update_cursor(&mut self) {
-        if self.view_state.depth > *self.cursor && (self.is_hot() || self.is_active()) {
-            *self.cursor = self.view_state.depth;
-            self.window.set_cursor(self.view_state.cursor);
+    pub(crate) fn update(&mut self) {
+        match self.view_state.cursor {
+            Some(cursor) if !self.view_state.has_cursor() => {
+                self.window.set_cursor(cursor);
+            }
+            _ => {}
         }
     }
 

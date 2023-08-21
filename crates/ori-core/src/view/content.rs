@@ -83,7 +83,7 @@ impl<T, V: View<T>> View<T> for Content<V> {
         new_cx.view_state = &mut state.view_state;
 
         (self.view).rebuild(&mut state.content, &mut new_cx, data, &old.view);
-        new_cx.update_cursor();
+        new_cx.update();
 
         cx.view_state.propagate(&mut state.view_state);
     }
@@ -96,7 +96,7 @@ impl<T, V: View<T>> View<T> for Content<V> {
         new_cx.view_state = &mut state.view_state;
 
         (self.view).event(&mut state.content, &mut new_cx, data, event);
-        new_cx.update_cursor();
+        new_cx.update();
 
         cx.view_state.propagate(&mut state.view_state);
     }
@@ -114,7 +114,7 @@ impl<T, V: View<T>> View<T> for Content<V> {
         new_cx.view_state = &mut state.view_state;
 
         let size = (self.view).layout(&mut state.content, &mut new_cx, data, space);
-        new_cx.update_cursor();
+        new_cx.update();
 
         state.view_state.size = size;
         cx.view_state.propagate(&mut state.view_state);
@@ -129,7 +129,7 @@ impl<T, V: View<T>> View<T> for Content<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        state.view_state.prepare_draw(canvas);
+        state.view_state.prepare_draw();
 
         // create the canvas layer
         let mut canvas = canvas.layer();
@@ -141,7 +141,7 @@ impl<T, V: View<T>> View<T> for Content<V> {
 
         // draw the content
         (self.view).draw(&mut state.content, &mut new_cx, data, &mut canvas);
-        new_cx.update_cursor();
+        new_cx.update();
 
         // propagate the view state
         cx.view_state.propagate(&mut state.view_state);

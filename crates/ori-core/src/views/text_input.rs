@@ -309,8 +309,13 @@ impl<T> TextInput<T> {
         let local = cx.local(event.position);
 
         let over = cx.rect().contains(local);
-        cx.set_hot(over);
-        cx.set_cursor(Cursor::Text);
+        if cx.set_hot(over) {
+            if over {
+                cx.set_cursor(Cursor::Text);
+            } else {
+                cx.set_cursor(None);
+            }
+        }
 
         if event.is_press() && over {
             state.cursor_index = self.hit_text(state, data, local);

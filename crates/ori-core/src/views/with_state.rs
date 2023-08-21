@@ -4,6 +4,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
+    style::Theme,
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
 
@@ -21,6 +22,7 @@ where
 /// A view that stores some additional data.
 pub struct WithState<T, U, V> {
     build: Box<dyn Fn() -> U>,
+    theme: Theme,
     #[allow(clippy::type_complexity)]
     view: Box<dyn FnMut(&mut T, &mut U) -> V>,
 }
@@ -33,6 +35,7 @@ impl<T, U, V> WithState<T, U, V> {
     ) -> Self {
         Self {
             build: Box::new(build),
+            theme: Theme::global_snapshot(),
             view: Box::new(view),
         }
     }
@@ -58,12 +61,14 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
     type State = (Content<V>, U, State<(T, U), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let mut state = (self.build)();
-        let mut view = Content::new((self.view)(data, &mut state));
+        Theme::with_global(&mut self.theme, || {
+            let mut state = (self.build)();
+            let mut view = Content::new((self.view)(data, &mut state));
 
-        let view_state = Self::data(&mut state, data, |data| view.build(cx, data));
+            let content = Self::data(&mut state, data, |data| view.build(cx, data));
 
-        (view, state, view_state)
+            (view, state, content)
+        })
     }
 
     fn rebuild(
@@ -75,8 +80,10 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
     ) {
         let mut new_view = Content::new((self.view)(data, data_state));
 
-        Self::data(data_state, data, |data| {
-            new_view.rebuild(state, cx, data, view)
+        Theme::with_global(&mut self.theme, || {
+            Self::data(data_state, data, |data| {
+                new_view.rebuild(state, cx, data, view)
+            });
         });
 
         *view = new_view;
@@ -89,7 +96,9 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         event: &Event,
     ) {
-        Self::data(data_state, data, |data| view.event(state, cx, data, event))
+        Theme::with_global(&mut self.theme, || {
+            Self::data(data_state, data, |data| view.event(state, cx, data, event));
+        });
     }
 
     fn layout(
@@ -99,7 +108,9 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        Self::data(data_state, data, |data| view.layout(state, cx, data, space))
+        Theme::with_global(&mut self.theme, || {
+            Self::data(data_state, data, |data| view.layout(state, cx, data, space))
+        })
     }
 
     fn draw(
@@ -109,6 +120,8 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        Self::data(data_state, data, |data| view.draw(state, cx, data, canvas))
+        Theme::with_global(&mut self.theme, || {
+            Self::data(data_state, data, |data| view.draw(state, cx, data, canvas));
+        });
     }
 }

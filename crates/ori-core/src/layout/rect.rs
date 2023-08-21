@@ -54,6 +54,14 @@ impl Rect {
         }
     }
 
+    /// Clamp the rectangle to the given rectangle.
+    pub fn clamp(self, other: Self) -> Self {
+        Self {
+            min: self.min.clamp(other.min, other.max),
+            max: self.max.clamp(other.min, other.max),
+        }
+    }
+
     /// Get the size of the rectangle.
     pub fn size(self) -> Vec2 {
         self.max - self.min

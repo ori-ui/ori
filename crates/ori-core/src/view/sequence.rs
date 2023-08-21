@@ -368,7 +368,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state[n];
         (self.views).rebuild_nth(n, &mut state.content, &mut new_cx, data, &old.views);
-        new_cx.update_cursor();
+        new_cx.update();
 
         cx.view_state.propagate(&mut state.view_state[n]);
     }
@@ -388,7 +388,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         new_cx.view_state = &mut state.view_state[n];
 
         (self.views).event_nth(n, &mut state.content, &mut new_cx, data, event);
-        new_cx.update_cursor();
+        new_cx.update();
 
         cx.view_state.propagate(&mut state.view_state[n]);
     }
@@ -407,7 +407,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         new_cx.view_state = &mut state.view_state[n];
 
         let size = (self.views).layout_nth(n, &mut state.content, &mut new_cx, data, space);
-        new_cx.update_cursor();
+        new_cx.update();
 
         state.view_state[n].size = size;
 
@@ -424,7 +424,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        state.view_state[n].prepare_draw(canvas);
+        state.view_state[n].prepare_draw();
 
         let mut canvas = canvas.layer();
         canvas.transform *= state.view_state[n].transform;
@@ -433,7 +433,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         new_cx.view_state = &mut state.view_state[n];
 
         (self.views).draw_nth(n, &mut state.content, &mut new_cx, data, &mut canvas);
-        new_cx.update_cursor();
+        new_cx.update();
 
         cx.view_state.propagate(&mut state.view_state[n]);
     }

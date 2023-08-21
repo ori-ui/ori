@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Create a new [`Flex`].
-pub fn flex<T, V: View<T>>(flex: f32, content: V) -> Flex<V> {
+pub fn flex<V>(flex: f32, content: V) -> Flex<V> {
     Flex::new(flex, content)
 }
 

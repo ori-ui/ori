@@ -88,7 +88,7 @@ impl<V> Scroll<V> {
     }
 
     fn overflow(&self, content: Size, size: Size) -> f32 {
-        self.axis.major(content - size).abs()
+        self.axis.major(content - size).max(0.0)
     }
 }
 
@@ -213,6 +213,12 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         self.content.draw(content, cx, data, &mut content_layer);
 
+        let overflow = self.overflow(content.size(), cx.size());
+
+        if overflow == 0.0 {
+            return;
+        }
+
         if (self.transition).step(&mut state.t, cx.is_hot() || cx.is_active(), cx.dt()) {
             cx.request_draw();
         }
@@ -228,7 +234,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             Color::TRANSPARENT,
         );
 
-        let overflow = self.overflow(content.size(), cx.size());
         scrollbar_layer.draw_quad(
             self.scrollbar_knob_rect(cx.rect(), overflow, state.scroll),
             self.knob_color.fade(0.7).fade(self.transition.on(state.t)),

@@ -162,14 +162,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let mut new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
         let dt = self.timers.rebuild();
 
-        let mut cursor = f32::NEG_INFINITY;
-        let mut cx = RebuildCx::new(
-            base,
-            &mut self.view_state,
-            &mut self.window,
-            &mut cursor,
-            dt,
-        );
+        let mut cx = RebuildCx::new(base, &mut self.view_state, &mut self.window, dt);
 
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
         Theme::with_global(&mut self.theme, || {
@@ -200,21 +193,14 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         let dt = self.timers.event();
 
-        let mut cursor = f32::NEG_INFINITY;
-        let mut cx = EventCx::new(
-            base,
-            &mut self.view_state,
-            &mut self.window,
-            &mut cursor,
-            dt,
-        );
+        let mut cx = EventCx::new(base, &mut self.view_state, &mut self.window, dt);
 
         // handle the event, with the global theme
         Theme::with_global(&mut self.theme, || {
             self.view.event(&mut self.state, &mut cx, data, event);
         });
 
-        if cursor == f32::NEG_INFINITY {
+        if !self.view_state.has_cursor {
             self.window_mut().set_cursor(Cursor::default());
         }
 
@@ -235,14 +221,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let space = Space::new(Size::ZERO, self.window.size());
         let dt = self.timers.layout();
 
-        let mut cursor = f32::NEG_INFINITY;
-        let mut cx = LayoutCx::new(
-            base,
-            &mut self.view_state,
-            &mut self.window,
-            &mut cursor,
-            dt,
-        );
+        let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window, dt);
 
         // layout the view tree, with the global theme
         let size = Theme::with_global(&mut self.theme, || {
@@ -264,21 +243,14 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         let dt = self.timers.draw();
 
-        let mut cursor = f32::NEG_INFINITY;
-        let mut cx = DrawCx::new(
-            base,
-            &mut self.view_state,
-            &mut self.window,
-            &mut cursor,
-            dt,
-        );
+        let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window, dt);
 
         // draw the view tree, with the global theme
         Theme::with_global(&mut self.theme, || {
             self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
         });
 
-        if cursor == f32::NEG_INFINITY {
+        if !self.view_state.has_cursor {
             self.window_mut().set_cursor(Cursor::default());
         }
     }

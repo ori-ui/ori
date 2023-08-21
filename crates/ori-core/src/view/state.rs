@@ -1,7 +1,6 @@
 use glam::Vec2;
 
 use crate::{
-    canvas::Canvas,
     layout::{Affine, Size},
     window::Cursor,
 };
@@ -24,15 +23,17 @@ pub struct ViewState {
     pub(crate) hot: bool,
     pub(crate) focused: bool,
     pub(crate) active: bool,
+    pub(crate) has_hot: bool,
+    pub(crate) has_focused: bool,
     pub(crate) has_active: bool,
     pub(crate) update: Update,
     /* layout */
     pub(crate) flex: f32,
     pub(crate) size: Size,
     pub(crate) transform: Affine,
-    pub(crate) depth: f32,
     /* cursor */
-    pub(crate) cursor: Cursor,
+    pub(crate) cursor: Option<Cursor>,
+    pub(crate) has_cursor: bool,
 }
 
 impl Default for ViewState {
@@ -41,20 +42,25 @@ impl Default for ViewState {
             hot: false,
             focused: false,
             active: false,
+            has_hot: false,
+            has_focused: false,
             has_active: false,
             update: Update::LAYOUT | Update::DRAW,
             flex: 0.0,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
-            depth: 0.0,
-            cursor: Cursor::default(),
+            cursor: None,
+            has_cursor: false,
         }
     }
 }
 
 impl ViewState {
     pub(crate) fn prepare(&mut self) {
+        self.has_hot = self.hot;
+        self.has_focused = self.focused;
         self.has_active = self.active;
+        self.has_cursor = false;
     }
 
     pub(crate) fn prepare_layout(&mut self) {
@@ -62,14 +68,16 @@ impl ViewState {
         self.layed_out();
     }
 
-    pub(crate) fn prepare_draw(&mut self, canvas: &mut Canvas) {
+    pub(crate) fn prepare_draw(&mut self) {
         self.prepare();
         self.drawn();
-        self.depth = canvas.depth;
     }
 
     pub(crate) fn propagate(&mut self, child: &mut Self) {
+        self.has_hot |= child.has_hot;
+        self.has_focused |= child.has_focused;
         self.has_active |= child.has_active;
+        self.has_cursor |= child.has_cursor | child.cursor.is_some();
         self.update |= child.update;
     }
 }
@@ -103,12 +111,26 @@ impl ViewState {
     /// Set whether the view is active.
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
-        self.has_active = active;
+    }
+
+    /// Get whether the view has a hot child.
+    pub fn has_hot(&self) -> bool {
+        self.has_hot
+    }
+
+    /// Get whether the view has a focused child.
+    pub fn has_focused(&self) -> bool {
+        self.has_focused
     }
 
     /// Get whether the view has an active child.
     pub fn has_active(&self) -> bool {
         self.has_active
+    }
+
+    /// Get whether the view has a child with a cursor.
+    pub fn has_cursor(&self) -> bool {
+        self.has_cursor
     }
 
     /// Get the flex of the view.
@@ -141,14 +163,14 @@ impl ViewState {
         self.transform = Affine::translate(translation);
     }
 
-    /// Get the depth of the view.
-    pub fn depth(&self) -> f32 {
-        self.depth
+    /// Get the cursor of the view.
+    pub fn cursor(&self) -> Option<Cursor> {
+        self.cursor
     }
 
-    /// Set the depth of the view.
-    pub fn set_depth(&mut self, depth: f32) {
-        self.depth = depth;
+    /// Set the cursor of the view.
+    pub fn set_cursor(&mut self, cursor: impl Into<Option<Cursor>>) {
+        self.cursor = cursor.into();
     }
 
     /// Request a layout of the view tree.

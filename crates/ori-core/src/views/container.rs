@@ -256,12 +256,42 @@ pub fn pad<V>(padding: impl Into<Padding>, content: V) -> Container<V> {
     }
 }
 
-/// Create a new sized [`Container`].
+/// Create a new [`Container`] with a fixed size.
 pub fn size<V>(size: impl Into<Size>, content: V) -> Container<V> {
     Container {
         space: Space::from_size(size.into()),
         ..Container::new(content)
     }
+}
+
+/// Create a new [`Container`] with a fixed width.
+pub fn width<V>(width: f32, content: V) -> Container<V> {
+    Container::new(content).width(width)
+}
+
+/// Create a new [`Container`] with a fixed height.
+pub fn height<V>(height: f32, content: V) -> Container<V> {
+    Container::new(content).height(height)
+}
+
+/// Create a new [`Container`] with a minimum width.
+pub fn min_width<V>(min_width: f32, content: V) -> Container<V> {
+    Container::new(content).min_width(min_width)
+}
+
+/// Create a new [`Container`] with a minimum height.
+pub fn min_height<V>(min_height: f32, content: V) -> Container<V> {
+    Container::new(content).min_height(min_height)
+}
+
+/// Create a new [`Container`] with a maximum width.
+pub fn max_width<V>(max_width: f32, content: V) -> Container<V> {
+    Container::new(content).max_width(max_width)
+}
+
+/// Create a new [`Container`] with a maximum height.
+pub fn max_height<V>(max_height: f32, content: V) -> Container<V> {
+    Container::new(content).max_height(max_height)
 }
 
 /// Create a new aligned [`Container`].
@@ -305,7 +335,7 @@ pub fn scale<V>(scale: impl Into<Vec2>, content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the center.
-pub fn align_center<V>(content: V) -> Container<V> {
+pub fn center<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::CENTER),
         ..Container::new(content)
@@ -313,7 +343,7 @@ pub fn align_center<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the top left.
-pub fn align_top_left<V>(content: V) -> Container<V> {
+pub fn top_left<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP_LEFT),
         ..Container::new(content)
@@ -321,7 +351,7 @@ pub fn align_top_left<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the top.
-pub fn align_top<V>(content: V) -> Container<V> {
+pub fn top<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP),
         ..Container::new(content)
@@ -329,7 +359,7 @@ pub fn align_top<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the top right.
-pub fn align_top_right<V>(content: V) -> Container<V> {
+pub fn top_right<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::TOP_RIGHT),
         ..Container::new(content)
@@ -337,7 +367,7 @@ pub fn align_top_right<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the left.
-pub fn align_left<V>(content: V) -> Container<V> {
+pub fn left<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::LEFT),
         ..Container::new(content)
@@ -345,7 +375,7 @@ pub fn align_left<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the right.
-pub fn align_right<V>(content: V) -> Container<V> {
+pub fn right<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::RIGHT),
         ..Container::new(content)
@@ -353,7 +383,7 @@ pub fn align_right<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom left.
-pub fn align_bottom_left<V>(content: V) -> Container<V> {
+pub fn bottom_left<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM_LEFT),
         ..Container::new(content)
@@ -361,7 +391,7 @@ pub fn align_bottom_left<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom.
-pub fn align_bottom<V>(content: V) -> Container<V> {
+pub fn bottom<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM),
         ..Container::new(content)
@@ -369,7 +399,7 @@ pub fn align_bottom<V>(content: V) -> Container<V> {
 }
 
 /// Create a new [`Container`] aligned to the bottom right.
-pub fn align_bottom_right<V>(content: V) -> Container<V> {
+pub fn bottom_right<V>(content: V) -> Container<V> {
     Container {
         alignment: Some(Align::BOTTOM_RIGHT),
         ..Container::new(content)

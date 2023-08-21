@@ -53,7 +53,7 @@ fn app(data: &mut Data) -> impl View<Data> {
         users.push(user);
     }
 
-    align_center(hstack![form(), vstack(users).stretch_items()].center_items())
+    center(hstack![form(), vstack(users).stretch_items()].center_items())
 }
 
 fn main() {

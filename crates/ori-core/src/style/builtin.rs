@@ -112,7 +112,7 @@ style! {
         /// The width of the scrollbar.
         const WIDTH: f32 = em(0.5);
         /// The padding of the scrollbar.
-        const INSET: f32 = em(0.5);
+        const INSET: f32 = em(0.3);
         /// The border radius of the scrollbar.
         const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.25));
         /// The color of the scrollbar.

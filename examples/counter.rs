@@ -12,7 +12,7 @@ fn counter_button() -> impl View<Data> {
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    align_center(
+    center(
         vstack![
             counter_button(),
             text(format!("Clicked {} time(s)", data.counter))

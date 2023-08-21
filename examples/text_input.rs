@@ -40,7 +40,7 @@ fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    align_center(vstack![
+    center(vstack![
         multiline_checkbox(data),
         hstack![input(data), clear_button()],
     ])

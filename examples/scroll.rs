@@ -10,7 +10,7 @@ fn square() -> impl View<Data> {
 }
 
 fn app(_data: &mut Data) -> impl View<Data> {
-    align_center(size(
+    center(height(
         400.0,
         scroll(vstack![
             square(),
@@ -29,6 +29,5 @@ fn app(_data: &mut Data) -> impl View<Data> {
 fn main() {
     App::new(app, Data::default())
         .title("Scroll (examples/scroll.rs)")
-        .theme(Palette::dark)
         .run()
 }

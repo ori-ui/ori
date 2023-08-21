@@ -57,7 +57,7 @@ pub mod prelude {
     };
 
     #[cfg(feature = "font-awesome")]
-    pub use ori_font_awesome::{icon, Icon, IconFont, IconKind};
+    pub use ori_font_awesome as fa;
 
     #[cfg(feature = "image")]
     pub use ori_core::image::image;

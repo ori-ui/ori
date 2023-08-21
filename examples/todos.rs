@@ -81,7 +81,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
 
-    let remove = button(icon("xmark"))
+    let remove = button(fa::icon("xmark"))
         .on_press(move |cx, _: &mut Todo| {
             // because we don't have access to the Data struct here
             // we send a command to the delegate

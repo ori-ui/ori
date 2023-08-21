@@ -8,7 +8,7 @@ use crate::{
 
 use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, Update, View, ViewState};
 
-/// The state of a [`ViewContent`].
+/// The state of [`Content`].
 pub struct State<T, V: View<T> + ?Sized> {
     content: V::State,
     view_state: ViewState,

@@ -2,6 +2,10 @@
 name = "ori"
 version = "0.1.0-alpha.1"
 edition = "2021"
+description = "A declarative, data-driven 2D ui framework"
+keywords = ["ui", "gui", "2d", "declarative", "data-driven"]
+categories = ["ui", "graphics"]
+authors = ["Ori Contributors"]
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

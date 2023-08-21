@@ -11,11 +11,8 @@ use crate::{
 };
 
 /// Create a new [`Button`].
-pub fn button<T, V: View<T>>(
-    content: V,
-    on_click: impl Fn(&mut EventCx, &mut T) + 'static,
-) -> Button<T, V> {
-    Button::new(content, on_click)
+pub fn button<T, V: View<T>>(content: V) -> Button<T, V> {
+    Button::new(content)
 }
 
 /// A button.
@@ -25,7 +22,7 @@ pub struct Button<T, V> {
     pub content: V,
     /// The callback for when the button is pressed.
     #[allow(clippy::type_complexity)]
-    pub on_press: Box<dyn FnMut(&mut EventCx, &mut T)>,
+    pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T)>>,
     /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -51,10 +48,10 @@ pub struct Button<T, V> {
 
 impl<T, V> Button<T, V> {
     /// Create a new [`Button`].
-    pub fn new(content: V, on_click: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
+    pub fn new(content: V) -> Self {
         Self {
             content,
-            on_press: Box::new(on_click),
+            on_press: None,
             padding: Padding::all(8.0),
             fancy: 0.0,
             transition: style(button::TRANSITION),
@@ -63,6 +60,12 @@ impl<T, V> Button<T, V> {
             border_width: style(button::BORDER_WIDTH),
             border_color: style(button::BORDER_COLOR),
         }
+    }
+
+    /// Set the callback for when the button is pressed.
+    pub fn on_press(mut self, on_press: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
+        self.on_press = Some(Box::new(on_press));
+        self
     }
 
     /// Set the padding.
@@ -149,10 +152,12 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
             }
 
             if over && pointer.is_press() {
-                (self.on_press)(cx, data);
+                if let Some(on_press) = &mut self.on_press {
+                    on_press(cx, data);
+                    cx.request_rebuild();
+                }
 
                 cx.set_active(true);
-                cx.request_rebuild();
                 cx.request_draw();
 
                 event.handle();

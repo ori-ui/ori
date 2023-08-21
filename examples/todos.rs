@@ -81,14 +81,15 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
 
-    let remove = button(text("×"), move |cx, _: &mut Todo| {
-        // because we don't have access to the Data struct here
-        // we send a command to the delegate
-        cx.cmd(RemoveTodo(index));
-    })
-    .fancy(4.0)
-    .padding([em(0.4), em(0.1)])
-    .color(hsl(353.0, 0.6, 0.72));
+    let remove = button(text("×"))
+        .on_press(move |cx, _: &mut Todo| {
+            // because we don't have access to the Data struct here
+            // we send a command to the delegate
+            cx.cmd(RemoveTodo(index));
+        })
+        .fancy(4.0)
+        .padding([em(0.4), em(0.1)])
+        .color(hsl(353.0, 0.6, 0.72));
 
     let left = hstack![completed, title].center_items().gap(em(1.5));
     let row = hstack![left, remove]
@@ -146,26 +147,23 @@ fn selection(data: &mut Data) -> impl View<Data> {
         }
     }
 
-    let all = button(text("All"), |_, data: &mut Data| {
-        data.selection = Selection::All
-    })
-    .fancy(4.0)
-    .color(color(data.selection, Selection::All))
-    .padding([5.0, 3.0]);
+    let all = button(text("All"))
+        .on_press(|_, data: &mut Data| data.selection = Selection::All)
+        .fancy(4.0)
+        .color(color(data.selection, Selection::All))
+        .padding([5.0, 3.0]);
 
-    let active = button(text("Active"), |_, data: &mut Data| {
-        data.selection = Selection::Active
-    })
-    .fancy(4.0)
-    .color(color(data.selection, Selection::Active))
-    .padding([5.0, 3.0]);
+    let active = button(text("Active"))
+        .on_press(|_, data: &mut Data| data.selection = Selection::Active)
+        .fancy(4.0)
+        .color(color(data.selection, Selection::Active))
+        .padding([5.0, 3.0]);
 
-    let completed = button(text("Completed"), |_, data: &mut Data| {
-        data.selection = Selection::Completed
-    })
-    .fancy(4.0)
-    .color(color(data.selection, Selection::Completed))
-    .padding([5.0, 3.0]);
+    let completed = button(text("Completed"))
+        .on_press(|_, data: &mut Data| data.selection = Selection::Completed)
+        .fancy(4.0)
+        .color(color(data.selection, Selection::Completed))
+        .padding([5.0, 3.0]);
 
     let items = hstack![all, active, completed].gap(em(1.0));
     let row = hstack![active_count(data), items]

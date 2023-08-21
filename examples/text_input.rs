@@ -25,7 +25,9 @@ fn input(data: &mut Data) -> impl View<Data> {
 }
 
 fn clear_button() -> impl View<Data> {
-    button(text("Clear"), |_, data: &mut Data| data.text.clear()).fancy(4.0)
+    button(text("Clear"))
+        .on_press(|_, data: &mut Data| data.text.clear())
+        .fancy(4.0)
 }
 
 fn multiline_checkbox(data: &mut Data) -> impl View<Data> {

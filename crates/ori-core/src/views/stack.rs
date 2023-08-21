@@ -3,10 +3,7 @@ use crate::{
     event::Event,
     layout::{AlignItems, Axis, Justify, Size, Space},
     rebuild::Rebuild,
-    view::{
-        BuildCx, ContentSequence, DrawCx, EventCx, LayoutCx, RebuildCx, SequenceState, View,
-        ViewSequence,
-    },
+    view::{BuildCx, ContentSeq, DrawCx, EventCx, LayoutCx, RebuildCx, SeqState, View, ViewSeq},
 };
 
 pub use crate::{hstack, vstack};
@@ -38,20 +35,20 @@ macro_rules! vstack {
 }
 
 /// Create a horizontal stack.
-pub fn hstack<T, V: ViewSequence<T>>(content: V) -> Stack<T, V> {
+pub fn hstack<T, V: ViewSeq<T>>(content: V) -> Stack<V> {
     Stack::hstack(content)
 }
 
 /// Create a vertical stack.
-pub fn vstack<T, V: ViewSequence<T>>(content: V) -> Stack<T, V> {
+pub fn vstack<T, V: ViewSeq<T>>(content: V) -> Stack<V> {
     Stack::vstack(content)
 }
 
 /// A view that stacks its content in a line.
 #[derive(Rebuild)]
-pub struct Stack<T, V> {
+pub struct Stack<V> {
     /// The content of the stack.
-    pub content: ContentSequence<T, V>,
+    pub content: ContentSeq<V>,
     /// The size of the stack.
     #[rebuild(layout)]
     pub size: Option<Size>,
@@ -75,11 +72,11 @@ pub struct Stack<T, V> {
     pub row_gap: f32,
 }
 
-impl<T, V> Stack<T, V> {
+impl<V> Stack<V> {
     /// Create a new [`Stack`].
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
-            content: ContentSequence::new(content),
+            content: ContentSeq::new(content),
             size: None,
             axis,
             justify_content: Justify::Start,
@@ -150,17 +147,19 @@ impl<T, V> Stack<T, V> {
     }
 }
 
-impl<T, V: ViewSequence<T>> Stack<T, V> {
+impl<V> Stack<V> {
     #[allow(clippy::too_many_arguments)]
-    fn measure_fixed(
+    fn measure_fixed<T>(
         &mut self,
         state: &mut StackState,
-        content: &mut SequenceState<T, V>,
+        content: &mut SeqState<T, V>,
         data: &mut T,
         cx: &mut LayoutCx,
         gap_major: f32,
         max_major: f32,
-    ) {
+    ) where
+        V: ViewSeq<T>,
+    {
         state.lines.clear();
 
         let mut major = 0.0;
@@ -207,16 +206,18 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn measure_flex(
+    fn measure_flex<T>(
         &mut self,
         state: &mut StackState,
-        content: &mut SequenceState<T, V>,
+        content: &mut SeqState<T, V>,
         data: &mut T,
         cx: &mut LayoutCx,
         min_major: f32,
         max_major: f32,
         max_minor: f32,
-    ) {
+    ) where
+        V: ViewSeq<T>,
+    {
         for line in state.lines.iter_mut() {
             let overflow = line.major - max_major;
             let underflow = min_major - line.major;
@@ -313,8 +314,8 @@ impl StackState {
     }
 }
 
-impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
-    type State = (StackState, SequenceState<T, V>);
+impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
+    type State = (StackState, SeqState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         (

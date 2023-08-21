@@ -49,8 +49,8 @@ pub mod prelude {
         },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
-            any, AnyView, BoxedView, BuildCx, Content, ContentSequence, DrawCx, EventCx, LayoutCx,
-            RebuildCx, SequenceState, State, View, ViewSequence, ViewState,
+            any, AnyView, BoxedView, BuildCx, Content, ContentSeq, DrawCx, EventCx, LayoutCx,
+            RebuildCx, SeqState, State, View, ViewSeq, ViewState,
         },
         views::*,
         window::{Cursor, Window, WindowDescriptor, WindowId},

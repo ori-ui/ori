@@ -1,5 +1,4 @@
 use std::{
-    marker::PhantomData,
     ops::{Index, IndexMut},
     slice::SliceIndex,
 };
@@ -13,7 +12,7 @@ use crate::{
 use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState};
 
 /// A sequence of views.
-pub trait ViewSequence<T> {
+pub trait ViewSeq<T> {
     /// The state of the sequence.
     type State;
 
@@ -72,7 +71,7 @@ pub trait ViewSequence<T> {
     );
 }
 
-impl<T, V: View<T>> ViewSequence<T> for Vec<V> {
+impl<T, V: View<T>> ViewSeq<T> for Vec<V> {
     type State = Vec<V::State>;
 
     fn len(&self) -> usize {
@@ -140,7 +139,7 @@ impl<T, V: View<T>> ViewSequence<T> for Vec<V> {
     }
 }
 
-impl<T> ViewSequence<T> for () {
+impl<T> ViewSeq<T> for () {
     type State = ();
 
     fn len(&self) -> usize {
@@ -196,7 +195,7 @@ impl<T> ViewSequence<T> for () {
 
 macro_rules! impl_tuple {
     ($($name:ident)* ; $($index:tt)*) => {
-        impl<T, $($name: View<T>),* > ViewSequence<T> for ($($name,)*) {
+        impl<T, $($name: View<T>),* > ViewSeq<T> for ($($name,)*) {
             type State = ($($name::State,)*);
 
             fn len(&self) -> usize {
@@ -290,12 +289,12 @@ impl_tuple!(A B C D E F G H I J K; 0 1 2 3 4 5 6 7 8 9 10);
 impl_tuple!(A B C D E F G H I J K L; 0 1 2 3 4 5 6 7 8 9 10 11);
 
 /// The state of a [`ContentSequence`].
-pub struct SequenceState<T, V: ViewSequence<T>> {
+pub struct SeqState<T, V: ViewSeq<T>> {
     content: V::State,
     view_state: Vec<ViewState>,
 }
 
-impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> Index<S> for SequenceState<T, V> {
+impl<T, V: ViewSeq<T>, S: SliceIndex<[ViewState]>> Index<S> for SeqState<T, V> {
     type Output = S::Output;
 
     fn index(&self, index: S) -> &Self::Output {
@@ -303,7 +302,7 @@ impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> Index<S> for SequenceSta
     }
 }
 
-impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> IndexMut<S> for SequenceState<T, V> {
+impl<T, V: ViewSeq<T>, S: SliceIndex<[ViewState]>> IndexMut<S> for SeqState<T, V> {
     fn index_mut(&mut self, index: S) -> &mut Self::Output {
         &mut self.view_state[index]
     }
@@ -318,30 +317,33 @@ impl<T, V: ViewSequence<T>, S: SliceIndex<[ViewState]>> IndexMut<S> for Sequence
 /// If you don't wrap your content in this, you're in strange waters my friend,
 /// and I wish you the best of luck.
 #[repr(transparent)]
-pub struct ContentSequence<T, V> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ContentSeq<V> {
     views: V,
-    marker: PhantomData<fn() -> T>,
 }
 
-impl<T, V> ContentSequence<T, V> {
+impl<V> ContentSeq<V> {
     /// Create a new [`ContentSequence`].
     pub fn new(views: V) -> Self {
-        Self {
-            views,
-            marker: PhantomData,
-        }
+        Self { views }
     }
 }
 
-impl<T, V: ViewSequence<T>> ViewSequence<T> for ContentSequence<T, V> {
-    type State = SequenceState<T, V>;
+impl<V> From<V> for ContentSeq<V> {
+    fn from(views: V) -> Self {
+        Self::new(views)
+    }
+}
+
+impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
+    type State = SeqState<T, V>;
 
     fn len(&self) -> usize {
         self.views.len()
     }
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        SequenceState {
+        SeqState {
             content: self.views.build(cx, data),
             view_state: vec![ViewState::default(); self.views.len()],
         }

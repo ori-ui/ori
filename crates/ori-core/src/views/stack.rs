@@ -150,7 +150,6 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
         cx: &mut LayoutCx,
         gap_major: f32,
         max_major: f32,
-        space: Space,
     ) {
         state.lines.clear();
 
@@ -161,9 +160,7 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let size = self
-                .content
-                .layout_nth(i, content, cx, data, space.loosen());
+            let size = (self.content).layout_nth(i, content, cx, data, Space::UNBOUNDED);
             let (child_major, child_minor) = self.axis.unpack(size);
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
@@ -219,21 +216,23 @@ impl<T, V: ViewSequence<T>> Stack<T, V> {
             } else if underflow > 0.0 {
                 underflow / line.flex_sum
             } else {
-                continue;
+                0.0
             };
+
+            if px_per_flex == 0.0 && !self.align_items.is_stretch() {
+                continue;
+            }
 
             for i in line.start..line.end {
                 let flex = content[i].flex;
 
-                let is_stretch = self.align_items.is_stretch();
-
-                if !is_stretch && flex == 0.0 {
+                if flex == 0.0 && !self.align_items.is_stretch() {
                     continue;
                 }
 
                 let desired_major = state.majors[i] + px_per_flex * flex;
 
-                let space = if is_stretch {
+                let space = if self.align_items.is_stretch() {
                     Space::new(
                         self.axis.pack(desired_major, line.minor),
                         self.axis.pack(desired_major, line.minor),
@@ -361,15 +360,7 @@ impl<T, V: ViewSequence<T>> View<T> for Stack<T, V> {
 
         let (gap_major, gap_minor) = self.axis.unpack((self.column_gap, self.row_gap));
 
-        self.measure_fixed(
-            state,
-            content,
-            data,
-            cx,
-            gap_major,
-            max_major,
-            content_space,
-        );
+        self.measure_fixed(state, content, data, cx, gap_major, max_major);
         self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);
 
         let content_major = state.major().min(max_major);

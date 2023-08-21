@@ -214,11 +214,12 @@ impl Fonts {
     fn text_layout_inner(&mut self, font: &Font, text: &TextSection<'_>) -> Option<Layout> {
         let max_width = match text.wrap {
             TextWrap::None => None,
+            _ if text.bounds.width.is_infinite() => None,
             _ => Some(text.bounds.width),
         };
 
         let max_height = match text.wrap {
-            TextWrap::None => Some(text.bounds.width),
+            TextWrap::None if text.bounds.height.is_finite() => Some(text.bounds.height),
             _ => None,
         };
 
@@ -257,7 +258,7 @@ impl Fonts {
         let size = self.measure_layout(&font, &layout, text)?;
 
         let x_diff = size.width - text.bounds.width;
-        let x_offset = if text.wrap != TextWrap::None {
+        let x_offset = if text.wrap != TextWrap::None && text.bounds.width.is_finite() {
             match text.h_align {
                 TextAlign::Left => 0.0,
                 TextAlign::Center => x_diff / 2.0,
@@ -268,7 +269,7 @@ impl Fonts {
         };
 
         let y_diff = size.height - text.bounds.height;
-        let y_offset = if text.wrap == TextWrap::None {
+        let y_offset = if text.wrap == TextWrap::None && text.bounds.height.is_finite() {
             match text.v_align {
                 TextAlign::Top => 0.0,
                 TextAlign::Center => y_diff / 2.0,
@@ -398,6 +399,7 @@ impl Fonts {
         }
 
         let offset = glyphs.offset(rect);
+
         let mut mesh = Mesh::new();
 
         for (glyph, uv) in glyphs.iter().zip(uvs) {

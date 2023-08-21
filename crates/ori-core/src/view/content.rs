@@ -29,52 +29,75 @@ impl<T, V: View<T> + ?Sized> DerefMut for State<T, V> {
 }
 
 /// Contents of a view.
-pub trait ViewContent<T>: View<T> {
-    /// Build the content state.
-    fn build_content(&mut self, cx: &mut BuildCx, data: &mut T) -> State<T, Self> {
+///
+/// This is strictly necessary for any view that contains any content.
+/// If you don't wrap your content in this, you're in strange waters my friend,
+/// and I wish you the best of luck.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Content<V> {
+    pub(crate) view: V,
+}
+
+impl<V> Content<V> {
+    /// Create a new content view.
+    pub const fn new(view: V) -> Self {
+        Self { view }
+    }
+}
+
+impl<V> From<V> for Content<V> {
+    fn from(view: V) -> Self {
+        Self::new(view)
+    }
+}
+
+impl<V> Deref for Content<V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.view
+    }
+}
+
+impl<V> DerefMut for Content<V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.view
+    }
+}
+
+impl<T, V: View<T>> View<T> for Content<V> {
+    type State = State<T, V>;
+
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         State {
-            content: self.build(cx, data),
+            content: self.view.build(cx, data),
             view_state: ViewState::default(),
         }
     }
 
-    /// Rebuild the content state.
-    fn rebuild_content(
-        &mut self,
-        state: &mut State<T, Self>,
-        cx: &mut RebuildCx,
-        data: &mut T,
-        old: &Self,
-    ) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
-        View::rebuild(self, &mut state.content, &mut new_cx, data, old);
+        (self.view).rebuild(&mut state.content, &mut new_cx, data, &old.view);
 
         cx.view_state.propagate(&mut state.view_state);
     }
 
-    /// Handle an event.
-    fn event_content(
-        &mut self,
-        state: &mut State<T, Self>,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &Event,
-    ) {
+    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         let mut new_cx = cx.child();
         new_cx.transform *= state.view_state.transform;
         new_cx.view_state = &mut state.view_state;
 
-        View::event(self, &mut state.content, &mut new_cx, data, event);
+        (self.view).event(&mut state.content, &mut new_cx, data, event);
 
         cx.view_state.propagate(&mut state.view_state);
     }
 
-    /// Layout the content.
-    fn layout_content(
+    fn layout(
         &mut self,
-        state: &mut State<T, Self>,
+        state: &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
@@ -84,7 +107,7 @@ pub trait ViewContent<T>: View<T> {
         let mut new_cx = cx.child();
         new_cx.view_state = &mut state.view_state;
 
-        let size = View::layout(self, &mut state.content, &mut new_cx, data, space);
+        let size = (self.view).layout(&mut state.content, &mut new_cx, data, space);
         state.view_state.size = size;
 
         cx.view_state.propagate(&mut state.view_state);
@@ -92,10 +115,9 @@ pub trait ViewContent<T>: View<T> {
         size
     }
 
-    /// Draw the content.
-    fn draw_content(
+    fn draw(
         &mut self,
-        state: &mut State<T, Self>,
+        state: &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
@@ -112,11 +134,9 @@ pub trait ViewContent<T>: View<T> {
         new_cx.view_state = &mut state.view_state;
 
         // draw the content
-        View::draw(self, &mut state.content, &mut new_cx, data, &mut canvas);
+        (self.view).draw(&mut state.content, &mut new_cx, data, &mut canvas);
 
         // propagate the view state
         cx.view_state.propagate(&mut state.view_state);
     }
 }
-
-impl<T, V: View<T>> ViewContent<T> for V {}

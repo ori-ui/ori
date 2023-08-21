@@ -6,14 +6,14 @@ use crate::{
     layout::{Affine, Align, Padding, Size, Space},
     rebuild::Rebuild,
     style::{container, style},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, State, View, ViewContent},
+    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
 
 /// A container view.
 #[derive(Rebuild)]
 pub struct Container<V> {
     /// The content.
-    pub content: V,
+    pub content: Content<V>,
     /// The padding, applied before everything else.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -50,7 +50,7 @@ impl<V> Container<V> {
     /// Create a new [`Container`].
     pub fn new(content: V) -> Self {
         Self {
-            content,
+            content: Content::new(content),
             padding: Padding::default(),
             space: Space::default(),
             alignment: None,
@@ -171,17 +171,17 @@ impl<T, V: View<T>> View<T> for Container<V> {
     type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        self.content.build_content(cx, data)
+        self.content.build(cx, data)
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
-        self.content.rebuild_content(state, cx, data, &old.content);
+        self.content.rebuild(state, cx, data, &old.content);
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        self.content.event_content(state, cx, data, event);
+        self.content.event(state, cx, data, event);
     }
 
     fn layout(
@@ -199,7 +199,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
 
         // the content must fit within the padding
         let content_space = space.shrink(self.padding.size());
-        let mut content_size = self.content.layout_content(state, cx, data, content_space);
+        let mut content_size = self.content.layout(state, cx, data, content_space);
         content_size += self.padding.size();
 
         if let Some(alignment) = self.alignment {
@@ -239,7 +239,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
             self.border_color,
         );
 
-        self.content.draw_content(state, cx, data, canvas);
+        self.content.draw(state, cx, data, canvas);
     }
 }
 

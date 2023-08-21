@@ -4,7 +4,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, State, View, ViewContent},
+    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
 
 /// Create a new [`WithState`].
@@ -55,16 +55,13 @@ impl<T, U, V> WithState<T, U, V> {
 }
 
 impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
-    type State = (V, U, State<(T, U), V>);
+    type State = (Content<V>, U, State<(T, U), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut state = (self.build)();
-        let mut view = (self.view)(data, &mut state);
+        let mut view = Content::new((self.view)(data, &mut state));
 
-        let view_state = Self::data(&mut state, data, |data| {
-            // accessed
-            view.build_content(cx, data)
-        });
+        let view_state = Self::data(&mut state, data, |data| view.build(cx, data));
 
         (view, state, view_state)
     }
@@ -76,10 +73,10 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         _old: &Self,
     ) {
-        let mut new_view = (self.view)(data, data_state);
+        let mut new_view = Content::new((self.view)(data, data_state));
 
         Self::data(data_state, data, |data| {
-            new_view.rebuild_content(state, cx, data, view);
+            new_view.rebuild(state, cx, data, view)
         });
 
         *view = new_view;
@@ -92,9 +89,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         event: &Event,
     ) {
-        Self::data(data_state, data, |data| {
-            view.event_content(state, cx, data, event);
-        })
+        Self::data(data_state, data, |data| view.event(state, cx, data, event))
     }
 
     fn layout(
@@ -104,9 +99,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        Self::data(data_state, data, |data| {
-            view.layout_content(state, cx, data, space)
-        })
+        Self::data(data_state, data, |data| view.layout(state, cx, data, space))
     }
 
     fn draw(
@@ -116,8 +109,6 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        Self::data(data_state, data, |data| {
-            view.draw_content(state, cx, data, canvas);
-        })
+        Self::data(data_state, data, |data| view.draw(state, cx, data, canvas))
     }
 }

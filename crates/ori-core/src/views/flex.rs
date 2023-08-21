@@ -2,7 +2,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, State, View, ViewContent},
+    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
 
 /// Create a new [`Flex`].
@@ -15,7 +15,7 @@ pub fn flex<T, V: View<T>>(flex: f32, content: V) -> Flex<V> {
 /// When used in a stack, will shrink or grow to fill the remaining space.
 pub struct Flex<V> {
     /// The content.
-    pub content: V,
+    pub content: Content<V>,
     /// The flex.
     pub flex: f32,
 }
@@ -23,7 +23,10 @@ pub struct Flex<V> {
 impl<V> Flex<V> {
     /// Create a new [`Flex`].
     pub fn new(flex: f32, content: V) -> Self {
-        Self { content, flex }
+        Self {
+            content: Content::new(content),
+            flex,
+        }
     }
 }
 
@@ -31,7 +34,7 @@ impl<T, V: View<T>> View<T> for Flex<V> {
     type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        self.content.build_content(cx, data)
+        self.content.build(cx, data)
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
@@ -39,11 +42,11 @@ impl<T, V: View<T>> View<T> for Flex<V> {
             cx.request_layout();
         }
 
-        self.content.rebuild_content(state, cx, data, &old.content);
+        self.content.rebuild(state, cx, data, &old.content);
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        self.content.event_content(state, cx, data, event);
+        self.content.event(state, cx, data, event);
     }
 
     fn layout(
@@ -55,7 +58,7 @@ impl<T, V: View<T>> View<T> for Flex<V> {
     ) -> Size {
         cx.set_flex(self.flex);
 
-        self.content.layout_content(state, cx, data, space)
+        self.content.layout(state, cx, data, space)
     }
 
     fn draw(
@@ -65,6 +68,6 @@ impl<T, V: View<T>> View<T> for Flex<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        self.content.draw_content(state, cx, data, canvas);
+        self.content.draw(state, cx, data, canvas);
     }
 }

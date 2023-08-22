@@ -10,7 +10,7 @@ fn square() -> impl View<Data> {
 }
 
 fn app(_data: &mut Data) -> impl View<Data> {
-    center(height(
+    let scroll = height(
         400.0,
         vscroll(vstack![
             square(),
@@ -23,7 +23,15 @@ fn app(_data: &mut Data) -> impl View<Data> {
             square(),
             square()
         ]),
-    ))
+    );
+
+    let button = button(text("hello"))
+        .on_press(|_, _| {
+            info!("hello");
+        })
+        .fancy(4.0);
+
+    center(overlay![scroll, pad(em(0.5), bottom_right(button))])
 }
 
 fn main() {

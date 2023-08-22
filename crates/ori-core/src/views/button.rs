@@ -145,13 +145,17 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
 
         if let Some(pointer) = event.get::<PointerEvent>() {
             let local = cx.local(pointer.position);
-            let over = cx.rect().contains(local) && !pointer.left;
+            let hot = cx.rect().contains(local) && !pointer.left;
 
-            if cx.set_hot(over) {
+            if cx.set_hot(hot) {
                 cx.request_draw();
             }
 
-            if over && pointer.is_press() {
+            if hot {
+                event.handle();
+            }
+
+            if hot && pointer.is_press() {
                 if let Some(on_press) = &mut self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
@@ -159,8 +163,6 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
 
                 cx.set_active(true);
                 cx.request_draw();
-
-                event.handle();
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
                 cx.request_draw();

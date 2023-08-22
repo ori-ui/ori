@@ -142,16 +142,20 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
             let scrollbar_rect = self.scrollbar_rect(cx.rect());
 
-            if scrollbar_rect.contains(local) && pointer.is_press() {
-                cx.set_active(true);
-                cx.request_draw();
-
+            if scrollbar_rect.contains(local) {
                 event.handle();
-            } else if pointer.is_release() {
-                cx.set_active(false);
-                cx.request_draw();
 
-                event.handle();
+                if pointer.is_press() {
+                    cx.set_active(true);
+                    cx.request_draw();
+
+                    event.handle();
+                } else if pointer.is_release() {
+                    cx.set_active(false);
+                    cx.request_draw();
+
+                    event.handle();
+                }
             }
 
             if cx.is_active() {

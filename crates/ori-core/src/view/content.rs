@@ -89,6 +89,10 @@ impl<T, V: View<T>> View<T> for Content<V> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        if event.is_handled() && !state.view_state.has_active() {
+            return;
+        }
+
         state.view_state.prepare();
 
         let mut new_cx = cx.child();

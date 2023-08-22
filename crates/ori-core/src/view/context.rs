@@ -329,9 +329,29 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
         updated
     }
 
+    /// Get whether a child view is hot.
+    pub fn has_hot(&self) -> bool {
+        self.view_state.has_hot()
+    }
+
+    /// Get whether a child view is focused.
+    pub fn has_focused(&self) -> bool {
+        self.view_state.has_focused()
+    }
+
+    /// Get whether a child view is active.
+    pub fn has_active(&self) -> bool {
+        self.view_state.has_active()
+    }
+
     /// Set the cursor of the view.
     pub fn set_cursor(&mut self, cursor: impl Into<Option<Cursor>>) {
         self.view_state.cursor = cursor.into();
+    }
+
+    /// Get whether the a child view has the cursor.
+    pub fn has_cursor(&self) -> bool {
+        self.view_state.has_cursor()
     }
 
     pub(crate) fn update(&mut self) {

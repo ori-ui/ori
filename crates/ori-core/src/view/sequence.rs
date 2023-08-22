@@ -381,6 +381,10 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         event: &Event,
     ) {
+        if event.is_handled() && !state.view_state[n].has_active() {
+            return;
+        }
+
         state.view_state[n].prepare();
 
         let mut new_cx = cx.child();

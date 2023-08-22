@@ -1,7 +1,7 @@
 use glam::Vec2;
 
 use crate::{
-    layout::{Affine, Size},
+    layout::{Affine, Rect, Size},
     window::Cursor,
 };
 
@@ -146,6 +146,11 @@ impl ViewState {
     /// Get the size of the view.
     pub fn size(&self) -> Size {
         self.size
+    }
+
+    /// Get the rect of the view in local coordinates.
+    pub fn rect(&self) -> Rect {
+        Rect::min_size(Vec2::ZERO, self.size)
     }
 
     /// Get the transform of the view.

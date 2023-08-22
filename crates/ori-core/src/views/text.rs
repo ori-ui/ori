@@ -176,7 +176,7 @@ impl<T> View<T> for Text {
 
         *state = cx.layout_text(&section);
 
-        state.as_ref().map_or(space.min, |glyphs| glyphs.size())
+        (state.as_ref()).map_or(space.min, |glyphs| space.fit(glyphs.size()))
     }
 
     fn draw(
@@ -188,7 +188,10 @@ impl<T> View<T> for Text {
     ) {
         if let Some(glyphs) = state {
             if let Some(mesh) = cx.text_mesh(glyphs, cx.rect()) {
-                canvas.draw_pixel_perfect(mesh);
+                let mut layer = canvas.layer();
+                layer.clip &= cx.rect().transform(layer.transform);
+
+                layer.draw_pixel_perfect(mesh);
             }
         }
     }

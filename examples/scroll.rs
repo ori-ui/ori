@@ -4,9 +4,10 @@ use ori::prelude::*;
 struct Data {}
 
 fn square() -> impl View<Data> {
-    container(())
-        .size(100.0)
-        .background(style(Palette::SECONDARY))
+    size(
+        100.0,
+        button(text("Click me")).color(style(Palette::SECONDARY)),
+    )
 }
 
 fn app(_data: &mut Data) -> impl View<Data> {

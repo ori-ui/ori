@@ -640,7 +640,10 @@ impl<T> View<T> for TextInput<T> {
         let Some(ref glyphs) = state.glyphs else { return };
 
         if let Some(mesh) = cx.text_mesh(glyphs, cx.rect()) {
-            canvas.draw_pixel_perfect(mesh);
+            let mut layer = canvas.layer();
+            layer.clip &= cx.rect().transform(layer.transform);
+
+            layer.draw_pixel_perfect(mesh);
         }
 
         if !cx.is_focused() {

@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
-    event::Event,
+    event::{Event, HotChanged, PointerEvent},
     layout::{Size, Space},
 };
 
@@ -72,17 +72,12 @@ impl<V> Content<V> {
         cx.view_state.propagate(view_state);
     }
 
-    /// Handle an event.
-    pub fn event(
+    fn event_inner(
         view_state: &mut ViewState,
         cx: &mut EventCx,
         event: &Event,
-        mut f: impl FnMut(&mut EventCx, &Event),
+        f: &mut impl FnMut(&mut EventCx, &Event),
     ) {
-        if event.is_handled() && !view_state.has_active() {
-            return;
-        }
-
         view_state.prepare();
 
         let mut new_cx = cx.child();
@@ -93,6 +88,57 @@ impl<V> Content<V> {
         new_cx.update();
 
         cx.view_state.propagate(view_state);
+    }
+
+    fn pointer_event(
+        view_state: &mut ViewState,
+        cx: &mut EventCx,
+        event: &Event,
+        pointer: &PointerEvent,
+        f: &mut impl FnMut(&mut EventCx, &Event),
+    ) {
+        let transform = cx.transform * view_state.transform();
+        let local = transform.inverse() * pointer.position;
+        let hot = view_state.rect().contains(local) && !pointer.left && !event.is_handled();
+
+        if view_state.is_hot() != hot {
+            view_state.set_hot(hot);
+            Self::event_inner(view_state, cx, &Event::new(HotChanged(hot)), f);
+        }
+
+        if !view_state.is_hot() && !view_state.has_active() {
+            let event = PointerEvent {
+                position: pointer.position,
+                modifiers: pointer.modifiers,
+                left: true,
+                ..PointerEvent::new(pointer.id)
+            };
+
+            Self::event_inner(view_state, cx, &Event::new(event), f);
+            return;
+        }
+
+        Self::event_inner(view_state, cx, event, f);
+    }
+
+    /// Handle an event.
+    pub fn event(
+        view_state: &mut ViewState,
+        cx: &mut EventCx,
+        event: &Event,
+        mut f: impl FnMut(&mut EventCx, &Event),
+    ) {
+        // we don't want `HotChanged` events to propagate
+        if event.is::<HotChanged>() {
+            return;
+        }
+
+        if let Some(pointer) = event.get::<PointerEvent>() {
+            Self::pointer_event(view_state, cx, event, pointer, &mut f);
+            return;
+        }
+
+        Self::event_inner(view_state, cx, event, &mut f);
     }
 
     /// Layout a content view.

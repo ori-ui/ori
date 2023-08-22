@@ -94,8 +94,8 @@ impl PointerEvent {
         }
     }
 
-    /// Returns true if the event is a motion event.
-    pub fn is_motion(&self) -> bool {
+    /// Returns true if the event is a move event.
+    pub fn is_move(&self) -> bool {
         self.scroll_delta == Vec2::ZERO && self.button.is_none()
     }
 

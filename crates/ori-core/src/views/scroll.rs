@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
-    event::{Event, PointerEvent},
+    event::{Event, HotChanged, PointerEvent},
     layout::{Axis, Rect, Size, Space},
     rebuild::Rebuild,
     style::{scroll, style},
@@ -132,13 +132,12 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         data: &mut T,
         event: &Event,
     ) {
+        if event.is::<HotChanged>() {
+            cx.request_draw();
+        }
+
         if let Some(pointer) = event.get::<PointerEvent>() {
             let local = cx.local(pointer.position);
-            let hot = cx.rect().contains(local);
-
-            if cx.set_hot(hot) {
-                cx.request_draw();
-            }
 
             let scrollbar_rect = self.scrollbar_rect(cx.rect());
 
@@ -149,13 +148,9 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             if scrollbar_rect.contains(local) && pointer.is_press() {
                 cx.set_active(true);
                 cx.request_draw();
-
-                event.handle();
-            } else if pointer.is_release() {
+            } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
                 cx.request_draw();
-
-                event.handle();
             }
 
             if cx.is_active() {

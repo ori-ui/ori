@@ -308,16 +308,13 @@ impl<T> TextInput<T> {
     ) -> bool {
         let local = cx.local(event.position);
 
-        let over = cx.rect().contains(local);
-        if cx.set_hot(over) {
-            if over {
-                cx.set_cursor(Cursor::Text);
-            } else {
-                cx.set_cursor(None);
-            }
+        if cx.is_hot() {
+            cx.set_cursor(Cursor::Text);
+        } else {
+            cx.set_cursor(None);
         }
 
-        if event.is_press() && over {
+        if event.is_press() && cx.is_hot() {
             state.cursor_index = self.hit_text(state, data, local);
             cx.set_focused(true);
             cx.request_draw();
@@ -325,7 +322,7 @@ impl<T> TextInput<T> {
             return true;
         }
 
-        if event.is_press() && !over {
+        if event.is_press() && !cx.is_hot() {
             cx.set_focused(false);
             return false;
         }

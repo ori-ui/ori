@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve},
-    event::{Event, PointerEvent},
+    event::{Event, HotChanged, PointerEvent},
     layout::{Size, Space},
     rebuild::Rebuild,
     style::{checkbox, style},
@@ -134,19 +134,16 @@ impl<T> View<T> for Checkbox<T> {
     }
 
     fn event(&mut self, _t: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if event.is_handled() {
-            return;
+        if event.is::<HotChanged>() {
+            cx.request_draw();
         }
 
         if let Some(pointer) = event.get::<PointerEvent>() {
-            let local = cx.local(pointer.position);
-            let over = cx.rect().contains(local) && !pointer.left;
-
-            if cx.set_hot(over) {
-                cx.request_draw();
+            if cx.is_hot() && pointer.is_move() {
+                event.handle();
             }
 
-            if over && pointer.is_press() {
+            if cx.is_hot() && pointer.is_press() {
                 if let Some(on_press) = &mut self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
@@ -154,8 +151,6 @@ impl<T> View<T> for Checkbox<T> {
 
                 cx.set_active(true);
                 cx.request_draw();
-
-                event.handle();
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
                 cx.request_draw();

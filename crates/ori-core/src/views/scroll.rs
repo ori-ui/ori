@@ -137,37 +137,40 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         }
 
         if let Some(pointer) = event.get::<PointerEvent>() {
-            let local = cx.local(pointer.position);
+            if !event.is_handled() || cx.is_active() {
+                let local = cx.local(pointer.position);
 
-            let scrollbar_rect = self.scrollbar_rect(cx.rect());
+                let scrollbar_rect = self.scrollbar_rect(cx.rect());
 
-            if scrollbar_rect.contains(local) {
-                event.handle();
-            }
+                if scrollbar_rect.contains(local) {
+                    event.handle();
+                }
 
-            if scrollbar_rect.contains(local) && pointer.is_press() {
-                cx.set_active(true);
-                cx.request_draw();
-            } else if cx.is_active() && pointer.is_release() {
-                cx.set_active(false);
-                cx.request_draw();
-            }
+                if scrollbar_rect.contains(local) && pointer.is_press() {
+                    cx.set_active(true);
+                    cx.request_draw();
+                } else if cx.is_active() && pointer.is_release() {
+                    cx.set_active(false);
+                    cx.request_draw();
+                    event.handle();
+                }
 
-            if cx.is_active() {
-                let overflow = self.overflow(content.size(), cx.size());
+                if cx.is_active() {
+                    let overflow = self.overflow(content.size(), cx.size());
 
-                let scroll_start = self.axis.major(scrollbar_rect.min);
-                let scroll_end = self.axis.major(scrollbar_rect.max);
-                let local_major = self.axis.major(local);
+                    let scroll_start = self.axis.major(scrollbar_rect.min);
+                    let scroll_end = self.axis.major(scrollbar_rect.max);
+                    let local_major = self.axis.major(local);
 
-                let scroll_fract = (local_major - scroll_start) / (scroll_end - scroll_start);
-                state.scroll = overflow * scroll_fract;
-                state.scroll = state.scroll.clamp(0.0, overflow);
+                    let scroll_fract = (local_major - scroll_start) / (scroll_end - scroll_start);
+                    state.scroll = overflow * scroll_fract;
+                    state.scroll = state.scroll.clamp(0.0, overflow);
 
-                content.translate(self.axis.pack(-state.scroll, 0.0));
+                    content.translate(self.axis.pack(-state.scroll, 0.0));
 
-                cx.request_draw();
-                event.handle();
+                    cx.request_draw();
+                    event.handle();
+                }
             }
         }
 

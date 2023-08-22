@@ -1,7 +1,4 @@
-use std::{
-    ops::{Index, IndexMut},
-    slice::SliceIndex,
-};
+use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
@@ -294,17 +291,24 @@ pub struct SeqState<T, V: ViewSeq<T>> {
     view_state: Vec<ViewState>,
 }
 
-impl<T, V: ViewSeq<T>, S: SliceIndex<[ViewState]>> Index<S> for SeqState<T, V> {
-    type Output = S::Output;
-
-    fn index(&self, index: S) -> &Self::Output {
-        &self.view_state[index]
+impl<T, V: ViewSeq<T>> SeqState<T, V> {
+    /// Whether any of the views in the sequence are active.
+    pub fn has_active(&self) -> bool {
+        self.view_state.iter().any(|state| state.has_active())
     }
 }
 
-impl<T, V: ViewSeq<T>, S: SliceIndex<[ViewState]>> IndexMut<S> for SeqState<T, V> {
-    fn index_mut(&mut self, index: S) -> &mut Self::Output {
-        &mut self.view_state[index]
+impl<T, V: ViewSeq<T>> Deref for SeqState<T, V> {
+    type Target = Vec<ViewState>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.view_state
+    }
+}
+
+impl<T, V: ViewSeq<T>> DerefMut for SeqState<T, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.view_state
     }
 }
 

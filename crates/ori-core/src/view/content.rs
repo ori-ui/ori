@@ -106,18 +106,6 @@ impl<V> Content<V> {
             Self::event_inner(view_state, cx, &Event::new(HotChanged(hot)), f);
         }
 
-        if !view_state.is_hot() && !view_state.has_active() {
-            let event = PointerEvent {
-                position: pointer.position,
-                modifiers: pointer.modifiers,
-                left: true,
-                ..PointerEvent::new(pointer.id)
-            };
-
-            Self::event_inner(view_state, cx, &Event::new(event), f);
-            return;
-        }
-
         Self::event_inner(view_state, cx, event, f);
     }
 
@@ -138,7 +126,9 @@ impl<V> Content<V> {
             return;
         }
 
-        Self::event_inner(view_state, cx, event, &mut f);
+        if !event.is_handled() {
+            Self::event_inner(view_state, cx, event, &mut f);
+        }
     }
 
     /// Layout a content view.

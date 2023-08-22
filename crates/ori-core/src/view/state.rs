@@ -57,9 +57,9 @@ impl Default for ViewState {
 
 impl ViewState {
     pub(crate) fn prepare(&mut self) {
-        self.has_hot = self.hot;
-        self.has_focused = self.focused;
-        self.has_active = self.active;
+        self.has_hot = false;
+        self.has_focused = false;
+        self.has_active = false;
         self.has_cursor = false;
     }
 
@@ -74,10 +74,10 @@ impl ViewState {
     }
 
     pub(crate) fn propagate(&mut self, child: &mut Self) {
-        self.has_hot |= child.has_hot;
-        self.has_focused |= child.has_focused;
-        self.has_active |= child.has_active;
-        self.has_cursor |= child.has_cursor | child.cursor.is_some();
+        self.has_hot |= child.hot || child.has_hot;
+        self.has_focused |= child.focused || child.has_focused;
+        self.has_active |= child.active || child.has_active;
+        self.has_cursor |= child.has_cursor || child.cursor.is_some();
         self.update |= child.update;
     }
 }

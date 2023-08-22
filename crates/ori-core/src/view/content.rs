@@ -52,6 +52,93 @@ impl<V> Content<V> {
     pub const fn new(view: V) -> Self {
         Self { view }
     }
+
+    /// Build a content view.
+    pub fn build<T>(cx: &mut BuildCx, f: impl FnOnce(&mut BuildCx) -> T) -> T {
+        let mut new_cx = cx.child();
+        f(&mut new_cx)
+    }
+
+    /// Rebuild a content view.
+    pub fn rebuild(view_state: &mut ViewState, cx: &mut RebuildCx, f: impl FnOnce(&mut RebuildCx)) {
+        view_state.prepare();
+
+        let mut new_cx = cx.child();
+        new_cx.view_state = view_state;
+
+        f(&mut new_cx);
+
+        new_cx.update();
+        cx.view_state.propagate(view_state);
+    }
+
+    /// Handle an event.
+    pub fn event(
+        view_state: &mut ViewState,
+        cx: &mut EventCx,
+        event: &Event,
+        mut f: impl FnMut(&mut EventCx, &Event),
+    ) {
+        if event.is_handled() && !view_state.has_active() {
+            return;
+        }
+
+        view_state.prepare();
+
+        let mut new_cx = cx.child();
+        new_cx.transform *= view_state.transform;
+        new_cx.view_state = view_state;
+
+        f(&mut new_cx, event);
+        new_cx.update();
+
+        cx.view_state.propagate(view_state);
+    }
+
+    /// Layout a content view.
+    pub fn layout(
+        view_state: &mut ViewState,
+        cx: &mut LayoutCx,
+        f: impl FnOnce(&mut LayoutCx) -> Size,
+    ) -> Size {
+        view_state.prepare_layout();
+
+        let mut new_cx = cx.child();
+        new_cx.view_state = view_state;
+
+        let size = f(&mut new_cx);
+        new_cx.update();
+
+        view_state.size = size;
+        cx.view_state.propagate(view_state);
+
+        size
+    }
+
+    /// Draw a content view.
+    pub fn draw(
+        view_state: &mut ViewState,
+        cx: &mut DrawCx,
+        canvas: &mut Canvas,
+        f: impl FnOnce(&mut DrawCx, &mut Canvas),
+    ) {
+        view_state.prepare_draw();
+
+        // create the canvas layer
+        let mut canvas = canvas.layer();
+        canvas.transform *= view_state.transform;
+
+        // create the draw context
+        let mut new_cx = cx.layer();
+        new_cx.view_state = view_state;
+
+        // draw the content
+        f(&mut new_cx, &mut canvas);
+        new_cx.update();
+
+        // propagate the view state
+        cx.view_state.propagate(view_state);
+    }
 }
 
 impl<V> From<V> for Content<V> {
@@ -79,38 +166,21 @@ impl<T, V: View<T>> View<T> for Content<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         State {
-            content: self.view.build(cx, data),
+            content: Self::build(cx, |cx| self.view.build(cx, data)),
             view_state: ViewState::default(),
         }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
-        state.view_state.prepare();
-
-        let mut new_cx = cx.child();
-        new_cx.view_state = &mut state.view_state;
-
-        (self.view).rebuild(&mut state.content, &mut new_cx, data, &old.view);
-        new_cx.update();
-
-        cx.view_state.propagate(&mut state.view_state);
+        Self::rebuild(&mut state.view_state, cx, |cx| {
+            (self.view).rebuild(&mut state.content, cx, data, &old.view);
+        });
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if event.is_handled() && !state.view_state.has_active() {
-            return;
-        }
-
-        state.view_state.prepare();
-
-        let mut new_cx = cx.child();
-        new_cx.transform *= state.view_state.transform;
-        new_cx.view_state = &mut state.view_state;
-
-        (self.view).event(&mut state.content, &mut new_cx, data, event);
-        new_cx.update();
-
-        cx.view_state.propagate(&mut state.view_state);
+        Self::event(&mut state.view_state, cx, event, |cx, event| {
+            (self.view).event(&mut state.content, cx, data, event);
+        });
     }
 
     fn layout(
@@ -120,18 +190,9 @@ impl<T, V: View<T>> View<T> for Content<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        state.view_state.prepare_layout();
-
-        let mut new_cx = cx.child();
-        new_cx.view_state = &mut state.view_state;
-
-        let size = (self.view).layout(&mut state.content, &mut new_cx, data, space);
-        new_cx.update();
-
-        state.view_state.size = size;
-        cx.view_state.propagate(&mut state.view_state);
-
-        size
+        Self::layout(&mut state.view_state, cx, |cx| {
+            (self.view).layout(&mut state.content, cx, data, space)
+        })
     }
 
     fn draw(
@@ -141,21 +202,8 @@ impl<T, V: View<T>> View<T> for Content<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        state.view_state.prepare_draw();
-
-        // create the canvas layer
-        let mut canvas = canvas.layer();
-        canvas.transform *= state.view_state.transform;
-
-        // create the draw context
-        let mut new_cx = cx.layer();
-        new_cx.view_state = &mut state.view_state;
-
-        // draw the content
-        (self.view).draw(&mut state.content, &mut new_cx, data, &mut canvas);
-        new_cx.update();
-
-        // propagate the view state
-        cx.view_state.propagate(&mut state.view_state);
+        Self::draw(&mut state.view_state, cx, canvas, |cx, canvas| {
+            (self.view).draw(&mut state.content, cx, data, canvas);
+        });
     }
 }

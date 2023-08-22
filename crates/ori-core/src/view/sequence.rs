@@ -9,7 +9,7 @@ use crate::{
     layout::{Size, Space},
 };
 
-use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState};
+use super::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState};
 
 /// A sequence of views.
 pub trait ViewSeq<T> {
@@ -344,8 +344,8 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         SeqState {
-            content: self.views.build(cx, data),
-            view_state: vec![ViewState::default(); self.views.len()],
+            content: Content::<V>::build(cx, |cx| self.views.build(cx, data)),
+            view_state: vec![ViewState::default(); self.len()],
         }
     }
 
@@ -363,14 +363,9 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         old: &Self,
     ) {
-        state.view_state[n].prepare();
-
-        let mut new_cx = cx.child();
-        new_cx.view_state = &mut state.view_state[n];
-        (self.views).rebuild_nth(n, &mut state.content, &mut new_cx, data, &old.views);
-        new_cx.update();
-
-        cx.view_state.propagate(&mut state.view_state[n]);
+        Content::<V>::rebuild(&mut state.view_state[n], cx, |cx| {
+            (self.views).rebuild_nth(n, &mut state.content, cx, data, &old.views);
+        });
     }
 
     fn event_nth(
@@ -381,20 +376,9 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         event: &Event,
     ) {
-        if event.is_handled() && !state.view_state[n].has_active() {
-            return;
-        }
-
-        state.view_state[n].prepare();
-
-        let mut new_cx = cx.child();
-        new_cx.transform *= state.view_state[n].transform;
-        new_cx.view_state = &mut state.view_state[n];
-
-        (self.views).event_nth(n, &mut state.content, &mut new_cx, data, event);
-        new_cx.update();
-
-        cx.view_state.propagate(&mut state.view_state[n]);
+        Content::<V>::event(&mut state.view_state[n], cx, event, |cx, event| {
+            (self.views).event_nth(n, &mut state.content, cx, data, event);
+        });
     }
 
     fn layout_nth(
@@ -405,19 +389,9 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        state.view_state[n].prepare_layout();
-
-        let mut new_cx = cx.child();
-        new_cx.view_state = &mut state.view_state[n];
-
-        let size = (self.views).layout_nth(n, &mut state.content, &mut new_cx, data, space);
-        new_cx.update();
-
-        state.view_state[n].size = size;
-
-        cx.view_state.propagate(&mut state.view_state[n]);
-
-        size
+        Content::<V>::layout(&mut state.view_state[n], cx, |cx| {
+            (self.views).layout_nth(n, &mut state.content, cx, data, space)
+        })
     }
 
     fn draw_nth(
@@ -428,17 +402,8 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        state.view_state[n].prepare_draw();
-
-        let mut canvas = canvas.layer();
-        canvas.transform *= state.view_state[n].transform;
-
-        let mut new_cx = cx.layer();
-        new_cx.view_state = &mut state.view_state[n];
-
-        (self.views).draw_nth(n, &mut state.content, &mut new_cx, data, &mut canvas);
-        new_cx.update();
-
-        cx.view_state.propagate(&mut state.view_state[n]);
+        Content::<V>::draw(&mut state.view_state[n], cx, canvas, |cx, canvas| {
+            (self.views).draw_nth(n, &mut state.content, cx, data, canvas);
+        });
     }
 }

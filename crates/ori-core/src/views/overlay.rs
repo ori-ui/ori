@@ -68,15 +68,14 @@ impl<T, V: ViewSeq<T>> View<T> for Overlay<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let mut size = self.content.layout_nth(0, state, cx, data, space);
+        let size = space.fit(self.content.layout_nth(0, state, cx, data, space));
 
         for i in 1..self.content.len() {
             let content_space = Space::new(space.min, size);
-            let content_size = self.content.layout_nth(i, state, cx, data, content_space);
-            size = size.max(content_size);
+            self.content.layout_nth(i, state, cx, data, content_space);
         }
 
-        space.fit(size)
+        size
     }
 
     fn draw(

@@ -144,18 +144,18 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
             if scrollbar_rect.contains(local) {
                 event.handle();
+            }
 
-                if pointer.is_press() {
-                    cx.set_active(true);
-                    cx.request_draw();
+            if scrollbar_rect.contains(local) && pointer.is_press() {
+                cx.set_active(true);
+                cx.request_draw();
 
-                    event.handle();
-                } else if pointer.is_release() {
-                    cx.set_active(false);
-                    cx.request_draw();
+                event.handle();
+            } else if pointer.is_release() {
+                cx.set_active(false);
+                cx.request_draw();
 
-                    event.handle();
-                }
+                event.handle();
             }
 
             if cx.is_active() {
@@ -218,7 +218,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         canvas: &mut Canvas,
     ) {
         let mut content_layer = canvas.layer();
-        content_layer.clip = cx.rect().transform(content_layer.transform);
+        content_layer.clip &= cx.rect().transform(content_layer.transform);
 
         self.content.draw(content, cx, data, &mut content_layer);
 

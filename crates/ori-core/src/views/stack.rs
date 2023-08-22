@@ -482,7 +482,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         canvas: &mut Canvas,
     ) {
         let mut layer = canvas.layer();
-        layer.clip = cx.rect().transform(layer.transform);
+        layer.clip &= cx.rect().transform(layer.transform);
 
         for i in 0..self.content.len() {
             self.content.draw_nth(i, content, cx, data, &mut layer);

@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, Sub, SubAssign};
 
 use glam::Vec2;
 
@@ -129,6 +129,30 @@ impl Rect {
         x && y
     }
 
+    /// Compute the intersection of the rectangle with the given rectangle.
+    pub fn try_intersect(self, other: Self) -> Option<Self> {
+        let min_x = f32::max(self.min.x, other.min.x);
+        let min_y = f32::max(self.min.y, other.min.y);
+        let max_x = f32::min(self.max.x, other.max.x);
+        let max_y = f32::min(self.max.y, other.max.y);
+
+        if min_x <= max_x && min_y <= max_y {
+            Some(Self {
+                min: Vec2::new(min_x, min_y),
+                max: Vec2::new(max_x, max_y),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Compute the intersection of the rectangle with the given rectangle.
+    ///
+    /// If the rectangles do not intersect, the zero rectangle is returned.
+    pub fn intersect(self, other: Self) -> Self {
+        self.try_intersect(other).unwrap_or(Self::ZERO)
+    }
+
     /// Transform the rectangle by the given affine transform.
     pub fn transform(self, transform: Affine) -> Self {
         let top_left = transform * self.top_left();
@@ -194,5 +218,19 @@ impl SubAssign<Vec2> for Rect {
     fn sub_assign(&mut self, rhs: Vec2) {
         self.min -= rhs;
         self.max -= rhs;
+    }
+}
+
+impl BitAnd for Rect {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.intersect(rhs)
+    }
+}
+
+impl BitAndAssign for Rect {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = self.intersect(rhs);
     }
 }

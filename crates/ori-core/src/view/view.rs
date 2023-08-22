@@ -4,7 +4,7 @@ use crate::{
     layout::{Size, Space},
 };
 
-use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx};
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, ViewState};
 
 /// A single UI component.
 ///
@@ -111,5 +111,59 @@ impl<T> View<T> for () {
         _data: &mut T,
         _canvas: &mut Canvas,
     ) {
+    }
+}
+
+impl<T, V: View<T>> View<T> for Option<V> {
+    type State = Option<V::State>;
+
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        self.as_mut().map(|view| view.build(cx, data))
+    }
+
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        if let Some(view) = self {
+            if let Some(old_view) = old {
+                view.rebuild(state.as_mut().unwrap(), cx, data, old_view);
+            } else {
+                *state = Some(view.build(&mut cx.build_cx(), data));
+                *cx.view_state = ViewState::default();
+            }
+        } else {
+            *state = None;
+            *cx.view_state = ViewState::default();
+        }
+    }
+
+    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        if let Some(view) = self {
+            view.event(state.as_mut().unwrap(), cx, data, event);
+        }
+    }
+
+    fn layout(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size {
+        if let Some(view) = self {
+            view.layout(state.as_mut().unwrap(), cx, data, space)
+        } else {
+            space.min
+        }
+    }
+
+    fn draw(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
+        canvas: &mut Canvas,
+    ) {
+        if let Some(view) = self {
+            view.draw(state.as_mut().unwrap(), cx, data, canvas);
+        }
     }
 }

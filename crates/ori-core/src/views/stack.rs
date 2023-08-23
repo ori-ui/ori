@@ -236,7 +236,13 @@ impl<V> Stack<V> {
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let size = (self.content).layout_nth(i, content, cx, data, Space::UNBOUNDED);
+            let content_space = if self.wrap {
+                Space::UNBOUNDED
+            } else {
+                Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor))
+            };
+
+            let size = (self.content).layout_nth(i, content, cx, data, content_space);
             let (child_major, child_minor) = self.axis.unpack(size);
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
@@ -435,6 +441,11 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         let (gap_major, gap_minor) = self.axis.unpack((self.column_gap, self.row_gap));
 
         self.measure_fixed(state, content, data, cx, gap_major, max_major, max_minor);
+
+        if !self.wrap {
+            state.lines[0].minor = state.lines[0].minor.clamp(min_minor, max_minor);
+        }
+
         self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);
 
         let content_major = state.major().min(max_major);

@@ -141,7 +141,7 @@ impl Color {
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
         let m = l - c / 2.0;
 
-        let (r, g, b) = match h {
+        let (r, g, b) = match h % 360.0 {
             hue if (0.0..60.0).contains(&hue) => (c, x, 0.0),
             hue if (60.0..120.0).contains(&hue) => (x, c, 0.0),
             hue if (120.0..180.0).contains(&hue) => (0.0, c, x),
@@ -166,24 +166,24 @@ impl Color {
     pub fn to_hsla(self) -> (f32, f32, f32, f32) {
         let max = self.r.max(self.g).max(self.b);
         let min = self.r.min(self.g).min(self.b);
-        let delta = max - min;
+        let c = max - min;
 
-        let h = if delta == 0.0 {
+        let h = if c == 0.0 {
             0.0
         } else if max == self.r {
-            60.0 * (((self.g - self.b) / delta) % 6.0)
+            60.0 * ((self.g - self.b) / c).rem_euclid(6.0)
         } else if max == self.g {
-            60.0 * ((self.b - self.r) / delta + 2.0)
+            60.0 * ((self.b - self.r) / c + 2.0)
         } else {
-            60.0 * ((self.r - self.g) / delta + 4.0)
+            60.0 * ((self.r - self.g) / c + 4.0)
         };
 
         let l = (max + min) / 2.0;
 
-        let s = if delta == 0.0 {
+        let s = if c == 0.0 {
             0.0
         } else {
-            delta / (1.0 - (2.0 * l - 1.0).abs())
+            c / (1.0 - (2.0 * l - 1.0).abs())
         };
 
         (h, s, l, self.a)

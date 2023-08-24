@@ -58,7 +58,7 @@ impl ImageData {
         match Self::try_load_data(data) {
             Ok(data) => data,
             Err(err) => {
-                eprintln!("Failed to load image data: {}", err);
+                crate::log::error_internal!("Failed to load image data: {}", err);
                 Self::default()
             }
         }

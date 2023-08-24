@@ -9,8 +9,18 @@ macro_rules! warn_internal {
         tracing::warn!($($tt)*);
 
         #[cfg(not(feature = "tracing"))]
-        eprintln!("ori [WARNING] {}", format_args!($($tt)*));
+        eprintln!("ori [WARN] {}", format_args!($($tt)*));
     };
 }
 
-pub(crate) use warn_internal;
+macro_rules! error_internal {
+    ($($tt:tt)*) => {
+        #[cfg(feature = "tracing")]
+        tracing::error!($($tt)*);
+
+        #[cfg(not(feature = "tracing"))]
+        eprintln!("ori [ERROR] {}", format_args!($($tt)*));
+    };
+}
+
+pub(crate) use {error_internal, warn_internal};

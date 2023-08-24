@@ -11,10 +11,12 @@ use super::ImageData;
 #[macro_export]
 #[cfg(feature = "image")]
 macro_rules! image {
-    ($($path:literal)*) => {
-        match $crate::Image::try_load_data(include_bytes!(
-            ::std::concat!(::std::env!("CARGO_MANIFEST_DIR"), $($path)*).to_vec()),
-        ) {
+    ($path:literal) => {
+        match $crate::image::Image::try_load_data(<&[u8]>::to_vec(include_bytes!(::std::concat!(
+            ::std::env!("CARGO_MANIFEST_DIR"),
+            "/",
+            $path
+        )))) {
             ::std::result::Result::Ok(image) => image,
             ::std::result::Result::Err(err) => {
                 panic!("Failed to load image:{}: {}", path, err);

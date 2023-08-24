@@ -82,8 +82,8 @@ impl<T: 'static> App<T> {
     }
 
     /// Set the icon of the window.
-    pub fn icon(mut self, icon: Option<Image>) -> Self {
-        self.window.icon = icon;
+    pub fn icon(mut self, icon: impl Into<Option<Image>>) -> Self {
+        self.window.icon = icon.into();
         self
     }
 

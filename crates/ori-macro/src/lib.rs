@@ -19,7 +19,10 @@ fn find_core() -> syn::Path {
     match proc_macro_crate::crate_name("ori-core") {
         Ok(krate) => found_crate(krate),
         Err(_) => match proc_macro_crate::crate_name("ori") {
-            Ok(krate) => found_crate(krate),
+            Ok(krate) => {
+                let ori = found_crate(krate);
+                syn::parse_quote!(#ori::core)
+            }
             Err(_) => syn::parse_quote!(ori::core),
         },
     }

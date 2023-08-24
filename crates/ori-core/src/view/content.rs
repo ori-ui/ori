@@ -148,19 +148,7 @@ impl<V> Content<V> {
         view_state.size = size;
         cx.view_state.propagate(view_state);
 
-        let width = if size.width.is_infinite() {
-            0.0
-        } else {
-            size.width
-        };
-
-        let height = if size.height.is_infinite() {
-            0.0
-        } else {
-            size.height
-        };
-
-        Size::new(width, height)
+        size
     }
 
     /// Draw a content view.

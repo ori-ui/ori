@@ -138,6 +138,11 @@ impl ViewState {
         self.flex
     }
 
+    /// Get whether the view is flexible.
+    pub fn is_flex(&self) -> bool {
+        self.flex != 0.0
+    }
+
     /// Set the flex of the view.
     pub fn set_flex(&mut self, flex: f32) {
         self.flex = flex;

@@ -205,7 +205,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
             modifiers: self.modifiers,
-            scroll_delta: delta,
+            scroll: delta,
             ..PointerEvent::new(id)
         };
 

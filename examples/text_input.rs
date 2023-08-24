@@ -35,7 +35,7 @@ fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
         text("Multiline"),
         checkbox(data.multiline).on_press(|_, data: &mut Data| data.toogle_multiline())
     ]
-    .align_items(AlignItems::Center)
+    .align_items(Align::Center)
 }
 
 fn app(data: &mut Data) -> impl View<Data> {

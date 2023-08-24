@@ -129,6 +129,13 @@ impl Rect {
         x && y
     }
 
+    /// Compute the closest point in the rectangle to the given point.
+    pub fn contain(self, point: Vec2) -> Vec2 {
+        let x = point.x.max(self.min.x).min(self.max.x);
+        let y = point.y.max(self.min.y).min(self.max.y);
+        Vec2::new(x, y)
+    }
+
     /// Compute the intersection of the rectangle with the given rectangle.
     pub fn try_intersect(self, other: Self) -> Option<Self> {
         let min_x = f32::max(self.min.x, other.min.x);

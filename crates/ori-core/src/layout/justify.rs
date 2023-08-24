@@ -1,6 +1,6 @@
 /// The alignment of items along the cross axis.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum AlignItems {
+pub enum Align {
     /// Items are packed toward the start of the stack.
     Start,
     /// Items are packed toward the end of the stack.
@@ -11,7 +11,7 @@ pub enum AlignItems {
     Stretch,
 }
 
-impl AlignItems {
+impl Align {
     /// Returns true if the alignment is stretch.
     pub const fn is_stretch(&self) -> bool {
         matches!(self, Self::Stretch)

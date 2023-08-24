@@ -39,7 +39,7 @@ pub mod prelude {
             Code, Event, KeyboardEvent, Modifiers, Pointer, PointerButton, PointerEvent, PointerId,
         },
         image::{Image, ImageData, ImageId},
-        layout::{Affine, Align, AlignItems, Axis, Justify, Padding, Rect, Size, Space},
+        layout::{Affine, Align, Alignment, Axis, Justify, Padding, Rect, Size, Space},
         log::*,
         math::*,
         rebuild::Rebuild,

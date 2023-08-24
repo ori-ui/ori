@@ -71,7 +71,7 @@ pub struct PointerEvent {
     /// The delta of the pointer.
     pub delta: Vec2,
     /// The delta of the pointer wheel.
-    pub scroll_delta: Vec2,
+    pub scroll: Vec2,
     /// Whether the pointer is pressed.
     pub pressed: bool,
     /// Whether the pointer left the window.
@@ -89,7 +89,7 @@ impl PointerEvent {
             id,
             position: Vec2::ZERO,
             delta: Vec2::ZERO,
-            scroll_delta: Vec2::ZERO,
+            scroll: Vec2::ZERO,
             pressed: false,
             left: false,
             button: None,
@@ -99,7 +99,12 @@ impl PointerEvent {
 
     /// Returns true if the event is a move event.
     pub fn is_move(&self) -> bool {
-        self.scroll_delta == Vec2::ZERO && self.button.is_none()
+        self.delta != Vec2::ZERO && self.button.is_none()
+    }
+
+    /// Returns true if the event is a scroll event.
+    pub fn is_scroll(&self) -> bool {
+        self.scroll != Vec2::ZERO && self.button.is_none()
     }
 
     /// Returns true if `button` was pressed.

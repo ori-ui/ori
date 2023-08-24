@@ -1,7 +1,8 @@
 use crate::{
     canvas::Canvas,
     event::Event,
-    layout::{AlignItems, Axis, Justify, Size, Space},
+    layout::{Align, Axis, Justify, Size, Space},
+    log::warn_internal,
     rebuild::Rebuild,
     view::{BuildCx, ContentSeq, DrawCx, EventCx, LayoutCx, RebuildCx, SeqState, View, ViewSeq},
 };
@@ -63,7 +64,7 @@ pub struct Stack<V> {
     pub justify_content: Justify,
     /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
-    pub align_items: AlignItems,
+    pub align_items: Align,
     /// How to align the lines along the cross axis.
     #[rebuild(layout)]
     pub align_content: Justify,
@@ -84,10 +85,10 @@ impl<V> Stack<V> {
             axis,
             wrap: false,
             justify_content: Justify::Start,
-            align_items: AlignItems::Start,
+            align_items: Align::Start,
             align_content: Justify::Start,
-            column_gap: 8.0,
-            row_gap: 8.0,
+            column_gap: 0.0,
+            row_gap: 0.0,
         }
     }
 
@@ -170,20 +171,20 @@ impl<V> Stack<V> {
     }
 
     /// Set the align items.
-    pub fn align_items(mut self, align: impl Into<AlignItems>) -> Self {
+    pub fn align_items(mut self, align: impl Into<Align>) -> Self {
         self.align_items = align.into();
         self
     }
 
     /// Align the items at the center.
     pub fn center_items(mut self) -> Self {
-        self.align_items = AlignItems::Center;
+        self.align_items = Align::Center;
         self
     }
 
     /// Stretch the items to fill the cross axis.
     pub fn stretch_items(mut self) -> Self {
-        self.align_items = AlignItems::Stretch;
+        self.align_items = Align::Stretch;
         self
     }
 
@@ -224,7 +225,6 @@ impl<V> Stack<V> {
         gap_major: f32,
         max_major: f32,
         max_minor: f32,
-        space: Space,
     ) where
         V: ViewSeq<T>,
     {
@@ -237,7 +237,20 @@ impl<V> Stack<V> {
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let size = (self.content).layout_nth(i, content, cx, data, space.loosen());
+            let content_space = if self.wrap {
+                Space::UNBOUNDED
+            } else {
+                Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor))
+            };
+
+            let mut size = (self.content).layout_nth(i, content, cx, data, content_space);
+
+            if content[i].is_flex() {
+                size = size.min(self.axis.pack(max_major, max_minor));
+            } else if size.width.is_infinite() || size.height.is_infinite() {
+                warn_internal!("A view in a stack has an infinite size, [{}] = {}", i, size);
+            }
+
             let (child_major, child_minor) = self.axis.unpack(size);
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
@@ -299,13 +312,11 @@ impl<V> Stack<V> {
             };
 
             for i in line.start..line.end {
-                let flex = content[i].flex;
-
-                if flex == 0.0 && !self.align_items.is_stretch() {
+                if !content[i].is_flex() && !self.align_items.is_stretch() {
                     continue;
                 }
 
-                let desired_major = state.majors[i] + px_per_flex * flex;
+                let desired_major = state.majors[i] + px_per_flex * content[i].flex();
 
                 let space = if self.align_items.is_stretch() {
                     Space::new(
@@ -435,12 +446,10 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
         let (gap_major, gap_minor) = self.axis.unpack((self.column_gap, self.row_gap));
 
-        self.measure_fixed(
-            state, content, data, cx, gap_major, max_major, max_minor, space,
-        );
+        self.measure_fixed(state, content, data, cx, gap_major, max_major, max_minor);
 
         if !self.wrap {
-            state.lines[0].minor = state.lines[0].minor.max(min_minor);
+            state.lines[0].minor = state.lines[0].minor.clamp(min_minor, max_minor);
         }
 
         self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);

@@ -1,7 +1,7 @@
 //! Layout of [`View`](crate::view::View)s.
 
 mod affine;
-mod align;
+mod alignment;
 mod axis;
 mod justify;
 mod padding;
@@ -10,7 +10,7 @@ mod size;
 mod space;
 
 pub use affine::*;
-pub use align::*;
+pub use alignment::*;
 pub use axis::*;
 pub use justify::*;
 pub use padding::*;

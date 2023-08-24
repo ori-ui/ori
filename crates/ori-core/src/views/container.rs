@@ -3,7 +3,7 @@ use glam::Vec2;
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     event::Event,
-    layout::{Affine, Align, Padding, Size, Space},
+    layout::{Affine, Alignment, Padding, Size, Space},
     rebuild::Rebuild,
     style::{container, style},
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
@@ -26,12 +26,15 @@ pub struct Container<V> {
     ///
     /// If set the container will try to fill the available space.
     #[rebuild(layout)]
-    pub alignment: Option<Align>,
+    pub alignment: Option<Alignment>,
     /// The transform.
     ///
     /// This is applied after padding.
     #[rebuild(layout)]
     pub transform: Affine,
+    /// The flex.
+    #[rebuild(layout)]
+    pub flex: f32,
     /// The background color.
     #[rebuild(draw)]
     pub background: Color,
@@ -55,6 +58,7 @@ impl<V> Container<V> {
             space: Space::default(),
             alignment: None,
             transform: Affine::IDENTITY,
+            flex: 0.0,
             background: style(container::BACKGROUND),
             border_radius: style(container::BORDER_RADIUS),
             border_width: style(container::BORDER_WIDTH),
@@ -113,7 +117,7 @@ impl<V> Container<V> {
     }
 
     /// Set the alignment.
-    pub fn align(mut self, alignment: impl Into<Align>) -> Self {
+    pub fn align(mut self, alignment: impl Into<Alignment>) -> Self {
         self.alignment = Some(alignment.into());
         self
     }
@@ -139,6 +143,12 @@ impl<V> Container<V> {
     /// Set the scale.
     pub fn scale(mut self, scale: impl Into<Vec2>) -> Self {
         self.transform = Affine::scale(scale.into());
+        self
+    }
+
+    /// Set the flex.
+    pub fn flex(mut self, flex: f32) -> Self {
+        self.flex = flex;
         self
     }
 
@@ -171,6 +181,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
     type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.request_rebuild();
         self.content.build(cx, data)
     }
 
@@ -191,6 +202,8 @@ impl<T, V: View<T>> View<T> for Container<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
+        cx.set_flex(self.flex);
+
         let space = if self.alignment.is_some() {
             self.space.with(space).loosen()
         } else {
@@ -295,7 +308,7 @@ pub fn max_height<V>(max_height: f32, content: V) -> Container<V> {
 }
 
 /// Create a new aligned [`Container`].
-pub fn align<V>(alignment: impl Into<Align>, content: V) -> Container<V> {
+pub fn align<V>(alignment: impl Into<Alignment>, content: V) -> Container<V> {
     Container {
         alignment: Some(alignment.into()),
         ..Container::new(content)
@@ -334,10 +347,18 @@ pub fn scale<V>(scale: impl Into<Vec2>, content: V) -> Container<V> {
     }
 }
 
+/// Create a new [`Container`] with a flex.
+pub fn flex<V>(flex: f32, content: V) -> Container<V> {
+    Container {
+        flex,
+        ..Container::new(content)
+    }
+}
+
 /// Create a new [`Container`] aligned to the center.
 pub fn center<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::CENTER),
+        alignment: Some(Alignment::CENTER),
         ..Container::new(content)
     }
 }
@@ -345,7 +366,7 @@ pub fn center<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the top left.
 pub fn top_left<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::TOP_LEFT),
+        alignment: Some(Alignment::TOP_LEFT),
         ..Container::new(content)
     }
 }
@@ -353,7 +374,7 @@ pub fn top_left<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the top.
 pub fn top<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::TOP),
+        alignment: Some(Alignment::TOP),
         ..Container::new(content)
     }
 }
@@ -361,7 +382,7 @@ pub fn top<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the top right.
 pub fn top_right<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::TOP_RIGHT),
+        alignment: Some(Alignment::TOP_RIGHT),
         ..Container::new(content)
     }
 }
@@ -369,7 +390,7 @@ pub fn top_right<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the left.
 pub fn left<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::LEFT),
+        alignment: Some(Alignment::LEFT),
         ..Container::new(content)
     }
 }
@@ -377,7 +398,7 @@ pub fn left<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the right.
 pub fn right<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::RIGHT),
+        alignment: Some(Alignment::RIGHT),
         ..Container::new(content)
     }
 }
@@ -385,7 +406,7 @@ pub fn right<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the bottom left.
 pub fn bottom_left<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::BOTTOM_LEFT),
+        alignment: Some(Alignment::BOTTOM_LEFT),
         ..Container::new(content)
     }
 }
@@ -393,7 +414,7 @@ pub fn bottom_left<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the bottom.
 pub fn bottom<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::BOTTOM),
+        alignment: Some(Alignment::BOTTOM),
         ..Container::new(content)
     }
 }
@@ -401,7 +422,7 @@ pub fn bottom<V>(content: V) -> Container<V> {
 /// Create a new [`Container`] aligned to the bottom right.
 pub fn bottom_right<V>(content: V) -> Container<V> {
     Container {
-        alignment: Some(Align::BOTTOM_RIGHT),
+        alignment: Some(Alignment::BOTTOM_RIGHT),
         ..Container::new(content)
     }
 }

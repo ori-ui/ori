@@ -183,7 +183,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         if let Some(pointer) = event.get::<PointerEvent>() {
             let overflow = self.overflow(content.size(), cx.size());
 
-            state.scroll -= pointer.scroll_delta.y * 10.0;
+            state.scroll -= pointer.scroll.y * 10.0;
             state.scroll = state.scroll.clamp(0.0, overflow);
 
             content.translate(self.axis.pack(-state.scroll, 0.0));

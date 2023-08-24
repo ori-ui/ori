@@ -9,7 +9,7 @@ macro_rules! warn_internal {
         tracing::warn!($($tt)*);
 
         #[cfg(not(feature = "tracing"))]
-        eprintln!("ori [WARN] {}", format_args!($($tt)*));
+        eprintln!("ori [WARN]: {}", format_args!($($tt)*));
     };
 }
 
@@ -19,7 +19,7 @@ macro_rules! error_internal {
         tracing::error!($($tt)*);
 
         #[cfg(not(feature = "tracing"))]
-        eprintln!("ori [ERROR] {}", format_args!($($tt)*));
+        eprintln!("ori [ERROR]: {}", format_args!($($tt)*));
     };
 }
 

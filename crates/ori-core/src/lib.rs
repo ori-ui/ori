@@ -24,4 +24,6 @@ pub mod math {
     //! Math types and functions, powered by [`glam`].
 
     pub use glam::*;
+
+    pub use std::f32::INFINITY as INF;
 }

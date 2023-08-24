@@ -23,7 +23,10 @@ impl Size {
     pub const UNBOUNDED: Self = Self::new(f32::INFINITY, f32::INFINITY);
 
     /// The infinite size.
-    pub const INFINITE: Self = Self::new(f32::INFINITY, f32::INFINITY);
+    pub const INFINITY: Self = Self::new(f32::INFINITY, f32::INFINITY);
+
+    /// Alias for [`Self::INFINITY`].
+    pub const INF: Self = Self::INFINITY;
 
     /// Create a new size.
     pub const fn new(width: f32, height: f32) -> Self {

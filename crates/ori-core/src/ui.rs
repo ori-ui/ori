@@ -169,10 +169,15 @@ impl<T, R: SceneRender> Ui<T, R> {
     /// Tell the UI that a pointer has moved.
     pub fn pointer_moved(&mut self, window_id: WindowId, id: PointerId, position: Vec2) {
         let window = self.window_mut(window_id).window_mut();
+
+        let prev = window.pointer(id).map_or(Vec2::ZERO, |p| p.position);
+        let delta = position - prev;
+
         window.pointer_moved(id, position);
 
         let event = PointerEvent {
             position,
+            delta,
             modifiers: self.modifiers,
             ..PointerEvent::new(id)
         };

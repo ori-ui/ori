@@ -68,6 +68,8 @@ pub struct PointerEvent {
     pub id: PointerId,
     /// The position of the pointer.
     pub position: Vec2,
+    /// The delta of the pointer.
+    pub delta: Vec2,
     /// The delta of the pointer wheel.
     pub scroll_delta: Vec2,
     /// Whether the pointer is pressed.
@@ -86,6 +88,7 @@ impl PointerEvent {
         Self {
             id,
             position: Vec2::ZERO,
+            delta: Vec2::ZERO,
             scroll_delta: Vec2::ZERO,
             pressed: false,
             left: false,

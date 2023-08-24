@@ -495,7 +495,7 @@ impl<T> TextInput<T> {
             return true;
         }
 
-        if let Some(key) = event.key {
+        if let Some(key) = event.code {
             if event.is_press() {
                 self.input_key(state, cx, data, event.modifiers, key);
                 return true;

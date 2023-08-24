@@ -235,7 +235,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     pub fn keyboard_key(&mut self, window_id: WindowId, key: Code, pressed: bool) {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
-            key: Some(key),
+            code: Some(key),
             pressed,
             ..Default::default()
         };

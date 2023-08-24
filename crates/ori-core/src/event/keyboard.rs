@@ -6,7 +6,7 @@ pub struct KeyboardEvent {
     /// Whether the key was pressed or released.
     pub pressed: bool,
     /// The key that was pressed or released.
-    pub key: Option<Code>,
+    pub code: Option<Code>,
     /// The text that was entered.
     pub text: Option<String>,
     /// The modifiers that were active.
@@ -16,22 +16,22 @@ pub struct KeyboardEvent {
 impl KeyboardEvent {
     /// Check if the `key` is pressed.
     pub fn is_pressed(&self, key: Code) -> bool {
-        self.pressed && self.key == Some(key)
+        self.pressed && self.code == Some(key)
     }
 
     /// Check if the `key` is released.
     pub fn is_released(&self, key: Code) -> bool {
-        !self.pressed && self.key == Some(key)
+        !self.pressed && self.code == Some(key)
     }
 
     /// Check if the event is a key press.
     pub fn is_press(&self) -> bool {
-        self.pressed && self.key.is_some()
+        self.pressed && self.code.is_some()
     }
 
     /// Check if the event is a key release.
     pub fn is_release(&self) -> bool {
-        !self.pressed && self.key.is_some()
+        !self.pressed && self.code.is_some()
     }
 }
 

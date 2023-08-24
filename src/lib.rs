@@ -41,6 +41,7 @@ pub mod prelude {
         image::{Image, ImageData, ImageId},
         layout::{Affine, Align, AlignItems, Axis, Justify, Padding, Rect, Size, Space},
         log::*,
+        math::*,
         rebuild::Rebuild,
         style::{builtin::*, em, pt, set_style, set_theme, style, styled, Key, Palette, Theme},
         text::{

@@ -199,17 +199,14 @@ fn theme() -> Theme {
 }
 
 // we define a delegate to handle the custom command
-fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) -> bool {
+fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
     // when we receive the command we remove the todo
     if let Some(remove) = event.get::<RemoveTodo>() {
         data.remove_todo(remove.0);
 
         cx.request_rebuild();
-
-        return true;
+        event.handle();
     }
-
-    false
 }
 
 fn main() {

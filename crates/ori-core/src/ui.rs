@@ -286,13 +286,29 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
+    fn event_delegate(&mut self, event: &Event) {
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut cx = DelegateCx::new(&mut base);
+
+        self.delegate.event(&mut cx, &mut self.data, event);
+
+        if needs_rebuild {
+            self.request_rebuild();
+        }
+    }
+
     /// Handle an event for a window.
     pub fn event(&mut self, window_id: WindowId, event: &Event) {
+        self.event_delegate(event);
+
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
 
-        if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            window_ui.event(&mut base, &mut self.data, event);
+        if !event.is_handled() {
+            if let Some(window_ui) = self.windows.get_mut(&window_id) {
+                window_ui.event(&mut base, &mut self.data, event);
+            }
         }
 
         if needs_rebuild {

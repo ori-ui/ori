@@ -34,7 +34,7 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
 pub trait Delegate<T> {
     /// Handle an event, returning whether it was handled. If true,
     /// the event will not be send to the `view-tree`.
-    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) -> bool;
+    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event);
 
     /// Called when the event loop is idle.
     fn idle(&mut self, _cx: &mut DelegateCx, _data: &mut T) {}
@@ -42,15 +42,13 @@ pub trait Delegate<T> {
 
 impl<T, F> Delegate<T> for F
 where
-    F: FnMut(&mut DelegateCx, &mut T, &Event) -> bool,
+    F: FnMut(&mut DelegateCx, &mut T, &Event),
 {
-    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) -> bool {
+    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) {
         self(cx, data, event)
     }
 }
 
 impl<T> Delegate<T> for () {
-    fn event(&mut self, _: &mut DelegateCx, _: &mut T, _: &Event) -> bool {
-        false
-    }
+    fn event(&mut self, _: &mut DelegateCx, _: &mut T, _: &Event) {}
 }

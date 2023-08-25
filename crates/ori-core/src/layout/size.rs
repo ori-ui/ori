@@ -55,6 +55,11 @@ impl Size {
             self.height.clamp(min.height, max.height),
         )
     }
+
+    /// Convert the size to a vector.
+    pub const fn to_vec(self) -> Vec2 {
+        Vec2::new(self.width, self.height)
+    }
 }
 
 impl From<(f32, f32)> for Size {
@@ -66,6 +71,12 @@ impl From<(f32, f32)> for Size {
 impl From<[f32; 2]> for Size {
     fn from([width, height]: [f32; 2]) -> Self {
         Self::new(width, height)
+    }
+}
+
+impl From<Vec2> for Size {
+    fn from(vec: Vec2) -> Self {
+        Self::new(vec.x, vec.y)
     }
 }
 
@@ -84,6 +95,12 @@ impl From<Size> for (f32, f32) {
 impl From<Size> for [f32; 2] {
     fn from(size: Size) -> Self {
         [size.width, size.height]
+    }
+}
+
+impl From<Size> for Vec2 {
+    fn from(size: Size) -> Self {
+        size.to_vec()
     }
 }
 

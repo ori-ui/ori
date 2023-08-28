@@ -67,9 +67,9 @@ impl Palette {
     pub fn dark() -> Self {
         Self {
             text: Color::hsl(0.0, 0.0, 0.8),
-            background: Color::hsl(0.0, 0.0, 0.2),
+            background: Color::hsl(0.0, 0.0, 0.1),
             primary: Color::hsl(221.0, 0.7, 0.62),
-            secondary: Color::hsl(0.0, 0.0, 0.27),
+            secondary: Color::hsl(237.0, 0.05, 0.17),
             accent: Color::hsl(334.0, 0.76, 0.47),
         }
     }
@@ -84,7 +84,7 @@ impl Palette {
         theme.set(Self::SECONDARY, self.secondary);
         theme.set(Self::ACCENT, self.accent);
 
-        self.derived_theme(&mut theme, 0.075);
+        self.derived_theme(&mut theme, 0.05);
 
         theme
     }

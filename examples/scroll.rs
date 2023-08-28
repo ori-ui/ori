@@ -3,10 +3,14 @@ use ori::prelude::*;
 #[derive(Default)]
 struct Data {}
 
-fn square() -> impl View<Data> {
+fn square(index: usize) -> impl View<Data> {
     size(
         100.0,
-        button(text("Click me")).color(style(Palette::SECONDARY)),
+        button(text("Click me"))
+            .color(style(Palette::SECONDARY))
+            .on_press(move |_, _| {
+                info!("clicked {}", index);
+            }),
     )
 }
 
@@ -14,15 +18,15 @@ fn app(_data: &mut Data) -> impl View<Data> {
     let scroll = height(
         400.0,
         vscroll(vstack![
-            square(),
-            square(),
-            square(),
-            square(),
-            square(),
-            square(),
-            square(),
-            square(),
-            square()
+            square(0),
+            square(1),
+            square(2),
+            square(3),
+            square(4),
+            square(5),
+            square(6),
+            square(7),
+            square(8)
         ]),
     );
 

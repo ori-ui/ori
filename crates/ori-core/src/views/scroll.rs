@@ -172,6 +172,16 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                     event.handle();
                 }
             }
+
+            if !cx.is_hot() {
+                let handled = event.is_handled();
+
+                event.set_handled(true);
+                self.content.event(content, cx, data, event);
+                event.set_handled(handled);
+
+                return;
+            }
         }
 
         self.content.event(content, cx, data, event);

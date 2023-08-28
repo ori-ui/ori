@@ -1,10 +1,4 @@
-use std::{
-    any::Any,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{any::Any, cell::Cell};
 
 use crate::proxy::Command;
 
@@ -12,7 +6,7 @@ use crate::proxy::Command;
 #[derive(Debug)]
 pub struct Event {
     pub(crate) event: Box<dyn Any>,
-    pub(crate) handled: Arc<AtomicBool>,
+    pub(crate) handled: Cell<bool>,
     pub(crate) name: &'static str,
 }
 
@@ -20,7 +14,7 @@ impl Event {
     pub(crate) fn from_command(command: Command) -> Self {
         Self {
             event: command.command,
-            handled: Arc::new(AtomicBool::new(false)),
+            handled: Cell::new(false),
             name: command.name,
         }
     }
@@ -29,7 +23,7 @@ impl Event {
     pub fn new<T: Any>(event: T) -> Self {
         Self {
             event: Box::new(event),
-            handled: Arc::new(AtomicBool::new(false)),
+            handled: Cell::new(false),
             name: std::any::type_name::<T>(),
         }
     }
@@ -51,11 +45,16 @@ impl Event {
 
     /// Returns whether the event has been handled.
     pub fn is_handled(&self) -> bool {
-        self.handled.load(Ordering::Relaxed)
+        self.handled.get()
+    }
+
+    /// Set whether the event has been handled.
+    pub fn set_handled(&self, handled: bool) {
+        self.handled.set(handled);
     }
 
     /// Mark the event as handled.
     pub fn handle(&self) {
-        self.handled.store(true, Ordering::Relaxed);
+        self.set_handled(true);
     }
 }

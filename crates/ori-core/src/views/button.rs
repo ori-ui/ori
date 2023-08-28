@@ -165,8 +165,6 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
                 cx.request_draw();
-
-                event.handle();
             }
         }
     }

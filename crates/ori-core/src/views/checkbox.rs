@@ -151,11 +151,11 @@ impl<T> View<T> for Checkbox<T> {
 
                 cx.set_active(true);
                 cx.request_draw();
+
+                event.handle();
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
                 cx.request_draw();
-
-                event.handle();
             }
         }
     }

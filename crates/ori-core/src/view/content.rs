@@ -97,11 +97,11 @@ impl<V> Content<V> {
         pointer: &PointerEvent,
         f: &mut impl FnMut(&mut EventCx, &Event),
     ) {
-        let transform = cx.transform * view_state.transform();
+        let transform = cx.transform * view_state.transform;
         let local = transform.inverse() * pointer.position;
         let hot = view_state.rect().contains(local) && !pointer.left && !event.is_handled();
 
-        if view_state.is_hot() != hot {
+        if view_state.is_hot() != hot && pointer.is_move() {
             view_state.set_hot(hot);
             Self::event_inner(view_state, cx, &Event::new(HotChanged(hot)), f);
         }
@@ -126,9 +126,7 @@ impl<V> Content<V> {
             return;
         }
 
-        if !event.is_handled() {
-            Self::event_inner(view_state, cx, event, &mut f);
-        }
+        Self::event_inner(view_state, cx, event, &mut f);
     }
 
     /// Layout a content view.

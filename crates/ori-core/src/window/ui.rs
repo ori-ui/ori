@@ -6,7 +6,8 @@ use crate::{
     layout::{Size, Space},
     style::{Palette, Theme},
     view::{
-        AnyState, BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState,
+        BaseCx, BoxedView, BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View,
+        ViewState,
     },
 };
 
@@ -56,8 +57,8 @@ impl Timers {
 /// User interface for a single window.
 pub struct WindowUi<T, R: SceneRender> {
     builder: UiBuilder<T>,
-    view: BoxedView<T>,
-    state: AnyState,
+    view: Content<BoxedView<T>>,
+    state: State<T, BoxedView<T>>,
     scene: Scene,
     theme: Theme,
     view_state: ViewState,
@@ -78,7 +79,8 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         render: R,
     ) -> Self {
         // we first build the view tree, with `theme` as the global theme
-        let mut view = Theme::with_global(&mut theme, || builder(data));
+        let view = Theme::with_global(&mut theme, || builder(data));
+        let mut view = Content::new(view);
 
         // then we build the state tree, with `theme` as the global theme
         let mut cx = BuildCx::new(base, &mut window);
@@ -159,7 +161,9 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         self.needs_rebuild = false;
 
         // build the new view tree
-        let mut new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
+        let new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
+        let mut new_view = Content::new(new_view);
+
         let dt = self.timers.rebuild();
 
         let mut cx = RebuildCx::new(base, &mut self.view_state, &mut self.window, dt);

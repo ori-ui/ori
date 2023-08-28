@@ -26,7 +26,7 @@ impl Size {
     pub const INFINITY: Self = Self::new(f32::INFINITY, f32::INFINITY);
 
     /// Alias for [`Self::INFINITY`].
-    pub const INF: Self = Self::INFINITY;
+    pub const FILL: Self = Self::INFINITY;
 
     /// Create a new size.
     pub const fn new(width: f32, height: f32) -> Self {

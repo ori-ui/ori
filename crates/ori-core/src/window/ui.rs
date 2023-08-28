@@ -4,7 +4,7 @@ use crate::{
     canvas::{Canvas, Scene, SceneRender},
     event::Event,
     layout::{Size, Space},
-    style::{Palette, Theme},
+    theme::{Palette, Theme},
     view::{
         BaseCx, BoxedView, BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View,
         ViewState,

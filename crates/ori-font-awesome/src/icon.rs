@@ -3,10 +3,10 @@ use ori_core::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::em,
     text::{
         FontQuery, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
     },
+    theme::em,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 

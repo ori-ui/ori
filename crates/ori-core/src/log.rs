@@ -13,6 +13,7 @@ macro_rules! warn_internal {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! error_internal {
     ($($tt:tt)*) => {
         #[cfg(feature = "tracing")]
@@ -23,4 +24,5 @@ macro_rules! error_internal {
     };
 }
 
+#[allow(unused_imports)]
 pub(crate) use {error_internal, warn_internal};

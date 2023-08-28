@@ -3,8 +3,8 @@ use std::sync::Arc;
 use ori_core::{
     delegate::Delegate,
     image::Image,
-    style::{Palette, Theme},
     text::FontSource,
+    theme::{Palette, Theme},
     ui::Ui,
     view::View,
     window::{UiBuilder, WindowDescriptor},

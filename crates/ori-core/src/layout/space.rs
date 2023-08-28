@@ -29,10 +29,7 @@ impl Space {
     };
 
     /// The infinite space.
-    pub const INFINITE: Self = Self {
-        min: Size::UNBOUNDED,
-        max: Size::UNBOUNDED,
-    };
+    pub const FILL: Self = Self::new(Size::FILL, Size::FILL);
 
     /// Create a new space.
     pub const fn new(min: Size, max: Size) -> Self {

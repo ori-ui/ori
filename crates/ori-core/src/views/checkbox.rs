@@ -5,7 +5,7 @@ use crate::{
     event::{Event, HotChanged, PointerEvent},
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::{checkbox, style},
+    theme::{checkbox, style},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };

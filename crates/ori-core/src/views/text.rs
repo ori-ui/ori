@@ -3,10 +3,10 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::{style, text},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
     },
+    theme::{style, text},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 

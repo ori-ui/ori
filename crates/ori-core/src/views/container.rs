@@ -5,7 +5,7 @@ use crate::{
     event::Event,
     layout::{Affine, Alignment, Padding, Size, Space},
     rebuild::Rebuild,
-    style::{container, style},
+    theme::{container, style},
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
 
@@ -217,7 +217,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
 
         if let Some(alignment) = self.alignment {
             // try to fill the available space, this will be bounded by `self.space`
-            let space = space.with(Space::INFINITE);
+            let space = space.with(Space::FILL);
             let size = space.fit(content_size);
 
             // align the content within the self

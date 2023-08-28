@@ -5,7 +5,7 @@ use crate::{
     event::{Event, HotChanged, PointerEvent},
     layout::{Axis, Rect, Size, Space},
     rebuild::Rebuild,
-    style::{scroll, style},
+    theme::{scroll, style},
     transition::Transition,
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };

@@ -5,11 +5,11 @@ use crate::{
     event::{Code, Event, KeyboardEvent, Modifiers, PointerEvent},
     layout::{Rect, Size, Space},
     rebuild::Rebuild,
-    style::{style, text_input},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, TextAlign, TextSection,
         TextWrap,
     },
+    theme::{style, text_input},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
     window::Cursor,
 };

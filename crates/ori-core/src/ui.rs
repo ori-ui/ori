@@ -9,8 +9,8 @@ use crate::{
     delegate::{Delegate, DelegateCx},
     event::{Code, Event, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId},
     proxy::{Command, Proxy, ProxyWaker},
-    style::{set_style, styled, Theme, SCALE_FACTOR},
     text::Fonts,
+    theme::{set_style, styled, Theme, SCALE_FACTOR},
     view::BaseCx,
     window::{UiBuilder, Window, WindowId, WindowUi},
 };

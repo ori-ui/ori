@@ -11,8 +11,8 @@ pub mod layout;
 pub mod log;
 pub mod proxy;
 pub mod rebuild;
-pub mod style;
 pub mod text;
+pub mod theme;
 pub mod transition;
 pub mod ui;
 pub mod view;
@@ -25,5 +25,5 @@ pub mod math {
 
     pub use glam::*;
 
-    pub use std::f32::INFINITY as INF;
+    pub use std::f32::INFINITY as FILL;
 }

@@ -4,7 +4,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    style::Theme,
+    theme::Theme,
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
 

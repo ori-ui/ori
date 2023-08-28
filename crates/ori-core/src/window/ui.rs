@@ -141,6 +141,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
     /// Request a rebuild of the view-tree.
     pub fn request_rebuild(&mut self) {
+        self.window.request_draw();
         self.needs_rebuild = true;
     }
 

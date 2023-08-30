@@ -216,7 +216,7 @@ impl MeshRender {
         instance.write_index_buffer(device, queue, mesh);
         instance.write_uniform_buffer(queue, transform, resolution);
         instance.image = Some(image);
-        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution));
+        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution)).round();
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize, mesh: &Mesh) {

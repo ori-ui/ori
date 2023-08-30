@@ -249,7 +249,7 @@ impl QuadRender {
         let instance = &mut self.instances[index];
         instance.write_vertex_buffer(queue, quad);
         instance.write_uniform_buffer(queue, quad, transform, resolution);
-        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution));
+        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution)).round();
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {

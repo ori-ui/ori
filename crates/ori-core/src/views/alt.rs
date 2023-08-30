@@ -183,7 +183,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
             );
 
             if let Some(mesh) = cx.text_mesh(glyphs, text_rect) {
-                layer.draw(mesh);
+                layer.draw_pixel_perfect(mesh);
             }
         }
     }

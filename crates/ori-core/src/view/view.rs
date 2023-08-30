@@ -15,10 +15,10 @@ use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, ViewState};
 /// A view also has an associated `state` type, that is persistent across `view-trees`.
 /// When calling [`View::build`], the view will build it's state. A view containing
 /// another view must also store it's child's state. This is usually done by wrapping
-/// it in a tuple `(MyState, ContentState)`.
+/// it in a tuple `(MyState, State)`.
 ///
 /// In case a view contains another view the contents should always be wrapped in
-/// either [`State`] or [`SequenceState`]. If this is not done strange issues
+/// either [`State`] or [`SeqState`]. If this is not done strange issues
 /// are _very_ likely to occur.
 ///
 /// [`View`] has four primary methods:
@@ -40,7 +40,7 @@ use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, ViewState};
 /// For examples see the implementation of views like [`Button`] or [`Checkbox`].
 ///
 /// [`State`]: super::State
-/// [`SequenceState`]: super::SequenceState
+/// [`SeqState`]: super::SeqState
 /// [`ViewState`]: super::ViewState
 /// [`Rebuild`]: crate::rebuild::Rebuild
 /// [`Button`]: crate::views::Button

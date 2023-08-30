@@ -19,8 +19,7 @@ fn form() -> impl View<Data> {
         let age = hstack![
             text(format!("Age: {}", user.age)),
             button(text("Add")).on_press(move |_, (_, user): &mut (_, User)| { user.age += 1 })
-        ]
-        .center_items();
+        ];
 
         let submit = button(text("Submit"))
             .on_press(move |_, (data, user): &mut (Data, User)| {
@@ -41,7 +40,6 @@ fn app(data: &mut Data) -> impl View<Data> {
             text(format!("Name: {},", user.name)),
             text(format!("Age: {}", user.age))
         ]
-        .center_items()
         .gap(em(1.0));
 
         let user = container(fields)
@@ -53,9 +51,12 @@ fn app(data: &mut Data) -> impl View<Data> {
         users.push(user);
     }
 
-    let users = flex(1.0, pad(em(1.0), vscroll(vstack(users).stretch_items())));
+    let users = flex(
+        1.0,
+        pad(em(1.0), vscroll(vstack(users).align_items(Align::Stretch))),
+    );
 
-    center(hstack![form(), users].center_items())
+    center(hstack![form(), users])
 }
 
 fn main() {

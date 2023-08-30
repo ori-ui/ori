@@ -92,10 +92,8 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
         .padding(em(0.3))
         .color(hsl(353.0, 0.6, 0.72));
 
-    let left = hstack![completed, title].center_items().gap(em(1.5));
-    let row = hstack![left, remove]
-        .center_items()
-        .justify_content(Justify::SpaceBetween);
+    let left = hstack![completed, title].gap(em(1.5));
+    let row = hstack![left, remove].justify_content(Justify::SpaceBetween);
 
     let container = container(row).padding(em(1.0)).width(em(28.0));
 
@@ -170,9 +168,7 @@ fn selection(data: &mut Data) -> impl View<Data> {
         .padding([5.0, 3.0]);
 
     let items = hstack![all, active, completed].gap(em(1.0));
-    let row = hstack![active_count(data), items]
-        .center_items()
-        .justify_content(Justify::SpaceBetween);
+    let row = hstack![active_count(data), items].justify_content(Justify::SpaceBetween);
 
     let container = container(row)
         .width(em(26.0))
@@ -188,12 +184,9 @@ fn app(data: &mut Data) -> impl View<Data> {
         flex(1.0, vscroll(todos(data))),
         selection(data)
     ]
-    .center_items()
     .gap(0.0);
 
-    let stack = vstack![title(), flex(1.0, rows)]
-        .center_items()
-        .gap(em(1.0));
+    let stack = vstack![title(), flex(1.0, rows)].gap(em(1.0));
 
     align((0.5, 0.2), stack)
         .padding(em(4.0))

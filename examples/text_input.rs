@@ -35,14 +35,16 @@ fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
         text("Multiline"),
         checkbox(data.multiline).on_press(|_, data: &mut Data| data.toogle_multiline())
     ]
-    .align_items(Align::Center)
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    center(vstack![
-        multiline_checkbox(data),
-        hstack![input(data), clear_button()],
-    ])
+    center(
+        vstack![
+            multiline_checkbox(data),
+            hstack![input(data), clear_button()],
+        ]
+        .align_items(Align::Start),
+    )
 }
 
 fn main() {

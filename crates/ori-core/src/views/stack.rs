@@ -85,7 +85,7 @@ impl<V> Stack<V> {
             axis,
             wrap: false,
             justify_content: Justify::Start,
-            align_items: Align::Start,
+            align_items: Align::Center,
             align_content: Justify::Start,
             column_gap: 0.0,
             row_gap: 0.0,
@@ -173,18 +173,6 @@ impl<V> Stack<V> {
     /// Set the align items.
     pub fn align_items(mut self, align: impl Into<Align>) -> Self {
         self.align_items = align.into();
-        self
-    }
-
-    /// Align the items at the center.
-    pub fn center_items(mut self) -> Self {
-        self.align_items = Align::Center;
-        self
-    }
-
-    /// Stretch the items to fill the cross axis.
-    pub fn stretch_items(mut self) -> Self {
-        self.align_items = Align::Stretch;
         self
     }
 

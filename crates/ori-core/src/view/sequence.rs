@@ -285,7 +285,7 @@ impl_tuple!(A B C D E F G H I J; 0 1 2 3 4 5 6 7 8 9);
 impl_tuple!(A B C D E F G H I J K; 0 1 2 3 4 5 6 7 8 9 10);
 impl_tuple!(A B C D E F G H I J K L; 0 1 2 3 4 5 6 7 8 9 10 11);
 
-/// The state of a [`ContentSequence`].
+/// The state of a [`ContentSeq`].
 pub struct SeqState<T, V: ViewSeq<T>> {
     content: V::State,
     view_state: Vec<ViewState>,
@@ -315,7 +315,7 @@ impl<T, V: ViewSeq<T>> DerefMut for SeqState<T, V> {
 /// Contents of a view, in a sequence.
 ///
 /// This is useful for views that contain multiple pieces of content.
-/// See [`ViewSequence`] for more information.
+/// See [`ViewSeq`] for more information.
 ///
 /// This is strictly necessary for any view that contains any content.
 /// If you don't wrap your content in this, you're in strange waters my friend,
@@ -327,7 +327,7 @@ pub struct ContentSeq<V> {
 }
 
 impl<V> ContentSeq<V> {
-    /// Create a new [`ContentSequence`].
+    /// Create a new [`ContentSeq`].
     pub fn new(views: V) -> Self {
         Self { views }
     }

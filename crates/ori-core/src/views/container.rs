@@ -32,9 +32,6 @@ pub struct Container<V> {
     /// This is applied after padding.
     #[rebuild(layout)]
     pub transform: Affine,
-    /// The flex.
-    #[rebuild(layout)]
-    pub flex: f32,
     /// The background color.
     #[rebuild(draw)]
     pub background: Color,
@@ -58,7 +55,6 @@ impl<V> Container<V> {
             space: Space::default(),
             alignment: None,
             transform: Affine::IDENTITY,
-            flex: 0.0,
             background: style(container::BACKGROUND),
             border_radius: style(container::BORDER_RADIUS),
             border_width: style(container::BORDER_WIDTH),
@@ -146,12 +142,6 @@ impl<V> Container<V> {
         self
     }
 
-    /// Set the flex.
-    pub fn flex(mut self, flex: f32) -> Self {
-        self.flex = flex;
-        self
-    }
-
     /// Set the background color.
     pub fn background(mut self, background: impl Into<Color>) -> Self {
         self.background = background.into();
@@ -202,8 +192,6 @@ impl<T, V: View<T>> View<T> for Container<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        cx.set_flex(self.flex);
-
         let space = if self.alignment.is_some() {
             self.space.with(space).loosen()
         } else {
@@ -343,14 +331,6 @@ pub fn rotate<V>(rotation: f32, content: V) -> Container<V> {
 pub fn scale<V>(scale: impl Into<Vec2>, content: V) -> Container<V> {
     Container {
         transform: Affine::scale(scale.into()),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] with a flex.
-pub fn flex<V>(flex: f32, content: V) -> Container<V> {
-    Container {
-        flex,
         ..Container::new(content)
     }
 }

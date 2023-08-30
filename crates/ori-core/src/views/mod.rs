@@ -3,6 +3,7 @@
 mod button;
 mod checkbox;
 mod container;
+mod flex;
 mod focus;
 mod overlay;
 mod scroll;
@@ -14,6 +15,7 @@ mod with_state;
 pub use button::*;
 pub use checkbox::*;
 pub use container::*;
+pub use flex::*;
 pub use focus::*;
 pub use overlay::*;
 pub use scroll::*;

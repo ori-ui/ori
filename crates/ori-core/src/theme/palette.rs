@@ -68,7 +68,7 @@ impl Palette {
         Self {
             text: Color::hsl(0.0, 0.0, 0.8),
             background: Color::hsl(0.0, 0.0, 0.1),
-            primary: Color::hsl(221.0, 0.7, 0.62),
+            primary: Color::hsl(221.0, 0.7, 0.52),
             secondary: Color::hsl(237.0, 0.05, 0.17),
             accent: Color::hsl(334.0, 0.76, 0.47),
         }

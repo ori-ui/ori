@@ -1,7 +1,5 @@
 use ori::prelude::*;
 
-const BORDER_TOP: Key<BorderWidth> = Key::new("todos.border_top");
-
 // the selection of the todos
 #[derive(Clone, Copy, Default, PartialEq)]
 enum Selection {
@@ -61,13 +59,16 @@ fn title() -> impl View<Data> {
     text("todos").font_size(pt(50.0))
 }
 
-fn input() -> impl View<Data> {
+fn input(border: bool) -> impl View<Data> {
     let input = text_input()
         .placeholder("What needs to be done?")
         .on_submit(|_, data: &mut Data, text| data.input(text))
         .font_size(pt(20.0));
 
-    container(input).padding([em(4.0), em(1.0)]).width(em(28.0))
+    container(input)
+        .padding([em(4.0), em(1.0)])
+        .width(em(28.0))
+        .border_bottom(border as i32 as f32)
 }
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
@@ -96,10 +97,13 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
         .center_items()
         .justify_content(Justify::SpaceBetween);
 
-    container(row)
-        .padding(em(1.0))
-        .border_width(style(BORDER_TOP))
-        .width(em(28.0))
+    let container = container(row).padding(em(1.0)).width(em(28.0));
+
+    if index > 0 {
+        container.border_bottom(1.0)
+    } else {
+        container
+    }
 }
 
 fn todos(data: &mut Data) -> impl View<Data> {
@@ -136,7 +140,7 @@ fn active_count(data: &mut Data) -> impl View<Data> {
 
 fn selection(data: &mut Data) -> impl View<Data> {
     if data.todos.is_empty() {
-        return any(());
+        return None;
     }
 
     fn color(a: Selection, b: Selection) -> Color {
@@ -170,22 +174,30 @@ fn selection(data: &mut Data) -> impl View<Data> {
         .center_items()
         .justify_content(Justify::SpaceBetween);
 
-    any(container(row)
+    let container = container(row)
         .width(em(26.0))
         .padding([em(1.0), em(0.5)])
-        .border_width(style(BORDER_TOP)))
+        .border_top(1.0);
+
+    Some(container)
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    let rows = vstack![input(), todos(data), selection(data)]
-        .center_items()
-        .gap(0.0);
+    let rows = vstack![
+        input(!data.todos.is_empty()),
+        flex(1.0, vscroll(todos(data))),
+        selection(data)
+    ]
+    .center_items()
+    .gap(0.0);
 
-    align(
-        (0.5, 0.2),
-        vstack![title(), rows].center_items().gap(em(1.0)),
-    )
-    .background(style(Palette::BACKGROUND))
+    let stack = vstack![title(), flex(1.0, rows)]
+        .center_items()
+        .gap(em(1.0));
+
+    align((0.5, 0.2), stack)
+        .padding(em(4.0))
+        .background(style(Palette::BACKGROUND))
 }
 
 fn theme() -> Theme {
@@ -194,7 +206,6 @@ fn theme() -> Theme {
         .with(container::BORDER_WIDTH, BorderWidth::all(0.0))
         .with(container::BORDER_RADIUS, BorderRadius::all(0.0))
         .with(container::BORDER_COLOR, Palette::SECONDARY_DARK)
-        .with(BORDER_TOP, BorderWidth::new(1.0, 0.0, 0.0, 0.0))
         .with(checkbox::BORDER_RADIUS, BorderRadius::all(em(0.75)))
 }
 

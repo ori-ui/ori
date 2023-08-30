@@ -2,11 +2,12 @@
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color},
+    layout::Padding,
     text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
     transition::Transition,
 };
 
-use super::{em, Palette, Theme};
+use super::{em, pt, Palette, Theme};
 
 macro_rules! style {
     (
@@ -91,6 +92,22 @@ style! {
 }
 
 style! {
+    /// Styles for [`Alt`](crate::views::Alt)s.
+    pub alt {
+        /// The padding of the overlay.
+        const PADDING: Padding = Padding::from((pt(4.0), pt(2.0)));
+        /// The background color of the overlay.
+        const BACKGROUND: Color = Palette::SECONDARY_DARKER;
+        /// The border radius of the overlay.
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(pt(6.0));
+        /// The border width of the overlay.
+        const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
+        /// The border color of the overlay.
+        const BORDER_COLOR: Color = Color::TRANSPARENT;
+    }
+}
+
+style! {
     /// Styles for [`Container`](crate::views::Container)s.
     pub container {
         /// The background color.
@@ -167,6 +184,7 @@ impl Theme {
 
         theme.extend(text::default_theme());
         theme.extend(text_input::default_theme());
+        theme.extend(alt::default_theme());
         theme.extend(container::default_theme());
         theme.extend(scroll::default_theme());
         theme.extend(button::default_theme());

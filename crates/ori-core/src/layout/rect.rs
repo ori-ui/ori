@@ -203,10 +203,14 @@ impl Add<Vec2> for Rect {
     }
 }
 
-impl AddAssign<Vec2> for Rect {
-    fn add_assign(&mut self, rhs: Vec2) {
-        self.min += rhs;
-        self.max += rhs;
+impl Add<Size> for Rect {
+    type Output = Self;
+
+    fn add(self, rhs: Size) -> Self::Output {
+        Self {
+            min: self.min,
+            max: self.max + rhs,
+        }
     }
 }
 
@@ -221,9 +225,39 @@ impl Sub<Vec2> for Rect {
     }
 }
 
+impl Sub<Size> for Rect {
+    type Output = Self;
+
+    fn sub(self, rhs: Size) -> Self::Output {
+        Self {
+            min: self.min,
+            max: self.max - rhs,
+        }
+    }
+}
+
+impl AddAssign<Vec2> for Rect {
+    fn add_assign(&mut self, rhs: Vec2) {
+        self.min += rhs;
+        self.max += rhs;
+    }
+}
+
+impl AddAssign<Size> for Rect {
+    fn add_assign(&mut self, rhs: Size) {
+        self.max += rhs;
+    }
+}
+
 impl SubAssign<Vec2> for Rect {
     fn sub_assign(&mut self, rhs: Vec2) {
         self.min -= rhs;
+        self.max -= rhs;
+    }
+}
+
+impl SubAssign<Size> for Rect {
+    fn sub_assign(&mut self, rhs: Size) {
         self.max -= rhs;
     }
 }

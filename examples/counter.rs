@@ -6,9 +6,11 @@ struct Data {
 }
 
 fn counter_button() -> impl View<Data> {
-    button(text("Click me!"))
+    let button = button(text("Click me!"))
         .on_press(|_, data: &mut Data| data.counter += 1.0)
-        .fancy(4.0)
+        .fancy(4.0);
+
+    alt("Counter Button", button)
 }
 
 fn app(data: &mut Data) -> impl View<Data> {

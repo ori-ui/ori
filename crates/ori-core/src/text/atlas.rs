@@ -66,8 +66,7 @@ impl FontAtlas {
 
         // resize the image
         let image_size = size.x as usize * size.y as usize * 4;
-        let mut image_data = ImageData::new(vec![0; image_size], size.x, size.y);
-        image_data.set_filter(false);
+        let image_data = ImageData::new(vec![0; image_size], size.x, size.y);
         self.image = Image::from(image_data);
 
         // clear the glyph cache

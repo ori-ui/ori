@@ -1,5 +1,6 @@
 //! The builtin views in Ori.
 
+mod alt;
 mod button;
 mod checkbox;
 mod container;
@@ -12,6 +13,7 @@ mod text;
 mod text_input;
 mod with_state;
 
+pub use alt::*;
 pub use button::*;
 pub use checkbox::*;
 pub use container::*;

@@ -104,6 +104,30 @@ impl<T, V> Button<T, V> {
         self
     }
 
+    /// Set the border width of the top edge.
+    pub fn border_top(mut self, width: f32) -> Self {
+        self.border_width.top = width;
+        self
+    }
+
+    /// Set the border width of the right edge.
+    pub fn border_right(mut self, width: f32) -> Self {
+        self.border_width.right = width;
+        self
+    }
+
+    /// Set the border width of the bottom edge.
+    pub fn border_bottom(mut self, width: f32) -> Self {
+        self.border_width.bottom = width;
+        self
+    }
+
+    /// Set the border width of the left edge.
+    pub fn border_left(mut self, width: f32) -> Self {
+        self.border_width.left = width;
+        self
+    }
+
     /// Set the border color.
     pub fn border_color(mut self, border_color: impl Into<Color>) -> Self {
         self.border_color = border_color.into();

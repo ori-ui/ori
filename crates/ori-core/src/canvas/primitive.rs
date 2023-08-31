@@ -17,6 +17,19 @@ pub struct Quad {
     pub border_color: Color,
 }
 
+impl Quad {
+    /// Get whether the quad is ineffective, i.e. it has no effect on the canvas.
+    pub fn is_ineffective(&self) -> bool {
+        // if the rect has zero area, the quad is ineffective
+        let rect = self.rect.area() == 0.0;
+
+        let color = self.color.a == 0.0;
+        let border = self.border_width == BorderWidth::ZERO || self.border_color.a == 0.0;
+
+        rect || (color && border)
+    }
+}
+
 /// A primitive to be rendered.
 #[derive(Clone, Debug)]
 pub enum Primitive {
@@ -24,6 +37,16 @@ pub enum Primitive {
     Quad(Quad),
     /// A mesh primitive.
     Mesh(Mesh),
+}
+
+impl Primitive {
+    /// Get whether the primitive is ineffective, i.e. it has no effect on the canvas.
+    pub fn is_ineffective(&self) -> bool {
+        match self {
+            Self::Quad(quad) => quad.is_ineffective(),
+            _ => false,
+        }
+    }
 }
 
 impl From<Quad> for Primitive {

@@ -63,8 +63,8 @@ impl Rect {
     }
 
     /// Get the size of the rectangle.
-    pub fn size(self) -> Vec2 {
-        self.max - self.min
+    pub fn size(self) -> Size {
+        Size::from(self.max - self.min)
     }
 
     /// Get the width of the rectangle.
@@ -75,6 +75,11 @@ impl Rect {
     /// Get the height of the rectangle.
     pub fn height(self) -> f32 {
         self.max.y - self.min.y
+    }
+
+    /// Get the area of the rectangle.
+    pub fn area(self) -> f32 {
+        self.width() * self.height()
     }
 
     /// Get the center point of the rectangle.

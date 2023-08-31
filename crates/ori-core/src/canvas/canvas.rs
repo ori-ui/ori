@@ -66,8 +66,15 @@ impl<'a> Canvas<'a> {
 
     /// Draw a primitive to the canvas.
     pub fn draw(&mut self, primitive: impl Into<Primitive>) {
+        let primitive = primitive.into();
+
+        // only draw primitives that actually do something
+        if primitive.is_ineffective() {
+            return;
+        }
+
         self.draw_fragment(Fragment {
-            primitive: primitive.into(),
+            primitive,
             transform: self.transform,
             depth: self.depth,
             clip: self.clip,
@@ -93,12 +100,17 @@ impl<'a> Canvas<'a> {
         border_width: impl Into<BorderWidth>,
         border_color: impl Into<Color>,
     ) {
+        let color = color.into();
+        let border_radius = border_radius.into();
+        let border_width = border_width.into();
+        let border_color = border_color.into();
+
         self.draw(Quad {
             rect,
-            color: color.into(),
-            border_radius: border_radius.into(),
-            border_width: border_width.into(),
-            border_color: border_color.into(),
+            color,
+            border_radius,
+            border_width,
+            border_color,
         });
     }
 }

@@ -193,7 +193,7 @@ impl Fonts {
         let glyphs = self.layout_glyphs_inner(&font, &layout)?;
 
         Some(Glyphs {
-            glyphs,
+            glyphs: glyphs.into(),
             size,
             font: id,
             wrap: text.wrap,

@@ -25,9 +25,6 @@ macro_rules! image {
     };
 }
 
-#[cfg(feature = "image")]
-pub use image;
-
 /// A unique identifier for an [`Image`].
 ///
 /// The identifier is computed by hashing the image data.

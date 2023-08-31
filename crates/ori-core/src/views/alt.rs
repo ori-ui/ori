@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
-    event::{Event, HotChanged, PointerEvent},
+    event::{Event, PointerEvent},
     layout::{Padding, Rect, Size, Space},
     rebuild::Rebuild,
     text::{
@@ -101,15 +101,11 @@ impl<T, V: View<T>> View<T> for Alt<V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if event.is::<HotChanged>() {
-            state.timer = -f32::INFINITY;
-            cx.request_draw();
-        }
-
         if let Some(pointer) = event.get::<PointerEvent>() {
             let local = cx.local(pointer.position);
 
             if cx.is_hot() && pointer.is_move() {
+                state.timer = 0.0;
                 state.position = local;
                 cx.request_draw();
             }
@@ -152,39 +148,50 @@ impl<T, V: View<T>> View<T> for Alt<V> {
     ) {
         self.content.draw(content, cx, data, canvas);
 
-        if cx.is_hot() && state.timer < 0.0 {
-            state.timer += cx.dt();
+        if cx.is_hot() && state.timer < 1.0 {
+            if state.timer == 0.0 {
+                state.timer = f32::EPSILON;
+            } else {
+                state.timer += cx.dt();
+            }
+
             cx.request_draw();
         }
 
-        if state.timer == -f32::INFINITY {
-            state.timer = -1.0;
+        state.timer = f32::clamp(state.timer, 0.0, 1.0);
+
+        let Some(ref glyphs) = state.glyphs else {
+            return;
+        };
+
+        let alpha = f32::clamp(state.timer * 10.0 - 9.0, 0.0, 1.0);
+
+        if alpha <= 0.0 {
+            return;
         }
 
-        let Some(ref glyphs) = state.glyphs else { return };
+        let size = glyphs.size() + self.padding.size();
+        let offset = Vec2::new(-size.width / 2.0, pt(20.0));
+        let text_rect = Rect::min_size(
+            state.position + offset + self.padding.offset(),
+            glyphs.size(),
+        );
 
-        if cx.is_hot() && state.timer >= 0.0 {
-            let size = glyphs.size() + self.padding.size();
-            let offset = Vec2::new(-size.width / 2.0, pt(20.0));
-            let text_rect = Rect::min_size(
-                state.position + offset + self.padding.offset(),
-                glyphs.size(),
-            );
+        let mut layer = canvas.layer();
+        layer.depth += 1000.0;
 
-            let mut layer = canvas.layer();
-            layer.depth += 1000.0;
+        layer.draw_quad(
+            Rect::min_size(state.position + offset, size),
+            self.background.fade(alpha),
+            self.border_radius,
+            self.border_width,
+            self.border_color.fade(alpha),
+        );
 
-            layer.draw_quad(
-                Rect::min_size(state.position + offset, size),
-                self.background,
-                self.border_radius,
-                self.border_width,
-                self.border_color,
-            );
-
-            if let Some(mesh) = cx.text_mesh(glyphs, text_rect) {
-                layer.draw_pixel_perfect(mesh);
-            }
+        let mut glyphs = glyphs.clone();
+        glyphs.set_color(self.color.fade(alpha));
+        if let Some(mesh) = cx.text_mesh(&glyphs, text_rect) {
+            layer.draw_pixel_perfect(mesh);
         }
     }
 }

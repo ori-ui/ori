@@ -1,4 +1,4 @@
-use std::{ops::Deref, vec};
+use std::{ops::Deref, sync::Arc};
 
 use fontdue::layout::GlyphRasterConfig;
 use glam::Vec2;
@@ -34,9 +34,9 @@ pub struct Glyph {
 }
 
 /// A collection of laid out glyphs.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Glyphs {
-    pub(crate) glyphs: Vec<Glyph>,
+    pub(crate) glyphs: Arc<[Glyph]>,
     pub(crate) size: Size,
     pub(crate) font: fontdb::ID,
     pub(crate) wrap: TextWrap,
@@ -94,6 +94,11 @@ impl Glyphs {
     pub fn color(&self) -> Color {
         self.color
     }
+
+    /// Set the color.
+    pub fn set_color(&mut self, color: Color) {
+        self.color = color;
+    }
 }
 
 impl Deref for Glyphs {
@@ -101,15 +106,6 @@ impl Deref for Glyphs {
 
     fn deref(&self) -> &Self::Target {
         &self.glyphs
-    }
-}
-
-impl IntoIterator for Glyphs {
-    type Item = Glyph;
-    type IntoIter = vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.glyphs.into_iter()
     }
 }
 

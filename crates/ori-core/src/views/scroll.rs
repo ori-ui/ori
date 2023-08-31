@@ -191,14 +191,16 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         }
 
         if let Some(pointer) = event.get::<PointerEvent>() {
-            let overflow = self.overflow(content.size(), cx.size());
+            if pointer.is_scroll() {
+                let overflow = self.overflow(content.size(), cx.size());
 
-            state.scroll -= pointer.scroll.y * 10.0;
-            state.scroll = state.scroll.clamp(0.0, overflow);
+                state.scroll -= pointer.scroll.y * 10.0;
+                state.scroll = state.scroll.clamp(0.0, overflow);
 
-            content.translate(self.axis.pack(-state.scroll, 0.0));
+                content.translate(self.axis.pack(-state.scroll, 0.0));
 
-            cx.request_draw();
+                cx.request_draw();
+            }
         }
     }
 

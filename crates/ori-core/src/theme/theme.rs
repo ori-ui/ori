@@ -49,7 +49,7 @@ pub fn style<T: Clone + Default + Any>(key: Key<T>) -> T {
 /// Run a function with a temporary global theme.
 ///
 /// This restores the previous global theme after the function returns.
-pub fn styled<T>(f: impl FnOnce() -> T) -> T {
+pub fn themed<T>(f: impl FnOnce() -> T) -> T {
     let snapshot = Theme::global_snapshot();
     let result = f();
     Theme::make_global(snapshot);

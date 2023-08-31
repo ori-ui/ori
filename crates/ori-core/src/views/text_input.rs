@@ -397,7 +397,9 @@ impl<T> TextInput<T> {
     }
 
     fn input_backspace(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
-        let Some(prev_char) = self.prev_char(state, data) else { return };
+        let Some(prev_char) = self.prev_char(state, data) else {
+            return;
+        };
 
         let index = state.cursor_index;
         let text = self.get_text_mut(state, data);
@@ -634,7 +636,9 @@ impl<T> View<T> for TextInput<T> {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
-        let Some(ref glyphs) = state.glyphs else { return };
+        let Some(ref glyphs) = state.glyphs else {
+            return;
+        };
 
         if let Some(mesh) = cx.text_mesh(glyphs, cx.rect()) {
             let mut layer = canvas.layer();

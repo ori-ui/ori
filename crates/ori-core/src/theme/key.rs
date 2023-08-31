@@ -12,10 +12,7 @@ pub struct Key<T> {
 
 impl<T> Clone for Key<T> {
     fn clone(&self) -> Self {
-        Self {
-            name: self.name,
-            marker: PhantomData,
-        }
+        *self
     }
 }
 

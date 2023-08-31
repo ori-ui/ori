@@ -10,7 +10,7 @@ use crate::{
     event::{Code, Event, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId},
     proxy::{Command, Proxy, ProxyWaker},
     text::Fonts,
-    theme::{set_style, styled, Theme, SCALE_FACTOR},
+    theme::{set_style, themed, Theme, SCALE_FACTOR},
     view::BaseCx,
     window::{UiBuilder, Window, WindowId, WindowUi},
 };
@@ -54,7 +54,7 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Build the theme.
     pub fn build_theme(&mut self, scale_factor: f32) -> Theme {
-        styled(|| {
+        themed(|| {
             set_style(SCALE_FACTOR, scale_factor);
 
             let mut theme = Theme::builtin();

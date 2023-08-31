@@ -73,6 +73,7 @@ fn input(border: bool) -> impl View<Data> {
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = checkbox(todo.completed).on_press(|_, data: &mut Todo| data.toggle());
+    let completed = alt("Toggle whether the todo is completed", completed);
 
     let title_color = if todo.completed {
         style(Palette::TEXT_BRIGHTER)
@@ -91,6 +92,8 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
         .fancy(4.0)
         .padding(em(0.3))
         .color(hsl(353.0, 0.6, 0.72));
+
+    let remove = alt("Remove todo", remove);
 
     let left = hstack![completed, title].gap(em(1.5));
     let row = hstack![left, remove].justify_content(Justify::SpaceBetween);

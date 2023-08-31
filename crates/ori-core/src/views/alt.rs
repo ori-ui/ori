@@ -104,8 +104,9 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         if let Some(pointer) = event.get::<PointerEvent>() {
             let local = cx.local(pointer.position);
 
+            state.timer = 0.0;
+
             if cx.is_hot() && pointer.is_move() {
-                state.timer = 0.0;
                 state.position = local;
                 cx.request_draw();
             }
@@ -152,7 +153,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
             if state.timer == 0.0 {
                 state.timer = f32::EPSILON;
             } else {
-                state.timer += cx.dt();
+                state.timer += cx.dt() * 2.0;
             }
 
             cx.request_draw();
@@ -179,6 +180,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
 
         let mut layer = canvas.layer();
         layer.depth += 1000.0;
+        layer.clip = Rect::min_size(Vec2::ZERO, cx.window().size());
 
         layer.draw_quad(
             Rect::min_size(state.position + offset, size),

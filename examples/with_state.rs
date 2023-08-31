@@ -42,13 +42,11 @@ fn app(data: &mut Data) -> impl View<Data> {
         ]
         .gap(em(1.0));
 
-        let user = container(fields)
-            .padding(em(0.5))
-            .align(Alignment::CENTER)
+        let user = container(pad(em(1.0), fields))
             .background(style(Palette::SECONDARY))
             .border_radius(em(0.5));
 
-        users.push(user);
+        users.push(center(user));
     }
 
     let users = flex(

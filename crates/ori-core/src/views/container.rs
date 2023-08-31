@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     event::Event,
-    layout::{Affine, Alignment, Padding, Size, Space},
+    layout::{Size, Space},
     rebuild::Rebuild,
     theme::{container, style},
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
@@ -14,24 +12,11 @@ use crate::{
 pub struct Container<V> {
     /// The content.
     pub content: Content<V>,
-    /// The padding, applied before everything else.
-    #[rebuild(layout)]
-    pub padding: Padding,
     /// The space available to the content.
     ///
     /// By default, the content is given [`Space::UNBOUNDED`].
     #[rebuild(layout)]
     pub space: Space,
-    /// The alignment of the content.
-    ///
-    /// If set the container will try to fill the available space.
-    #[rebuild(layout)]
-    pub alignment: Option<Alignment>,
-    /// The transform.
-    ///
-    /// This is applied after padding.
-    #[rebuild(layout)]
-    pub transform: Affine,
     /// The background color.
     #[rebuild(draw)]
     pub background: Color,
@@ -51,21 +36,12 @@ impl<V> Container<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Content::new(content),
-            padding: Padding::default(),
             space: Space::default(),
-            alignment: None,
-            transform: Affine::IDENTITY,
             background: style(container::BACKGROUND),
             border_radius: style(container::BORDER_RADIUS),
             border_width: style(container::BORDER_WIDTH),
             border_color: style(container::BORDER_COLOR),
         }
-    }
-
-    /// Set the padding.    
-    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
-        self.padding = padding.into();
-        self
     }
 
     /// Set the size.
@@ -109,36 +85,6 @@ impl<V> Container<V> {
     /// Set the maximum height.
     pub fn max_height(mut self, max_height: f32) -> Self {
         self.space.max.height = max_height;
-        self
-    }
-
-    /// Set the alignment.
-    pub fn align(mut self, alignment: impl Into<Alignment>) -> Self {
-        self.alignment = Some(alignment.into());
-        self
-    }
-
-    /// Set the transform.
-    pub fn transform(mut self, transform: impl Into<Affine>) -> Self {
-        self.transform = transform.into();
-        self
-    }
-
-    /// Set the translation.
-    pub fn translate(mut self, translation: impl Into<Vec2>) -> Self {
-        self.transform = Affine::translate(translation.into());
-        self
-    }
-
-    /// Set the rotation.
-    pub fn rotate(mut self, rotation: f32) -> Self {
-        self.transform = Affine::rotate(rotation);
-        self
-    }
-
-    /// Set the scale.
-    pub fn scale(mut self, scale: impl Into<Vec2>) -> Self {
-        self.transform = Affine::scale(scale.into());
         self
     }
 
@@ -216,37 +162,8 @@ impl<T, V: View<T>> View<T> for Container<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let space = if self.alignment.is_some() {
-            self.space.constrain(space).loosen()
-        } else {
-            self.space.constrain(space)
-        };
-
-        // the content must fit within the padding
-        let content_space = space.shrink(self.padding.size());
-        let mut content_size = self.content.layout(state, cx, data, content_space);
-        content_size += self.padding.size();
-
-        if let Some(alignment) = self.alignment {
-            // try to fill the available space, this will be bounded by `self.space`
-            let space = space.constrain(Space::FILL);
-            let size = space.fit(content_size);
-
-            // align the content within the self
-            let align = alignment.align(content_size, size);
-
-            // set the transform of the content
-            let affine = Affine::translate(self.padding.offset() + align);
-            state.set_transform(affine * self.transform);
-
-            return size;
-        }
-
-        // set the transform of the content
-        let affine = Affine::translate(self.padding.offset());
-        state.set_transform(affine * self.transform);
-
-        space.fit(content_size)
+        let space = self.space.constrain(space);
+        self.content.layout(state, cx, data, space)
     }
 
     fn draw(
@@ -271,14 +188,6 @@ impl<T, V: View<T>> View<T> for Container<V> {
 /// Create a new [`Container`].
 pub fn container<V>(content: V) -> Container<V> {
     Container::new(content)
-}
-
-/// Create a new padded [`Container`].
-pub fn pad<V>(padding: impl Into<Padding>, content: V) -> Container<V> {
-    Container {
-        padding: padding.into(),
-        ..Container::new(content)
-    }
 }
 
 /// Create a new [`Container`] with a fixed size.
@@ -317,116 +226,4 @@ pub fn max_width<V>(max_width: f32, content: V) -> Container<V> {
 /// Create a new [`Container`] with a maximum height.
 pub fn max_height<V>(max_height: f32, content: V) -> Container<V> {
     Container::new(content).max_height(max_height)
-}
-
-/// Create a new aligned [`Container`].
-pub fn align<V>(alignment: impl Into<Alignment>, content: V) -> Container<V> {
-    Container {
-        alignment: Some(alignment.into()),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new transformed [`Container`].
-pub fn transform<V>(transform: impl Into<Affine>, content: V) -> Container<V> {
-    Container {
-        transform: transform.into(),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new translated [`Container`].
-pub fn translate<V>(translation: impl Into<Vec2>, content: V) -> Container<V> {
-    Container {
-        transform: Affine::translate(translation.into()),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new rotated [`Container`].
-pub fn rotate<V>(rotation: f32, content: V) -> Container<V> {
-    Container {
-        transform: Affine::rotate(rotation),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new scaled [`Container`].
-pub fn scale<V>(scale: impl Into<Vec2>, content: V) -> Container<V> {
-    Container {
-        transform: Affine::scale(scale.into()),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the center.
-pub fn center<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::CENTER),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the top left.
-pub fn top_left<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::TOP_LEFT),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the top.
-pub fn top<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::TOP),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the top right.
-pub fn top_right<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::TOP_RIGHT),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the left.
-pub fn left<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::LEFT),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the right.
-pub fn right<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::RIGHT),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the bottom left.
-pub fn bottom_left<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::BOTTOM_LEFT),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the bottom.
-pub fn bottom<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::BOTTOM),
-        ..Container::new(content)
-    }
-}
-
-/// Create a new [`Container`] aligned to the bottom right.
-pub fn bottom_right<V>(content: V) -> Container<V> {
-    Container {
-        alignment: Some(Alignment::BOTTOM_RIGHT),
-        ..Container::new(content)
-    }
 }

@@ -32,7 +32,7 @@ fn screen_to_clip(position: vec2<f32>) -> vec2<f32> {
 fn vertex(in: VertexInput) -> VertexOutput {
 	var out: VertexOutput;
 
-	var position = in.position * uniforms.matrix + uniforms.translation;
+	var position = uniforms.matrix * in.position + uniforms.translation;
 	out.clip = vec4<f32>(screen_to_clip(position), 0.0, 1.0);
 	out.position = in.position;
 	out.uv = in.uv;

@@ -167,28 +167,16 @@ impl Rect {
 
     /// Transform the rectangle by the given affine transform.
     pub fn transform(self, transform: Affine) -> Self {
-        let top_left = transform * self.top_left();
-        let top_right = transform * self.top_right();
-        let bottom_left = transform * self.bottom_left();
-        let bottom_right = transform * self.bottom_right();
+        let tl = transform * self.top_left();
+        let tr = transform * self.top_right();
+        let bl = transform * self.bottom_left();
+        let br = transform * self.bottom_right();
 
-        let min_x = f32::min(
-            f32::min(top_left.x, top_right.x),
-            f32::min(bottom_left.x, bottom_right.x),
-        );
-        let min_y = f32::min(
-            f32::min(top_left.y, top_right.y),
-            f32::min(bottom_left.y, bottom_right.y),
-        );
+        let min_x = f32::min(f32::min(tl.x, tr.x), f32::min(bl.x, br.x));
+        let min_y = f32::min(f32::min(tl.y, tr.y), f32::min(bl.y, br.y));
 
-        let max_x = f32::max(
-            f32::max(top_left.x, top_right.x),
-            f32::max(bottom_left.x, bottom_right.x),
-        );
-        let max_y = f32::max(
-            f32::max(top_left.y, top_right.y),
-            f32::max(bottom_left.y, bottom_right.y),
-        );
+        let max_x = f32::max(f32::max(tl.x, tr.x), f32::max(bl.x, br.x));
+        let max_y = f32::max(f32::max(tl.y, tr.y), f32::max(bl.y, br.y));
 
         Self {
             min: Vec2::new(min_x, min_y),

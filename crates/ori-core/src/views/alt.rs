@@ -3,7 +3,7 @@ use glam::Vec2;
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     event::{Event, PointerEvent},
-    layout::{Padding, Rect, Size, Space},
+    layout::{Affine, Padding, Rect, Size, Space},
     rebuild::Rebuild,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
@@ -102,12 +102,10 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         self.content.event(content, cx, data, event);
 
         if let Some(pointer) = event.get::<PointerEvent>() {
-            let local = cx.local(pointer.position);
-
             state.timer = 0.0;
 
             if cx.is_hot() && pointer.is_move() {
-                state.position = local;
+                state.position = pointer.position;
                 cx.request_draw();
             }
         }
@@ -179,6 +177,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         );
 
         let mut layer = canvas.layer();
+        layer.transform = Affine::IDENTITY;
         layer.depth += 1000.0;
         layer.clip = Rect::min_size(Vec2::ZERO, cx.window().size());
 

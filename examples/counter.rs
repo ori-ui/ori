@@ -2,12 +2,12 @@ use ori::prelude::*;
 
 #[derive(Default)]
 struct Data {
-    counter: f32,
+    counter: u32,
 }
 
 fn counter_button() -> impl View<Data> {
     let button = button(text("Click me!"))
-        .on_press(|_, data: &mut Data| data.counter += 1.0)
+        .on_press(|_, data: &mut Data| data.counter += 1)
         .fancy(4.0);
 
     alt("Counter Button", button)

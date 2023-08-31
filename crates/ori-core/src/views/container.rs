@@ -217,9 +217,9 @@ impl<T, V: View<T>> View<T> for Container<V> {
         space: Space,
     ) -> Size {
         let space = if self.alignment.is_some() {
-            self.space.with(space).loosen()
+            self.space.constrain(space).loosen()
         } else {
-            self.space.with(space)
+            self.space.constrain(space)
         };
 
         // the content must fit within the padding
@@ -229,7 +229,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
 
         if let Some(alignment) = self.alignment {
             // try to fill the available space, this will be bounded by `self.space`
-            let space = space.with(Space::FILL);
+            let space = space.constrain(Space::FILL);
             let size = space.fit(content_size);
 
             // align the content within the self

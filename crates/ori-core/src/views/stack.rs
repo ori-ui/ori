@@ -427,7 +427,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let space = self.space.with(space);
+        let space = self.space.constrain(space);
 
         let (max_major, max_minor) = self.axis.unpack(space.max);
         let (min_major, min_minor) = self.axis.unpack(space.min);

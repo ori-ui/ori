@@ -608,7 +608,7 @@ impl<T> View<T> for TextInput<T> {
 
         text.push(' ');
 
-        let space = self.space.with(space);
+        let space = self.space.constrain(space);
         let section = TextSection {
             text: &text,
             font_size: self.font_size,

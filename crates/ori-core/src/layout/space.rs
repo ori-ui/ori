@@ -1,3 +1,5 @@
+use std::ops::{BitAnd, BitAndAssign};
+
 use super::Size;
 
 /// Space available to lay out a view.
@@ -60,7 +62,7 @@ impl Space {
     }
 
     /// Get the most constraning space between `self` and `other
-    pub fn with(self, other: Self) -> Self {
+    pub fn constrain(self, other: Self) -> Self {
         let min = self.min.max(other.min);
         let max = self.max.min(other.max);
 
@@ -82,5 +84,19 @@ impl Space {
         };
 
         Size::new(width.min(self.max.width), height.min(self.max.height))
+    }
+}
+
+impl BitAnd for Space {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.constrain(rhs)
+    }
+}
+
+impl BitAndAssign for Space {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = *self & rhs;
     }
 }

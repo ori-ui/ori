@@ -20,7 +20,7 @@ macro_rules! overlay {
     };
 }
 
-/// Create a new overlay view.
+/// Create a new [`Overlay`] view.
 pub fn overlay<V>(content: V) -> Overlay<V> {
     Overlay::new(content)
 }

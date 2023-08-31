@@ -35,12 +35,12 @@ macro_rules! vstack {
     };
 }
 
-/// Create a horizontal stack.
+/// Create a horizontal [`Stack`].
 pub fn hstack<V>(content: V) -> Stack<V> {
     Stack::hstack(content)
 }
 
-/// Create a vertical stack.
+/// Create a vertical [`Stack`].
 pub fn vstack<V>(content: V) -> Stack<V> {
     Stack::vstack(content)
 }

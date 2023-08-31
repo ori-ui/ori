@@ -6,7 +6,7 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
-/// Create a new flexible view.
+/// Create a new [`Flex`] view.
 pub fn flex<V>(flex: f32, content: V) -> Flex<V> {
     Flex::new(flex, content)
 }

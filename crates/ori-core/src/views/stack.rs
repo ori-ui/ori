@@ -486,7 +486,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        for i in 0..self.content.len() {
+        for i in (0..self.content.len()).rev() {
             self.content.draw_nth(i, content, cx, data, canvas);
         }
     }

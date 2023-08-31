@@ -29,6 +29,7 @@ pub struct Alt<V> {
     #[rebuild(draw)]
     pub padding: Padding,
     /// The color of text.
+    #[rebuild(draw)]
     pub color: Color,
     /// The background color of the text.
     #[rebuild(draw)]
@@ -107,6 +108,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
             if cx.is_hot() && pointer.is_move() {
                 state.position = pointer.position;
                 cx.request_draw();
+                event.handle();
             }
         }
     }

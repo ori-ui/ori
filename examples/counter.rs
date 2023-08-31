@@ -15,7 +15,7 @@ fn counter_button() -> impl View<Data> {
 
 fn app(data: &mut Data) -> impl View<Data> {
     center(vstack![
-        counter_button(),
+        rotate(data.counter as f32 * 0.3, counter_button()),
         alt(
             "Number of times the button has been clicked",
             text(format!("Clicked {} time(s)", data.counter))

@@ -3,7 +3,7 @@ use glam::Vec2;
 use crate::{
     canvas::Canvas,
     event::Event,
-    layout::{Affine, Rect, Size, Space},
+    layout::{Affine, Size, Space},
     rebuild::Rebuild,
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
@@ -72,14 +72,11 @@ impl<T, V: View<T>> View<T> for Transform<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        state.set_transform(self.transform);
+        let size = self.content.layout(state, cx, data, space);
+        let center = Affine::translate(size.to_vec() / 2.0);
+        state.set_transform(center * self.transform * center.inverse());
 
-        let content_size = self.content.layout(state, cx, data, space);
-        let content_rect = Rect::min_size(Vec2::ZERO, content_size);
-        let rect = content_rect.transform(self.transform);
-        state.set_transform(Affine::translate(content_rect.min - rect.min) * self.transform);
-
-        rect.size()
+        size
     }
 
     fn draw(

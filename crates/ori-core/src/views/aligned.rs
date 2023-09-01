@@ -50,7 +50,8 @@ impl<T, V: View<T>> View<T> for Aligned<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let content_size = self.content.layout(state, cx, data, space);
+        let content_space = space.loosen();
+        let content_size = self.content.layout(state, cx, data, content_space);
 
         let space = space.constrain(Space::FILL);
         let size = space.fit(content_size);

@@ -96,6 +96,56 @@ impl<V> Constrain<V> {
             space: Space::UNBOUNDED,
         }
     }
+
+    /// Set the minimum size.
+    pub fn min_size(mut self, min_size: impl Into<Size>) -> Self {
+        self.space.min = min_size.into();
+        self
+    }
+
+    /// Set the maximum size.
+    pub fn max_size(mut self, max_size: impl Into<Size>) -> Self {
+        self.space.max = max_size.into();
+        self
+    }
+
+    /// Set the minimum width.
+    pub fn width(mut self, width: f32) -> Self {
+        self.space.min.width = width;
+        self.space.max.width = width;
+        self
+    }
+
+    /// Set the minimum height.
+    pub fn height(mut self, height: f32) -> Self {
+        self.space.min.height = height;
+        self.space.max.height = height;
+        self
+    }
+
+    /// Set the minimum width.
+    pub fn min_width(mut self, min_width: f32) -> Self {
+        self.space.min.width = min_width;
+        self
+    }
+
+    /// Set the minimum height.
+    pub fn min_height(mut self, min_height: f32) -> Self {
+        self.space.min.height = min_height;
+        self
+    }
+
+    /// Set the maximum width.
+    pub fn max_width(mut self, max_width: f32) -> Self {
+        self.space.max.width = max_width;
+        self
+    }
+
+    /// Set the maximum height.
+    pub fn max_height(mut self, max_height: f32) -> Self {
+        self.space.max.height = max_height;
+        self
+    }
 }
 
 impl<T, V: View<T>> View<T> for Constrain<V> {

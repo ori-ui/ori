@@ -173,7 +173,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                 }
             }
 
-            if !cx.is_hot() {
+            if !cx.is_hot() && !pointer.is_release() {
                 let handled = event.is_handled();
 
                 event.set_handled(true);

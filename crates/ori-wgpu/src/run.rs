@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use futures_lite::future;
 use ori_core::{
     event::{Modifiers, PointerId},
     math::Vec2,
@@ -15,10 +16,8 @@ use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
     render::{Render, RenderInstance},
     window::WinitWindow,
-    Error,
+    App, Error,
 };
-
-use crate::App;
 
 pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
     #[cfg(feature = "tracing")]
@@ -31,13 +30,9 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
         .with_transparent(app.window.transparent)
         .build(&app.event_loop)?;
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-
     // SAFETY: this function will never return and the window will therefore
     // be valid for the lifetime on the RenderInstance.
-    let (instance, surface) = runtime.block_on(unsafe { RenderInstance::new(&window) })?;
-
-    let _guard = runtime.enter();
+    let (instance, surface) = future::block_on(unsafe { RenderInstance::new(&window) })?;
 
     let mut ids = HashMap::new();
     ids.insert(window.id(), app.window.id);

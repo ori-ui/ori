@@ -87,7 +87,7 @@ impl Justify {
                 }
             }
             Justify::SpaceBetween => {
-                let gap = (size - total_size) / (sizes.len() - 1) as f32;
+                let gap = (size - (total_size - total_gap)) / (sizes.len() - 1) as f32;
                 let mut position = 0.0;
 
                 for (i, size) in sizes.enumerate() {

@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
-    event::{Event, HotChanged, PointerEvent},
+    event::{Event, HotChanged, PointerEvent, SwitchFocus},
     layout::{Size, Space},
 };
 
@@ -119,6 +119,13 @@ impl<V> Content<V> {
         // we don't want `HotChanged` events to propagate
         if event.is::<HotChanged>() {
             return;
+        }
+
+        if let Some(SwitchFocus::Next(focused)) | Some(SwitchFocus::Prev(focused)) = event.get() {
+            if view_state.is_focused() {
+                view_state.set_focused(false);
+                focused.set(true);
+            }
         }
 
         if let Some(pointer) = event.get::<PointerEvent>() {

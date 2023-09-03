@@ -1,6 +1,8 @@
+use std::cell::Cell;
+
 use crate::{
     canvas::Canvas,
-    event::Event,
+    event::{Event, Focused, SwitchFocus},
     layout::{Align, Axis, Justify, Size, Space},
     log::warn_internal,
     rebuild::Rebuild,
@@ -203,6 +205,155 @@ impl<V> Stack<V> {
 }
 
 impl<V> Stack<V> {
+    fn event_first<T>(
+        &mut self,
+        content: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) where
+        V: ViewSeq<T>,
+    {
+        for i in 0..self.content.len() {
+            if event.is_handled() {
+                break;
+            }
+
+            self.content.event_nth(i, content, cx, data, event);
+        }
+    }
+
+    fn event_last<T>(
+        &mut self,
+        content: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) where
+        V: ViewSeq<T>,
+    {
+        for i in (0..self.content.len()).rev() {
+            if event.is_handled() {
+                break;
+            }
+
+            self.content.event_nth(i, content, cx, data, event);
+        }
+    }
+
+    fn focus_next<T>(
+        &mut self,
+        content: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+        focused: &Cell<bool>,
+    ) where
+        V: ViewSeq<T>,
+    {
+        let mut next = None;
+
+        for i in 0..self.content.len() {
+            self.content.event_nth(i, content, cx, data, event);
+
+            if event.is_handled() {
+                return;
+            }
+
+            if focused.get() {
+                next = Some(i + 1);
+                break;
+            }
+        }
+
+        if let Some(next) = next {
+            for i in next..self.content.len() {
+                let focused = Event::new(Focused::First);
+                self.content.event_nth(i, content, cx, data, &focused);
+
+                if focused.is_handled() {
+                    event.handle();
+                    break;
+                }
+            }
+        }
+    }
+
+    fn focus_prev<T>(
+        &mut self,
+        content: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+        focused: &Cell<bool>,
+    ) where
+        V: ViewSeq<T>,
+    {
+        let mut prev = None;
+
+        for i in (0..self.content.len()).rev() {
+            self.content.event_nth(i, content, cx, data, event);
+
+            if event.is_handled() {
+                return;
+            }
+
+            if focused.get() {
+                prev = i.checked_sub(1);
+                break;
+            }
+        }
+
+        if let Some(prev) = prev {
+            for i in (0..=prev).rev() {
+                let focused = Event::new(Focused::Last);
+                self.content.event_nth(i, content, cx, data, &focused);
+
+                if focused.is_handled() {
+                    event.handle();
+                    break;
+                }
+            }
+        }
+    }
+
+    fn handle_focus<T>(
+        &mut self,
+        content: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool
+    where
+        V: ViewSeq<T>,
+    {
+        match event.get::<SwitchFocus>() {
+            Some(SwitchFocus::Next(focused)) => {
+                self.focus_next(content, cx, data, event, focused);
+                return true;
+            }
+            Some(SwitchFocus::Prev(focused)) => {
+                self.focus_prev(content, cx, data, event, focused);
+                return true;
+            }
+            None => {}
+        }
+
+        match event.get::<Focused>() {
+            Some(Focused::First) => {
+                self.event_first(content, cx, data, event);
+                return true;
+            }
+            Some(Focused::Last) => {
+                self.event_last(content, cx, data, event);
+                return true;
+            }
+            None => {}
+        }
+
+        false
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn measure_fixed<T>(
         &mut self,
@@ -415,6 +566,10 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         event: &Event,
     ) {
+        if self.handle_focus(content, cx, data, event) {
+            return;
+        }
+
         for i in 0..self.content.len() {
             self.content.event_nth(i, content, cx, data, event);
         }

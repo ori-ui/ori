@@ -23,8 +23,6 @@ pub struct ViewState {
     pub(crate) hot: bool,
     pub(crate) focused: bool,
     pub(crate) active: bool,
-    pub(crate) has_hot: bool,
-    pub(crate) has_focused: bool,
     pub(crate) has_active: bool,
     pub(crate) update: Update,
     /* layout */
@@ -42,8 +40,6 @@ impl Default for ViewState {
             hot: false,
             focused: false,
             active: false,
-            has_hot: false,
-            has_focused: false,
             has_active: false,
             update: Update::LAYOUT | Update::DRAW,
             flex: 0.0,
@@ -57,8 +53,6 @@ impl Default for ViewState {
 
 impl ViewState {
     pub(crate) fn prepare(&mut self) {
-        self.has_hot = false;
-        self.has_focused = false;
         self.has_active = false;
         self.has_cursor = false;
     }
@@ -74,8 +68,6 @@ impl ViewState {
     }
 
     pub(crate) fn propagate(&mut self, child: &mut Self) {
-        self.has_hot |= child.hot || child.has_hot;
-        self.has_focused |= child.focused || child.has_focused;
         self.has_active |= child.active || child.has_active;
         self.has_cursor |= child.has_cursor || child.cursor.is_some();
         self.update |= child.update;
@@ -111,16 +103,6 @@ impl ViewState {
     /// Set whether the view is active.
     pub fn set_active(&mut self, active: bool) {
         self.active = active;
-    }
-
-    /// Get whether the view has a hot child.
-    pub fn has_hot(&self) -> bool {
-        self.has_hot
-    }
-
-    /// Get whether the view has a focused child.
-    pub fn has_focused(&self) -> bool {
-        self.has_focused
     }
 
     /// Get whether the view has an active child.

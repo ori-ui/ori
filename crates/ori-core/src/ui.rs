@@ -7,7 +7,10 @@ use glam::Vec2;
 use crate::{
     canvas::SceneRender,
     delegate::{Delegate, DelegateCx},
-    event::{Code, Event, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId},
+    event::{
+        Code, Event, Focused, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId,
+        SwitchFocus,
+    },
     proxy::{Command, Proxy, ProxyWaker},
     text::Fonts,
     theme::{set_style, themed, Theme, SCALE_FACTOR},
@@ -241,6 +244,16 @@ impl<T, R: SceneRender> Ui<T, R> {
         };
 
         self.event(window_id, &Event::new(event));
+
+        if key == Code::Tab && pressed {
+            let event = Event::new(SwitchFocus::new(!self.modifiers.shift));
+            self.event(window_id, &event);
+
+            if !event.is_handled() {
+                let event = Event::new(Focused::new(!self.modifiers.shift));
+                self.event(window_id, &event);
+            }
+        }
     }
 
     /// Tell the UI that a keyboard character has been entered.

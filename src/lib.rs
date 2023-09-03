@@ -36,7 +36,8 @@ pub mod prelude {
         },
         delegate::{Delegate, DelegateCx},
         event::{
-            Code, Event, KeyboardEvent, Modifiers, Pointer, PointerButton, PointerEvent, PointerId,
+            Code, Event, Focused, HotChanged, KeyboardEvent, Modifiers, Pointer, PointerButton,
+            PointerEvent, PointerId,
         },
         image::{Image, ImageData, ImageId},
         layout::{Affine, Align, Alignment, Axis, Justify, Padding, Rect, Size, Space},

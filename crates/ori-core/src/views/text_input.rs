@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Quad},
-    event::{Code, Event, KeyboardEvent, Modifiers, PointerEvent},
+    event::{Code, Event, Focused, KeyboardEvent, Modifiers, PointerEvent},
     layout::{Rect, Size, Space},
     rebuild::Rebuild,
     text::{
@@ -573,6 +573,11 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        if event.is::<Focused>() {
+            cx.set_focused(true);
+            event.handle();
+        }
+
         if let Some(pointer_event) = event.get::<PointerEvent>() {
             if self.handle_pointer_event(state, cx, data, pointer_event) {
                 event.handle();

@@ -5,14 +5,14 @@ use wgpu::{Adapter, Device, Instance, PowerPreference, Queue, RequestAdapterOpti
 use crate::RenderError;
 
 #[derive(Debug)]
-pub struct RenderInstance {
+pub struct WgpuRenderInstance {
     pub instance: Instance,
     pub adapter: Adapter,
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
 }
 
-impl RenderInstance {
+impl WgpuRenderInstance {
     /// # Safety
     /// - See the `Safety` section on [`wgpu::Instance::create_surface`].
     pub async unsafe fn new(

@@ -32,6 +32,9 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
 
 /// A delegate for handling events.
 pub trait Delegate<T> {
+    /// Called when the application starts.
+    fn init(&mut self, _cx: &mut DelegateCx, _data: &mut T) {}
+
     /// Handle an event, returning whether it was handled. If true,
     /// the event will not be send to the `view-tree`.
     fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event);

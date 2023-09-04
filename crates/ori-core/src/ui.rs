@@ -129,6 +129,27 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.commands.clone()
     }
 
+    /// Initialize the UI.
+    ///
+    /// This should be called after all initial windows have been added.
+    pub fn init(&mut self) {
+        self.init_delegate();
+    }
+
+    fn init_delegate(&mut self) {
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut cx = DelegateCx::new(&mut base);
+
+        self.delegate.init(&mut cx, &mut self.data);
+
+        if needs_rebuild {
+            self.request_rebuild();
+        }
+
+        self.handle_commands();
+    }
+
     /// Tell the UI that the event loop idle.
     pub fn idle(&mut self) {
         for window in self.windows.values_mut() {

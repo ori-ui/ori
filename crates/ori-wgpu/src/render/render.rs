@@ -13,10 +13,10 @@ use wgpu::{
 
 use crate::RenderError;
 
-use super::{ImageCache, MeshRender, QuadRender, RenderInstance};
+use super::{ImageCache, MeshRender, QuadRender, WgpuRenderInstance};
 
 #[derive(Debug)]
-pub struct Render {
+pub struct WgpuRender {
     device: Arc<Device>,
     queue: Arc<Queue>,
     surface: Surface,
@@ -27,9 +27,9 @@ pub struct Render {
     mesh: MeshRender,
 }
 
-impl Render {
+impl WgpuRender {
     pub fn new(
-        instance: &RenderInstance,
+        instance: &WgpuRenderInstance,
         surface: Surface,
         width: u32,
         height: u32,

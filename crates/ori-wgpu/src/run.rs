@@ -4,17 +4,18 @@ use futures_lite::future;
 use ori_core::{
     event::{Modifiers, PointerId},
     math::Vec2,
+    ui::Ui,
     window::Window,
 };
 use winit::{
     event::{Event, KeyboardInput, MouseScrollDelta, WindowEvent},
-    event_loop::ControlFlow,
+    event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
 
 use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
-    render::{Render, RenderInstance},
+    render::{WgpuRender, WgpuRenderInstance},
     window::WinitWindow,
     App, Error,
 };
@@ -25,6 +26,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
+    /* create the window */
     let window = WindowBuilder::new()
         .with_visible(false)
         .with_transparent(app.window.transparent)
@@ -32,30 +34,45 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
 
     // SAFETY: this function will never return and the window will therefore
     // be valid for the lifetime on the RenderInstance.
-    let (instance, surface) = future::block_on(unsafe { RenderInstance::new(&window) })?;
+    let (instance, surface) = future::block_on(unsafe { WgpuRenderInstance::new(&window) })?;
 
+    /* create the window map */
     let mut ids = HashMap::new();
     ids.insert(window.id(), app.window.id);
 
+    /* create the initial window */
     let raw_window = Box::new(WinitWindow::from(window));
-    let window = Window::new(raw_window, app.window);
-    let render = Render::new(&instance, surface, window.width(), window.height())?;
+    let window = Window::new(raw_window, app.window.clone());
+    let render = WgpuRender::new(&instance, surface, window.width(), window.height())?;
 
     app.ui.add_window(app.builder, window, render);
+    app.builder = Box::new(|_| unreachable!());
 
-    app.event_loop.run(move |event, _, control_flow| {
+    /* initialize the ui */
+    app.ui.init();
+
+    /* enter the event loop */
+    enter_event_loop(app.event_loop, app.ui, ids);
+}
+
+fn enter_event_loop<T: 'static>(
+    event_loop: EventLoop<()>,
+    mut ui: Ui<T, WgpuRender>,
+    ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
+) -> ! {
+    event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         match event {
             Event::RedrawEventsCleared => {
-                app.ui.idle();
+                ui.idle();
             }
             Event::RedrawRequested(window_id) => {
                 let id = ids[&window_id];
-                app.ui.render(id);
+                ui.render(id);
             }
             Event::UserEvent(_) => {
-                app.ui.handle_commands();
+                ui.handle_commands();
             }
             Event::WindowEvent { window_id, event } => {
                 let window_id = ids[&window_id];
@@ -65,25 +82,25 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                         *control_flow = ControlFlow::Exit;
                     }
                     WindowEvent::Resized(_) => {
-                        app.ui.resized(window_id);
+                        ui.resized(window_id);
                     }
                     WindowEvent::ScaleFactorChanged { .. } => {
-                        app.ui.rebuild_theme(window_id);
-                        app.ui.resized(window_id);
+                        ui.rebuild_theme(window_id);
+                        ui.resized(window_id);
                     }
                     WindowEvent::CursorMoved {
                         device_id,
                         position,
                         ..
                     } => {
-                        app.ui.pointer_moved(
+                        ui.pointer_moved(
                             window_id,
                             PointerId::from_hash(&device_id),
                             Vec2::new(position.x as f32, position.y as f32),
                         );
                     }
                     WindowEvent::CursorLeft { device_id } => {
-                        (app.ui).pointer_left(window_id, PointerId::from_hash(&device_id));
+                        ui.pointer_left(window_id, PointerId::from_hash(&device_id));
                     }
                     WindowEvent::MouseInput {
                         device_id,
@@ -91,7 +108,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                         button,
                         ..
                     } => {
-                        app.ui.pointer_button(
+                        ui.pointer_button(
                             window_id,
                             PointerId::from_hash(&device_id),
                             convert_mouse_button(button),
@@ -103,7 +120,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                         device_id,
                         ..
                     } => {
-                        app.ui.pointer_scroll(
+                        ui.pointer_scroll(
                             window_id,
                             PointerId::from_hash(&device_id),
                             Vec2::new(x, y),
@@ -119,14 +136,14 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                         ..
                     } => {
                         if let Some(key) = convert_key(keycode) {
-                            app.ui.keyboard_key(window_id, key, is_pressed(state));
+                            ui.keyboard_key(window_id, key, is_pressed(state));
                         }
                     }
                     WindowEvent::ReceivedCharacter(c) => {
-                        app.ui.keyboard_char(window_id, c);
+                        ui.keyboard_char(window_id, c);
                     }
                     WindowEvent::ModifiersChanged(modifiers) => {
-                        app.ui.modifiers_changed(Modifiers {
+                        ui.modifiers_changed(Modifiers {
                             shift: modifiers.shift(),
                             ctrl: modifiers.ctrl(),
                             alt: modifiers.alt(),

@@ -1,8 +1,8 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::{
     canvas::{Canvas, Scene, SceneRender},
-    event::Event,
+    event::{AnimationFrame, Event},
     layout::{Size, Space},
     theme::{Palette, Theme},
     view::{
@@ -16,44 +16,6 @@ use super::{Cursor, Window};
 /// A type that can build a view.
 pub type UiBuilder<T> = Box<dyn FnMut(&mut T) -> BoxedView<T>>;
 
-#[derive(Debug, Default)]
-struct Timers {
-    last_rebuild: Option<Instant>,
-    last_event: Option<Instant>,
-    last_layout: Option<Instant>,
-    last_draw: Option<Instant>,
-}
-
-impl Timers {
-    fn rebuild(&mut self) -> Duration {
-        let now = Instant::now();
-        let last = self.last_rebuild.unwrap_or(now);
-        self.last_rebuild = Some(now);
-        now.duration_since(last)
-    }
-
-    fn event(&mut self) -> Duration {
-        let now = Instant::now();
-        let last = self.last_event.unwrap_or(now);
-        self.last_event = Some(now);
-        now.duration_since(last)
-    }
-
-    fn layout(&mut self) -> Duration {
-        let now = Instant::now();
-        let last = self.last_layout.unwrap_or(now);
-        self.last_layout = Some(now);
-        now.duration_since(last)
-    }
-
-    fn draw(&mut self) -> Duration {
-        let now = Instant::now();
-        let last = self.last_draw.unwrap_or(now);
-        self.last_draw = Some(now);
-        now.duration_since(last)
-    }
-}
-
 /// User interface for a single window.
 pub struct WindowUi<T, R: SceneRender> {
     builder: UiBuilder<T>,
@@ -63,9 +25,9 @@ pub struct WindowUi<T, R: SceneRender> {
     theme: Theme,
     view_state: ViewState,
     needs_rebuild: bool,
+    animation_frame: Option<Instant>,
     window: Window,
     render: R,
-    timers: Timers,
 }
 
 impl<T, R: SceneRender> WindowUi<T, R> {
@@ -94,9 +56,9 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             theme,
             view_state: ViewState::default(),
             needs_rebuild: false,
+            animation_frame: None,
             window,
             render,
-            timers: Timers::default(),
         }
     }
 
@@ -165,9 +127,12 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
         let mut new_view = Content::new(new_view);
 
-        let dt = self.timers.rebuild();
-
-        let mut cx = RebuildCx::new(base, &mut self.view_state, &mut self.window, dt);
+        let mut cx = RebuildCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut self.animation_frame,
+        );
 
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
         Theme::with_global(&mut self.theme, || {
@@ -196,9 +161,12 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         self.view_state.prepare();
 
-        let dt = self.timers.event();
-
-        let mut cx = EventCx::new(base, &mut self.view_state, &mut self.window, dt);
+        let mut cx = EventCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut self.animation_frame,
+        );
 
         // handle the event, with the global theme
         Theme::with_global(&mut self.theme, || {
@@ -212,7 +180,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         // if anything needs to be updated after the event, we request a draw
         //
         // FIXME: this will sometimes cause unnecessary re-renders
-        if !self.view_state.update.is_empty() {
+        if !self.view_state.update.is_empty() || self.animation_frame.is_some() {
             self.window.request_draw();
         }
     }
@@ -224,9 +192,13 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         self.view_state.layed_out();
 
         let space = Space::new(Size::ZERO, self.window.size());
-        let dt = self.timers.layout();
 
-        let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window, dt);
+        let mut cx = LayoutCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut self.animation_frame,
+        );
 
         // layout the view tree, with the global theme
         let size = Theme::with_global(&mut self.theme, || {
@@ -246,9 +218,12 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         self.scene.clear();
         let mut canvas = Canvas::new(&mut self.scene, self.window.size());
 
-        let dt = self.timers.draw();
-
-        let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window, dt);
+        let mut cx = DrawCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut self.animation_frame,
+        );
 
         // draw the view tree, with the global theme
         Theme::with_global(&mut self.theme, || {
@@ -264,6 +239,12 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     ///
     /// This will rebuild, layout or draw the view if necessary.
     pub fn render(&mut self, base: &mut BaseCx, data: &mut T) {
+        if let Some(animation_frame) = self.animation_frame.take() {
+            let dt = animation_frame.elapsed().as_secs_f32();
+            let event = Event::new(AnimationFrame(dt));
+            self.event(base, data, &event);
+        }
+
         // if the view tree needs to be rebuilt, do that first, as the
         // layout and draw might depend on the new view tree
         if self.needs_rebuild() {
@@ -290,7 +271,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         // if anything needs to be updated after the draw, we request a drawn
         //
         // FIXME: this will sometimes cause unnecessary re-renders
-        if !self.view_state.update.is_empty() {
+        if !self.view_state.update.is_empty() || self.animation_frame.is_some() {
             self.window.request_draw();
         }
     }

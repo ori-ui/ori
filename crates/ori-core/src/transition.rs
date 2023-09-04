@@ -66,13 +66,7 @@ impl Transition {
     pub fn step(&self, t: &mut f32, on: bool, dt: f32) -> bool {
         let sign = if on { 1.0 } else { -1.0 };
         let step = sign * dt / self.duration;
-        let from = if on { 0.0 } else { 1.0 };
         let to = if on { 1.0 } else { 0.0 };
-
-        if *t == from {
-            *t += sign * 0.0001;
-            return true;
-        }
 
         if *t == to {
             return false;

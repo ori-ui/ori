@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
-    event::{Event, HotChanged, PointerEvent},
+    event::{AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Axis, Rect, Size, Space},
     rebuild::Rebuild,
     theme::{scroll, style},
@@ -132,20 +132,19 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         data: &mut T,
         event: &Event,
     ) {
-        if event.is::<HotChanged>() {
-            cx.request_draw();
-        }
-
+        // handle ponter event
         if let Some(pointer) = event.get::<PointerEvent>() {
             if !event.is_handled() || cx.is_active() {
                 let local = cx.local(pointer.position);
 
                 let scrollbar_rect = self.scrollbar_rect(cx.rect());
 
+                // handle pointer events when scrollbar is hovered
                 if scrollbar_rect.contains(local) && pointer.is_move() {
                     event.handle();
                 }
 
+                // handle pointer events when scrollbar is pressed
                 if scrollbar_rect.contains(local) && pointer.is_press() {
                     cx.set_active(true);
                     cx.request_draw();
@@ -155,6 +154,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                     cx.request_draw();
                 }
 
+                // handle pointer events when scrollbar is dragged
                 if cx.is_active() {
                     let overflow = self.overflow(content.size(), cx.size());
 
@@ -173,19 +173,31 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                 }
             }
 
+            // FIXME: i can't remember why this is here
             if !cx.is_hot() && !pointer.is_release() {
-                let handled = event.is_handled();
-
-                event.set_handled(true);
-                self.content.event(content, cx, data, event);
-                event.set_handled(handled);
-
-                return;
+                event.handle();
             }
         }
 
+        // propagate event
         self.content.event(content, cx, data, event);
 
+        // animate the scrollbar
+        if event.is::<HotChanged>() {
+            cx.request_animation_frame();
+        }
+
+        if let Some(AnimationFrame(dt)) = event.to() {
+            let on = cx.is_hot() || cx.is_active();
+
+            if (self.transition).step(&mut state.t, on, dt) {
+                cx.request_animation_frame();
+            }
+
+            cx.request_draw();
+        }
+
+        // handle scroll
         if event.is_handled() || !(cx.is_hot() || cx.is_active()) {
             return;
         }
@@ -236,10 +248,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         if overflow == 0.0 {
             return;
-        }
-
-        if (self.transition).step(&mut state.t, cx.is_hot() || cx.is_active(), cx.dt()) {
-            cx.request_draw();
         }
 
         let mut scrollbar_layer = canvas.layer();

@@ -134,18 +134,17 @@ impl<T, V: View<T>> View<T> for ClickHandler<T, V> {
                 state.click_start = local;
 
                 cx.set_active(true);
-                cx.request_draw();
-
                 content.set_active(true);
-                content.request_draw();
+
+                // FIXME: this isn't great
+                cx.request_animation_frame();
 
                 event.handle();
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
-                cx.request_draw();
-
                 content.set_active(false);
-                content.request_draw();
+
+                cx.request_animation_frame();
 
                 if let Some(on_release) = &mut self.on_release {
                     on_release(cx, data);

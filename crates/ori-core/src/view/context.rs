@@ -1,4 +1,4 @@
-use std::{any::Any, time::Duration};
+use std::{any::Any, time::Instant};
 
 use glam::Vec2;
 
@@ -83,7 +83,7 @@ pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) delta_time: Duration,
+    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> RebuildCx<'a, 'b> {
@@ -91,13 +91,13 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        delta_time: Duration,
+        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            delta_time,
+            animation_frame,
         }
     }
 
@@ -107,7 +107,7 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            delta_time: self.delta_time,
+            animation_frame: self.animation_frame,
         }
     }
 
@@ -122,7 +122,7 @@ pub struct EventCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) delta_time: Duration,
+    pub(crate) animation_frame: &'a mut Option<Instant>,
     pub(crate) transform: Affine,
 }
 
@@ -131,7 +131,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        delta_time: Duration,
+        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         let transform = view_state.transform;
 
@@ -139,7 +139,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base,
             view_state,
             window,
-            delta_time,
+            animation_frame,
             transform,
         }
     }
@@ -150,7 +150,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            delta_time: self.delta_time,
+            animation_frame: self.animation_frame,
             transform: self.transform,
         }
     }
@@ -171,7 +171,7 @@ pub struct LayoutCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) delta_time: Duration,
+    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> LayoutCx<'a, 'b> {
@@ -179,13 +179,13 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        delta_time: Duration,
+        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            delta_time,
+            animation_frame,
         }
     }
 
@@ -195,7 +195,7 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            delta_time: self.delta_time,
+            animation_frame: self.animation_frame,
         }
     }
 }
@@ -205,7 +205,7 @@ pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) delta_time: Duration,
+    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> DrawCx<'a, 'b> {
@@ -213,13 +213,13 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        delta_time: Duration,
+        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            delta_time,
+            animation_frame,
         }
     }
 
@@ -229,7 +229,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            delta_time: self.delta_time,
+            animation_frame: self.animation_frame,
         }
     }
 
@@ -286,11 +286,6 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
 }}
 
 impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
-    /// Get the delta time in seconds.
-    pub fn dt(&self) -> f32 {
-        self.delta_time.as_secs_f32()
-    }
-
     /// Get whether the view is hot.
     pub fn is_hot(&self) -> bool {
         self.view_state.is_hot()
@@ -380,6 +375,13 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
     /// Request a draw of the view tree.
     pub fn request_draw(&mut self) {
         self.view_state.request_draw();
+    }
+
+    /// Request an animation frame.
+    pub fn request_animation_frame(&mut self) {
+        if self.animation_frame.is_none() {
+            *self.animation_frame = Some(Instant::now());
+        }
     }
 
     /// Layout the given [`TextSection`].

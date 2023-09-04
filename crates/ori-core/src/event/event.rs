@@ -43,6 +43,11 @@ impl Event {
         self.event.as_ref().downcast_ref::<T>()
     }
 
+    /// Try to downcast the event to the given type, cloning it.
+    pub fn to<T: Clone + Any>(&self) -> Option<T> {
+        self.get().cloned()
+    }
+
     /// Returns whether the event has been handled.
     pub fn is_handled(&self) -> bool {
         self.handled.get()

@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
-    event::{Event, HotChanged},
+    event::{AnimationFrame, Event, HotChanged},
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
     theme::{button, style},
@@ -146,7 +146,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
 
     fn event(
         &mut self,
-        (_t, state): &mut Self::State,
+        (t, state): &mut Self::State,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
@@ -158,6 +158,15 @@ impl<T, V: View<T>> View<T> for Button<V> {
         }
 
         if event.is::<HotChanged>() {
+            cx.request_animation_frame();
+        }
+
+        if let Some(AnimationFrame(dt)) = event.to() {
+            let on = cx.is_hot() && !cx.is_active();
+            if self.transition.step(t, on, dt) {
+                cx.request_animation_frame();
+            }
+
             cx.request_draw();
         }
     }
@@ -184,11 +193,6 @@ impl<T, V: View<T>> View<T> for Button<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        let on = cx.is_hot() && !cx.is_active();
-        if self.transition.step(t, on, cx.dt()) {
-            cx.request_draw();
-        }
-
         let bright = self.color.brighten(0.05);
         let dark = self.color.darken(0.1);
 

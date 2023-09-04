@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve},
-    event::{Event, HotChanged},
+    event::{AnimationFrame, Event, HotChanged},
     layout::{Size, Space},
     rebuild::Rebuild,
     theme::{checkbox, style},
@@ -123,8 +123,17 @@ impl<T> View<T> for Checkbox {
         Rebuild::rebuild(self, cx, old);
     }
 
-    fn event(&mut self, _t: &mut Self::State, cx: &mut EventCx, _data: &mut T, event: &Event) {
+    fn event(&mut self, t: &mut Self::State, cx: &mut EventCx, _data: &mut T, event: &Event) {
         if event.is::<HotChanged>() {
+            cx.request_animation_frame();
+        }
+
+        if let Some(AnimationFrame(dt)) = event.get() {
+            let on = cx.is_hot() && !cx.is_active();
+            if self.transition.step(t, on, *dt) {
+                cx.request_animation_frame();
+            }
+
             cx.request_draw();
         }
     }
@@ -140,10 +149,6 @@ impl<T> View<T> for Checkbox {
     }
 
     fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T, canvas: &mut Canvas) {
-        if (self.transition).step(t, cx.is_hot() || self.checked, cx.dt()) {
-            cx.request_draw();
-        }
-
         let bright = self.border_color.brighten(0.2);
 
         canvas.draw_quad(

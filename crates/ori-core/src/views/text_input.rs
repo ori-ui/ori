@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Quad},
-    event::{Code, Event, Focused, KeyboardEvent, Modifiers, PointerEvent},
+    event::{AnimationFrame, Code, Event, Focused, KeyboardEvent, Modifiers, PointerEvent},
     layout::{Rect, Size, Space},
     rebuild::Rebuild,
     text::{
@@ -589,6 +589,11 @@ impl<T> View<T> for TextInput<T> {
                 event.handle();
             }
         }
+
+        if let Some(AnimationFrame(dt)) = event.to() {
+            state.cursor_blink += dt * 10.0;
+            cx.request_draw();
+        }
     }
 
     fn layout(
@@ -656,13 +661,11 @@ impl<T> View<T> for TextInput<T> {
             return;
         }
 
-        cx.request_draw();
+        cx.request_animation_frame();
 
         let cursor_center = self.cursor_position(state, cx.rect()).unwrap();
         let cursor_size = Size::new(1.0, self.font_size);
         let cursor_min = cursor_center - cursor_size / 2.0;
-
-        state.cursor_blink += cx.dt() * 10.0;
 
         let mut color = self.color;
         color.a = state.cursor_blink.sin() * 0.5 + 0.5;

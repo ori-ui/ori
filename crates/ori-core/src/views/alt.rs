@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
-    event::{Event, PointerEvent},
+    event::{AnimationFrame, Event, PointerEvent},
     layout::{Affine, Padding, Rect, Size, Space},
     rebuild::Rebuild,
     text::{
@@ -107,9 +107,21 @@ impl<T, V: View<T>> View<T> for Alt<V> {
 
             if cx.is_hot() && pointer.is_move() {
                 state.position = pointer.position;
-                cx.request_draw();
+                cx.request_animation_frame();
                 event.handle();
             }
+        }
+
+        if let Some(AnimationFrame(dt)) = event.to() {
+            if cx.is_hot() && state.timer < 1.0 {
+                state.timer += dt * 2.0;
+
+                cx.request_animation_frame();
+            }
+
+            state.timer = f32::clamp(state.timer, 0.0, 1.0);
+
+            cx.request_draw();
         }
     }
 
@@ -148,18 +160,6 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         canvas: &mut Canvas,
     ) {
         self.content.draw(content, cx, data, canvas);
-
-        if cx.is_hot() && state.timer < 1.0 {
-            if state.timer == 0.0 {
-                state.timer = f32::EPSILON;
-            } else {
-                state.timer += cx.dt() * 2.0;
-            }
-
-            cx.request_draw();
-        }
-
-        state.timer = f32::clamp(state.timer, 0.0, 1.0);
 
         let Some(ref glyphs) = state.glyphs else {
             return;

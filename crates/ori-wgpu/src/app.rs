@@ -55,7 +55,7 @@ impl<T: 'static> App<T> {
         self
     }
 
-    /// Load a font.
+    /// Load a font from a [`FontSource`].
     pub fn font(mut self, font: impl Into<FontSource>) -> Self {
         if let Err(err) = self.ui.fonts.load_font(font) {
             eprintln!("Failed to load font: {:?}", err);
@@ -157,7 +157,7 @@ impl<T: 'static> App<T> {
     /// Run the application.
     pub fn run(self) {
         if let Err(err) = self.try_run() {
-            panic!("{}", err);
+            panic!("Failed running the application: {}", err);
         }
     }
 }

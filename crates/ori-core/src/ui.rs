@@ -13,7 +13,7 @@ use crate::{
         SwitchFocus,
     },
     text::Fonts,
-    theme::{set_style, themed, Theme, SCALE_FACTOR},
+    theme::{set_style, themed, Theme, SCALE_FACTOR, WINDOW_SIZE},
     view::BaseCx,
     window::{UiBuilder, Window, WindowId, WindowUi},
 };
@@ -56,9 +56,12 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Build the theme.
-    pub fn build_theme(&mut self, scale_factor: f32) -> Theme {
+    fn build_theme(&mut self, window_id: WindowId) -> Theme {
         themed(|| {
-            set_style(SCALE_FACTOR, scale_factor);
+            let window = self.window(window_id);
+
+            set_style(SCALE_FACTOR, window.window().scale_factor());
+            set_style(WINDOW_SIZE, window.window().size());
 
             let mut theme = Theme::builtin();
 
@@ -66,7 +69,10 @@ impl<T, R: SceneRender> Ui<T, R> {
                 theme.extend(theme_fn());
             }
 
-            theme.set(SCALE_FACTOR, scale_factor);
+            let window = self.window(window_id);
+
+            theme.set(SCALE_FACTOR, window.window().scale_factor());
+            theme.set(WINDOW_SIZE, window.window().size());
 
             theme
         })
@@ -74,7 +80,7 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
-        let theme = self.build_theme(window.scale_factor());
+        let theme = self.build_theme(window.id());
 
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
@@ -173,8 +179,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     ///
     /// This should be called when the scale factor of the window changes.
     pub fn rebuild_theme(&mut self, window_id: WindowId) {
-        let scale_factor = self.window(window_id).window().scale_factor();
-        let theme = self.build_theme(scale_factor);
+        let theme = self.build_theme(window_id);
         self.window_mut(window_id).set_theme(theme);
     }
 

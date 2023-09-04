@@ -21,6 +21,7 @@ use crate::{
 };
 
 pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
+    /* initialize tracing if enabled */
     #[cfg(feature = "tracing")]
     if let Err(err) = crate::tracing::init_tracing() {
         eprintln!("Failed to initialize tracing: {}", err);
@@ -36,17 +37,21 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
     // be valid for the lifetime on the RenderInstance.
     let (instance, surface) = future::block_on(unsafe { WgpuRenderInstance::new(&window) })?;
 
-    /* create the window map */
+    /* create the window map
+     *
+     * this is used to map the winit window id to the ori window id */
     let mut ids = HashMap::new();
     ids.insert(window.id(), app.window.id);
 
     /* create the initial window */
     let raw_window = Box::new(WinitWindow::from(window));
-    let window = Window::new(raw_window, app.window.clone());
+    let window = Window::new(raw_window, app.window);
+
+    /* create the render */
     let render = WgpuRender::new(&instance, surface, window.width(), window.height())?;
 
+    /* add the window to the ui */
     app.ui.add_window(app.builder, window, render);
-    app.builder = Box::new(|_| unreachable!());
 
     /* initialize the ui */
     app.ui.init();

@@ -25,7 +25,7 @@ pub fn pt(size: f32) -> f32 {
 /// Get a size in pixels, relative to the default font size.
 ///
 /// This is a shorthand for `pt(size) * 16.0`.
-pub fn em(size: f32) -> f32 {
+pub fn rem(size: f32) -> f32 {
     pt(size) * 16.0
 }
 

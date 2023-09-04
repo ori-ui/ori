@@ -32,7 +32,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
     );
 
     let button = button(text("hello")).fancy(4.0);
-    center(overlay![scroll, pad(em(0.5), bottom_right(button))])
+    center(overlay![scroll, pad(rem(0.5), bottom_right(button))])
 }
 
 fn main() {

@@ -42,18 +42,18 @@ fn app(data: &mut Data) -> impl View<Data> {
             text(format!("Name: {},", user.name)),
             text(format!("Age: {}", user.age))
         ]
-        .gap(em(1.0));
+        .gap(rem(1.0));
 
-        let user = container(pad(em(1.0), fields))
+        let user = container(pad(rem(1.0), fields))
             .background(style(Palette::SECONDARY))
-            .border_radius(em(0.5));
+            .border_radius(rem(0.5));
 
         users.push(center(user));
     }
 
     let users = flex(
         1.0,
-        pad(em(1.0), vscroll(vstack(users).align_items(Align::Stretch))),
+        pad(rem(1.0), vscroll(vstack(users).align_items(Align::Stretch))),
     );
 
     center(hstack![form(), users])

@@ -65,9 +65,9 @@ fn input(border: bool) -> impl View<Data> {
         .on_submit(|_, data: &mut Data, text| data.input(text))
         .font_size(pt(20.0));
 
-    let input = container(pad([em(4.0), em(1.0)], input)).border_bottom(border as i32 as f32);
+    let input = container(pad([rem(4.0), rem(1.0)], input)).border_bottom(border as i32 as f32);
 
-    width(em(28.0), input)
+    width(rem(28.0), input)
 }
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
@@ -84,7 +84,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
 
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
-        .padding(em(0.3))
+        .padding(rem(0.3))
         .color(hsl(353.0, 0.6, 0.72));
 
     let remove = on_click(remove, move |cx, _: &mut Todo| {
@@ -95,15 +95,15 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
 
     let remove = alt("Remove todo", remove);
 
-    let left = hstack![completed, title].gap(em(1.5));
+    let left = hstack![completed, title].gap(rem(1.5));
     let row = hstack![left, remove].justify_content(Justify::SpaceBetween);
 
-    let container = container(pad(em(1.0), row));
+    let container = container(pad(rem(1.0), row));
 
     if index > 0 {
-        width(em(28.0), container.border_bottom(1.0))
+        width(rem(28.0), container.border_bottom(1.0))
     } else {
-        width(em(28.0), container)
+        width(rem(28.0), container)
     }
 }
 
@@ -173,12 +173,12 @@ fn selection(data: &mut Data) -> impl View<Data> {
         data.selection = Selection::Completed
     });
 
-    let items = hstack![all, active, completed].gap(em(1.0));
+    let items = hstack![all, active, completed].gap(rem(1.0));
     let row = hstack![active_count(data), items].justify_content(Justify::SpaceBetween);
 
-    let container = container(pad([em(1.0), em(0.5)], row)).border_top(1.0);
+    let container = container(pad([rem(1.0), rem(0.5)], row)).border_top(1.0);
 
-    Some(width(em(26.0), container))
+    Some(width(rem(26.0), container))
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
@@ -189,8 +189,8 @@ fn app(data: &mut Data) -> impl View<Data> {
     ]
     .gap(0.0);
 
-    let stack = vstack![title(), flex(1.0, rows)].gap(em(1.0));
-    pad(em(4.0), align((0.5, 0.2), stack))
+    let stack = vstack![title(), flex(1.0, rows)].gap(rem(1.0));
+    pad(rem(4.0), align((0.5, 0.2), stack))
 }
 
 fn theme() -> Theme {
@@ -199,7 +199,7 @@ fn theme() -> Theme {
         .with(container::BORDER_WIDTH, BorderWidth::all(0.0))
         .with(container::BORDER_RADIUS, BorderRadius::all(0.0))
         .with(container::BORDER_COLOR, Palette::SECONDARY_DARK)
-        .with(checkbox::BORDER_RADIUS, BorderRadius::all(em(0.75)))
+        .with(checkbox::BORDER_RADIUS, BorderRadius::all(rem(0.75)))
 }
 
 // we define a delegate to handle the custom command

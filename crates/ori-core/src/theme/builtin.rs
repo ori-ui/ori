@@ -7,7 +7,7 @@ use crate::{
     transition::Transition,
 };
 
-use super::{em, pt, Palette, Theme};
+use super::{pt, rem, Palette, Theme};
 
 macro_rules! style {
     (
@@ -43,7 +43,7 @@ style! {
     /// Styles for [`Text`](crate::views::Text)s.
     pub text {
         /// The font size.
-        const FONT_SIZE: f32 = em(1.0);
+        const FONT_SIZE: f32 = rem(1.0);
         /// The font family.
         const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
         /// The font weight.
@@ -127,11 +127,11 @@ style! {
         /// The transition when the scrollbar is hovered.
         const TRANSITION: Transition = Transition::ease(0.1);
         /// The width of the scrollbar.
-        const WIDTH: f32 = em(0.5);
+        const WIDTH: f32 = rem(0.5);
         /// The padding of the scrollbar.
-        const INSET: f32 = em(0.3);
+        const INSET: f32 = rem(0.3);
         /// The border radius of the scrollbar.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.25));
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.25));
         /// The color of the scrollbar.
         const COLOR: Color = Palette::SECONDARY_DARK;
         /// The color of the scrollbar knob.
@@ -147,7 +147,7 @@ style! {
         /// The color.
         const COLOR: Color = Palette::PRIMARY;
         /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.5));
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.5));
         /// The border width.
         const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
         /// The border color.
@@ -161,7 +161,7 @@ style! {
         /// The transition when the checkbox is hovered.
         const TRANSITION: Transition = Transition::ease(0.1);
         /// The size of the checkbox.
-        const SIZE: f32 = em(1.5);
+        const SIZE: f32 = rem(1.5);
         /// The color of the checkmark.
         const COLOR: Color = Palette::ACCENT;
         /// The stroke width of the checkmark.
@@ -169,7 +169,7 @@ style! {
         /// The background color.
         const BACKGROUND: Color = Color::TRANSPARENT;
         /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(em(0.4));
+        const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.4));
         /// The border width.
         const BORDER_WIDTH: BorderWidth = BorderWidth::all(1.0);
         /// The border color.

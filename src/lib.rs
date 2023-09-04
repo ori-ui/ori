@@ -48,7 +48,7 @@ pub mod prelude {
             font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, FontsError,
             Glyph, Glyphs, TextAlign, TextSection, TextWrap,
         },
-        theme::{builtin::*, em, pt, set_style, set_theme, style, themed, Key, Palette, Theme},
+        theme::{builtin::*, pt, rem, set_style, set_theme, style, themed, Key, Palette, Theme},
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
             any, AnyView, BoxedView, BuildCx, Content, ContentSeq, DrawCx, EventCx, LayoutCx,

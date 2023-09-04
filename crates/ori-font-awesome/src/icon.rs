@@ -6,7 +6,7 @@ use ori_core::{
     text::{
         FontQuery, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
     },
-    theme::em,
+    theme::rem,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -43,7 +43,7 @@ impl Icon {
     pub fn new(icon: impl Into<IconKind>) -> Self {
         Self {
             icon: icon.into(),
-            size: em(1.0),
+            size: rem(1.0),
             color: Color::BLACK,
         }
     }

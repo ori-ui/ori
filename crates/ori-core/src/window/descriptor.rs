@@ -43,3 +43,71 @@ impl Default for WindowDescriptor {
         }
     }
 }
+
+impl WindowDescriptor {
+    /// Create a new window descriptor.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the unique identifier of the window.
+    pub fn title(mut self, title: impl ToString) -> Self {
+        self.title = title.to_string();
+        self
+    }
+
+    /// Set the icon of the window.
+    pub fn icon(mut self, icon: impl Into<Option<Image>>) -> Self {
+        self.icon = icon.into();
+        self
+    }
+
+    /// Set the size of the window.
+    pub fn size(mut self, width: u32, height: u32) -> Self {
+        self.width = width;
+        self.height = height;
+        self
+    }
+
+    /// Set the width of the window.
+    pub fn width(mut self, width: u32) -> Self {
+        self.width = width;
+        self
+    }
+
+    /// Set the height of the window.
+    pub fn height(mut self, height: u32) -> Self {
+        self.height = height;
+        self
+    }
+
+    /// Set whether the window is resizable.
+    pub fn resizable(mut self, resizable: bool) -> Self {
+        self.resizable = resizable;
+        self
+    }
+
+    /// Set whether the window is decorated.
+    pub fn decorated(mut self, decorated: bool) -> Self {
+        self.decorated = decorated;
+        self
+    }
+
+    /// Set whether the window is transparent.
+    pub fn transparent(mut self, transparent: bool) -> Self {
+        self.transparent = transparent;
+        self
+    }
+
+    /// Set whether the window is maximized.
+    pub fn maximized(mut self, maximized: bool) -> Self {
+        self.maximized = maximized;
+        self
+    }
+
+    /// Set whether the window is visible.
+    pub fn visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
+        self
+    }
+}

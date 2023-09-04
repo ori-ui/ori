@@ -34,7 +34,6 @@ pub fn lowercase_ident(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
     let input = proc_macro2::TokenStream::from(input);
     let ident = syn::parse2::<syn::Ident>(input).unwrap();
     let ident = ident.to_string().to_lowercase();
-    let ident = proc_macro2::Ident::new(&ident, proc_macro2::Span::call_site());
     quote::quote!(#ident).into()
 }
 

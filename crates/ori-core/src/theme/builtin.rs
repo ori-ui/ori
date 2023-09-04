@@ -29,7 +29,7 @@ macro_rules! style {
                     ::std::concat!(
                         ::std::stringify!($module),
                         ".",
-                        ::std::stringify!(::ori_macro::lowercase_ident!($name)),
+                        ::ori_macro::lowercase_ident!($name),
                     )
                 );
             )*

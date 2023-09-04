@@ -187,10 +187,10 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             cx.request_animation_frame();
         }
 
-        if let Some(AnimationFrame(dt)) = event.to() {
+        if let Some(AnimationFrame(dt)) = event.get() {
             let on = cx.is_hot() || cx.is_active();
 
-            if (self.transition).step(&mut state.t, on, dt) {
+            if (self.transition).step(&mut state.t, on, *dt) {
                 cx.request_animation_frame();
             }
 

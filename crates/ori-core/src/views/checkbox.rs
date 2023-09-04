@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve},
-    event::{AnimationFrame, Event, HotChanged},
+    event::{AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Size, Space},
     rebuild::Rebuild,
     theme::{checkbox, style},
@@ -135,6 +135,12 @@ impl<T> View<T> for Checkbox {
             }
 
             cx.request_draw();
+        }
+
+        if let Some(pointer) = event.get::<PointerEvent>() {
+            if cx.is_hot() && pointer.is_move() {
+                event.handle();
+            }
         }
     }
 

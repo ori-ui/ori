@@ -112,7 +112,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
             }
         }
 
-        if let Some(AnimationFrame(dt)) = event.to() {
+        if let Some(AnimationFrame(dt)) = event.get() {
             if cx.is_hot() && state.timer < 1.0 {
                 state.timer += dt * 2.0;
 

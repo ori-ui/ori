@@ -590,7 +590,7 @@ impl<T> View<T> for TextInput<T> {
             }
         }
 
-        if let Some(AnimationFrame(dt)) = event.to() {
+        if let Some(AnimationFrame(dt)) = event.get() {
             state.cursor_blink += dt * 10.0;
             cx.request_draw();
         }

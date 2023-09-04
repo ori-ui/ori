@@ -1,6 +1,6 @@
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
-    event::Event,
+    event::{Event, PointerEvent},
     layout::{Size, Space},
     rebuild::Rebuild,
     theme::{container, style},

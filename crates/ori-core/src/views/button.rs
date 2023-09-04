@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
-    event::{AnimationFrame, Event, HotChanged},
+    event::{AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
     theme::{button, style},
@@ -161,13 +161,19 @@ impl<T, V: View<T>> View<T> for Button<V> {
             cx.request_animation_frame();
         }
 
-        if let Some(AnimationFrame(dt)) = event.to() {
+        if let Some(AnimationFrame(dt)) = event.get() {
             let on = cx.is_hot() && !cx.is_active();
-            if self.transition.step(t, on, dt) {
+            if self.transition.step(t, on, *dt) {
                 cx.request_animation_frame();
             }
 
             cx.request_draw();
+        }
+
+        if let Some(pointer) = event.get::<PointerEvent>() {
+            if cx.is_hot() && pointer.is_move() {
+                event.handle();
+            }
         }
     }
 

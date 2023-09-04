@@ -6,12 +6,12 @@ use glam::Vec2;
 
 use crate::{
     canvas::SceneRender,
+    command::{Command, CommandProxy, EventLoopWaker},
     delegate::{Delegate, DelegateCx},
     event::{
         Code, Event, Focused, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId,
         SwitchFocus,
     },
-    proxy::{Command, CommandProxy, EventLoopWaker},
     text::Fonts,
     theme::{set_style, themed, Theme, SCALE_FACTOR},
     view::BaseCx,
@@ -185,9 +185,16 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
+    /// Tell the UI that the scale factor of a window has changed.
+    pub fn scale_factor_changed(&mut self, window_id: WindowId) {
+        self.window_mut(window_id).request_layout();
+        self.rebuild_theme(window_id);
+    }
+
     /// Tell the UI that a window has been resized.
     pub fn resized(&mut self, window_id: WindowId) {
         self.window_mut(window_id).request_layout();
+        self.rebuild_theme(window_id);
     }
 
     fn pointer_position(&self, window_id: WindowId, id: PointerId) -> Vec2 {

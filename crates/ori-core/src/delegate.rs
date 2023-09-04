@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use crate::{event::Event, proxy::CommandProxy, view::BaseCx};
+use crate::{command::CommandProxy, event::Event, view::BaseCx};
 
 /// A context for a [`Delegate`].
 pub struct DelegateCx<'a, 'b> {

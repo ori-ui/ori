@@ -1,6 +1,6 @@
 use std::{any::Any, cell::Cell};
 
-use crate::proxy::Command;
+use crate::command::Command;
 
 /// An event that can be sent to a view.
 #[derive(Debug)]

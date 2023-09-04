@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use ori_core::proxy::EventLoopWaker;
+use ori_core::command::EventLoopWaker;
 use winit::event_loop::EventLoopProxy;
 
 pub(crate) struct WinitWaker {

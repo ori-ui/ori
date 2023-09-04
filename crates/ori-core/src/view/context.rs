@@ -4,8 +4,8 @@ use glam::Vec2;
 
 use crate::{
     canvas::Mesh,
+    command::{Command, CommandProxy},
     layout::{Affine, Rect, Size},
-    proxy::{Command, CommandProxy},
     text::{Fonts, Glyphs, TextSection},
     view::ViewState,
     window::{Cursor, Window},

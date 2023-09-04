@@ -4,12 +4,12 @@
 //! Core library for the Ori UI framework.
 
 pub mod canvas;
+pub mod command;
 pub mod delegate;
 pub mod event;
 pub mod image;
 pub mod layout;
 pub mod log;
-pub mod proxy;
 pub mod rebuild;
 pub mod text;
 pub mod theme;

@@ -90,8 +90,7 @@ fn enter_event_loop<T: 'static>(
                         ui.resized(window_id);
                     }
                     WindowEvent::ScaleFactorChanged { .. } => {
-                        ui.rebuild_theme(window_id);
-                        ui.resized(window_id);
+                        ui.scale_factor_changed(window_id);
                     }
                     WindowEvent::CursorMoved {
                         device_id,

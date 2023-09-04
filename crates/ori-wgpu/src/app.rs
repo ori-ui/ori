@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use ori_core::{
+    command::CommandProxy,
     delegate::Delegate,
     image::Image,
-    proxy::CommandProxy,
     text::FontSource,
     theme::{Palette, Theme},
     ui::Ui,

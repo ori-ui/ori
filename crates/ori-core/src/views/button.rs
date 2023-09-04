@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
-    event::{Event, HotChanged, PointerEvent},
+    event::{Event, HotChanged},
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
     theme::{button, style},
@@ -11,18 +11,15 @@ use crate::{
 };
 
 /// Create a new [`Button`].
-pub fn button<T, V: View<T>>(content: V) -> Button<T, V> {
+pub fn button<V>(content: V) -> Button<V> {
     Button::new(content)
 }
 
 /// A button.
 #[derive(Rebuild)]
-pub struct Button<T, V> {
+pub struct Button<V> {
     /// The content.
     pub content: Content<V>,
-    /// The callback for when the button is pressed.
-    #[allow(clippy::type_complexity)]
-    pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T)>>,
     /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -46,12 +43,11 @@ pub struct Button<T, V> {
     pub border_color: Color,
 }
 
-impl<T, V> Button<T, V> {
+impl<V> Button<V> {
     /// Create a new [`Button`].
     pub fn new(content: V) -> Self {
         Self {
             content: Content::new(content),
-            on_press: None,
             padding: Padding::all(8.0),
             fancy: 0.0,
             transition: style(button::TRANSITION),
@@ -60,12 +56,6 @@ impl<T, V> Button<T, V> {
             border_width: style(button::BORDER_WIDTH),
             border_color: style(button::BORDER_COLOR),
         }
-    }
-
-    /// Set the callback for when the button is pressed.
-    pub fn on_press(mut self, on_press: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
-        self.on_press = Some(Box::new(on_press));
-        self
     }
 
     /// Set the padding.
@@ -135,7 +125,7 @@ impl<T, V> Button<T, V> {
     }
 }
 
-impl<T, V: View<T>> View<T> for Button<T, V> {
+impl<T, V: View<T>> View<T> for Button<V> {
     type State = (f32, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
@@ -169,27 +159,6 @@ impl<T, V: View<T>> View<T> for Button<T, V> {
 
         if event.is::<HotChanged>() {
             cx.request_draw();
-        }
-
-        if let Some(pointer) = event.get::<PointerEvent>() {
-            if cx.is_hot() && pointer.is_move() {
-                event.handle();
-            }
-
-            if cx.is_hot() && pointer.is_press() {
-                if let Some(on_press) = &mut self.on_press {
-                    on_press(cx, data);
-                    cx.request_rebuild();
-                }
-
-                cx.set_active(true);
-                cx.request_draw();
-
-                event.handle();
-            } else if cx.is_active() && pointer.is_release() {
-                cx.set_active(false);
-                cx.request_draw();
-            }
         }
     }
 

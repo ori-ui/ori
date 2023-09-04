@@ -6,11 +6,12 @@ struct Data {}
 fn square(index: usize) -> impl View<Data> {
     size(
         100.0,
-        button(text("Click me"))
-            .color(style(Palette::SECONDARY))
-            .on_press(move |_, _| {
+        on_click(
+            button(text("Click me")).color(style(Palette::SECONDARY)),
+            move |_, _| {
                 info!("clicked {}", index);
-            }),
+            },
+        ),
     )
 }
 
@@ -30,12 +31,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
         ]),
     );
 
-    let button = button(text("hello"))
-        .on_press(|_, _| {
-            info!("hello");
-        })
-        .fancy(4.0);
-
+    let button = button(text("hello")).fancy(4.0);
     center(overlay![scroll, pad(em(0.5), bottom_right(button))])
 }
 

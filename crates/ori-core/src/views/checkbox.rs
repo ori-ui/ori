@@ -2,7 +2,7 @@ use glam::Vec2;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve},
-    event::{Event, HotChanged, PointerEvent},
+    event::{Event, HotChanged},
     layout::{Size, Space},
     rebuild::Rebuild,
     theme::{checkbox, style},
@@ -11,19 +11,16 @@ use crate::{
 };
 
 /// Create a new [`Checkbox`].
-pub fn checkbox<T>(checked: bool) -> Checkbox<T> {
+pub fn checkbox(checked: bool) -> Checkbox {
     Checkbox::new(checked)
 }
 
 /// A checkbox.
 #[derive(Rebuild)]
-pub struct Checkbox<T> {
+pub struct Checkbox {
     /// Whether the checkbox is checked.
     #[rebuild(draw)]
     pub checked: bool,
-    /// The callback for when the checkbox is pressed.
-    #[allow(clippy::type_complexity)]
-    pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T)>>,
     /// The transition of the checkbox.
     #[rebuild(draw)]
     pub transition: Transition,
@@ -50,12 +47,11 @@ pub struct Checkbox<T> {
     pub border_color: Color,
 }
 
-impl<T> Checkbox<T> {
+impl Checkbox {
     /// Create a new [`Checkbox`].
     pub fn new(checked: bool) -> Self {
         Self {
             checked,
-            on_press: None,
             transition: style(checkbox::TRANSITION),
             size: style(checkbox::SIZE),
             color: style(checkbox::COLOR),
@@ -65,12 +61,6 @@ impl<T> Checkbox<T> {
             border_width: style(checkbox::BORDER_WIDTH),
             border_color: style(checkbox::BORDER_COLOR),
         }
-    }
-
-    /// Set the callback for when the checkbox is pressed.
-    pub fn on_press(mut self, on_press: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
-        self.on_press = Some(Box::new(on_press));
-        self
     }
 
     /// Set the transition of the checkbox.
@@ -122,7 +112,7 @@ impl<T> Checkbox<T> {
     }
 }
 
-impl<T> View<T> for Checkbox<T> {
+impl<T> View<T> for Checkbox {
     type State = f32;
 
     fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {
@@ -133,30 +123,9 @@ impl<T> View<T> for Checkbox<T> {
         Rebuild::rebuild(self, cx, old);
     }
 
-    fn event(&mut self, _t: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(&mut self, _t: &mut Self::State, cx: &mut EventCx, _data: &mut T, event: &Event) {
         if event.is::<HotChanged>() {
             cx.request_draw();
-        }
-
-        if let Some(pointer) = event.get::<PointerEvent>() {
-            if cx.is_hot() && pointer.is_move() {
-                event.handle();
-            }
-
-            if cx.is_hot() && pointer.is_press() {
-                if let Some(on_press) = &mut self.on_press {
-                    on_press(cx, data);
-                    cx.request_rebuild();
-                }
-
-                cx.set_active(true);
-                cx.request_draw();
-
-                event.handle();
-            } else if cx.is_active() && pointer.is_release() {
-                cx.set_active(false);
-                cx.request_draw();
-            }
         }
     }
 

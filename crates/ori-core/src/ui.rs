@@ -55,24 +55,19 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.themes.push(Box::new(theme));
     }
 
-    /// Build the theme.
-    fn build_theme(&mut self, window_id: WindowId) -> Theme {
+    fn build_theme(themes: &mut Vec<Box<dyn FnMut() -> Theme>>, window: &Window) -> Theme {
         themed(|| {
-            let window = self.window(window_id);
-
-            set_style(SCALE_FACTOR, window.window().scale_factor());
-            set_style(WINDOW_SIZE, window.window().size());
+            set_style(SCALE_FACTOR, window.scale_factor());
+            set_style(WINDOW_SIZE, window.size());
 
             let mut theme = Theme::builtin();
 
-            for theme_fn in &mut self.themes {
+            for theme_fn in themes {
                 theme.extend(theme_fn());
             }
 
-            let window = self.window(window_id);
-
-            theme.set(SCALE_FACTOR, window.window().scale_factor());
-            theme.set(WINDOW_SIZE, window.window().size());
+            theme.set(SCALE_FACTOR, window.scale_factor());
+            theme.set(WINDOW_SIZE, window.size());
 
             theme
         })
@@ -80,7 +75,7 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
-        let theme = self.build_theme(window.id());
+        let theme = Self::build_theme(&mut self.themes, &window);
 
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
@@ -108,7 +103,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     #[track_caller]
     pub fn window(&self, window_id: WindowId) -> &WindowUi<T, R> {
         match self.windows.get(&window_id) {
-            Some(window) => window,
+            Some(window_ui) => window_ui,
             None => panic!("window with id {:?} not found", window_id),
         }
     }
@@ -120,7 +115,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     #[track_caller]
     pub fn window_mut(&mut self, window_id: WindowId) -> &mut WindowUi<T, R> {
         match self.windows.get_mut(&window_id) {
-            Some(window) => window,
+            Some(window_ui) => window_ui,
             None => panic!("window with id {:?} not found", window_id),
         }
     }
@@ -158,8 +153,8 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Tell the UI that the event loop idle.
     pub fn idle(&mut self) {
-        for window in self.windows.values_mut() {
-            window.idle();
+        for window_ui in self.windows.values_mut() {
+            window_ui.idle();
         }
 
         let mut needs_rebuild = false;
@@ -176,29 +171,27 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Rebuild the theme for a window.
-    ///
-    /// This should be called when the scale factor of the window changes.
     pub fn rebuild_theme(&mut self, window_id: WindowId) {
-        let theme = self.build_theme(window_id);
-        self.window_mut(window_id).set_theme(theme);
+        if let Some(window_ui) = self.windows.get_mut(&window_id) {
+            let theme = Self::build_theme(&mut self.themes, window_ui.window());
+            self.window_mut(window_id).set_theme(theme);
+        }
     }
 
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
-        for window in self.windows.values_mut() {
-            window.request_rebuild();
+        for window_ui in self.windows.values_mut() {
+            window_ui.request_rebuild();
         }
     }
 
     /// Tell the UI that the scale factor of a window has changed.
     pub fn scale_factor_changed(&mut self, window_id: WindowId) {
-        self.window_mut(window_id).request_layout();
         self.rebuild_theme(window_id);
     }
 
     /// Tell the UI that a window has been resized.
     pub fn resized(&mut self, window_id: WindowId) {
-        self.window_mut(window_id).request_layout();
         self.rebuild_theme(window_id);
     }
 
@@ -209,12 +202,12 @@ impl<T, R: SceneRender> Ui<T, R> {
 
     /// Tell the UI that a pointer has moved.
     pub fn pointer_moved(&mut self, window_id: WindowId, id: PointerId, position: Vec2) {
-        let window = self.window_mut(window_id).window_mut();
+        let window_ui = self.window_mut(window_id).window_mut();
 
-        let prev = window.pointer(id).map_or(Vec2::ZERO, |p| p.position);
+        let prev = window_ui.pointer(id).map_or(Vec2::ZERO, |p| p.position);
         let delta = position - prev;
 
-        window.pointer_moved(id, position);
+        window_ui.pointer_moved(id, position);
 
         let event = PointerEvent {
             position,
@@ -235,8 +228,8 @@ impl<T, R: SceneRender> Ui<T, R> {
             ..PointerEvent::new(id)
         };
 
-        let window = self.window_mut(window_id).window_mut();
-        window.pointer_left(id);
+        let window_ui = self.window_mut(window_id).window_mut();
+        window_ui.pointer_left(id);
 
         self.event(window_id, &Event::new(event));
     }

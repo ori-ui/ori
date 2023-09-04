@@ -26,7 +26,11 @@ macro_rules! style {
             $(
                 $(#[$attr])*
                 pub const $name: $crate::theme::Key<$ty> = $crate::theme::Key::new(
-                    ::std::concat!(::std::stringify!($module), ".", ::std::stringify!($name))
+                    ::std::concat!(
+                        ::std::stringify!($module),
+                        ".",
+                        ::std::stringify!(::ori_macro::lowercase_ident!($name)),
+                    )
                 );
             )*
 

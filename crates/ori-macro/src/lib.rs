@@ -28,6 +28,16 @@ fn find_core() -> syn::Path {
     }
 }
 
+#[doc(hidden)]
+#[proc_macro]
+pub fn lowercase_ident(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+    let ident = syn::parse2::<syn::Ident>(input).unwrap();
+    let ident = ident.to_string().to_lowercase();
+    let ident = proc_macro2::Ident::new(&ident, proc_macro2::Span::call_site());
+    quote::quote!(#ident).into()
+}
+
 #[manyhow::manyhow]
 #[proc_macro]
 /// Load a font from a file or directory.

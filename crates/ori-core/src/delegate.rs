@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use crate::{event::Event, proxy::Proxy, view::BaseCx};
+use crate::{event::Event, proxy::CommandProxy, view::BaseCx};
 
 /// A context for a [`Delegate`].
 pub struct DelegateCx<'a, 'b> {
@@ -15,7 +15,7 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
     }
 
     /// Get a proxy for sending commands.
-    pub fn proxy(&self) -> Proxy {
+    pub fn proxy(&self) -> CommandProxy {
         self.base.proxy()
     }
 

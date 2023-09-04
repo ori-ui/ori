@@ -5,7 +5,7 @@ use glam::Vec2;
 use crate::{
     canvas::Mesh,
     layout::{Affine, Rect, Size},
-    proxy::{Command, Proxy},
+    proxy::{Command, CommandProxy},
     text::{Fonts, Glyphs, TextSection},
     view::ViewState,
     window::{Cursor, Window},
@@ -14,13 +14,17 @@ use crate::{
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
     pub(crate) fonts: &'a mut Fonts,
-    pub(crate) proxy: &'a mut Proxy,
+    pub(crate) proxy: &'a mut CommandProxy,
     pub(crate) needs_rebuild: &'a mut bool,
 }
 
 impl<'a> BaseCx<'a> {
     /// Create a new base context.
-    pub fn new(fonts: &'a mut Fonts, proxy: &'a mut Proxy, needs_rebuild: &'a mut bool) -> Self {
+    pub fn new(
+        fonts: &'a mut Fonts,
+        proxy: &'a mut CommandProxy,
+        needs_rebuild: &'a mut bool,
+    ) -> Self {
         Self {
             fonts,
             proxy,
@@ -33,8 +37,8 @@ impl<'a> BaseCx<'a> {
         self.fonts
     }
 
-    /// Get the [`Proxy`].
-    pub fn proxy(&self) -> Proxy {
+    /// Get the [`CommandProxy`].
+    pub fn proxy(&self) -> CommandProxy {
         self.proxy.clone()
     }
 
@@ -271,7 +275,7 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     }
 
     /// Get a proxy for sending commands.
-    pub fn proxy(&self) -> Proxy {
+    pub fn proxy(&self) -> CommandProxy {
         self.base.proxy()
     }
 

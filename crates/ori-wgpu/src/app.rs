@@ -3,6 +3,7 @@ use std::sync::Arc;
 use ori_core::{
     delegate::Delegate,
     image::Image,
+    proxy::CommandProxy,
     text::FontSource,
     theme::{Palette, Theme},
     ui::Ui,
@@ -63,6 +64,19 @@ impl<T: 'static> App<T> {
         self
     }
 
+    /// Get the command proxy of the application.
+    pub fn proxy(&self) -> CommandProxy {
+        self.ui.proxy()
+    }
+
+    /// Set the proxy of the application.
+    ///
+    /// This is useful when starting background tasks.
+    pub fn with_proxy(self, f: impl FnOnce(CommandProxy)) -> Self {
+        f(self.proxy());
+        self
+    }
+
     /// Set the text size of the application.
     pub fn text_size(mut self, size: f32) -> Self {
         self.text_size = size;
@@ -73,6 +87,17 @@ impl<T: 'static> App<T> {
     pub fn delegate(mut self, delegate: impl Delegate<T> + 'static) -> Self {
         self.ui.set_delegate(delegate);
         self
+    }
+
+    /// Set the delegate of the application with a proxy.
+    ///
+    /// This is useful when starting background tasks.
+    pub fn delegate_with_proxy<D: Delegate<T> + 'static>(
+        self,
+        delegate: impl FnOnce(CommandProxy) -> D,
+    ) -> Self {
+        let delegate = delegate(self.proxy());
+        self.delegate(delegate)
     }
 
     /// Set the title of the window.

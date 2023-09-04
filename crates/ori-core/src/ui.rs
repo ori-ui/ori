@@ -11,7 +11,7 @@ use crate::{
         Code, Event, Focused, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId,
         SwitchFocus,
     },
-    proxy::{Command, Proxy, ProxyWaker},
+    proxy::{Command, CommandProxy, EventLoopWaker},
     text::Fonts,
     theme::{set_style, themed, Theme, SCALE_FACTOR},
     view::BaseCx,
@@ -24,7 +24,7 @@ pub struct Ui<T, R: SceneRender> {
     modifiers: Modifiers,
     delegate: Box<dyn Delegate<T>>,
     themes: Vec<Box<dyn FnMut() -> Theme>>,
-    commands: Proxy,
+    commands: CommandProxy,
     /// The fonts used by the UI.
     pub fonts: Fonts,
     /// The data used by the UI.
@@ -33,13 +33,13 @@ pub struct Ui<T, R: SceneRender> {
 
 impl<T, R: SceneRender> Ui<T, R> {
     /// Create a new [`Ui`] with the given data.
-    pub fn new(data: T, waker: Arc<dyn ProxyWaker>) -> Self {
+    pub fn new(data: T, waker: Arc<dyn EventLoopWaker>) -> Self {
         Self {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegate: Box::new(()),
             themes: Vec::new(),
-            commands: Proxy::new(waker),
+            commands: CommandProxy::new(waker),
             fonts: Fonts::default(),
             data,
         }
@@ -122,6 +122,11 @@ impl<T, R: SceneRender> Ui<T, R> {
     /// Get the Ids of all windows.
     pub fn window_ids(&self) -> Vec<WindowId> {
         self.windows.keys().copied().collect()
+    }
+
+    /// Get a command proxy to the UI.
+    pub fn proxy(&self) -> CommandProxy {
+        self.commands.clone()
     }
 
     /// Tell the UI that the event loop idle.

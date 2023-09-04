@@ -6,15 +6,15 @@ use crossbeam_channel::{Receiver, Sender};
 
 use crate::log::warn_internal;
 
-/// A waker for waking the event loop.
+/// A trait for waking the event loop.
 ///
-/// This is used to wake the event loop when a command is sent through the [`Proxy`].
-pub trait ProxyWaker: Send + Sync {
+/// This is used to wake the event loop when a command is sent through the [`CommandProxy`].
+pub trait EventLoopWaker: Send + Sync {
     /// Wake the event loop.
     fn wake(&self);
 }
 
-impl Debug for dyn ProxyWaker {
+impl Debug for dyn EventLoopWaker {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CommandWaker").finish()
     }
@@ -39,15 +39,15 @@ impl Command {
 
 /// A clonable channel for sending [`Command`]s.
 #[derive(Clone, Debug)]
-pub struct Proxy {
+pub struct CommandProxy {
     pub(crate) tx: Sender<Command>,
     pub(crate) rx: Receiver<Command>,
-    pub(crate) waker: Arc<dyn ProxyWaker>,
+    pub(crate) waker: Arc<dyn EventLoopWaker>,
 }
 
-impl Proxy {
-    /// Create a new [`Proxy`] channel.
-    pub fn new(waker: Arc<dyn ProxyWaker>) -> Self {
+impl CommandProxy {
+    /// Create a new [`CommandProxy`] channel.
+    pub fn new(waker: Arc<dyn EventLoopWaker>) -> Self {
         let (tx, rx) = crossbeam_channel::unbounded();
         Self { tx, rx, waker }
     }
@@ -58,8 +58,8 @@ impl Proxy {
         }
     }
 
-    /// Receive a command.
-    pub fn send(&self, command: impl Any + Send) {
+    /// Send a command.
+    pub fn cmd(&self, command: impl Any + Send) {
         self.send_internal(Command::new(command));
 
         self.waker.wake();

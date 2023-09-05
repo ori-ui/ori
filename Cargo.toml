@@ -30,7 +30,7 @@ version = "0.1.0-alpha.1"
 features = ["font-awesome", "image", "tracing"]
 
 [features]
-default = ["winit", "wgpu"]
+default = ["winit", "wgpu", "x11"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 tracing = ["ori-core/tracing", "ori-winit/tracing"]
@@ -40,4 +40,6 @@ full = ["font-awesome", "image", "tracing"]
 
 # Backend features
 winit = ["dep:ori-winit"]
-wgpu = ["dep:ori-winit", "ori-winit/wgpu"]
+x11 = ["winit", "ori-winit/x11"]
+wayland = ["winit", "ori-winit/wayland"]
+wgpu = ["winit", "ori-winit/wgpu"]

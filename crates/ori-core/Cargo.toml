@@ -14,7 +14,6 @@ crossbeam-channel = "0.5"
 etagere = "0.2"
 fontdb = "0.14"
 fontdue = "0.7"
-glam = "0.24"
 seahash = "4.1"
 
 [dependencies.image]

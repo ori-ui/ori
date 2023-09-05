@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve},
     event::{AnimationFrame, Event, HotChanged, PointerEvent},
-    layout::{Size, Space},
+    layout::{Point, Size, Space},
     rebuild::Rebuild,
     theme::{checkbox, style},
     transition::Transition,
@@ -151,7 +149,7 @@ impl<T> View<T> for Checkbox {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        space.fit(Size::splat(self.size))
+        space.fit(Size::all(self.size))
     }
 
     fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T, canvas: &mut Canvas) {
@@ -167,9 +165,9 @@ impl<T> View<T> for Checkbox {
 
         if self.checked {
             let mut curve = Curve::new();
-            curve.add_point(Vec2::new(0.2, 0.5) * cx.size());
-            curve.add_point(Vec2::new(0.4, 0.7) * cx.size());
-            curve.add_point(Vec2::new(0.8, 0.3) * cx.size());
+            curve.add_point(Point::new(0.2, 0.5) * cx.size());
+            curve.add_point(Point::new(0.4, 0.7) * cx.size());
+            curve.add_point(Point::new(0.8, 0.3) * cx.size());
 
             canvas.draw(curve.stroke(self.stroke, self.color));
         }

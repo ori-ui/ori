@@ -4,7 +4,7 @@ use std::{
     slice::SliceIndex,
 };
 
-use glam::Vec2;
+use crate::layout::{Point, Vector};
 
 use super::{Color, Mesh, Vertex};
 
@@ -12,7 +12,7 @@ use super::{Color, Mesh, Vertex};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Curve {
     /// The points of the curve.
-    pub points: Vec<Vec2>,
+    pub points: Vec<Point>,
 }
 
 impl Curve {
@@ -25,7 +25,7 @@ impl Curve {
     }
 
     /// Extend the curve with the points from `other`.
-    pub fn extend(&mut self, other: impl IntoIterator<Item = Vec2>) {
+    pub fn extend(&mut self, other: impl IntoIterator<Item = Point>) {
         self.points.extend(other);
     }
 
@@ -36,7 +36,7 @@ impl Curve {
     /// - `radius`: The radius of the arc.
     /// - `start_angle`: The start angle of the arc.
     /// - `end_angle`: The end angle of the arc.
-    pub fn arc_center_angle(center: Vec2, radius: f32, start_angle: f32, end_angle: f32) -> Self {
+    pub fn arc_center_angle(center: Point, radius: f32, start_angle: f32, end_angle: f32) -> Self {
         let mut curve = Curve::new();
 
         let length = (end_angle - start_angle).abs() * radius;
@@ -51,12 +51,12 @@ impl Curve {
             let x = center.x + radius * angle.cos();
             let y = center.y + radius * angle.sin();
 
-            curve.add_point(Vec2::new(x, y));
+            curve.add_point(Point::new(x, y));
 
             angle += step;
         }
 
-        curve.add_point(Vec2::new(
+        curve.add_point(Point::new(
             center.x + radius * end_angle.cos(),
             center.y + radius * end_angle.sin(),
         ));
@@ -70,7 +70,7 @@ impl Curve {
     /// - `f`: The function that returns the point at a given time.
     /// - `start`: The start time.
     /// - `end`: The end time.
-    pub fn parametric(f: impl Fn(f32) -> Vec2, start: f32, end: f32) -> Self {
+    pub fn parametric(f: impl Fn(f32) -> Point, start: f32, end: f32) -> Self {
         let mut curve = Curve::new();
 
         let mut t = start;
@@ -101,7 +101,7 @@ impl Curve {
     }
 
     /// Add a point to the curve.
-    pub fn add_point(&mut self, point: Vec2) {
+    pub fn add_point(&mut self, point: Point) {
         self.points.push(point);
     }
 
@@ -116,12 +116,12 @@ impl Curve {
     }
 
     /// Get an iterator over the points of the curve.
-    pub fn iter(&self) -> impl DoubleEndedIterator<Item = Vec2> + '_ {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = Point> + '_ {
         self.points.iter().copied()
     }
 
     /// Get a mutable iterator over the points of the curve.
-    pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = &mut Vec2> {
+    pub fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item = &mut Point> {
         self.points.iter_mut()
     }
 
@@ -160,7 +160,7 @@ impl Curve {
         mesh.vertices.push(Vertex::new_color(center, color));
         for i in -10..=10 {
             let angle = angle + i as f32 * PI / 20.0;
-            let point = center + Vec2::new(angle.cos(), angle.sin()) * thickness;
+            let point = center + Vector::new(angle.cos(), angle.sin()) * thickness;
             mesh.vertices.push(Vertex::new_color(point, color));
 
             if i > -10 {
@@ -178,8 +178,7 @@ impl Curve {
                 let center = self.points[i];
 
                 let prev_center = (center - prev).normalize();
-
-                let hat = Vec2::new(prev_center.y, -prev_center.x);
+                let hat = prev_center.hat();
 
                 let offset = hat * thickness;
 
@@ -204,11 +203,8 @@ impl Curve {
 
                 let a = (center - prev).normalize();
                 let b = (next - center).normalize();
-
-                let hat_a = Vec2::new(a.y, -a.x);
-                let hat_b = Vec2::new(b.y, -b.x);
-                let offset = (hat_a + hat_b).normalize();
-                let angle = offset.angle_between(hat_a) / 2.0;
+                let offset = (a.hat() + b.hat()).normalize();
+                let angle = offset.angle_between(a.hat()) / 2.0;
 
                 let offset = offset * thickness * (1.0 + angle.tan());
 
@@ -231,8 +227,7 @@ impl Curve {
                 let next = self.points[i + 1];
 
                 let center_next = (next - center).normalize();
-
-                let hat = Vec2::new(center_next.y, -center_next.x);
+                let hat = center_next.hat();
 
                 let offset = hat * thickness;
 
@@ -254,7 +249,7 @@ impl Curve {
         mesh.vertices.push(Vertex::new_color(center, color));
         for i in -10..=10 {
             let angle = angle + i as f32 * PI / 20.0;
-            let point = center + Vec2::new(angle.cos(), angle.sin()) * thickness;
+            let point = center + Vector::new(angle.cos(), angle.sin()) * thickness;
             mesh.vertices.push(Vertex::new_color(point, color));
 
             if i > -10 {
@@ -270,8 +265,8 @@ impl Curve {
 }
 
 impl IntoIterator for Curve {
-    type Item = Vec2;
-    type IntoIter = std::vec::IntoIter<Vec2>;
+    type Item = Point;
+    type IntoIter = std::vec::IntoIter<Point>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.points.into_iter()
@@ -279,8 +274,8 @@ impl IntoIterator for Curve {
 }
 
 impl<'a> IntoIterator for &'a Curve {
-    type Item = &'a Vec2;
-    type IntoIter = std::slice::Iter<'a, Vec2>;
+    type Item = &'a Point;
+    type IntoIter = std::slice::Iter<'a, Point>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.points.iter()
@@ -288,15 +283,15 @@ impl<'a> IntoIterator for &'a Curve {
 }
 
 impl<'a> IntoIterator for &'a mut Curve {
-    type Item = &'a mut Vec2;
-    type IntoIter = std::slice::IterMut<'a, Vec2>;
+    type Item = &'a mut Point;
+    type IntoIter = std::slice::IterMut<'a, Point>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.points.iter_mut()
     }
 }
 
-impl<I: SliceIndex<[Vec2]>> Index<I> for Curve {
+impl<I: SliceIndex<[Point]>> Index<I> for Curve {
     type Output = I::Output;
 
     fn index(&self, index: I) -> &Self::Output {
@@ -304,7 +299,7 @@ impl<I: SliceIndex<[Vec2]>> Index<I> for Curve {
     }
 }
 
-impl<I: SliceIndex<[Vec2]>> IndexMut<I> for Curve {
+impl<I: SliceIndex<[Point]>> IndexMut<I> for Curve {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         &mut self.points[index]
     }

@@ -1,8 +1,9 @@
 use std::{f32::consts::PI, mem, slice};
 
-use glam::Vec2;
-
-use crate::image::Image;
+use crate::{
+    image::Image,
+    layout::{Point, Vector},
+};
 
 use super::{Color, Curve};
 
@@ -11,19 +12,19 @@ use super::{Color, Curve};
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vertex {
     /// The position of the vertex.
-    pub position: Vec2,
+    pub position: Point,
     /// The texture coordinates of the vertex.
-    pub tex_coords: Vec2,
+    pub tex_coords: Point,
     /// The color of the vertex.
     pub color: Color,
 }
 
 impl Vertex {
     /// Create a new vertex with `position` and color`.
-    pub fn new_color(position: Vec2, color: Color) -> Self {
+    pub fn new_color(position: Point, color: Color) -> Self {
         Self {
             position,
-            tex_coords: Vec2::ZERO,
+            tex_coords: Point::ZERO,
             color,
         }
     }
@@ -47,7 +48,7 @@ impl Mesh {
     }
 
     /// Create a circle mesh with the given `center`, `radius`, and `color`.
-    pub fn circle(center: Vec2, radius: f32, color: Color) -> Self {
+    pub fn circle(center: Point, radius: f32, color: Color) -> Self {
         let mut mesh = Mesh::new();
 
         let center = Vertex::new_color(center, color);
@@ -60,7 +61,7 @@ impl Mesh {
             let angle = i as f32 / steps as f32 * PI * 2.0;
             let x = angle.cos();
             let y = angle.sin();
-            let vertex = Vertex::new_color(center.position + Vec2::new(x, y) * radius, color);
+            let vertex = Vertex::new_color(center.position + Vector::new(x, y) * radius, color);
             mesh.vertices.push(vertex);
 
             if i < steps {

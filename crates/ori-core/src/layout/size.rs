@@ -1,9 +1,9 @@
 use std::{
     fmt::Display,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
 };
 
-use glam::Vec2;
+use super::{Point, Vector};
 
 /// A 2 dimensional size.
 #[repr(C)]
@@ -34,7 +34,7 @@ impl Size {
     }
 
     /// Create a new size with the same width and height.
-    pub const fn splat(value: f32) -> Self {
+    pub const fn all(value: f32) -> Self {
         Self::new(value, value)
     }
 
@@ -57,8 +57,13 @@ impl Size {
     }
 
     /// Convert the size to a vector.
-    pub const fn to_vec(self) -> Vec2 {
-        Vec2::new(self.width, self.height)
+    pub const fn to_point(self) -> Point {
+        Point::new(self.width, self.height)
+    }
+
+    /// Convert the size to a vector.
+    pub const fn to_vector(self) -> Vector {
+        Vector::new(self.width, self.height)
     }
 }
 
@@ -74,15 +79,21 @@ impl From<[f32; 2]> for Size {
     }
 }
 
-impl From<Vec2> for Size {
-    fn from(vec: Vec2) -> Self {
+impl From<Point> for Size {
+    fn from(vec: Point) -> Self {
         Self::new(vec.x, vec.y)
+    }
+}
+
+impl From<Vector> for Size {
+    fn from(vec: Vector) -> Self {
+        vec.to_size()
     }
 }
 
 impl From<f32> for Size {
     fn from(value: f32) -> Self {
-        Self::splat(value)
+        Self::all(value)
     }
 }
 
@@ -98,126 +109,46 @@ impl From<Size> for [f32; 2] {
     }
 }
 
-impl From<Size> for Vec2 {
-    fn from(size: Size) -> Self {
-        size.to_vec()
-    }
-}
-
 impl Display for Size {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}x{}", self.width, self.height)
     }
 }
 
-impl Add for Size {
-    type Output = Self;
+macro_rules! impl_math_op {
+    ($op_trait:ident, $op_assign_trait:ident, $op_fn:ident, $op_assign_fn:ident, $op:tt) => {
+        impl $op_trait for Size {
+            type Output = Self;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self::new(self.width + rhs.width, self.height + rhs.height)
-    }
+            fn $op_fn(self, rhs: Self) -> Self::Output {
+                Self::new(self.width $op rhs.width, self.height $op rhs.height)
+            }
+        }
+
+        impl $op_assign_trait for Size {
+            fn $op_assign_fn(&mut self, rhs: Self) {
+                *self = *self $op rhs;
+            }
+        }
+
+        impl $op_trait<f32> for Size {
+            type Output = Self;
+
+            fn $op_fn(self, rhs: f32) -> Self::Output {
+                Self::new(self.width $op rhs, self.height $op rhs)
+            }
+        }
+
+        impl $op_assign_trait<f32> for Size {
+            fn $op_assign_fn(&mut self, rhs: f32) {
+                *self = *self $op rhs;
+            }
+        }
+    };
 }
 
-impl AddAssign for Size {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs;
-    }
-}
-
-impl Sub for Size {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self::new(self.width - rhs.width, self.height - rhs.height)
-    }
-}
-
-impl SubAssign for Size {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = *self - rhs;
-    }
-}
-
-impl Mul<f32> for Size {
-    type Output = Self;
-
-    fn mul(self, rhs: f32) -> Self::Output {
-        Self::new(self.width * rhs, self.height * rhs)
-    }
-}
-
-impl MulAssign<f32> for Size {
-    fn mul_assign(&mut self, rhs: f32) {
-        *self = *self * rhs;
-    }
-}
-
-impl Div<f32> for Size {
-    type Output = Self;
-
-    fn div(self, rhs: f32) -> Self::Output {
-        Self::new(self.width / rhs, self.height / rhs)
-    }
-}
-
-impl DivAssign<f32> for Size {
-    fn div_assign(&mut self, rhs: f32) {
-        *self = *self / rhs;
-    }
-}
-
-impl Add<Size> for Vec2 {
-    type Output = Self;
-
-    fn add(self, rhs: Size) -> Self::Output {
-        Self::new(self.x + rhs.width, self.y + rhs.height)
-    }
-}
-
-impl AddAssign<Size> for Vec2 {
-    fn add_assign(&mut self, rhs: Size) {
-        *self = *self + rhs;
-    }
-}
-
-impl Sub<Size> for Vec2 {
-    type Output = Self;
-
-    fn sub(self, rhs: Size) -> Self::Output {
-        Self::new(self.x - rhs.width, self.y - rhs.height)
-    }
-}
-
-impl SubAssign<Size> for Vec2 {
-    fn sub_assign(&mut self, rhs: Size) {
-        *self = *self - rhs;
-    }
-}
-
-impl Mul<Size> for Vec2 {
-    type Output = Self;
-
-    fn mul(self, rhs: Size) -> Self::Output {
-        Self::new(self.x * rhs.width, self.y * rhs.height)
-    }
-}
-
-impl MulAssign<Size> for Vec2 {
-    fn mul_assign(&mut self, rhs: Size) {
-        *self = *self * rhs;
-    }
-}
-
-impl Div<Size> for Vec2 {
-    type Output = Self;
-
-    fn div(self, rhs: Size) -> Self::Output {
-        Self::new(self.x / rhs.width, self.y / rhs.height)
-    }
-}
-
-impl DivAssign<Size> for Vec2 {
-    fn div_assign(&mut self, rhs: Size) {
-        *self = *self / rhs;
-    }
-}
+impl_math_op!(Add, AddAssign, add, add_assign, +);
+impl_math_op!(Sub, SubAssign, sub, sub_assign, -);
+impl_math_op!(Mul, MulAssign, mul, mul_assign, *);
+impl_math_op!(Div, DivAssign, div, div_assign, /);
+impl_math_op!(Rem, RemAssign, rem, rem_assign, %);

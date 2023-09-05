@@ -117,11 +117,11 @@ impl<T> View<T> for Icon {
             h_align: TextAlign::Center,
             line_height: 1.0,
             wrap: TextWrap::None,
-            bounds: Size::splat(self.size),
+            bounds: Size::all(self.size),
         };
 
         *state = cx.layout_text(&section);
-        Size::splat(self.size)
+        Size::all(self.size)
     }
 
     fn draw(

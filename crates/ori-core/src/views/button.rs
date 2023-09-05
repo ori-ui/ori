@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     event::{AnimationFrame, Event, HotChanged, PointerEvent},
-    layout::{Padding, Size, Space},
+    layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
     theme::{button, pt, style},
     transition::Transition,
@@ -221,7 +219,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
             return;
         }
 
-        let float = Vec2::Y * -self.transition.on(*t) * 4.0;
+        let float = Vector::Y * -self.transition.on(*t) * 4.0;
 
         let mut layer = canvas.layer();
         layer.translate(float);

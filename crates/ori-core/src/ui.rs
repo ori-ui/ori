@@ -2,7 +2,6 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use glam::Vec2;
 use ori_macro::font;
 
 use crate::{
@@ -13,6 +12,7 @@ use crate::{
         Code, Event, Focused, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId,
         SwitchFocus,
     },
+    layout::{Point, Vector},
     text::Fonts,
     theme::{set_style, themed, Theme, SCALE_FACTOR, WINDOW_SIZE},
     view::BaseCx,
@@ -201,16 +201,16 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.window_mut(window_id).request_layout();
     }
 
-    fn pointer_position(&self, window_id: WindowId, id: PointerId) -> Vec2 {
+    fn pointer_position(&self, window_id: WindowId, id: PointerId) -> Point {
         let pointer = self.window(window_id).window().pointer(id);
-        pointer.map_or(Vec2::ZERO, |p| p.position())
+        pointer.map_or(Point::ZERO, |p| p.position())
     }
 
     /// Tell the UI that a pointer has moved.
-    pub fn pointer_moved(&mut self, window_id: WindowId, id: PointerId, position: Vec2) {
+    pub fn pointer_moved(&mut self, window_id: WindowId, id: PointerId, position: Point) {
         let window_ui = self.window_mut(window_id).window_mut();
 
-        let prev = window_ui.pointer(id).map_or(Vec2::ZERO, |p| p.position);
+        let prev = window_ui.pointer(id).map_or(Point::ZERO, |p| p.position);
         let delta = position - prev;
 
         window_ui.pointer_moved(id, position);
@@ -241,7 +241,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Tell the UI that a pointer has scrolled.
-    pub fn pointer_scroll(&mut self, window_id: WindowId, id: PointerId, delta: Vec2) {
+    pub fn pointer_scroll(&mut self, window_id: WindowId, id: PointerId, delta: Vector) {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
             modifiers: self.modifiers,

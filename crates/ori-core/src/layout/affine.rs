@@ -1,14 +1,14 @@
 use std::ops::{Mul, MulAssign};
 
-use glam::{Mat2, Vec2};
+use super::{Matrix, Point, Vector};
 
 /// An affine transformation in 2 dimensional space.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Affine {
     /// The translation of the affine transformation.
-    pub translation: Vec2,
+    pub translation: Vector,
     /// The matrix of the affine transformation.
-    pub matrix: Mat2,
+    pub matrix: Matrix,
 }
 
 impl Default for Affine {
@@ -20,12 +20,12 @@ impl Default for Affine {
 impl Affine {
     /// The identity transformation.
     pub const IDENTITY: Self = Self {
-        translation: Vec2::ZERO,
-        matrix: Mat2::IDENTITY,
+        translation: Vector::ZERO,
+        matrix: Matrix::IDENTITY,
     };
 
     /// Crate a translation.
-    pub const fn translate(translation: Vec2) -> Self {
+    pub const fn translate(translation: Vector) -> Self {
         Self {
             translation,
             ..Self::IDENTITY
@@ -35,15 +35,15 @@ impl Affine {
     /// Create a rotation.
     pub fn rotate(angle: f32) -> Self {
         Self {
-            matrix: Mat2::from_angle(angle),
+            matrix: Matrix::from_angle(angle),
             ..Self::IDENTITY
         }
     }
 
     /// Create a scale.
-    pub const fn scale(scale: Vec2) -> Self {
+    pub const fn scale(scale: Vector) -> Self {
         Self {
-            matrix: Mat2::from_diagonal(scale),
+            matrix: Matrix::from_scale(scale),
             ..Self::IDENTITY
         }
     }
@@ -68,11 +68,19 @@ impl Affine {
     }
 }
 
-impl Mul<Vec2> for Affine {
-    type Output = Vec2;
+impl Mul<Point> for Affine {
+    type Output = Point;
 
-    fn mul(self, rhs: Vec2) -> Self::Output {
+    fn mul(self, rhs: Point) -> Self::Output {
         self.matrix * rhs + self.translation
+    }
+}
+
+impl Mul<Vector> for Affine {
+    type Output = Vector;
+
+    fn mul(self, rhs: Vector) -> Self::Output {
+        self.matrix * rhs
     }
 }
 
@@ -81,7 +89,7 @@ impl Mul<Affine> for Affine {
 
     fn mul(self, rhs: Affine) -> Self::Output {
         Self {
-            translation: self * rhs.translation,
+            translation: Point::to_vector(self * rhs.translation.to_point()),
             matrix: self.matrix * rhs.matrix,
         }
     }

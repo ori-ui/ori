@@ -1,7 +1,5 @@
-use glam::Vec2;
-
 use crate::{
-    layout::{Affine, Rect, Size},
+    layout::{Affine, Point, Rect, Size, Vector},
     window::Cursor,
 };
 
@@ -137,7 +135,7 @@ impl ViewState {
 
     /// Get the rect of the view in local coordinates.
     pub fn rect(&self) -> Rect {
-        Rect::min_size(Vec2::ZERO, self.size)
+        Rect::min_size(Point::ZERO, self.size)
     }
 
     /// Get the transform of the view.
@@ -151,7 +149,7 @@ impl ViewState {
     }
 
     /// Translate the transform of the view.
-    pub fn translate(&mut self, translation: Vec2) {
+    pub fn translate(&mut self, translation: Vector) {
         self.transform = Affine::translate(translation);
     }
 

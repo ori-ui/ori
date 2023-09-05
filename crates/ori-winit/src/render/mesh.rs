@@ -3,8 +3,7 @@ use std::{mem, sync::Arc};
 use bytemuck::{bytes_of, Pod, Zeroable};
 use ori_core::{
     canvas::{Mesh, Vertex},
-    layout::{Affine, Rect, Size},
-    math::Vec2,
+    layout::{Affine, Point, Rect, Size},
 };
 use wgpu::{
     include_wgsl, vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry,
@@ -98,7 +97,7 @@ impl Instance {
         let uniforms = Uniforms {
             resolution: resolution.into(),
             translation: transform.translation.into(),
-            matrix: transform.matrix.to_cols_array(),
+            matrix: transform.matrix.into(),
         };
 
         queue.write_buffer(&self.uniform_buffer, 0, bytes_of(&uniforms));
@@ -216,7 +215,7 @@ impl MeshRender {
         instance.write_index_buffer(device, queue, mesh);
         instance.write_uniform_buffer(queue, transform, resolution);
         instance.image = Some(image);
-        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution)).round();
+        instance.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize, mesh: &Mesh) {

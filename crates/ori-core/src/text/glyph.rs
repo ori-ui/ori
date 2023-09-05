@@ -1,11 +1,10 @@
 use std::{ops::Deref, sync::Arc};
 
 use fontdue::layout::GlyphRasterConfig;
-use glam::Vec2;
 
 use crate::{
     canvas::Color,
-    layout::{Rect, Size},
+    layout::{Rect, Size, Vector},
 };
 
 use super::{TextAlign, TextWrap};
@@ -72,7 +71,7 @@ impl Glyphs {
     }
 
     /// Compute the offset of the text in a `rect`.
-    pub fn offset(&self, rect: Rect) -> Vec2 {
+    pub fn offset(&self, rect: Rect) -> Vector {
         let x_diff = rect.width() - self.size().width;
         let y_diff = rect.height() - self.size().height;
 
@@ -87,7 +86,7 @@ impl Glyphs {
             TextAlign::Bottom => y_diff,
         };
 
-        Vec2::new(x_offset, y_offset)
+        Vector::new(x_offset, y_offset)
     }
 
     /// Get the color.

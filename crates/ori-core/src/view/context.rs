@@ -1,11 +1,9 @@
 use std::{any::Any, time::Instant};
 
-use glam::Vec2;
-
 use crate::{
     canvas::Mesh,
     command::{Command, CommandProxy},
-    layout::{Affine, Rect, Size},
+    layout::{Affine, Point, Rect, Size},
     text::{Fonts, Glyphs, TextSection},
     view::ViewState,
     window::{Cursor, Window},
@@ -161,7 +159,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
     }
 
     /// Transform a point from global space to local space.
-    pub fn local(&self, point: Vec2) -> Vec2 {
+    pub fn local(&self, point: Point) -> Point {
         self.transform.inverse() * point
     }
 }
@@ -259,7 +257,7 @@ impl_context! {EventCx<'_, '_>, DrawCx<'_, '_> {
 
     /// Get the rect of the view in local space.
     pub fn rect(&self) -> Rect {
-        Rect::min_size(Vec2::ZERO, self.size())
+        Rect::min_size(Point::ZERO, self.size())
     }
 }}
 

@@ -3,8 +3,6 @@ use std::{
     ops::{Add, AddAssign, Mul},
 };
 
-use glam::Vec4;
-
 /// Create a new color, with the given `red`, `green` and `blue` components.
 pub fn rgb(r: f32, g: f32, b: f32) -> Color {
     Color::rgb(r, g, b)
@@ -268,18 +266,6 @@ impl From<Color> for (f32, f32, f32, f32) {
 impl From<(f32, f32, f32, f32)> for Color {
     fn from((r, g, b, a): (f32, f32, f32, f32)) -> Self {
         Self { r, g, b, a }
-    }
-}
-
-impl From<Color> for Vec4 {
-    fn from(val: Color) -> Self {
-        Vec4::new(val.r, val.g, val.b, val.a)
-    }
-}
-
-impl From<Vec4> for Color {
-    fn from(vec: Vec4) -> Self {
-        Self::rgba(vec.x, vec.y, vec.z, vec.w)
     }
 }
 

@@ -1,6 +1,4 @@
-use glam::Vec2;
-
-use super::Size;
+use super::{Size, Vector};
 
 /// A padding of a rectangle.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -37,8 +35,8 @@ impl Padding {
     }
 
     /// Get the offset of the padding.
-    pub fn offset(&self) -> Vec2 {
-        Vec2::new(self.left, self.top)
+    pub fn offset(&self) -> Vector {
+        Vector::new(self.left, self.top)
     }
 }
 

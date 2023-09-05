@@ -1,6 +1,4 @@
-use glam::Vec2;
-
-use super::Size;
+use super::{Size, Vector};
 
 /// Alignment of content inside a container.
 #[repr(C)]
@@ -38,8 +36,8 @@ impl Alignment {
     }
 
     /// Align the content inside the container.
-    pub fn align(self, content: Size, container: Size) -> Vec2 {
-        Vec2::new(
+    pub fn align(self, content: Size, container: Size) -> Vector {
+        Vector::new(
             self.x * (container.width - content.width),
             self.y * (container.height - content.height),
         )

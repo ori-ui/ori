@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::Canvas,
     event::{Event, PointerEvent},
-    layout::{Size, Space},
+    layout::{Point, Size, Space},
     rebuild::Rebuild,
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
@@ -83,7 +81,7 @@ impl<T, V> ClickHandler<T, V> {
 #[doc(hidden)]
 #[derive(Default)]
 pub struct ClickHandlerState {
-    click_start: Vec2,
+    click_start: Point,
 }
 
 impl<T, V: View<T>> View<T> for ClickHandler<T, V> {

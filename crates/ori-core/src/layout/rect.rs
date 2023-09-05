@@ -1,29 +1,27 @@
 use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, Sub, SubAssign};
 
-use glam::Vec2;
-
-use super::{Affine, Size};
+use super::{Affine, Point, Size, Vector};
 
 /// A rectangle defined by its minimum and maximum points.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Rect {
     /// The minimum point of the rectangle.
-    pub min: Vec2,
+    pub min: Point,
     /// The maximum point of the rectangle.
-    pub max: Vec2,
+    pub max: Point,
 }
 
 impl Rect {
     /// A rectangle with zero area.
-    pub const ZERO: Self = Self::new(Vec2::ZERO, Vec2::ZERO);
+    pub const ZERO: Self = Self::new(Point::ZERO, Point::ZERO);
 
     /// Create a new rectangle with the given minimum and maximum points.
-    pub const fn new(min: Vec2, max: Vec2) -> Self {
+    pub const fn new(min: Point, max: Point) -> Self {
         Self { min, max }
     }
 
     /// Create a new rectangle with the given minimum point and size.
-    pub fn min_size(min: Vec2, size: Size) -> Self {
+    pub fn min_size(min: Point, size: Size) -> Self {
         Self {
             min,
             max: min + size,
@@ -31,7 +29,7 @@ impl Rect {
     }
 
     /// Create a new rectangle with the given maximum point and size.
-    pub fn max_size(max: Vec2, size: Size) -> Self {
+    pub fn max_size(max: Point, size: Size) -> Self {
         Self {
             min: max - size,
             max,
@@ -39,7 +37,7 @@ impl Rect {
     }
 
     /// Create a new rectangle with the given center point and size.
-    pub fn center_size(center: Vec2, size: Size) -> Self {
+    pub fn center_size(center: Point, size: Size) -> Self {
         Self {
             min: center - size / 2.0,
             max: center + size / 2.0,
@@ -83,62 +81,62 @@ impl Rect {
     }
 
     /// Get the center point of the rectangle.
-    pub fn center(self) -> Vec2 {
+    pub fn center(self) -> Point {
         self.min + self.size() / 2.0
     }
 
     /// Get the top left point of the rectangle.
-    pub fn top_left(self) -> Vec2 {
+    pub fn top_left(self) -> Point {
         self.min
     }
 
     /// Get the top center point of the rectangle.
-    pub fn top(self) -> Vec2 {
-        Vec2::new(self.center().x, self.min.y)
+    pub fn top(self) -> Point {
+        Point::new(self.center().x, self.min.y)
     }
 
     /// Get the top right point of the rectangle.
-    pub fn top_right(self) -> Vec2 {
-        Vec2::new(self.max.x, self.min.y)
+    pub fn top_right(self) -> Point {
+        Point::new(self.max.x, self.min.y)
     }
 
     /// Get the left center point of the rectangle.
-    pub fn left(self) -> Vec2 {
-        Vec2::new(self.min.x, self.center().y)
+    pub fn left(self) -> Point {
+        Point::new(self.min.x, self.center().y)
     }
 
     /// Get the right center point of the rectangle.
-    pub fn right(self) -> Vec2 {
-        Vec2::new(self.max.x, self.center().y)
+    pub fn right(self) -> Point {
+        Point::new(self.max.x, self.center().y)
     }
 
     /// Get the bottom left point of the rectangle.
-    pub fn bottom_left(self) -> Vec2 {
-        Vec2::new(self.min.x, self.max.y)
+    pub fn bottom_left(self) -> Point {
+        Point::new(self.min.x, self.max.y)
     }
 
     /// Get the bottom center point of the rectangle.
-    pub fn bottom(self) -> Vec2 {
-        Vec2::new(self.center().x, self.max.y)
+    pub fn bottom(self) -> Point {
+        Point::new(self.center().x, self.max.y)
     }
 
     /// Get the bottom right point of the rectangle.
-    pub fn bottom_right(self) -> Vec2 {
+    pub fn bottom_right(self) -> Point {
         self.max
     }
 
     /// Compute whether the rectangle contains the given point.
-    pub fn contains(self, point: Vec2) -> bool {
+    pub fn contains(self, point: Point) -> bool {
         let x = point.x >= self.min.x && point.x <= self.max.x;
         let y = point.y >= self.min.y && point.y <= self.max.y;
         x && y
     }
 
     /// Compute the closest point in the rectangle to the given point.
-    pub fn contain(self, point: Vec2) -> Vec2 {
+    pub fn contain(self, point: Point) -> Point {
         let x = point.x.max(self.min.x).min(self.max.x);
         let y = point.y.max(self.min.y).min(self.max.y);
-        Vec2::new(x, y)
+        Point::new(x, y)
     }
 
     /// Compute the intersection of the rectangle with the given rectangle.
@@ -150,8 +148,8 @@ impl Rect {
 
         if min_x <= max_x && min_y <= max_y {
             Some(Self {
-                min: Vec2::new(min_x, min_y),
-                max: Vec2::new(max_x, max_y),
+                min: Point::new(min_x, min_y),
+                max: Point::new(max_x, max_y),
             })
         } else {
             None
@@ -179,16 +177,16 @@ impl Rect {
         let max_y = f32::max(f32::max(tl.y, tr.y), f32::max(bl.y, br.y));
 
         Self {
-            min: Vec2::new(min_x, min_y),
-            max: Vec2::new(max_x, max_y),
+            min: Point::new(min_x, min_y),
+            max: Point::new(max_x, max_y),
         }
     }
 }
 
-impl Add<Vec2> for Rect {
+impl Add<Vector> for Rect {
     type Output = Self;
 
-    fn add(self, rhs: Vec2) -> Self::Output {
+    fn add(self, rhs: Vector) -> Self::Output {
         Self {
             min: self.min + rhs,
             max: self.max + rhs,
@@ -207,10 +205,10 @@ impl Add<Size> for Rect {
     }
 }
 
-impl Sub<Vec2> for Rect {
+impl Sub<Vector> for Rect {
     type Output = Self;
 
-    fn sub(self, rhs: Vec2) -> Self::Output {
+    fn sub(self, rhs: Vector) -> Self::Output {
         Self {
             min: self.min - rhs,
             max: self.max - rhs,
@@ -229,8 +227,8 @@ impl Sub<Size> for Rect {
     }
 }
 
-impl AddAssign<Vec2> for Rect {
-    fn add_assign(&mut self, rhs: Vec2) {
+impl AddAssign<Vector> for Rect {
+    fn add_assign(&mut self, rhs: Vector) {
         self.min += rhs;
         self.max += rhs;
     }
@@ -242,8 +240,8 @@ impl AddAssign<Size> for Rect {
     }
 }
 
-impl SubAssign<Vec2> for Rect {
-    fn sub_assign(&mut self, rhs: Vec2) {
+impl SubAssign<Vector> for Rect {
+    fn sub_assign(&mut self, rhs: Vector) {
         self.min -= rhs;
         self.max -= rhs;
     }

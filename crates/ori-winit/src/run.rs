@@ -3,7 +3,7 @@ use std::{collections::HashMap, mem};
 use futures_lite::future;
 use ori_core::{
     event::{Modifiers, PointerButton, PointerId},
-    math::Vec2,
+    layout::{Point, Vector},
     ui::Ui,
     window::{UiBuilder, Window, WindowDescriptor},
 };
@@ -154,7 +154,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                         app.ui.pointer_moved(
                             window_id,
                             PointerId::from_hash(&device_id),
-                            Vec2::new(position.x as f32, position.y as f32),
+                            Point::new(position.x as f32, position.y as f32),
                         );
                     }
                     WindowEvent::CursorLeft { device_id } => {
@@ -181,11 +181,11 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                         app.ui.pointer_scroll(
                             window_id,
                             PointerId::from_hash(&device_id),
-                            Vec2::new(x, y),
+                            Vector::new(x, y),
                         );
                     }
                     WindowEvent::Touch(event) => {
-                        let position = Vec2::new(event.location.x as f32, event.location.y as f32);
+                        let position = Point::new(event.location.x as f32, event.location.y as f32);
                         let pointer_id = PointerId::from_hash(&event.device_id);
 
                         app.ui.pointer_moved(window_id, pointer_id, position);

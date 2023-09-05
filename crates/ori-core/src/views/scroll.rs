@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
     event::{AnimationFrame, Event, HotChanged, PointerEvent},
-    layout::{Axis, Rect, Size, Space},
+    layout::{Axis, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     theme::{scroll, style},
     transition::Transition,
@@ -69,7 +67,7 @@ impl<V> Scroll<V> {
 
         let major_min = self.inset;
         let minor_min = minor - self.width - self.inset;
-        let offset = self.axis.pack::<Vec2>(major_min, minor_min);
+        let offset = self.axis.pack::<Vector>(major_min, minor_min);
 
         Rect::min_size(rect.top_left() + offset, self.axis.pack(length, self.width))
     }

@@ -4,11 +4,10 @@ use fontdue::{
     layout::{CoordinateSystem, HorizontalAlign, Layout, LayoutSettings, TextStyle, VerticalAlign},
     Font, FontSettings, Metrics,
 };
-use glam::Vec2;
 
 use crate::{
     canvas::{Mesh, Vertex},
-    layout::{Rect, Size},
+    layout::{Point, Rect, Size},
 };
 
 use super::{FontAtlas, FontQuery, FontSource, FontsError, Glyph, Glyphs, TextSection, TextWrap};
@@ -223,7 +222,7 @@ impl Fonts {
                 };
                 let advance = metrics.advance_width;
 
-                let min = Vec2::new(glyph.x, glyph.y);
+                let min = Point::new(glyph.x, glyph.y);
                 let size = Size::new(metrics.width as f32, metrics.height as f32);
 
                 let glyph = Glyph {
@@ -308,7 +307,7 @@ impl Fonts {
         let mut mesh = Mesh::new();
 
         for (glyph, uv) in glyphs.iter().zip(uvs) {
-            let rect = Rect::round(glyph.rect + rect.min + offset);
+            let rect = Rect::round(glyph.rect + rect.min.to_vector() + offset);
             let index = mesh.vertices.len() as u32;
 
             mesh.vertices.push(Vertex {

@@ -1,6 +1,4 @@
-use glam::Vec2;
-
-use crate::layout::{Affine, Rect, Size};
+use crate::layout::{Affine, Point, Rect, Size, Vector};
 
 use super::{BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad, Scene};
 
@@ -22,7 +20,7 @@ impl<'a> Canvas<'a> {
             scene,
             transform: Affine::IDENTITY,
             depth: 0.0,
-            clip: Rect::min_size(Vec2::ZERO, window_size),
+            clip: Rect::min_size(Point::ZERO, window_size),
         }
     }
 
@@ -42,7 +40,7 @@ impl<'a> Canvas<'a> {
     }
 
     /// Translate the canvas.
-    pub fn translate(&mut self, translation: Vec2) {
+    pub fn translate(&mut self, translation: Vector) {
         self.transform *= Affine::translate(translation);
     }
 
@@ -52,7 +50,7 @@ impl<'a> Canvas<'a> {
     }
 
     /// Scale the canvas.
-    pub fn scale(&mut self, scale: Vec2) {
+    pub fn scale(&mut self, scale: Vector) {
         self.transform *= Affine::scale(scale);
     }
 

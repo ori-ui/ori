@@ -3,8 +3,7 @@ use std::mem;
 use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
 use ori_core::{
     canvas::Quad,
-    layout::{Affine, Rect, Size},
-    math::Vec2,
+    layout::{Affine, Point, Rect, Size},
 };
 use wgpu::{
     include_wgsl,
@@ -132,7 +131,7 @@ impl Instance {
         let uniforms = Uniforms {
             resolution: resolution.into(),
             translation: transform.translation.round().into(),
-            matrix: transform.matrix.to_cols_array(),
+            matrix: transform.matrix.into(),
             min: quad.rect.min.round().into(),
             max: quad.rect.max.round().into(),
             color: quad.color.into(),
@@ -249,7 +248,7 @@ impl QuadRender {
         let instance = &mut self.instances[index];
         instance.write_vertex_buffer(queue, quad);
         instance.write_uniform_buffer(queue, quad, transform, resolution);
-        instance.clip = clip.clamp(Rect::min_size(Vec2::ZERO, resolution)).round();
+        instance.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {

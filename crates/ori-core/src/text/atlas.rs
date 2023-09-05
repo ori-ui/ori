@@ -2,11 +2,10 @@ use std::{collections::HashMap, fmt::Debug};
 
 use etagere::{size2, AtlasAllocator};
 use fontdue::{layout::GlyphRasterConfig, Font};
-use glam::UVec2;
 
 use crate::{
     image::{Image, ImageData},
-    layout::{Rect, Size},
+    layout::{Point, Rect, Size},
 };
 
 /// A font atlas managing a texture of rasterized glyphs.
@@ -48,25 +47,24 @@ impl FontAtlas {
     }
 
     /// Returns the size of the atlas in pixels.
-    pub fn size(&self) -> UVec2 {
-        let size = self.allocator.size();
-        UVec2::new(size.width as u32, size.height as u32)
+    pub fn size(&self) -> u32 {
+        self.allocator.size().width as u32
     }
 
     /// Grows the atlas to the next power of two.
     pub fn grow(&mut self) {
-        let size = if self.size().x == 0 {
-            UVec2::splat(512)
+        let size = if self.size() == 1 {
+            512
         } else {
             self.size() * 2
         };
 
         // resize the allocator
-        self.allocator = AtlasAllocator::new(size2(size.x as i32, size.y as i32));
+        self.allocator = AtlasAllocator::new(size2(size as i32, size as i32));
 
         // resize the image
-        let image_size = size.x as usize * size.y as usize * 4;
-        let image_data = ImageData::new(vec![0; image_size], size.x, size.y);
+        let image_size = size as usize * size as usize * 4;
+        let image_data = ImageData::new(vec![0; image_size], size, size);
         self.image = Image::from(image_data);
 
         // clear the glyph cache
@@ -94,10 +92,9 @@ impl FontAtlas {
         );
         let allocation = self.allocator.allocate(allocation_size)?;
 
-        let min = UVec2::new(
-            allocation.rectangle.min.x as u32 + Self::PADDING,
-            allocation.rectangle.min.y as u32 + Self::PADDING,
-        );
+        let min_x = allocation.rectangle.min.x as u32 + Self::PADDING;
+        let min_y = allocation.rectangle.min.y as u32 + Self::PADDING;
+
         let size = Size::new(metrics.width as f32, metrics.height as f32);
 
         self.image.modify(|data| {
@@ -106,14 +103,14 @@ impl FontAtlas {
                     let index = y * metrics.width + x;
                     let pixel = pixels[index];
 
-                    let x = x as u32 + min.x;
-                    let y = y as u32 + min.y;
+                    let x = x as u32 + min_x;
+                    let y = y as u32 + min_y;
                     data.set_pixel(x, y, [255, 255, 255, pixel]);
                 }
             }
         });
 
-        let rect = Rect::min_size(min.as_vec2(), size);
+        let rect = Rect::min_size(Point::new(min_x as f32, min_y as f32), size);
         self.glyphs.insert(config, rect);
 
         Some(rect)
@@ -125,7 +122,7 @@ impl FontAtlas {
     pub fn glyph_rect_uv(&mut self, font: &Font, config: GlyphRasterConfig) -> Option<Rect> {
         let rect = self.glyph_rect(font, config)?;
 
-        let size = self.size().as_vec2();
+        let size = Size::all(self.size() as f32);
         let min = rect.min / size;
         let max = rect.max / size;
 

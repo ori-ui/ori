@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color, Quad},
     event::{AnimationFrame, Code, Event, Focused, KeyboardEvent, Modifiers, PointerEvent},
-    layout::{Rect, Size, Space},
+    layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, TextAlign, TextSection,
@@ -255,7 +253,7 @@ impl<T> TextInput<T> {
         }
     }
 
-    fn hit_text(&mut self, state: &mut TextInputState, data: &mut T, local: Vec2) -> usize {
+    fn hit_text(&mut self, state: &mut TextInputState, data: &mut T, local: Point) -> usize {
         if self.get_text(state, data).is_empty() {
             return 0;
         }
@@ -465,7 +463,7 @@ impl<T> TextInput<T> {
 
     fn input_up(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
         if let Some(position) = self.cursor_position(state, cx.rect()) {
-            let line_offset = Vec2::NEG_Y * self.font_size * self.line_height * 0.8;
+            let line_offset = Vector::NEG_Y * self.font_size * self.line_height * 0.8;
 
             state.cursor_index = self.hit_text(state, data, position + line_offset);
             cx.request_draw();
@@ -474,7 +472,7 @@ impl<T> TextInput<T> {
 
     fn input_down(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
         if let Some(position) = self.cursor_position(state, cx.rect()) {
-            let line_offset = Vec2::Y * self.font_size * self.line_height * 0.8;
+            let line_offset = Vector::Y * self.font_size * self.line_height * 0.8;
 
             state.cursor_index = self.hit_text(state, data, position + line_offset);
             cx.request_draw();
@@ -516,16 +514,16 @@ impl<T> TextInput<T> {
             .copied()
     }
 
-    fn glyph_position(&self, state: &TextInputState) -> Option<Vec2> {
+    fn glyph_position(&self, state: &TextInputState) -> Option<Point> {
         let glyph = self.find_glyph(state)?;
 
-        Some(Vec2::new(
+        Some(Point::new(
             glyph.rect.min.x,
             glyph.baseline - (glyph.line_ascent + glyph.line_descent) / 2.0,
         ))
     }
 
-    fn cursor_position(&self, state: &TextInputState, rect: Rect) -> Option<Vec2> {
+    fn cursor_position(&self, state: &TextInputState, rect: Rect) -> Option<Point> {
         let offset = state.glyphs.as_ref()?.offset(rect);
 
         match self.glyph_position(state) {

@@ -42,9 +42,11 @@ pub mod prelude {
             PointerButton, PointerEvent, PointerId,
         },
         image::{Image, ImageData, ImageId},
-        layout::{Affine, Align, Alignment, Axis, Justify, Padding, Rect, Size, Space},
+        layout::{
+            Affine, Align, Alignment, Axis, Justify, Matrix, Padding, Point, Rect, Size, Space,
+            Vector,
+        },
         log::*,
-        math::*,
         rebuild::Rebuild,
         text::{
             font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, FontsError,

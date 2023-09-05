@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::Canvas,
     event::Event,
-    layout::{Affine, Size, Space},
+    layout::{Affine, Size, Space, Vector},
     rebuild::Rebuild,
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
@@ -14,7 +12,7 @@ pub fn transform<V>(transform: Affine, content: V) -> Transform<V> {
 }
 
 /// Create a new [`Transform`] view that translates its content.
-pub fn translate<V>(translation: impl Into<Vec2>, content: V) -> Transform<V> {
+pub fn translate<V>(translation: impl Into<Vector>, content: V) -> Transform<V> {
     Transform::new(Affine::translate(translation.into()), content)
 }
 
@@ -24,7 +22,7 @@ pub fn rotate<V>(rotation: f32, content: V) -> Transform<V> {
 }
 
 /// Create a new [`Transform`] view that scales its content.
-pub fn scale<V>(scale: impl Into<Vec2>, content: V) -> Transform<V> {
+pub fn scale<V>(scale: impl Into<Vector>, content: V) -> Transform<V> {
     Transform::new(Affine::scale(scale.into()), content)
 }
 
@@ -73,7 +71,7 @@ impl<T, V: View<T>> View<T> for Transform<V> {
         space: Space,
     ) -> Size {
         let size = self.content.layout(state, cx, data, space);
-        let center = Affine::translate(size.to_vec() / 2.0);
+        let center = Affine::translate(size.to_vector() / 2.0);
         state.set_transform(center * self.transform * center.inverse());
 
         size

@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use glam::Vec2;
+use crate::layout::{Point, Vector};
 
 use super::Modifiers;
 
@@ -28,12 +28,12 @@ pub struct Pointer {
     /// The unique id of the pointer.
     pub(crate) id: PointerId,
     /// The position of the pointer.
-    pub(crate) position: Vec2,
+    pub(crate) position: Point,
 }
 
 impl Pointer {
     /// Create a new pointer.
-    pub fn new(id: PointerId, position: Vec2) -> Self {
+    pub fn new(id: PointerId, position: Point) -> Self {
         Self { id, position }
     }
 
@@ -43,7 +43,7 @@ impl Pointer {
     }
 
     /// Get the position of the pointer.
-    pub fn position(&self) -> Vec2 {
+    pub fn position(&self) -> Point {
         self.position
     }
 }
@@ -67,11 +67,11 @@ pub struct PointerEvent {
     /// The unique id of the pointer.
     pub id: PointerId,
     /// The position of the pointer.
-    pub position: Vec2,
+    pub position: Point,
     /// The delta of the pointer.
-    pub delta: Vec2,
+    pub delta: Vector,
     /// The delta of the pointer wheel.
-    pub scroll: Vec2,
+    pub scroll: Vector,
     /// Whether the pointer is pressed.
     pub pressed: bool,
     /// Whether the pointer left the window.
@@ -87,9 +87,9 @@ impl PointerEvent {
     pub fn new(id: PointerId) -> Self {
         Self {
             id,
-            position: Vec2::ZERO,
-            delta: Vec2::ZERO,
-            scroll: Vec2::ZERO,
+            position: Point::ZERO,
+            delta: Vector::ZERO,
+            scroll: Vector::ZERO,
             pressed: false,
             left: false,
             button: None,
@@ -99,12 +99,12 @@ impl PointerEvent {
 
     /// Returns true if the event is a move event.
     pub fn is_move(&self) -> bool {
-        self.delta != Vec2::ZERO && self.button.is_none()
+        self.delta != Vector::ZERO && self.button.is_none()
     }
 
     /// Returns true if the event is a scroll event.
     pub fn is_scroll(&self) -> bool {
-        self.scroll != Vec2::ZERO && self.button.is_none()
+        self.scroll != Vector::ZERO && self.button.is_none()
     }
 
     /// Returns true if `button` was pressed.

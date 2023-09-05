@@ -1,9 +1,7 @@
-use glam::Vec2;
-
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     event::{AnimationFrame, Event, PointerEvent},
-    layout::{Affine, Padding, Rect, Size, Space},
+    layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
@@ -65,7 +63,7 @@ impl<V> Alt<V> {
 pub struct AltState {
     pub glyphs: Option<Glyphs>,
     pub timer: f32,
-    pub position: Vec2,
+    pub position: Point,
 }
 
 impl<T, V: View<T>> View<T> for Alt<V> {
@@ -75,7 +73,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         let state = AltState {
             glyphs: None,
             timer: 0.0,
-            position: Vec2::ZERO,
+            position: Point::ZERO,
         };
 
         (state, self.content.build(cx, data))
@@ -172,7 +170,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         }
 
         let size = glyphs.size() + self.padding.size();
-        let offset = Vec2::new(-size.width / 2.0, pt(20.0));
+        let offset = Vector::new(-size.width / 2.0, pt(20.0));
         let text_rect = Rect::min_size(
             state.position + offset + self.padding.offset(),
             glyphs.size(),
@@ -181,7 +179,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         let mut layer = canvas.layer();
         layer.transform = Affine::IDENTITY;
         layer.depth += 1000.0;
-        layer.clip = Rect::min_size(Vec2::ZERO, cx.window().size());
+        layer.clip = Rect::min_size(Point::ZERO, cx.window().size());
 
         layer.draw_quad(
             Rect::min_size(state.position + offset, size),

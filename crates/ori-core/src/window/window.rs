@@ -1,11 +1,9 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use glam::Vec2;
-
 use crate::{
     event::{Pointer, PointerId},
     image::Image,
-    layout::Size,
+    layout::{Point, Size},
 };
 
 use super::{Cursor, RawWindow, WindowDescriptor};
@@ -72,7 +70,7 @@ impl Window {
         self.pointers.iter_mut().find(|p| p.id() == id)
     }
 
-    pub(crate) fn pointer_moved(&mut self, id: PointerId, position: Vec2) {
+    pub(crate) fn pointer_moved(&mut self, id: PointerId, position: Point) {
         if let Some(pointer) = self.pointer_mut(id) {
             pointer.position = position;
         } else {

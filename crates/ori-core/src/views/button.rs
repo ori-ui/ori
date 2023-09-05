@@ -5,7 +5,7 @@ use crate::{
     event::{AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
-    theme::{button, style},
+    theme::{button, pt, style},
     transition::Transition,
     view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
 };
@@ -48,7 +48,7 @@ impl<V> Button<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Content::new(content),
-            padding: Padding::all(8.0),
+            padding: Padding::all(pt(8.0)),
             fancy: 0.0,
             transition: style(button::TRANSITION),
             color: style(button::COLOR),

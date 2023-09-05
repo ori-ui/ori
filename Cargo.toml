@@ -16,12 +16,13 @@ members = ["crates/*"]
 [dependencies]
 # Internal dependencies
 ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
+ori-macro = { path = "crates/ori-macro", version = "0.1.0-alpha.1" }
 
 # Optional dependencies
 ori-font-awesome = { path = "crates/ori-font-awesome", version = "0.1.0-alpha.1", optional = true }
 
 # Backend dependencies
-ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1", optional = true }
+ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1", optional = true }
 
 [dev-dependencies.ori]
 path = "."
@@ -29,16 +30,13 @@ version = "0.1.0-alpha.1"
 features = ["font-awesome", "image", "tracing"]
 
 [features]
-default = ["wgpu"]
+default = ["winit"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
-tracing = ["ori-core/tracing", "ori-wgpu/tracing"]
+tracing = ["ori-core/tracing", "ori-winit/tracing"]
 
 # All features
 full = ["font-awesome", "image", "tracing"]
 
 # Backend features
-wgpu = ["dep:ori-wgpu"]
-
-[profile.dev]
-debug = false
+winit = ["dep:ori-winit"]

@@ -10,7 +10,7 @@ use ori_core::{
     view::View,
     window::{UiBuilder, WindowDescriptor},
 };
-use winit::event_loop::EventLoop;
+use winit::event_loop::{EventLoop, EventLoopBuilder};
 
 use crate::{proxy::WinitWaker, render::WgpuRender, Error};
 
@@ -24,13 +24,25 @@ pub struct App<T> {
 }
 
 impl<T: 'static> App<T> {
+    fn build_event_loop() -> EventLoop<()> {
+        let mut builder = EventLoopBuilder::new();
+
+        #[cfg(target_os = "android")]
+        {
+            use winit::platform::android::EventLoopBuilderExtAndroid;
+            builder.with_android_app(crate::__private::get_android_app());
+        }
+
+        builder.build()
+    }
+
     /// Creates a new application.
     pub fn new<V>(mut builder: impl FnMut(&mut T) -> V + 'static, data: T) -> Self
     where
         V: View<T> + 'static,
         V::State: 'static,
     {
-        let event_loop = EventLoop::new();
+        let event_loop = Self::build_event_loop();
 
         let waker = WinitWaker {
             proxy: event_loop.create_proxy().into(),

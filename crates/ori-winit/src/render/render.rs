@@ -39,7 +39,20 @@ impl WgpuRender {
 
         let config = surface.get_default_config(&instance.adapter, width, height);
         let mut config = config.ok_or(RenderError::SurfaceIncompatible)?;
-        config.format = TextureFormat::Bgra8Unorm;
+
+        match config.format {
+            TextureFormat::Bgra8UnormSrgb => {
+                config.format = TextureFormat::Bgra8Unorm;
+            }
+            TextureFormat::Rgba8UnormSrgb => {
+                config.format = TextureFormat::Rgba8Unorm;
+            }
+            TextureFormat::Bgra8Unorm | TextureFormat::Rgba8Unorm => {}
+            _ => {
+                return Err(RenderError::SurfaceIncompatible);
+            }
+        }
+
         config.alpha_mode = CompositeAlphaMode::Auto;
         config.present_mode = PresentMode::AutoVsync;
         surface.configure(&device, &config);

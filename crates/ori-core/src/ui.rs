@@ -3,6 +3,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use glam::Vec2;
+use ori_macro::font;
 
 use crate::{
     canvas::SceneRender,
@@ -34,13 +35,17 @@ pub struct Ui<T, R: SceneRender> {
 impl<T, R: SceneRender> Ui<T, R> {
     /// Create a new [`Ui`] with the given data.
     pub fn new(data: T, waker: Arc<dyn EventLoopWaker>) -> Self {
+        let mut fonts = Fonts::default();
+
+        fonts.load_font(font!("font/NotoSans-Regular.ttf")).unwrap();
+
         Self {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegate: Box::new(()),
             themes: Vec::new(),
             commands: CommandProxy::new(waker),
-            fonts: Fonts::default(),
+            fonts,
             data,
         }
     }
@@ -193,6 +198,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     /// Tell the UI that a window has been resized.
     pub fn resized(&mut self, window_id: WindowId) {
         self.rebuild_theme(window_id);
+        self.window_mut(window_id).request_layout();
     }
 
     fn pointer_position(&self, window_id: WindowId, id: PointerId) -> Vec2 {

@@ -103,6 +103,12 @@ impl<T, V: View<T>> View<T> for Container<V> {
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         self.content.event(state, cx, data, event);
+
+        if let Some(pointer) = event.get::<PointerEvent>() {
+            if cx.is_hot() && pointer.is_move() {
+                event.handle();
+            }
+        }
     }
 
     fn layout(

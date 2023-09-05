@@ -1,11 +1,14 @@
-use std::fmt::Debug;
+use std::{
+    any::{Any, TypeId},
+    fmt::Debug,
+};
 
 use crate::image::Image;
 
 use super::Cursor;
 
 /// A wrapper around a raw window.
-pub trait RawWindow {
+pub trait RawWindow: Any {
     /// Get the title of the window.
     fn title(&self) -> String;
     /// Set the title of the window.
@@ -60,5 +63,21 @@ impl Debug for dyn RawWindow {
             .field("title", &self.title())
             .field("size", &self.size())
             .finish()
+    }
+}
+
+impl dyn RawWindow {
+    /// Check if the window is of a specific type.
+    pub fn is<T: RawWindow>(&self) -> bool {
+        <dyn RawWindow>::type_id(self) == TypeId::of::<T>()
+    }
+
+    /// Try to downcast the window to a specific type.
+    pub fn downcast_ref<T: RawWindow>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            unsafe { Some(&*(self as *const dyn RawWindow as *const T)) }
+        } else {
+            None
+        }
     }
 }

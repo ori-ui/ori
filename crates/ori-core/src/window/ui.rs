@@ -235,6 +235,11 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         }
     }
 
+    /// Set the render.
+    pub fn set_render(&mut self, render: R) {
+        self.render = render;
+    }
+
     /// Render the scene.
     ///
     /// This will rebuild, layout or draw the view if necessary.

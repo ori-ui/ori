@@ -7,7 +7,7 @@ use winit::{dpi::PhysicalSize, window::Icon};
 use crate::convert::convert_cursor_icon;
 
 pub struct WinitWindow {
-    window: winit::window::Window,
+    pub(crate) window: winit::window::Window,
 }
 
 impl From<winit::window::Window> for WinitWindow {

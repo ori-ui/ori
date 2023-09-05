@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+mod entry;
 mod font;
 mod rebuild;
 
@@ -24,6 +25,20 @@ fn find_core() -> syn::Path {
                 syn::parse_quote!(#ori::core)
             }
             Err(_) => syn::parse_quote!(ori::core),
+        },
+    }
+}
+
+#[allow(dead_code)]
+fn find_winit() -> syn::Path {
+    match proc_macro_crate::crate_name("ori-winit") {
+        Ok(krate) => found_crate(krate),
+        Err(_) => match proc_macro_crate::crate_name("ori") {
+            Ok(krate) => {
+                let ori = found_crate(krate);
+                syn::parse_quote!(#ori::winit)
+            }
+            Err(_) => syn::parse_quote!(ori::winit),
         },
     }
 }
@@ -51,4 +66,14 @@ pub fn font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::Token
 #[proc_macro_derive(Rebuild, attributes(rebuild))]
 pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     rebuild::derive_rebuild(input)
+}
+
+/// The `main` function for the Ori application.
+#[manyhow::manyhow]
+#[proc_macro_attribute]
+pub fn main(
+    args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    entry::main(args, input)
 }

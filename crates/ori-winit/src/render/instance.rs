@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use wgpu::{Adapter, Device, Instance, PowerPreference, Queue, RequestAdapterOptions, Surface};
+use wgpu::{
+    Adapter, Device, DeviceDescriptor, Features, Instance, PowerPreference, Queue,
+    RequestAdapterOptions, Surface,
+};
 
 use crate::RenderError;
 
@@ -31,7 +34,19 @@ impl WgpuRenderInstance {
         let adapter = instance.request_adapter(&options).await;
         let adapter = adapter.ok_or(RenderError::AdapterNotFound)?;
 
-        let (device, queue) = adapter.request_device(&Default::default(), None).await?;
+        let (device, queue) = adapter
+            .request_device(
+                &DeviceDescriptor {
+                    label: Some("ori-device"),
+                    features: Features::empty(),
+                    #[cfg(target_os = "android")]
+                    limits: wgpu::Limits::downlevel_webgl2_defaults()
+                        .using_resolution(adapter.limits()),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await?;
 
         let instance = Self {
             instance,

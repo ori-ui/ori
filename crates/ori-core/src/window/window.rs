@@ -86,6 +86,11 @@ impl Window {
         }
     }
 
+    /// Try to downcast the window to a specific type.
+    pub fn downcast_raw<T: RawWindow>(&self) -> Option<&T> {
+        self.raw.downcast_ref()
+    }
+
     /// Get the title of the window.
     pub fn title(&self) -> String {
         self.raw.title()

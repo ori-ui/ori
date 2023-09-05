@@ -3,6 +3,8 @@
 //! Ori is a cross-platform declarative UI framework for Rust, with a focus on
 //! simplicity and performance.
 
+pub use ori_macro::main;
+
 pub mod core {
     //! Ori [`core`](ori_core) module.
 
@@ -16,18 +18,18 @@ pub mod font_awesome {
     pub use ori_font_awesome::*;
 }
 
-#[cfg(feature = "wgpu")]
-pub mod wgpu {
-    //! Ori [`wgpu`](ori_wgpu) integration.
+#[cfg(feature = "winit")]
+pub mod winit {
+    //! Ori [`winit`](ori_wgpu) integration.
 
-    pub use ori_wgpu::*;
+    pub use ori_winit::*;
 }
 
 pub mod prelude {
     //! Convenient imports for Ori.
 
-    #[cfg(feature = "wgpu")]
-    pub use crate::wgpu::App;
+    #[cfg(feature = "winit")]
+    pub use crate::winit::App;
 
     pub use ori_core::{
         canvas::{

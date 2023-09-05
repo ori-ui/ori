@@ -173,9 +173,15 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                 }
             }
 
-            // FIXME: i can't remember why this is here
+            // don't propagate pointer events when the pointer is outside the scroll area
             if !cx.is_hot() && !pointer.is_release() {
+                let is_handled = event.is_handled();
+
                 event.handle();
+                self.content.event(content, cx, data, event);
+                event.set_handled(is_handled);
+
+                return;
             }
         }
 

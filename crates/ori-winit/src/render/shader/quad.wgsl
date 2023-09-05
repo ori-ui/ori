@@ -2,8 +2,8 @@ struct Uniforms {
 	resolution: vec2<f32>,
 	translation: vec2<f32>,
 	matrix: mat2x2<f32>,
-	min: vec2<f32>,
-	max: vec2<f32>,
+	rect_min: vec2<f32>,
+	rect_max: vec2<f32>,
 	color: vec4<f32>,
     border_radius: vec4<f32>,
     border_width: vec4<f32>,
@@ -42,12 +42,12 @@ fn vertex(in: VertexInput) -> VertexOutput {
 
 fn quad_distance(
 	position: vec2<f32>,
-	min: vec2<f32>,
-	max: vec2<f32>,
+	rect_min: vec2<f32>,
+	rect_max: vec2<f32>,
 	radius: f32,
 ) -> f32 {
-	let min_distance = min - position + radius;
-	let max_distance = position - max + radius;
+	let min_distance = rect_min - position + radius;
+	let max_distance = position - rect_max + radius;
 
 	let dist = vec2<f32>(
 		max(max(min_distance.x, max_distance.x), 0.0),
@@ -59,11 +59,11 @@ fn quad_distance(
 
 fn select_border_radius(
 	position: vec2<f32>, 
-	min: vec2<f32>, 
-	max: vec2<f32>,
+	rect_min: vec2<f32>, 
+	rect_max: vec2<f32>,
 	radi: vec4<f32>,
 ) -> f32 {
-	let center = (min + max) / 2.0;
+	let center = (rect_min + rect_max) / 2.0;
 
 	let rx = select(radi.x, radi.y, position.x > center.x);
 	let ry = select(radi.w, radi.z, position.x > center.x);
@@ -72,21 +72,21 @@ fn select_border_radius(
 
 fn select_border_width(
 	position: vec2<f32>, 
-	min: vec2<f32>, 
-	max: vec2<f32>,
+	rect_min: vec2<f32>, 
+	rect_max: vec2<f32>,
 	width: vec4<f32>,
 	radius: f32,
 ) -> f32 {
-	let center = (min + max) / 2.0;
+	let center = (rect_min + rect_max) / 2.0;
 	let diff = position - center;
 	var dx = select(
-		position.x - min.x - max(width.w, radius), 
-		max.x - position.x - max(width.y, radius),
+		position.x - rect_min.x - max(width.w, radius), 
+		rect_max.x - position.x - max(width.y, radius),
 		diff.x > 0.0
 	);
 	var dy = select(
-		position.y - min.y - max(width.x, radius),
-		max.y - position.y - max(width.z, radius),
+		position.y - rect_min.y - max(width.x, radius),
+		rect_max.y - position.y - max(width.z, radius),
 		diff.y > 0.0
 	);
 
@@ -101,15 +101,15 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
 	let border_radius = select_border_radius(
 		in.position,
-		uniforms.min,
-		uniforms.max,
+		uniforms.rect_min,
+		uniforms.rect_max,
 		uniforms.border_radius,
 	);
 
 	let border_width = select_border_width(
 		in.position,
-		uniforms.min,
-		uniforms.max,
+		uniforms.rect_min,
+		uniforms.rect_max,
 		uniforms.border_width,
 		border_radius,
 	);
@@ -119,8 +119,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
 		let internal_dist = quad_distance(
 			in.position,
-			uniforms.min + vec2<f32>(border_width),
-			uniforms.max - vec2<f32>(border_width),
+			uniforms.rect_min + vec2<f32>(border_width),
+			uniforms.rect_max - vec2<f32>(border_width),
 			internal_border,
 		);
 
@@ -135,8 +135,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
 	let dist = quad_distance(
 		in.position,
-		uniforms.min,
-		uniforms.max,
+		uniforms.rect_min,
+		uniforms.rect_max,
 		border_radius,
 	);
 

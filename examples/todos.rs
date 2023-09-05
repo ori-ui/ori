@@ -213,6 +213,7 @@ fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
     }
 }
 
+#[ori::main]
 fn main() {
     App::new(app, Data::default())
         .title("Todos (examples/todos.rs)")

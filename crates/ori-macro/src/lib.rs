@@ -68,7 +68,18 @@ pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_ma
     rebuild::derive_rebuild(input)
 }
 
-/// The `main` function for the Ori application.
+/// A macro to generate boilerplate for the `main` function.
+///
+/// This is useful when targeting mobile platforms.
+///
+/// If you're using `#[tokio::main]`, `#[ori::main]` must come *first*, like so:
+/// ```ignore
+/// #[ori::main]
+/// #[tokio::main]
+/// async fn main() {
+///    // ...
+/// }
+/// ```
 #[manyhow::manyhow]
 #[proc_macro_attribute]
 pub fn main(

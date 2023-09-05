@@ -20,7 +20,7 @@ use crate::{
     App, Error,
 };
 
-fn init<T>(
+unsafe fn init<T>(
     ids: &mut HashMap<winit::window::WindowId, ori_core::window::WindowId>,
     window_desc: WindowDescriptor,
     target: &EventLoopWindowTarget<()>,
@@ -68,22 +68,20 @@ fn init<T>(
     ui.init();
 }
 
-fn recreate_surfaces<T>(ui: &mut Ui<T, WgpuRender>, instance: &WgpuRenderInstance) {
+unsafe fn recreate_surfaces<T>(ui: &mut Ui<T, WgpuRender>, instance: &WgpuRenderInstance) {
     for window_id in ui.window_ids() {
         let window = ui.window_mut(window_id);
 
-        unsafe {
-            let width = window.window().width();
-            let height = window.window().height();
+        let width = window.window().width();
+        let height = window.window().height();
 
-            let surface = {
-                let window = window.window().downcast_raw::<WinitWindow>().unwrap();
-                instance.create_surface(&window.window).unwrap()
-            };
+        let surface = unsafe {
+            let window = window.window().downcast_raw::<WinitWindow>().unwrap();
+            instance.create_surface(&window.window).unwrap()
+        };
 
-            let render = WgpuRender::new(instance, surface, width, height).unwrap();
-            window.set_render(render);
-        }
+        let render = WgpuRender::new(instance, surface, width, height).unwrap();
+        window.set_render(render);
     }
 }
 
@@ -104,18 +102,25 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
         *control_flow = ControlFlow::Wait;
 
         match event {
+            // we need to recreate the surfaces when the event loop is resumed
+            //
+            // this is necessary for android
             Event::Resumed => {
-                if instance.is_none() {
-                    init(
-                        &mut ids,
-                        app.window.clone(),
-                        target,
-                        &mut app.builder,
-                        &mut app.ui,
-                        &mut instance,
-                    );
+                if let Some(ref instance) = instance {
+                    unsafe { recreate_surfaces(&mut app.ui, instance) };
                 } else {
-                    recreate_surfaces(&mut app.ui, instance.as_ref().unwrap());
+                    // if the instance is not initialized yet, we need to
+                    // initialize the ui
+                    unsafe {
+                        init(
+                            &mut ids,
+                            app.window.clone(),
+                            target,
+                            &mut app.builder,
+                            &mut app.ui,
+                            &mut instance,
+                        );
+                    }
                 }
             }
             Event::RedrawEventsCleared => {

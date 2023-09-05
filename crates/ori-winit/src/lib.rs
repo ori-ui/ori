@@ -1,7 +1,7 @@
 #![allow(clippy::module_inception)]
 #![warn(missing_docs)]
 
-//! WGPU backend for Ori.
+//! Winit backend for Ori.
 
 mod app;
 mod convert;

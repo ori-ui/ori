@@ -7,6 +7,7 @@ pub fn main(
 ) -> manyhow::Result<proc_macro::TokenStream> {
     let input = syn::parse::<syn::ItemFn>(input)?;
 
+    let name = &input.sig.ident;
     let body = &input.block;
     let winit = crate::find_winit();
 
@@ -20,8 +21,11 @@ pub fn main(
             body();
         }
 
-        #[allow(dead_code)]
         #input
+
+        // this stops the compiler warning us that `main` is unused
+        // when we're compiling a library target
+        const _: fn() = #name;
     };
 
     Ok(expanded.into())

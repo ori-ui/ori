@@ -8,11 +8,15 @@ use crate::convert::convert_cursor_icon;
 
 pub struct WinitWindow {
     pub(crate) window: winit::window::Window,
+    soft_input: bool,
 }
 
 impl From<winit::window::Window> for WinitWindow {
     fn from(window: winit::window::Window) -> Self {
-        Self { window }
+        Self {
+            window,
+            soft_input: false,
+        }
     }
 }
 
@@ -90,6 +94,14 @@ impl RawWindow for WinitWindow {
 
     fn set_cursor(&mut self, cursor: Cursor) {
         (self.window).set_cursor_icon(convert_cursor_icon(cursor));
+    }
+
+    fn set_soft_input(&mut self, visible: bool) {
+        if self.soft_input == visible {
+            return;
+        }
+
+        self.soft_input = visible;
     }
 
     fn request_draw(&mut self) {

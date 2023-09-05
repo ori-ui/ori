@@ -123,33 +123,44 @@ impl<V> Button<V> {
     }
 }
 
+#[doc(hidden)]
+pub struct ButtonState {
+    pub hot: f32,
+    pub active: f32,
+}
+
 impl<T, V: View<T>> View<T> for Button<V> {
-    type State = (f32, State<T, V>);
+    type State = (ButtonState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        (0.0, self.content.build(cx, data))
+        let state = ButtonState {
+            hot: 0.0,
+            active: 0.0,
+        };
+
+        (state, self.content.build(cx, data))
     }
 
     fn rebuild(
         &mut self,
-        (_t, state): &mut Self::State,
+        (_state, content): &mut Self::State,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
 
-        self.content.rebuild(state, cx, data, &old.content);
+        self.content.rebuild(content, cx, data, &old.content);
     }
 
     fn event(
         &mut self,
-        (t, state): &mut Self::State,
+        (state, content): &mut Self::State,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
     ) {
-        self.content.event(state, cx, data, event);
+        self.content.event(content, cx, data, event);
 
         if event.is_handled() {
             return;
@@ -160,8 +171,11 @@ impl<T, V: View<T>> View<T> for Button<V> {
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            let on = cx.is_hot() && !cx.is_active();
-            if self.transition.step(t, on, *dt) {
+            if self.transition.step(&mut state.hot, cx.is_hot(), *dt) {
+                cx.request_animation_frame();
+            }
+
+            if self.transition.step(&mut state.active, cx.is_active(), *dt) {
                 cx.request_animation_frame();
             }
 
@@ -177,61 +191,71 @@ impl<T, V: View<T>> View<T> for Button<V> {
 
     fn layout(
         &mut self,
-        (_t, state): &mut Self::State,
+        (_state, content): &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
         let content_space = space.shrink(self.padding.size());
-        let content_size = self.content.layout(state, cx, data, content_space);
+        let content_size = self.content.layout(content, cx, data, content_space);
 
-        state.translate(self.padding.offset());
+        content.translate(self.padding.offset());
 
         space.fit(content_size + self.padding.size())
     }
 
     fn draw(
         &mut self,
-        (t, state): &mut Self::State,
+        (state, content): &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
     ) {
+        let dark = self.color.darken(0.05);
+        let dim = self.color.darken(0.025);
         let bright = self.color.brighten(0.05);
-        let dark = self.color.darken(0.1);
 
-        let color = if self.fancy != 0.0 {
-            self.color.mix(dark, self.transition.on(*t))
-        } else {
-            self.color.mix(bright, self.transition.on(*t))
-        };
+        let hot = self.transition.on(state.hot);
+        let active = self.transition.on(state.active);
+
+        let face = self.color.mix(bright, hot).mix(dim, active);
+
+        if self.fancy == 0.0 {
+            canvas.draw_quad(
+                cx.rect(),
+                face,
+                self.border_radius,
+                self.border_width,
+                self.border_color,
+            );
+
+            self.content.draw(content, cx, data, canvas);
+            return;
+        }
+
+        let base = dim.mix(dark, 1.0 - active);
 
         canvas.draw_quad(
             cx.rect(),
-            color,
+            base,
             self.border_radius,
             self.border_width,
             self.border_color,
         );
 
-        if *t == 0.0 || self.fancy == 0.0 {
-            self.content.draw(state, cx, data, canvas);
-            return;
-        }
-
-        let float = Vector::Y * -self.transition.on(*t) * 4.0;
+        let float = Vector::NEG_Y * (1.0 - active) * self.fancy;
 
         let mut layer = canvas.layer();
         layer.translate(float);
 
         layer.draw_quad(
             cx.rect(),
-            self.color.mix(bright, self.transition.on(*t)),
+            face,
             self.border_radius,
             self.border_width,
             self.border_color,
         );
 
-        self.content.draw(state, cx, data, &mut layer);
+        self.content.draw(content, cx, data, &mut layer);
     }
 }

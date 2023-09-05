@@ -99,7 +99,7 @@ impl PointerEvent {
 
     /// Returns true if the event is a move event.
     pub fn is_move(&self) -> bool {
-        self.delta != Vector::ZERO && self.button.is_none()
+        (self.delta != Vector::ZERO || self.left) && self.button.is_none()
     }
 
     /// Returns true if the event is a scroll event.

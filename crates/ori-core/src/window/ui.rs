@@ -117,6 +117,32 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         self.render.idle();
     }
 
+    fn update_cursor(&mut self) {
+        if !self.view_state.has_cursor {
+            self.window_mut().set_cursor(Cursor::default());
+        }
+    }
+
+    fn update_soft_input(&mut self) {
+        let soft_input = self.view_state.has_soft_input;
+        self.window_mut().set_soft_input(soft_input);
+    }
+
+    fn request_redraw_if_needed(&mut self) {
+        // if anything needs to be updated after the event, we request a draw
+        //
+        // FIXME: this will sometimes cause unnecessary re-renders
+        if !self.view_state.update.is_empty() || self.animation_frame.is_some() {
+            self.window.request_draw();
+        }
+    }
+
+    fn update(&mut self) {
+        self.update_cursor();
+        self.update_soft_input();
+        self.request_redraw_if_needed();
+    }
+
     fn rebuild(&mut self, base: &mut BaseCx, data: &mut T) {
         self.view_state.prepare();
 
@@ -173,16 +199,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             self.view.event(&mut self.state, &mut cx, data, event);
         });
 
-        if !self.view_state.has_cursor {
-            self.window_mut().set_cursor(Cursor::default());
-        }
-
-        // if anything needs to be updated after the event, we request a draw
-        //
-        // FIXME: this will sometimes cause unnecessary re-renders
-        if !self.view_state.update.is_empty() || self.animation_frame.is_some() {
-            self.window.request_draw();
-        }
+        self.update();
     }
 
     fn layout(&mut self, base: &mut BaseCx, data: &mut T) {
@@ -273,11 +290,6 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let clear_color = self.theme.get(Palette::BACKGROUND);
         (self.render).render_scene(&mut self.scene, clear_color, width, height);
 
-        // if anything needs to be updated after the draw, we request a drawn
-        //
-        // FIXME: this will sometimes cause unnecessary re-renders
-        if !self.view_state.update.is_empty() || self.animation_frame.is_some() {
-            self.window.request_draw();
-        }
+        self.update();
     }
 }

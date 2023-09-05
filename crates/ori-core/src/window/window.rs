@@ -185,6 +185,11 @@ impl Window {
         self.raw.set_cursor(cursor);
     }
 
+    /// Get whether the soft input is enabled.
+    pub fn set_soft_input(&mut self, enabled: bool) {
+        self.raw.set_soft_input(enabled);
+    }
+
     /// Request a redraw of the window.
     pub fn request_draw(&mut self) {
         self.raw.request_draw();

@@ -53,6 +53,9 @@ pub trait RawWindow: Any {
     /// Set the cursor of the window.
     fn set_cursor(&mut self, cursor: Cursor);
 
+    /// Get whether soft input is enabled.
+    fn set_soft_input(&mut self, visible: bool);
+
     /// Get whether the window is focused.
     fn request_draw(&mut self);
 }

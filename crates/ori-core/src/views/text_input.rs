@@ -592,6 +592,8 @@ impl<T> View<T> for TextInput<T> {
             state.cursor_blink += dt * 10.0;
             cx.request_draw();
         }
+
+        cx.set_soft_input(cx.is_focused());
     }
 
     fn layout(

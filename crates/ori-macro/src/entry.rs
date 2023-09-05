@@ -7,7 +7,9 @@ pub fn main(
 ) -> manyhow::Result<proc_macro::TokenStream> {
     let input = syn::parse::<syn::ItemFn>(input)?;
 
-    let name = &input.sig.ident;
+    let vis = &input.vis;
+    let attrs = &input.attrs;
+    let sig = &input.sig;
     let body = &input.block;
     let winit = crate::find_winit();
 
@@ -21,11 +23,12 @@ pub fn main(
             body();
         }
 
-        #input
-
-        // this stops the compiler warning us that `main` is unused
-        // when we're compiling a library target
-        const _: fn() = #name;
+        #[allow(dead_code, clippy::needless_return)]
+        #(#attrs)*
+        #vis #sig {
+            #[warn(dead_code, clippy::needless_return)]
+            #body
+        }
     };
 
     Ok(expanded.into())

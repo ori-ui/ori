@@ -124,17 +124,27 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                 }
             }
             Event::RedrawEventsCleared => {
+                // after all events for a frame have been processed, we need to
+                // run the idle function
                 app.ui.idle();
             }
             Event::RedrawRequested(window_id) => {
-                let id = ids[&window_id];
-                app.ui.render(id);
+                // if the window id is not in the map, we ignore the event
+                if let Some(&window_id) = ids.get(&window_id) {
+                    // render the window
+                    app.ui.render(window_id);
+                }
             }
+            // this event is sent by [`WinitWaker`] telling us that there are
+            // commands that need to be processed
             Event::UserEvent(_) => {
                 app.ui.handle_commands();
             }
             Event::WindowEvent { window_id, event } => {
-                let window_id = ids[&window_id];
+                // if the window id is not in the map, we ignore the event
+                let Some(&window_id) = ids.get(&window_id) else {
+                    return;
+                };
 
                 match event {
                     WindowEvent::CloseRequested => {
@@ -184,10 +194,15 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                             Vector::new(x, y),
                         );
                     }
+                    // since we're using a pointer model we need to handle touch
+                    // by emulating pointer events
                     WindowEvent::Touch(event) => {
                         let position = Point::new(event.location.x as f32, event.location.y as f32);
                         let pointer_id = PointerId::from_hash(&event.device_id);
 
+                        // we always send a pointer moved event first because the ui
+                        // needs to know where the pointer is. this will also ensure
+                        // that hot state is updated correctly
                         app.ui.pointer_moved(window_id, pointer_id, position);
 
                         match event.phase {
@@ -195,6 +210,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                                 app.ui.pointer_button(
                                     window_id,
                                     pointer_id,
+                                    // a touch event is always the primary button
                                     PointerButton::Primary,
                                     true,
                                 );
@@ -204,10 +220,13 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                                 app.ui.pointer_button(
                                     window_id,
                                     pointer_id,
+                                    // a touch event is always the primary button
                                     PointerButton::Primary,
                                     false,
                                 );
 
+                                // we also need to send a pointer left event because
+                                // the ui needs to know that the pointer left the window
                                 app.ui.pointer_left(window_id, pointer_id);
                             }
                         }

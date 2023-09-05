@@ -30,7 +30,9 @@ impl<T: 'static> App<T> {
         #[cfg(target_os = "android")]
         {
             use winit::platform::android::EventLoopBuilderExtAndroid;
-            builder.with_android_app(crate::__private::get_android_app());
+
+            let app = crate::android::get_android_app();
+            builder.with_android_app(app);
         }
 
         builder.build()

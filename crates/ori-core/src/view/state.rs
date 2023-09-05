@@ -30,6 +30,9 @@ pub struct ViewState {
     /* cursor */
     pub(crate) cursor: Option<Cursor>,
     pub(crate) has_cursor: bool,
+    /* input */
+    pub(crate) soft_input: bool,
+    pub(crate) has_soft_input: bool,
 }
 
 impl Default for ViewState {
@@ -40,11 +43,16 @@ impl Default for ViewState {
             active: false,
             has_active: false,
             update: Update::LAYOUT | Update::DRAW,
+            /* layout */
             flex: 0.0,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
+            /* cursor */
             cursor: None,
             has_cursor: false,
+            /* input */
+            soft_input: false,
+            has_soft_input: false,
         }
     }
 }
@@ -53,6 +61,7 @@ impl ViewState {
     pub(crate) fn prepare(&mut self) {
         self.has_active = false;
         self.has_cursor = false;
+        self.has_soft_input = false;
     }
 
     pub(crate) fn prepare_layout(&mut self) {
@@ -68,6 +77,7 @@ impl ViewState {
     pub(crate) fn propagate(&mut self, child: &mut Self) {
         self.has_active |= child.active || child.has_active;
         self.has_cursor |= child.has_cursor || child.cursor.is_some();
+        self.has_soft_input |= self.has_soft_input || child.has_soft_input || child.soft_input;
         self.update |= child.update;
     }
 }
@@ -111,6 +121,11 @@ impl ViewState {
     /// Get whether the view has a child with a cursor.
     pub fn has_cursor(&self) -> bool {
         self.has_cursor
+    }
+
+    /// Get whether the view has a child with soft input.
+    pub fn has_soft_input(&self) -> bool {
+        self.has_soft_input
     }
 
     /// Get the flex of the view.
@@ -161,6 +176,11 @@ impl ViewState {
     /// Set the cursor of the view.
     pub fn set_cursor(&mut self, cursor: impl Into<Option<Cursor>>) {
         self.cursor = cursor.into();
+    }
+
+    /// Set whether the view has soft input.
+    pub fn set_soft_input(&mut self, soft_input: bool) {
+        self.soft_input = soft_input;
     }
 
     /// Request a layout of the view tree.

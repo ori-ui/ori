@@ -341,6 +341,16 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
         self.view_state.has_cursor()
     }
 
+    /// Get whether the view has soft input.
+    pub fn has_soft_input(&self) -> bool {
+        self.view_state.has_soft_input()
+    }
+
+    /// Set whether the view has soft input.
+    pub fn set_soft_input(&mut self, soft_input: bool) {
+        self.view_state.soft_input = soft_input;
+    }
+
     pub(crate) fn update(&mut self) {
         match self.view_state.cursor {
             Some(cursor) if !self.view_state.has_cursor() => {

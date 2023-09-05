@@ -1,12 +1,11 @@
 use std::{
-    f32::consts::PI,
     ops::{Index, IndexMut},
     slice::SliceIndex,
 };
 
 use crate::layout::{Point, Vector};
 
-use super::{Color, Mesh, Vertex};
+use super::{Color, Mesh};
 
 /// A curve.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -17,7 +16,7 @@ pub struct Curve {
 
 impl Curve {
     /// The resolution of the curve, measured in pixels per point.
-    pub const RESOLUTION: f32 = 5.0;
+    pub const RESOLUTION: f32 = 3.0;
 
     /// Create an empty curve.
     pub const fn new() -> Self {
@@ -125,19 +124,6 @@ impl Curve {
         self.points.iter_mut()
     }
 
-    /// Returns true if the curve in counter-clockwise winding order, when interpreted as a polygon.
-    ///
-    /// This uses the shoelace formula, and runs in O(n) time.
-    pub fn is_ccw(&self) -> bool {
-        let mut sum = 0.0;
-        for i in 0..self.len() {
-            let a = self[i];
-            let b = self[(i + 1) % self.len()];
-            sum += (b.x - a.x) * (b.y + a.y);
-        }
-        sum > 0.0
-    }
-
     /// Creates a mesh with rounded ends.
     pub fn stroke(&self, thickness: f32, color: Color) -> Mesh {
         if self.is_empty() {
@@ -150,115 +136,24 @@ impl Curve {
 
         let mut mesh = Mesh::new();
 
-        // compute first cap
-        let center = self.points[0];
-        let next = self.points[1];
-        let angle = (center - next).normalize();
-        let angle = angle.y.atan2(angle.x);
+        let radius = thickness / 2.0;
+        let end = self.points.len() - 1;
 
-        let index = mesh.vertices.len() as u32;
-        mesh.vertices.push(Vertex::new_color(center, color));
-        for i in -10..=10 {
-            let angle = angle + i as f32 * PI / 20.0;
-            let point = center + Vector::new(angle.cos(), angle.sin()) * thickness;
-            mesh.vertices.push(Vertex::new_color(point, color));
+        let dir = Vector::normalize(self[0] - self[1]);
+        let (a, b) = self.round_cap(&mut mesh, self[0], dir, radius, color);
 
-            if i > -10 {
-                let i = mesh.vertices.len() as u32;
-                mesh.indices.push(index);
-                mesh.indices.push(i - 2);
-                mesh.indices.push(i - 1);
-            }
-        }
+        let (a, b) = self.stroke_segments(&mut mesh, a, b, radius, color);
 
-        // compute middle segments
-        for i in 0..self.len() {
-            if i == self.len() - 1 {
-                let prev = self.points[i - 1];
-                let center = self.points[i];
+        let dir = Vector::normalize(self[end] - self[end - 1]);
+        let (c, d) = self.round_cap(&mut mesh, self[end], dir, radius, color);
 
-                let prev_center = (center - prev).normalize();
-                let hat = prev_center.hat();
+        mesh.indices.push(a as u32);
+        mesh.indices.push(b as u32);
+        mesh.indices.push(d as u32);
 
-                let offset = hat * thickness;
-
-                let vertex_a = Vertex::new_color(center + offset, color);
-                let vertex_b = Vertex::new_color(center - offset, color);
-
-                let i = mesh.vertices.len() as u32;
-                mesh.vertices.push(vertex_a);
-                mesh.vertices.push(vertex_b);
-
-                // add indices for prev center
-                mesh.indices.push(i - 2);
-                mesh.indices.push(i - 1);
-                mesh.indices.push(i);
-                mesh.indices.push(i - 1);
-                mesh.indices.push(i + 1);
-                mesh.indices.push(i);
-            } else if i > 0 {
-                let prev = self.points[i - 1];
-                let center = self.points[i];
-                let next = self.points[i + 1];
-
-                let a = (center - prev).normalize();
-                let b = (next - center).normalize();
-                let offset = (a.hat() + b.hat()).normalize();
-                let angle = offset.angle_between(a.hat()) / 2.0;
-
-                let offset = offset * thickness * (1.0 + angle.tan());
-
-                let vertex_a = Vertex::new_color(center + offset, color);
-                let vertex_b = Vertex::new_color(center - offset, color);
-
-                let i = mesh.vertices.len() as u32;
-                mesh.vertices.push(vertex_a);
-                mesh.vertices.push(vertex_b);
-
-                // add indices for prev center
-                mesh.indices.push(i - 2);
-                mesh.indices.push(i - 1);
-                mesh.indices.push(i);
-                mesh.indices.push(i - 1);
-                mesh.indices.push(i + 1);
-                mesh.indices.push(i);
-            } else {
-                let center = self.points[i];
-                let next = self.points[i + 1];
-
-                let center_next = (next - center).normalize();
-                let hat = center_next.hat();
-
-                let offset = hat * thickness;
-
-                let vertex_a = Vertex::new_color(center + offset, color);
-                let vertex_b = Vertex::new_color(center - offset, color);
-
-                mesh.vertices.push(vertex_a);
-                mesh.vertices.push(vertex_b);
-            }
-        }
-
-        // compute last cap
-        let center = self.points[self.len() - 1];
-        let prev = self.points[self.len() - 2];
-        let angle = (center - prev).normalize();
-        let angle = angle.y.atan2(angle.x);
-
-        let index = mesh.vertices.len() as u32;
-        mesh.vertices.push(Vertex::new_color(center, color));
-        for i in -10..=10 {
-            let angle = angle + i as f32 * PI / 20.0;
-            let point = center + Vector::new(angle.cos(), angle.sin()) * thickness;
-            mesh.vertices.push(Vertex::new_color(point, color));
-
-            if i > -10 {
-                let i = mesh.vertices.len() as u32;
-                mesh.indices.push(index);
-                mesh.indices.push(i - 2);
-                mesh.indices.push(i - 1);
-            }
-        }
+        mesh.indices.push(c as u32);
+        mesh.indices.push(d as u32);
+        mesh.indices.push(b as u32);
 
         mesh
     }

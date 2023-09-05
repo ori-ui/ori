@@ -169,7 +169,7 @@ style! {
         /// The color of the checkmark.
         const COLOR: Color = Palette::ACCENT;
         /// The stroke width of the checkmark.
-        const STROKE: f32 = 1.0;
+        const STROKE: f32 = pt(2.0);
         /// The background color.
         const BACKGROUND: Color = Color::TRANSPARENT;
         /// The border radius.

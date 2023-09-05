@@ -11,6 +11,7 @@ mod mesh;
 mod primitive;
 mod render;
 mod scene;
+mod stroke;
 
 pub use border::*;
 pub use canvas::*;
@@ -20,3 +21,4 @@ pub use mesh::*;
 pub use primitive::*;
 pub use render::*;
 pub use scene::*;
+pub use stroke::*;

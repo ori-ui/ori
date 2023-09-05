@@ -12,14 +12,14 @@ use ori_core::{
 };
 use winit::event_loop::{EventLoop, EventLoopBuilder};
 
-use crate::{proxy::WinitWaker, render::WgpuRender, Error};
+use crate::{proxy::WinitWaker, Error, Render};
 
 /// An application.
 pub struct App<T> {
     pub(crate) event_loop: EventLoop<()>,
     pub(crate) window: WindowDescriptor,
     pub(crate) builder: UiBuilder<T>,
-    pub(crate) ui: Ui<T, WgpuRender>,
+    pub(crate) ui: Ui<T, Render>,
     pub(crate) text_size: f32,
 }
 

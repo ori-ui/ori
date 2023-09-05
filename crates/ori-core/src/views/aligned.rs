@@ -3,14 +3,14 @@ use crate::{
     event::Event,
     layout::{Alignment, Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// A view that aligns its content.
 #[derive(Rebuild)]
 pub struct Aligned<V> {
     /// The content to align.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The alignment.
     #[rebuild(layout)]
     pub alignment: Alignment,
@@ -20,7 +20,7 @@ impl<V> Aligned<V> {
     /// Create a new aligned view.
     pub fn new(alignment: Alignment, content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             alignment,
         }
     }

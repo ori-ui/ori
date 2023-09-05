@@ -22,6 +22,8 @@ struct VertexOutput {
 	@builtin(position) clip: vec4<f32>,
 	@location(0) position: vec2<f32>,
 	@location(1) uv: vec2<f32>,
+    @location(2) rect_min: vec2<f32>,
+    @location(3) rect_max: vec2<f32>,
 }
 
 fn screen_to_clip(position: vec2<f32>) -> vec2<f32> {
@@ -36,6 +38,8 @@ fn vertex(in: VertexInput) -> VertexOutput {
 	out.clip = vec4<f32>(screen_to_clip(position), 0.0, 1.0);
 	out.position = in.position;
 	out.uv = in.uv;
+    out.rect_min = uniforms.rect_min;
+    out.rect_max = uniforms.rect_max;
 
 	return out;
 }
@@ -101,15 +105,15 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
 	let border_radius = select_border_radius(
 		in.position,
-		uniforms.rect_min,
-		uniforms.rect_max,
+		in.rect_min,
+		in.rect_max,
 		uniforms.border_radius,
 	);
 
 	let border_width = select_border_width(
 		in.position,
-		uniforms.rect_min,
-		uniforms.rect_max,
+		in.rect_min,
+		in.rect_max,
 		uniforms.border_width,
 		border_radius,
 	);
@@ -119,8 +123,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
 		let internal_dist = quad_distance(
 			in.position,
-			uniforms.rect_min + vec2<f32>(border_width),
-			uniforms.rect_max - vec2<f32>(border_width),
+			in.rect_min + vec2<f32>(border_width),
+			in.rect_max - vec2<f32>(border_width),
 			internal_border,
 		);
 
@@ -135,8 +139,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
 	let dist = quad_distance(
 		in.position,
-		uniforms.rect_min,
-		uniforms.rect_max,
+		in.rect_min,
+		in.rect_max,
 		border_radius,
 	);
 

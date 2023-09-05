@@ -2,7 +2,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    view::{BuildCx, ContentSeq, DrawCx, EventCx, LayoutCx, RebuildCx, SeqState, View, ViewSeq},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq},
 };
 
 pub use crate::overlay;
@@ -28,14 +28,14 @@ pub fn overlay<V>(content: V) -> Overlay<V> {
 /// A view that overlays its content on top of each other.
 pub struct Overlay<V> {
     /// The content to overlay.
-    pub content: ContentSeq<V>,
+    pub content: PodSeq<V>,
 }
 
 impl<V> Overlay<V> {
     /// Create a new overlay view.
     pub fn new(content: V) -> Self {
         Self {
-            content: ContentSeq::new(content),
+            content: PodSeq::new(content),
         }
     }
 }

@@ -5,7 +5,7 @@ use crate::{
     rebuild::Rebuild,
     theme::{button, pt, style},
     transition::Transition,
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// Create a new [`Button`].
@@ -17,7 +17,7 @@ pub fn button<V>(content: V) -> Button<V> {
 #[derive(Rebuild)]
 pub struct Button<V> {
     /// The content.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -45,7 +45,7 @@ impl<V> Button<V> {
     /// Create a new [`Button`].
     pub fn new(content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             padding: Padding::all(pt(8.0)),
             fancy: 0.0,
             transition: style(button::TRANSITION),

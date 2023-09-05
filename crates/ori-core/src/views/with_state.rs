@@ -5,7 +5,7 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     theme::Theme,
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// Create a new [`WithState`].
@@ -58,12 +58,12 @@ impl<T, U, V> WithState<T, U, V> {
 }
 
 impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
-    type State = (Content<V>, U, State<(T, U), V>);
+    type State = (Pod<V>, U, State<(T, U), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         Theme::with_global(&mut self.theme, || {
             let mut state = (self.build)();
-            let mut view = Content::new((self.view)(data, &mut state));
+            let mut view = Pod::new((self.view)(data, &mut state));
 
             let content = Self::data(&mut state, data, |data| view.build(cx, data));
 
@@ -78,7 +78,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         _old: &Self,
     ) {
-        let mut new_view = Content::new((self.view)(data, data_state));
+        let mut new_view = Pod::new((self.view)(data, data_state));
 
         Theme::with_global(&mut self.theme, || {
             Self::data(data_state, data, |data| {

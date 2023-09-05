@@ -3,7 +3,7 @@ use crate::{
     event::{Event, PointerEvent},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// Create a new [`ClickHandler`], with an [`on_press`](ClickHandler::on_press()) callback.
@@ -34,7 +34,7 @@ pub fn on_click<T, V>(
 #[derive(Rebuild)]
 pub struct ClickHandler<T, V> {
     /// The content.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The callback for when the button is pressed.
     #[allow(clippy::type_complexity)]
     pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
@@ -52,7 +52,7 @@ impl<T, V> ClickHandler<T, V> {
     /// Create a new [`ClickHandler`].
     pub fn new(content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             on_press: None,
             on_release: None,
             on_click: None,

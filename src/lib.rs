@@ -20,7 +20,7 @@ pub mod font_awesome {
 
 #[cfg(feature = "winit")]
 pub mod winit {
-    //! Ori [`winit`](ori_wgpu) integration.
+    //! Ori [`winit`](ori_winit) integration.
 
     pub use ori_winit::*;
 }
@@ -55,8 +55,8 @@ pub mod prelude {
         theme::{builtin::*, pt, rem, set_style, set_theme, style, themed, Key, Palette, Theme},
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
-            any, AnyView, BoxedView, BuildCx, Content, ContentSeq, DrawCx, EventCx, LayoutCx,
-            RebuildCx, SeqState, State, View, ViewSeq, ViewState,
+            any, AnyView, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, PodSeq, RebuildCx,
+            SeqState, State, View, ViewSeq, ViewState,
         },
         views::*,
         window::{Cursor, Window, WindowDescriptor, WindowId},

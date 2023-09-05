@@ -8,7 +8,7 @@ use crate::{
 
 use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState};
 
-/// The state of [`Content`].
+/// The state of a [`Pod`].
 pub struct State<T, V: View<T> + ?Sized> {
     content: V::State,
     view_state: ViewState,
@@ -43,11 +43,11 @@ impl<T, V: View<T> + ?Sized> DerefMut for State<T, V> {
 /// and I wish you the best of luck.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Content<V> {
+pub struct Pod<V> {
     pub(crate) view: V,
 }
 
-impl<V> Content<V> {
+impl<V> Pod<V> {
     /// Create a new content view.
     pub const fn new(view: V) -> Self {
         Self { view }
@@ -182,13 +182,13 @@ impl<V> Content<V> {
     }
 }
 
-impl<V> From<V> for Content<V> {
+impl<V> From<V> for Pod<V> {
     fn from(view: V) -> Self {
         Self::new(view)
     }
 }
 
-impl<V> Deref for Content<V> {
+impl<V> Deref for Pod<V> {
     type Target = V;
 
     fn deref(&self) -> &Self::Target {
@@ -196,13 +196,13 @@ impl<V> Deref for Content<V> {
     }
 }
 
-impl<V> DerefMut for Content<V> {
+impl<V> DerefMut for Pod<V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.view
     }
 }
 
-impl<T, V: View<T>> View<T> for Content<V> {
+impl<T, V: View<T>> View<T> for Pod<V> {
     type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {

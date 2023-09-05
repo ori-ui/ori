@@ -6,7 +6,7 @@ use crate::{
     layout::{Size, Space},
 };
 
-use super::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, View, ViewState};
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, View, ViewState};
 
 /// A sequence of views.
 pub trait ViewSeq<T> {
@@ -285,7 +285,7 @@ impl_tuple!(A B C D E F G H I J; 0 1 2 3 4 5 6 7 8 9);
 impl_tuple!(A B C D E F G H I J K; 0 1 2 3 4 5 6 7 8 9 10);
 impl_tuple!(A B C D E F G H I J K L; 0 1 2 3 4 5 6 7 8 9 10 11);
 
-/// The state of a [`ContentSeq`].
+/// The state of a [`PodSeq`].
 pub struct SeqState<T, V: ViewSeq<T>> {
     content: V::State,
     view_state: Vec<ViewState>,
@@ -322,24 +322,24 @@ impl<T, V: ViewSeq<T>> DerefMut for SeqState<T, V> {
 /// and I wish you the best of luck.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ContentSeq<V> {
+pub struct PodSeq<V> {
     views: V,
 }
 
-impl<V> ContentSeq<V> {
-    /// Create a new [`ContentSeq`].
+impl<V> PodSeq<V> {
+    /// Create a new [`PodSeq`].
     pub fn new(views: V) -> Self {
         Self { views }
     }
 }
 
-impl<V> From<V> for ContentSeq<V> {
+impl<V> From<V> for PodSeq<V> {
     fn from(views: V) -> Self {
         Self::new(views)
     }
 }
 
-impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
+impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
     type State = SeqState<T, V>;
 
     fn len(&self) -> usize {
@@ -348,7 +348,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         SeqState {
-            content: Content::<V>::build(cx, |cx| self.views.build(cx, data)),
+            content: Pod::<V>::build(cx, |cx| self.views.build(cx, data)),
             view_state: vec![ViewState::default(); self.len()],
         }
     }
@@ -367,7 +367,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         old: &Self,
     ) {
-        Content::<V>::rebuild(&mut state.view_state[n], cx, |cx| {
+        Pod::<V>::rebuild(&mut state.view_state[n], cx, |cx| {
             (self.views).rebuild_nth(n, &mut state.content, cx, data, &old.views);
         });
     }
@@ -380,7 +380,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         event: &Event,
     ) {
-        Content::<V>::event(&mut state.view_state[n], cx, event, |cx, event| {
+        Pod::<V>::event(&mut state.view_state[n], cx, event, |cx, event| {
             (self.views).event_nth(n, &mut state.content, cx, data, event);
         });
     }
@@ -393,7 +393,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        Content::<V>::layout(&mut state.view_state[n], cx, |cx| {
+        Pod::<V>::layout(&mut state.view_state[n], cx, |cx| {
             (self.views).layout_nth(n, &mut state.content, cx, data, space)
         })
     }
@@ -406,7 +406,7 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for ContentSeq<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        Content::<V>::draw(&mut state.view_state[n], cx, canvas, |cx, canvas| {
+        Pod::<V>::draw(&mut state.view_state[n], cx, canvas, |cx, canvas| {
             (self.views).draw_nth(n, &mut state.content, cx, data, canvas);
         });
     }

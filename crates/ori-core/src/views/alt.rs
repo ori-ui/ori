@@ -7,7 +7,7 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
     },
     theme::{alt, pt, style, text},
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// Create a new [`Alt`] view.
@@ -19,7 +19,7 @@ pub fn alt<V>(alt: impl ToString, content: V) -> Alt<V> {
 #[derive(Rebuild)]
 pub struct Alt<V> {
     /// The content to display.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The alternative text to display.
     #[rebuild(layout)]
     pub alt: String,
@@ -47,7 +47,7 @@ impl<V> Alt<V> {
     /// Create a new alt view.
     pub fn new(alt: impl ToString, content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             alt: alt.to_string(),
             color: style(text::COLOR),
             padding: style(alt::PADDING),

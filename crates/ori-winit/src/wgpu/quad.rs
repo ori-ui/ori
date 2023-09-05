@@ -158,7 +158,7 @@ pub struct QuadRender {
 }
 
 impl QuadRender {
-    pub fn new(device: &Device, format: TextureFormat) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         let shader = device.create_shader_module(include_wgsl!("shader/quad.wgsl"));
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -205,7 +205,7 @@ impl QuadRender {
             primitive: Default::default(),
             depth_stencil: None,
             multisample: MultisampleState {
-                count: 4,
+                count: sample_count,
                 ..Default::default()
             },
             multiview: None,

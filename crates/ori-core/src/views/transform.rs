@@ -3,7 +3,7 @@ use crate::{
     event::Event,
     layout::{Affine, Size, Space, Vector},
     rebuild::Rebuild,
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// Create a new [`Transform`] view.
@@ -30,7 +30,7 @@ pub fn scale<V>(scale: impl Into<Vector>, content: V) -> Transform<V> {
 #[derive(Rebuild)]
 pub struct Transform<V> {
     /// The content.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The transform.
     #[rebuild(layout)]
     pub transform: Affine,
@@ -40,7 +40,7 @@ impl<V> Transform<V> {
     /// Create a new [`Transform`] view.
     pub fn new(transform: Affine, content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             transform,
         }
     }

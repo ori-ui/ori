@@ -3,7 +3,7 @@ use crate::{
     event::Event,
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// Create a new [`Pad`] view.
@@ -15,7 +15,7 @@ pub fn pad<V>(padding: impl Into<Padding>, content: V) -> Pad<V> {
 #[derive(Rebuild)]
 pub struct Pad<V> {
     /// The content.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,
@@ -25,7 +25,7 @@ impl<V> Pad<V> {
     /// Create a new [`Pad`] view.
     pub fn new(padding: impl Into<Padding>, content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             padding: padding.into(),
         }
     }

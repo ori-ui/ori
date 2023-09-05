@@ -6,7 +6,7 @@ use crate::{
     layout::{Align, Axis, Justify, Size, Space},
     log::warn_internal,
     rebuild::Rebuild,
-    view::{BuildCx, ContentSeq, DrawCx, EventCx, LayoutCx, RebuildCx, SeqState, View, ViewSeq},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq},
 };
 
 pub use crate::{hstack, vstack};
@@ -51,7 +51,7 @@ pub fn vstack<V>(content: V) -> Stack<V> {
 #[derive(Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.
-    pub content: ContentSeq<V>,
+    pub content: PodSeq<V>,
     /// The size of the stack.
     #[rebuild(layout)]
     pub space: Space,
@@ -82,7 +82,7 @@ impl<V> Stack<V> {
     /// Create a new [`Stack`].
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
-            content: ContentSeq::new(content),
+            content: PodSeq::new(content),
             space: Space::UNBOUNDED,
             axis,
             wrap: false,

@@ -21,8 +21,9 @@ pub struct WgpuRender {
     queue: Arc<Queue>,
     surface: Surface,
     config: SurfaceConfiguration,
+    samples: u32,
     image: ImageCache,
-    msaa: TextureView,
+    msaa: Option<TextureView>,
     quad: QuadRender,
     mesh: MeshRender,
 }
@@ -31,6 +32,7 @@ impl WgpuRender {
     pub fn new(
         instance: &WgpuRenderInstance,
         surface: Surface,
+        samples: u32,
         width: u32,
         height: u32,
     ) -> Result<Self, RenderError> {
@@ -59,15 +61,27 @@ impl WgpuRender {
 
         let cache = ImageCache::new(&device);
 
-        let msaa = Self::create_msaa(&device, config.format, width, height);
-        let quad = QuadRender::new(&device, config.format);
-        let mesh = MeshRender::new(&device, config.format, cache.bind_group_layout());
+        let msaa = if samples > 1 {
+            Some(Self::create_msaa(
+                &device,
+                config.format,
+                samples,
+                width,
+                height,
+            ))
+        } else {
+            None
+        };
+
+        let quad = QuadRender::new(&device, config.format, samples);
+        let mesh = MeshRender::new(&device, config.format, samples, cache.bind_group_layout());
 
         Ok(Self {
             device,
             queue,
             surface,
             config,
+            samples,
             image: cache,
             msaa,
             quad,
@@ -75,7 +89,13 @@ impl WgpuRender {
         })
     }
 
-    fn create_msaa(device: &Device, format: TextureFormat, width: u32, height: u32) -> TextureView {
+    fn create_msaa(
+        device: &Device,
+        format: TextureFormat,
+        sample_count: u32,
+        width: u32,
+        height: u32,
+    ) -> TextureView {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ori_msaa_texture"),
             size: wgpu::Extent3d {
@@ -84,7 +104,7 @@ impl WgpuRender {
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
-            sample_count: 4,
+            sample_count,
             dimension: TextureDimension::D2,
             format,
             usage: TextureUsages::RENDER_ATTACHMENT,
@@ -111,7 +131,15 @@ impl WgpuRender {
         self.config.height = height;
 
         self.surface.configure(&self.device, &self.config);
-        self.msaa = Self::create_msaa(&self.device, self.config.format, width, height);
+        if let Some(ref mut msaa) = self.msaa {
+            *msaa = Self::create_msaa(
+                &self.device,
+                self.config.format,
+                self.samples,
+                width,
+                height,
+            );
+        }
     }
 
     fn prepare_fragments(&mut self, fragments: &[Fragment]) {
@@ -179,23 +207,42 @@ impl WgpuRender {
         target: &'a TextureView,
         clear_color: Color,
     ) -> RenderPass<'a> {
-        encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Some("ori_render_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: &self.msaa,
-                resolve_target: Some(target),
-                ops: Operations {
-                    load: LoadOp::Clear(wgpu::Color {
-                        r: clear_color.r as f64,
-                        g: clear_color.g as f64,
-                        b: clear_color.b as f64,
-                        a: clear_color.a as f64,
-                    }),
-                    store: true,
-                },
-            })],
-            depth_stencil_attachment: None,
-        })
+        match self.msaa {
+            Some(ref msaa) => encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("ori_render_pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: msaa,
+                    resolve_target: Some(target),
+                    ops: Operations {
+                        load: LoadOp::Clear(wgpu::Color {
+                            r: clear_color.r as f64,
+                            g: clear_color.g as f64,
+                            b: clear_color.b as f64,
+                            a: clear_color.a as f64,
+                        }),
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            }),
+            None => encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("ori_render_pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: target,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(wgpu::Color {
+                            r: clear_color.r as f64,
+                            g: clear_color.g as f64,
+                            b: clear_color.b as f64,
+                            a: clear_color.a as f64,
+                        }),
+                        store: true,
+                    },
+                })],
+                depth_stencil_attachment: None,
+            }),
+        }
     }
 
     pub fn render_scene(&mut self, scene: &mut Scene, clear_color: Color, width: u32, height: u32) {

@@ -7,17 +7,26 @@
 mod android;
 mod app;
 mod convert;
+mod dummy;
 mod error;
+mod log;
 mod proxy;
-mod render;
 mod run;
 mod window;
+
+#[cfg(feature = "wgpu")]
+mod wgpu;
 
 #[cfg(feature = "tracing")]
 mod tracing;
 
 pub use app::*;
 pub use error::*;
+
+#[cfg(feature = "wgpu")]
+type Render = crate::wgpu::WgpuRender;
+#[cfg(not(feature = "wgpu"))]
+type Render = crate::dummy::DummyRender;
 
 #[doc(hidden)]
 

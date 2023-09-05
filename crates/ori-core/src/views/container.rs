@@ -4,14 +4,14 @@ use crate::{
     layout::{Size, Space},
     rebuild::Rebuild,
     theme::{container, style},
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// A container view.
 #[derive(Rebuild)]
 pub struct Container<V> {
     /// The content.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The background color.
     #[rebuild(draw)]
     pub background: Color,
@@ -30,7 +30,7 @@ impl<V> Container<V> {
     /// Create a new [`Container`].
     pub fn new(content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             background: style(container::BACKGROUND),
             border_radius: style(container::BORDER_RADIUS),
             border_width: style(container::BORDER_WIDTH),

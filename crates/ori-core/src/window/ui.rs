@@ -6,7 +6,7 @@ use crate::{
     layout::{Size, Space},
     theme::{Palette, Theme},
     view::{
-        BaseCx, BoxedView, BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View,
+        BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View,
         ViewState,
     },
 };
@@ -19,7 +19,7 @@ pub type UiBuilder<T> = Box<dyn FnMut(&mut T) -> BoxedView<T>>;
 /// User interface for a single window.
 pub struct WindowUi<T, R: SceneRender> {
     builder: UiBuilder<T>,
-    view: Content<BoxedView<T>>,
+    view: Pod<BoxedView<T>>,
     state: State<T, BoxedView<T>>,
     scene: Scene,
     theme: Theme,
@@ -42,7 +42,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     ) -> Self {
         // we first build the view tree, with `theme` as the global theme
         let view = Theme::with_global(&mut theme, || builder(data));
-        let mut view = Content::new(view);
+        let mut view = Pod::new(view);
 
         // then we build the state tree, with `theme` as the global theme
         let mut cx = BuildCx::new(base, &mut window);
@@ -151,7 +151,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
 
         // build the new view tree
         let new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
-        let mut new_view = Content::new(new_view);
+        let mut new_view = Pod::new(new_view);
 
         let mut cx = RebuildCx::new(
             base,

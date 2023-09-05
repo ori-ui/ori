@@ -11,8 +11,9 @@ ori-core = { path = "../ori-core", version = "0.1.0-alpha.1" }
 
 bytemuck = { version = "1.13", features = ["derive"] }
 futures-lite = "1.13"
-wgpu = "0.17"
 winit = { version = "0.28", features = ["android-native-activity"] }
+
+wgpu = { version = "0.17", optional = true }
 
 [dependencies.tracing]
 version = "0.1"
@@ -26,3 +27,5 @@ optional = true
 [features]
 default = []
 tracing = ["dep:tracing", "dep:tracing-subscriber"]
+
+wgpu = ["dep:wgpu"]

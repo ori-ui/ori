@@ -5,7 +5,7 @@ use crate::{
     rebuild::Rebuild,
     theme::{scroll, style},
     transition::Transition,
-    view::{BuildCx, Content, DrawCx, EventCx, LayoutCx, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
 /// Create a new horizontal [`Scroll`].
@@ -22,7 +22,7 @@ pub fn vscroll<V>(content: V) -> Scroll<V> {
 #[derive(Rebuild)]
 pub struct Scroll<V> {
     /// The content.
-    pub content: Content<V>,
+    pub content: Pod<V>,
     /// The axis of the scroll.
     #[rebuild(layout)]
     pub axis: Axis,
@@ -49,7 +49,7 @@ impl<V> Scroll<V> {
     /// Create a new scrollable view.
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
-            content: Content::new(content),
+            content: Pod::new(content),
             axis,
             transition: style(scroll::TRANSITION),
             width: style(scroll::WIDTH),

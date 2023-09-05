@@ -128,7 +128,12 @@ pub struct MeshRender {
 }
 
 impl MeshRender {
-    pub fn new(device: &Device, format: TextureFormat, image_layout: &BindGroupLayout) -> Self {
+    pub fn new(
+        device: &Device,
+        format: TextureFormat,
+        sample_count: u32,
+        image_layout: &BindGroupLayout,
+    ) -> Self {
         let shader = device.create_shader_module(include_wgsl!("shader/mesh.wgsl"));
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -175,7 +180,7 @@ impl MeshRender {
             primitive: Default::default(),
             depth_stencil: None,
             multisample: MultisampleState {
-                count: 4,
+                count: sample_count,
                 ..Default::default()
             },
             multiview: None,

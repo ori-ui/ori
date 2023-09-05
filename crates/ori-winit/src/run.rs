@@ -1,6 +1,5 @@
 use std::{collections::HashMap, mem};
 
-use futures_lite::future;
 use ori_core::{
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
@@ -15,18 +14,19 @@ use winit::{
 
 use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
-    render::{WgpuRender, WgpuRenderInstance},
     window::WinitWindow,
-    App, Error,
+    App, Error, Render,
 };
+
+const MSAA_SAMPLES: u32 = 4;
 
 unsafe fn init<T>(
     ids: &mut HashMap<winit::window::WindowId, ori_core::window::WindowId>,
     window_desc: WindowDescriptor,
     target: &EventLoopWindowTarget<()>,
     builder: &mut UiBuilder<T>,
-    ui: &mut Ui<T, WgpuRender>,
-    instance: &mut Option<WgpuRenderInstance>,
+    ui: &mut Ui<T, Render>,
+    #[cfg(feature = "wgpu")] instance: &mut Option<crate::wgpu::WgpuRenderInstance>,
 ) {
     /* create the window */
     let window = WindowBuilder::new()
@@ -38,8 +38,12 @@ unsafe fn init<T>(
     // SAFETY: this function will never return and the window will therefore
     // be valid for the lifetime on the RenderInstance.
 
+    #[cfg(feature = "wgpu")]
     let surface = unsafe {
-        let (new_instance, surface) = future::block_on(WgpuRenderInstance::new(&window)).unwrap();
+        use crate::wgpu::WgpuRenderInstance as Instance;
+        use futures_lite::future;
+
+        let (new_instance, surface) = future::block_on(Instance::new(&window)).unwrap();
         *instance = Some(new_instance);
 
         surface
@@ -52,13 +56,17 @@ unsafe fn init<T>(
     let window = Window::new(raw_window, window_desc);
 
     /* create the render */
-    let render = WgpuRender::new(
+    #[cfg(feature = "wgpu")]
+    let render = crate::wgpu::WgpuRender::new(
         instance.as_ref().unwrap(),
         surface,
+        MSAA_SAMPLES,
         window.width(),
         window.height(),
     )
     .unwrap();
+    #[cfg(not(feature = "wgpu"))]
+    let render = crate::dummy::DummyRender;
 
     /* add the window to the ui */
     let builder = mem::replace(builder, Box::new(|_| unreachable!()));
@@ -68,7 +76,13 @@ unsafe fn init<T>(
     ui.init();
 }
 
-unsafe fn recreate_surfaces<T>(ui: &mut Ui<T, WgpuRender>, instance: &WgpuRenderInstance) {
+#[cfg(feature = "wgpu")]
+unsafe fn recreate_surfaces<T>(
+    ui: &mut Ui<T, crate::wgpu::WgpuRender>,
+    instance: &crate::wgpu::WgpuRenderInstance,
+) {
+    use crate::wgpu::WgpuRender as Render;
+
     for window_id in ui.window_ids() {
         let window = ui.window_mut(window_id);
 
@@ -80,7 +94,7 @@ unsafe fn recreate_surfaces<T>(ui: &mut Ui<T, WgpuRender>, instance: &WgpuRender
             instance.create_surface(&window.window).unwrap()
         };
 
-        let render = WgpuRender::new(instance, surface, width, height).unwrap();
+        let render = Render::new(instance, surface, MSAA_SAMPLES, width, height).unwrap();
         window.set_render(render);
     }
 }
@@ -95,7 +109,8 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
     /* create the window map
      *
      * this is used to map the winit window id to the ori window id */
-    let mut ids = HashMap::new();
+    let mut ids = HashMap::<winit::window::WindowId, ori_core::window::WindowId>::new();
+    #[cfg(feature = "wgpu")]
     let mut instance = None;
 
     app.event_loop.run(move |event, target, control_flow| {
@@ -106,6 +121,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
             //
             // this is necessary for android
             Event::Resumed => {
+                #[cfg(feature = "wgpu")]
                 if let Some(ref instance) = instance {
                     unsafe { recreate_surfaces(&mut app.ui, instance) };
                 } else {
@@ -121,6 +137,17 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                             &mut instance,
                         );
                     }
+                }
+
+                #[cfg(not(feature = "wgpu"))]
+                unsafe {
+                    init(
+                        &mut ids,
+                        app.window.clone(),
+                        target,
+                        &mut app.builder,
+                        &mut app.ui,
+                    );
                 }
             }
             Event::RedrawEventsCleared => {

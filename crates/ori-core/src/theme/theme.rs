@@ -56,17 +56,6 @@ pub fn themed<T>(f: impl FnOnce() -> T) -> T {
     result
 }
 
-#[derive(Default)]
-struct ThemeHasher;
-
-impl BuildHasher for ThemeHasher {
-    type Hasher = seahash::SeaHasher;
-
-    fn build_hasher(&self) -> Self::Hasher {
-        seahash::SeaHasher::new()
-    }
-}
-
 /// A value that in a [`Theme`].
 #[derive(Clone, Debug)]
 pub enum Style<T> {
@@ -118,10 +107,21 @@ impl Debug for ThemeEntry {
     }
 }
 
+#[derive(Clone, Default)]
+struct ThemeHasher;
+
+impl BuildHasher for ThemeHasher {
+    type Hasher = seahash::SeaHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        seahash::SeaHasher::new()
+    }
+}
+
 /// A map of style values.
 #[derive(Clone, Debug)]
 pub struct Theme {
-    values: HashMap<&'static str, ThemeEntry>,
+    values: HashMap<&'static str, ThemeEntry, ThemeHasher>,
 }
 
 impl Default for Theme {

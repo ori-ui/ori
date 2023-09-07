@@ -18,7 +18,7 @@ thread_local! {
 
 impl<T: Any> Key<T> {
     /// Set a value in the global [`Theme`].
-    pub fn set(self, value: impl Into<Style<T>>) {
+    pub fn set(self, value: impl Into<T>) {
         THEME.with(|theme| theme.borrow_mut().set(self, value));
     }
 
@@ -32,7 +32,7 @@ impl<T: Any> Key<T> {
 }
 
 /// Set a value in the global theme.
-pub fn set_style<T: Any>(key: Key<T>, value: impl Into<Style<T>>) {
+pub fn set_style<T: Any>(key: Key<T>, value: impl Into<T>) {
     key.set(value);
 }
 
@@ -56,27 +56,6 @@ pub fn themed<T>(f: impl FnOnce() -> T) -> T {
     result
 }
 
-/// A value that in a [`Theme`].
-#[derive(Clone, Debug)]
-pub enum Style<T> {
-    /// A value.
-    Val(T),
-    /// A key.
-    Key(Key<T>),
-}
-
-impl<T> From<T> for Style<T> {
-    fn from(value: T) -> Self {
-        Self::Val(value)
-    }
-}
-
-impl<T> From<Key<T>> for Style<T> {
-    fn from(key: Key<T>) -> Self {
-        Self::Key(key)
-    }
-}
-
 #[derive(Clone, Debug)]
 enum ThemeError {
     MissingKey(&'static str),
@@ -88,21 +67,6 @@ impl Display for ThemeError {
         match self {
             ThemeError::MissingKey(key) => write!(f, "missing theme key `{}`", key),
             ThemeError::WrongType(key) => write!(f, "wrong theme type for `{}`", key),
-        }
-    }
-}
-
-#[derive(Clone)]
-enum ThemeEntry {
-    Val(Arc<dyn Any>),
-    Key(&'static str),
-}
-
-impl Debug for ThemeEntry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Val(_) => write!(f, "value"),
-            Self::Key(key) => write!(f, "\"{}\"", key),
         }
     }
 }
@@ -121,7 +85,7 @@ impl BuildHasher for ThemeHasher {
 /// A map of style values.
 #[derive(Clone, Debug)]
 pub struct Theme {
-    values: HashMap<&'static str, ThemeEntry, ThemeHasher>,
+    values: HashMap<&'static str, Arc<dyn Any>, ThemeHasher>,
 }
 
 impl Default for Theme {
@@ -153,17 +117,12 @@ impl Theme {
     }
 
     /// Set a value in the theme.
-    pub fn set<T: Any>(&mut self, key: Key<T>, value: impl Into<Style<T>>) {
-        let entry = match value.into() {
-            Style::Val(value) => ThemeEntry::Val(Arc::new(value)),
-            Style::Key(key) => ThemeEntry::Key(key.name()),
-        };
-
-        self.values.insert(key.name(), entry);
+    pub fn set<T: Any>(&mut self, key: Key<T>, value: impl Into<T>) {
+        self.values.insert(key.name(), Arc::new(value.into()));
     }
 
     /// Set a value in the theme and return the theme.
-    pub fn with<T: Any>(mut self, key: Key<T>, value: impl Into<Style<T>>) -> Self {
+    pub fn with<T: Any>(mut self, key: Key<T>, value: impl Into<T>) -> Self {
         self.set(key, value);
         self
     }
@@ -177,18 +136,9 @@ impl Theme {
         value.downcast_ref().ok_or(ThemeError::WrongType(name))
     }
 
-    fn try_get_inner<T: Any>(&self, mut name: &'static str) -> Result<&T, ThemeError> {
-        loop {
-            let entry = self.values.get(name).ok_or(ThemeError::MissingKey(name))?;
-            match entry {
-                ThemeEntry::Val(value) => {
-                    return Self::downcast(value.as_ref(), name);
-                }
-                ThemeEntry::Key(key) => {
-                    name = key;
-                }
-            }
-        }
+    fn try_get_inner<T: Any>(&self, name: &'static str) -> Result<&T, ThemeError> {
+        let value = self.values.get(name).ok_or(ThemeError::MissingKey(name))?;
+        Self::downcast(value.as_ref(), name)
     }
 
     /// Get a value from the theme.

@@ -1,5 +1,5 @@
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Canvas, Color, Quad},
+    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
     event::{AnimationFrame, Code, Event, Focused, KeyboardEvent, Modifiers, PointerEvent},
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
@@ -672,7 +672,7 @@ impl<T> View<T> for TextInput<T> {
 
         canvas.draw_pixel_perfect(Quad {
             rect: Rect::min_size(cursor_min.round(), cursor_size),
-            color,
+            background: Background::color(color),
             border_radius: BorderRadius::ZERO,
             border_width: BorderWidth::ZERO,
             border_color: Color::TRANSPARENT,

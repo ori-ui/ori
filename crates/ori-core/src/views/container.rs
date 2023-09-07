@@ -1,5 +1,5 @@
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Canvas, Color},
+    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
     event::{Event, PointerEvent},
     layout::{Size, Space},
     rebuild::Rebuild,
@@ -14,7 +14,7 @@ pub struct Container<V> {
     pub content: Pod<V>,
     /// The background color.
     #[rebuild(draw)]
-    pub background: Color,
+    pub background: Background,
     /// The border radius.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
@@ -39,7 +39,7 @@ impl<V> Container<V> {
     }
 
     /// Set the background color.
-    pub fn background(mut self, background: impl Into<Color>) -> Self {
+    pub fn background(mut self, background: impl Into<Background>) -> Self {
         self.background = background.into();
         self
     }
@@ -130,7 +130,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
     ) {
         canvas.draw_quad(
             cx.rect(),
-            self.background,
+            self.background.clone(),
             self.border_radius,
             self.border_width,
             self.border_color,

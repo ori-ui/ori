@@ -1,7 +1,7 @@
 //! Builtin styles.
 
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Color},
+    canvas::{Background, BorderRadius, BorderWidth, Color},
     layout::Padding,
     text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
     transition::Transition,
@@ -57,7 +57,7 @@ style! {
         /// The font style.
         const FONT_STYLE: FontStyle = FontStyle::Normal;
         /// The color.
-        const COLOR: Color = Palette::TEXT;
+        const COLOR: Color = Palette::TEXT.get();
         /// The vertical alignment.
         const V_ALIGN: TextAlign = TextAlign::Top;
         /// The horizontal alignment.
@@ -73,25 +73,25 @@ style! {
     /// Styles for [`TextInput`](crate::views::Text)s.
     pub text_input {
         /// The font size.
-        const FONT_SIZE: f32 = text::FONT_SIZE;
+        const FONT_SIZE: f32 = rem(1.0);
         /// The font family.
-        const FONT_FAMILY: FontFamily = text::FONT_FAMILY;
+        const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
         /// The font weight.
-        const FONT_WEIGHT: FontWeight = text::FONT_WEIGHT;
+        const FONT_WEIGHT: FontWeight = FontWeight::NORMAL;
         /// The font stretch.
-        const FONT_STRETCH: FontStretch = text::FONT_STRETCH;
+        const FONT_STRETCH: FontStretch = FontStretch::Normal;
         /// The font style.
-        const FONT_STYLE: FontStyle = text::FONT_STYLE;
+        const FONT_STYLE: FontStyle = FontStyle::Normal;
         /// The color.
-        const COLOR: Color = text::COLOR;
+        const COLOR: Color = Palette::TEXT.get();
         /// The vertical alignment.
         const V_ALIGN: TextAlign = TextAlign::Top;
         /// The horizontal alignment.
         const H_ALIGN: TextAlign = TextAlign::Left;
         /// The line height.
-        const LINE_HEIGHT: f32 = text::LINE_HEIGHT;
+        const LINE_HEIGHT: f32 = 1.0;
         /// The text wrap.
-        const WRAP: TextWrap = text::WRAP;
+        const WRAP: TextWrap = TextWrap::Word;
     }
 }
 
@@ -101,7 +101,7 @@ style! {
         /// The padding of the overlay.
         const PADDING: Padding = Padding::from((pt(4.0), pt(2.0)));
         /// The background color of the overlay.
-        const BACKGROUND: Color = Palette::SECONDARY_DARKER;
+        const BACKGROUND: Color = Palette::SECONDARY_DARKER.get();
         /// The border radius of the overlay.
         const BORDER_RADIUS: BorderRadius = BorderRadius::all(pt(6.0));
         /// The border width of the overlay.
@@ -115,7 +115,7 @@ style! {
     /// Styles for [`Container`](crate::views::Container)s.
     pub container {
         /// The background color.
-        const BACKGROUND: Color = Color::TRANSPARENT;
+        const BACKGROUND: Background = Color::TRANSPARENT;
         /// The border radius.
         const BORDER_RADIUS: BorderRadius = BorderRadius::all(0.0);
         /// The border width.
@@ -137,9 +137,9 @@ style! {
         /// The border radius of the scrollbar.
         const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.25));
         /// The color of the scrollbar.
-        const COLOR: Color = Palette::SECONDARY_DARK;
+        const COLOR: Color = Palette::SECONDARY_DARK.get();
         /// The color of the scrollbar knob.
-        const KNOB_COLOR: Color = Palette::SECONDARY_DARKER;
+        const KNOB_COLOR: Color = Palette::SECONDARY_DARKER.get();
     }
 }
 
@@ -149,7 +149,7 @@ style! {
         /// The transition when the button is hovered.
         const TRANSITION: Transition = Transition::ease(0.1);
         /// The color.
-        const COLOR: Color = Palette::PRIMARY;
+        const COLOR: Background = Palette::PRIMARY.get();
         /// The border radius.
         const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.5));
         /// The border width.
@@ -167,17 +167,17 @@ style! {
         /// The size of the checkbox.
         const SIZE: f32 = rem(1.5);
         /// The color of the checkmark.
-        const COLOR: Color = Palette::ACCENT;
+        const COLOR: Color = Palette::ACCENT.get();
         /// The stroke width of the checkmark.
         const STROKE: f32 = pt(2.0);
         /// The background color.
-        const BACKGROUND: Color = Color::TRANSPARENT;
+        const BACKGROUND: Background = Color::TRANSPARENT;
         /// The border radius.
         const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.4));
         /// The border width.
         const BORDER_WIDTH: BorderWidth = BorderWidth::all(1.0);
         /// The border color.
-        const BORDER_COLOR: Color = Palette::TEXT_BRIGHTER;
+        const BORDER_COLOR: Color = Palette::TEXT_BRIGHTER.get();
     }
 }
 

@@ -2,6 +2,7 @@ use crate::{
     canvas::{BorderRadius, Canvas, Color},
     event::{AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Axis, Rect, Size, Space, Vector},
+    log::warn_internal,
     rebuild::Rebuild,
     theme::{scroll, style},
     transition::Transition,
@@ -233,7 +234,13 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let content_space = Space::new(Size::ZERO, max);
         let content_size = self.content.layout(content, cx, data, content_space);
 
-        space.fit(content_size)
+        let size = space.fit(content_size);
+
+        if !size.is_finite() {
+            warn_internal!("Contents of a scroll view has a non-finite size");
+        }
+
+        size
     }
 
     fn draw(

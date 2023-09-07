@@ -56,6 +56,16 @@ impl Size {
         )
     }
 
+    /// Get whether the size is finite.
+    pub fn is_finite(self) -> bool {
+        self.width.is_finite() && self.height.is_finite()
+    }
+
+    /// Get whether the size is infinite.
+    pub fn is_infinite(self) -> bool {
+        self.width.is_infinite() || self.height.is_infinite()
+    }
+
     /// Convert the size to a vector.
     pub const fn to_point(self) -> Point {
         Point::new(self.width, self.height)

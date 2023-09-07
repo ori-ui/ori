@@ -17,6 +17,12 @@ struct QuadData {
 var<uniform> uniforms: Uniforms;
 
 @group(1) @binding(0)
+var image: texture_2d<f32>;
+
+@group(1) @binding(1)
+var image_sampler: sampler;
+
+@group(2) @binding(0)
 var<storage, read> quad_data: array<QuadData>;
 
 struct VertexInput {
@@ -111,7 +117,7 @@ fn select_border_width(
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let data = quad_data[in.index];
 
-	var color = data.color;
+	var color = data.color * textureSample(image, image_sampler, in.uv);
 
 	let border_radius = select_border_radius(
 		in.position,

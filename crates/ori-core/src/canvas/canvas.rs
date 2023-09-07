@@ -1,6 +1,6 @@
 use crate::layout::{Affine, Point, Rect, Size, Vector};
 
-use super::{BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad, Scene};
+use super::{Background, BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad, Scene};
 
 /// A canvas used for drawing a [`Scene`].
 pub struct Canvas<'a> {
@@ -93,19 +93,19 @@ impl<'a> Canvas<'a> {
     pub fn draw_quad(
         &mut self,
         rect: Rect,
-        color: impl Into<Color>,
+        background: impl Into<Background>,
         border_radius: impl Into<BorderRadius>,
         border_width: impl Into<BorderWidth>,
         border_color: impl Into<Color>,
     ) {
-        let color = color.into();
+        let background = background.into();
         let border_radius = border_radius.into();
         let border_width = border_width.into();
         let border_color = border_color.into();
 
         self.draw(Quad {
             rect,
-            color,
+            background,
             border_radius,
             border_width,
             border_color,

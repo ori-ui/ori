@@ -73,6 +73,26 @@ impl Color {
         Self::rgb(g, g, g)
     }
 
+    /// Get the red component as an 8 bit integer.
+    pub fn r8(&self) -> u8 {
+        (self.r * 255.0) as u8
+    }
+
+    /// Get the green component as an 8 bit integer.
+    pub fn g8(&self) -> u8 {
+        (self.g * 255.0) as u8
+    }
+
+    /// Get the blue component as an 8 bit integer.
+    pub fn b8(&self) -> u8 {
+        (self.b * 255.0) as u8
+    }
+
+    /// Get the alpha component as an 8 bit integer.
+    pub fn a8(&self) -> u8 {
+        (self.a * 255.0) as u8
+    }
+
     /// Try to parse a color from a hex string.
     pub fn try_hex(hex: &str) -> Option<Self> {
         let hex = hex.trim_start_matches('#');

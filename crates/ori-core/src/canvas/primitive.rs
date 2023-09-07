@@ -1,14 +1,14 @@
 use crate::layout::Rect;
 
-use super::{BorderRadius, BorderWidth, Color, Mesh};
+use super::{Background, BorderRadius, BorderWidth, Color, Mesh};
 
 /// A quad primitive.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Quad {
     /// The rectangle of the quad.
     pub rect: Rect,
     /// The color of the quad.
-    pub color: Color,
+    pub background: Background,
     /// The border radius of the quad.
     pub border_radius: BorderRadius,
     /// The border width of the quad.
@@ -23,7 +23,7 @@ impl Quad {
         // if the rect has zero area, the quad is ineffective
         let rect = self.rect.area() == 0.0;
 
-        let color = self.color.a == 0.0;
+        let color = self.background.color.a == 0.0;
         let border = self.border_width == BorderWidth::ZERO || self.border_color.a == 0.0;
 
         rect || (color && border)

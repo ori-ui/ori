@@ -5,6 +5,8 @@ use std::{
     sync::{Arc, Weak},
 };
 
+use crate::canvas::Color;
+
 use super::ImageData;
 
 /// Include an image.
@@ -53,6 +55,11 @@ impl Image {
     /// - If `pixels.len()` is not equal to `width * height * 4`.
     pub fn new(pixels: Vec<u8>, width: u32, height: u32) -> Self {
         Self::from(ImageData::new(pixels, width, height))
+    }
+
+    /// Create a new gradient image.
+    pub fn gradient(angle: f32, colors: &[Color]) -> Self {
+        Self::from(ImageData::gradient(angle, colors))
     }
 
     /// Try to load an image from a file.

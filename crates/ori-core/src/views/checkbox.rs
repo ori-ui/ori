@@ -1,5 +1,5 @@
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve},
+    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Curve},
     event::{AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
@@ -33,7 +33,7 @@ pub struct Checkbox {
     pub stroke: f32,
     /// The background color.
     #[rebuild(draw)]
-    pub background: Color,
+    pub background: Background,
     /// The border radius.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
@@ -54,7 +54,7 @@ impl Checkbox {
             size: style(checkbox::SIZE),
             color: style(checkbox::COLOR),
             stroke: style(checkbox::STROKE),
-            background: style(checkbox::BACKGROUND),
+            background: style(checkbox::BACKGROUND).into(),
             border_radius: style(checkbox::BORDER_RADIUS),
             border_width: style(checkbox::BORDER_WIDTH),
             border_color: style(checkbox::BORDER_COLOR),
@@ -86,7 +86,7 @@ impl Checkbox {
     }
 
     /// Set the background color of the checkbox.
-    pub fn background(mut self, background: impl Into<Color>) -> Self {
+    pub fn background(mut self, background: impl Into<Background>) -> Self {
         self.background = background.into();
         self
     }
@@ -157,7 +157,7 @@ impl<T> View<T> for Checkbox {
 
         canvas.draw_quad(
             cx.rect(),
-            self.background,
+            self.background.clone(),
             self.border_radius,
             self.border_width,
             self.border_color.mix(bright, self.transition.on(*t)),

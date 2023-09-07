@@ -3,6 +3,7 @@
 //! This module contains the [`Canvas`] type, which is used to draw primitives
 //! to a [`Scene`].
 
+mod background;
 mod border;
 mod canvas;
 mod color;
@@ -13,6 +14,7 @@ mod render;
 mod scene;
 mod stroke;
 
+pub use background::*;
 pub use border::*;
 pub use canvas::*;
 pub use color::*;

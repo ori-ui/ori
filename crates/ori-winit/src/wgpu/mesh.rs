@@ -244,7 +244,7 @@ impl MeshRender {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn prepare(
+    pub fn prepare_batch(
         &mut self,
         device: &Device,
         queue: &Queue,
@@ -266,8 +266,8 @@ impl MeshRender {
         batch.resize_index_buffer(device, index_count);
         batch.resize_vertex_buffer(device, vertex_count);
         batch.index_count = index_count;
-        batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
         batch.image = Some(Self::batch_image(device, queue, cache, meshes));
+        batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
 
         let mut vertices = Vec::with_capacity(vertex_count);
         let mut indices = Vec::with_capacity(index_count);

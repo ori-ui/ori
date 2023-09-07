@@ -11,7 +11,7 @@ use wgpu::{
     TextureView,
 };
 
-use crate::RenderError;
+use crate::{log::warn_internal, RenderError};
 
 use super::{ImageCache, MeshRender, QuadRender, WgpuRenderInstance};
 
@@ -79,7 +79,7 @@ impl WgpuRender {
             None
         };
 
-        let quad = QuadRender::new(&device, config.format, samples);
+        let quad = QuadRender::new(&device, config.format, samples, cache.bind_group_layout());
         let mesh = MeshRender::new(&device, config.format, samples, cache.bind_group_layout());
 
         Ok(Self {
@@ -152,16 +152,19 @@ impl WgpuRender {
         &mut self,
         batches: &mut Vec<Batch>,
         quad_clip: Option<Rect>,
-        quad_batch: &mut Vec<(Quad, Affine)>,
+        quad_batch: &mut Vec<(&Quad, Affine)>,
         quad_batch_count: &mut usize,
     ) {
-        self.quad.prepare(
+        let resolution = self.size();
+
+        self.quad.prepare_batch(
             &self.device,
             &self.queue,
+            &mut self.image,
             *quad_batch_count,
             quad_batch,
             quad_clip.unwrap(),
-            self.size(),
+            resolution,
         );
 
         batches.push(Batch::Quad(*quad_batch_count));
@@ -179,7 +182,7 @@ impl WgpuRender {
         mesh_batch_count: &mut usize,
     ) {
         let resolution = self.size();
-        self.mesh.prepare(
+        self.mesh.prepare_batch(
             &self.device,
             &self.queue,
             &mut self.image,
@@ -199,6 +202,7 @@ impl WgpuRender {
     fn prepare_fragments(&mut self, fragments: &[Fragment]) -> Vec<Batch> {
         let mut batches = Vec::new();
 
+        let mut quad_image = None;
         let mut quad_clip = None;
         let mut quad_batch = Vec::new();
         let mut quad_batch_count = 0;
@@ -210,7 +214,7 @@ impl WgpuRender {
 
         for fragment in fragments {
             match fragment.primitive {
-                Primitive::Quad(quad) => {
+                Primitive::Quad(ref quad) => {
                     if !mesh_batch.is_empty() {
                         self.push_mesh_batch(
                             &mut batches,
@@ -220,7 +224,9 @@ impl WgpuRender {
                         );
                     }
 
-                    if quad_clip != Some(fragment.clip) && !quad_batch.is_empty() {
+                    let image = quad.background.image.clone();
+                    let new_batch = quad_clip != Some(fragment.clip) || quad_image != image;
+                    if new_batch && !quad_batch.is_empty() {
                         self.push_quad_batch(
                             &mut batches,
                             quad_clip,
@@ -229,6 +235,7 @@ impl WgpuRender {
                         );
                     }
 
+                    quad_image = image;
                     quad_clip = Some(fragment.clip);
                     quad_batch.push((quad, fragment.transform));
                 }
@@ -352,15 +359,17 @@ impl WgpuRender {
         let target = match self.surface.get_current_texture() {
             Ok(target) => target,
             Err(SurfaceError::OutOfMemory) => panic!("Out of memory"),
-            Err(_) => return,
+            Err(err) => {
+                warn_internal!("Surface error: {:?}", err);
+                return;
+            }
         };
 
         let target_view = target.texture.create_view(&Default::default());
 
-        {
-            let mut pass = self.begin_render_pass(&mut encoder, &target_view, clear_color);
-            self.render_fragments(&mut pass, &batches);
-        }
+        let mut pass = self.begin_render_pass(&mut encoder, &target_view, clear_color);
+        self.render_fragments(&mut pass, &batches);
+        drop(pass);
 
         self.queue.submit(Some(encoder.finish()));
 

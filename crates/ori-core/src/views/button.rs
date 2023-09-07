@@ -1,5 +1,5 @@
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Canvas, Color},
+    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
     event::{AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
@@ -29,7 +29,7 @@ pub struct Button<V> {
     pub transition: Transition,
     /// The color of the button.
     #[rebuild(draw)]
-    pub color: Color,
+    pub color: Background,
     /// The border radius.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
@@ -75,7 +75,7 @@ impl<V> Button<V> {
     }
 
     /// Set the color.
-    pub fn color(mut self, color: impl Into<Color>) -> Self {
+    pub fn color(mut self, color: impl Into<Background>) -> Self {
         self.color = color.into();
         self
     }
@@ -211,14 +211,19 @@ impl<T, V: View<T>> View<T> for Button<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        let dark = self.color.darken(0.05);
-        let dim = self.color.darken(0.025);
-        let bright = self.color.brighten(0.05);
+        let dark = self.color.color.darken(0.05);
+        let dim = self.color.color.darken(0.025);
+        let bright = self.color.color.brighten(0.05);
 
         let hot = self.transition.on(state.hot);
         let active = self.transition.on(state.active);
 
-        let face = self.color.mix(bright, hot).mix(dim, active);
+        let face = self.color.color.mix(bright, hot).mix(dim, active);
+
+        let face = Background {
+            image: self.color.image.clone(),
+            color: face,
+        };
 
         if self.fancy == 0.0 {
             canvas.draw_quad(
@@ -237,7 +242,10 @@ impl<T, V: View<T>> View<T> for Button<V> {
 
         canvas.draw_quad(
             cx.rect(),
-            base,
+            Background {
+                image: self.color.image.clone(),
+                color: base,
+            },
             self.border_radius,
             self.border_width,
             self.border_color,

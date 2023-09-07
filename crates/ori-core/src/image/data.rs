@@ -4,7 +4,10 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::layout::Size;
+use crate::{
+    canvas::Color,
+    layout::{Size, Vector},
+};
 
 use super::ImageId;
 
@@ -37,6 +40,44 @@ impl ImageData {
             height,
             filter: true,
         }
+    }
+
+    /// Create a new gradient image data.
+    pub fn gradient(angle: f32, colors: &[Color]) -> Self {
+        let mut pixels = Vec::new();
+
+        let angle = angle.to_radians();
+        let (sin, cos) = angle.sin_cos();
+        let direction = Vector::new(cos, sin);
+        let length = sin.abs() + cos.abs();
+
+        let size = colors.len() as u32 * 4;
+        let max = size as f32 - 1.0;
+
+        for y in 0..size {
+            for x in 0..size {
+                let x = x as f32;
+                let y = y as f32;
+
+                let position = Vector::new(x, y) / max * 2.0 - 1.0;
+                let dist = position.dot(direction) / length / 2.0 + 0.5;
+                let position = dist.clamp(0.0, 1.0) * (colors.len() - 1) as f32;
+
+                let prev_index = position.floor() as usize;
+                let next_index = usize::min(prev_index + 1, colors.len() - 1);
+                let prev = colors[prev_index];
+                let next = colors[next_index];
+
+                let color = prev.mix(next, position.fract());
+
+                pixels.push(color.r8());
+                pixels.push(color.g8());
+                pixels.push(color.b8());
+                pixels.push(color.a8());
+            }
+        }
+
+        Self::new(pixels, size, size)
     }
 
     /// Try to load image data from a file.

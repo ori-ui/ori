@@ -386,8 +386,12 @@ impl<V> Stack<V> {
 
             if content[i].is_flex() {
                 size = size.min(self.axis.pack(max_major, max_minor));
-            } else if size.width.is_infinite() || size.height.is_infinite() {
-                warn_internal!("A view in a stack has an infinite size, [{}] = {}", i, size);
+            } else if !size.is_finite() {
+                warn_internal!(
+                    "A view in a stack has an non-finite size, [{}] = {}",
+                    i,
+                    size,
+                );
             }
 
             let (child_major, child_minor) = self.axis.unpack(size);

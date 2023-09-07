@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, sync::Arc};
 
 use ori_core::{
     canvas::Quad,
@@ -13,7 +13,10 @@ use wgpu::{
     VertexState,
 };
 
-use super::{bytes_of, bytes_of_slice};
+use super::{
+    bytes_of, bytes_of_slice,
+    image::{CachedImage, ImageCache},
+};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -44,11 +47,11 @@ struct Vertex {
 
 #[derive(Debug)]
 struct Batch {
-    len: usize,
-    cap: usize,
+    vertex_count: usize,
     data_buffer: Buffer,
     vertex_buffer: Buffer,
     data_bind_group: BindGroup,
+    image: Option<Arc<CachedImage>>,
     clip: Rect,
 }
 
@@ -59,11 +62,11 @@ impl Batch {
         let data_bind_group = Self::create_data_bind_group(device, data_layout, &data_buffer);
 
         Self {
-            len: 0,
-            cap,
+            vertex_count: 0,
             data_buffer,
             vertex_buffer,
             data_bind_group,
+            image: None,
             clip: Rect::ZERO,
         }
     }
@@ -131,13 +134,12 @@ impl Batch {
     }
 
     fn resize(&mut self, device: &Device, layout: &BindGroupLayout, len: usize) {
-        self.len = len;
+        let size = mem::size_of::<QuadData>() as u64 * len as u64;
 
-        if len > self.cap {
+        if self.data_buffer.size() < size {
             self.data_buffer = Self::create_data_buffer(device, len);
             self.vertex_buffer = Self::create_vertex_buffer(device, len);
             self.data_bind_group = Self::create_data_bind_group(device, layout, &self.data_buffer);
-            self.cap = len;
         }
     }
 }
@@ -152,7 +154,12 @@ pub struct QuadRender {
 }
 
 impl QuadRender {
-    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
+    pub fn new(
+        device: &Device,
+        format: TextureFormat,
+        sample_count: u32,
+        image_layout: &BindGroupLayout,
+    ) -> Self {
         let shader = device.create_shader_module(include_wgsl!("shader/quad.wgsl"));
 
         let uniform_buffer = Self::create_uniform_buffer(device);
@@ -196,7 +203,7 @@ impl QuadRender {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("ori_quad_pipeline_layout"),
-            bind_group_layouts: &[&uniform_layout, &data_layout],
+            bind_group_layouts: &[&uniform_layout, image_layout, &data_layout],
             push_constant_ranges: &[],
         });
 
@@ -265,21 +272,38 @@ impl QuadRender {
         }
     }
 
+    fn batch_image(
+        device: &Device,
+        queue: &Queue,
+        cache: &mut ImageCache,
+        batch: &[(&Quad, Affine)],
+    ) -> Arc<CachedImage> {
+        match batch[0].0.background.image {
+            Some(ref image) => cache.get(device, queue, image),
+            None => cache.fallback(device, queue),
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
-    pub fn prepare(
+    pub fn prepare_batch(
         &mut self,
         device: &Device,
         queue: &Queue,
+        cache: &mut ImageCache,
         index: usize,
-        quads: &[(Quad, Affine)],
+        quads: &[(&Quad, Affine)],
         clip: Rect,
         resolution: Size,
     ) {
+        assert!(!quads.is_empty());
+
         self.write_uniforms(queue, resolution);
         self.resize_batches(device, index + 1);
 
         let batch = &mut self.batches[index];
         batch.resize(device, &self.data_layout, quads.len());
+        batch.vertex_count = quads.len() * 6;
+        batch.image = Some(Self::batch_image(device, queue, cache, quads));
         batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
 
         let mut datas = Vec::with_capacity(quads.len());
@@ -292,7 +316,7 @@ impl QuadRender {
                 min: quad.rect.min.into(),
                 max: quad.rect.max.into(),
                 _padding: [0; 8],
-                color: quad.color.into(),
+                color: quad.background.color.into(),
                 border_radius: quad.border_radius.into(),
                 border_width: quad.border_width.into(),
                 border_color: quad.border_color.into(),
@@ -311,6 +335,8 @@ impl QuadRender {
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
         let batch = &self.batches[index];
 
+        let image_bind_group = &batch.image.as_ref().unwrap().bind_group;
+
         pass.set_scissor_rect(
             batch.clip.min.x as u32,
             batch.clip.min.y as u32,
@@ -321,10 +347,11 @@ impl QuadRender {
         pass.set_pipeline(&self.pipeline);
 
         pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        pass.set_bind_group(1, &batch.data_bind_group, &[]);
+        pass.set_bind_group(1, &image_bind_group, &[]);
+        pass.set_bind_group(2, &batch.data_bind_group, &[]);
 
         pass.set_vertex_buffer(0, batch.vertex_buffer.slice(..));
 
-        pass.draw(0..batch.len as u32 * 6, 0..1);
+        pass.draw(0..batch.vertex_count as u32, 0..1);
     }
 }

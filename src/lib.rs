@@ -44,7 +44,7 @@ pub mod prelude {
         image::{Image, ImageData, ImageId},
         layout::{
             Affine, Align, Alignment, Axis, Justify, Matrix, Padding, Point, Rect, Size, Space,
-            Vector,
+            Vector, FILL,
         },
         log::*,
         rebuild::Rebuild,
@@ -52,7 +52,10 @@ pub mod prelude {
             font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, FontsError,
             Glyph, Glyphs, TextAlign, TextSection, TextWrap,
         },
-        theme::{builtin::*, pt, rem, set_style, set_theme, style, themed, Key, Palette, Theme},
+        theme::{
+            builtin::*, pt, rem, set_style, set_theme, style, themed, vh, vw, window_size, Key,
+            Palette, Theme,
+        },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
             any, AnyView, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, PodSeq, RebuildCx,

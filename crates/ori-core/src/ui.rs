@@ -14,7 +14,7 @@ use crate::{
     },
     layout::{Point, Vector},
     text::Fonts,
-    theme::{set_style, themed, Theme, SCALE_FACTOR, WINDOW_SIZE},
+    theme::{Theme, SCALE_FACTOR, WINDOW_SIZE},
     view::BaseCx,
     window::{UiBuilder, Window, WindowId, WindowUi},
 };
@@ -61,21 +61,16 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     fn build_theme(themes: &mut Vec<Box<dyn FnMut() -> Theme>>, window: &Window) -> Theme {
-        themed(|| {
-            set_style(SCALE_FACTOR, window.scale_factor());
-            set_style(WINDOW_SIZE, window.size());
+        let mut theme = Theme::new();
+        theme.set(SCALE_FACTOR, window.scale_factor());
+        theme.set(WINDOW_SIZE, window.size());
 
-            let mut theme = Theme::builtin();
+        for theme_builder in themes {
+            let new_theme = Theme::with_global(&mut theme, theme_builder);
+            theme.extend(new_theme);
+        }
 
-            for theme_fn in themes {
-                theme.extend(theme_fn());
-            }
-
-            theme.set(SCALE_FACTOR, window.scale_factor());
-            theme.set(WINDOW_SIZE, window.size());
-
-            theme
-        })
+        theme
     }
 
     /// Add a new window.

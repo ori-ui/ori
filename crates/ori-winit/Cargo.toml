@@ -9,7 +9,6 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 ori-core = { path = "../ori-core", version = "0.1.0-alpha.1" }
 
-bytemuck = { version = "1.13", features = ["derive"] }
 futures-lite = "1.13"
 
 wgpu = { version = "0.17", optional = true }

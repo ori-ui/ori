@@ -1,6 +1,5 @@
 use std::mem;
 
-use bytemuck::{bytes_of, cast_slice, Pod, Zeroable};
 use ori_core::{
     canvas::Quad,
     layout::{Affine, Point, Rect, Size},
@@ -14,14 +13,16 @@ use wgpu::{
     VertexState,
 };
 
+use super::{bytes_of, bytes_of_slice};
+
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy)]
 struct Uniforms {
     resolution: [f32; 2],
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy)]
 struct QuadData {
     translation: [f32; 2],
     matrix: [f32; 4],
@@ -35,7 +36,7 @@ struct QuadData {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy)]
 struct Vertex {
     position: [f32; 2],
     tex_coords: [f32; 2],
@@ -247,6 +248,23 @@ impl QuadRender {
         })
     }
 
+    fn write_uniforms(&self, queue: &Queue, resolution: Size) {
+        let uniforms = Uniforms {
+            resolution: resolution.into(),
+        };
+
+        unsafe {
+            queue.write_buffer(&self.uniform_buffer, 0, bytes_of(&uniforms));
+        }
+    }
+
+    fn resize_batches(&mut self, device: &Device, len: usize) {
+        if self.batches.len() < len {
+            let layout = &self.data_layout;
+            (self.batches).resize_with(len, || Batch::new(device, layout, 128));
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
@@ -257,17 +275,8 @@ impl QuadRender {
         clip: Rect,
         resolution: Size,
     ) {
-        let uniforms = Uniforms {
-            resolution: resolution.into(),
-        };
-
-        queue.write_buffer(&self.uniform_buffer, 0, bytes_of(&uniforms));
-
-        if self.batches.len() <= index {
-            let len = index + 1;
-            let layout = &self.data_layout;
-            (self.batches).resize_with(len, || Batch::new(device, layout, quads.len()));
-        }
+        self.write_uniforms(queue, resolution);
+        self.resize_batches(device, index + 1);
 
         let batch = &mut self.batches[index];
         batch.resize(device, &self.data_layout, quads.len());
@@ -293,8 +302,10 @@ impl QuadRender {
             vertices.extend(Batch::vertices(quad));
         }
 
-        queue.write_buffer(&batch.data_buffer, 0, cast_slice(&datas));
-        queue.write_buffer(&batch.vertex_buffer, 0, cast_slice(&vertices));
+        unsafe {
+            queue.write_buffer(&batch.data_buffer, 0, bytes_of_slice(&datas));
+            queue.write_buffer(&batch.vertex_buffer, 0, bytes_of_slice(&vertices));
+        }
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
@@ -308,9 +319,12 @@ impl QuadRender {
         );
 
         pass.set_pipeline(&self.pipeline);
+
         pass.set_bind_group(0, &self.uniform_bind_group, &[]);
         pass.set_bind_group(1, &batch.data_bind_group, &[]);
+
         pass.set_vertex_buffer(0, batch.vertex_buffer.slice(..));
+
         pass.draw(0..batch.len as u32 * 6, 0..1);
     }
 }

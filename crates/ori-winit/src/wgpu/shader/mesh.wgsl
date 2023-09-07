@@ -2,28 +2,19 @@ struct Uniforms {
 	resolution: vec2<f32>,	
 }
 
-struct MeshData {
-    translation: vec2<f32>,
-    matrix: mat2x2<f32>,
-}
-
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
 
 @group(1) @binding(0)
-var<storage, read> mesh_data: array<MeshData>;
-
-@group(2) @binding(0)
 var image: texture_2d<f32>;
 
-@group(2) @binding(1)
+@group(1) @binding(1)
 var image_sampler: sampler;
 
 struct VertexInput {
 	@location(0) position: vec2<f32>,
 	@location(1) uv: vec2<f32>,
 	@location(2) color: vec4<f32>,
-    @location(3) index: u32,
 }
 
 struct VertexOutput {
@@ -38,12 +29,9 @@ fn screen_to_clip(position: vec2<f32>) -> vec2<f32> {
 
 @vertex
 fn vertex(in: VertexInput) -> VertexOutput {
-    let data = mesh_data[in.index];
-
 	var out: VertexOutput;
 
-	let position = data.matrix * in.position + data.translation;
-	out.position = vec4<f32>(screen_to_clip(position), 0.0, 1.0);
+	out.position = vec4<f32>(screen_to_clip(in.position), 0.0, 1.0);
 	out.uv = in.uv;
 	out.color = in.color;
 

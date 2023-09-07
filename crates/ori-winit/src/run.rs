@@ -15,17 +15,18 @@ use winit::{
 use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
     window::WinitWindow,
-    App, Error, Render,
+    App, Error,
 };
 
 const MSAA_SAMPLES: u32 = 4;
 
-unsafe fn init<T>(
+#[cfg(feature = "wgpu")]
+unsafe fn init_wgpu<T>(
     ids: &mut HashMap<winit::window::WindowId, ori_core::window::WindowId>,
     window_desc: WindowDescriptor,
     target: &EventLoopWindowTarget<()>,
     builder: &mut UiBuilder<T>,
-    ui: &mut Ui<T, Render>,
+    ui: &mut Ui<T, crate::wgpu::WgpuRender>,
     #[cfg(feature = "wgpu")] instance: &mut Option<crate::wgpu::WgpuRenderInstance>,
 ) {
     /* create the window */
@@ -38,7 +39,6 @@ unsafe fn init<T>(
     // SAFETY: this function will never return and the window will therefore
     // be valid for the lifetime on the RenderInstance.
 
-    #[cfg(feature = "wgpu")]
     let surface = unsafe {
         use crate::wgpu::WgpuRenderInstance as Instance;
         use futures_lite::future;
@@ -56,7 +56,6 @@ unsafe fn init<T>(
     let window = Window::new(raw_window, window_desc);
 
     /* create the render */
-    #[cfg(feature = "wgpu")]
     let render = crate::wgpu::WgpuRender::new(
         instance.as_ref().unwrap(),
         surface,
@@ -65,8 +64,6 @@ unsafe fn init<T>(
         window.height(),
     )
     .unwrap();
-    #[cfg(not(feature = "wgpu"))]
-    let render = crate::dummy::DummyRender;
 
     /* add the window to the ui */
     let builder = mem::replace(builder, Box::new(|_| unreachable!()));
@@ -77,11 +74,11 @@ unsafe fn init<T>(
 }
 
 #[cfg(feature = "wgpu")]
-unsafe fn recreate_surfaces<T>(
+unsafe fn recreate_wgpu_surfaces<T>(
     ui: &mut Ui<T, crate::wgpu::WgpuRender>,
     instance: &crate::wgpu::WgpuRenderInstance,
 ) {
-    use crate::wgpu::WgpuRender as Render;
+    use crate::wgpu::WgpuRender;
 
     for window_id in ui.window_ids() {
         let window = ui.window_mut(window_id);
@@ -94,9 +91,38 @@ unsafe fn recreate_surfaces<T>(
             instance.create_surface(&window.window).unwrap()
         };
 
-        let render = Render::new(instance, surface, MSAA_SAMPLES, width, height).unwrap();
+        let render = WgpuRender::new(instance, surface, MSAA_SAMPLES, width, height).unwrap();
         window.set_render(render);
     }
+}
+
+#[cfg(not(feature = "wgpu"))]
+fn init_dummy<T>(
+    ids: &mut HashMap<winit::window::WindowId, ori_core::window::WindowId>,
+    window_desc: WindowDescriptor,
+    target: &EventLoopWindowTarget<()>,
+    builder: &mut UiBuilder<T>,
+    ui: &mut Ui<T, crate::dummy::DummyRender>,
+) {
+    /* create the window */
+    let window = WindowBuilder::new()
+        .with_visible(false)
+        .with_transparent(window_desc.transparent)
+        .build(target)
+        .unwrap();
+
+    ids.insert(window.id(), window_desc.id);
+
+    /* create the initial window */
+    let raw_window = Box::new(WinitWindow::from(window));
+    let window = Window::new(raw_window, window_desc);
+
+    /* add the window to the ui */
+    let builder = mem::replace(builder, Box::new(|_| unreachable!()));
+    ui.add_window(builder, window, crate::dummy::DummyRender);
+
+    /* initialize the ui */
+    ui.init();
 }
 
 pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
@@ -123,12 +149,12 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
             Event::Resumed => {
                 #[cfg(feature = "wgpu")]
                 if let Some(ref instance) = instance {
-                    unsafe { recreate_surfaces(&mut app.ui, instance) };
+                    unsafe { recreate_wgpu_surfaces(&mut app.ui, instance) };
                 } else {
                     // if the instance is not initialized yet, we need to
                     // initialize the ui
                     unsafe {
-                        init(
+                        init_wgpu(
                             &mut ids,
                             app.window.clone(),
                             target,
@@ -140,15 +166,13 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                 }
 
                 #[cfg(not(feature = "wgpu"))]
-                unsafe {
-                    init(
-                        &mut ids,
-                        app.window.clone(),
-                        target,
-                        &mut app.builder,
-                        &mut app.ui,
-                    );
-                }
+                init_dummy(
+                    &mut ids,
+                    app.window.clone(),
+                    target,
+                    &mut app.builder,
+                    &mut app.ui,
+                );
             }
             Event::RedrawEventsCleared => {
                 // after all events for a frame have been processed, we need to

@@ -8,7 +8,7 @@ struct Data {
 fn counter_button() -> impl View<Data> {
     let button = button(text("Click me!"))
         .fancy(4.0)
-        .color(Image::gradient(0.0, &[hex("#020024"), hex("#00d4ff")]))
+        .color(gradient(0.0, &[hex("#020024"), hex("#00d4ff")]))
         .on_click(|_, data: &mut Data| data.counter += 1);
 
     alt("Counter Button", button)

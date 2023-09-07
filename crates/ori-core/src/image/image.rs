@@ -27,6 +27,11 @@ macro_rules! image {
     };
 }
 
+/// Create a new gradient image.
+pub fn gradient(angle: f32, colors: &[Color]) -> Image {
+    Image::gradient(angle, colors)
+}
+
 /// A unique identifier for an [`Image`].
 ///
 /// The identifier is computed by hashing the image data.

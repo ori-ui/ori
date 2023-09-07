@@ -41,7 +41,7 @@ pub mod prelude {
             AnimationFrame, Code, Event, Focused, HotChanged, KeyboardEvent, Modifiers, Pointer,
             PointerButton, PointerEvent, PointerId,
         },
-        image::{Image, ImageData, ImageId},
+        image::{gradient, Image, ImageData, ImageId},
         layout::{
             Affine, Align, Alignment, Axis, Justify, Matrix, Padding, Point, Rect, Size, Space,
             Vector, FILL,

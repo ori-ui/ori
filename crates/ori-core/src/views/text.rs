@@ -188,10 +188,7 @@ impl<T> View<T> for Text {
     ) {
         if let Some(glyphs) = state {
             if let Some(mesh) = cx.text_mesh(glyphs, cx.rect()) {
-                let mut layer = canvas.layer();
-                layer.clip &= cx.rect().transform(layer.transform);
-
-                layer.draw_pixel_perfect(mesh);
+                canvas.draw_pixel_perfect(mesh);
             }
         }
     }

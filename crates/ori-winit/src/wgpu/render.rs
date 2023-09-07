@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ori_core::{
-    canvas::{Color, Fragment, Primitive, Scene},
-    layout::Size,
+    canvas::{Color, Fragment, Mesh, Primitive, Quad, Scene},
+    layout::{Affine, Rect, Size},
 };
 use wgpu::{
     CommandEncoder, CommandEncoderDescriptor, CompositeAlphaMode, Device, LoadOp, Operations,
@@ -14,6 +14,12 @@ use wgpu::{
 use crate::RenderError;
 
 use super::{ImageCache, MeshRender, QuadRender, WgpuRenderInstance};
+
+#[derive(Clone, Debug)]
+enum Batch {
+    Quad(usize),
+    Mesh(usize),
+}
 
 #[derive(Debug)]
 pub struct WgpuRender {
@@ -142,60 +148,146 @@ impl WgpuRender {
         }
     }
 
-    fn prepare_fragments(&mut self, fragments: &[Fragment]) {
-        let mut quad_index = 0;
-        let mut mesh_index = 0;
+    fn push_quad_batch(
+        &mut self,
+        batches: &mut Vec<Batch>,
+        quad_clip: Option<Rect>,
+        quad_batch: &mut Vec<(Quad, Affine)>,
+        quad_batch_count: &mut usize,
+    ) {
+        self.quad.prepare(
+            &self.device,
+            &self.queue,
+            *quad_batch_count,
+            quad_batch,
+            quad_clip.unwrap(),
+            self.size(),
+        );
 
+        batches.push(Batch::Quad(*quad_batch_count));
+
+        *quad_batch = Vec::new();
+        *quad_batch_count += quad_batch.len();
+        *quad_batch_count += 1;
+    }
+
+    fn push_mesh_batch(
+        &mut self,
+        batches: &mut Vec<Batch>,
+        mesh_clip: Option<Rect>,
+        mesh_batch: &mut Vec<(&Mesh, Affine)>,
+        mesh_batch_count: &mut usize,
+    ) {
         let resolution = self.size();
+        self.mesh.prepare(
+            &self.device,
+            &self.queue,
+            &mut self.image,
+            *mesh_batch_count,
+            mesh_batch,
+            mesh_clip.unwrap(),
+            resolution,
+        );
+
+        batches.push(Batch::Mesh(*mesh_batch_count));
+
+        *mesh_batch = Vec::new();
+        *mesh_batch_count += mesh_batch.len();
+        *mesh_batch_count += 1;
+    }
+
+    fn prepare_fragments(&mut self, fragments: &[Fragment]) -> Vec<Batch> {
+        let mut batches = Vec::new();
+
+        let mut quad_clip = None;
+        let mut quad_batch = Vec::new();
+        let mut quad_batch_count = 0;
+
+        let mut mesh_image = None;
+        let mut mesh_clip = None;
+        let mut mesh_batch = Vec::new();
+        let mut mesh_batch_count = 0;
 
         for fragment in fragments {
             match fragment.primitive {
                 Primitive::Quad(quad) => {
-                    self.quad.prepare(
-                        &self.device,
-                        &self.queue,
-                        quad_index,
-                        &quad,
-                        fragment.transform,
-                        fragment.clip,
-                        resolution,
-                    );
+                    if !mesh_batch.is_empty() {
+                        self.push_mesh_batch(
+                            &mut batches,
+                            mesh_clip,
+                            &mut mesh_batch,
+                            &mut mesh_batch_count,
+                        );
+                    }
 
-                    quad_index += 1;
+                    if quad_clip != Some(fragment.clip) && !quad_batch.is_empty() {
+                        self.push_quad_batch(
+                            &mut batches,
+                            quad_clip,
+                            &mut quad_batch,
+                            &mut quad_batch_count,
+                        );
+                    }
+
+                    quad_clip = Some(fragment.clip);
+                    quad_batch.push((quad, fragment.transform));
                 }
                 Primitive::Mesh(ref mesh) => {
-                    self.mesh.prepare(
-                        &self.device,
-                        &self.queue,
-                        &mut self.image,
-                        mesh_index,
-                        mesh,
-                        fragment.transform,
-                        fragment.clip,
-                        resolution,
-                    );
+                    if !quad_batch.is_empty() {
+                        self.push_quad_batch(
+                            &mut batches,
+                            quad_clip,
+                            &mut quad_batch,
+                            &mut quad_batch_count,
+                        );
+                    }
 
-                    mesh_index += 1;
+                    let new_batch = mesh_clip != Some(fragment.clip) || mesh_image != mesh.image;
+                    if new_batch && !mesh_batch.is_empty() {
+                        self.push_mesh_batch(
+                            &mut batches,
+                            mesh_clip,
+                            &mut mesh_batch,
+                            &mut mesh_batch_count,
+                        );
+                    }
+
+                    mesh_image = mesh.image.clone();
+                    mesh_clip = Some(fragment.clip);
+                    mesh_batch.push((mesh, fragment.transform));
                 }
             }
         }
+
+        if !quad_batch.is_empty() {
+            self.push_quad_batch(
+                &mut batches,
+                quad_clip,
+                &mut quad_batch,
+                &mut quad_batch_count,
+            );
+        }
+
+        if !mesh_batch.is_empty() {
+            self.push_mesh_batch(
+                &mut batches,
+                mesh_clip,
+                &mut mesh_batch,
+                &mut mesh_batch_count,
+            );
+        }
+
+        batches
     }
 
-    fn render_fragments<'a>(&'a self, pass: &mut RenderPass<'a>, fragments: &[Fragment]) {
-        let mut quad_index = 0;
-        let mut mesh_index = 0;
-
-        for fragment in fragments {
-            match fragment.primitive {
-                Primitive::Quad(_) => {
-                    self.quad.render(pass, quad_index);
-
-                    quad_index += 1;
+    fn render_fragments<'a>(&'a self, pass: &mut RenderPass<'a>, batches: &[Batch]) {
+        for batch in batches {
+            match batch {
+                Batch::Quad(index) => {
+                    self.quad.render(pass, *index);
                 }
-                Primitive::Mesh(ref mesh) => {
-                    self.mesh.render(pass, mesh_index, mesh);
-
-                    mesh_index += 1;
+                Batch::Mesh(index) => {
+                    self.mesh.render(pass, *index);
                 }
             }
         }
@@ -251,7 +343,7 @@ impl WgpuRender {
         let fragments = scene.fragments_mut();
         fragments.sort_by(|a, b| a.depth.partial_cmp(&b.depth).unwrap());
 
-        self.prepare_fragments(fragments);
+        let batches = self.prepare_fragments(fragments);
 
         let mut encoder = (self.device).create_command_encoder(&CommandEncoderDescriptor {
             label: Some("ori_command_encoder"),
@@ -267,7 +359,7 @@ impl WgpuRender {
 
         {
             let mut pass = self.begin_render_pass(&mut encoder, &target_view, clear_color);
-            self.render_fragments(&mut pass, fragments);
+            self.render_fragments(&mut pass, &batches);
         }
 
         self.queue.submit(Some(encoder.finish()));

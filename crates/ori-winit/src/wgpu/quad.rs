@@ -6,23 +6,28 @@ use ori_core::{
     layout::{Affine, Point, Rect, Size},
 };
 use wgpu::{
-    include_wgsl,
-    util::{BufferInitDescriptor, DeviceExt},
-    vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-    BindGroupLayoutEntry, BindingType, BlendState, Buffer, BufferBindingType, BufferDescriptor,
-    BufferUsages, ColorTargetState, ColorWrites, Device, FragmentState, IndexFormat,
-    MultisampleState, Queue, RenderPass, RenderPipeline, RenderPipelineDescriptor, ShaderStages,
-    TextureFormat, VertexBufferLayout, VertexState,
+    include_wgsl, vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry,
+    BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BlendState,
+    Buffer, BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites,
+    Device, FragmentState, MultisampleState, PipelineLayoutDescriptor, Queue, RenderPass,
+    RenderPipeline, RenderPipelineDescriptor, ShaderStages, TextureFormat, VertexBufferLayout,
+    VertexState,
 };
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct Uniforms {
     resolution: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct QuadData {
     translation: [f32; 2],
     matrix: [f32; 4],
     min: [f32; 2],
     max: [f32; 2],
+    _padding: [u8; 8],
     color: [f32; 4],
     border_radius: [f32; 4],
     border_width: [f32; 4],
@@ -37,57 +42,60 @@ struct Vertex {
 }
 
 #[derive(Debug)]
-struct Instance {
-    uniform_buffer: Buffer,
+struct Batch {
+    len: usize,
+    cap: usize,
+    data_buffer: Buffer,
     vertex_buffer: Buffer,
-    uniform_bind_group: BindGroup,
+    data_bind_group: BindGroup,
     clip: Rect,
 }
 
-impl Instance {
-    fn new(device: &Device, uniform_layout: &BindGroupLayout) -> Self {
-        let uniform_buffer = Self::create_uniform_buffer(device);
-        let vertex_buffer = Self::create_vertex_buffer(device);
-        let uniform_bind_group =
-            Self::create_uniform_bind_group(device, uniform_layout, &uniform_buffer);
+impl Batch {
+    fn new(device: &Device, data_layout: &BindGroupLayout, cap: usize) -> Self {
+        let data_buffer = Self::create_data_buffer(device, cap);
+        let vertex_buffer = Self::create_vertex_buffer(device, cap);
+        let data_bind_group = Self::create_data_bind_group(device, data_layout, &data_buffer);
 
         Self {
-            uniform_buffer,
+            len: 0,
+            cap,
+            data_buffer,
             vertex_buffer,
-            uniform_bind_group,
+            data_bind_group,
             clip: Rect::ZERO,
         }
     }
 
-    fn create_uniform_buffer(device: &Device) -> Buffer {
+    fn create_data_buffer(device: &Device, cap: usize) -> Buffer {
         device.create_buffer(&BufferDescriptor {
-            label: Some("ori_quad_uniform_buffer"),
-            size: mem::size_of::<Uniforms>() as u64,
-            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            label: Some("ori_quad_data_buffer"),
+            size: mem::size_of::<QuadData>() as u64 * cap as u64,
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         })
     }
 
-    fn create_vertex_buffer(device: &Device) -> Buffer {
+    fn create_vertex_buffer(device: &Device, cap: usize) -> Buffer {
         device.create_buffer(&BufferDescriptor {
             label: Some("ori_quad_vertex_buffer"),
-            size: mem::size_of::<Vertex>() as u64 * 6,
+            size: mem::size_of::<Vertex>() as u64 * cap as u64 * 6,
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
             mapped_at_creation: false,
         })
     }
 
-    fn create_uniform_bind_group(
+    fn create_data_bind_group(
         device: &Device,
         layout: &BindGroupLayout,
-        buffer: &Buffer,
+        data_buffer: &Buffer,
     ) -> BindGroup {
         device.create_bind_group(&BindGroupDescriptor {
-            label: Some("ori_quad_uniform_bind_group"),
+            label: Some("ori_quad_data_bind_group"),
             layout,
             entries: &[BindGroupEntry {
                 binding: 0,
-                resource: buffer.as_entire_binding(),
+                resource: data_buffer.as_entire_binding(),
             }],
         })
     }
@@ -121,47 +129,34 @@ impl Instance {
         ]
     }
 
-    fn write_uniform_buffer(
-        &self,
-        queue: &Queue,
-        quad: &Quad,
-        transform: Affine,
-        resolution: Size,
-    ) {
-        let uniforms = Uniforms {
-            resolution: resolution.into(),
-            translation: transform.translation.round().into(),
-            matrix: transform.matrix.into(),
-            min: quad.rect.min.round().into(),
-            max: quad.rect.max.round().into(),
-            color: quad.color.into(),
-            border_radius: quad.border_radius.into(),
-            border_width: quad.border_width.into(),
-            border_color: quad.border_color.into(),
-        };
+    fn resize(&mut self, device: &Device, layout: &BindGroupLayout, len: usize) {
+        self.len = len;
 
-        queue.write_buffer(&self.uniform_buffer, 0, bytes_of(&uniforms));
-    }
-
-    fn write_vertex_buffer(&self, queue: &Queue, quad: &Quad) {
-        let vertices = Self::vertices(quad);
-        queue.write_buffer(&self.vertex_buffer, 0, cast_slice(&vertices));
+        if len > self.cap {
+            self.data_buffer = Self::create_data_buffer(device, len);
+            self.vertex_buffer = Self::create_vertex_buffer(device, len);
+            self.data_bind_group = Self::create_data_bind_group(device, layout, &self.data_buffer);
+            self.cap = len;
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct QuadRender {
-    instances: Vec<Instance>,
-    uniform_layout: BindGroupLayout,
+    batches: Vec<Batch>,
+    data_layout: BindGroupLayout,
     pipeline: RenderPipeline,
-    index_buffer: Buffer,
+    uniform_buffer: Buffer,
+    uniform_bind_group: BindGroup,
 }
 
 impl QuadRender {
     pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         let shader = device.create_shader_module(include_wgsl!("shader/quad.wgsl"));
 
-        let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let uniform_buffer = Self::create_uniform_buffer(device);
+
+        let uniform_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("ori_quad_uniform_layout"),
             entries: &[BindGroupLayoutEntry {
                 binding: 0,
@@ -175,9 +170,32 @@ impl QuadRender {
             }],
         });
 
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("ori_quad_uniform_bind_group"),
+            layout: &uniform_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+        let data_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: Some("ori_quad_data_layout"),
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("ori_quad_pipeline_layout"),
-            bind_group_layouts: &[&uniform_layout],
+            bind_group_layouts: &[&uniform_layout, &data_layout],
             push_constant_ranges: &[],
         });
 
@@ -212,20 +230,20 @@ impl QuadRender {
         });
 
         Self {
-            instances: Vec::new(),
-            uniform_layout,
+            batches: Vec::new(),
+            data_layout,
             pipeline,
-            index_buffer: Self::create_index_buffer(device),
+            uniform_buffer,
+            uniform_bind_group,
         }
     }
 
-    fn create_index_buffer(device: &Device) -> Buffer {
-        let indices = [0u32, 1, 2, 2, 3, 0];
-
-        device.create_buffer_init(&BufferInitDescriptor {
-            label: Some("ori_quad_index_buffer"),
-            contents: cast_slice(&indices),
-            usage: BufferUsages::INDEX,
+    fn create_uniform_buffer(device: &Device) -> Buffer {
+        device.create_buffer(&BufferDescriptor {
+            label: Some("ori_quad_uniform_buffer"),
+            size: mem::size_of::<Uniforms>() as u64,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         })
     }
 
@@ -235,36 +253,64 @@ impl QuadRender {
         device: &Device,
         queue: &Queue,
         index: usize,
-        quad: &Quad,
-        transform: Affine,
+        quads: &[(Quad, Affine)],
         clip: Rect,
         resolution: Size,
     ) {
-        if index >= self.instances.len() {
-            let layout = &self.uniform_layout;
-            (self.instances).resize_with(index + 1, || Instance::new(device, layout));
+        let uniforms = Uniforms {
+            resolution: resolution.into(),
+        };
+
+        queue.write_buffer(&self.uniform_buffer, 0, bytes_of(&uniforms));
+
+        if self.batches.len() <= index {
+            let len = index + 1;
+            let layout = &self.data_layout;
+            (self.batches).resize_with(len, || Batch::new(device, layout, quads.len()));
         }
 
-        let instance = &mut self.instances[index];
-        instance.write_vertex_buffer(queue, quad);
-        instance.write_uniform_buffer(queue, quad, transform, resolution);
-        instance.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
+        let batch = &mut self.batches[index];
+        batch.resize(device, &self.data_layout, quads.len());
+        batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
+
+        let mut datas = Vec::with_capacity(quads.len());
+        let mut vertices = Vec::with_capacity(quads.len() * 6);
+
+        for (quad, transform) in quads {
+            let data = QuadData {
+                translation: transform.translation.into(),
+                matrix: transform.matrix.into(),
+                min: quad.rect.min.into(),
+                max: quad.rect.max.into(),
+                _padding: [0; 8],
+                color: quad.color.into(),
+                border_radius: quad.border_radius.into(),
+                border_width: quad.border_width.into(),
+                border_color: quad.border_color.into(),
+            };
+
+            datas.push(data);
+            vertices.extend(Batch::vertices(quad));
+        }
+
+        queue.write_buffer(&batch.data_buffer, 0, cast_slice(&datas));
+        queue.write_buffer(&batch.vertex_buffer, 0, cast_slice(&vertices));
     }
 
     pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
-        let instance = &self.instances[index];
+        let batch = &self.batches[index];
 
         pass.set_scissor_rect(
-            instance.clip.min.x as u32,
-            instance.clip.min.y as u32,
-            instance.clip.width() as u32,
-            instance.clip.height() as u32,
+            batch.clip.min.x as u32,
+            batch.clip.min.y as u32,
+            batch.clip.width() as u32,
+            batch.clip.height() as u32,
         );
 
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &instance.uniform_bind_group, &[]);
-        pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
-        pass.set_vertex_buffer(0, instance.vertex_buffer.slice(..));
-        pass.draw_indexed(0..6, 0, 0..1);
+        pass.set_bind_group(0, &self.uniform_bind_group, &[]);
+        pass.set_bind_group(1, &batch.data_bind_group, &[]);
+        pass.set_vertex_buffer(0, batch.vertex_buffer.slice(..));
+        pass.draw(0..batch.len as u32 * 6, 0..1);
     }
 }

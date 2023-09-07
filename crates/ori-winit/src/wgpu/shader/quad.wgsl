@@ -1,6 +1,9 @@
 struct Uniforms {
-	resolution: vec2<f32>,
-	translation: vec2<f32>,
+	resolution: vec2<f32>,	
+}
+
+struct QuadData {
+    translation: vec2<f32>,
 	matrix: mat2x2<f32>,
 	rect_min: vec2<f32>,
 	rect_max: vec2<f32>,
@@ -13,7 +16,11 @@ struct Uniforms {
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
 
+@group(1) @binding(0)
+var<storage, read> quad_data: array<QuadData>;
+
 struct VertexInput {
+    @builtin(vertex_index) vertex_index: u32,
 	@location(0) position: vec2<f32>,
 	@location(1) uv: vec2<f32>,
 }
@@ -22,8 +29,7 @@ struct VertexOutput {
 	@builtin(position) clip: vec4<f32>,
 	@location(0) position: vec2<f32>,
 	@location(1) uv: vec2<f32>,
-    @location(2) rect_min: vec2<f32>,
-    @location(3) rect_max: vec2<f32>,
+    @location(2) index: u32,
 }
 
 fn screen_to_clip(position: vec2<f32>) -> vec2<f32> {
@@ -32,14 +38,16 @@ fn screen_to_clip(position: vec2<f32>) -> vec2<f32> {
 
 @vertex
 fn vertex(in: VertexInput) -> VertexOutput {
+    let index = in.vertex_index / 6u;
+    let data = quad_data[index];
+
 	var out: VertexOutput;
 
-	var position = uniforms.matrix * in.position + uniforms.translation;
+	var position = data.matrix * in.position + data.translation;
 	out.clip = vec4<f32>(screen_to_clip(position), 0.0, 1.0);
 	out.position = in.position;
 	out.uv = in.uv;
-    out.rect_min = uniforms.rect_min;
-    out.rect_max = uniforms.rect_max;
+    out.index = index;
 
 	return out;
 }
@@ -101,20 +109,22 @@ fn select_border_width(
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-	var color = uniforms.color;
+    let data = quad_data[in.index];
+
+	var color = data.color;
 
 	let border_radius = select_border_radius(
 		in.position,
-		in.rect_min,
-		in.rect_max,
-		uniforms.border_radius,
+		data.rect_min,
+		data.rect_max,
+		data.border_radius,
 	);
 
 	let border_width = select_border_width(
 		in.position,
-		in.rect_min,
-		in.rect_max,
-		uniforms.border_width,
+		data.rect_min,
+		data.rect_max,
+		data.border_width,
 		border_radius,
 	);
 
@@ -123,8 +133,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 
 		let internal_dist = quad_distance(
 			in.position,
-			in.rect_min + vec2<f32>(border_width),
-			in.rect_max - vec2<f32>(border_width),
+			data.rect_min + vec2<f32>(border_width),
+			data.rect_max - vec2<f32>(border_width),
 			internal_border,
 		);
 
@@ -134,13 +144,13 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 			internal_dist,
 		);
 
-		color = mix(color, uniforms.border_color, border_mix);
+		color = mix(color, data.border_color, border_mix);
 	}
 
 	let dist = quad_distance(
 		in.position,
-		in.rect_min,
-		in.rect_max,
+		data.rect_min,
+		data.rect_max,
 		border_radius,
 	);
 

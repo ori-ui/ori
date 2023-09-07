@@ -21,6 +21,8 @@ pub struct App<T> {
     pub(crate) builder: UiBuilder<T>,
     pub(crate) ui: Ui<T, Render>,
     pub(crate) text_size: f32,
+    #[cfg(feature = "wgpu")]
+    pub(crate) msaa: bool,
 }
 
 impl<T: 'static> App<T> {
@@ -56,6 +58,8 @@ impl<T: 'static> App<T> {
             builder: Box::new(move |data| Box::new(builder(data))),
             ui: Ui::new(data, Arc::new(waker)),
             text_size: 16.0,
+            #[cfg(feature = "wgpu")]
+            msaa: true,
         };
 
         app.ui.fonts.load_system_fonts();
@@ -94,6 +98,13 @@ impl<T: 'static> App<T> {
     /// Set the text size of the application.
     pub fn text_size(mut self, size: f32) -> Self {
         self.text_size = size;
+        self
+    }
+
+    /// Set whether the application uses multisample anti-aliasing.
+    #[cfg(feature = "wgpu")]
+    pub fn msaa(mut self, msaa: bool) -> Self {
+        self.msaa = msaa;
         self
     }
 

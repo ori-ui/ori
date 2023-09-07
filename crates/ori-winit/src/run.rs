@@ -18,8 +18,6 @@ use crate::{
     App, Error,
 };
 
-const MSAA_SAMPLES: u32 = 4;
-
 #[cfg(feature = "wgpu")]
 unsafe fn init_wgpu<T>(
     ids: &mut HashMap<winit::window::WindowId, ori_core::window::WindowId>,
@@ -27,7 +25,8 @@ unsafe fn init_wgpu<T>(
     target: &EventLoopWindowTarget<()>,
     builder: &mut UiBuilder<T>,
     ui: &mut Ui<T, crate::wgpu::WgpuRender>,
-    #[cfg(feature = "wgpu")] instance: &mut Option<crate::wgpu::WgpuRenderInstance>,
+    instance: &mut Option<crate::wgpu::WgpuRenderInstance>,
+    msaa: bool,
 ) {
     /* create the window */
     let window = WindowBuilder::new()
@@ -55,11 +54,13 @@ unsafe fn init_wgpu<T>(
     let raw_window = Box::new(WinitWindow::from(window));
     let window = Window::new(raw_window, window_desc);
 
+    let samples = if msaa { 4 } else { 1 };
+
     /* create the render */
     let render = crate::wgpu::WgpuRender::new(
         instance.as_ref().unwrap(),
         surface,
-        MSAA_SAMPLES,
+        samples,
         window.width(),
         window.height(),
     )
@@ -77,6 +78,7 @@ unsafe fn init_wgpu<T>(
 unsafe fn recreate_wgpu_surfaces<T>(
     ui: &mut Ui<T, crate::wgpu::WgpuRender>,
     instance: &crate::wgpu::WgpuRenderInstance,
+    msaas: bool,
 ) {
     use crate::wgpu::WgpuRender;
 
@@ -91,7 +93,9 @@ unsafe fn recreate_wgpu_surfaces<T>(
             instance.create_surface(&window.window).unwrap()
         };
 
-        let render = WgpuRender::new(instance, surface, MSAA_SAMPLES, width, height).unwrap();
+        let samples = if msaas { 4 } else { 1 };
+
+        let render = WgpuRender::new(instance, surface, samples, width, height).unwrap();
         window.set_render(render);
     }
 }
@@ -149,7 +153,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
             Event::Resumed => {
                 #[cfg(feature = "wgpu")]
                 if let Some(ref instance) = instance {
-                    unsafe { recreate_wgpu_surfaces(&mut app.ui, instance) };
+                    unsafe { recreate_wgpu_surfaces(&mut app.ui, instance, app.msaa) };
                 } else {
                     // if the instance is not initialized yet, we need to
                     // initialize the ui
@@ -161,6 +165,7 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
                             &mut app.builder,
                             &mut app.ui,
                             &mut instance,
+                            app.msaa,
                         );
                     }
                 }

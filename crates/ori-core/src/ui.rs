@@ -9,8 +9,8 @@ use crate::{
     command::{Command, CommandProxy, EventLoopWaker},
     delegate::{Delegate, DelegateCx},
     event::{
-        Code, Event, Focused, KeyboardEvent, Modifiers, PointerButton, PointerEvent, PointerId,
-        SwitchFocus,
+        CloseRequested, Code, Event, Focused, KeyboardEvent, Modifiers, PointerButton,
+        PointerEvent, PointerId, SwitchFocus,
     },
     layout::{Point, Vector},
     text::Fonts,
@@ -120,6 +120,11 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
+    /// Get an iterator over all windows.
+    pub fn windows(&self) -> impl ExactSizeIterator<Item = &WindowUi<T, R>> {
+        self.windows.values()
+    }
+
     /// Get the Ids of all windows.
     pub fn window_ids(&self) -> Vec<WindowId> {
         self.windows.keys().copied().collect()
@@ -194,6 +199,13 @@ impl<T, R: SceneRender> Ui<T, R> {
     pub fn resized(&mut self, window_id: WindowId) {
         self.rebuild_theme(window_id);
         self.window_mut(window_id).request_layout();
+    }
+
+    /// Tell the UI that a window wants to close.
+    pub fn close_requested(&mut self, window_id: WindowId) -> bool {
+        let event = Event::new(CloseRequested::new(window_id));
+        self.event(window_id, &event);
+        !event.is_handled()
     }
 
     fn pointer_position(&self, window_id: WindowId, id: PointerId) -> Point {

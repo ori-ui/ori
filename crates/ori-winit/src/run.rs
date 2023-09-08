@@ -204,7 +204,13 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
 
                 match event {
                     WindowEvent::CloseRequested => {
-                        *control_flow = ControlFlow::Exit;
+                        if app.ui.close_requested(window_id) {
+                            app.ui.remove_window(window_id);
+                        }
+
+                        if app.ui.windows().len() == 0 {
+                            *control_flow = ControlFlow::Exit;
+                        }
                     }
                     WindowEvent::Resized(_) => {
                         app.ui.resized(window_id);

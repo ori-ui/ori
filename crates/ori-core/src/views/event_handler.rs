@@ -9,7 +9,7 @@ use crate::{
 /// Create a new [`EventHandler`], with a before callback.
 pub fn on_event_before<T, V>(
     content: V,
-    handler: impl FnMut(&mut EventCx, &mut T) + 'static,
+    handler: impl FnMut(&mut EventCx, &mut T, &Event) + 'static,
 ) -> EventHandler<T, V> {
     EventHandler::new(content).before(handler)
 }
@@ -17,7 +17,7 @@ pub fn on_event_before<T, V>(
 /// Create a new [`EventHandler`], with an after callback.
 pub fn on_event_after<T, V>(
     content: V,
-    handler: impl FnMut(&mut EventCx, &mut T) + 'static,
+    handler: impl FnMut(&mut EventCx, &mut T, &Event) + 'static,
 ) -> EventHandler<T, V> {
     EventHandler::new(content).after(handler)
 }
@@ -29,10 +29,10 @@ pub struct EventHandler<T, V> {
     pub content: Pod<V>,
     /// The callback before an event is propagated.
     #[allow(clippy::type_complexity)]
-    pub before: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
+    pub before: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) + 'static>>,
     /// The callback after an event is propagated.
     #[allow(clippy::type_complexity)]
-    pub after: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
+    pub after: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) + 'static>>,
 }
 
 impl<T, V> EventHandler<T, V> {
@@ -46,13 +46,13 @@ impl<T, V> EventHandler<T, V> {
     }
 
     /// Set the callback for before an event is emitted.
-    pub fn before(mut self, before: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
+    pub fn before(mut self, before: impl FnMut(&mut EventCx, &mut T, &Event) + 'static) -> Self {
         self.before = Some(Box::new(before));
         self
     }
 
     /// Set the callback for when an event is emitted.
-    pub fn after(mut self, after: impl FnMut(&mut EventCx, &mut T) + 'static) -> Self {
+    pub fn after(mut self, after: impl FnMut(&mut EventCx, &mut T, &Event) + 'static) -> Self {
         self.after = Some(Box::new(after));
         self
     }
@@ -73,13 +73,13 @@ impl<T, V: View<T>> View<T> for EventHandler<T, V> {
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         if let Some(before) = &mut self.before {
-            before(cx, data);
+            before(cx, data, event);
         }
 
         self.content.event(state, cx, data, event);
 
         if let Some(after) = &mut self.after {
-            after(cx, data);
+            after(cx, data, event);
         }
     }
 

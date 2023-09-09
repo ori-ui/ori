@@ -125,6 +125,19 @@ impl Rect {
         self.max
     }
 
+    /// Shrink the rectangle by the given amount.
+    pub fn shrink(self, padding: f32) -> Self {
+        Self {
+            min: self.min + Vector::new(padding, padding),
+            max: self.max - Vector::new(padding, padding),
+        }
+    }
+
+    /// Expand the rectangle by the given amount.
+    pub fn expand(self, padding: f32) -> Self {
+        self.shrink(-padding)
+    }
+
     /// Compute whether the rectangle contains the given point.
     pub fn contains(self, point: Point) -> bool {
         let x = point.x >= self.min.x && point.x <= self.max.x;

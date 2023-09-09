@@ -1,7 +1,7 @@
 use crate::{
-    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
+    canvas::{Background, BorderRadius, BorderWidth, BoxShadow, Canvas, Color},
     event::{Event, PointerEvent},
-    layout::{Size, Space},
+    layout::{Size, Space, Vector},
     rebuild::Rebuild,
     theme::{container, style},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
@@ -24,6 +24,9 @@ pub struct Container<V> {
     /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
+    /// The shadow.
+    #[rebuild(draw)]
+    pub shadow: BoxShadow,
 }
 
 impl<V> Container<V> {
@@ -35,6 +38,7 @@ impl<V> Container<V> {
             border_radius: style(container::BORDER_RADIUS),
             border_width: style(container::BORDER_WIDTH),
             border_color: style(container::BORDER_COLOR),
+            shadow: BoxShadow::default(),
         }
     }
 
@@ -85,6 +89,36 @@ impl<V> Container<V> {
         self.border_color = border_color.into();
         self
     }
+
+    /// Set the shadow.
+    pub fn shadow(mut self, shadow: impl Into<BoxShadow>) -> Self {
+        self.shadow = shadow.into();
+        self
+    }
+
+    /// Set the shadow color.
+    pub fn shadow_color(mut self, color: impl Into<Color>) -> Self {
+        self.shadow.color = color.into();
+        self
+    }
+
+    /// Set the shadow blur.
+    pub fn shadow_blur(mut self, blur: f32) -> Self {
+        self.shadow.blur = blur;
+        self
+    }
+
+    /// Set the shadow spread.
+    pub fn shadow_spread(mut self, spread: f32) -> Self {
+        self.shadow.spread = spread;
+        self
+    }
+
+    /// Set the shadow offset.
+    pub fn shadow_offset(mut self, offset: impl Into<Vector>) -> Self {
+        self.shadow.offset = offset.into();
+        self
+    }
 }
 
 impl<T, V: View<T>> View<T> for Container<V> {
@@ -128,6 +162,8 @@ impl<T, V: View<T>> View<T> for Container<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
+        canvas.draw(self.shadow.mesh(cx.rect(), self.border_radius));
+
         canvas.draw_quad(
             cx.rect(),
             self.background.clone(),

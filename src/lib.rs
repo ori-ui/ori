@@ -33,8 +33,8 @@ pub mod prelude {
 
     pub use ori_core::{
         canvas::{
-            hex, hsl, hsla, rgb, rgba, BorderRadius, BorderWidth, Canvas, Color, Curve, Fragment,
-            Mesh, Primitive, Vertex,
+            hex, hsl, hsla, rgb, rgba, BorderRadius, BorderWidth, BoxShadow, Canvas, Color, Curve,
+            Fragment, Mesh, Primitive, Vertex,
         },
         delegate::{Delegate, DelegateCx},
         event::{

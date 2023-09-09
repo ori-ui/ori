@@ -43,3 +43,8 @@ winit = ["dep:ori-winit"]
 x11 = ["winit", "ori-winit/x11"]
 wayland = ["winit", "ori-winit/wayland"]
 wgpu = ["winit", "ori-winit/wgpu"]
+
+[profile.dev]
+debug = "limited"
+opt-level = 1
+overflow-checks = false

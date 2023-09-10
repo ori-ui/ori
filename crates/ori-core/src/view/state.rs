@@ -46,7 +46,7 @@ impl Default for ViewState {
             update: Update::LAYOUT | Update::DRAW,
             /* layout */
             flex_grow: 0.0,
-            flex_shrink: 1.0,
+            flex_shrink: 0.0,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
             /* cursor */

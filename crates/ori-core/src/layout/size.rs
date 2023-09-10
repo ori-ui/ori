@@ -56,6 +56,23 @@ impl Size {
         )
     }
 
+    /// If self is finite, return self, otherwise return zero. Applied by element.
+    pub fn finite_or_zero(self) -> Self {
+        let width = if self.width.is_finite() {
+            self.width
+        } else {
+            0.0
+        };
+
+        let height = if self.height.is_finite() {
+            self.height
+        } else {
+            0.0
+        };
+
+        Self::new(width, height)
+    }
+
     /// Get whether the size is finite.
     pub fn is_finite(self) -> bool {
         self.width.is_finite() && self.height.is_finite()

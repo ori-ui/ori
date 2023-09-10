@@ -131,6 +131,8 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         data: &mut T,
         event: &Event,
     ) {
+        let overflow = self.overflow(content.size(), cx.size());
+
         // handle ponter event
         if let Some(pointer) = event.get::<PointerEvent>() {
             if !event.is_handled() || cx.is_active() {
@@ -155,8 +157,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
                 // handle pointer events when scrollbar is dragged
                 if cx.is_active() {
-                    let overflow = self.overflow(content.size(), cx.size());
-
                     let scroll_start = self.axis.major(scrollbar_rect.min);
                     let scroll_end = self.axis.major(scrollbar_rect.max);
                     let local_major = self.axis.major(local);
@@ -209,8 +209,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         if let Some(pointer) = event.get::<PointerEvent>() {
             if pointer.is_scroll() {
-                let overflow = self.overflow(content.size(), cx.size());
-
                 state.scroll -= pointer.scroll.y * 10.0;
                 state.scroll = state.scroll.clamp(0.0, overflow);
 
@@ -223,7 +221,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
     fn layout(
         &mut self,
-        (_state, content): &mut Self::State,
+        (state, content): &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
@@ -237,8 +235,12 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let size = space.fit(content_size);
 
         if !size.is_finite() {
-            warn_internal!("Contents of a scroll view has a non-finite size");
+            warn_internal!("Contents of a scroll view has an infinite size");
         }
+
+        let overflow = self.overflow(content_size, size);
+        state.scroll = state.scroll.clamp(0.0, overflow);
+        content.translate(self.axis.pack(-state.scroll, 0.0));
 
         size
     }

@@ -383,13 +383,13 @@ impl<V> Stack<V> {
                 Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor))
             };
 
-            let size = (self.content).layout_nth(i, content, cx, data, content_space);
+            let mut size = (self.content).layout_nth(i, content, cx, data, content_space);
 
             if content[i].is_flex() {
-                //size = size.min(self.axis.pack(max_major, max_minor));
-            } else if !size.is_finite() {
+                size = size.min(self.axis.pack(max_major, max_minor));
+            } else if !size.is_finite() && max_major.is_finite() && max_minor.is_finite() {
                 warn_internal!(
-                    "A view in a stack has an non-finite size, [{}] = {}",
+                    "A non-flex view in a stack has an infinite size, [{}] = {}",
                     i,
                     size,
                 );

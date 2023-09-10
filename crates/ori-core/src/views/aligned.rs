@@ -53,8 +53,9 @@ impl<T, V: View<T>> View<T> for Aligned<V> {
         let content_space = space.loosen();
         let content_size = self.content.layout(state, cx, data, content_space);
 
-        let space = space.constrain(Space::FILL);
-        let size = space.fit(content_size);
+        let size = content_size
+            .max(space.min.finite_or_zero())
+            .max(space.max.finite_or_zero());
 
         let align = self.alignment.align(content_size, size);
         state.translate(align);

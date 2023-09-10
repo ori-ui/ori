@@ -249,7 +249,7 @@ macro_rules! impl_context {
     };
 }
 
-impl_context! {EventCx<'_, '_>, DrawCx<'_, '_> {
+impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the size of the view.
     pub fn size(&self) -> Size {
         self.view_state.size

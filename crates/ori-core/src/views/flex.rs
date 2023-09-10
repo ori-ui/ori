@@ -8,7 +8,17 @@ use crate::{
 
 /// Create a new [`Flex`] view.
 pub fn flex<V>(flex: f32, content: V) -> Flex<V> {
-    Flex::new(flex, content)
+    Flex::new(flex, 1.0, content)
+}
+
+/// Create a new [`Flex`] view with a flexible grow value.
+pub fn flex_grow<V>(flex: f32, content: V) -> Flex<V> {
+    Flex::new(flex, 0.0, content)
+}
+
+/// Create a new [`Flex`] view with a flexible shrink value.
+pub fn flex_shrink<V>(flex: f32, content: V) -> Flex<V> {
+    Flex::new(0.0, flex, content)
 }
 
 /// A flexible view.
@@ -16,14 +26,20 @@ pub fn flex<V>(flex: f32, content: V) -> Flex<V> {
 pub struct Flex<V> {
     /// The content of the view.
     pub content: V,
-    /// The flex value of the view.
-    pub flex: f32,
+    /// The flex grow value of the view.
+    pub grow: f32,
+    /// The flex shrink value of the view.
+    pub shrink: f32,
 }
 
 impl<V> Flex<V> {
     /// Create a new flexible view.
-    pub fn new(flex: f32, content: V) -> Self {
-        Self { content, flex }
+    pub fn new(grow: f32, shrink: f32, content: V) -> Self {
+        Self {
+            content,
+            grow,
+            shrink,
+        }
     }
 }
 
@@ -49,7 +65,8 @@ impl<T, V: View<T>> View<T> for Flex<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        cx.set_flex(self.flex);
+        cx.set_flex_grow(self.grow);
+        cx.set_flex_shrink(self.shrink);
         self.content.layout(state, cx, data, space)
     }
 

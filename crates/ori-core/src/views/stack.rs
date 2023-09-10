@@ -371,7 +371,8 @@ impl<V> Stack<V> {
 
         let mut major = 0.0;
         let mut minor = 0.0f32;
-        let mut flex_sum = 0.0;
+        let mut flex_grow_sum = 0.0;
+        let mut flex_shrink_sum = 0.0;
 
         let mut start = 0;
 
@@ -382,10 +383,10 @@ impl<V> Stack<V> {
                 Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor))
             };
 
-            let mut size = (self.content).layout_nth(i, content, cx, data, content_space);
+            let size = (self.content).layout_nth(i, content, cx, data, content_space);
 
             if content[i].is_flex() {
-                size = size.min(self.axis.pack(max_major, max_minor));
+                //size = size.min(self.axis.pack(max_major, max_minor));
             } else if !size.is_finite() {
                 warn_internal!(
                     "A view in a stack has an non-finite size, [{}] = {}",
@@ -400,23 +401,26 @@ impl<V> Stack<V> {
 
             let gap = if i > 0 { gap_major } else { 0.0 };
 
-            if major + child_major + gap > max_major && self.wrap {
+            if self.wrap && major + child_major + gap > max_major {
                 state.lines.push(StackLine {
                     start,
                     end: i,
                     major,
                     minor: minor.min(max_minor),
-                    flex_sum,
+                    flex_grow_sum,
+                    flex_shrink_sum,
                 });
 
                 start = i;
                 major = child_major;
                 minor = child_minor;
-                flex_sum = content[i].flex;
+                flex_grow_sum = content[i].flex_grow;
+                flex_shrink_sum = content[i].flex_shrink;
             } else {
                 major += child_major + gap;
                 minor = minor.max(child_minor);
-                flex_sum += content[i].flex;
+                flex_grow_sum += content[i].flex_grow;
+                flex_shrink_sum += content[i].flex_shrink;
             }
         }
 
@@ -425,7 +429,8 @@ impl<V> Stack<V> {
             end: self.content.len(),
             major,
             minor: minor.min(max_minor),
-            flex_sum,
+            flex_grow_sum,
+            flex_shrink_sum,
         });
     }
 
@@ -447,29 +452,47 @@ impl<V> Stack<V> {
             let underflow = min_major - line.major;
 
             let px_per_flex = if overflow > 0.0 {
-                -overflow / line.flex_sum
+                -overflow / line.flex_shrink_sum
             } else if underflow > 0.0 {
-                underflow / line.flex_sum
+                underflow / line.flex_grow_sum
             } else {
                 0.0
             };
 
             for i in line.start..line.end {
-                if !content[i].is_flex() && !self.align_items.is_stretch() {
+                let flex = if overflow > 0.0 {
+                    content[i].flex_shrink
+                } else {
+                    content[i].flex_grow
+                };
+
+                if flex == 0.0 && !self.align_items.is_stretch() {
                     continue;
                 }
 
-                let desired_major = state.majors[i] + px_per_flex * content[i].flex();
+                let desired_major = state.majors[i] + px_per_flex * flex;
+
+                let min_major = if content[i].is_grow() {
+                    desired_major
+                } else {
+                    0.0
+                };
+
+                let max_major = if content[i].is_shrink() {
+                    desired_major
+                } else {
+                    f32::INFINITY
+                };
 
                 let space = if self.align_items.is_stretch() {
                     Space::new(
-                        self.axis.pack(desired_major, line.minor),
-                        self.axis.pack(desired_major, line.minor),
+                        self.axis.pack(min_major, line.minor),
+                        self.axis.pack(max_major, line.minor),
                     )
                 } else {
                     Space::new(
-                        self.axis.pack(desired_major, 0.0),
-                        self.axis.pack(desired_major, max_minor),
+                        self.axis.pack(min_major, 0.0),
+                        self.axis.pack(max_major, max_minor),
                     )
                 };
 
@@ -477,6 +500,7 @@ impl<V> Stack<V> {
                 let (child_major, child_minor) = self.axis.unpack(size);
 
                 line.major += child_major - state.majors[i];
+                line.minor = line.minor.max(child_minor);
                 state.majors[i] = child_major;
                 state.minors[i] = child_minor;
             }
@@ -490,10 +514,12 @@ struct StackLine {
     end: usize,
     major: f32,
     minor: f32,
-    flex_sum: f32,
+    flex_grow_sum: f32,
+    flex_shrink_sum: f32,
 }
 
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct StackState {
     lines: Vec<StackLine>,
     line_offsets: Vec<f32>,
@@ -594,18 +620,17 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         let (gap_major, gap_minor) = self.axis.unpack((self.column_gap, self.row_gap));
 
         self.measure_fixed(state, content, data, cx, gap_major, max_major, max_minor);
+        self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);
 
         if !self.wrap {
             state.lines[0].minor = state.lines[0].minor.clamp(min_minor, max_minor);
         }
 
-        self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);
-
         let content_major = state.major().min(max_major);
         let content_minor = state.minor(gap_minor).max(min_minor);
 
-        let content_size = self.axis.pack(content_major, content_minor);
-        let size = space.fit(content_size);
+        let mut size = self.axis.pack(content_major, content_minor);
+        size = Size::max(size, space.min);
 
         let (major, minor) = self.axis.unpack(size);
 

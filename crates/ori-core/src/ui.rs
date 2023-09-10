@@ -70,6 +70,9 @@ impl<T, R: SceneRender> Ui<T, R> {
             theme.extend(new_theme);
         }
 
+        let builtin = Theme::with_global(&mut theme, Theme::builtin);
+        theme.extend(builtin);
+
         theme
     }
 

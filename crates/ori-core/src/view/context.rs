@@ -360,14 +360,24 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
         }
     }
 
-    /// Get the flex of the view.
-    pub fn flex(&self) -> f32 {
-        self.view_state.flex
+    /// Get the flex grow of the view.
+    pub fn flex_grow(&self) -> f32 {
+        self.view_state.flex_grow()
     }
 
-    /// Set the flex of the view.
-    pub fn set_flex(&mut self, flex: f32) {
-        self.view_state.set_flex(flex);
+    /// Get the flex shrink of the view.
+    pub fn flex_shrink(&self) -> f32 {
+        self.view_state.flex_shrink()
+    }
+
+    /// Set the flex grow of the view.
+    pub fn set_flex_grow(&mut self, flex: f32) {
+        self.view_state.set_flex_grow(flex);
+    }
+
+    /// Set the flex shrink of the view.
+    pub fn set_flex_shrink(&mut self, flex: f32) {
+        self.view_state.set_flex_shrink(flex);
     }
 
     /// Request a rebuild of the view tree.

@@ -24,7 +24,8 @@ pub struct ViewState {
     pub(crate) has_active: bool,
     pub(crate) update: Update,
     /* layout */
-    pub(crate) flex: f32,
+    pub(crate) flex_grow: f32,
+    pub(crate) flex_shrink: f32,
     pub(crate) size: Size,
     pub(crate) transform: Affine,
     /* cursor */
@@ -44,7 +45,8 @@ impl Default for ViewState {
             has_active: false,
             update: Update::LAYOUT | Update::DRAW,
             /* layout */
-            flex: 0.0,
+            flex_grow: 0.0,
+            flex_shrink: 0.0,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
             /* cursor */
@@ -128,19 +130,39 @@ impl ViewState {
         self.has_soft_input
     }
 
-    /// Get the flex of the view.
-    pub fn flex(&self) -> f32 {
-        self.flex
+    /// Get the flex grow of the view.
+    pub fn flex_grow(&self) -> f32 {
+        self.flex_grow
+    }
+
+    /// Get the flex shrink of the view.
+    pub fn flex_shrink(&self) -> f32 {
+        self.flex_shrink
+    }
+
+    /// Set the flex grow of the view.
+    pub fn set_flex_grow(&mut self, flex: f32) {
+        self.flex_grow = flex;
+    }
+
+    /// Set the flex shrink of the view.
+    pub fn set_flex_shrink(&mut self, flex: f32) {
+        self.flex_shrink = flex;
+    }
+
+    /// Get whether the view is growable.
+    pub fn is_grow(&self) -> bool {
+        self.flex_grow > 0.0
+    }
+
+    /// Get whether the view is shrinkable.
+    pub fn is_shrink(&self) -> bool {
+        self.flex_shrink > 0.0
     }
 
     /// Get whether the view is flexible.
     pub fn is_flex(&self) -> bool {
-        self.flex != 0.0
-    }
-
-    /// Set the flex of the view.
-    pub fn set_flex(&mut self, flex: f32) {
-        self.flex = flex;
+        self.is_grow() || self.is_shrink()
     }
 
     /// Get the size of the view.

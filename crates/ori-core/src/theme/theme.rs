@@ -139,10 +139,8 @@ impl Theme {
 
     /// Map a value in the theme.
     pub fn map<T: Any>(&mut self, key: Key<T>, map: impl Fn(&Theme) -> T + 'static) {
-        #[allow(clippy::type_complexity)]
-        let map: Arc<Box<dyn Fn(&Theme) -> T>> =
-            Arc::new(Box::new(move |theme: &Theme| map(theme)));
-        self.values.insert(key.name(), ThemeEntry::Getter(map as _));
+        let map: Box<dyn Fn(&Theme) -> T> = Box::new(move |theme: &Theme| map(theme));
+        (self.values).insert(key.name(), ThemeEntry::Getter(Arc::new(map)));
     }
 
     /// Set a value in the theme and return the theme.

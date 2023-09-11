@@ -71,6 +71,21 @@ impl Display for ThemeError {
     }
 }
 
+#[derive(Clone)]
+enum ThemeEntry {
+    Value(Arc<dyn Any>),
+    Getter(Arc<dyn Any>),
+}
+
+impl Debug for ThemeEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ThemeEntry::Value(value) => write!(f, "Value({:?})", value),
+            ThemeEntry::Getter(_) => write!(f, "Getter(...)"),
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 struct ThemeHasher;
 
@@ -85,7 +100,7 @@ impl BuildHasher for ThemeHasher {
 /// A map of style values.
 #[derive(Clone, Debug)]
 pub struct Theme {
-    values: HashMap<&'static str, Arc<dyn Any>, ThemeHasher>,
+    values: HashMap<&'static str, ThemeEntry, ThemeHasher>,
 }
 
 impl Default for Theme {
@@ -118,7 +133,16 @@ impl Theme {
 
     /// Set a value in the theme.
     pub fn set<T: Any>(&mut self, key: Key<T>, value: impl Into<T>) {
-        self.values.insert(key.name(), Arc::new(value.into()));
+        let value = Arc::new(value.into());
+        self.values.insert(key.name(), ThemeEntry::Value(value));
+    }
+
+    /// Map a value in the theme.
+    pub fn map<T: Any>(&mut self, key: Key<T>, map: impl Fn(&Theme) -> T + 'static) {
+        #[allow(clippy::type_complexity)]
+        let map: Arc<Box<dyn Fn(&Theme) -> T>> =
+            Arc::new(Box::new(move |theme: &Theme| map(theme)));
+        self.values.insert(key.name(), ThemeEntry::Getter(map as _));
     }
 
     /// Set a value in the theme and return the theme.
@@ -136,19 +160,25 @@ impl Theme {
         value.downcast_ref().ok_or(ThemeError::WrongType(name))
     }
 
-    fn try_get_inner<T: Any>(&self, name: &'static str) -> Result<&T, ThemeError> {
-        let value = self.values.get(name).ok_or(ThemeError::MissingKey(name))?;
-        Self::downcast(value.as_ref(), name)
+    fn try_get_inner<T: Clone + Any>(&self, name: &'static str) -> Result<T, ThemeError> {
+        let entry = self.values.get(name).ok_or(ThemeError::MissingKey(name))?;
+        match entry {
+            ThemeEntry::Value(value) => Self::downcast(value.as_ref(), name).cloned(),
+            ThemeEntry::Getter(getter) => {
+                let getter = Self::downcast::<Box<dyn Fn(&Theme) -> T>>(getter.as_ref(), name)?;
+                Ok(getter(self))
+            }
+        }
     }
 
     /// Get a value from the theme.
-    pub fn try_get<T: Any>(&self, key: Key<T>) -> Option<&T> {
+    pub fn try_get<T: Clone + Any>(&self, key: Key<T>) -> Option<T> {
         self.try_get_inner(key.name()).ok()
     }
 
     /// Get a value from the theme.
     pub fn get<T: Clone + Default + Any>(&self, key: Key<T>) -> T {
-        match self.try_get_inner(key.name()).cloned() {
+        match self.try_get_inner(key.name()) {
             Ok(value) => value,
             Err(err) => {
                 crate::log::warn_internal!("{}", err);

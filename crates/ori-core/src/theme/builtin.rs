@@ -1,183 +1,241 @@
 //! Builtin styles.
 
-use crate::{
-    canvas::{Background, BorderRadius, BorderWidth, Color},
-    layout::Padding,
-    text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
-    transition::Transition,
-};
+use crate::canvas::{Background, BorderRadius, BorderWidth, Color};
 
-use super::{pt, rem, Palette, Theme};
+use super::Theme;
 
-macro_rules! style {
-    (
-        $(#[$module_attr:meta])*
-        $module_vis:vis $module:ident {
-            $(
-                $(#[$attr:meta])*
-                const $name:ident : $ty:ty = $expr:expr;
-            )*
-        }
-    ) => {
-        $(#[$module_attr])*
-        $module_vis mod $module {
-            use super::*;
-
-            $(
-                $(#[$attr])*
-                pub const $name: $crate::theme::Key<$ty> = $crate::theme::Key::new(
-                    ::std::concat!(
-                        ::std::stringify!($module),
-                        ".",
-                        ::ori_macro::lowercase_ident!($name),
-                    )
-                );
-            )*
-
-            /// Get the default theme for this module.
-            pub fn default_theme() -> $crate::theme::Theme {
-                $crate::theme::Theme::new()
-                    $(.with($name, $expr))*
-            }
-        }
+/// Styles for [`Text`](crate::views::Text)s.
+pub mod text {
+    use crate::{
+        canvas::Color,
+        text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
+        theme::{rem, Key, Palette, Theme},
     };
-}
 
-style! {
-    /// Styles for [`Text`](crate::views::Text)s.
-    pub text {
-        /// The font size.
-        const FONT_SIZE: f32 = rem(1.0);
-        /// The font family.
-        const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
-        /// The font weight.
-        const FONT_WEIGHT: FontWeight = FontWeight::NORMAL;
-        /// The font stretch.
-        const FONT_STRETCH: FontStretch = FontStretch::Normal;
-        /// The font style.
-        const FONT_STYLE: FontStyle = FontStyle::Normal;
-        /// The color.
-        const COLOR: Color = Palette::TEXT.get();
-        /// The vertical alignment.
-        const V_ALIGN: TextAlign = TextAlign::Top;
-        /// The horizontal alignment.
-        const H_ALIGN: TextAlign = TextAlign::Left;
-        /// The line height.
-        const LINE_HEIGHT: f32 = 1.0;
-        /// The text wrap.
-        const WRAP: TextWrap = TextWrap::Word;
+    /// The font size.
+    pub const FONT_SIZE: Key<f32> = Key::new("text.font_size");
+    /// The font family.
+    pub const FONT_FAMILY: Key<FontFamily> = Key::new("text.font_family");
+    /// The font weight.
+    pub const FONT_WEIGHT: Key<FontWeight> = Key::new("text.font_weight");
+    /// The font stretch.
+    pub const FONT_STRETCH: Key<FontStretch> = Key::new("text.font_stretch");
+    /// The font style.
+    pub const FONT_STYLE: Key<FontStyle> = Key::new("text.font_style");
+    /// The color.
+    pub const COLOR: Key<Color> = Key::new("text.color");
+    /// The vertical alignment.
+    pub const V_ALIGN: Key<TextAlign> = Key::new("text.v_align");
+    /// The horizontal alignment.
+    pub const H_ALIGN: Key<TextAlign> = Key::new("text.h_align");
+    /// The line height.
+    pub const LINE_HEIGHT: Key<f32> = Key::new("text.line_height");
+    /// The text wrap.
+    pub const WRAP: Key<TextWrap> = Key::new("text.wrap");
+
+    pub(super) fn builtin(theme: &mut Theme) {
+        theme.set(FONT_SIZE, rem(1.0));
+        theme.set(FONT_FAMILY, FontFamily::SansSerif);
+        theme.set(FONT_WEIGHT, FontWeight::NORMAL);
+        theme.set(FONT_STRETCH, FontStretch::Normal);
+        theme.set(FONT_STYLE, FontStyle::Normal);
+        theme.map(COLOR, |theme| theme.get(Palette::TEXT));
+        theme.set(V_ALIGN, TextAlign::Top);
+        theme.set(H_ALIGN, TextAlign::Left);
+        theme.set(LINE_HEIGHT, 1.0);
+        theme.set(WRAP, TextWrap::Word);
     }
 }
 
-style! {
-    /// Styles for [`TextInput`](crate::views::Text)s.
-    pub text_input {
-        /// The font size.
-        const FONT_SIZE: f32 = rem(1.0);
-        /// The font family.
-        const FONT_FAMILY: FontFamily = FontFamily::SansSerif;
-        /// The font weight.
-        const FONT_WEIGHT: FontWeight = FontWeight::NORMAL;
-        /// The font stretch.
-        const FONT_STRETCH: FontStretch = FontStretch::Normal;
-        /// The font style.
-        const FONT_STYLE: FontStyle = FontStyle::Normal;
-        /// The color.
-        const COLOR: Color = Palette::TEXT.get();
-        /// The vertical alignment.
-        const V_ALIGN: TextAlign = TextAlign::Top;
-        /// The horizontal alignment.
-        const H_ALIGN: TextAlign = TextAlign::Left;
-        /// The line height.
-        const LINE_HEIGHT: f32 = 1.0;
-        /// The text wrap.
-        const WRAP: TextWrap = TextWrap::Word;
+/// Styles for [`TextInput`](crate::views::TextInput)s.
+pub mod text_input {
+    use crate::{
+        canvas::Color,
+        text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
+        theme::{rem, Key, Palette, Theme},
+    };
+
+    /// The font size.
+    pub const FONT_SIZE: Key<f32> = Key::new("text.font_size");
+    /// The font family.
+    pub const FONT_FAMILY: Key<FontFamily> = Key::new("text.font_family");
+    /// The font weight.
+    pub const FONT_WEIGHT: Key<FontWeight> = Key::new("text.font_weight");
+    /// The font stretch.
+    pub const FONT_STRETCH: Key<FontStretch> = Key::new("text.font_stretch");
+    /// The font style.
+    pub const FONT_STYLE: Key<FontStyle> = Key::new("text.font_style");
+    /// The color.
+    pub const COLOR: Key<Color> = Key::new("text.color");
+    /// The vertical alignment.
+    pub const V_ALIGN: Key<TextAlign> = Key::new("text.v_align");
+    /// The horizontal alignment.
+    pub const H_ALIGN: Key<TextAlign> = Key::new("text.h_align");
+    /// The line height.
+    pub const LINE_HEIGHT: Key<f32> = Key::new("text.line_height");
+    /// The text wrap.
+    pub const WRAP: Key<TextWrap> = Key::new("text.wrap");
+
+    pub(super) fn builtin(theme: &mut Theme) {
+        theme.set(FONT_SIZE, rem(1.0));
+        theme.set(FONT_FAMILY, FontFamily::SansSerif);
+        theme.set(FONT_WEIGHT, FontWeight::NORMAL);
+        theme.set(FONT_STRETCH, FontStretch::Normal);
+        theme.set(FONT_STYLE, FontStyle::Normal);
+        theme.map(COLOR, |theme| theme.get(Palette::TEXT));
+        theme.set(V_ALIGN, TextAlign::Top);
+        theme.set(H_ALIGN, TextAlign::Left);
+        theme.set(LINE_HEIGHT, 1.0);
+        theme.set(WRAP, TextWrap::Word);
     }
 }
 
-style! {
-    /// Styles for [`Alt`](crate::views::Alt)s.
-    pub alt {
-        /// The padding of the overlay.
-        const PADDING: Padding = Padding::from((pt(4.0), pt(2.0)));
-        /// The background color of the overlay.
-        const BACKGROUND: Color = Palette::SECONDARY_DARKER.get();
-        /// The border radius of the overlay.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(pt(6.0));
-        /// The border width of the overlay.
-        const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
-        /// The border color of the overlay.
-        const BORDER_COLOR: Color = Color::TRANSPARENT;
+/// Styles for [`Alt`](crate::views::Alt)s.
+pub mod alt {
+    use crate::{
+        canvas::{BorderRadius, BorderWidth, Color},
+        layout::Padding,
+        theme::{pt, Key, Palette, Theme},
+    };
+
+    /// The padding.
+    pub const PADDING: Key<Padding> = Key::new("alt.padding");
+    /// The background color.
+    pub const BACKGROUND: Key<Color> = Key::new("alt.background");
+    /// The border radius.
+    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("alt.border_radius");
+    /// The border width.
+    pub const BORDER_WIDTH: Key<BorderWidth> = Key::new("alt.border_width");
+    /// The border color.
+    pub const BORDER_COLOR: Key<Color> = Key::new("alt.border_color");
+
+    pub(super) fn builtin(theme: &mut Theme) {
+        theme.set(PADDING, [pt(4.0), pt(2.0)]);
+        theme.map(BACKGROUND, |theme| theme.get(Palette::PRIMARY));
+        theme.set(BORDER_RADIUS, BorderRadius::all(pt(6.0)));
+        theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
+        theme.set(BORDER_COLOR, Color::TRANSPARENT);
     }
 }
 
-style! {
-    /// Styles for [`Container`](crate::views::Container)s.
-    pub container {
-        /// The background color.
-        const BACKGROUND: Background = Color::TRANSPARENT;
-        /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(0.0);
-        /// The border width.
-        const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
-        /// The border color.
-        const BORDER_COLOR: Color = Color::TRANSPARENT;
+/// Styles for [`Container`](crate::views::Container)s.
+pub mod container {
+    use crate::{
+        canvas::{Background, BorderRadius, BorderWidth, Color},
+        theme::{Key, Theme},
+    };
+
+    /// The background color.
+    pub const BACKGROUND: Key<Background> = Key::new("container.background");
+    /// The border radius.
+    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("container.border_radius");
+    /// The border width.
+    pub const BORDER_WIDTH: Key<BorderWidth> = Key::new("container.border_width");
+    /// The border color.
+    pub const BORDER_COLOR: Key<Color> = Key::new("container.border_color");
+
+    pub(super) fn builtin(theme: &mut Theme) {
+        theme.set(BACKGROUND, Color::TRANSPARENT);
+        theme.set(BORDER_RADIUS, BorderRadius::all(0.0));
+        theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
+        theme.set(BORDER_COLOR, Color::TRANSPARENT);
     }
 }
 
-style! {
-    /// Styles for [`Scroll`](crate::views::Scroll)s.
-    pub scroll {
-        /// The transition when the scrollbar is hovered.
-        const TRANSITION: Transition = Transition::ease(0.1);
-        /// The width of the scrollbar.
-        const WIDTH: f32 = rem(0.5);
-        /// The padding of the scrollbar.
-        const INSET: f32 = rem(0.3);
-        /// The border radius of the scrollbar.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.25));
-        /// The color of the scrollbar.
-        const COLOR: Color = Palette::SECONDARY_DARK.get();
-        /// The color of the scrollbar knob.
-        const KNOB_COLOR: Color = Palette::SECONDARY_DARKER.get();
+/// Styles for [`Scroll`](crate::views::Scroll)s.
+pub mod scroll {
+    use crate::{
+        canvas::{BorderRadius, Color},
+        theme::{rem, Key, Palette, Theme},
+        transition::Transition,
+    };
+
+    /// The transition when the scrollbar is hovered.
+    pub const TRANSITION: Key<Transition> = Key::new("scroll.transition");
+    /// The width of the scrollbar.
+    pub const WIDTH: Key<f32> = Key::new("scroll.width");
+    /// The padding of the scrollbar.
+    pub const INSET: Key<f32> = Key::new("scroll.inset");
+    /// The border radius of the scrollbar.
+    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("scroll.border_radius");
+    /// The color of the scrollbar.
+    pub const COLOR: Key<Color> = Key::new("scroll.color");
+    /// The color of the scrollbar knob.
+    pub const KNOB_COLOR: Key<Color> = Key::new("scroll.knob_color");
+
+    pub(super) fn builtin(theme: &mut Theme) {
+        theme.set(TRANSITION, Transition::ease(0.1));
+        theme.set(WIDTH, rem(0.5));
+        theme.set(INSET, rem(0.3));
+        theme.set(BORDER_RADIUS, BorderRadius::all(rem(0.25)));
+        theme.map(COLOR, |theme| theme.get(Palette::SECONDARY_DARK));
+        theme.map(KNOB_COLOR, |theme| theme.get(Palette::SECONDARY_DARKER));
     }
 }
 
-style! {
-    /// Styles for [`Button`](crate::views::Button)s.
-    pub button {
-        /// The transition when the button is hovered.
-        const TRANSITION: Transition = Transition::ease(0.1);
-        /// The color.
-        const COLOR: Background = Palette::PRIMARY.get();
-        /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.5));
-        /// The border width.
-        const BORDER_WIDTH: BorderWidth = BorderWidth::all(0.0);
-        /// The border color.
-        const BORDER_COLOR: Color = Color::TRANSPARENT;
+/// Styles for [`Button`](crate::views::Button)s.
+pub mod button {
+    use crate::{
+        canvas::{Background, BorderRadius, BorderWidth, Color},
+        theme::{rem, Key, Palette, Theme},
+        transition::Transition,
+    };
+
+    /// The transition when the button is hovered.
+    pub const TRANSITION: Key<Transition> = Key::new("button.transition");
+    /// The color.
+    pub const COLOR: Key<Background> = Key::new("button.color");
+    /// The border radius.
+    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("button.border_radius");
+    /// The border width.
+    pub const BORDER_WIDTH: Key<BorderWidth> = Key::new("button.border_width");
+    /// The border color.
+    pub const BORDER_COLOR: Key<Color> = Key::new("button.border_color");
+
+    pub(super) fn builtin(theme: &mut Theme) {
+        theme.set(TRANSITION, Transition::ease(0.1));
+        theme.map(COLOR, |theme| Background::new(theme.get(Palette::PRIMARY)));
+        theme.set(BORDER_RADIUS, BorderRadius::all(rem(0.5)));
+        theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
+        theme.set(BORDER_COLOR, Color::TRANSPARENT);
     }
 }
 
-style! {
-    /// Styles for [`Checkbox`](crate::views::Checkbox)s.
-    pub checkbox {
-        /// The transition when the checkbox is hovered.
-        const TRANSITION: Transition = Transition::ease(0.1);
-        /// The size of the checkbox.
-        const SIZE: f32 = rem(1.5);
-        /// The color of the checkmark.
-        const COLOR: Color = Palette::ACCENT.get();
-        /// The stroke width of the checkmark.
-        const STROKE: f32 = pt(2.0);
-        /// The background color.
-        const BACKGROUND: Background = Color::TRANSPARENT;
-        /// The border radius.
-        const BORDER_RADIUS: BorderRadius = BorderRadius::all(rem(0.4));
-        /// The border width.
-        const BORDER_WIDTH: BorderWidth = BorderWidth::all(1.0);
-        /// The border color.
-        const BORDER_COLOR: Color = Palette::TEXT_BRIGHTER.get();
+/// Styles for [`Checkbox`](crate::views::Checkbox)s.
+pub mod checkbox {
+    use crate::{
+        theme::{pt, rem, Key, Palette},
+        transition::Transition,
+    };
+
+    use super::{Background, BorderRadius, BorderWidth, Color};
+
+    /// The transition when the checkbox is hovered.
+    pub const TRANSITION: Key<Transition> = Key::new("checkbox.transition");
+    /// The size of the checkbox.
+    pub const SIZE: Key<f32> = Key::new("checkbox.size");
+    /// The color of the checkmark.
+    pub const COLOR: Key<Color> = Key::new("checkbox.color");
+    /// The stroke width of the checkmark.
+    pub const STROKE: Key<f32> = Key::new("checkbox.stroke");
+    /// The background color.
+    pub const BACKGROUND: Key<Background> = Key::new("checkbox.background");
+    /// The border radius.
+    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("checkbox.border_radius");
+    /// The border width.
+    pub const BORDER_WIDTH: Key<BorderWidth> = Key::new("checkbox.border_width");
+    /// The border color.
+    pub const BORDER_COLOR: Key<Color> = Key::new("checkbox.border_color");
+
+    pub(super) fn builtin(theme: &mut crate::theme::Theme) {
+        theme.set(TRANSITION, Transition::ease(0.1));
+        theme.set(SIZE, rem(1.5));
+        theme.map(COLOR, |theme| theme.get(Palette::ACCENT));
+        theme.set(STROKE, pt(2.0));
+        theme.set(BACKGROUND, Color::TRANSPARENT);
+        theme.set(BORDER_RADIUS, BorderRadius::all(rem(0.4)));
+        theme.set(BORDER_WIDTH, BorderWidth::all(pt(1.0)));
+        theme.map(BORDER_COLOR, |theme| theme.get(Palette::TEXT_BRIGHTER));
     }
 }
 
@@ -186,13 +244,13 @@ impl Theme {
     pub fn builtin() -> Self {
         let mut theme = Self::new();
 
-        theme.extend(text::default_theme());
-        theme.extend(text_input::default_theme());
-        theme.extend(alt::default_theme());
-        theme.extend(container::default_theme());
-        theme.extend(scroll::default_theme());
-        theme.extend(button::default_theme());
-        theme.extend(checkbox::default_theme());
+        text::builtin(&mut theme);
+        text_input::builtin(&mut theme);
+        alt::builtin(&mut theme);
+        container::builtin(&mut theme);
+        scroll::builtin(&mut theme);
+        button::builtin(&mut theme);
+        checkbox::builtin(&mut theme);
 
         theme
     }

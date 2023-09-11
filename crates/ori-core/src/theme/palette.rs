@@ -56,9 +56,9 @@ impl Palette {
     pub fn light() -> Self {
         Self {
             text: Color::hsl(0.0, 0.0, 0.2),
-            background: Color::hsl(0.0, 0.0, 1.0),
+            background: Color::hsl(0.0, 0.0, 0.9),
             primary: Color::hsl(221.0, 1.0, 0.78),
-            secondary: Color::hsl(100.0, 0.03, 0.88),
+            secondary: Color::hsl(100.0, 0.03, 0.85),
             accent: Color::hsl(150.0, 0.82, 0.47),
         }
     }

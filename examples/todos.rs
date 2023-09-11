@@ -65,9 +65,7 @@ fn input(border: bool) -> impl View<Data> {
         .on_submit(|_, data: &mut Data, text| data.input(text))
         .font_size(pt(20.0));
 
-    let input = container(pad([rem(4.0), rem(1.0)], input))
-        .border_bottom(border as i32 as f32)
-        .shadow_color(Color::BLACK);
+    let input = container(pad([rem(4.0), rem(1.0)], input)).border_bottom(border as i32 as f32);
 
     width(rem(28.0), input)
 }

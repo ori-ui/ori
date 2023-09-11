@@ -64,7 +64,7 @@ impl<T: 'static> App<T> {
 
         app.ui.fonts.load_system_fonts();
 
-        app.theme(Palette::light)
+        app.theme(Palette::light).theme(Theme::builtin)
     }
 
     /// Append the theme of the application.

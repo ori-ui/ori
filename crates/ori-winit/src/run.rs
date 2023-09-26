@@ -1,9 +1,9 @@
 use std::{collections::HashMap, mem};
 
 use ori_core::{
-    canvas::Color,
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
+    theme::Palette,
     ui::{Ui, UiBuilder, UiRequest, UiRequests},
     window::{Window, WindowDescriptor},
 };
@@ -230,6 +230,23 @@ impl<T> AppState<T> {
         }
     }
 
+    fn render(&mut self, window: ori_core::window::WindowId) {
+        #[cfg(feature = "wgpu")]
+        {
+            if let Some(render) = self.renders.get_mut(&window) {
+                let window = self.ui.window_mut(window);
+
+                let clear_color = window.theme().get(Palette::BACKGROUND);
+
+                let width = window.window().width();
+                let height = window.window().height();
+                let scene = window.scene_mut();
+
+                render.render_scene(scene, clear_color, width, height);
+            }
+        }
+    }
+
     fn window_event(
         &mut self,
         target: &EventLoopWindowTarget<()>,
@@ -369,20 +386,5 @@ impl<T> AppState<T> {
         }
 
         requests
-    }
-
-    fn render(&mut self, window: ori_core::window::WindowId) {
-        #[cfg(feature = "wgpu")]
-        {
-            if let Some(render) = self.renders.get_mut(&window) {
-                let window = self.ui.window_mut(window);
-
-                let width = window.window().width();
-                let height = window.window().height();
-                let scene = window.scene_mut();
-
-                render.render_scene(scene, Color::WHITE, width, height);
-            }
-        }
     }
 }

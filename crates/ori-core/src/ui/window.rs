@@ -71,6 +71,11 @@ impl<T> WindowUi<T> {
         &mut self.window
     }
 
+    /// Get the theme.
+    pub fn theme(&self) -> &Theme {
+        &self.theme
+    }
+
     /// Set the theme.
     ///
     /// This will also request a rebuild of the view-tree, as the theme

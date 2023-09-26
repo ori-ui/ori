@@ -65,7 +65,8 @@ fn input(border: bool) -> impl View<Data> {
         .on_submit(|_, data: &mut Data, text| data.input(text))
         .font_size(pt(20.0));
 
-    let input = container(pad([rem(4.0), rem(1.0)], input)).border_bottom(border as i32 as f32);
+    let border = border as i32 as f32 * 2.0;
+    let input = container(pad([rem(4.0), rem(1.0)], input)).border_bottom(border);
 
     width(rem(28.0), input)
 }
@@ -101,7 +102,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let container = container(pad(rem(1.0), row));
 
     if index > 0 {
-        width(rem(28.0), container.border_bottom(1.0))
+        width(rem(28.0), container.border_bottom(2.0))
     } else {
         width(rem(28.0), container)
     }
@@ -176,7 +177,7 @@ fn selection(data: &mut Data) -> impl View<Data> {
     let items = hstack![all, active, completed].gap(rem(1.0));
     let row = hstack![active_count(data), items].justify_content(Justify::SpaceBetween);
 
-    let container = container(pad([rem(1.0), rem(0.5)], row)).border_top(1.0);
+    let container = container(pad([rem(1.0), rem(0.5)], row)).border_top(2.0);
 
     Some(width(rem(26.0), container))
 }

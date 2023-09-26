@@ -14,8 +14,10 @@ pub fn animate<T, V, S>(
 }
 
 /// A view that animates.
+///
+/// For an example, see [`animate`](https://github.com/ChangeCaps/ori/blob/main/examples/animate.rs).
 pub struct Animate<T, V, S = ()> {
-    /// The state.
+    /// The animation callback.
     #[allow(clippy::type_complexity)]
     pub animate: Box<dyn FnMut(&mut S, &mut EventCx, &mut T, &Event) -> V>,
     /// The theme to apply when building the view.

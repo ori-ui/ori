@@ -9,20 +9,10 @@ fn app(_data: &mut Data) -> impl View<Data> {
             cx.request_animation_frame();
         }
 
-        if let Some(&AnimationFrame(dt)) = event.get() {
-            if cx.is_hot() {
-                *t += dt * 20.0;
-            } else {
-                *t -= dt * 20.0;
-            }
-
-            if *t > 0.0 && *t < 1.0 {
+        if let Some(AnimationFrame(dt)) = event.get() {
+            if ease(0.2).step(t, cx.is_hot(), *dt) {
                 cx.request_animation_frame();
             }
-
-            *t = t.clamp(0.0, 1.0);
-
-            cx.request_draw();
         }
 
         let border = Color::RED.mix(Color::GREEN, *t);

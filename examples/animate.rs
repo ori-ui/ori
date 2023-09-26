@@ -23,7 +23,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
             .fancy(pt(4.0))
     });
 
-    center(on_click(click_me, |cx, _| info!("Clicked!")))
+    center(on_click(click_me, |_, _| info!("Clicked!")))
 }
 
 fn main() {

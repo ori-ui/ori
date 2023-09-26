@@ -1,10 +1,12 @@
 //! Styleing and theming.
 
+mod builder;
 pub mod builtin;
 mod key;
 mod palette;
 mod theme;
 
+pub use builder::*;
 pub use builtin::*;
 pub use key::*;
 pub use palette::*;

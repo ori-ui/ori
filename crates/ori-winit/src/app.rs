@@ -69,7 +69,7 @@ impl<T: 'static> App<T> {
 
     /// Append the theme of the application.
     pub fn theme<I: Into<Theme>>(mut self, mut theme: impl FnMut() -> I + 'static) -> Self {
-        self.ui.add_theme(move || theme().into());
+        self.ui.push_theme(move || theme().into());
         self
     }
 

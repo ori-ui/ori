@@ -14,7 +14,7 @@ use crate::{
     },
     layout::{Point, Vector},
     text::Fonts,
-    theme::{Theme, SCALE_FACTOR, WINDOW_SIZE},
+    theme::{Theme, ThemeBuilder, SCALE_FACTOR, WINDOW_SIZE},
     view::BaseCx,
     window::{UiBuilder, Window, WindowId, WindowUi},
 };
@@ -24,7 +24,7 @@ pub struct Ui<T, R: SceneRender> {
     windows: HashMap<WindowId, WindowUi<T, R>>,
     modifiers: Modifiers,
     delegate: Box<dyn Delegate<T>>,
-    themes: Vec<Box<dyn FnMut() -> Theme>>,
+    theme_builder: ThemeBuilder,
     commands: CommandProxy,
     /// The fonts used by the UI.
     pub fonts: Fonts,
@@ -43,7 +43,7 @@ impl<T, R: SceneRender> Ui<T, R> {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegate: Box::new(()),
-            themes: Vec::new(),
+            theme_builder: ThemeBuilder::default(),
             commands: CommandProxy::new(waker),
             fonts,
             data,
@@ -56,26 +56,23 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Add a new theme.
-    pub fn add_theme(&mut self, theme: impl FnMut() -> Theme + 'static) {
-        self.themes.push(Box::new(theme));
+    pub fn push_theme(&mut self, theme: impl FnMut() -> Theme + 'static) {
+        self.theme_builder.push(Box::new(theme));
     }
 
-    fn build_theme(themes: &mut Vec<Box<dyn FnMut() -> Theme>>, window: &Window) -> Theme {
+    fn build_theme(builder: &mut ThemeBuilder, window: &Window) -> Theme {
         let mut theme = Theme::new();
         theme.set(SCALE_FACTOR, window.scale_factor());
         theme.set(WINDOW_SIZE, window.size());
 
-        for theme_builder in themes {
-            let new_theme = Theme::with_global(&mut theme, theme_builder);
-            theme.extend(new_theme);
-        }
+        builder.build(&mut theme);
 
         theme
     }
 
     /// Add a new window.
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
-        let theme = Self::build_theme(&mut self.themes, &window);
+        let theme = Self::build_theme(&mut self.theme_builder, &window);
 
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
@@ -178,7 +175,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     /// Rebuild the theme for a window.
     pub fn rebuild_theme(&mut self, window_id: WindowId) {
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            let theme = Self::build_theme(&mut self.themes, window_ui.window());
+            let theme = Self::build_theme(&mut self.theme_builder, window_ui.window());
             self.window_mut(window_id).set_theme(theme);
         }
     }

@@ -54,7 +54,7 @@ impl Checkbox {
             size: style(checkbox::SIZE),
             color: style(checkbox::COLOR),
             stroke: style(checkbox::STROKE),
-            background: style(checkbox::BACKGROUND).into(),
+            background: style(checkbox::BACKGROUND),
             border_radius: style(checkbox::BORDER_RADIUS),
             border_width: style(checkbox::BORDER_WIDTH),
             border_color: style(checkbox::BORDER_COLOR),

@@ -347,7 +347,7 @@ impl QuadRender {
         pass.set_pipeline(&self.pipeline);
 
         pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        pass.set_bind_group(1, &image_bind_group, &[]);
+        pass.set_bind_group(1, image_bind_group, &[]);
         pass.set_bind_group(2, &batch.data_bind_group, &[]);
 
         pass.set_vertex_buffer(0, batch.vertex_buffer.slice(..));

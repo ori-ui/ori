@@ -55,7 +55,7 @@ impl<T: 'static> App<T> {
             builder: Box::new(move |data| Box::new(builder(data))),
             ui: Ui::new(data, Arc::new(waker)),
             #[cfg(feature = "wgpu")]
-            msaa: false,
+            msaa: true,
         };
 
         app.ui.fonts.load_system_fonts();

@@ -254,7 +254,6 @@ impl<T> WindowUi<T> {
     /// Render the scene.
     ///
     /// This will rebuild, layout or draw the view if necessary.
-    #[must_use]
     pub fn render(&mut self, base: &mut BaseCx, data: &mut T) -> UiRequests<T> {
         if let Some(animation_frame) = self.animation_frame.take() {
             let dt = animation_frame.elapsed().as_secs_f32();
@@ -282,7 +281,7 @@ impl<T> WindowUi<T> {
         self.update();
 
         let mut requests = UiRequests::new();
-        requests.push_front(UiRequest::Render(self.window.id()));
+        requests.push(UiRequest::Render(self.window.id()));
         requests
     }
 }

@@ -72,7 +72,6 @@ impl<T> Ui<T> {
     }
 
     /// Add a new window.
-    #[must_use]
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window) -> UiRequests<T> {
         let theme = Self::build_theme(&mut self.theme_builder, &window);
 
@@ -142,12 +141,10 @@ impl<T> Ui<T> {
     /// Initialize the UI.
     ///
     /// This should be called after all initial windows have been added.
-    #[must_use]
     pub fn init(&mut self) -> UiRequests<T> {
         self.init_delegate()
     }
 
-    #[must_use]
     fn init_delegate(&mut self) -> UiRequests<T> {
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
@@ -163,7 +160,6 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that the event loop idle.
-    #[must_use]
     pub fn idle(&mut self) -> UiRequests<T> {
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
@@ -205,13 +201,12 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a window wants to close.
-    #[must_use]
     pub fn close_requested(&mut self, window_id: WindowId) -> UiRequests<T> {
         let event = Event::new(CloseRequested::new(window_id));
         let mut requests = self.event(window_id, &event);
 
         if !event.is_handled() {
-            requests.push_front(UiRequest::RemoveWindow(window_id));
+            requests.push(UiRequest::RemoveWindow(window_id));
         }
 
         requests
@@ -223,7 +218,6 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a pointer has moved.
-    #[must_use]
     pub fn pointer_moved(
         &mut self,
         window_id: WindowId,
@@ -248,7 +242,6 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a pointer has left the window.
-    #[must_use]
     pub fn pointer_left(&mut self, window_id: WindowId, id: PointerId) -> UiRequests<T> {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
@@ -264,7 +257,6 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a pointer has scrolled.
-    #[must_use]
     pub fn pointer_scroll(
         &mut self,
         window_id: WindowId,
@@ -282,7 +274,6 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a pointer button has been pressed or released.
-    #[must_use]
     pub fn pointer_button(
         &mut self,
         window_id: WindowId,
@@ -302,7 +293,6 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a keyboard key has been pressed or released.
-    #[must_use]
     pub fn keyboard_key(&mut self, window_id: WindowId, key: Code, pressed: bool) -> UiRequests<T> {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
@@ -329,7 +319,6 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a keyboard character has been entered.
-    #[must_use]
     pub fn keyboard_char(&mut self, window_id: WindowId, c: char) -> UiRequests<T> {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
@@ -349,18 +338,17 @@ impl<T> Ui<T> {
         let mut requests = UiRequests::new();
 
         if let Some(close) = event.get::<CloseWindow>() {
-            requests.push_front(UiRequest::RemoveWindow(close.window));
+            requests.push(UiRequest::RemoveWindow(close.window));
         }
 
         if event.is::<OpenWindow<T>>() && !event.is_handled() {
             let open = event.take::<OpenWindow<T>>().unwrap();
-            requests.push_front(UiRequest::CreateWindow(open.desc, open.builder));
+            requests.push(UiRequest::CreateWindow(open.desc, open.builder));
         }
 
         requests
     }
 
-    #[must_use]
     fn handle_command(&mut self, command: Command) -> UiRequests<T> {
         let mut requests = UiRequests::default();
 
@@ -387,7 +375,6 @@ impl<T> Ui<T> {
     }
 
     /// Handle all pending commands.
-    #[must_use]
     pub fn handle_commands(&mut self) -> UiRequests<T> {
         let mut requests = UiRequests::default();
 
@@ -411,7 +398,6 @@ impl<T> Ui<T> {
     }
 
     /// Handle an event for a single window.
-    #[must_use]
     pub fn event(&mut self, window_id: WindowId, event: &Event) -> UiRequests<T> {
         self.event_delegate(event);
 
@@ -432,7 +418,6 @@ impl<T> Ui<T> {
     }
 
     /// Handle an event for all windows.
-    #[must_use]
     pub fn event_all(&mut self, event: &Event) -> UiRequests<T> {
         self.event_delegate(event);
 
@@ -453,7 +438,6 @@ impl<T> Ui<T> {
     }
 
     /// Render a window.
-    #[must_use]
     pub fn render(&mut self, window_id: WindowId) -> UiRequests<T> {
         let mut requests = UiRequests::default();
 

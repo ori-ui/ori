@@ -103,7 +103,7 @@ impl<'a> Canvas<'a> {
         let border_width = border_width.into();
         let border_color = border_color.into();
 
-        self.draw(Quad {
+        self.draw_pixel_perfect(Quad {
             rect,
             background,
             border_radius,

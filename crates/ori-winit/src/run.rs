@@ -15,6 +15,7 @@ use winit::{
 
 use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
+    log::error_internal,
     window::WinitWindow,
     App, Error,
 };
@@ -102,7 +103,10 @@ impl<T> AppState<T> {
         self.init = true;
 
         let builder = mem::replace(&mut self.builder, Box::new(|_| unreachable!()));
-        self.create_window(target, self.window.clone(), builder);
+        if let Err(err) = self.create_window(target, self.window.clone(), builder) {
+            error_internal!("Failed to create window: {}", err);
+            return;
+        }
 
         let requests = self.ui.init();
         self.handle_requests(target, requests);
@@ -110,16 +114,24 @@ impl<T> AppState<T> {
 
     fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>, requests: UiRequests<T>) {
         for request in requests {
-            self.handle_request(target, request);
+            if let Err(err) = self.handle_request(target, request) {
+                error_internal!("Failed to handle request: {}", err);
+            }
         }
     }
 
-    fn handle_request(&mut self, target: &EventLoopWindowTarget<()>, request: UiRequest<T>) {
+    fn handle_request(
+        &mut self,
+        target: &EventLoopWindowTarget<()>,
+        request: UiRequest<T>,
+    ) -> Result<(), Error> {
         match request {
             UiRequest::Render(window) => self.render(window),
-            UiRequest::CreateWindow(desc, builder) => self.create_window(target, desc, builder),
+            UiRequest::CreateWindow(desc, builder) => self.create_window(target, desc, builder)?,
             UiRequest::RemoveWindow(window_id) => self.remove_window(window_id),
         }
+
+        Ok(())
     }
 
     #[cfg(feature = "wgpu")]
@@ -149,7 +161,7 @@ impl<T> AppState<T> {
 
             self.renders.insert(id, render);
         } else {
-            let (instance, surface) = self.init_wgpu(window).unwrap();
+            let (instance, surface) = self.init_wgpu(window)?;
 
             let samples = if self.msaa { 4 } else { 1 };
             let size = window.inner_size();
@@ -177,18 +189,17 @@ impl<T> AppState<T> {
         target: &EventLoopWindowTarget<()>,
         desc: WindowDescriptor,
         builder: UiBuilder<T>,
-    ) {
+    ) -> Result<(), Error> {
         /* create the window */
         let window = WindowBuilder::new()
             .with_visible(false)
             .with_transparent(desc.transparent)
-            .build(target)
-            .unwrap();
+            .build(target)?;
 
         self.ids.insert(window.id(), desc.id);
 
         #[cfg(feature = "wgpu")]
-        self.create_wgpu_render(&window, desc.id).unwrap();
+        self.create_wgpu_render(&window, desc.id)?;
 
         /* create the initial window */
         let raw_window = Box::new(WinitWindow::from(window));
@@ -197,6 +208,8 @@ impl<T> AppState<T> {
         /* add the window to the ui */
         let requests = self.ui.add_window(builder, window);
         self.handle_requests(target, requests);
+
+        Ok(())
     }
 
     fn remove_window(&mut self, window_id: ori_core::window::WindowId) {

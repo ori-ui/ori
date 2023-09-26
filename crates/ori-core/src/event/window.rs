@@ -34,7 +34,6 @@ impl<T> OpenWindow<T> {
     pub fn new<V>(mut ui: impl FnMut(&mut T) -> V + Send + 'static) -> Self
     where
         V: View<T> + 'static,
-        V::State: 'static,
     {
         Self {
             desc: WindowDescriptor::default(),
@@ -101,5 +100,19 @@ impl<T> OpenWindow<T> {
     pub fn visible(mut self, visible: bool) -> Self {
         self.desc.visible = visible;
         self
+    }
+}
+
+/// Command to close a window.
+#[derive(Clone, Debug)]
+pub struct CloseWindow {
+    /// The window to close.
+    pub window: WindowId,
+}
+
+impl CloseWindow {
+    /// Create a new close window command.
+    pub fn new(window: WindowId) -> Self {
+        Self { window }
     }
 }

@@ -3,11 +3,14 @@ use std::{any::Any, time::Instant};
 use crate::{
     canvas::Mesh,
     command::{Command, CommandProxy},
+    event::{CloseWindow, OpenWindow},
     layout::{Affine, Point, Rect, Size},
     text::{Fonts, Glyphs, TextSection},
     view::ViewState,
-    window::{Cursor, Window},
+    window::{Cursor, Window, WindowDescriptor},
 };
+
+use super::View;
 
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
@@ -312,6 +315,23 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         if self.animation_frame.is_none() {
             *self.animation_frame = Some(Instant::now());
         }
+    }
+
+    /// Open a new window.
+    pub fn open_window<T: 'static, V: View<T> +'static>(
+        &mut self,
+        desc: WindowDescriptor,
+        ui: impl FnMut(&mut T) -> V + Send + 'static,
+    ) {
+        let mut cmd = OpenWindow::new(ui);
+        cmd.desc = desc;
+
+        self.cmd(cmd);
+    }
+
+    /// Close the window.
+    pub fn close_window(&mut self) {
+        self.cmd(CloseWindow::new(self.window.id()));
     }
 }}
 

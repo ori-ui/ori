@@ -42,7 +42,6 @@ impl<T: 'static> App<T> {
     pub fn new<V>(mut builder: impl FnMut(&mut T) -> V + 'static, data: T) -> Self
     where
         V: View<T> + 'static,
-        V::State: 'static,
     {
         let event_loop = Self::build_event_loop();
 

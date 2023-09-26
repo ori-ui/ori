@@ -23,13 +23,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
             .fancy(pt(4.0))
     });
 
-    center(on_click(click_me, |cx, _| {
-        cx.cmd(OpenWindow::new(|_: &mut Data| {
-            center(text("Hello, world!"))
-        }));
-
-        info!("Clicked!")
-    }))
+    center(on_click(click_me, |cx, _| info!("Clicked!")))
 }
 
 fn main() {

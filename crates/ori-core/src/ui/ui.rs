@@ -8,8 +8,8 @@ use crate::{
     command::{Command, CommandProxy, EventLoopWaker},
     delegate::{Delegate, DelegateCx},
     event::{
-        CloseRequested, Code, Event, Focused, KeyboardEvent, Modifiers, OpenWindow, PointerButton,
-        PointerEvent, PointerId, SwitchFocus,
+        CloseRequested, CloseWindow, Code, Event, Focused, KeyboardEvent, Modifiers, OpenWindow,
+        PointerButton, PointerEvent, PointerId, SwitchFocus,
     },
     layout::{Point, Vector},
     text::Fonts,
@@ -345,6 +345,21 @@ impl<T> Ui<T> {
         self.modifiers = modifiers;
     }
 
+    fn handle_window_commands(&mut self, event: Event) -> UiRequests<T> {
+        let mut requests = UiRequests::new();
+
+        if let Some(close) = event.get::<CloseWindow>() {
+            requests.push_front(UiRequest::RemoveWindow(close.window));
+        }
+
+        if event.is::<OpenWindow<T>>() && !event.is_handled() {
+            let open = event.take::<OpenWindow<T>>().unwrap();
+            requests.push_front(UiRequest::CreateWindow(open.desc, open.builder));
+        }
+
+        requests
+    }
+
     #[must_use]
     fn handle_command(&mut self, command: Command) -> UiRequests<T> {
         let mut requests = UiRequests::default();
@@ -367,11 +382,7 @@ impl<T> Ui<T> {
             }
         }
 
-        if event.is::<OpenWindow<T>>() && !event.is_handled() {
-            let open = event.take::<OpenWindow<T>>().unwrap();
-            requests.push_front(UiRequest::CreateWindow(open.desc, open.builder));
-        }
-
+        requests.extend(self.handle_window_commands(event));
         requests
     }
 

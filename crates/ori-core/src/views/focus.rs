@@ -4,7 +4,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`Focus`].
@@ -22,7 +22,7 @@ pub type Lens<'a, T> = dyn FnMut(&mut T) + 'a;
 ///
 /// This is useful when using components that require specific data.
 pub struct Focus<T, U, V> {
-    content: Pod<V>,
+    content: V,
     #[allow(clippy::type_complexity)]
     focus: Box<dyn FnMut(&mut T, &mut Lens<U>)>,
     marker: PhantomData<fn() -> T>,
@@ -32,7 +32,7 @@ impl<T, U, V> Focus<T, U, V> {
     /// Create a new [`Focus`].
     pub fn new(content: V, focus: impl FnMut(&mut T, &mut Lens<U>) + 'static) -> Self {
         Self {
-            content: Pod::new(content),
+            content,
             focus: Box::new(focus),
             marker: PhantomData,
         }
@@ -40,7 +40,7 @@ impl<T, U, V> Focus<T, U, V> {
 }
 
 impl<T, U, V: View<U>> View<T> for Focus<T, U, V> {
-    type State = State<U, V>;
+    type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut state = None;

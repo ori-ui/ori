@@ -3,7 +3,7 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`Constrain`]ed view, constraining its content to a space.
@@ -74,7 +74,7 @@ pub fn max_height<V>(max_height: f32, content: V) -> Constrain<V> {
 #[derive(Rebuild)]
 pub struct Constrain<V> {
     /// The content to constrain.
-    pub content: Pod<V>,
+    pub content: V,
     /// The space to constrain the content to.
     #[rebuild(layout)]
     pub space: Space,
@@ -83,18 +83,12 @@ pub struct Constrain<V> {
 impl<V> Constrain<V> {
     /// Create a new constrained view.
     pub fn new(space: Space, content: V) -> Self {
-        Self {
-            content: Pod::new(content),
-            space,
-        }
+        Self { content, space }
     }
 
     /// Create a new constrained view, with no bounds.
     pub fn unbounded(content: V) -> Self {
-        Self {
-            content: Pod::new(content),
-            space: Space::UNBOUNDED,
-        }
+        Self::new(Space::UNBOUNDED, content)
     }
 
     /// Set the minimum size.
@@ -149,7 +143,7 @@ impl<V> Constrain<V> {
 }
 
 impl<T, V: View<T>> View<T> for Constrain<V> {
-    type State = State<T, V>;
+    type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         self.content.build(cx, data)

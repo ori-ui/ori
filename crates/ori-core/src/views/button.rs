@@ -247,8 +247,8 @@ impl<T, V: View<T>> View<T> for Button<V> {
                 color: base,
             },
             self.border_radius,
-            self.border_width,
-            self.border_color,
+            BorderWidth::ZERO,
+            Color::TRANSPARENT,
         );
 
         let float = Vector::NEG_Y * (1.0 - active) * self.fancy;

@@ -3,7 +3,7 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`EventHandler`], with a before callback.
@@ -26,7 +26,7 @@ pub fn on_event_after<T, V>(
 #[derive(Rebuild)]
 pub struct EventHandler<T, V> {
     /// The content.
-    pub content: Pod<V>,
+    pub content: V,
     /// The callback before an event is propagated.
     #[allow(clippy::type_complexity)]
     pub before: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) + 'static>>,
@@ -39,7 +39,7 @@ impl<T, V> EventHandler<T, V> {
     /// Create a new [`EventHandler`].
     pub fn new(content: V) -> Self {
         Self {
-            content: Pod::new(content),
+            content,
             before: None,
             after: None,
         }
@@ -59,7 +59,7 @@ impl<T, V> EventHandler<T, V> {
 }
 
 impl<T, V: View<T>> View<T> for EventHandler<T, V> {
-    type State = State<T, V>;
+    type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         self.content.build(cx, data)

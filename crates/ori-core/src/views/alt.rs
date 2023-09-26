@@ -7,7 +7,7 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
     },
     theme::{alt, pt, style, text},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`Alt`] view.
@@ -19,7 +19,7 @@ pub fn alt<V>(alt: impl ToString, content: V) -> Alt<V> {
 #[derive(Rebuild)]
 pub struct Alt<V> {
     /// The content to display.
-    pub content: Pod<V>,
+    pub content: V,
     /// The alternative text to display.
     #[rebuild(layout)]
     pub alt: String,
@@ -47,7 +47,7 @@ impl<V> Alt<V> {
     /// Create a new alt view.
     pub fn new(alt: impl ToString, content: V) -> Self {
         Self {
-            content: Pod::new(content),
+            content,
             alt: alt.to_string(),
             color: style(text::COLOR),
             padding: style(alt::PADDING),
@@ -67,7 +67,7 @@ pub struct AltState {
 }
 
 impl<T, V: View<T>> View<T> for Alt<V> {
-    type State = (AltState, State<T, V>);
+    type State = (AltState, V::State);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let state = AltState {

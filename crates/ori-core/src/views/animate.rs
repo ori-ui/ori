@@ -14,7 +14,7 @@ pub fn animate<T, V, S>(
 }
 
 /// A view that animates.
-pub struct Animate<T, V, S> {
+pub struct Animate<T, V, S = ()> {
     /// The state.
     #[allow(clippy::type_complexity)]
     pub animate: Box<dyn FnMut(&mut S, &mut EventCx, &mut T, &Event) -> V>,

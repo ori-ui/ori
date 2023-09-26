@@ -105,6 +105,35 @@ impl ImageData {
         }
     }
 
+    /// Try to load an image from a file.
+    #[cfg(feature = "image")]
+    pub fn try_load(path: impl AsRef<std::path::Path>) -> image::ImageResult<Self> {
+        let data = image::open(path)?;
+
+        Ok(Self {
+            pixels: data.to_rgba8().into_raw(),
+            width: data.width(),
+            height: data.height(),
+            filter: true,
+        })
+    }
+
+    /// Load an image from a file.
+    #[cfg(feature = "image")]
+    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
+        match Self::try_load(path.as_ref()) {
+            Ok(data) => data,
+            Err(err) => {
+                crate::log::error_internal!(
+                    "Failed to load image: {}: {}",
+                    path.as_ref().display(),
+                    err
+                );
+                Self::default()
+            }
+        }
+    }
+
     /// Get the width of the image in pixels.
     pub fn width(&self) -> u32 {
         self.width

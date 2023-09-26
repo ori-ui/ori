@@ -79,6 +79,18 @@ impl Image {
         Self::from(ImageData::load_data(data))
     }
 
+    /// Try to load an image from a file.
+    #[cfg(feature = "image")]
+    pub fn try_load(path: impl AsRef<std::path::Path>) -> image::ImageResult<Self> {
+        Ok(Self::from(ImageData::try_load(path)?))
+    }
+
+    /// Load an image from a file.
+    #[cfg(feature = "image")]
+    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
+        Self::from(ImageData::load(path))
+    }
+
     /// Get the [`ImageId`].
     pub fn id(&self) -> ImageId {
         self.id

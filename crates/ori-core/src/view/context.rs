@@ -55,11 +55,20 @@ impl<'a> BaseCx<'a> {
 pub struct BuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) window: &'a mut Window,
+    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> BuildCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, window: &'a mut Window) -> Self {
-        Self { base, window }
+    pub(crate) fn new(
+        base: &'a mut BaseCx<'b>,
+        window: &'a mut Window,
+        animation_frame: &'a mut Option<Instant>,
+    ) -> Self {
+        Self {
+            base,
+            window,
+            animation_frame,
+        }
     }
 
     /// Create a child context.
@@ -67,6 +76,7 @@ impl<'a, 'b> BuildCx<'a, 'b> {
         BuildCx {
             base: self.base,
             window: self.window,
+            animation_frame: self.animation_frame,
         }
     }
 
@@ -111,7 +121,7 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base, self.window)
+        BuildCx::new(self.base, self.window, self.animation_frame)
     }
 }
 
@@ -161,6 +171,21 @@ impl<'a, 'b> EventCx<'a, 'b> {
     /// Transform a point from global space to local space.
     pub fn local(&self, point: Point) -> Point {
         self.transform.inverse() * point
+    }
+
+    /// Get a build context.
+    pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
+        BuildCx::new(self.base, self.window, self.animation_frame)
+    }
+
+    /// Get a rebuild context.
+    pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
+        RebuildCx::new(
+            self.base,
+            self.view_state,
+            self.window,
+            self.animation_frame,
+        )
     }
 }
 
@@ -281,6 +306,13 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     pub fn cmd<T: Any + Send>(&mut self, command: T) {
         self.base.cmd(command);
     }
+
+    /// Request an animation frame.
+    pub fn request_animation_frame(&mut self) {
+        if self.animation_frame.is_none() {
+            *self.animation_frame = Some(Instant::now());
+        }
+    }
 }}
 
 impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
@@ -393,13 +425,6 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
     /// Request a draw of the view tree.
     pub fn request_draw(&mut self) {
         self.view_state.request_draw();
-    }
-
-    /// Request an animation frame.
-    pub fn request_animation_frame(&mut self) {
-        if self.animation_frame.is_none() {
-            *self.animation_frame = Some(Instant::now());
-        }
     }
 
     /// Layout the given [`TextSection`].

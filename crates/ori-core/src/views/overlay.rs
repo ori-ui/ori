@@ -7,7 +7,7 @@ use crate::{
 
 pub use crate::overlay;
 
-/// Create a new overlay view.
+/// Create a new [`Overlay`] view.
 #[macro_export]
 macro_rules! overlay {
     (for $data:ident in $content:expr) => {

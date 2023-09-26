@@ -2,6 +2,7 @@
 
 mod aligned;
 mod alt;
+mod animate;
 mod button;
 mod checkbox;
 mod click_handler;
@@ -22,6 +23,7 @@ mod with_state;
 
 pub use aligned::*;
 pub use alt::*;
+pub use animate::*;
 pub use button::*;
 pub use checkbox::*;
 pub use click_handler::*;

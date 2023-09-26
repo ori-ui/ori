@@ -355,7 +355,7 @@ impl<T, R: SceneRender> Ui<T, R> {
         }
     }
 
-    /// Handle an event for a window.
+    /// Handle an event for a single window.
     pub fn event(&mut self, window_id: WindowId, event: &Event) {
         self.event_delegate(event);
 
@@ -364,6 +364,26 @@ impl<T, R: SceneRender> Ui<T, R> {
 
         if !event.is_handled() {
             if let Some(window_ui) = self.windows.get_mut(&window_id) {
+                window_ui.event(&mut base, &mut self.data, event);
+            }
+        }
+
+        if needs_rebuild {
+            self.request_rebuild();
+        }
+
+        self.handle_commands();
+    }
+
+    /// Handle an event for all windows.
+    pub fn event_all(&mut self, event: &Event) {
+        self.event_delegate(event);
+
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+
+        if !event.is_handled() {
+            for window_ui in self.windows.values_mut() {
                 window_ui.event(&mut base, &mut self.data, event);
             }
         }

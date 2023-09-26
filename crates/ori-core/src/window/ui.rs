@@ -45,7 +45,8 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         let mut view = Pod::new(view);
 
         // then we build the state tree, with `theme` as the global theme
-        let mut cx = BuildCx::new(base, &mut window);
+        let mut animation_frame = None;
+        let mut cx = BuildCx::new(base, &mut window, &mut animation_frame);
         let state = Theme::with_global(&mut theme, || view.build(&mut cx, data));
 
         Self {
@@ -56,7 +57,7 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             theme,
             view_state: ViewState::default(),
             needs_rebuild: false,
-            animation_frame: None,
+            animation_frame,
             window,
             render,
         }

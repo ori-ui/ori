@@ -46,6 +46,11 @@ pub fn style<T: Clone + Default + Any>(key: Key<T>) -> T {
     key.get()
 }
 
+/// Get a snapshot of the global theme.
+pub fn theme_snapshot() -> Theme {
+    Theme::global_snapshot()
+}
+
 /// Run a function with a temporary global theme.
 ///
 /// This restores the previous global theme after the function returns.

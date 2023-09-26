@@ -1,23 +1,24 @@
 use std::time::Instant;
 
 use crate::{
-    canvas::{Canvas, Scene, SceneRender},
+    canvas::{Canvas, Scene},
     event::{AnimationFrame, Event},
     layout::{Size, Space},
-    theme::{Palette, Theme},
+    theme::Theme,
     view::{
         BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View,
         ViewState,
     },
+    window::{Cursor, Window},
 };
 
-use super::{Cursor, Window};
+use super::{UiRequest, UiRequests};
 
 /// A type that can build a view.
 pub type UiBuilder<T> = Box<dyn FnMut(&mut T) -> BoxedView<T>>;
 
 /// User interface for a single window.
-pub struct WindowUi<T, R: SceneRender> {
+pub struct WindowUi<T> {
     builder: UiBuilder<T>,
     view: Pod<BoxedView<T>>,
     state: State<T, BoxedView<T>>,
@@ -27,10 +28,9 @@ pub struct WindowUi<T, R: SceneRender> {
     needs_rebuild: bool,
     animation_frame: Option<Instant>,
     window: Window,
-    render: R,
 }
 
-impl<T, R: SceneRender> WindowUi<T, R> {
+impl<T> WindowUi<T> {
     /// Create a new [´WindowUi´] for the given window.
     pub fn new(
         mut builder: UiBuilder<T>,
@@ -38,7 +38,6 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         data: &mut T,
         mut theme: Theme,
         mut window: Window,
-        render: R,
     ) -> Self {
         // we first build the view tree, with `theme` as the global theme
         let view = Theme::with_global(&mut theme, || builder(data));
@@ -59,7 +58,6 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             needs_rebuild: false,
             animation_frame,
             window,
-            render,
         }
     }
 
@@ -87,6 +85,11 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         &self.scene
     }
 
+    /// Get the scene.
+    pub fn scene_mut(&mut self) -> &mut Scene {
+        &mut self.scene
+    }
+
     /// Get whether the view-tree needs to be rebuilt.
     pub fn needs_rebuild(&self) -> bool {
         self.needs_rebuild
@@ -111,11 +114,6 @@ impl<T, R: SceneRender> WindowUi<T, R> {
     /// Request a layout of the view-tree.
     pub fn request_layout(&mut self) {
         self.view_state.request_layout();
-    }
-
-    /// Called when the application is idle.
-    pub fn idle(&mut self) {
-        self.render.idle();
     }
 
     fn update_cursor(&mut self) {
@@ -253,15 +251,11 @@ impl<T, R: SceneRender> WindowUi<T, R> {
         }
     }
 
-    /// Set the render.
-    pub fn set_render(&mut self, render: R) {
-        self.render = render;
-    }
-
     /// Render the scene.
     ///
     /// This will rebuild, layout or draw the view if necessary.
-    pub fn render(&mut self, base: &mut BaseCx, data: &mut T) {
+    #[must_use]
+    pub fn render(&mut self, base: &mut BaseCx, data: &mut T) -> UiRequests<T> {
         if let Some(animation_frame) = self.animation_frame.take() {
             let dt = animation_frame.elapsed().as_secs_f32();
             let event = Event::new(AnimationFrame(dt));
@@ -285,12 +279,10 @@ impl<T, R: SceneRender> WindowUi<T, R> {
             self.draw(base, data);
         }
 
-        // render the scene to the window
-        let width = self.window.width();
-        let height = self.window.height();
-        let clear_color = self.theme.get(Palette::BACKGROUND);
-        (self.render).render_scene(&mut self.scene, clear_color, width, height);
-
         self.update();
+
+        let mut requests = UiRequests::new();
+        requests.push_front(UiRequest::Render(self.window.id()));
+        requests
     }
 }

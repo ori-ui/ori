@@ -6,22 +6,20 @@ use ori_core::{
     image::Image,
     text::FontSource,
     theme::{Palette, Theme},
-    ui::Ui,
+    ui::{Ui, UiBuilder},
     view::View,
-    window::{UiBuilder, WindowDescriptor},
+    window::WindowDescriptor,
 };
 use winit::event_loop::{EventLoop, EventLoopBuilder};
 
-use crate::{proxy::WinitWaker, Error, Render};
+use crate::{proxy::WinitWaker, Error};
 
 /// An application.
-pub struct App<T> {
+pub struct App<T: 'static> {
     pub(crate) event_loop: EventLoop<()>,
     pub(crate) window: WindowDescriptor,
     pub(crate) builder: UiBuilder<T>,
-    pub(crate) ui: Ui<T, Render>,
-    pub(crate) text_size: f32,
-    #[cfg(feature = "wgpu")]
+    pub(crate) ui: Ui<T>,
     pub(crate) msaa: bool,
 }
 
@@ -57,7 +55,6 @@ impl<T: 'static> App<T> {
             window: WindowDescriptor::default(),
             builder: Box::new(move |data| Box::new(builder(data))),
             ui: Ui::new(data, Arc::new(waker)),
-            text_size: 16.0,
             #[cfg(feature = "wgpu")]
             msaa: true,
         };
@@ -95,14 +92,7 @@ impl<T: 'static> App<T> {
         self
     }
 
-    /// Set the text size of the application.
-    pub fn text_size(mut self, size: f32) -> Self {
-        self.text_size = size;
-        self
-    }
-
     /// Set whether the application uses multisample anti-aliasing.
-    #[cfg(feature = "wgpu")]
     pub fn msaa(mut self, msaa: bool) -> Self {
         self.msaa = msaa;
         self

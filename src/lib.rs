@@ -39,7 +39,7 @@ pub mod prelude {
         delegate::{Delegate, DelegateCx},
         event::{
             AnimationFrame, CloseRequested, Code, Event, Focused, HotChanged, KeyboardEvent,
-            Modifiers, Pointer, PointerButton, PointerEvent, PointerId,
+            Modifiers, OpenWindow, Pointer, PointerButton, PointerEvent, PointerId,
         },
         image::{gradient, Image, ImageData, ImageId},
         layout::{

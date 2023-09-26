@@ -5,23 +5,24 @@ use std::{collections::HashMap, sync::Arc};
 use ori_macro::font;
 
 use crate::{
-    canvas::SceneRender,
     command::{Command, CommandProxy, EventLoopWaker},
     delegate::{Delegate, DelegateCx},
     event::{
-        CloseRequested, Code, Event, Focused, KeyboardEvent, Modifiers, PointerButton,
+        CloseRequested, Code, Event, Focused, KeyboardEvent, Modifiers, OpenWindow, PointerButton,
         PointerEvent, PointerId, SwitchFocus,
     },
     layout::{Point, Vector},
     text::Fonts,
     theme::{Theme, ThemeBuilder, SCALE_FACTOR, WINDOW_SIZE},
     view::BaseCx,
-    window::{UiBuilder, Window, WindowId, WindowUi},
+    window::{Window, WindowId},
 };
 
+use super::{UiBuilder, UiRequest, UiRequests, WindowUi};
+
 /// State for running a user interface.
-pub struct Ui<T, R: SceneRender> {
-    windows: HashMap<WindowId, WindowUi<T, R>>,
+pub struct Ui<T: 'static> {
+    windows: HashMap<WindowId, WindowUi<T>>,
     modifiers: Modifiers,
     delegate: Box<dyn Delegate<T>>,
     theme_builder: ThemeBuilder,
@@ -32,7 +33,7 @@ pub struct Ui<T, R: SceneRender> {
     pub data: T,
 }
 
-impl<T, R: SceneRender> Ui<T, R> {
+impl<T> Ui<T> {
     /// Create a new [`Ui`] with the given data.
     pub fn new(data: T, waker: Arc<dyn EventLoopWaker>) -> Self {
         let mut fonts = Fonts::default();
@@ -71,21 +72,22 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Add a new window.
-    pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window, render: R) {
+    #[must_use]
+    pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window) -> UiRequests<T> {
         let theme = Self::build_theme(&mut self.theme_builder, &window);
 
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
 
         let window_id = window.id();
-        let window_ui = WindowUi::new(builder, &mut base, &mut self.data, theme, window, render);
+        let window_ui = WindowUi::new(builder, &mut base, &mut self.data, theme, window);
         self.windows.insert(window_id, window_ui);
 
         if needs_rebuild {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands()
     }
 
     /// Remove a window.
@@ -98,7 +100,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     /// # Panics
     /// - If the window does not exist.
     #[track_caller]
-    pub fn window(&self, window_id: WindowId) -> &WindowUi<T, R> {
+    pub fn window(&self, window_id: WindowId) -> &WindowUi<T> {
         match self.windows.get(&window_id) {
             Some(window_ui) => window_ui,
             None => panic!("window with id {:?} not found", window_id),
@@ -110,7 +112,7 @@ impl<T, R: SceneRender> Ui<T, R> {
     /// # Panics
     /// - If the window does not exist.
     #[track_caller]
-    pub fn window_mut(&mut self, window_id: WindowId) -> &mut WindowUi<T, R> {
+    pub fn window_mut(&mut self, window_id: WindowId) -> &mut WindowUi<T> {
         match self.windows.get_mut(&window_id) {
             Some(window_ui) => window_ui,
             None => panic!("window with id {:?} not found", window_id),
@@ -118,13 +120,18 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Get an iterator over all windows.
-    pub fn windows(&self) -> impl ExactSizeIterator<Item = &WindowUi<T, R>> {
+    pub fn windows(&self) -> impl ExactSizeIterator<Item = &WindowUi<T>> {
         self.windows.values()
     }
 
     /// Get the Ids of all windows.
     pub fn window_ids(&self) -> Vec<WindowId> {
         self.windows.keys().copied().collect()
+    }
+
+    /// Get whether the UI should exit.
+    pub fn should_exit(&self) -> bool {
+        self.windows.is_empty()
     }
 
     /// Get a command proxy to the UI.
@@ -135,11 +142,13 @@ impl<T, R: SceneRender> Ui<T, R> {
     /// Initialize the UI.
     ///
     /// This should be called after all initial windows have been added.
-    pub fn init(&mut self) {
-        self.init_delegate();
+    #[must_use]
+    pub fn init(&mut self) -> UiRequests<T> {
+        self.init_delegate()
     }
 
-    fn init_delegate(&mut self) {
+    #[must_use]
+    fn init_delegate(&mut self) -> UiRequests<T> {
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
@@ -150,15 +159,12 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands()
     }
 
     /// Tell the UI that the event loop idle.
-    pub fn idle(&mut self) {
-        for window_ui in self.windows.values_mut() {
-            window_ui.idle();
-        }
-
+    #[must_use]
+    pub fn idle(&mut self) -> UiRequests<T> {
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
@@ -169,7 +175,7 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands()
     }
 
     /// Rebuild the theme for a window.
@@ -199,10 +205,16 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Tell the UI that a window wants to close.
-    pub fn close_requested(&mut self, window_id: WindowId) -> bool {
+    #[must_use]
+    pub fn close_requested(&mut self, window_id: WindowId) -> UiRequests<T> {
         let event = Event::new(CloseRequested::new(window_id));
-        self.event(window_id, &event);
-        !event.is_handled()
+        let mut requests = self.event(window_id, &event);
+
+        if !event.is_handled() {
+            requests.push_front(UiRequest::RemoveWindow(window_id));
+        }
+
+        requests
     }
 
     fn pointer_position(&self, window_id: WindowId, id: PointerId) -> Point {
@@ -211,7 +223,13 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Tell the UI that a pointer has moved.
-    pub fn pointer_moved(&mut self, window_id: WindowId, id: PointerId, position: Point) {
+    #[must_use]
+    pub fn pointer_moved(
+        &mut self,
+        window_id: WindowId,
+        id: PointerId,
+        position: Point,
+    ) -> UiRequests<T> {
         let window_ui = self.window_mut(window_id).window_mut();
 
         let prev = window_ui.pointer(id).map_or(Point::ZERO, |p| p.position);
@@ -226,11 +244,12 @@ impl<T, R: SceneRender> Ui<T, R> {
             ..PointerEvent::new(id)
         };
 
-        self.event(window_id, &Event::new(event));
+        self.event(window_id, &Event::new(event))
     }
 
     /// Tell the UI that a pointer has left the window.
-    pub fn pointer_left(&mut self, window_id: WindowId, id: PointerId) {
+    #[must_use]
+    pub fn pointer_left(&mut self, window_id: WindowId, id: PointerId) -> UiRequests<T> {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
             modifiers: self.modifiers,
@@ -241,11 +260,17 @@ impl<T, R: SceneRender> Ui<T, R> {
         let window_ui = self.window_mut(window_id).window_mut();
         window_ui.pointer_left(id);
 
-        self.event(window_id, &Event::new(event));
+        self.event(window_id, &Event::new(event))
     }
 
     /// Tell the UI that a pointer has scrolled.
-    pub fn pointer_scroll(&mut self, window_id: WindowId, id: PointerId, delta: Vector) {
+    #[must_use]
+    pub fn pointer_scroll(
+        &mut self,
+        window_id: WindowId,
+        id: PointerId,
+        delta: Vector,
+    ) -> UiRequests<T> {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
             modifiers: self.modifiers,
@@ -253,17 +278,18 @@ impl<T, R: SceneRender> Ui<T, R> {
             ..PointerEvent::new(id)
         };
 
-        self.event(window_id, &Event::new(event));
+        self.event(window_id, &Event::new(event))
     }
 
     /// Tell the UI that a pointer button has been pressed or released.
+    #[must_use]
     pub fn pointer_button(
         &mut self,
         window_id: WindowId,
         id: PointerId,
         button: PointerButton,
         pressed: bool,
-    ) {
+    ) -> UiRequests<T> {
         let event = PointerEvent {
             position: self.pointer_position(window_id, id),
             modifiers: self.modifiers,
@@ -272,11 +298,12 @@ impl<T, R: SceneRender> Ui<T, R> {
             ..PointerEvent::new(id)
         };
 
-        self.event(window_id, &Event::new(event));
+        self.event(window_id, &Event::new(event))
     }
 
     /// Tell the UI that a keyboard key has been pressed or released.
-    pub fn keyboard_key(&mut self, window_id: WindowId, key: Code, pressed: bool) {
+    #[must_use]
+    pub fn keyboard_key(&mut self, window_id: WindowId, key: Code, pressed: bool) -> UiRequests<T> {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
             code: Some(key),
@@ -284,28 +311,33 @@ impl<T, R: SceneRender> Ui<T, R> {
             ..Default::default()
         };
 
-        self.event(window_id, &Event::new(event));
+        let mut requests = UiRequests::new();
+
+        requests.extend(self.event(window_id, &Event::new(event)));
 
         if key == Code::Tab && pressed {
             let event = Event::new(SwitchFocus::new(!self.modifiers.shift));
-            self.event(window_id, &event);
+            requests.extend(self.event(window_id, &event));
 
             if !event.is_handled() {
                 let event = Event::new(Focused::new(!self.modifiers.shift));
-                self.event(window_id, &event);
+                requests.extend(self.event(window_id, &event));
             }
         }
+
+        requests
     }
 
     /// Tell the UI that a keyboard character has been entered.
-    pub fn keyboard_char(&mut self, window_id: WindowId, c: char) {
+    #[must_use]
+    pub fn keyboard_char(&mut self, window_id: WindowId, c: char) -> UiRequests<T> {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
             text: Some(String::from(c)),
             ..Default::default()
         };
 
-        self.event(window_id, &Event::new(event));
+        self.event(window_id, &Event::new(event))
     }
 
     /// Tell the UI that the modifiers have changed.
@@ -313,7 +345,10 @@ impl<T, R: SceneRender> Ui<T, R> {
         self.modifiers = modifiers;
     }
 
-    fn handle_command(&mut self, command: Command) {
+    #[must_use]
+    fn handle_command(&mut self, command: Command) -> UiRequests<T> {
+        let mut requests = UiRequests::default();
+
         let event = Event::from_command(command);
 
         let mut needs_rebuild = false;
@@ -328,16 +363,28 @@ impl<T, R: SceneRender> Ui<T, R> {
 
         if !event.is_handled() {
             for window_id in self.window_ids() {
-                self.event(window_id, &event);
+                requests.extend(self.event(window_id, &event));
             }
         }
+
+        if event.is::<OpenWindow<T>>() && !event.is_handled() {
+            let open = event.take::<OpenWindow<T>>().unwrap();
+            requests.push_front(UiRequest::CreateWindow(open.desc, open.builder));
+        }
+
+        requests
     }
 
     /// Handle all pending commands.
-    pub fn handle_commands(&mut self) {
+    #[must_use]
+    pub fn handle_commands(&mut self) -> UiRequests<T> {
+        let mut requests = UiRequests::default();
+
         while let Ok(command) = self.commands.rx.try_recv() {
-            self.handle_command(command);
+            requests.extend(self.handle_command(command));
         }
+
+        requests
     }
 
     fn event_delegate(&mut self, event: &Event) {
@@ -353,7 +400,8 @@ impl<T, R: SceneRender> Ui<T, R> {
     }
 
     /// Handle an event for a single window.
-    pub fn event(&mut self, window_id: WindowId, event: &Event) {
+    #[must_use]
+    pub fn event(&mut self, window_id: WindowId, event: &Event) -> UiRequests<T> {
         self.event_delegate(event);
 
         let mut needs_rebuild = false;
@@ -369,11 +417,12 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands()
     }
 
     /// Handle an event for all windows.
-    pub fn event_all(&mut self, event: &Event) {
+    #[must_use]
+    pub fn event_all(&mut self, event: &Event) -> UiRequests<T> {
         self.event_delegate(event);
 
         let mut needs_rebuild = false;
@@ -389,22 +438,27 @@ impl<T, R: SceneRender> Ui<T, R> {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands()
     }
 
     /// Render a window.
-    pub fn render(&mut self, window_id: WindowId) {
+    #[must_use]
+    pub fn render(&mut self, window_id: WindowId) -> UiRequests<T> {
+        let mut requests = UiRequests::default();
+
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            window_ui.render(&mut base, &mut self.data);
+            requests.extend(window_ui.render(&mut base, &mut self.data));
         }
 
         if needs_rebuild {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        requests.extend(self.handle_commands());
+
+        requests
     }
 }

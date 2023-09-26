@@ -1,10 +1,11 @@
 use std::{collections::HashMap, mem};
 
 use ori_core::{
+    canvas::Color,
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
-    ui::Ui,
-    window::{UiBuilder, Window, WindowDescriptor},
+    ui::{Ui, UiBuilder, UiRequest, UiRequests},
+    window::{Window, WindowDescriptor},
 };
 use winit::{
     event::{Event, KeyboardInput, MouseScrollDelta, TouchPhase, WindowEvent},
@@ -18,130 +19,14 @@ use crate::{
     App, Error,
 };
 
-#[cfg(feature = "wgpu")]
-unsafe fn init_wgpu<T>(
-    ids: &mut HashMap<winit::window::WindowId, ori_core::window::WindowId>,
-    window_desc: WindowDescriptor,
-    target: &EventLoopWindowTarget<()>,
-    builder: &mut UiBuilder<T>,
-    ui: &mut Ui<T, crate::wgpu::WgpuRender>,
-    instance: &mut Option<crate::wgpu::WgpuRenderInstance>,
-    msaa: bool,
-) {
-    /* create the window */
-    let window = WindowBuilder::new()
-        .with_visible(false)
-        .with_transparent(window_desc.transparent)
-        .build(target)
-        .unwrap();
-
-    // SAFETY: this function will never return and the window will therefore
-    // be valid for the lifetime on the RenderInstance.
-
-    let surface = unsafe {
-        use crate::wgpu::WgpuRenderInstance as Instance;
-        use futures_lite::future;
-
-        let (new_instance, surface) = future::block_on(Instance::new(&window)).unwrap();
-        *instance = Some(new_instance);
-
-        surface
-    };
-
-    ids.insert(window.id(), window_desc.id);
-
-    /* create the initial window */
-    let raw_window = Box::new(WinitWindow::from(window));
-    let window = Window::new(raw_window, window_desc);
-
-    let samples = if msaa { 4 } else { 1 };
-
-    /* create the render */
-    let render = crate::wgpu::WgpuRender::new(
-        instance.as_ref().unwrap(),
-        surface,
-        samples,
-        window.width(),
-        window.height(),
-    )
-    .unwrap();
-
-    /* add the window to the ui */
-    let builder = mem::replace(builder, Box::new(|_| unreachable!()));
-    ui.add_window(builder, window, render);
-
-    /* initialize the ui */
-    ui.init();
-}
-
-#[cfg(feature = "wgpu")]
-unsafe fn recreate_wgpu_surfaces<T>(
-    ui: &mut Ui<T, crate::wgpu::WgpuRender>,
-    instance: &crate::wgpu::WgpuRenderInstance,
-    msaas: bool,
-) {
-    use crate::wgpu::WgpuRender;
-
-    for window_id in ui.window_ids() {
-        let window = ui.window_mut(window_id);
-
-        let width = window.window().width();
-        let height = window.window().height();
-
-        let surface = unsafe {
-            let window = window.window().downcast_raw::<WinitWindow>().unwrap();
-            instance.create_surface(&window.window).unwrap()
-        };
-
-        let samples = if msaas { 4 } else { 1 };
-
-        let render = WgpuRender::new(instance, surface, samples, width, height).unwrap();
-        window.set_render(render);
-    }
-}
-
-#[cfg(not(feature = "wgpu"))]
-fn init_dummy<T>(
-    ids: &mut HashMap<winit::window::WindowId, ori_core::window::WindowId>,
-    window_desc: WindowDescriptor,
-    target: &EventLoopWindowTarget<()>,
-    builder: &mut UiBuilder<T>,
-    ui: &mut Ui<T, crate::dummy::DummyRender>,
-) {
-    /* create the window */
-    let window = WindowBuilder::new()
-        .with_visible(false)
-        .with_transparent(window_desc.transparent)
-        .build(target)
-        .unwrap();
-
-    ids.insert(window.id(), window_desc.id);
-
-    /* create the initial window */
-    let raw_window = Box::new(WinitWindow::from(window));
-    let window = Window::new(raw_window, window_desc);
-
-    /* add the window to the ui */
-    let builder = mem::replace(builder, Box::new(|_| unreachable!()));
-    ui.add_window(builder, window, crate::dummy::DummyRender);
-
-    /* initialize the ui */
-    ui.init();
-}
-
-pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
+pub(crate) fn run<T: 'static>(app: App<T>) -> Result<(), Error> {
     /* initialize tracing if enabled */
     #[cfg(feature = "tracing")]
     if let Err(err) = crate::tracing::init_tracing() {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
-    /* create the window map
-     *
-     * this is used to map the winit window id to the ori window id */
-    let mut ids = HashMap::<winit::window::WindowId, ori_core::window::WindowId>::new();
-    #[cfg(feature = "wgpu")]
-    let mut instance = None;
+    let mut state = AppState::new(app.window, app.builder, app.ui, app.msaa);
 
     app.event_loop.run(move |event, target, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -151,176 +36,340 @@ pub(crate) fn run<T: 'static>(mut app: App<T>) -> Result<(), Error> {
             //
             // this is necessary for android
             Event::Resumed => {
-                #[cfg(feature = "wgpu")]
-                if let Some(ref instance) = instance {
-                    unsafe { recreate_wgpu_surfaces(&mut app.ui, instance, app.msaa) };
-                } else {
-                    // if the instance is not initialized yet, we need to
-                    // initialize the ui
-                    unsafe {
-                        init_wgpu(
-                            &mut ids,
-                            app.window.clone(),
-                            target,
-                            &mut app.builder,
-                            &mut app.ui,
-                            &mut instance,
-                            app.msaa,
-                        );
-                    }
-                }
-
-                #[cfg(not(feature = "wgpu"))]
-                init_dummy(
-                    &mut ids,
-                    app.window.clone(),
-                    target,
-                    &mut app.builder,
-                    &mut app.ui,
-                );
+                state.resume(target);
             }
             Event::RedrawEventsCleared => {
                 // after all events for a frame have been processed, we need to
                 // run the idle function
-                app.ui.idle();
+                state.idle(target);
             }
             Event::RedrawRequested(window_id) => {
-                // if the window id is not in the map, we ignore the event
-                if let Some(&window_id) = ids.get(&window_id) {
-                    // render the window
-                    app.ui.render(window_id);
-                }
+                state.redraw(target, window_id);
             }
             // this event is sent by [`WinitWaker`] telling us that there are
             // commands that need to be processed
             Event::UserEvent(_) => {
-                app.ui.handle_commands();
+                let requests = state.ui.handle_commands();
+                state.handle_requests(target, requests);
             }
             Event::WindowEvent { window_id, event } => {
-                // if the window id is not in the map, we ignore the event
-                let Some(&window_id) = ids.get(&window_id) else {
-                    return;
-                };
-
-                match event {
-                    WindowEvent::CloseRequested => {
-                        if app.ui.close_requested(window_id) {
-                            app.ui.remove_window(window_id);
-                        }
-
-                        if app.ui.windows().len() == 0 {
-                            *control_flow = ControlFlow::Exit;
-                        }
-                    }
-                    WindowEvent::Resized(_) => {
-                        app.ui.resized(window_id);
-                    }
-                    WindowEvent::ScaleFactorChanged { .. } => {
-                        app.ui.scale_factor_changed(window_id);
-                    }
-                    WindowEvent::CursorMoved {
-                        device_id,
-                        position,
-                        ..
-                    } => {
-                        app.ui.pointer_moved(
-                            window_id,
-                            PointerId::from_hash(&device_id),
-                            Point::new(position.x as f32, position.y as f32),
-                        );
-                    }
-                    WindowEvent::CursorLeft { device_id } => {
-                        (app.ui).pointer_left(window_id, PointerId::from_hash(&device_id));
-                    }
-                    WindowEvent::MouseInput {
-                        device_id,
-                        state,
-                        button,
-                        ..
-                    } => {
-                        app.ui.pointer_button(
-                            window_id,
-                            PointerId::from_hash(&device_id),
-                            convert_mouse_button(button),
-                            is_pressed(state),
-                        );
-                    }
-                    WindowEvent::MouseWheel {
-                        delta: MouseScrollDelta::LineDelta(x, y),
-                        device_id,
-                        ..
-                    } => {
-                        app.ui.pointer_scroll(
-                            window_id,
-                            PointerId::from_hash(&device_id),
-                            Vector::new(x, y),
-                        );
-                    }
-                    // since we're using a pointer model we need to handle touch
-                    // by emulating pointer events
-                    WindowEvent::Touch(event) => {
-                        let position = Point::new(event.location.x as f32, event.location.y as f32);
-                        let pointer_id = PointerId::from_hash(&event.device_id);
-
-                        // we always send a pointer moved event first because the ui
-                        // needs to know where the pointer is. this will also ensure
-                        // that hot state is updated correctly
-                        app.ui.pointer_moved(window_id, pointer_id, position);
-
-                        match event.phase {
-                            TouchPhase::Started => {
-                                app.ui.pointer_button(
-                                    window_id,
-                                    pointer_id,
-                                    // a touch event is always the primary button
-                                    PointerButton::Primary,
-                                    true,
-                                );
-                            }
-                            TouchPhase::Moved => {}
-                            TouchPhase::Ended | TouchPhase::Cancelled => {
-                                app.ui.pointer_button(
-                                    window_id,
-                                    pointer_id,
-                                    // a touch event is always the primary button
-                                    PointerButton::Primary,
-                                    false,
-                                );
-
-                                // we also need to send a pointer left event because
-                                // the ui needs to know that the pointer left the window
-                                app.ui.pointer_left(window_id, pointer_id);
-                            }
-                        }
-                    }
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(keycode),
-                                state,
-                                ..
-                            },
-                        ..
-                    } => {
-                        if let Some(key) = convert_key(keycode) {
-                            app.ui.keyboard_key(window_id, key, is_pressed(state));
-                        }
-                    }
-                    WindowEvent::ReceivedCharacter(c) => {
-                        app.ui.keyboard_char(window_id, c);
-                    }
-                    WindowEvent::ModifiersChanged(modifiers) => {
-                        app.ui.modifiers_changed(Modifiers {
-                            shift: modifiers.shift(),
-                            ctrl: modifiers.ctrl(),
-                            alt: modifiers.alt(),
-                            meta: modifiers.logo(),
-                        });
-                    }
-                    _ => {}
-                }
+                let requests = state.window_event(target, window_id, event);
+                state.handle_requests(target, requests);
             }
             _ => {}
         }
+
+        if state.ui.should_exit() && state.init {
+            *control_flow = ControlFlow::Exit;
+        }
     });
+}
+
+struct AppState<T: 'static> {
+    init: bool,
+    window: WindowDescriptor,
+    builder: UiBuilder<T>,
+    ui: Ui<T>,
+    msaa: bool,
+    ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
+    #[cfg(feature = "wgpu")]
+    renders: HashMap<ori_core::window::WindowId, crate::wgpu::WgpuRender>,
+    #[cfg(feature = "wgpu")]
+    instance: Option<crate::wgpu::WgpuRenderInstance>,
+}
+
+impl<T> AppState<T> {
+    fn new(window: WindowDescriptor, builder: UiBuilder<T>, ui: Ui<T>, msaa: bool) -> Self {
+        Self {
+            init: false,
+            window,
+            builder,
+            ui,
+            msaa,
+            ids: HashMap::new(),
+            #[cfg(feature = "wgpu")]
+            renders: HashMap::new(),
+            #[cfg(feature = "wgpu")]
+            instance: None,
+        }
+    }
+
+    fn resume(&mut self, target: &EventLoopWindowTarget<()>) {
+        if self.init {
+            return;
+        }
+
+        self.init = true;
+
+        let builder = mem::replace(&mut self.builder, Box::new(|_| unreachable!()));
+        self.create_window(target, self.window.clone(), builder);
+
+        let requests = self.ui.init();
+        self.handle_requests(target, requests);
+    }
+
+    fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>, requests: UiRequests<T>) {
+        for request in requests {
+            self.handle_request(target, request);
+        }
+    }
+
+    fn handle_request(&mut self, target: &EventLoopWindowTarget<()>, request: UiRequest<T>) {
+        match request {
+            UiRequest::Render(window) => self.render(window),
+            UiRequest::CreateWindow(desc, builder) => self.create_window(target, desc, builder),
+            UiRequest::RemoveWindow(window_id) => self.remove_window(window_id),
+        }
+    }
+
+    #[cfg(feature = "wgpu")]
+    fn init_wgpu(
+        &mut self,
+        window: &winit::window::Window,
+    ) -> Result<(crate::wgpu::WgpuRenderInstance, wgpu::Surface), Error> {
+        use futures_lite::future;
+
+        let instance = unsafe { crate::wgpu::WgpuRenderInstance::new(window) };
+        Ok(future::block_on(instance)?)
+    }
+
+    #[cfg(feature = "wgpu")]
+    fn create_wgpu_render(
+        &mut self,
+        window: &winit::window::Window,
+        id: ori_core::window::WindowId,
+    ) -> Result<(), Error> {
+        use crate::wgpu::WgpuRender;
+
+        if let Some(ref instance) = self.instance {
+            let surface = unsafe { instance.create_surface(window)? };
+            let samples = if self.msaa { 4 } else { 1 };
+            let size = window.inner_size();
+            let render = WgpuRender::new(instance, surface, samples, size.width, size.height)?;
+
+            self.renders.insert(id, render);
+        } else {
+            let (instance, surface) = self.init_wgpu(window).unwrap();
+
+            let samples = if self.msaa { 4 } else { 1 };
+            let size = window.inner_size();
+            let render = WgpuRender::new(&instance, surface, samples, size.width, size.height)?;
+
+            self.instance = Some(instance);
+            self.renders.insert(id, render);
+        }
+
+        Ok(())
+    }
+
+    fn idle(&mut self, target: &EventLoopWindowTarget<()>) {
+        let requests = self.ui.idle();
+        self.handle_requests(target, requests);
+
+        #[cfg(feature = "wgpu")]
+        for render in self.renders.values_mut() {
+            render.clean();
+        }
+    }
+
+    fn create_window(
+        &mut self,
+        target: &EventLoopWindowTarget<()>,
+        desc: WindowDescriptor,
+        builder: UiBuilder<T>,
+    ) {
+        /* create the window */
+        let window = WindowBuilder::new()
+            .with_visible(false)
+            .with_transparent(desc.transparent)
+            .build(target)
+            .unwrap();
+
+        self.ids.insert(window.id(), desc.id);
+
+        #[cfg(feature = "wgpu")]
+        self.create_wgpu_render(&window, desc.id).unwrap();
+
+        /* create the initial window */
+        let raw_window = Box::new(WinitWindow::from(window));
+        let window = Window::new(raw_window, desc);
+
+        /* add the window to the ui */
+        let requests = self.ui.add_window(builder, window);
+        self.handle_requests(target, requests);
+    }
+
+    fn remove_window(&mut self, window_id: ori_core::window::WindowId) {
+        self.ids.retain(|_, &mut id| id != window_id);
+
+        self.ui.remove_window(window_id);
+
+        #[cfg(feature = "wgpu")]
+        self.renders.remove(&window_id);
+    }
+
+    fn redraw(&mut self, target: &EventLoopWindowTarget<()>, window_id: winit::window::WindowId) {
+        // if the window id is not in the map, we ignore the event
+        if let Some(&window_id) = self.ids.get(&window_id) {
+            // render the window
+            let requests = self.ui.render(window_id);
+            self.handle_requests(target, requests);
+        }
+    }
+
+    fn window_event(
+        &mut self,
+        target: &EventLoopWindowTarget<()>,
+        winit_id: winit::window::WindowId,
+        event: WindowEvent,
+    ) -> UiRequests<T> {
+        // if the window id is not in the map, we ignore the event
+        let Some(&id) = self.ids.get(&winit_id) else {
+            return UiRequests::new();
+        };
+
+        match event {
+            WindowEvent::CloseRequested => {
+                let requests = self.ui.close_requested(id);
+                self.handle_requests(target, requests);
+            }
+            WindowEvent::Resized(_) => {
+                self.ui.resized(id);
+            }
+            WindowEvent::ScaleFactorChanged { .. } => {
+                self.ui.scale_factor_changed(id);
+            }
+            WindowEvent::CursorMoved {
+                device_id,
+                position,
+                ..
+            } => {
+                return self.ui.pointer_moved(
+                    id,
+                    PointerId::from_hash(&device_id),
+                    Point::new(position.x as f32, position.y as f32),
+                );
+            }
+            WindowEvent::CursorLeft { device_id } => {
+                return (self.ui).pointer_left(id, PointerId::from_hash(&device_id));
+            }
+            WindowEvent::MouseInput {
+                device_id,
+                state,
+                button,
+                ..
+            } => {
+                return self.ui.pointer_button(
+                    id,
+                    PointerId::from_hash(&device_id),
+                    convert_mouse_button(button),
+                    is_pressed(state),
+                );
+            }
+            WindowEvent::MouseWheel {
+                delta: MouseScrollDelta::LineDelta(x, y),
+                device_id,
+                ..
+            } => {
+                return self.ui.pointer_scroll(
+                    id,
+                    PointerId::from_hash(&device_id),
+                    Vector::new(x, y),
+                );
+            }
+            // since we're using a pointer model we need to handle touch
+            // by emulating pointer events
+            WindowEvent::Touch(event) => return self.touch_event(id, event),
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        virtual_keycode: Some(keycode),
+                        state,
+                        ..
+                    },
+                ..
+            } => {
+                if let Some(key) = convert_key(keycode) {
+                    return self.ui.keyboard_key(id, key, is_pressed(state));
+                }
+            }
+            WindowEvent::ReceivedCharacter(c) => {
+                return self.ui.keyboard_char(id, c);
+            }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.ui.modifiers_changed(Modifiers {
+                    shift: modifiers.shift(),
+                    ctrl: modifiers.ctrl(),
+                    alt: modifiers.alt(),
+                    meta: modifiers.logo(),
+                });
+            }
+            _ => {}
+        }
+
+        UiRequests::new()
+    }
+
+    fn touch_event(
+        &mut self,
+        window_id: ori_core::window::WindowId,
+        event: winit::event::Touch,
+    ) -> UiRequests<T> {
+        let position = Point::new(event.location.x as f32, event.location.y as f32);
+        let pointer_id = PointerId::from_hash(&event.device_id);
+
+        // we always send a pointer moved event first because the ui
+        // needs to know where the pointer is. this will also ensure
+        // that hot state is updated correctly
+        let mut requests = self.ui.pointer_moved(window_id, pointer_id, position);
+
+        match event.phase {
+            TouchPhase::Started => {
+                let new_requests = self.ui.pointer_button(
+                    window_id,
+                    pointer_id,
+                    // a touch event is always the primary button
+                    PointerButton::Primary,
+                    true,
+                );
+
+                requests.extend(new_requests);
+            }
+            TouchPhase::Moved => {}
+            TouchPhase::Ended | TouchPhase::Cancelled => {
+                let new_requests = self.ui.pointer_button(
+                    window_id,
+                    pointer_id,
+                    // a touch event is always the primary button
+                    PointerButton::Primary,
+                    false,
+                );
+
+                requests.extend(new_requests);
+
+                // we also need to send a pointer left event because
+                // the ui needs to know that the pointer left the window
+                let new_requests = self.ui.pointer_left(window_id, pointer_id);
+
+                requests.extend(new_requests);
+            }
+        }
+
+        requests
+    }
+
+    fn render(&mut self, window: ori_core::window::WindowId) {
+        #[cfg(feature = "wgpu")]
+        {
+            if let Some(render) = self.renders.get_mut(&window) {
+                let window = self.ui.window_mut(window);
+
+                let width = window.window().width();
+                let height = window.window().height();
+                let scene = window.scene_mut();
+
+                render.render_scene(scene, Color::WHITE, width, height);
+            }
+        }
+    }
 }

@@ -43,6 +43,16 @@ impl Event {
         self.event.as_ref().downcast_ref::<T>()
     }
 
+    /// Try to downcast the event to the given type.
+    pub fn take<T: Any>(self) -> Result<T, Event> {
+        if self.is::<T>() {
+            let event = self.event.downcast::<T>().unwrap();
+            Ok(*event)
+        } else {
+            Err(self)
+        }
+    }
+
     /// Returns whether the event has been handled.
     pub fn is_handled(&self) -> bool {
         self.handled.get()

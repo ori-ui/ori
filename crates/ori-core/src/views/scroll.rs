@@ -221,7 +221,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
     fn layout(
         &mut self,
-        (state, content): &mut Self::State,
+        (_state, content): &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
@@ -238,10 +238,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             warn_internal!("Contents of a scroll view has an infinite size");
         }
 
-        let overflow = self.overflow(content_size, size);
-        state.scroll = state.scroll.clamp(0.0, overflow);
-        content.translate(self.axis.pack(-state.scroll, 0.0));
-
         size
     }
 
@@ -252,6 +248,10 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
+        let overflow = self.overflow(content.size(), cx.size());
+        state.scroll = state.scroll.clamp(0.0, overflow);
+        content.translate(self.axis.pack(-state.scroll, 0.0));
+
         let mut content_layer = canvas.layer();
         content_layer.clip &= cx.rect().transform(content_layer.transform);
 

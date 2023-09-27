@@ -7,7 +7,7 @@ use crate::window::{WindowDescriptor, WindowId};
 
 use super::UiBuilder;
 
-/// Requests the [`Ui`] might make to the application shell.
+/// Requests the [`Ui`](super::Ui) might make to the application shell.
 #[must_use]
 pub enum UiRequest<T> {
     /// Render a window.

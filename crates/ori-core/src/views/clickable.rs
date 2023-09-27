@@ -6,7 +6,7 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
-/// Create a new [`ClickHandler`], with an [`on_press`](ClickHandler::on_press()) callback.
+/// Create a new [`Clickable`], with an [`on_press`](Clickable::on_press()) callback.
 pub fn on_press<T, V>(
     content: V,
     on_press: impl FnMut(&mut EventCx, &mut T) + 'static,
@@ -14,7 +14,7 @@ pub fn on_press<T, V>(
     Clickable::new(content).on_press(on_press)
 }
 
-/// Create a new [`ClickHandler`], with an [`on_release`](ClickHandler::on_release()) callback.
+/// Create a new [`Clickable`], with an [`on_release`](Clickable::on_release()) callback.
 pub fn on_release<T, V>(
     content: V,
     on_release: impl FnMut(&mut EventCx, &mut T) + 'static,
@@ -22,7 +22,7 @@ pub fn on_release<T, V>(
     Clickable::new(content).on_release(on_release)
 }
 
-/// Create a new [`ClickHandler`], with an [`on_click`](ClickHandler::on_click()) callback.
+/// Create a new [`Clickable`], with an [`on_click`](Clickable::on_click()) callback.
 pub fn on_click<T, V>(
     content: V,
     on_click: impl FnMut(&mut EventCx, &mut T) + 'static,
@@ -49,7 +49,7 @@ pub struct Clickable<T, V> {
 impl<T, V> Clickable<T, V> {
     const MAX_CLICK_DISTANCE: f32 = 10.0;
 
-    /// Create a new [`ClickHandler`].
+    /// Create a new [`Clickable`].
     pub fn new(content: V) -> Self {
         Self {
             content,
@@ -180,8 +180,8 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
     }
 }
 
-/// A trait for building [`ClickHandler`]s.
-pub trait BuildClickHandler<T, V, C> {
+/// A trait for building [`Clickable`]s.
+pub trait BuildClickable<T, V, C> {
     /// Set the callback for when the button is pressed.
     fn on_press(self, cb: impl FnMut(&mut EventCx, &mut T) + 'static) -> Clickable<T, V>;
 
@@ -192,7 +192,7 @@ pub trait BuildClickHandler<T, V, C> {
     fn on_click(self, cb: impl FnMut(&mut EventCx, &mut T) + 'static) -> Clickable<T, V>;
 }
 
-impl<T, V> BuildClickHandler<T, V, ()> for V {
+impl<T, V> BuildClickable<T, V, ()> for V {
     fn on_press(self, cb: impl FnMut(&mut EventCx, &mut T) + 'static) -> Clickable<T, V> {
         Clickable::new(self).on_press(cb)
     }
@@ -206,7 +206,7 @@ impl<T, V> BuildClickHandler<T, V, ()> for V {
     }
 }
 
-impl<T, V> BuildClickHandler<T, V, Clickable<T, V>> for Clickable<T, V> {
+impl<T, V> BuildClickable<T, V, Clickable<T, V>> for Clickable<T, V> {
     fn on_press(self, cb: impl FnMut(&mut EventCx, &mut T) + 'static) -> Clickable<T, V> {
         self.on_press(cb)
     }

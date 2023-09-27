@@ -15,7 +15,7 @@ pub fn animate<T, V, S>(
 }
 
 /// Animate a view when hot changes.
-pub fn animate_hot<T, V>(
+pub fn transition_hot<T, V>(
     transition: Transition,
     mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
@@ -35,7 +35,7 @@ pub fn animate_hot<T, V>(
 }
 
 /// Animate a view when active changes.
-pub fn animate_active<T, V>(
+pub fn transition_active<T, V>(
     transition: Transition,
     mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {

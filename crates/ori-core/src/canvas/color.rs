@@ -159,12 +159,12 @@ impl Color {
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
         let m = l - c / 2.0;
 
-        let (r, g, b) = match h % 360.0 {
-            hue if (0.0..60.0).contains(&hue) => (c, x, 0.0),
-            hue if (60.0..120.0).contains(&hue) => (x, c, 0.0),
-            hue if (120.0..180.0).contains(&hue) => (0.0, c, x),
-            hue if (180.0..240.0).contains(&hue) => (0.0, x, c),
-            hue if (240.0..300.0).contains(&hue) => (x, 0.0, c),
+        let (r, g, b) = match (h / 60.0) as u8 {
+            0 => (c, x, 0.0),
+            1 => (x, c, 0.0),
+            2 => (0.0, c, x),
+            3 => (0.0, x, c),
+            4 => (x, 0.0, c),
             _ => (c, 0.0, x),
         };
 

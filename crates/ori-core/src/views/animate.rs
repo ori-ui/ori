@@ -54,6 +54,23 @@ pub fn animate_active<T, V>(
     })
 }
 
+/// Animate a transition.
+pub fn transition<T, V>(
+    transition: Transition,
+    active: bool,
+    mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
+) -> Animate<T, V, f32> {
+    animate(move |t: &mut f32, cx, _data: &mut T, event| {
+        if let Some(AnimationFrame(dt)) = event.get() {
+            if transition.step(t, active, *dt) {
+                cx.request_animation_frame();
+            }
+        }
+
+        view(cx, transition.get(*t))
+    })
+}
+
 /// A view that animates.
 ///
 /// For an example, see [`animate`](https://github.com/ChangeCaps/ori/blob/main/examples/animate.rs).

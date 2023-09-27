@@ -8,6 +8,8 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
+use super::ClickEvent;
+
 /// Create a new [`Button`].
 pub fn button<V>(content: V) -> Button<V> {
     Button::new(content)
@@ -166,7 +168,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
             return;
         }
 
-        if event.is::<HotChanged>() {
+        if event.is::<HotChanged>() || event.is::<ClickEvent>() {
             cx.request_animation_frame();
         }
 

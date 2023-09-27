@@ -36,11 +36,35 @@ impl<T, V: View<T> + ?Sized> DerefMut for State<T, V> {
     }
 }
 
-/// Contents of a view.
+/// A view that has separate [`ViewState`] from its content.
 ///
-/// This is strictly necessary for any view that contains any content.
-/// If you don't wrap your content in this, you're in strange waters my friend,
-/// and I wish you the best of luck.
+/// When calling for example [`View::event`], an [`EventCx`] is passed to the
+/// function. This [`EventCx`] contains a mutable reference to a [`ViewState`] that is used to
+/// keep track of state like whether the view is hot or active. If a pod is not used when
+/// implementing a view, the [`View`] and the content share the same [`ViewState`]. This is
+/// almost always an issue when the [`View`] wants to have a diffrent transform or size than
+/// the content. See for example the [`Pad`](crate::views::Pad) view.
+///
+/// # Examples
+/// ```ignore
+/// use ori::prelude::*;
+///
+/// struct ContainerView<V> {
+///     // We wrap the content in a Pod here
+///     content: Pod<V>,
+/// }
+///
+/// impl<V: View<T>, T> View<T> for ContainerView<V> {
+///     // We use the Pod's state here
+///     type State = State<T, V>;
+///
+///     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+///         self.content.build(cx, data)
+///     }
+///
+///     ...
+/// }
+/// ```
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Pod<V> {

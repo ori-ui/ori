@@ -82,7 +82,7 @@ impl Transition {
     ///
     /// The returned value is how _on_ the transition is at `t`.
     /// This is a range from 0.0 to 1.0.
-    pub fn on(&self, t: f32) -> f32 {
+    pub fn get(&self, t: f32) -> f32 {
         self.curve.eval(t)
     }
 }

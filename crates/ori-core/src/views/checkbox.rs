@@ -160,7 +160,7 @@ impl<T> View<T> for Checkbox {
             self.background.clone(),
             self.border_radius,
             self.border_width,
-            self.border_color.mix(bright, self.transition.on(*t)),
+            self.border_color.mix(bright, self.transition.get(*t)),
         );
 
         if self.checked {

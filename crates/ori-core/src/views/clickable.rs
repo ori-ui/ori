@@ -1,6 +1,6 @@
 use crate::{
     canvas::Canvas,
-    event::{Event, PointerEvent},
+    event::{ActiveChanged, Event, PointerEvent},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
@@ -28,17 +28,6 @@ pub fn on_click<T, V>(
     on_click: impl FnMut(&mut EventCx, &mut T) + 'static,
 ) -> Clickable<T, V> {
     Clickable::new(content).on_click(on_click)
-}
-
-/// An event for a click.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ClickEvent {
-    /// The pointer was pressed.
-    Press,
-    /// The pointer was released.
-    Release,
-    /// The pointer was clicked.
-    Click,
 }
 
 /// A click handler.
@@ -137,6 +126,9 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
             if cx.is_hot() && pointer.is_press() {
                 cx.set_active(true);
 
+                let active_changed = Event::new(ActiveChanged(true));
+                self.content.event(content, cx, data, &active_changed);
+
                 if let Some(on_press) = &mut self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
@@ -144,19 +136,16 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
 
                 state.click_start = local;
                 event.handle();
-
-                let click = Event::new(ClickEvent::Press);
-                self.content.event(content, cx, data, &click);
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
+
+                let active_changed = Event::new(ActiveChanged(false));
+                self.content.event(content, cx, data, &active_changed);
 
                 if let Some(on_release) = &mut self.on_release {
                     on_release(cx, data);
                     cx.request_rebuild();
                 }
-
-                let click = Event::new(ClickEvent::Release);
-                self.content.event(content, cx, data, &click);
 
                 if local.distance(state.click_start) > Self::MAX_CLICK_DISTANCE {
                     return;
@@ -166,9 +155,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                     on_click(cx, data);
                     cx.request_rebuild();
                 }
-
-                let click = Event::new(ClickEvent::Click);
-                self.content.event(content, cx, data, &click);
             }
         }
     }

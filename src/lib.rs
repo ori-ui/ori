@@ -38,8 +38,8 @@ pub mod prelude {
         },
         delegate::{Delegate, DelegateCx},
         event::{
-            AnimationFrame, CloseRequested, Code, Event, HotChanged, KeyboardEvent, Modifiers,
-            OpenWindow, Pointer, PointerButton, PointerEvent, PointerId, RequestFocus,
+            ActiveChanged, AnimationFrame, CloseRequested, Code, Event, HotChanged, KeyboardEvent,
+            Modifiers, OpenWindow, Pointer, PointerButton, PointerEvent, PointerId, RequestFocus,
         },
         image::{gradient, Image, ImageData, ImageId},
         layout::{

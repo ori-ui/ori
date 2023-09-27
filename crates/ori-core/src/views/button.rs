@@ -1,14 +1,12 @@
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
-    event::{AnimationFrame, Event, HotChanged, PointerEvent},
+    event::{ActiveChanged, AnimationFrame, Event, HotChanged, PointerEvent},
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
     theme::{button, pt, style},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
-
-use super::ClickEvent;
 
 /// Create a new [`Button`].
 pub fn button<V>(content: V) -> Button<V> {
@@ -168,7 +166,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
             return;
         }
 
-        if event.is::<HotChanged>() || event.is::<ClickEvent>() {
+        if event.is::<HotChanged>() || event.is::<ActiveChanged>() {
             cx.request_animation_frame();
         }
 
@@ -217,8 +215,8 @@ impl<T, V: View<T>> View<T> for Button<V> {
         let dim = self.color.color.darken(0.025);
         let bright = self.color.color.brighten(0.05);
 
-        let hot = self.transition.on(state.hot);
-        let active = self.transition.on(state.active);
+        let hot = self.transition.get(state.hot);
+        let active = self.transition.get(state.active);
 
         let face = self.color.color.mix(bright, hot).mix(dim, active);
 

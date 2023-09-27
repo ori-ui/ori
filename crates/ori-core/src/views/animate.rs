@@ -1,6 +1,6 @@
 use crate::{
     canvas::Canvas,
-    event::{AnimationFrame, Event, HotChanged},
+    event::{ActiveChanged, AnimationFrame, Event, HotChanged},
     layout::{Size, Space},
     theme::{theme_snapshot, Theme},
     transition::Transition,
@@ -17,7 +17,7 @@ pub fn animate<T, V, S>(
 /// Animate a view when hot changes.
 pub fn animate_hot<T, V>(
     transition: Transition,
-    mut view: impl FnMut(f32) -> V + 'static,
+    mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     animate(move |t: &mut f32, cx, _data: &mut T, event| {
         if event.is::<HotChanged>() {
@@ -30,7 +30,27 @@ pub fn animate_hot<T, V>(
             }
         }
 
-        view(transition.on(*t))
+        view(cx, transition.get(*t))
+    })
+}
+
+/// Animate a view when active changes.
+pub fn animate_active<T, V>(
+    transition: Transition,
+    mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
+) -> Animate<T, V, f32> {
+    animate(move |t: &mut f32, cx, _data: &mut T, event| {
+        if event.is::<ActiveChanged>() {
+            cx.request_animation_frame();
+        }
+
+        if let Some(AnimationFrame(dt)) = event.get() {
+            if transition.step(t, cx.is_active(), *dt) {
+                cx.request_animation_frame();
+            }
+        }
+
+        view(cx, transition.get(*t))
     })
 }
 

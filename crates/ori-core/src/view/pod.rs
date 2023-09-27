@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
-    event::{Event, HotChanged, PointerEvent, SwitchFocus},
+    event::{ActiveChanged, Event, HotChanged, PointerEvent, SwitchFocus},
     layout::{Size, Space},
 };
 
@@ -117,7 +117,7 @@ impl<V> Pod<V> {
         mut f: impl FnMut(&mut EventCx, &Event),
     ) {
         // we don't want `HotChanged` events to propagate
-        if event.is::<HotChanged>() {
+        if event.is::<HotChanged>() || event.is::<ActiveChanged>() {
             return;
         }
 

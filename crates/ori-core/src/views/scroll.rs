@@ -268,7 +268,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         scrollbar_layer.draw_quad(
             self.scrollbar_rect(cx.rect()),
-            self.color.fade(0.7).fade(self.transition.on(state.t)),
+            self.color.fade(0.7).fade(self.transition.get(state.t)),
             self.border_radius,
             0.0,
             Color::TRANSPARENT,
@@ -276,7 +276,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         scrollbar_layer.draw_quad(
             self.scrollbar_knob_rect(cx.rect(), overflow, state.scroll),
-            self.knob_color.fade(0.9).fade(self.transition.on(state.t)),
+            self.knob_color.fade(0.9).fade(self.transition.get(state.t)),
             self.border_radius,
             0.0,
             Color::TRANSPARENT,

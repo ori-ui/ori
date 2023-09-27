@@ -139,10 +139,8 @@ impl<T> AppState<T> {
         &mut self,
         window: &winit::window::Window,
     ) -> Result<(crate::wgpu::WgpuRenderInstance, wgpu::Surface), Error> {
-        use futures_lite::future;
-
         let instance = unsafe { crate::wgpu::WgpuRenderInstance::new(window) };
-        Ok(future::block_on(instance)?)
+        Ok(pollster::block_on(instance)?)
     }
 
     #[cfg(feature = "wgpu")]

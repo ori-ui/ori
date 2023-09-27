@@ -72,18 +72,18 @@ pub struct Pod<V> {
 }
 
 impl<V> Pod<V> {
-    /// Create a new content view.
+    /// Create a new pod view.
     pub const fn new(view: V) -> Self {
         Self { view }
     }
 
-    /// Build a content view.
+    /// Build a pod view.
     pub fn build<T>(cx: &mut BuildCx, f: impl FnOnce(&mut BuildCx) -> T) -> T {
         let mut new_cx = cx.child();
         f(&mut new_cx)
     }
 
-    /// Rebuild a content view.
+    /// Rebuild a pod view.
     pub fn rebuild(view_state: &mut ViewState, cx: &mut RebuildCx, f: impl FnOnce(&mut RebuildCx)) {
         view_state.prepare();
 
@@ -160,7 +160,7 @@ impl<V> Pod<V> {
         Self::event_inner(view_state, cx, event, &mut f);
     }
 
-    /// Layout a content view.
+    /// Layout a pod view.
     pub fn layout(
         view_state: &mut ViewState,
         cx: &mut LayoutCx,
@@ -180,7 +180,7 @@ impl<V> Pod<V> {
         size
     }
 
-    /// Draw a content view.
+    /// Draw a pod view.
     pub fn draw(
         view_state: &mut ViewState,
         cx: &mut DrawCx,

@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use crate::{
     canvas::Canvas,
-    event::{Event, Focused, SwitchFocus},
+    event::{Event, RequestFocus, SwitchFocus},
     layout::{Align, Axis, Justify, Size, Space},
     log::warn_internal,
     rebuild::Rebuild,
@@ -268,7 +268,7 @@ impl<V> Stack<V> {
 
         if let Some(next) = next {
             for i in next..self.content.len() {
-                let focused = Event::new(Focused::First);
+                let focused = Event::new(RequestFocus::First);
                 self.content.event_nth(i, content, cx, data, &focused);
 
                 if focused.is_handled() {
@@ -306,7 +306,7 @@ impl<V> Stack<V> {
 
         if let Some(prev) = prev {
             for i in (0..=prev).rev() {
-                let focused = Event::new(Focused::Last);
+                let focused = Event::new(RequestFocus::Last);
                 self.content.event_nth(i, content, cx, data, &focused);
 
                 if focused.is_handled() {
@@ -339,12 +339,12 @@ impl<V> Stack<V> {
             None => {}
         }
 
-        match event.get::<Focused>() {
-            Some(Focused::First) => {
+        match event.get::<RequestFocus>() {
+            Some(RequestFocus::First) => {
                 self.event_first(content, cx, data, event);
                 return true;
             }
-            Some(Focused::Last) => {
+            Some(RequestFocus::Last) => {
                 self.event_last(content, cx, data, event);
                 return true;
             }

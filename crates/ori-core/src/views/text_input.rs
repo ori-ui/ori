@@ -1,6 +1,6 @@
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
-    event::{AnimationFrame, Code, Event, Focused, KeyboardEvent, Modifiers, PointerEvent},
+    event::{AnimationFrame, Code, Event, KeyboardEvent, Modifiers, PointerEvent, RequestFocus},
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{
@@ -571,7 +571,7 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if event.is::<Focused>() {
+        if event.is::<RequestFocus>() {
             cx.set_focused(true);
             event.handle();
         }

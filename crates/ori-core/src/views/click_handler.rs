@@ -3,7 +3,7 @@ use crate::{
     event::{Event, PointerEvent},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 /// Create a new [`ClickHandler`], with an [`on_press`](ClickHandler::on_press()) callback.
@@ -45,7 +45,7 @@ pub enum ClickEvent {
 #[derive(Rebuild)]
 pub struct Clickable<T, V> {
     /// The content.
-    pub content: Pod<V>,
+    pub content: V,
     /// The callback for when the button is pressed.
     #[allow(clippy::type_complexity)]
     pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
@@ -63,7 +63,7 @@ impl<T, V> Clickable<T, V> {
     /// Create a new [`ClickHandler`].
     pub fn new(content: V) -> Self {
         Self {
-            content: Pod::new(content),
+            content,
             on_press: None,
             on_release: None,
             on_click: None,
@@ -96,7 +96,7 @@ pub struct ClickableState {
 }
 
 impl<T, V: View<T>> View<T> for Clickable<T, V> {
-    type State = (ClickableState, State<T, V>);
+    type State = (ClickableState, V::State);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         (ClickableState::default(), self.content.build(cx, data))
@@ -135,23 +135,20 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
             }
 
             if cx.is_hot() && pointer.is_press() {
+                cx.set_active(true);
+
                 if let Some(on_press) = &mut self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
                 }
 
                 state.click_start = local;
-
-                cx.set_active(true);
-                content.set_active(true);
-
                 event.handle();
 
                 let click = Event::new(ClickEvent::Press);
                 self.content.event(content, cx, data, &click);
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
-                content.set_active(false);
 
                 if let Some(on_release) = &mut self.on_release {
                     on_release(cx, data);

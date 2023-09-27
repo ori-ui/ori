@@ -8,8 +8,8 @@ use crate::{
     command::{Command, CommandProxy, EventLoopWaker},
     delegate::{Delegate, DelegateCx},
     event::{
-        CloseRequested, CloseWindow, Code, Event, Focused, KeyboardEvent, Modifiers, OpenWindow,
-        PointerButton, PointerEvent, PointerId, SwitchFocus,
+        CloseRequested, CloseWindow, Code, Event, KeyboardEvent, Modifiers, OpenWindow,
+        PointerButton, PointerEvent, PointerId, RequestFocus, SwitchFocus,
     },
     layout::{Point, Vector},
     text::Fonts,
@@ -310,7 +310,7 @@ impl<T> Ui<T> {
             requests.extend(self.event(window_id, &event));
 
             if !event.is_handled() {
-                let event = Event::new(Focused::new(!self.modifiers.shift));
+                let event = Event::new(RequestFocus::new(!self.modifiers.shift));
                 requests.extend(self.event(window_id, &event));
             }
         }

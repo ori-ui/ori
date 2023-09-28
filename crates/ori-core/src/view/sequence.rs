@@ -284,6 +284,18 @@ impl_tuple!(A B C D E F G H I; 0 1 2 3 4 5 6 7 8);
 impl_tuple!(A B C D E F G H I J; 0 1 2 3 4 5 6 7 8 9);
 impl_tuple!(A B C D E F G H I J K; 0 1 2 3 4 5 6 7 8 9 10);
 impl_tuple!(A B C D E F G H I J K L; 0 1 2 3 4 5 6 7 8 9 10 11);
+impl_tuple!(A B C D E F G H I J K L M; 0 1 2 3 4 5 6 7 8 9 10 11 12);
+impl_tuple!(A B C D E F G H I J K L M N; 0 1 2 3 4 5 6 7 8 9 10 11 12 13);
+impl_tuple!(A B C D E F G H I J K L M N O; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14);
+impl_tuple!(A B C D E F G H I J K L M N O P; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15);
+impl_tuple!(A B C D E F G H I J K L M N O P Q; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
+impl_tuple!(A B C D E F G H I J K L M N O P Q R; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17);
+impl_tuple!(A B C D E F G H I J K L M N O P Q R S; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18);
+impl_tuple!(A B C D E F G H I J K L M N O P Q R S U; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19);
+impl_tuple!(A B C D E F G H I J K L M N O P Q R S U V; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20);
+impl_tuple!(A B C D E F G H I J K L M N O P Q R S U V W; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21);
+impl_tuple!(A B C D E F G H I J K L M N O P Q R S U V W X; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22);
+impl_tuple!(A B C D E F G H I J K L M N O P Q R S U V W X Z; 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23);
 
 /// The state of a [`PodSeq`].
 pub struct SeqState<T, V: ViewSeq<T>> {

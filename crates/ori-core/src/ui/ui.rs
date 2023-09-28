@@ -25,7 +25,7 @@ use super::{UiBuilder, UiRequest, UiRequests, WindowUi};
 pub struct Ui<T: 'static> {
     windows: HashMap<WindowId, WindowUi<T>>,
     modifiers: Modifiers,
-    delegate: Box<dyn Delegate<T>>,
+    delegates: Vec<Box<dyn Delegate<T>>>,
     theme_builder: ThemeBuilder,
     command_proxy: CommandProxy,
     command_rx: Receiver<Command>,
@@ -47,7 +47,7 @@ impl<T> Ui<T> {
         Self {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
-            delegate: Box::new(()),
+            delegates: Vec::new(),
             theme_builder: ThemeBuilder::default(),
             command_proxy,
             command_rx,
@@ -56,9 +56,14 @@ impl<T> Ui<T> {
         }
     }
 
-    /// Override the delegate.
-    pub fn set_delegate<D: Delegate<T> + 'static>(&mut self, delegate: D) {
-        self.delegate = Box::new(delegate);
+    /// Push a delegate.
+    pub fn push_delegate<D: Delegate<T> + 'static>(&mut self, delegate: D) {
+        self.delegates.push(Box::new(delegate));
+    }
+
+    /// Get the delegates.
+    pub fn delegates(&self) -> &[Box<dyn Delegate<T>>] {
+        &self.delegates
     }
 
     /// Add a new theme.
@@ -155,7 +160,9 @@ impl<T> Ui<T> {
         let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
-        self.delegate.init(&mut cx, &mut self.data);
+        for delegate in &mut self.delegates {
+            delegate.init(&mut cx, &mut self.data);
+        }
 
         if needs_rebuild {
             self.request_rebuild();
@@ -170,7 +177,9 @@ impl<T> Ui<T> {
         let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
-        self.delegate.idle(&mut cx, &mut self.data);
+        for delegate in &mut self.delegates {
+            delegate.idle(&mut cx, &mut self.data);
+        }
 
         if needs_rebuild {
             self.request_rebuild();
@@ -363,7 +372,9 @@ impl<T> Ui<T> {
         let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
-        self.delegate.event(&mut cx, &mut self.data, &event);
+        for delegate in &mut self.delegates {
+            delegate.event(&mut cx, &mut self.data, &event);
+        }
 
         if needs_rebuild {
             self.request_rebuild();
@@ -395,7 +406,9 @@ impl<T> Ui<T> {
         let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
-        self.delegate.event(&mut cx, &mut self.data, event);
+        for delegate in &mut self.delegates {
+            delegate.event(&mut cx, &mut self.data, event);
+        }
 
         if needs_rebuild {
             self.request_rebuild();

@@ -31,6 +31,13 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
 }
 
 /// A delegate for handling events.
+///
+/// Delegate is implemented for functions like this:
+/// ```ignore
+/// fn delegate<T>(cx: &mut DelegateCx, data: &mut T, event: &Event) {
+///     ...
+/// }
+/// ```
 pub trait Delegate<T> {
     /// Called when the application starts.
     fn init(&mut self, _cx: &mut DelegateCx, _data: &mut T) {}
@@ -50,8 +57,4 @@ where
     fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event) {
         self(cx, data, event)
     }
-}
-
-impl<T> Delegate<T> for () {
-    fn event(&mut self, _: &mut DelegateCx, _: &mut T, _: &Event) {}
 }

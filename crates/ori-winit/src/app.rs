@@ -99,7 +99,7 @@ impl<T: 'static> App<T> {
 
     /// Set the delegate of the application.
     pub fn delegate(mut self, delegate: impl Delegate<T> + 'static) -> Self {
-        self.ui.set_delegate(delegate);
+        self.ui.push_delegate(delegate);
         self
     }
 

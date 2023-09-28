@@ -1,3 +1,4 @@
+use ori_macro::Build;
 use smol_str::SmolStr;
 
 use crate::{
@@ -18,7 +19,7 @@ pub fn text(text: impl Into<SmolStr>) -> Text {
 }
 
 /// A view that displays text.
-#[derive(Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Text {
     /// The text.
     #[rebuild(layout)]
@@ -71,66 +72,6 @@ impl Text {
             line_height: style(text::LINE_HEIGHT),
             wrap: style(text::WRAP),
         }
-    }
-
-    /// Sets the font size.
-    pub fn font_size(mut self, font_size: f32) -> Self {
-        self.font_size = font_size;
-        self
-    }
-
-    /// Sets the font family.
-    pub fn font_family(mut self, font_family: impl Into<FontFamily>) -> Self {
-        self.font_family = font_family.into();
-        self
-    }
-
-    /// Sets the font weight.
-    pub fn font_weight(mut self, font_weight: impl Into<FontWeight>) -> Self {
-        self.font_weight = font_weight.into();
-        self
-    }
-
-    /// Sets the font stretch.
-    pub fn font_stretch(mut self, font_stretch: impl Into<FontStretch>) -> Self {
-        self.font_stretch = font_stretch.into();
-        self
-    }
-
-    /// Sets the font style.
-    pub fn font_style(mut self, font_style: impl Into<FontStyle>) -> Self {
-        self.font_style = font_style.into();
-        self
-    }
-
-    /// Sets the color.
-    pub fn color(mut self, color: impl Into<Color>) -> Self {
-        self.color = color.into();
-        self
-    }
-
-    /// Sets the vertical alignment.
-    pub fn v_align(mut self, v_align: impl Into<TextAlign>) -> Self {
-        self.v_align = v_align.into();
-        self
-    }
-
-    /// Sets the horizontal alignment.
-    pub fn h_align(mut self, h_align: impl Into<TextAlign>) -> Self {
-        self.h_align = h_align.into();
-        self
-    }
-
-    /// Sets the line height.
-    pub fn line_height(mut self, line_height: f32) -> Self {
-        self.line_height = line_height;
-        self
-    }
-
-    /// Sets the text wrap.
-    pub fn wrap(mut self, wrap: impl Into<TextWrap>) -> Self {
-        self.wrap = wrap.into();
-        self
     }
 }
 

@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
+use crossbeam_channel::Receiver;
 use ori_macro::font;
 
 use crate::{
@@ -26,7 +27,8 @@ pub struct Ui<T: 'static> {
     modifiers: Modifiers,
     delegate: Box<dyn Delegate<T>>,
     theme_builder: ThemeBuilder,
-    commands: CommandProxy,
+    command_proxy: CommandProxy,
+    command_rx: Receiver<Command>,
     /// The fonts used by the UI.
     pub fonts: Fonts,
     /// The data used by the UI.
@@ -40,12 +42,15 @@ impl<T> Ui<T> {
 
         fonts.load_font(font!("font/NotoSans-Regular.ttf")).unwrap();
 
+        let (command_proxy, command_rx) = CommandProxy::new(waker);
+
         Self {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegate: Box::new(()),
             theme_builder: ThemeBuilder::default(),
-            commands: CommandProxy::new(waker),
+            command_proxy,
+            command_rx,
             fonts,
             data,
         }
@@ -76,7 +81,7 @@ impl<T> Ui<T> {
         let theme = Self::build_theme(&mut self.theme_builder, &window);
 
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
 
         let window_id = window.id();
         let window_ui = WindowUi::new(builder, &mut base, &mut self.data, theme, window);
@@ -135,7 +140,7 @@ impl<T> Ui<T> {
 
     /// Get a command proxy to the UI.
     pub fn proxy(&self) -> CommandProxy {
-        self.commands.clone()
+        self.command_proxy.clone()
     }
 
     /// Initialize the UI.
@@ -147,7 +152,7 @@ impl<T> Ui<T> {
 
     fn init_delegate(&mut self) -> UiRequests<T> {
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
         self.delegate.init(&mut cx, &mut self.data);
@@ -162,7 +167,7 @@ impl<T> Ui<T> {
     /// Tell the UI that the event loop idle.
     pub fn idle(&mut self) -> UiRequests<T> {
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
         self.delegate.idle(&mut cx, &mut self.data);
@@ -355,7 +360,7 @@ impl<T> Ui<T> {
         let event = Event::from_command(command);
 
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
         self.delegate.event(&mut cx, &mut self.data, &event);
@@ -378,7 +383,7 @@ impl<T> Ui<T> {
     pub fn handle_commands(&mut self) -> UiRequests<T> {
         let mut requests = UiRequests::default();
 
-        while let Ok(command) = self.commands.rx.try_recv() {
+        while let Ok(command) = self.command_rx.try_recv() {
             requests.extend(self.handle_command(command));
         }
 
@@ -387,7 +392,7 @@ impl<T> Ui<T> {
 
     fn event_delegate(&mut self, event: &Event) {
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
         let mut cx = DelegateCx::new(&mut base);
 
         self.delegate.event(&mut cx, &mut self.data, event);
@@ -402,7 +407,7 @@ impl<T> Ui<T> {
         self.event_delegate(event);
 
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
 
         if !event.is_handled() {
             if let Some(window_ui) = self.windows.get_mut(&window_id) {
@@ -422,7 +427,7 @@ impl<T> Ui<T> {
         self.event_delegate(event);
 
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
 
         if !event.is_handled() {
             for window_ui in self.windows.values_mut() {
@@ -442,7 +447,7 @@ impl<T> Ui<T> {
         let mut requests = UiRequests::default();
 
         let mut needs_rebuild = false;
-        let mut base = BaseCx::new(&mut self.fonts, &mut self.commands, &mut needs_rebuild);
+        let mut base = BaseCx::new(&mut self.fonts, &mut self.command_proxy, &mut needs_rebuild);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             requests.extend(window_ui.render(&mut base, &mut self.data));

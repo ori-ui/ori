@@ -45,7 +45,7 @@ impl<'a> BaseCx<'a> {
 
     /// Emit a command.
     pub fn cmd<T: Any + Send>(&mut self, command: T) {
-        self.proxy.send_internal(Command::new(command));
+        self.proxy.cmd_silent(Command::new(command));
     }
 
     /// Request a rebuild of the view tree.

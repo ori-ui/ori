@@ -5,9 +5,9 @@ use crate::command::Command;
 /// An event that can be sent to a view.
 #[derive(Debug)]
 pub struct Event {
-    pub(crate) event: Box<dyn Any>,
-    pub(crate) handled: Cell<bool>,
-    pub(crate) name: &'static str,
+    event: Box<dyn Any>,
+    handled: Cell<bool>,
+    name: &'static str,
 }
 
 impl Event {

@@ -40,19 +40,26 @@ impl Command {
 /// A clonable channel for sending [`Command`]s.
 #[derive(Clone, Debug)]
 pub struct CommandProxy {
-    pub(crate) tx: Sender<Command>,
-    pub(crate) rx: Receiver<Command>,
-    pub(crate) waker: Arc<dyn EventLoopWaker>,
+    tx: Sender<Command>,
+    waker: Arc<dyn EventLoopWaker>,
 }
 
 impl CommandProxy {
     /// Create a new [`CommandProxy`] channel.
-    pub fn new(waker: Arc<dyn EventLoopWaker>) -> Self {
+    pub fn new(waker: Arc<dyn EventLoopWaker>) -> (Self, Receiver<Command>) {
         let (tx, rx) = crossbeam_channel::unbounded();
-        Self { tx, rx, waker }
+        (Self { tx, waker }, rx)
     }
 
-    pub(crate) fn send_internal(&self, command: Command) {
+    /// Wake the event loop.
+    pub fn wake(&self) {
+        self.waker.wake();
+    }
+
+    /// Send a command without waking the event loop.
+    ///
+    /// This is almost never what you want to do. Use [`CommandProxy::cmd`] instead.
+    pub fn cmd_silent(&self, command: Command) {
         if let Err(err) = self.tx.send(command) {
             warn_internal!("failed to send command: {}", err);
         }
@@ -60,8 +67,7 @@ impl CommandProxy {
 
     /// Send a command.
     pub fn cmd(&self, command: impl Any + Send) {
-        self.send_internal(Command::new(command));
-
-        self.waker.wake();
+        self.cmd_silent(Command::new(command));
+        self.wake();
     }
 }

@@ -97,7 +97,9 @@ impl<T: 'static> App<T> {
         self
     }
 
-    /// Set the delegate of the application.
+    /// Push a delegate to the application.
+    ///
+    /// Delegates are called in order of insertion.
     pub fn delegate(mut self, delegate: impl Delegate<T> + 'static) -> Self {
         self.ui.push_delegate(delegate);
         self

@@ -30,7 +30,7 @@ pub struct WindowDescriptor {
 impl Default for WindowDescriptor {
     fn default() -> Self {
         Self {
-            id: WindowId::next(),
+            id: WindowId::new(),
             title: String::from("Ori App"),
             icon: None,
             width: 800,

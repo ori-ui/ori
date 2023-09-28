@@ -17,9 +17,15 @@ pub struct WindowId {
     index: usize,
 }
 
+impl Default for WindowId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WindowId {
     /// Create a new [`WindowId`].
-    pub fn next() -> Self {
+    pub fn new() -> Self {
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
         let index = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         Self { index }

@@ -54,7 +54,6 @@ impl<T: 'static> App<T> {
             window: WindowDescriptor::default(),
             builder: Box::new(move |data| Box::new(builder(data))),
             ui: Ui::new(data, Arc::new(waker)),
-            #[cfg(feature = "wgpu")]
             msaa: true,
         };
 

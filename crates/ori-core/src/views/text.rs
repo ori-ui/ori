@@ -1,3 +1,5 @@
+use smol_str::SmolStr;
+
 use crate::{
     canvas::{Canvas, Color},
     event::Event,
@@ -11,7 +13,7 @@ use crate::{
 };
 
 /// Create a new [`Text`].
-pub fn text(text: impl ToString) -> Text {
+pub fn text(text: impl Into<SmolStr>) -> Text {
     Text::new(text)
 }
 
@@ -20,7 +22,7 @@ pub fn text(text: impl ToString) -> Text {
 pub struct Text {
     /// The text.
     #[rebuild(layout)]
-    pub text: String,
+    pub text: SmolStr,
     /// The font size of the text.
     #[rebuild(layout)]
     pub font_size: f32,
@@ -55,9 +57,9 @@ pub struct Text {
 
 impl Text {
     /// Creates a new text.
-    pub fn new(text: impl ToString) -> Text {
+    pub fn new(text: impl Into<SmolStr>) -> Text {
         Text {
-            text: text.to_string(),
+            text: text.into(),
             font_size: style(text::FONT_SIZE),
             font_family: style(text::FONT_FAMILY),
             font_weight: style(text::FONT_WEIGHT),

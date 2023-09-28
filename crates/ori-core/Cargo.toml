@@ -16,6 +16,7 @@ etagere = "0.2"
 fontdb = "0.14"
 fontdue = "0.7"
 seahash = "4.1"
+smol_str = "0.2"
 
 [dependencies.image]
 version = "0.24"

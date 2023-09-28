@@ -65,6 +65,8 @@ pub mod prelude {
         window::{Cursor, Window, WindowDescriptor, WindowId},
     };
 
+    pub use ori_macro::Build;
+
     #[cfg(feature = "font-awesome")]
     pub use ori_font_awesome as fa;
 

@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+mod build;
 mod entry;
 mod font;
 mod rebuild;
@@ -66,6 +67,13 @@ pub fn font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::Token
 #[proc_macro_derive(Rebuild, attributes(rebuild))]
 pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     rebuild::derive_rebuild(input)
+}
+
+/// Derive the builder pattern.
+#[manyhow::manyhow]
+#[proc_macro_derive(Build, attributes(build))]
+pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
+    build::derive_build(input)
 }
 
 /// A macro to generate boilerplate for the `main` function.

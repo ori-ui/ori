@@ -1,3 +1,5 @@
+use ori_macro::Build;
+
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
     event::{ActiveChanged, AnimationFrame, Event, HotChanged, PointerEvent},
@@ -14,9 +16,10 @@ pub fn button<V>(content: V) -> Button<V> {
 }
 
 /// A button.
-#[derive(Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Button<V> {
     /// The content.
+    #[build(ignore)]
     pub content: Pod<V>,
     /// The padding.
     #[rebuild(layout)]
@@ -56,42 +59,6 @@ impl<V> Button<V> {
         }
     }
 
-    /// Set the padding.
-    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
-        self.padding = padding.into();
-        self
-    }
-
-    /// Set the fancy effect.
-    pub fn fancy(mut self, fancy: f32) -> Self {
-        self.fancy = fancy;
-        self
-    }
-
-    /// Set the transition.
-    pub fn transition(mut self, transition: impl Into<Transition>) -> Self {
-        self.transition = transition.into();
-        self
-    }
-
-    /// Set the color.
-    pub fn color(mut self, color: impl Into<Background>) -> Self {
-        self.color = color.into();
-        self
-    }
-
-    /// Set the border radius.
-    pub fn border_radius(mut self, border_radius: impl Into<BorderRadius>) -> Self {
-        self.border_radius = border_radius.into();
-        self
-    }
-
-    /// Set the border width.
-    pub fn border_width(mut self, border_width: impl Into<BorderWidth>) -> Self {
-        self.border_width = border_width.into();
-        self
-    }
-
     /// Set the border width of the top edge.
     pub fn border_top(mut self, width: f32) -> Self {
         self.border_width.top = width;
@@ -113,12 +80,6 @@ impl<V> Button<V> {
     /// Set the border width of the left edge.
     pub fn border_left(mut self, width: f32) -> Self {
         self.border_width.left = width;
-        self
-    }
-
-    /// Set the border color.
-    pub fn border_color(mut self, border_color: impl Into<Color>) -> Self {
-        self.border_color = border_color.into();
         self
     }
 }

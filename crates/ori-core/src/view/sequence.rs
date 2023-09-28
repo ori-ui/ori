@@ -329,9 +329,7 @@ impl<T, V: ViewSeq<T>> DerefMut for SeqState<T, V> {
 /// This is useful for views that contain multiple pieces of content.
 /// See [`ViewSeq`] for more information.
 ///
-/// This is strictly necessary for any view that contains any content.
-/// If you don't wrap your content in this, you're in strange waters my friend,
-/// and I wish you the best of luck.
+/// See [`Pod`] for more information on when to use this.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PodSeq<V> {

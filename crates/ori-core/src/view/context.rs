@@ -10,7 +10,7 @@ use crate::{
     window::{Cursor, Window, WindowDescriptor},
 };
 
-use super::View;
+use super::{View, ViewId};
 
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
@@ -336,6 +336,11 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
 }}
 
 impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
+    /// Get the id of the view.
+    pub fn id(&self) -> ViewId {
+        self.view_state.id()
+    }
+
     /// Get whether the view is hot.
     pub fn is_hot(&self) -> bool {
         self.view_state.is_hot()

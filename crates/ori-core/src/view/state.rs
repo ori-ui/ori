@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use crate::{
     layout::{Affine, Point, Rect, Size, Vector},
     window::Cursor,
@@ -15,9 +17,33 @@ bitflags::bitflags! {
     }
 }
 
+/// An opaque unique identifier for a view.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ViewId {
+    id: usize,
+}
+
+impl Default for ViewId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ViewId {
+    /// Create a new [`ViewId`].
+    pub fn new() -> Self {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+
+        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        Self { id }
+    }
+}
+
 /// State associated with a [`View`](super::View).
 #[derive(Clone, Debug)]
 pub struct ViewState {
+    pub(crate) id: ViewId,
+    /* flags */
     pub(crate) hot: bool,
     pub(crate) focused: bool,
     pub(crate) active: bool,
@@ -39,6 +65,8 @@ pub struct ViewState {
 impl Default for ViewState {
     fn default() -> Self {
         Self {
+            id: ViewId::new(),
+            /* flags */
             hot: false,
             focused: false,
             active: false,
@@ -68,12 +96,12 @@ impl ViewState {
 
     pub(crate) fn prepare_layout(&mut self) {
         self.prepare();
-        self.layed_out();
+        self.mark_layed_out();
     }
 
     pub(crate) fn prepare_draw(&mut self) {
         self.prepare();
-        self.drawn();
+        self.mark_drawn();
     }
 
     pub(crate) fn propagate(&mut self, child: &mut Self) {
@@ -85,6 +113,11 @@ impl ViewState {
 }
 
 impl ViewState {
+    /// Get the id of the view.
+    pub fn id(&self) -> ViewId {
+        self.id
+    }
+
     /// Get whether the view is hot.
     pub fn is_hot(&self) -> bool {
         self.hot
@@ -228,14 +261,14 @@ impl ViewState {
     /// Mark the view as laid out.
     ///
     /// This will remove the [`Update::LAYOUT`] flag.
-    pub fn layed_out(&mut self) {
+    pub fn mark_layed_out(&mut self) {
         self.update.remove(Update::LAYOUT);
     }
 
     /// Mark the view as drawn.
     ///
     /// This will remove the [`Update::DRAW`] flag.
-    pub fn drawn(&mut self) {
+    pub fn mark_drawn(&mut self) {
         self.update.remove(Update::DRAW);
     }
 

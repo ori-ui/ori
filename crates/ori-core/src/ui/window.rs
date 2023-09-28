@@ -210,7 +210,7 @@ impl<T> WindowUi<T> {
         self.view_state.prepare();
 
         // mark the view tree as not needing to be laid out
-        self.view_state.layed_out();
+        self.view_state.mark_layed_out();
 
         let space = Space::new(Size::ZERO, self.window.size());
 
@@ -233,7 +233,7 @@ impl<T> WindowUi<T> {
         self.view_state.prepare();
 
         // mark the view tree as not needing to be drawn
-        self.view_state.drawn();
+        self.view_state.mark_drawn();
 
         // clear the scene and prepare the canvas
         self.scene.clear();

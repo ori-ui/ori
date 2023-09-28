@@ -6,12 +6,17 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
+/// Create a new [`Clickable`].
+pub fn clickable<T, V>(content: V) -> Clickable<T, V> {
+    Clickable::new(content)
+}
+
 /// Create a new [`Clickable`], with an [`on_press`](Clickable::on_press()) callback.
 pub fn on_press<T, V>(
     content: V,
     on_press: impl FnMut(&mut EventCx, &mut T) + 'static,
 ) -> Clickable<T, V> {
-    Clickable::new(content).on_press(on_press)
+    clickable(content).on_press(on_press)
 }
 
 /// Create a new [`Clickable`], with an [`on_release`](Clickable::on_release()) callback.
@@ -19,7 +24,7 @@ pub fn on_release<T, V>(
     content: V,
     on_release: impl FnMut(&mut EventCx, &mut T) + 'static,
 ) -> Clickable<T, V> {
-    Clickable::new(content).on_release(on_release)
+    clickable(content).on_release(on_release)
 }
 
 /// Create a new [`Clickable`], with an [`on_click`](Clickable::on_click()) callback.
@@ -27,7 +32,7 @@ pub fn on_click<T, V>(
     content: V,
     on_click: impl FnMut(&mut EventCx, &mut T) + 'static,
 ) -> Clickable<T, V> {
-    Clickable::new(content).on_click(on_click)
+    clickable(content).on_click(on_click)
 }
 
 /// A click handler.

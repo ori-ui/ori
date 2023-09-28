@@ -7,7 +7,7 @@ use crate::{
     layout::{Affine, Point, Rect, Size},
     text::{Fonts, Glyphs, TextSection},
     view::ViewState,
-    window::{Cursor, Window, WindowDescriptor},
+    window::{Cursor, Window, WindowDescriptor, WindowId},
 };
 
 use super::{View, ViewId};
@@ -330,8 +330,8 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     }
 
     /// Close the window.
-    pub fn close_window(&mut self) {
-        self.cmd(CloseWindow::new(self.window.id()));
+    pub fn close_window(&mut self, id: WindowId) {
+        self.cmd(CloseWindow::new(id));
     }
 }}
 

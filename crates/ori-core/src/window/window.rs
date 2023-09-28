@@ -1,4 +1,7 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{
+    fmt::Display,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use crate::{
     event::{Pointer, PointerId},
@@ -20,6 +23,12 @@ impl WindowId {
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
         let index = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         Self { index }
+    }
+}
+
+impl Display for WindowId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "0x{:x}", self.index)
     }
 }
 

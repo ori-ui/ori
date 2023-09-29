@@ -28,7 +28,7 @@ pub struct WindowDescriptor {
     /// The background color of the window.
     ///
     /// If this is `None`, the background color will be the default background color.
-    pub background_color: Option<Color>,
+    pub color: Option<Color>,
 }
 
 impl Default for WindowDescriptor {
@@ -44,7 +44,7 @@ impl Default for WindowDescriptor {
             transparent: true,
             maximized: false,
             visible: true,
-            background_color: None,
+            color: None,
         }
     }
 }
@@ -117,8 +117,8 @@ impl WindowDescriptor {
     }
 
     /// Set the background color of the window.
-    pub fn background_color(mut self, background_color: impl Into<Option<Color>>) -> Self {
-        self.background_color = background_color.into();
+    pub fn color(mut self, color: impl Into<Option<Color>>) -> Self {
+        self.color = color.into();
         self
     }
 }

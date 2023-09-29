@@ -210,7 +210,7 @@ impl<T> AppState<T> {
 
         window.set_icon(desc.icon.as_ref());
         window.set_visible(desc.visible);
-        window.set_color(desc.background_color);
+        window.set_color(desc.color);
 
         /* add the window to the ui */
         let requests = self.ui.add_window(builder, window);

@@ -38,7 +38,7 @@ fn open_window_button() -> impl View<Data> {
             .title("Multi Window Popup")
             .resizable(false)
             .decorated(false)
-            .background_color(Color::TRANSPARENT)
+            .color(Color::TRANSPARENT)
             .size(300, 300);
 
         data.windows.push(desc.id);

@@ -1,4 +1,5 @@
 use ori_core::{
+    canvas::Color,
     image::Image,
     window::{Cursor, RawWindow},
 };
@@ -9,6 +10,7 @@ use crate::convert::convert_cursor_icon;
 pub struct WinitWindow {
     pub(crate) window: winit::window::Window,
     soft_input: bool,
+    background_color: Option<Color>,
 }
 
 impl From<winit::window::Window> for WinitWindow {
@@ -16,6 +18,7 @@ impl From<winit::window::Window> for WinitWindow {
         Self {
             window,
             soft_input: false,
+            background_color: None,
         }
     }
 }
@@ -96,12 +99,24 @@ impl RawWindow for WinitWindow {
         (self.window).set_cursor_icon(convert_cursor_icon(cursor));
     }
 
+    fn color(&self) -> Option<Color> {
+        self.background_color
+    }
+
+    fn set_color(&mut self, color: Option<Color>) {
+        self.background_color = color;
+    }
+
     fn set_soft_input(&mut self, visible: bool) {
         if self.soft_input == visible {
             return;
         }
 
         self.soft_input = visible;
+    }
+
+    fn drag_window(&mut self) {
+        let _ = self.window.drag_window();
     }
 
     fn request_draw(&mut self) {

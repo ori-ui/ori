@@ -6,7 +6,26 @@ struct Data {
 }
 
 fn window(_data: &mut Data) -> impl View<Data> {
-    center(text("Hello World!"))
+    let close = button(fa::icon("xmark"))
+        .color(hsl(0.0, 0.5, 0.5))
+        .border_radius(0.0);
+
+    let close = top_right(on_click(close, |cx, data: &mut Data| {
+        let window_id = cx.window().id();
+        cx.close_window(window_id);
+
+        data.windows.retain(|window| *window != window_id);
+    }));
+
+    let content = container(overlay![center(text("Hello World!")), close])
+        .background(style(Palette::BACKGROUND))
+        .border_radius([rem(1.0), 0.0, rem(1.0), 0.0])
+        .border_width(pt(2.0))
+        .border_color(style(Palette::SECONDARY_DARKER));
+
+    on_press(content, |cx, _| {
+        cx.window().drag_window();
+    })
 }
 
 fn open_window_button() -> impl View<Data> {
@@ -17,6 +36,9 @@ fn open_window_button() -> impl View<Data> {
     on_click(open_window, |cx, data: &mut Data| {
         let desc = WindowDescriptor::new()
             .title("Multi Window Popup")
+            .resizable(false)
+            .decorated(false)
+            .background_color(Color::TRANSPARENT)
             .size(300, 300);
 
         data.windows.push(desc.id);
@@ -28,12 +50,12 @@ fn open_window_button() -> impl View<Data> {
 }
 
 fn close_window_button(data: &mut Data) -> impl View<Data> {
-    let close_window = transition(ease(0.5), data.windows.is_empty(), |_cx, t| {
+    let close_window = transition(ease(0.5), !data.windows.is_empty(), |_cx, t| {
         let active = style(Palette::PRIMARY);
         let inactive = style(Palette::SECONDARY_DARKER);
 
         button(text("Close window"))
-            .color(active.mix(inactive, t))
+            .color(inactive.mix(active, t))
             .fancy(pt(4.0))
     });
 
@@ -52,22 +74,18 @@ fn app(data: &mut Data) -> impl View<Data> {
     center(stack)
 }
 
-struct AppDelegate;
+fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
+    if let Some(request) = event.get::<CloseRequested>() {
+        data.windows.retain(|window| *window != request.window);
+        cx.request_rebuild();
 
-impl Delegate<Data> for AppDelegate {
-    fn event(&mut self, cx: &mut DelegateCx, data: &mut Data, event: &Event) {
-        if let Some(request) = event.get::<CloseRequested>() {
-            data.windows.retain(|window| *window != request.window);
-            cx.request_rebuild();
-
-            info!("Window {} closed", request.window);
-        }
+        info!("Window {} closed", request.window);
     }
 }
 
 fn main() {
     App::new(app, Data::default())
         .title("Multi Window (examples/multi_window.rs)")
-        .delegate(AppDelegate)
+        .delegate(delegate)
         .run();
 }

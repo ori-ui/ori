@@ -3,11 +3,11 @@ use std::{collections::HashMap, mem};
 use ori_core::{
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
-    theme::Palette,
     ui::{Ui, UiBuilder, UiRequest, UiRequests},
     window::{Window, WindowDescriptor},
 };
 use winit::{
+    dpi::PhysicalSize,
     event::{Event, KeyboardInput, MouseScrollDelta, TouchPhase, WindowEvent},
     event_loop::{ControlFlow, EventLoopWindowTarget},
     window::WindowBuilder,
@@ -190,8 +190,13 @@ impl<T> AppState<T> {
     ) -> Result<(), Error> {
         /* create the window */
         let window = WindowBuilder::new()
-            .with_visible(false)
+            .with_title(&desc.title)
+            .with_inner_size(PhysicalSize::new(desc.width, desc.height))
+            .with_resizable(desc.resizable)
+            .with_decorations(desc.decorated)
             .with_transparent(desc.transparent)
+            .with_maximized(desc.maximized)
+            .with_visible(false)
             .build(target)?;
 
         self.ids.insert(window.id(), desc.id);
@@ -201,7 +206,11 @@ impl<T> AppState<T> {
 
         /* create the initial window */
         let raw_window = Box::new(WinitWindow::from(window));
-        let window = Window::new(raw_window, desc);
+        let mut window = Window::new(raw_window, desc.id);
+
+        window.set_icon(desc.icon.as_ref());
+        window.set_visible(desc.visible);
+        window.set_color(desc.background_color);
 
         /* add the window to the ui */
         let requests = self.ui.add_window(builder, window);
@@ -234,7 +243,7 @@ impl<T> AppState<T> {
             if let Some(render) = self.renders.get_mut(&window) {
                 let window = self.ui.window_mut(window);
 
-                let clear_color = window.theme().get(Palette::BACKGROUND);
+                let clear_color = window.color();
 
                 let width = window.window().width();
                 let height = window.window().height();

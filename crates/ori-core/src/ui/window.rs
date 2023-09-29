@@ -1,10 +1,10 @@
 use std::time::Instant;
 
 use crate::{
-    canvas::{Canvas, Scene},
+    canvas::{Canvas, Color, Scene},
     event::{AnimationFrame, Event},
     layout::{Size, Space},
-    theme::Theme,
+    theme::{Palette, Theme},
     view::{
         BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View,
         ViewState,
@@ -108,6 +108,15 @@ impl<T> WindowUi<T> {
     /// Get whether the view-tree needs to be drawn.
     pub fn needs_draw(&self) -> bool {
         self.view_state.needs_draw()
+    }
+
+    /// Get the background color of the window.
+    pub fn color(&self) -> Color {
+        if let Some(color) = self.window.color() {
+            color
+        } else {
+            self.theme().get(Palette::BACKGROUND)
+        }
     }
 
     /// Request a rebuild of the view-tree.

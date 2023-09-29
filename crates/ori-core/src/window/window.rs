@@ -4,12 +4,13 @@ use std::{
 };
 
 use crate::{
+    canvas::Color,
     event::{Pointer, PointerId},
     image::Image,
     layout::{Point, Size},
 };
 
-use super::{Cursor, RawWindow, WindowDescriptor};
+use super::{Cursor, RawWindow};
 
 /// A unique identifier for a window.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -48,22 +49,12 @@ pub struct Window {
 
 impl Window {
     /// Create a new window with the given raw window implementation.
-    pub fn new(raw: Box<dyn RawWindow>, desc: WindowDescriptor) -> Self {
-        let mut window = Self {
-            id: desc.id,
+    pub fn new(raw: Box<dyn RawWindow>, id: WindowId) -> Self {
+        Self {
+            id,
             raw,
             pointers: Vec::new(),
-        };
-
-        window.set_title(&desc.title);
-        window.set_icon(desc.icon.as_ref());
-        window.set_size(desc.width, desc.height);
-        window.set_resizable(desc.resizable);
-        window.set_decorated(desc.decorated);
-        window.set_maximized(desc.maximized);
-        window.set_visible(desc.visible);
-
-        window
+        }
     }
 
     /// Get the [`WindowId`].
@@ -200,9 +191,24 @@ impl Window {
         self.raw.set_cursor(cursor);
     }
 
+    /// Get the background of the window.
+    pub fn color(&self) -> Option<Color> {
+        self.raw.color()
+    }
+
+    /// Set the background of the window.
+    pub fn set_color(&mut self, color: Option<Color>) {
+        self.raw.set_color(color);
+    }
+
     /// Get whether the soft input is enabled.
     pub fn set_soft_input(&mut self, enabled: bool) {
         self.raw.set_soft_input(enabled);
+    }
+
+    /// Drag the window.
+    pub fn drag_window(&mut self) {
+        self.raw.drag_window();
     }
 
     /// Request a redraw of the window.

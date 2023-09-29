@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
 };
 
-use crate::image::Image;
+use crate::{canvas::Color, image::Image};
 
 use super::Cursor;
 
@@ -53,8 +53,17 @@ pub trait RawWindow: Any {
     /// Set the cursor of the window.
     fn set_cursor(&mut self, cursor: Cursor);
 
+    /// Get the background of the window.
+    fn color(&self) -> Option<Color>;
+
+    /// Set the background of the window.
+    fn set_color(&mut self, color: Option<Color>);
+
     /// Get whether soft input is enabled.
     fn set_soft_input(&mut self, visible: bool);
+
+    /// Drag the window.
+    fn drag_window(&mut self);
 
     /// Get whether the window is focused.
     fn request_draw(&mut self);

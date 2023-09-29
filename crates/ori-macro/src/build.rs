@@ -116,7 +116,7 @@ fn build_field(name: TokenStream, field: &syn::Field) -> manyhow::Result<TokenSt
 
     Ok(quote! {
         #[doc = #doc]
-        pub fn #name(mut self, #name: impl ::std::convert::Into<#ty>) -> Self {
+        pub fn #name(mut self, #name: impl Into<#ty>) -> Self {
             self.#name = ::std::convert::Into::into(#name);
             self
         }

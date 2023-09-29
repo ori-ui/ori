@@ -1,4 +1,4 @@
-use crate::image::Image;
+use crate::{canvas::Color, image::Image};
 
 use super::WindowId;
 
@@ -25,6 +25,10 @@ pub struct WindowDescriptor {
     pub maximized: bool,
     /// Whether the window is visible.
     pub visible: bool,
+    /// The background color of the window.
+    ///
+    /// If this is `None`, the background color will be the default background color.
+    pub background_color: Option<Color>,
 }
 
 impl Default for WindowDescriptor {
@@ -37,9 +41,10 @@ impl Default for WindowDescriptor {
             height: 600,
             resizable: true,
             decorated: true,
-            transparent: false,
+            transparent: true,
             maximized: false,
             visible: true,
+            background_color: None,
         }
     }
 }
@@ -108,6 +113,12 @@ impl WindowDescriptor {
     /// Set whether the window is visible.
     pub fn visible(mut self, visible: bool) -> Self {
         self.visible = visible;
+        self
+    }
+
+    /// Set the background color of the window.
+    pub fn background_color(mut self, background_color: impl Into<Option<Color>>) -> Self {
+        self.background_color = background_color.into();
         self
     }
 }

@@ -1,7 +1,9 @@
 use std::cell::Cell;
 
+use ori_macro::Build;
+
 use crate::{
-    canvas::Canvas,
+    canvas::{Canvas, Quad},
     event::{Event, RequestFocus, SwitchFocus},
     layout::{Align, Axis, Justify, Size, Space},
     log::warn_internal,
@@ -48,9 +50,10 @@ pub fn vstack<V>(content: V) -> Stack<V> {
 }
 
 /// A view that stacks its content in a line.
-#[derive(Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.
+    #[build(ignore)]
     pub content: PodSeq<V>,
     /// The size of the stack.
     #[rebuild(layout)]
@@ -104,12 +107,6 @@ impl<V> Stack<V> {
         Self::new(Axis::Vertical, content)
     }
 
-    /// Set the space of the stack.
-    pub fn space(mut self, space: impl Into<Space>) -> Self {
-        self.space = space.into();
-        self
-    }
-
     /// Set the size of the stack.
     pub fn size(mut self, size: impl Into<Size>) -> Self {
         self.space = Space::from_size(size.into());
@@ -154,51 +151,9 @@ impl<V> Stack<V> {
         self
     }
 
-    /// Set the axis of the stack.
-    pub fn axis(mut self, axis: Axis) -> Self {
-        self.axis = axis;
-        self
-    }
-
-    /// Set whether the stack should wrap its content.
-    pub fn wrap(mut self, wrap: bool) -> Self {
-        self.wrap = wrap;
-        self
-    }
-
-    /// Set the justify content.
-    pub fn justify_content(mut self, justify: impl Into<Justify>) -> Self {
-        self.justify_content = justify.into();
-        self
-    }
-
-    /// Set the align items.
-    pub fn align_items(mut self, align: impl Into<Align>) -> Self {
-        self.align_items = align.into();
-        self
-    }
-
-    /// Set the align content.
-    pub fn align_content(mut self, align: impl Into<Justify>) -> Self {
-        self.align_content = align.into();
-        self
-    }
-
     /// Set the gap between columns and rows.
     pub fn gap(mut self, gap: f32) -> Self {
         self.column_gap = gap;
-        self.row_gap = gap;
-        self
-    }
-
-    /// Set the gap between columns.
-    pub fn column_gap(mut self, gap: f32) -> Self {
-        self.column_gap = gap;
-        self
-    }
-
-    /// Set the gap between rows.
-    pub fn row_gap(mut self, gap: f32) -> Self {
         self.row_gap = gap;
         self
     }
@@ -383,19 +338,30 @@ impl<V> Stack<V> {
                 Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor))
             };
 
-            let mut size = (self.content).layout_nth(i, content, cx, data, content_space);
+            let size = (self.content).layout_nth(i, content, cx, data, content_space);
 
-            if content[i].is_flex() {
-                size = size.min(self.axis.pack(max_major, max_minor));
-            } else if !size.is_finite() && max_major.is_finite() && max_minor.is_finite() {
+            let (mut child_major, mut child_minor) = self.axis.unpack(size);
+
+            if content[i].is_flex() && !child_major.is_finite() {
+                child_major = max_major;
+            } else if !child_major.is_finite() && !max_major.is_finite() {
                 warn_internal!(
-                    "A non-flex view in a stack has an infinite size, [{}] = {}",
+                    "A view in a stack has an infinite major, [{}] = {}",
                     i,
                     size,
                 );
             }
 
-            let (child_major, child_minor) = self.axis.unpack(size);
+            if content[i].is_flex() && !child_minor.is_finite() {
+                child_minor = max_minor;
+            } else if !child_minor.is_finite() && !max_minor.is_finite() {
+                warn_internal!(
+                    "A view in a stack has an infinite minor, [{}] = {}",
+                    i,
+                    size,
+                );
+            }
+
             state.majors[i] = child_major;
             state.minors[i] = child_minor;
 
@@ -525,6 +491,7 @@ pub struct StackState {
     line_offsets: Vec<f32>,
     majors: Vec<f32>,
     minors: Vec<f32>,
+    debug: Vec<Quad>,
 }
 
 impl StackState {
@@ -534,6 +501,7 @@ impl StackState {
             line_offsets: Vec::new(),
             majors: vec![0.0; len],
             minors: vec![0.0; len],
+            debug: Vec::new(),
         }
     }
 
@@ -612,23 +580,24 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
+        state.debug.clear();
+
+        // calculate bounds and other data needed for layout
         let space = self.space.constrain(space);
 
         let (max_major, max_minor) = self.axis.unpack(space.max);
-        let (min_major, min_minor) = self.axis.unpack(space.min);
+        let min_major = self.axis.major(space.min);
 
         let (gap_major, gap_minor) = self.axis.unpack((self.column_gap, self.row_gap));
 
+        // measure the content
         self.measure_fixed(state, content, data, cx, gap_major, max_major, max_minor);
         self.measure_flex(state, content, data, cx, min_major, max_major, max_minor);
 
-        if !self.wrap {
-            state.lines[0].minor = state.lines[0].minor.clamp(min_minor, max_minor);
-        }
-
         let content_major = state.major().min(max_major);
-        let content_minor = state.minor(gap_minor).max(min_minor);
+        let content_minor = state.minor(gap_minor).min(max_minor);
 
+        // calculate the size of the stack
         let mut size = self.axis.pack(content_major, content_minor);
         size = Size::max(size, space.min);
 
@@ -636,6 +605,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
         state.line_offsets.resize(state.lines.len(), 0.0);
 
+        // layout each line along the minor axis
         self.align_content.layout(
             state.lines.iter().map(|line| line.minor),
             |index, offset| state.line_offsets[index] = offset,
@@ -643,14 +613,17 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
             gap_minor,
         );
 
+        // layout the content of each line along the major axis
         for (i, line) in state.lines.iter().enumerate() {
             let line_offset = state.line_offsets[i];
             let child_majors = &state.majors[line.start..line.end];
             let child_minors = &state.minors[line.start..line.end];
 
+            // perform the actual layout
             self.justify_content.layout(
                 child_majors.iter().copied(),
                 |index, offset| {
+                    // align items along the minor axis
                     let align = self.align_items.align(line.minor, child_minors[index]);
                     let offset = self.axis.pack(offset, line_offset + align);
                     content[line.start + index].translate(offset);
@@ -665,13 +638,17 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
     fn draw(
         &mut self,
-        (_, content): &mut Self::State,
+        (state, content): &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
     ) {
         for i in 0..self.content.len() {
             self.content.draw_nth(i, content, cx, data, canvas);
+        }
+
+        for quad in &state.debug {
+            canvas.draw_pixel_perfect(quad.clone());
         }
     }
 }

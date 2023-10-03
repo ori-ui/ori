@@ -257,6 +257,11 @@ impl Color {
         self.a < 1.0
     }
 
+    /// Returns true if the color is transparent.
+    pub fn is_transparent(self) -> bool {
+        self.a == 0.0
+    }
+
     /// Convert the color to sRGB.
     ///
     /// See <https://en.wikipedia.org/wiki/SRGB>.

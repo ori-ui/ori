@@ -21,12 +21,16 @@ impl Quad {
     /// Get whether the quad is ineffective, i.e. it has no effect on the canvas.
     pub fn is_ineffective(&self) -> bool {
         // if the rect has zero area, the quad is ineffective
-        let rect = self.rect.area() == 0.0;
+        let area_zero = self.rect.area() == 0.0;
 
-        let color = self.background.color.a == 0.0;
-        let border = self.border_width == BorderWidth::ZERO || self.border_color.a == 0.0;
+        let background_transparent = self.background.color.is_transparent();
 
-        rect || (color && border)
+        let border_zero = self.border_width == BorderWidth::ZERO;
+        let border_transparent = self.border_color.is_transparent();
+
+        let border_ineffective = border_zero || border_transparent;
+
+        area_zero || (background_transparent && border_ineffective)
     }
 }
 

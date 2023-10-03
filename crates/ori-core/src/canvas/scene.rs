@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::layout::{Affine, Rect};
 
 use super::Primitive;
@@ -34,6 +36,15 @@ impl Scene {
     /// Get a mutable reference to the fragments in the scene.
     pub fn fragments_mut(&mut self) -> &mut [Fragment] {
         &mut self.fragments
+    }
+
+    /// Sort the fragments in the scene by depth.
+    pub fn sort(&mut self) {
+        fn cmp(a: &Fragment, b: &Fragment) -> Ordering {
+            a.depth.partial_cmp(&b.depth).unwrap_or(Ordering::Equal)
+        }
+
+        self.fragments.sort_by(cmp)
     }
 }
 

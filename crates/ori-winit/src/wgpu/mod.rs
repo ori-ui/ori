@@ -26,6 +26,8 @@ unsafe fn bytes_of_slice<T>(data: &[T]) -> &[u8] {
 /// A context containing the [`wgpu::Device`] and [`wgpu::Queue`].
 #[derive(Clone, Debug)]
 pub struct WgpuContext {
+    /// The [`wgpu::Device`] used for rendering.
     pub device: Arc<Device>,
+    /// The [`wgpu::Queue`] used for rendering.
     pub queue: Arc<Queue>,
 }

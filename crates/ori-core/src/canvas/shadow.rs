@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use crate::{
     canvas::Vertex,
-    image::Image,
+    image::{Image, Texture},
     layout::{Point, Rect, Vector},
 };
 
@@ -141,7 +141,7 @@ impl BoxShadow {
 
         let mut mesh = Mesh::new();
 
-        mesh.image = Some(Self::blur_image());
+        mesh.image = Some(Texture::Image(Self::blur_image()));
 
         let tl_radius = radius.top_left;
         let tr_radius = radius.top_right;

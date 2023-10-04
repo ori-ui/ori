@@ -1,4 +1,4 @@
-use crate::image::Image;
+use crate::image::{Image, Texture};
 
 use super::Color;
 
@@ -6,7 +6,7 @@ use super::Color;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Background {
     /// The image of the background.
-    pub image: Option<Image>,
+    pub image: Option<Texture>,
     /// The color of the background.
     pub color: Color,
 }
@@ -18,7 +18,7 @@ impl Background {
     }
 
     /// Create a new [`Background`] with an image.
-    pub fn image(image: impl Into<Image>) -> Self {
+    pub fn image(image: impl Into<Texture>) -> Self {
         Self {
             image: Some(image.into()),
             color: Color::WHITE,
@@ -37,7 +37,26 @@ impl Background {
 impl From<Image> for Background {
     fn from(image: Image) -> Self {
         Self {
-            image: Some(image),
+            image: Some(image.into()),
+            color: Color::WHITE,
+        }
+    }
+}
+
+#[cfg(feature = "wgpu")]
+impl From<crate::image::WgpuTexture> for Background {
+    fn from(texture: crate::image::WgpuTexture) -> Self {
+        Self {
+            image: Some(texture.into()),
+            color: Color::WHITE,
+        }
+    }
+}
+
+impl From<Texture> for Background {
+    fn from(texture: Texture) -> Self {
+        Self {
+            image: Some(texture),
             color: Color::WHITE,
         }
     }

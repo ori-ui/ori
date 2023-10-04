@@ -36,4 +36,4 @@ tracing = ["dep:tracing", "dep:tracing-subscriber"]
 x11 = ["winit/x11"]
 wayland = ["winit/wayland"]
 
-wgpu = ["dep:wgpu"]
+wgpu = ["dep:wgpu", "ori-core/wgpu"]

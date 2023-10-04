@@ -1,7 +1,7 @@
 use crate::{
     canvas::{Canvas, Color, Mesh, Vertex},
     event::Event,
-    image::Image,
+    image::{Image, Texture},
     layout::{Point, Size, Space},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
@@ -74,7 +74,7 @@ impl<T> View<T> for Image {
         mesh.indices.push(2);
         mesh.indices.push(3);
 
-        mesh.image = Some(self.clone());
+        mesh.image = Some(Texture::Image(self.clone()));
 
         canvas.draw(mesh);
     }

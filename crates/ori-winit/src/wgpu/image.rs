@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, ops::Deref, sync::Arc};
 
-use ori_core::image::{Image, ImageId, WeakImage};
+use ori_core::image::{Image, ImageId, Texture, WeakImage};
 use wgpu::{
     util::DeviceExt, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Device,
@@ -11,17 +11,23 @@ use wgpu::{
 
 #[derive(Debug)]
 pub struct CachedImage {
-    weak: WeakImage,
+    weak: Option<WeakImage>,
     pub view: TextureView,
     pub sampler: Sampler,
     pub bind_group: BindGroup,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum ImageCacheKey {
+    Image(ImageId),
+    Texture(usize),
 }
 
 #[derive(Debug)]
 pub struct ImageCache {
     bind_group_layout: BindGroupLayout,
     fallback_image: Image,
-    images: HashMap<ImageId, Arc<CachedImage>>,
+    images: HashMap<ImageCacheKey, Arc<CachedImage>>,
 }
 
 impl ImageCache {
@@ -60,40 +66,56 @@ impl ImageCache {
     }
 
     pub fn clean(&mut self) {
-        self.images.retain(|_, image| image.weak.strong_count() > 0);
+        self.images.retain(|_, image| match image.weak {
+            Some(ref weak) => weak.strong_count() > 0,
+            None => true,
+        });
     }
 
-    pub fn get(&mut self, device: &Device, queue: &Queue, image: &Image) -> Arc<CachedImage> {
-        if let Some(image) = self.images.get(&image.id()) {
+    pub fn get(&mut self, device: &Device, queue: &Queue, texture: &Texture) -> Arc<CachedImage> {
+        let id = match texture {
+            Texture::Image(image) => ImageCacheKey::Image(image.id()),
+            Texture::Wgpu(texture) => ImageCacheKey::Texture(texture.deref() as *const _ as usize),
+        };
+
+        if let Some(image) = self.images.get(&id) {
             return image.clone();
         }
 
-        let texture = device.create_texture_with_data(
-            queue,
-            &TextureDescriptor {
-                label: Some("ori_image"),
-                size: Extent3d {
-                    width: image.width(),
-                    height: image.height(),
-                    depth_or_array_layers: 1,
+        let filter = match texture {
+            Texture::Image(image) if image.filter() => FilterMode::Linear,
+            Texture::Image(_) => FilterMode::Nearest,
+            Texture::Wgpu(_) => FilterMode::Linear,
+        };
+
+        let weak = match texture {
+            Texture::Image(image) => Some(image.downgrade()),
+            Texture::Wgpu(_) => None,
+        };
+
+        let texture = match texture {
+            Texture::Image(image) => device.create_texture_with_data(
+                queue,
+                &TextureDescriptor {
+                    label: Some("ori_image"),
+                    size: Extent3d {
+                        width: image.width(),
+                        height: image.height(),
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: TextureDimension::D2,
+                    format: TextureFormat::Rgba8Unorm,
+                    usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
                 },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: TextureFormat::Rgba8Unorm,
-                usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            },
-            image,
-        );
+                image,
+            ),
+            Texture::Wgpu(_) => todo!(),
+        };
 
         let view = texture.create_view(&Default::default());
-
-        let filter = if image.filter() {
-            FilterMode::Linear
-        } else {
-            FilterMode::Nearest
-        };
 
         let sampler = device.create_sampler(&SamplerDescriptor {
             label: Some("ori_image_sampler"),
@@ -121,16 +143,17 @@ impl ImageCache {
         });
 
         let image = Arc::new(CachedImage {
-            weak: image.downgrade(),
+            weak,
             view,
             sampler,
             bind_group,
         });
 
-        self.images.entry(image.weak.id()).or_insert(image).clone()
+        self.images.entry(id).or_insert(image).clone()
     }
 
     pub fn fallback(&mut self, device: &Device, queue: &Queue) -> Arc<CachedImage> {
-        self.get(device, queue, &self.fallback_image.clone())
+        let texture = Texture::Image(self.fallback_image.clone());
+        self.get(device, queue, &texture)
     }
 }

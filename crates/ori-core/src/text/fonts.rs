@@ -7,6 +7,7 @@ use fontdue::{
 
 use crate::{
     canvas::{Mesh, Vertex},
+    image::Texture,
     layout::{Point, Rect, Size},
 };
 
@@ -339,7 +340,7 @@ impl Fonts {
             mesh.indices.push(index + 3);
         }
 
-        mesh.image = Some(atlas.image().clone());
+        mesh.image = Some(Texture::Image(atlas.image().clone()));
 
         Some(mesh)
     }

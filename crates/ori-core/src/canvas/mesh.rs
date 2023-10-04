@@ -1,7 +1,7 @@
 use std::{f32::consts::PI, mem, slice};
 
 use crate::{
-    image::Image,
+    image::Texture,
     layout::{Point, Vector},
 };
 
@@ -38,7 +38,7 @@ pub struct Mesh {
     /// The indices of the mesh.
     pub indices: Vec<u32>,
     /// The image of the mesh.
-    pub image: Option<Image>,
+    pub image: Option<Texture>,
 }
 
 impl Mesh {

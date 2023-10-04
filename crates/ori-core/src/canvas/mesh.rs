@@ -38,7 +38,7 @@ pub struct Mesh {
     /// The indices of the mesh.
     pub indices: Vec<u32>,
     /// The image of the mesh.
-    pub image: Option<Texture>,
+    pub texture: Option<Texture>,
 }
 
 impl Mesh {
@@ -75,8 +75,8 @@ impl Mesh {
     }
 
     /// Set the image of the mesh.
-    pub fn set_image(&mut self, image: impl Into<Texture>) {
-        self.image = Some(image.into());
+    pub fn set_texture(&mut self, image: impl Into<Texture>) {
+        self.texture = Some(image.into());
     }
 
     /// Get the bytes of the vertices.

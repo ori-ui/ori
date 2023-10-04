@@ -15,7 +15,7 @@ use wgpu::{
 
 use super::{
     bytes_of, bytes_of_slice,
-    image::{CachedImage, ImageCache},
+    texture::{CachedTexture, TextureCache},
 };
 
 #[repr(C)]
@@ -51,7 +51,7 @@ struct Batch {
     data_buffer: Buffer,
     vertex_buffer: Buffer,
     data_bind_group: BindGroup,
-    image: Option<Arc<CachedImage>>,
+    image: Option<Arc<CachedTexture>>,
     clip: Rect,
 }
 
@@ -275,10 +275,10 @@ impl QuadRender {
     fn batch_image(
         device: &Device,
         queue: &Queue,
-        cache: &mut ImageCache,
+        cache: &mut TextureCache,
         batch: &[(&Quad, Affine)],
-    ) -> Arc<CachedImage> {
-        match batch[0].0.background.image {
+    ) -> Arc<CachedTexture> {
+        match batch[0].0.background.texture {
             Some(ref image) => cache.get(device, queue, image),
             None => cache.fallback(device, queue),
         }
@@ -289,7 +289,7 @@ impl QuadRender {
         &mut self,
         device: &Device,
         queue: &Queue,
-        cache: &mut ImageCache,
+        cache: &mut TextureCache,
         index: usize,
         quads: &[(&Quad, Affine)],
         clip: Rect,

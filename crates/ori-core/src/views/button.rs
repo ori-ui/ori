@@ -182,7 +182,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
         let face = self.color.color.mix(bright, hot).mix(dim, active);
 
         let face = Background {
-            image: self.color.image.clone(),
+            texture: self.color.texture.clone(),
             color: face,
         };
 
@@ -204,7 +204,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
         canvas.draw_quad(
             cx.rect(),
             Background {
-                image: self.color.image.clone(),
+                texture: self.color.texture.clone(),
                 color: base,
             },
             self.border_radius,

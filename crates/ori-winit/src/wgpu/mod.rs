@@ -1,15 +1,15 @@
-mod image;
 mod instance;
 mod mesh;
 mod quad;
 mod render;
+mod texture;
 
 pub use instance::*;
 pub use render::*;
 
-use image::*;
 use mesh::*;
 use quad::*;
+use texture::*;
 
 use std::sync::Arc;
 

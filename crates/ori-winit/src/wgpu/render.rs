@@ -13,7 +13,7 @@ use wgpu::{
 
 use crate::{log::warn_internal, RenderError};
 
-use super::{ImageCache, MeshRender, QuadRender, WgpuRenderInstance};
+use super::{MeshRender, QuadRender, TextureCache, WgpuRenderInstance};
 
 #[derive(Clone, Debug)]
 enum Batch {
@@ -28,7 +28,7 @@ pub struct WgpuRender {
     surface: Surface,
     config: SurfaceConfiguration,
     samples: u32,
-    image: ImageCache,
+    image: TextureCache,
     msaa: Option<TextureView>,
     quad: QuadRender,
     mesh: MeshRender,
@@ -65,7 +65,7 @@ impl WgpuRender {
         config.present_mode = PresentMode::AutoVsync;
         surface.configure(&device, &config);
 
-        let cache = ImageCache::new(&device);
+        let cache = TextureCache::new(&device);
 
         let msaa = if samples > 1 {
             Some(Self::create_msaa(
@@ -224,7 +224,7 @@ impl WgpuRender {
                         );
                     }
 
-                    let image = quad.background.image.clone();
+                    let image = quad.background.texture.clone();
                     let new_batch = quad_clip != Some(fragment.clip) || quad_image != image;
                     if new_batch && !quad_batch.is_empty() {
                         self.push_quad_batch(
@@ -249,7 +249,7 @@ impl WgpuRender {
                         );
                     }
 
-                    let new_batch = mesh_clip != Some(fragment.clip) || mesh_image != mesh.image;
+                    let new_batch = mesh_clip != Some(fragment.clip) || mesh_image != mesh.texture;
                     if new_batch && !mesh_batch.is_empty() {
                         self.push_mesh_batch(
                             &mut batches,
@@ -259,7 +259,7 @@ impl WgpuRender {
                         );
                     }
 
-                    mesh_image = mesh.image.clone();
+                    mesh_image = mesh.texture.clone();
                     mesh_clip = Some(fragment.clip);
                     mesh_batch.push((mesh, fragment.transform));
                 }

@@ -10,7 +10,7 @@ use wgpu::{
 };
 
 #[derive(Debug)]
-pub struct CachedImage {
+pub struct CachedTexture {
     weak: Option<WeakImage>,
     pub view: Arc<TextureView>,
     pub sampler: Sampler,
@@ -18,19 +18,19 @@ pub struct CachedImage {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum ImageCacheKey {
+enum TextureCacheKey {
     Image(ImageId),
     Texture(usize),
 }
 
 #[derive(Debug)]
-pub struct ImageCache {
+pub struct TextureCache {
     bind_group_layout: BindGroupLayout,
     fallback_image: Image,
-    images: HashMap<ImageCacheKey, Arc<CachedImage>>,
+    images: HashMap<TextureCacheKey, Arc<CachedTexture>>,
 }
 
-impl ImageCache {
+impl TextureCache {
     pub fn new(device: &Device) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("ori_image_bind_group_layout"),
@@ -72,10 +72,12 @@ impl ImageCache {
         });
     }
 
-    pub fn get(&mut self, device: &Device, queue: &Queue, texture: &Texture) -> Arc<CachedImage> {
+    pub fn get(&mut self, device: &Device, queue: &Queue, texture: &Texture) -> Arc<CachedTexture> {
         let id = match texture {
-            Texture::Image(image) => ImageCacheKey::Image(image.id()),
-            Texture::Wgpu(texture) => ImageCacheKey::Texture(texture.deref() as *const _ as usize),
+            Texture::Image(image) => TextureCacheKey::Image(image.id()),
+            Texture::Wgpu(texture) => {
+                TextureCacheKey::Texture(texture.deref() as *const _ as usize)
+            }
         };
 
         if let Some(image) = self.images.get(&id) {
@@ -144,7 +146,7 @@ impl ImageCache {
             ],
         });
 
-        let image = Arc::new(CachedImage {
+        let image = Arc::new(CachedTexture {
             weak,
             view,
             sampler,
@@ -154,7 +156,7 @@ impl ImageCache {
         self.images.entry(id).or_insert(image).clone()
     }
 
-    pub fn fallback(&mut self, device: &Device, queue: &Queue) -> Arc<CachedImage> {
+    pub fn fallback(&mut self, device: &Device, queue: &Queue) -> Arc<CachedTexture> {
         let texture = Texture::Image(self.fallback_image.clone());
         self.get(device, queue, &texture)
     }

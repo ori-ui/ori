@@ -340,7 +340,7 @@ impl Fonts {
             mesh.indices.push(index + 3);
         }
 
-        mesh.image = Some(Texture::Image(atlas.image().clone()));
+        mesh.texture = Some(Texture::Image(atlas.image().clone()));
 
         Some(mesh)
     }

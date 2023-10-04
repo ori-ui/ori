@@ -141,7 +141,7 @@ impl BoxShadow {
 
         let mut mesh = Mesh::new();
 
-        mesh.image = Some(Texture::Image(Self::blur_image()));
+        mesh.texture = Some(Texture::Image(Self::blur_image()));
 
         let tl_radius = radius.top_left;
         let tr_radius = radius.top_right;

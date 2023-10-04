@@ -13,7 +13,7 @@ use wgpu::{
     VertexBufferLayout, VertexState, VertexStepMode,
 };
 
-use super::{bytes_of, bytes_of_slice, CachedImage, ImageCache};
+use super::{bytes_of, bytes_of_slice, CachedTexture, TextureCache};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -34,7 +34,7 @@ struct Batch {
     index_count: usize,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
-    image: Option<Arc<CachedImage>>,
+    image: Option<Arc<CachedTexture>>,
     clip: Rect,
 }
 
@@ -211,10 +211,10 @@ impl MeshRender {
     fn batch_image(
         device: &Device,
         queue: &Queue,
-        cache: &mut ImageCache,
+        cache: &mut TextureCache,
         batch: &[(&Mesh, Affine)],
-    ) -> Arc<CachedImage> {
-        match batch[0].0.image {
+    ) -> Arc<CachedTexture> {
+        match batch[0].0.texture {
             Some(ref image) => cache.get(device, queue, image),
             None => cache.fallback(device, queue),
         }
@@ -248,7 +248,7 @@ impl MeshRender {
         &mut self,
         device: &Device,
         queue: &Queue,
-        cache: &mut ImageCache,
+        cache: &mut TextureCache,
         index: usize,
         meshes: &[(&Mesh, Affine)],
         clip: Rect,

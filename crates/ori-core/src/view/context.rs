@@ -1,4 +1,8 @@
-use std::{any::Any, time::Instant};
+use std::{
+    any::{type_name, Any},
+    mem,
+    time::Instant,
+};
 
 use crate::{
     canvas::Mesh,
@@ -12,9 +16,63 @@ use crate::{
 
 use super::{View, ViewId};
 
+/// A context for a view.
+#[derive(Debug, Default)]
+pub struct Contexts {
+    contexts: Vec<Box<dyn Any>>,
+}
+
+impl Contexts {
+    /// Create a new context.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn index_of<T: Any>(&self) -> Option<usize> {
+        self.contexts
+            .iter()
+            .enumerate()
+            .find(|(_, context)| context.is::<T>())
+            .map(|(i, _)| i)
+    }
+
+    /// Push a context.
+    pub fn insert<T: Any>(&mut self, mut context: T) -> Option<T> {
+        if let Some(index) = self.get_mut::<T>() {
+            mem::swap(index, &mut context);
+            return Some(context);
+        }
+
+        self.contexts.push(Box::new(context));
+
+        None
+    }
+
+    /// Pop a context.
+    pub fn remove<T: Any>(&mut self) -> Option<T> {
+        let index = self.index_of::<T>()?;
+
+        let context = self.contexts.remove(index);
+        Some(*context.downcast::<T>().ok()?)
+    }
+
+    /// Get a context.
+    pub fn get<T: Any>(&self) -> Option<&T> {
+        let index = self.index_of::<T>()?;
+        self.contexts[index].downcast_ref::<T>()
+    }
+
+    /// Get a mutable context.
+    pub fn get_mut<T: Any>(&mut self) -> Option<&mut T> {
+        let index = self.index_of::<T>()?;
+        self.contexts[index].downcast_mut::<T>()
+    }
+}
+
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
     pub(crate) fonts: &'a mut Fonts,
+    pub(crate) contexts: &'a mut Contexts,
     pub(crate) proxy: &'a mut CommandProxy,
     pub(crate) needs_rebuild: &'a mut bool,
 }
@@ -23,11 +81,13 @@ impl<'a> BaseCx<'a> {
     /// Create a new base context.
     pub fn new(
         fonts: &'a mut Fonts,
+        contexts: &'a mut Contexts,
         proxy: &'a mut CommandProxy,
         needs_rebuild: &'a mut bool,
     ) -> Self {
         Self {
             fonts,
+            contexts,
             proxy,
             needs_rebuild,
         }
@@ -46,6 +106,38 @@ impl<'a> BaseCx<'a> {
     /// Emit a command.
     pub fn cmd<T: Any + Send>(&mut self, command: T) {
         self.proxy.cmd_silent(Command::new(command));
+    }
+
+    /// Get a context.
+    pub fn get_context<T: Any>(&self) -> Option<&T> {
+        self.contexts.get::<T>()
+    }
+
+    /// Get a mutable context.
+    pub fn get_context_mut<T: Any>(&mut self) -> Option<&mut T> {
+        self.contexts.get_mut::<T>()
+    }
+
+    /// Get a context.
+    ///
+    /// # Panics
+    /// - If the context is not found.
+    pub fn context<T: Any>(&self) -> &T {
+        match self.get_context::<T>() {
+            Some(context) => context,
+            None => panic!("context not found: {}", type_name::<T>()),
+        }
+    }
+
+    /// Get a mutable context.
+    ///
+    /// # Panics
+    /// - If the context is not found.
+    pub fn context_mut<T: Any>(&mut self) -> &mut T {
+        match self.get_context_mut::<T>() {
+            Some(context) => context,
+            None => panic!("context not found: {}", type_name::<T>()),
+        }
     }
 
     /// Request a rebuild of the view tree.
@@ -290,6 +382,32 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, DrawCx<'_, '_> {
 }}
 
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
+    /// Get a context.
+    pub fn get_context<T: Any>(&self) -> Option<&T> {
+        self.base.get_context::<T>()
+    }
+
+    /// Get a mutable context.
+    pub fn get_context_mut<T: Any>(&mut self) -> Option<&mut T> {
+        self.base.get_context_mut::<T>()
+    }
+
+    /// Get a context.
+    ///
+    /// # Panics
+    /// - If the context is not found.
+    pub fn context<T: Any>(&self) -> &T {
+        self.base.context::<T>()
+    }
+
+    /// Get a mutable context.
+    ///
+    /// # Panics
+    /// - If the context is not found.
+    pub fn context_mut<T: Any>(&mut self) -> &mut T {
+        self.base.context_mut::<T>()
+    }
+
     /// Get the fonts.
     pub fn fonts(&mut self) -> &mut Fonts {
         self.base.fonts()

@@ -139,8 +139,20 @@ impl<T> AppState<T> {
         &mut self,
         window: &winit::window::Window,
     ) -> Result<(crate::wgpu::WgpuRenderInstance, wgpu::Surface), Error> {
+        use crate::wgpu::WgpuContext;
+
         let instance = unsafe { crate::wgpu::WgpuRenderInstance::new(window) };
-        Ok(pollster::block_on(instance)?)
+        let (instance, surface) = pollster::block_on(instance)?;
+
+        let context = WgpuContext {
+            device: instance.device.clone(),
+            queue: instance.queue.clone(),
+        };
+        self.ui.contexts.insert(context);
+
+        self.ui.contexts.insert(instance.device.clone());
+
+        Ok((instance, surface))
     }
 
     #[cfg(feature = "wgpu")]
@@ -151,23 +163,19 @@ impl<T> AppState<T> {
     ) -> Result<(), Error> {
         use crate::wgpu::WgpuRender;
 
-        if let Some(ref instance) = self.instance {
+        let (instance, surface) = if let Some(ref instance) = self.instance {
             let surface = unsafe { instance.create_surface(window)? };
-            let samples = if self.msaa { 4 } else { 1 };
-            let size = window.inner_size();
-            let render = WgpuRender::new(instance, surface, samples, size.width, size.height)?;
-
-            self.renders.insert(id, render);
+            (instance, surface)
         } else {
             let (instance, surface) = self.init_wgpu(window)?;
+            (self.instance.insert(instance) as _, surface)
+        };
 
-            let samples = if self.msaa { 4 } else { 1 };
-            let size = window.inner_size();
-            let render = WgpuRender::new(&instance, surface, samples, size.width, size.height)?;
+        let samples = if self.msaa { 4 } else { 1 };
+        let size = window.inner_size();
+        let render = WgpuRender::new(instance, surface, samples, size.width, size.height)?;
 
-            self.instance = Some(instance);
-            self.renders.insert(id, render);
-        }
+        self.renders.insert(id, render);
 
         Ok(())
     }

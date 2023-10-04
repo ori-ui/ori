@@ -50,7 +50,7 @@ impl Eq for WgpuTexture {}
 /// A texture.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Texture {
-    /// An image texture.
+    /// An [`Image`] texture.
     Image(Image),
     /// A [`WgpuTexture`].
     #[cfg(feature = "wgpu")]

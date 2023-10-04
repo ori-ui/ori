@@ -23,6 +23,16 @@ pub fn hsla(h: f32, s: f32, l: f32, a: f32) -> Color {
     Color::hsla(h, s, l, a)
 }
 
+/// Create a new color, with the given `lightness`, `a` and `b` components.
+pub fn lab(l: f32, a: f32, b: f32) -> Color {
+    Color::lab(l, a, b)
+}
+
+/// Create a new color, with the given `lightness`, `a`, `b` and alpha components.
+pub fn laba(l: f32, a: f32, b: f32, alpha: f32) -> Color {
+    Color::laba(l, a, b, alpha)
+}
+
 /// Create a new color, with the given hex string.
 pub fn hex(hex: &str) -> Color {
     Color::hex(hex)
@@ -213,6 +223,53 @@ impl Color {
     pub fn to_hsl(self) -> (f32, f32, f32) {
         let (h, s, l, _) = self.to_hsla();
         (h, s, l)
+    }
+
+    /// Convert a color from oklab to linear sRGB.
+    pub fn laba(l: f32, a: f32, b: f32, alpha: f32) -> Self {
+        let l_ = l + 0.396_337_78 * a + 0.215_803_76 * b;
+        let m_ = l - 0.105_561_346 * a - 0.063_854_17 * b;
+        let s_ = l - 0.089_484_18 * a - 1.291_485_5 * b;
+
+        let l = l_ * l_ * l_;
+        let m = m_ * m_ * m_;
+        let s = s_ * s_ * s_;
+
+        Self {
+            r: 4.076_741_7 * l - 3.307_711_6 * m + 0.230_969_94 * s,
+            g: -1.268_438 * l + 2.609_757_4 * m - 0.341_319_38 * s,
+            b: -0.004_196_086_3 * l - 0.703_418_6 * m + 1.707_614_7 * s,
+            a: alpha,
+        }
+    }
+
+    /// Convert a color from oklab to linear sRGB.
+    pub fn lab(l: f32, a: f32, b: f32) -> Self {
+        Self::laba(l, a, b, 1.0)
+    }
+
+    /// Convert a color from linear sRGB to oklab.
+    pub fn to_laba(self) -> (f32, f32, f32, f32) {
+        let l = 0.412_165_1 * self.r + 0.536_275_2 * self.g + 0.051_457_5 * self.b;
+        let m = 0.211_859_1 * self.r + 0.680_718_9 * self.g + 0.107_406_6 * self.b;
+        let s = 0.088_309_3 * self.r + 0.281_847_4 * self.g + 0.630_261_7 * self.b;
+
+        let l_ = l.cbrt();
+        let m_ = m.cbrt();
+        let s_ = s.cbrt();
+
+        (
+            0.210_454_26 * l_ + 0.793_617_8 * m_ - 0.004_072_047 * s_,
+            1.977_998_5 * l_ - 2.428_592_ * m_ + 0.450_593_7 * s_,
+            0.025_904_037 * l_ + 0.782_771_8 * m_ - 0.808_675_66 * s_,
+            self.a,
+        )
+    }
+
+    /// Convert a color from linear sRGB to oklab.
+    pub fn to_lab(self) -> (f32, f32, f32) {
+        let (l, a, b, _) = self.to_laba();
+        (l, a, b)
     }
 
     /// Linearly interpolate between two colors.

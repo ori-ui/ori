@@ -12,7 +12,7 @@ use wgpu::{
 #[derive(Debug)]
 pub struct CachedImage {
     weak: Option<WeakImage>,
-    pub view: TextureView,
+    pub view: Arc<TextureView>,
     pub sampler: Sampler,
     pub bind_group: BindGroup,
 }
@@ -93,29 +93,31 @@ impl ImageCache {
             Texture::Wgpu(_) => None,
         };
 
-        let texture = match texture {
-            Texture::Image(image) => device.create_texture_with_data(
-                queue,
-                &TextureDescriptor {
-                    label: Some("ori_image"),
-                    size: Extent3d {
-                        width: image.width(),
-                        height: image.height(),
-                        depth_or_array_layers: 1,
+        let view = match texture {
+            Texture::Image(image) => {
+                let texture = device.create_texture_with_data(
+                    queue,
+                    &TextureDescriptor {
+                        label: Some("ori_image"),
+                        size: Extent3d {
+                            width: image.width(),
+                            height: image.height(),
+                            depth_or_array_layers: 1,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: TextureDimension::D2,
+                        format: TextureFormat::Rgba8Unorm,
+                        usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
+                        view_formats: &[],
                     },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: TextureDimension::D2,
-                    format: TextureFormat::Rgba8Unorm,
-                    usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
-                    view_formats: &[],
-                },
-                image,
-            ),
-            Texture::Wgpu(_) => todo!(),
-        };
+                    image,
+                );
 
-        let view = texture.create_view(&Default::default());
+                Arc::new(texture.create_view(&Default::default()))
+            }
+            Texture::Wgpu(texture) => texture.as_arc().clone(),
+        };
 
         let sampler = device.create_sampler(&SamplerDescriptor {
             label: Some("ori_image_sampler"),

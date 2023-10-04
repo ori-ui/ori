@@ -74,6 +74,11 @@ impl Mesh {
         mesh
     }
 
+    /// Set the image of the mesh.
+    pub fn set_image(&mut self, image: impl Into<Texture>) {
+        self.image = Some(image.into());
+    }
+
     /// Get the bytes of the vertices.
     pub fn vertex_bytes(&self) -> &[u8] {
         let data = self.vertices.as_ptr() as *const u8;

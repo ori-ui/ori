@@ -24,13 +24,13 @@ pub fn hsla(h: f32, s: f32, l: f32, a: f32) -> Color {
 }
 
 /// Create a new color, with the given `lightness`, `a` and `b` components.
-pub fn lab(l: f32, a: f32, b: f32) -> Color {
-    Color::lab(l, a, b)
+pub fn oklab(l: f32, a: f32, b: f32) -> Color {
+    Color::oklab(l, a, b)
 }
 
 /// Create a new color, with the given `lightness`, `a`, `b` and alpha components.
-pub fn laba(l: f32, a: f32, b: f32, alpha: f32) -> Color {
-    Color::laba(l, a, b, alpha)
+pub fn oklaba(l: f32, a: f32, b: f32, alpha: f32) -> Color {
+    Color::oklaba(l, a, b, alpha)
 }
 
 /// Create a new color, with the given hex string.
@@ -226,7 +226,7 @@ impl Color {
     }
 
     /// Convert a color from oklab to linear sRGB.
-    pub fn laba(l: f32, a: f32, b: f32, alpha: f32) -> Self {
+    pub fn oklaba(l: f32, a: f32, b: f32, alpha: f32) -> Self {
         let l_ = l + 0.396_337_78 * a + 0.215_803_76 * b;
         let m_ = l - 0.105_561_346 * a - 0.063_854_17 * b;
         let s_ = l - 0.089_484_18 * a - 1.291_485_5 * b;
@@ -244,12 +244,12 @@ impl Color {
     }
 
     /// Convert a color from oklab to linear sRGB.
-    pub fn lab(l: f32, a: f32, b: f32) -> Self {
-        Self::laba(l, a, b, 1.0)
+    pub fn oklab(l: f32, a: f32, b: f32) -> Self {
+        Self::oklaba(l, a, b, 1.0)
     }
 
     /// Convert a color from linear sRGB to oklab.
-    pub fn to_laba(self) -> (f32, f32, f32, f32) {
+    pub fn to_oklaba(self) -> (f32, f32, f32, f32) {
         let l = 0.412_165_1 * self.r + 0.536_275_2 * self.g + 0.051_457_5 * self.b;
         let m = 0.211_859_1 * self.r + 0.680_718_9 * self.g + 0.107_406_6 * self.b;
         let s = 0.088_309_3 * self.r + 0.281_847_4 * self.g + 0.630_261_7 * self.b;
@@ -267,8 +267,8 @@ impl Color {
     }
 
     /// Convert a color from linear sRGB to oklab.
-    pub fn to_lab(self) -> (f32, f32, f32) {
-        let (l, a, b, _) = self.to_laba();
+    pub fn to_oklab(self) -> (f32, f32, f32) {
+        let (l, a, b, _) = self.to_oklaba();
         (l, a, b)
     }
 

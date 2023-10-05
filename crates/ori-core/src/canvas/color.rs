@@ -325,6 +325,16 @@ impl Color {
     pub fn to_srgb(self) -> [f32; 4] {
         [self.r.powf(2.2), self.g.powf(2.2), self.b.powf(2.2), self.a]
     }
+
+    /// Convert the color to linear sRGB.
+    pub fn to_rgba8(self) -> [u8; 4] {
+        [
+            (self.r * 255.0) as u8,
+            (self.g * 255.0) as u8,
+            (self.b * 255.0) as u8,
+            (self.a * 255.0) as u8,
+        ]
+    }
 }
 
 impl From<Color> for [f32; 4] {

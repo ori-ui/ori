@@ -36,6 +36,30 @@ impl Contexts {
             .map(|(i, _)| i)
     }
 
+    /// Get the number of contexts.
+    pub fn len(&self) -> usize {
+        self.contexts.len()
+    }
+
+    /// Check if there are no contexts.
+    pub fn is_empty(&self) -> bool {
+        self.contexts.is_empty()
+    }
+
+    /// Register a context.
+    pub fn register<T: Any + Default>(&mut self) -> &mut T {
+        if !self.contains::<T>() {
+            self.insert(T::default());
+        }
+
+        self.get_mut::<T>().unwrap()
+    }
+
+    /// Check if the context is present.
+    pub fn contains<T: Any>(&self) -> bool {
+        self.index_of::<T>().is_some()
+    }
+
     /// Push a context.
     pub fn insert<T: Any>(&mut self, mut context: T) -> Option<T> {
         if let Some(index) = self.get_mut::<T>() {

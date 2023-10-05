@@ -111,8 +111,8 @@ pub mod alt {
 
     pub(super) fn builtin(theme: &mut Theme) {
         theme.set(PADDING, [pt(4.0), pt(2.0)]);
-        theme.map(BACKGROUND, |theme| theme.get(Palette::PRIMARY));
-        theme.set(BORDER_RADIUS, BorderRadius::all(pt(6.0)));
+        theme.map(BACKGROUND, |theme| theme.get(Palette::BACKGROUND_DARKER));
+        theme.set(BORDER_RADIUS, BorderRadius::all(pt(4.0)));
         theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
         theme.set(BORDER_COLOR, Color::TRANSPARENT);
     }

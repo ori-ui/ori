@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ori_core::{
+    canvas::Color,
     command::CommandProxy,
     delegate::Delegate,
     image::Image,
@@ -149,6 +150,12 @@ impl<T: 'static> App<T> {
     /// Set whether the window is transparent.
     pub fn transparent(mut self, transparent: bool) -> Self {
         self.window.transparent = transparent;
+        self
+    }
+
+    /// Set the background color of the window.
+    pub fn color(mut self, color: Color) -> Self {
+        self.window.color = Some(color);
         self
     }
 

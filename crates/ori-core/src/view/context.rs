@@ -32,7 +32,7 @@ impl Contexts {
         self.contexts
             .iter()
             .enumerate()
-            .find(|(_, context)| context.is::<T>())
+            .find(|(_, c)| c.as_ref().is::<T>())
             .map(|(i, _)| i)
     }
 
@@ -44,15 +44,6 @@ impl Contexts {
     /// Check if there are no contexts.
     pub fn is_empty(&self) -> bool {
         self.contexts.is_empty()
-    }
-
-    /// Register a context.
-    pub fn register<T: Any + Default>(&mut self) -> &mut T {
-        if !self.contains::<T>() {
-            self.insert(T::default());
-        }
-
-        self.get_mut::<T>().unwrap()
     }
 
     /// Check if the context is present.
@@ -90,6 +81,15 @@ impl Contexts {
     pub fn get_mut<T: Any>(&mut self) -> Option<&mut T> {
         let index = self.index_of::<T>()?;
         self.contexts[index].downcast_mut::<T>()
+    }
+
+    /// Get a context or insert a `default`.
+    pub fn get_or_default<T: Any + Default>(&mut self) -> &mut T {
+        if !self.contains::<T>() {
+            self.insert(T::default());
+        }
+
+        self.get_mut::<T>().unwrap()
     }
 }
 

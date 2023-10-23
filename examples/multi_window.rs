@@ -84,8 +84,8 @@ fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
 }
 
 fn main() {
-    App::new(app, Data::default())
+    Launcher::new(app, Data::default())
         .title("Multi Window (examples/multi_window.rs)")
         .delegate(delegate)
-        .run();
+        .launch();
 }

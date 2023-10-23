@@ -17,7 +17,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    App::new(app, Data::default())
+    Launcher::new(app, Data::default())
         .title("Transition (examples/transition.rs)")
-        .run();
+        .launch();
 }

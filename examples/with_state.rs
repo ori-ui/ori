@@ -60,7 +60,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    App::new(app, Data::default())
+    Launcher::new(app, Data::default())
         .title("With State (examples/with_state.rs)")
-        .run();
+        .launch();
 }

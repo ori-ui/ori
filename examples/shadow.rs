@@ -14,7 +14,7 @@ impl Data {
 }
 
 fn main() {
-    App::new(Data::ui, Data)
+    Launcher::new(Data::ui, Data)
         .title("Shadow (examples/shadow.rs)")
-        .run();
+        .launch();
 }

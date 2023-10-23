@@ -131,7 +131,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
             if cx.is_hot() && pointer.is_press() {
                 cx.set_active(true);
 
-                let active_changed = Event::new(ActiveChanged(true));
+                let active_changed = Event::new_non_propagating(ActiveChanged(true));
                 self.content.event(content, cx, data, &active_changed);
 
                 if let Some(on_press) = &mut self.on_press {
@@ -144,7 +144,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
             } else if cx.is_active() && pointer.is_release() {
                 cx.set_active(false);
 
-                let active_changed = Event::new(ActiveChanged(false));
+                let active_changed = Event::new_non_propagating(ActiveChanged(false));
                 self.content.event(content, cx, data, &active_changed);
 
                 if let Some(on_release) = &mut self.on_release {

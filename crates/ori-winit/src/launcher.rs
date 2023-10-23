@@ -15,8 +15,8 @@ use winit::event_loop::{EventLoop, EventLoopBuilder};
 
 use crate::{proxy::WinitWaker, Error};
 
-/// An application.
-pub struct App<T: 'static> {
+/// A launcher for an application.
+pub struct Launcher<T: 'static> {
     pub(crate) event_loop: EventLoop<()>,
     pub(crate) window: WindowDescriptor,
     pub(crate) builder: UiBuilder<T>,
@@ -24,7 +24,7 @@ pub struct App<T: 'static> {
     pub(crate) msaa: bool,
 }
 
-impl<T: 'static> App<T> {
+impl<T: 'static> Launcher<T> {
     fn build_event_loop() -> EventLoop<()> {
         let mut builder = EventLoopBuilder::new();
 
@@ -172,13 +172,13 @@ impl<T: 'static> App<T> {
     }
 
     /// Try to run the application.
-    pub fn try_run(self) -> Result<(), Error> {
-        crate::run::run(self)
+    pub fn try_launch(self) -> Result<(), Error> {
+        crate::launch::launch(self)
     }
 
     /// Run the application.
-    pub fn run(self) {
-        if let Err(err) = self.try_run() {
+    pub fn launch(self) {
+        if let Err(err) = self.try_launch() {
             panic!("Failed running the application: {}", err);
         }
     }

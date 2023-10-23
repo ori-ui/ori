@@ -29,7 +29,7 @@ pub mod prelude {
     //! Convenient imports for Ori.
 
     #[cfg(feature = "winit")]
-    pub use crate::winit::App;
+    pub use crate::winit::Launcher;
 
     pub use ori_core::{
         canvas::{

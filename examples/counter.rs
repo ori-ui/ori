@@ -45,7 +45,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 fn main() {
     // We create a new app with our `app` function and initial `Data` struct.
     // Then we set the title of the window and run the app.
-    App::new(app, Data::default())
+    Launcher::new(app, Data::default())
         .title("Counter (examples/counter.rs)")
-        .run();
+        .launch();
 }

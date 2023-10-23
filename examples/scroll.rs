@@ -36,7 +36,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    App::new(app, Data::default())
+    Launcher::new(app, Data::default())
         .title("Scroll (examples/scroll.rs)")
-        .run()
+        .launch()
 }

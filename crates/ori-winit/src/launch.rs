@@ -17,10 +17,10 @@ use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
     log::error_internal,
     window::WinitWindow,
-    App, Error,
+    Error, Launcher,
 };
 
-pub(crate) fn run<T: 'static>(app: App<T>) -> Result<(), Error> {
+pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
     /* initialize tracing if enabled */
     #[cfg(feature = "tracing")]
     if let Err(err) = crate::tracing::init_tracing() {
@@ -72,7 +72,7 @@ struct AppState<T: 'static> {
     builder: UiBuilder<T>,
     ui: Ui<T>,
     msaa: bool,
-    ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
+    window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
     #[cfg(feature = "wgpu")]
     renders: HashMap<ori_core::window::WindowId, crate::wgpu::WgpuRender>,
     #[cfg(feature = "wgpu")]
@@ -87,7 +87,7 @@ impl<T> AppState<T> {
             builder,
             ui,
             msaa,
-            ids: HashMap::new(),
+            window_ids: HashMap::new(),
             #[cfg(feature = "wgpu")]
             renders: HashMap::new(),
             #[cfg(feature = "wgpu")]
@@ -207,7 +207,7 @@ impl<T> AppState<T> {
             .with_visible(false)
             .build(target)?;
 
-        self.ids.insert(window.id(), desc.id);
+        self.window_ids.insert(window.id(), desc.id);
 
         #[cfg(feature = "wgpu")]
         self.create_wgpu_render(&window, desc.id)?;
@@ -228,7 +228,7 @@ impl<T> AppState<T> {
     }
 
     fn remove_window(&mut self, window_id: ori_core::window::WindowId) {
-        self.ids.retain(|_, &mut id| id != window_id);
+        self.window_ids.retain(|_, &mut id| id != window_id);
 
         self.ui.remove_window(window_id);
 
@@ -238,7 +238,7 @@ impl<T> AppState<T> {
 
     fn redraw(&mut self, target: &EventLoopWindowTarget<()>, window_id: winit::window::WindowId) {
         // if the window id is not in the map, we ignore the event
-        if let Some(&window_id) = self.ids.get(&window_id) {
+        if let Some(&window_id) = self.window_ids.get(&window_id) {
             // render the window
             let requests = self.ui.render(window_id);
             self.handle_requests(target, requests);
@@ -269,7 +269,7 @@ impl<T> AppState<T> {
         event: WindowEvent,
     ) -> UiRequests<T> {
         // if the window id is not in the map, we ignore the event
-        let Some(&id) = self.ids.get(&winit_id) else {
+        let Some(&id) = self.window_ids.get(&winit_id) else {
             return UiRequests::new();
         };
 
@@ -296,7 +296,7 @@ impl<T> AppState<T> {
                 );
             }
             WindowEvent::CursorLeft { device_id } => {
-                return (self.ui).pointer_left(id, PointerId::from_hash(&device_id));
+                return self.ui.pointer_left(id, PointerId::from_hash(&device_id));
             }
             WindowEvent::MouseInput {
                 device_id,

@@ -18,7 +18,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    App::new(app, Data {})
+    Launcher::new(app, Data {})
         .title("Thousand Buttons (examples/thousand_buttons.rs)")
-        .run()
+        .launch()
 }

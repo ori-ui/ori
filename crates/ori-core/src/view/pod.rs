@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
-    event::{ActiveChanged, Event, HotChanged, PointerEvent, SwitchFocus},
+    event::{Event, HotChanged, PointerEvent, SwitchFocus},
     layout::{Size, Space},
 };
 
@@ -127,7 +127,10 @@ impl<V> Pod<V> {
 
         if view_state.is_hot() != hot && pointer.is_move() {
             view_state.set_hot(hot);
-            Self::event_inner(view_state, cx, &Event::new(HotChanged(hot)), f);
+
+            let hot_changed = HotChanged(hot);
+            let event = Event::new_non_propagating(hot_changed);
+            Self::event_inner(view_state, cx, &event, f);
         }
 
         Self::event_inner(view_state, cx, event, f);
@@ -140,9 +143,13 @@ impl<V> Pod<V> {
         event: &Event,
         mut f: impl FnMut(&mut EventCx, &Event),
     ) {
-        // we don't want `HotChanged` events to propagate
-        if event.is::<HotChanged>() || event.is::<ActiveChanged>() {
+        if !event.should_propagate() {
             return;
+        }
+
+        if event.target() == Some(view_state.id()) {
+            event.set_should_propagate(false);
+            event.set_target(None);
         }
 
         if let Some(SwitchFocus::Next(focused)) | Some(SwitchFocus::Prev(focused)) = event.get() {

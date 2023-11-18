@@ -132,11 +132,6 @@ impl<'a> BaseCx<'a> {
         self.proxy.cmd_silent(Command::new(command));
     }
 
-    /// Emit a command to the given target.
-    pub fn cmd_targeted<T: Any + Send>(&mut self, command: T, target: ViewId) {
-        (self.proxy).cmd_silent(Command::new_targeted(command, target));
-    }
-
     /// Get a context.
     pub fn get_context<T: Any>(&self) -> Option<&T> {
         self.contexts.get::<T>()
@@ -455,11 +450,6 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// Emit a command.
     pub fn cmd<T: Any + Send>(&mut self, command: T) {
         self.base.cmd(command);
-    }
-
-    /// Emit a command to the given target.
-    pub fn cmd_targeted<T: Any + Send>(&mut self, command: T, target: ViewId) {
-        self.base.cmd_targeted(command, target);
     }
 
     /// Request an animation frame.

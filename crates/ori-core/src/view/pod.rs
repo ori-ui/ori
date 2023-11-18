@@ -140,11 +140,6 @@ impl<V> Pod<V> {
             return;
         }
 
-        if event.target() == Some(view_state.id()) {
-            event.set_should_propagate(false);
-            event.set_target(None);
-        }
-
         if let Some(SwitchFocus::Next(focused)) | Some(SwitchFocus::Prev(focused)) = event.get() {
             if view_state.is_focused() {
                 view_state.set_focused(false);

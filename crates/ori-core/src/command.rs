@@ -4,7 +4,7 @@ use std::{any::Any, fmt::Debug, sync::Arc};
 
 use crossbeam_channel::{Receiver, Sender};
 
-use crate::{log::warn_internal, view::ViewId};
+use crate::log::warn_internal;
 
 /// A trait for waking the event loop.
 ///
@@ -24,7 +24,6 @@ impl Debug for dyn EventLoopWaker {
 #[derive(Debug)]
 pub struct Command {
     pub(crate) command: Box<dyn Any + Send>,
-    pub(crate) target: Option<ViewId>,
     pub(crate) name: &'static str,
 }
 
@@ -33,16 +32,7 @@ impl Command {
     pub fn new<T: Any + Send>(command: T) -> Self {
         Self {
             command: Box::new(command),
-            target: None,
-            name: std::any::type_name::<T>(),
-        }
-    }
 
-    /// Create a new command with a target.
-    pub fn new_targeted<T: Any + Send>(command: T, target: ViewId) -> Self {
-        Self {
-            command: Box::new(command),
-            target: Some(target),
             name: std::any::type_name::<T>(),
         }
     }

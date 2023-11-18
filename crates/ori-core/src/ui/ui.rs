@@ -362,10 +362,10 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a keyboard character has been entered.
-    pub fn keyboard_char(&mut self, window_id: WindowId, c: char) -> UiRequests<T> {
+    pub fn keyboard_text(&mut self, window_id: WindowId, text: String) -> UiRequests<T> {
         let event = KeyboardEvent {
             modifiers: self.modifiers,
-            text: Some(String::from(c)),
+            text: Some(text),
             ..Default::default()
         };
 

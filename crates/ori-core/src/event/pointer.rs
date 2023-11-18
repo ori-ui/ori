@@ -57,6 +57,10 @@ pub enum PointerButton {
     Secondary,
     /// The tertiary button, usually the middle mouse button.
     Tertiary,
+    /// The back button.
+    Back,
+    /// The forward button.
+    Forward,
     /// Other buttons.
     Other(u16),
 }

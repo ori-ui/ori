@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use winit::error::OsError;
+use winit::error::{EventLoopError, OsError};
 
 /// An error that can occur when rendering.
 #[derive(Debug)]
@@ -51,6 +51,8 @@ pub enum Error {
     Render(RenderError),
     /// An OS error.
     OsError(OsError),
+    /// An error occurred with the event loop.
+    EventLoop(EventLoopError),
 }
 
 impl From<RenderError> for Error {
@@ -65,11 +67,18 @@ impl From<OsError> for Error {
     }
 }
 
+impl From<EventLoopError> for Error {
+    fn from(err: EventLoopError) -> Self {
+        Self::EventLoop(err)
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Render(err) => write!(f, "{}", err),
             Error::OsError(err) => write!(f, "{}", err),
+            Error::EventLoop(err) => write!(f, "{}", err),
         }
     }
 }

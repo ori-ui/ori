@@ -48,7 +48,8 @@ impl RawWindow for WinitWindow {
     }
 
     fn set_size(&mut self, width: u32, height: u32) {
-        self.window.set_inner_size(PhysicalSize::new(width, height));
+        (self.window).set_min_inner_size(Some(PhysicalSize::new(width, height)));
+        (self.window).set_max_inner_size(Some(PhysicalSize::new(width, height)));
     }
 
     fn resizable(&self) -> bool {

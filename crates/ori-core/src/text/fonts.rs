@@ -141,7 +141,7 @@ impl Fonts {
 
     /// Gets a font atlas from the font collection.
     pub fn get_atlas(&mut self, id: fontdb::ID) -> &mut FontAtlas {
-        self.font_atlases.entry(id).or_insert_with(FontAtlas::new)
+        self.font_atlases.entry(id).or_default()
     }
 
     fn text_layout_inner(&mut self, font: &Font, text: &TextSection<'_>) -> Option<Layout> {

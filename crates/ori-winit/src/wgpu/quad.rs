@@ -13,6 +13,8 @@ use wgpu::{
     VertexState,
 };
 
+use crate::WgpuContext;
+
 use super::{
     bytes_of, bytes_of_slice,
     texture::{CachedTexture, TextureCache},
@@ -273,22 +275,20 @@ impl QuadRender {
     }
 
     fn batch_image(
-        device: &Device,
-        queue: &Queue,
+        context: &WgpuContext,
         cache: &mut TextureCache,
         batch: &[(&Quad, Affine)],
     ) -> Arc<CachedTexture> {
         match batch[0].0.background.texture {
-            Some(ref image) => cache.get(device, queue, image),
-            None => cache.fallback(device, queue),
+            Some(ref image) => cache.get(context, image),
+            None => cache.fallback(context),
         }
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn prepare_batch(
         &mut self,
-        device: &Device,
-        queue: &Queue,
+        context: &WgpuContext,
         cache: &mut TextureCache,
         index: usize,
         quads: &[(&Quad, Affine)],
@@ -297,13 +297,13 @@ impl QuadRender {
     ) {
         assert!(!quads.is_empty());
 
-        self.write_uniforms(queue, resolution);
-        self.resize_batches(device, index + 1);
+        self.write_uniforms(&context.queue, resolution);
+        self.resize_batches(&context.device, index + 1);
 
         let batch = &mut self.batches[index];
-        batch.resize(device, &self.data_layout, quads.len());
+        batch.resize(&context.device, &self.data_layout, quads.len());
         batch.vertex_count = quads.len() * 6;
-        batch.image = Some(Self::batch_image(device, queue, cache, quads));
+        batch.image = Some(Self::batch_image(context, cache, quads));
         batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
 
         let mut datas = Vec::with_capacity(quads.len());
@@ -327,8 +327,11 @@ impl QuadRender {
         }
 
         unsafe {
-            queue.write_buffer(&batch.data_buffer, 0, bytes_of_slice(&datas));
-            queue.write_buffer(&batch.vertex_buffer, 0, bytes_of_slice(&vertices));
+            let datas = bytes_of_slice(&datas);
+            let vertices = bytes_of_slice(&vertices);
+
+            (context.queue).write_buffer(&batch.data_buffer, 0, datas);
+            (context.queue).write_buffer(&batch.vertex_buffer, 0, vertices);
         }
     }
 

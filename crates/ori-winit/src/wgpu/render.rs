@@ -1,17 +1,15 @@
-use std::sync::Arc;
-
 use ori_core::{
     canvas::{Color, Fragment, Mesh, Primitive, Quad, Scene},
     layout::{Affine, Rect, Size},
 };
 use wgpu::{
     CommandEncoder, CommandEncoderDescriptor, CompositeAlphaMode, Device, LoadOp, Operations,
-    PresentMode, Queue, RenderPass, RenderPassColorAttachment, RenderPassDescriptor, Surface,
+    PresentMode, RenderPass, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, Surface,
     SurfaceConfiguration, SurfaceError, TextureDimension, TextureFormat, TextureUsages,
     TextureView,
 };
 
-use crate::{log::warn_internal, RenderError};
+use crate::{log::warn_internal, RenderError, WgpuContext};
 
 use super::{MeshRender, QuadRender, TextureCache, WgpuRenderInstance};
 
@@ -23,8 +21,6 @@ enum Batch {
 
 #[derive(Debug)]
 pub struct WgpuRender {
-    device: Arc<Device>,
-    queue: Arc<Queue>,
     surface: Surface,
     config: SurfaceConfiguration,
     samples: u32,
@@ -42,8 +38,7 @@ impl WgpuRender {
         width: u32,
         height: u32,
     ) -> Result<Self, RenderError> {
-        let device = instance.device.clone();
-        let queue = instance.queue.clone();
+        let device = &instance.device;
 
         let config = surface.get_default_config(&instance.adapter, width, height);
         let mut config = config.ok_or(RenderError::SurfaceIncompatible)?;
@@ -63,13 +58,13 @@ impl WgpuRender {
 
         config.alpha_mode = CompositeAlphaMode::Auto;
         config.present_mode = PresentMode::AutoVsync;
-        surface.configure(&device, &config);
+        surface.configure(device, &config);
 
-        let cache = TextureCache::new(&device);
+        let cache = TextureCache::new(device);
 
         let msaa = if samples > 1 {
             Some(Self::create_msaa(
-                &device,
+                device,
                 config.format,
                 samples,
                 width,
@@ -79,12 +74,10 @@ impl WgpuRender {
             None
         };
 
-        let quad = QuadRender::new(&device, config.format, samples, cache.bind_group_layout());
-        let mesh = MeshRender::new(&device, config.format, samples, cache.bind_group_layout());
+        let quad = QuadRender::new(device, config.format, samples, cache.bind_group_layout());
+        let mesh = MeshRender::new(device, config.format, samples, cache.bind_group_layout());
 
         Ok(Self {
-            device,
-            queue,
             surface,
             config,
             samples,
@@ -128,7 +121,7 @@ impl WgpuRender {
         Size::new(self.config.width as f32, self.config.height as f32)
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
+    pub fn resize(&mut self, context: &WgpuContext, width: u32, height: u32) {
         if self.config.width == width && self.config.height == height {
             return;
         }
@@ -136,10 +129,10 @@ impl WgpuRender {
         self.config.width = width;
         self.config.height = height;
 
-        self.surface.configure(&self.device, &self.config);
+        self.surface.configure(&context.device, &self.config);
         if let Some(ref mut msaa) = self.msaa {
             *msaa = Self::create_msaa(
-                &self.device,
+                &context.device,
                 self.config.format,
                 self.samples,
                 width,
@@ -150,6 +143,7 @@ impl WgpuRender {
 
     fn push_quad_batch(
         &mut self,
+        context: &WgpuContext,
         batches: &mut Vec<Batch>,
         quad_clip: Option<Rect>,
         quad_batch: &mut Vec<(&Quad, Affine)>,
@@ -158,8 +152,7 @@ impl WgpuRender {
         let resolution = self.size();
 
         self.quad.prepare_batch(
-            &self.device,
-            &self.queue,
+            context,
             &mut self.image,
             *quad_batch_count,
             quad_batch,
@@ -176,6 +169,7 @@ impl WgpuRender {
 
     fn push_mesh_batch(
         &mut self,
+        context: &WgpuContext,
         batches: &mut Vec<Batch>,
         mesh_clip: Option<Rect>,
         mesh_batch: &mut Vec<(&Mesh, Affine)>,
@@ -183,8 +177,7 @@ impl WgpuRender {
     ) {
         let resolution = self.size();
         self.mesh.prepare_batch(
-            &self.device,
-            &self.queue,
+            context,
             &mut self.image,
             *mesh_batch_count,
             mesh_batch,
@@ -199,7 +192,8 @@ impl WgpuRender {
         *mesh_batch_count += 1;
     }
 
-    fn prepare_fragments(&mut self, fragments: &[Fragment]) -> Vec<Batch> {
+    // TODO: refactor this
+    fn prepare_fragments(&mut self, context: &WgpuContext, fragments: &[Fragment]) -> Vec<Batch> {
         let mut batches = Vec::new();
 
         let mut quad_image = None;
@@ -218,6 +212,7 @@ impl WgpuRender {
                 Primitive::Quad(ref quad) => {
                     if !mesh_batch.is_empty() {
                         self.push_mesh_batch(
+                            context,
                             &mut batches,
                             mesh_clip,
                             &mut mesh_batch,
@@ -229,6 +224,7 @@ impl WgpuRender {
                     let new_batch = quad_clip != Some(fragment.clip) || quad_image != image;
                     if new_batch && !quad_batch.is_empty() {
                         self.push_quad_batch(
+                            context,
                             &mut batches,
                             quad_clip,
                             &mut quad_batch,
@@ -243,6 +239,7 @@ impl WgpuRender {
                 Primitive::Mesh(ref mesh) => {
                     if !quad_batch.is_empty() {
                         self.push_quad_batch(
+                            context,
                             &mut batches,
                             quad_clip,
                             &mut quad_batch,
@@ -253,6 +250,7 @@ impl WgpuRender {
                     let new_batch = mesh_clip != Some(fragment.clip) || mesh_image != mesh.texture;
                     if new_batch && !mesh_batch.is_empty() {
                         self.push_mesh_batch(
+                            context,
                             &mut batches,
                             mesh_clip,
                             &mut mesh_batch,
@@ -269,6 +267,7 @@ impl WgpuRender {
 
         if !quad_batch.is_empty() {
             self.push_quad_batch(
+                context,
                 &mut batches,
                 quad_clip,
                 &mut quad_batch,
@@ -278,6 +277,7 @@ impl WgpuRender {
 
         if !mesh_batch.is_empty() {
             self.push_mesh_batch(
+                context,
                 &mut batches,
                 mesh_clip,
                 &mut mesh_batch,
@@ -320,10 +320,10 @@ impl WgpuRender {
                             b: clear_color.b as f64,
                             a: clear_color.a as f64,
                         }),
-                        store: true,
+                        store: StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                ..Default::default()
             }),
             None => encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("ori_render_pass"),
@@ -337,21 +337,27 @@ impl WgpuRender {
                             b: clear_color.b as f64,
                             a: clear_color.a as f64,
                         }),
-                        store: true,
+                        store: StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                ..Default::default()
             }),
         }
     }
 
-    pub fn render_scene(&mut self, scene: &mut Scene, clear_color: Color, width: u32, height: u32) {
-        self.resize(width, height);
+    pub fn render_scene(
+        &mut self,
+        context: &WgpuContext,
+        scene: &Scene,
+        clear_color: Color,
+        width: u32,
+        height: u32,
+    ) {
+        self.resize(context, width, height);
 
-        scene.sort();
-        let batches = self.prepare_fragments(scene.fragments());
+        let batches = self.prepare_fragments(context, scene.fragments());
 
-        let mut encoder = (self.device).create_command_encoder(&CommandEncoderDescriptor {
+        let mut encoder = (context.device).create_command_encoder(&CommandEncoderDescriptor {
             label: Some("ori_command_encoder"),
         });
 
@@ -370,7 +376,7 @@ impl WgpuRender {
         self.render_fragments(&mut pass, &batches);
         drop(pass);
 
-        self.queue.submit(Some(encoder.finish()));
+        context.queue.submit(Some(encoder.finish()));
 
         target.present();
     }

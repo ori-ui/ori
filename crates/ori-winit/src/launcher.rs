@@ -36,7 +36,7 @@ impl<T: 'static> Launcher<T> {
             builder.with_android_app(app);
         }
 
-        builder.build()
+        builder.build().unwrap()
     }
 
     /// Creates a new application.

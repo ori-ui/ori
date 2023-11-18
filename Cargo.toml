@@ -49,7 +49,7 @@ full = ["font-awesome", "image", "tracing"]
 winit = ["dep:ori-winit"]
 x11 = ["winit", "ori-winit/x11"]
 wayland = ["winit", "ori-winit/wayland"]
-wgpu = ["winit", "ori-core/wgpu", "ori-winit/wgpu"]
+wgpu = ["winit", "ori-winit/wgpu"]
 
 [profile.dev]
 debug = "limited"

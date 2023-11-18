@@ -8,8 +8,9 @@ use ori_core::{
 };
 use winit::{
     dpi::PhysicalSize,
-    event::{Event, KeyboardInput, MouseScrollDelta, TouchPhase, WindowEvent},
-    event_loop::{ControlFlow, EventLoopWindowTarget},
+    event::{Event, KeyEvent, MouseScrollDelta, TouchPhase, WindowEvent},
+    event_loop::EventLoopWindowTarget,
+    keyboard::{ModifiersState, PhysicalKey},
     window::WindowBuilder,
 };
 
@@ -29,9 +30,7 @@ pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
 
     let mut state = AppState::new(app.window, app.builder, app.ui, app.msaa);
 
-    app.event_loop.run(move |event, target, control_flow| {
-        *control_flow = ControlFlow::Wait;
-
+    app.event_loop.run(move |event, target| {
         match event {
             // we need to recreate the surfaces when the event loop is resumed
             //
@@ -39,14 +38,12 @@ pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
             Event::Resumed => {
                 state.resume(target);
             }
-            Event::RedrawEventsCleared => {
+            Event::AboutToWait => {
                 // after all events for a frame have been processed, we need to
                 // run the idle function
                 state.idle(target);
             }
-            Event::RedrawRequested(window_id) => {
-                state.redraw(target, window_id);
-            }
+
             // this event is sent by [`WinitWaker`] telling us that there are
             // commands that need to be processed
             Event::UserEvent(_) => {
@@ -61,9 +58,11 @@ pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
         }
 
         if state.ui.should_exit() && state.init {
-            *control_flow = ControlFlow::Exit;
+            target.exit();
         }
-    });
+    })?;
+
+    Ok(())
 }
 
 struct AppState<T: 'static> {
@@ -147,10 +146,9 @@ impl<T> AppState<T> {
         let context = WgpuContext {
             device: instance.device.clone(),
             queue: instance.queue.clone(),
+            textures: Default::default(),
         };
         self.ui.contexts.insert(context);
-
-        self.ui.contexts.insert(instance.device.clone());
 
         Ok((instance, surface))
     }
@@ -249,15 +247,19 @@ impl<T> AppState<T> {
         #[cfg(feature = "wgpu")]
         {
             if let Some(render) = self.renders.get_mut(&window) {
-                let window = self.ui.window_mut(window);
+                // sort the scene
+                self.ui.window_mut(window).scene_mut().sort();
+
+                let window = self.ui.window(window);
 
                 let clear_color = window.color();
 
                 let width = window.window().width();
                 let height = window.window().height();
-                let scene = window.scene_mut();
+                let scene = window.scene();
 
-                render.render_scene(scene, clear_color, width, height);
+                let context = self.ui.contexts.get::<crate::wgpu::WgpuContext>().unwrap();
+                render.render_scene(context, scene, clear_color, width, height);
             }
         }
     }
@@ -274,6 +276,9 @@ impl<T> AppState<T> {
         };
 
         match event {
+            WindowEvent::RedrawRequested => {
+                self.redraw(target, winit_id);
+            }
             WindowEvent::CloseRequested => {
                 let requests = self.ui.close_requested(id);
                 self.handle_requests(target, requests);
@@ -326,27 +331,35 @@ impl<T> AppState<T> {
             // by emulating pointer events
             WindowEvent::Touch(event) => return self.touch_event(id, event),
             WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        virtual_keycode: Some(keycode),
+                event:
+                    KeyEvent {
+                        physical_key,
+                        text,
                         state,
                         ..
                     },
                 ..
             } => {
-                if let Some(key) = convert_key(keycode) {
-                    return self.ui.keyboard_key(id, key, is_pressed(state));
+                let mut requests = UiRequests::new();
+
+                if let PhysicalKey::Code(code) = physical_key {
+                    if let Some(key) = convert_key(code) {
+                        requests.extend(self.ui.keyboard_key(id, key, is_pressed(state)));
+                    }
                 }
-            }
-            WindowEvent::ReceivedCharacter(c) => {
-                return self.ui.keyboard_char(id, c);
+
+                if let Some(text) = text {
+                    requests.extend(self.ui.keyboard_text(id, text.into()));
+                }
+
+                return requests;
             }
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.ui.modifiers_changed(Modifiers {
-                    shift: modifiers.shift(),
-                    ctrl: modifiers.ctrl(),
-                    alt: modifiers.alt(),
-                    meta: modifiers.logo(),
+                    shift: modifiers.state().contains(ModifiersState::SHIFT),
+                    ctrl: modifiers.state().contains(ModifiersState::CONTROL),
+                    alt: modifiers.state().contains(ModifiersState::ALT),
+                    meta: modifiers.state().contains(ModifiersState::SUPER),
                 });
             }
             _ => {}

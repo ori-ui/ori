@@ -5,15 +5,17 @@ mod render;
 mod texture;
 
 pub use instance::*;
+
 pub use render::*;
 
 use mesh::*;
 use quad::*;
 use texture::*;
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
-use wgpu::{Device, Queue};
+use ori_core::image::TextureId;
+use wgpu::{Device, Queue, TextureView};
 
 unsafe fn bytes_of<T>(data: &T) -> &[u8] {
     std::slice::from_raw_parts(data as *const _ as *const u8, std::mem::size_of::<T>())
@@ -30,4 +32,6 @@ pub struct WgpuContext {
     pub device: Arc<Device>,
     /// The [`wgpu::Queue`] used for rendering.
     pub queue: Arc<Queue>,
+    /// The [`wgpu::TextureView`]s used for rendering.
+    pub textures: HashMap<TextureId, Arc<TextureView>>,
 }

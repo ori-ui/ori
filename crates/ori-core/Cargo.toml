@@ -37,12 +37,7 @@ version = "0.1"
 default-features = false
 optional = true
 
-[dependencies.wgpu]
-version = "0.17"
-optional = true
-
 [features]
 default = []
 image = ["dep:image"]
 tracing = ["dep:tracing"]
-wgpu = ["dep:wgpu"]

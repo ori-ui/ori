@@ -1,13 +1,15 @@
-use std::{collections::HashMap, ops::Deref, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
-use ori_core::image::{Image, ImageId, Texture, WeakImage};
+use ori_core::image::{Image, ImageId, Texture, TextureId, WeakImage};
 use wgpu::{
     util::DeviceExt, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Device,
-    Extent3d, FilterMode, Queue, Sampler, SamplerBindingType, SamplerDescriptor, ShaderStages,
+    Extent3d, FilterMode, Sampler, SamplerBindingType, SamplerDescriptor, ShaderStages,
     TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
     TextureView, TextureViewDimension,
 };
+
+use crate::WgpuContext;
 
 #[derive(Debug)]
 pub struct CachedTexture {
@@ -20,7 +22,7 @@ pub struct CachedTexture {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum TextureCacheKey {
     Image(ImageId),
-    Texture(usize),
+    Texture(TextureId),
 }
 
 #[derive(Debug)]
@@ -72,12 +74,10 @@ impl TextureCache {
         });
     }
 
-    pub fn get(&mut self, device: &Device, queue: &Queue, texture: &Texture) -> Arc<CachedTexture> {
+    pub fn get(&mut self, context: &WgpuContext, texture: &Texture) -> Arc<CachedTexture> {
         let id = match texture {
             Texture::Image(image) => TextureCacheKey::Image(image.id()),
-            Texture::Wgpu(texture) => {
-                TextureCacheKey::Texture(texture.deref() as *const _ as usize)
-            }
+            Texture::Backend(texture) => TextureCacheKey::Texture(*texture),
         };
 
         if let Some(image) = self.images.get(&id) {
@@ -87,18 +87,18 @@ impl TextureCache {
         let filter = match texture {
             Texture::Image(image) if image.filter() => FilterMode::Linear,
             Texture::Image(_) => FilterMode::Nearest,
-            Texture::Wgpu(_) => FilterMode::Linear,
+            Texture::Backend(_) => FilterMode::Linear,
         };
 
         let weak = match texture {
             Texture::Image(image) => Some(image.downgrade()),
-            Texture::Wgpu(_) => None,
+            Texture::Backend(_) => None,
         };
 
         let view = match texture {
             Texture::Image(image) => {
-                let texture = device.create_texture_with_data(
-                    queue,
+                let texture = context.device.create_texture_with_data(
+                    &context.queue,
                     &TextureDescriptor {
                         label: Some("ori_image"),
                         size: Extent3d {
@@ -118,10 +118,14 @@ impl TextureCache {
 
                 Arc::new(texture.create_view(&Default::default()))
             }
-            Texture::Wgpu(texture) => texture.as_arc().clone(),
+            Texture::Backend(texture) => context
+                .textures
+                .get(texture)
+                .expect("texture not found")
+                .clone(),
         };
 
-        let sampler = device.create_sampler(&SamplerDescriptor {
+        let sampler = context.device.create_sampler(&SamplerDescriptor {
             label: Some("ori_image_sampler"),
             address_mode_u: AddressMode::ClampToEdge,
             address_mode_v: AddressMode::ClampToEdge,
@@ -131,7 +135,7 @@ impl TextureCache {
             ..Default::default()
         });
 
-        let bind_group = device.create_bind_group(&BindGroupDescriptor {
+        let bind_group = context.device.create_bind_group(&BindGroupDescriptor {
             label: Some("ori_image_bind_group"),
             layout: &self.bind_group_layout,
             entries: &[
@@ -156,8 +160,8 @@ impl TextureCache {
         self.images.entry(id).or_insert(image).clone()
     }
 
-    pub fn fallback(&mut self, device: &Device, queue: &Queue) -> Arc<CachedTexture> {
+    pub fn fallback(&mut self, context: &WgpuContext) -> Arc<CachedTexture> {
         let texture = Texture::Image(self.fallback_image.clone());
-        self.get(device, queue, &texture)
+        self.get(context, &texture)
     }
 }

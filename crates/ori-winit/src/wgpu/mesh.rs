@@ -13,6 +13,8 @@ use wgpu::{
     VertexBufferLayout, VertexState, VertexStepMode,
 };
 
+use crate::WgpuContext;
+
 use super::{bytes_of, bytes_of_slice, CachedTexture, TextureCache};
 
 #[repr(C)]
@@ -209,14 +211,13 @@ impl MeshRender {
     }
 
     fn batch_image(
-        device: &Device,
-        queue: &Queue,
+        context: &WgpuContext,
         cache: &mut TextureCache,
         batch: &[(&Mesh, Affine)],
     ) -> Arc<CachedTexture> {
         match batch[0].0.texture {
-            Some(ref image) => cache.get(device, queue, image),
-            None => cache.fallback(device, queue),
+            Some(ref image) => cache.get(context, image),
+            None => cache.fallback(context),
         }
     }
 
@@ -246,8 +247,7 @@ impl MeshRender {
     #[allow(clippy::too_many_arguments)]
     pub fn prepare_batch(
         &mut self,
-        device: &Device,
-        queue: &Queue,
+        context: &WgpuContext,
         cache: &mut TextureCache,
         index: usize,
         meshes: &[(&Mesh, Affine)],
@@ -256,17 +256,17 @@ impl MeshRender {
     ) {
         assert!(!meshes.is_empty());
 
-        self.write_uniforms(queue, resolution);
-        self.resize_batches(device, index + 1);
+        self.write_uniforms(&context.queue, resolution);
+        self.resize_batches(&context.device, index + 1);
 
         let index_count = Self::batch_index_count(meshes);
         let vertex_count = Self::batch_vertex_count(meshes);
 
         let batch = &mut self.batches[index];
-        batch.resize_index_buffer(device, index_count);
-        batch.resize_vertex_buffer(device, vertex_count);
+        batch.resize_index_buffer(&context.device, index_count);
+        batch.resize_vertex_buffer(&context.device, vertex_count);
         batch.index_count = index_count;
-        batch.image = Some(Self::batch_image(device, queue, cache, meshes));
+        batch.image = Some(Self::batch_image(context, cache, meshes));
         batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
 
         let mut vertices = Vec::with_capacity(vertex_count);
@@ -277,8 +277,11 @@ impl MeshRender {
         }
 
         unsafe {
-            queue.write_buffer(&batch.vertex_buffer, 0, bytes_of_slice(&vertices));
-            queue.write_buffer(&batch.index_buffer, 0, bytes_of_slice(&indices));
+            let vertices = bytes_of_slice(&vertices);
+            let indices = bytes_of_slice(&indices);
+
+            (context.queue).write_buffer(&batch.vertex_buffer, 0, vertices);
+            (context.queue).write_buffer(&batch.index_buffer, 0, indices);
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::image::{Image, Texture};
+use crate::image::{Image, Texture, TextureId};
 
 use super::Color;
 
@@ -43,9 +43,8 @@ impl From<Image> for Background {
     }
 }
 
-#[cfg(feature = "wgpu")]
-impl From<crate::image::WgpuTexture> for Background {
-    fn from(texture: crate::image::WgpuTexture) -> Self {
+impl From<TextureId> for Background {
+    fn from(texture: TextureId) -> Self {
         Self {
             texture: Some(texture.into()),
             color: Color::WHITE,

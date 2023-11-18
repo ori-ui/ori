@@ -1,3 +1,5 @@
+use ori_macro::Rebuild;
+
 use crate::{
     canvas::Canvas,
     event::{Event, PointerEvent},
@@ -11,7 +13,11 @@ pub fn dropdown<H, V>(header: H, content: V) -> Dropdown<H, V> {
 }
 
 /// A dropdown view.
+#[derive(Rebuild)]
 pub struct Dropdown<H, V> {
+    /// Whether the dropdown is toggled.
+    #[rebuild(layout)]
+    pub toggle: bool,
     /// The header of the dropdown.
     pub header: H,
     /// The content of the dropdown.
@@ -22,9 +28,16 @@ impl<H, V> Dropdown<H, V> {
     /// Create a new dropdown.
     pub fn new(header: H, content: V) -> Self {
         Self {
+            toggle: false,
             header,
             content: Pod::new(content),
         }
+    }
+
+    /// Set whether the dropdown is toggled.
+    pub fn toggle(mut self, toggle: bool) -> Self {
+        self.toggle = toggle;
+        self
     }
 }
 
@@ -54,14 +67,31 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
         event: &Event,
     ) {
         self.header.event(header, cx, data, event);
-        self.content.event(content, cx, data, event);
+
+        if cx.is_focused() {
+            self.content.event(content, cx, data, event);
+        }
 
         if event.is_handled() {
             return;
         }
 
+        if !self.toggle && !cx.is_focused() && cx.is_hot() {
+            cx.set_focused(true);
+            cx.request_draw();
+        }
+
         if let Some(pointer) = event.get::<PointerEvent>() {
-            if pointer.is_press() && (cx.is_hot() || cx.is_focused()) && !content.has_hot() {
+            if !self.toggle && cx.is_focused() && !cx.has_hot() {
+                cx.set_focused(false);
+                cx.request_draw();
+            }
+
+            if self.toggle
+                && pointer.is_press()
+                && (cx.is_hot() || cx.is_focused())
+                && !content.has_hot()
+            {
                 cx.set_focused(!cx.is_focused());
                 cx.request_draw();
             }

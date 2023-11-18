@@ -9,7 +9,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
         .border_color(style(Palette::SECONDARY_DARKER))
         .border_radius(pt(6.0));
 
-    let content = dropdown(header, content);
+    let content = dropdown(header, content).toggle(true);
 
     center(content)
 }

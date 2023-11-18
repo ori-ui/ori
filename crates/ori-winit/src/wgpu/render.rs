@@ -348,10 +348,8 @@ impl WgpuRender {
     pub fn render_scene(&mut self, scene: &mut Scene, clear_color: Color, width: u32, height: u32) {
         self.resize(width, height);
 
-        let fragments = scene.fragments_mut();
-        fragments.sort_by(|a, b| a.depth.partial_cmp(&b.depth).unwrap());
-
-        let batches = self.prepare_fragments(fragments);
+        scene.sort();
+        let batches = self.prepare_fragments(scene.fragments());
 
         let mut encoder = (self.device).create_command_encoder(&CommandEncoderDescriptor {
             label: Some("ori_command_encoder"),

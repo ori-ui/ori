@@ -11,6 +11,26 @@ pub fn pad<V>(padding: impl Into<Padding>, content: V) -> Pad<V> {
     Pad::new(padding, content)
 }
 
+/// Create a new [`Pad`] view adding padding to the top.
+pub fn pad_top<V>(padding: f32, content: V) -> Pad<V> {
+    Pad::new([padding, 0.0, 0.0, 0.0], content)
+}
+
+/// Create a new [`Pad`] view adding padding to the right.
+pub fn pad_right<V>(padding: f32, content: V) -> Pad<V> {
+    Pad::new([0.0, padding, 0.0, 0.0], content)
+}
+
+/// Create a new [`Pad`] view adding padding to the bottom.
+pub fn pad_bottom<V>(padding: f32, content: V) -> Pad<V> {
+    Pad::new([0.0, 0.0, padding, 0.0], content)
+}
+
+/// Create a new [`Pad`] view adding padding to the left.
+pub fn pad_left<V>(padding: f32, content: V) -> Pad<V> {
+    Pad::new([0.0, 0.0, 0.0, padding], content)
+}
+
 /// A view that adds padding to its content.
 #[derive(Rebuild)]
 pub struct Pad<V> {

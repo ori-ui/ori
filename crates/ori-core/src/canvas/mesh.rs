@@ -99,19 +99,21 @@ impl Mesh {
     pub fn intersects_point(&self, point: Point) -> bool {
         // https://stackoverflow.com/a/2049593
         fn triangle_contains_point(a: Point, b: Point, c: Point, point: Point) -> bool {
-            let ab = b - a;
-            let bc = c - b;
-            let ca = a - c;
+            let v0 = c - a;
+            let v1 = b - a;
+            let v2 = point - a;
 
-            let ap = point - a;
-            let bp = point - b;
-            let cp = point - c;
+            let dot00 = v0.dot(v0);
+            let dot01 = v0.dot(v1);
+            let dot02 = v0.dot(v2);
+            let dot11 = v1.dot(v1);
+            let dot12 = v1.dot(v2);
 
-            let abp = ab.cross(ap);
-            let bcp = bc.cross(bp);
-            let cap = ca.cross(cp);
+            let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+            let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+            let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
 
-            abp >= 0.0 && bcp >= 0.0 && cap >= 0.0 || abp <= 0.0 && bcp <= 0.0 && cap <= 0.0
+            (u >= 0.0) && (v >= 0.0) && (u + v < 1.0)
         }
 
         for triangle in self.indices.chunks_exact(3) {

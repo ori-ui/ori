@@ -162,10 +162,9 @@ impl<T, V: View<T>> View<T> for Container<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        canvas.view(cx.id());
-
         canvas.draw(self.shadow.mesh(cx.rect(), self.border_radius));
 
+        canvas.view(cx.id());
         canvas.draw_quad(
             cx.rect(),
             self.background.clone(),

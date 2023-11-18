@@ -1,5 +1,5 @@
 use std::{
-    fmt::Display,
+    fmt::{Debug, Display},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -21,7 +21,7 @@ bitflags::bitflags! {
 }
 
 /// An opaque unique identifier for a view.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViewId {
     id: usize,
 }
@@ -39,6 +39,12 @@ impl ViewId {
 
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
         Self { id }
+    }
+}
+
+impl Debug for ViewId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ViewId(0x{:x})", self.id)
     }
 }
 

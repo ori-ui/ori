@@ -117,10 +117,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if event.is_handled() {
-            return;
-        }
-
         if let Some(pointer) = event.get::<PointerEvent>() {
             if pointer.is_press() {
                 state.click_start = pointer.position;
@@ -131,8 +127,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                     on_press(cx, data);
                     cx.request_rebuild();
                 }
-
-                event.handle();
 
                 cx.set_active(true);
                 let event = Event::new_non_propagating(ActiveChanged(true));
@@ -145,8 +139,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                     cx.request_rebuild();
                 }
 
-                event.handle();
-
                 cx.set_active(false);
                 let event = Event::new_non_propagating(ActiveChanged(false));
                 self.content.event(content, cx, data, &event);
@@ -157,8 +149,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                         on_click(cx, data);
                         cx.request_rebuild();
                     }
-
-                    event.handle();
                 }
             }
         }

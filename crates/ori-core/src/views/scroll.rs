@@ -141,17 +141,13 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             let scrollbar_rect = self.scrollbar_rect(cx.rect());
             state.scrollbar_hot = scrollbar_rect.contains(local);
 
-            if cx.is_active() || cx.has_hot() || state.scrollbar_hot {
-                // handle pointer events when scrollbar is hovered
-                if state.scrollbar_hot && pointer.is_move() {
-                    event.handle();
-                }
+            cx.request_animation_frame();
 
+            if cx.is_active() || cx.has_hot() || state.scrollbar_hot {
                 // handle pointer events when scrollbar is pressed
                 if state.scrollbar_hot && pointer.is_press() {
                     cx.set_active(true);
                     cx.request_draw();
-                    event.handle();
                 } else if cx.is_active() && pointer.is_release() {
                     cx.set_active(false);
                     cx.request_draw();
@@ -170,7 +166,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                     content.translate(self.axis.pack(-state.scroll, 0.0));
 
                     cx.request_draw();
-                    event.handle();
                 }
             }
         }

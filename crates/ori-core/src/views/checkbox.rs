@@ -1,6 +1,6 @@
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Curve},
-    event::{AnimationFrame, Event, HotChanged, PointerEvent},
+    event::{AnimationFrame, Event, HotChanged},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     theme::{checkbox, style},
@@ -133,12 +133,6 @@ impl<T> View<T> for Checkbox {
             }
 
             cx.request_draw();
-        }
-
-        if let Some(pointer) = event.get::<PointerEvent>() {
-            if cx.is_hot() && pointer.is_move() {
-                event.handle();
-            }
         }
     }
 

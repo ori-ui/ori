@@ -72,10 +72,6 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
             self.content.event(content, cx, data, event);
         }
 
-        if event.is_handled() {
-            return;
-        }
-
         if !self.toggle && !cx.is_focused() && cx.is_hot() {
             cx.set_focused(true);
             cx.request_draw();

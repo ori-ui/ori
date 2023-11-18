@@ -303,7 +303,7 @@ impl<T> TextInput<T> {
         cx: &mut EventCx,
         data: &mut T,
         event: &PointerEvent,
-    ) -> bool {
+    ) {
         let local = cx.local(event.position);
 
         if cx.is_hot() {
@@ -316,16 +316,11 @@ impl<T> TextInput<T> {
             state.cursor_index = self.hit_text(state, data, local);
             cx.set_focused(true);
             cx.request_draw();
-
-            return true;
         }
 
         if event.is_press() && !cx.is_hot() {
             cx.set_focused(false);
-            return false;
         }
-
-        false
     }
 
     fn prev_char(&mut self, state: &mut TextInputState, data: &mut T) -> Option<char> {
@@ -485,24 +480,20 @@ impl<T> TextInput<T> {
         cx: &mut EventCx,
         data: &mut T,
         event: &KeyboardEvent,
-    ) -> bool {
+    ) {
         if !cx.is_focused() {
-            return false;
+            return;
         }
 
         if let Some(ref input) = event.text {
             self.input_text(state, cx, data, input);
-            return true;
         }
 
         if let Some(key) = event.code {
             if event.is_press() {
                 self.input_key(state, cx, data, event.modifiers, key);
-                return true;
             }
         }
-
-        false
     }
 
     fn find_glyph(&self, state: &TextInputState) -> Option<Glyph> {
@@ -577,15 +568,11 @@ impl<T> View<T> for TextInput<T> {
         }
 
         if let Some(pointer_event) = event.get::<PointerEvent>() {
-            if self.handle_pointer_event(state, cx, data, pointer_event) {
-                event.handle();
-            }
+            self.handle_pointer_event(state, cx, data, pointer_event);
         }
 
         if let Some(keyboard_event) = event.get::<KeyboardEvent>() {
-            if self.handle_keyboard_event(state, cx, data, keyboard_event) {
-                event.handle();
-            }
+            self.handle_keyboard_event(state, cx, data, keyboard_event);
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {

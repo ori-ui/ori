@@ -442,6 +442,9 @@ impl<T> Ui<T> {
 
     /// Handle an event for a single window.
     pub fn event(&mut self, window_id: WindowId, event: &Event) -> UiRequests<T> {
+        #[cfg(feature = "tracing")]
+        tracing::trace!("event: {} -> {}", event.name(), window_id);
+
         self.event_delegate(event);
 
         base_cx!(self, needs_rebuild, base);
@@ -461,6 +464,9 @@ impl<T> Ui<T> {
 
     /// Handle an event for all windows.
     pub fn event_all(&mut self, event: &Event) -> UiRequests<T> {
+        #[cfg(feature = "tracing")]
+        tracing::trace!("event: {}", event.name());
+
         self.event_delegate(event);
 
         base_cx!(self, needs_rebuild, base);

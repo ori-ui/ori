@@ -165,9 +165,9 @@ impl<T> View<T> for Checkbox {
 
         if self.checked {
             let mut curve = Curve::new();
-            curve.add_point(Point::new(0.2, 0.5) * cx.size());
-            curve.add_point(Point::new(0.4, 0.7) * cx.size());
-            curve.add_point(Point::new(0.8, 0.3) * cx.size());
+            curve.push(Point::new(0.2, 0.5) * cx.size());
+            curve.push(Point::new(0.4, 0.7) * cx.size());
+            curve.push(Point::new(0.8, 0.3) * cx.size());
 
             canvas.draw(curve.stroke(self.stroke, self.color));
         }

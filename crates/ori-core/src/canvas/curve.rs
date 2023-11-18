@@ -50,12 +50,12 @@ impl Curve {
             let x = center.x + radius * angle.cos();
             let y = center.y + radius * angle.sin();
 
-            curve.add_point(Point::new(x, y));
+            curve.push(Point::new(x, y));
 
             angle += step;
         }
 
-        curve.add_point(Point::new(
+        curve.push(Point::new(
             center.x + radius * end_angle.cos(),
             center.y + radius * end_angle.sin(),
         ));
@@ -75,7 +75,7 @@ impl Curve {
         let mut t = start;
         while t < end {
             let point = f(t);
-            curve.add_point(point);
+            curve.push(point);
 
             let epsilon = 0.0001;
             let half = epsilon / 2.0;
@@ -84,7 +84,7 @@ impl Curve {
             t += Self::RESOLUTION / gradient.length();
         }
 
-        curve.add_point(f(end));
+        curve.push(f(end));
 
         curve
     }
@@ -100,12 +100,12 @@ impl Curve {
     }
 
     /// Add a point to the curve.
-    pub fn add_point(&mut self, point: Point) {
+    pub fn push(&mut self, point: Point) {
         self.points.push(point);
     }
 
     /// Remove a point from the curve at `index`.
-    pub fn remove_point(&mut self, index: usize) {
+    pub fn remove(&mut self, index: usize) {
         self.points.remove(index);
     }
 

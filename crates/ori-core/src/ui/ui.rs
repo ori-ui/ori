@@ -273,7 +273,7 @@ impl<T> Ui<T> {
         let mut requests = self.event(window_id, &Event::new(event));
 
         let scene = self.window_mut(window_id).scene_mut();
-        let view = scene.hit_test(position);
+        let view = scene.view_at(position);
 
         #[cfg(feature = "tracing")]
         tracing::trace!("pointer_moved: {} -> {:?}", position, view);

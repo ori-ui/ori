@@ -51,7 +51,7 @@ impl Scene {
     }
 
     /// Get the fragment that intersect with the given point.
-    pub fn hit_test(&self, point: Point) -> Option<ViewId> {
+    pub fn view_at(&self, point: Point) -> Option<ViewId> {
         for fragment in self.fragments.iter().rev() {
             // discard fragments without a view
             let view = match fragment.view {

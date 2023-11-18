@@ -92,4 +92,38 @@ impl Mesh {
         let len = self.indices.len() * mem::size_of::<u32>();
         unsafe { slice::from_raw_parts(data, len) }
     }
+
+    /// Hit test the mesh.
+    ///
+    /// Returns true if any of the triangles in the mesh contains the given point.
+    pub fn intersects_point(&self, point: Point) -> bool {
+        // https://stackoverflow.com/a/2049593
+        fn triangle_contains_point(a: Point, b: Point, c: Point, point: Point) -> bool {
+            let ab = b - a;
+            let bc = c - b;
+            let ca = a - c;
+
+            let ap = point - a;
+            let bp = point - b;
+            let cp = point - c;
+
+            let abp = ab.cross(ap);
+            let bcp = bc.cross(bp);
+            let cap = ca.cross(cp);
+
+            abp >= 0.0 && bcp >= 0.0 && cap >= 0.0 || abp <= 0.0 && bcp <= 0.0 && cap <= 0.0
+        }
+
+        for triangle in self.indices.chunks_exact(3) {
+            let a = self.vertices[triangle[0] as usize].position;
+            let b = self.vertices[triangle[1] as usize].position;
+            let c = self.vertices[triangle[2] as usize].position;
+
+            if triangle_contains_point(a, b, c, point) {
+                return true;
+            }
+        }
+
+        false
+    }
 }

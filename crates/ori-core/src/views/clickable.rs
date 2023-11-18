@@ -122,43 +122,43 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         }
 
         if let Some(pointer) = event.get::<PointerEvent>() {
-            let local = cx.local(pointer.position);
-
-            if cx.is_hot() && pointer.is_move() {
-                event.handle();
+            if pointer.is_press() {
+                state.click_start = pointer.position;
             }
 
-            if cx.is_hot() && pointer.is_press() {
-                cx.set_active(true);
-
-                let active_changed = Event::new_non_propagating(ActiveChanged(true));
-                self.content.event(content, cx, data, &active_changed);
-
-                if let Some(on_press) = &mut self.on_press {
+            if pointer.is_press() && cx.is_hot() {
+                if let Some(ref mut on_press) = self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
                 }
 
-                state.click_start = local;
                 event.handle();
-            } else if cx.is_active() && pointer.is_release() {
-                cx.set_active(false);
 
-                let active_changed = Event::new_non_propagating(ActiveChanged(false));
-                self.content.event(content, cx, data, &active_changed);
+                cx.set_active(true);
+                let event = Event::new_non_propagating(ActiveChanged(true));
+                self.content.event(content, cx, data, &event);
+            }
 
-                if let Some(on_release) = &mut self.on_release {
+            if pointer.is_release() && cx.is_active() {
+                if let Some(ref mut on_release) = self.on_release {
                     on_release(cx, data);
                     cx.request_rebuild();
                 }
 
-                if local.distance(state.click_start) > Self::MAX_CLICK_DISTANCE {
-                    return;
-                }
+                event.handle();
 
-                if let Some(on_click) = &mut self.on_click {
-                    on_click(cx, data);
-                    cx.request_rebuild();
+                cx.set_active(false);
+                let event = Event::new_non_propagating(ActiveChanged(false));
+                self.content.event(content, cx, data, &event);
+
+                let click_distance = (pointer.position - state.click_start).length();
+                if click_distance <= Self::MAX_CLICK_DISTANCE {
+                    if let Some(ref mut on_click) = self.on_click {
+                        on_click(cx, data);
+                        cx.request_rebuild();
+                    }
+
+                    event.handle();
                 }
             }
         }
@@ -181,6 +181,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
+        canvas.view(cx.id());
         self.content.draw(content, cx, data, canvas);
     }
 }

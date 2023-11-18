@@ -646,6 +646,10 @@ impl<T> View<T> for TextInput<T> {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
+        // make sure the view is enabled for hit testing
+        canvas.view(cx.id());
+        canvas.trigger(cx.rect());
+
         let Some(ref glyphs) = state.glyphs else {
             return;
         };

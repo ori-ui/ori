@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
-    event::{Event, HotChanged, PointerEvent, SwitchFocus},
+    event::{Event, HotChanged, PointerEvent, SwitchFocus, ViewHovered},
     layout::{Size, Space},
 };
 
@@ -114,26 +114,19 @@ impl<V> Pod<V> {
         cx.view_state.propagate(view_state);
     }
 
-    fn pointer_event(
+    fn hot_changed(
         view_state: &mut ViewState,
         cx: &mut EventCx,
-        event: &Event,
-        pointer: &PointerEvent,
+        hot: bool,
         f: &mut impl FnMut(&mut EventCx, &Event),
     ) {
-        let transform = cx.transform * view_state.transform;
-        let local = transform.inverse() * pointer.position;
-        let hot = view_state.rect().contains(local) && !pointer.left && !event.is_handled();
-
-        if view_state.is_hot() != hot && pointer.is_move() {
+        if view_state.is_hot() != hot {
             view_state.set_hot(hot);
 
             let hot_changed = HotChanged(hot);
             let event = Event::new_non_propagating(hot_changed);
             Self::event_inner(view_state, cx, &event, f);
         }
-
-        Self::event_inner(view_state, cx, event, f);
     }
 
     /// Handle an event.
@@ -159,12 +152,18 @@ impl<V> Pod<V> {
             }
         }
 
+        Self::event_inner(view_state, cx, event, &mut f);
+
         if let Some(pointer) = event.get::<PointerEvent>() {
-            Self::pointer_event(view_state, cx, event, pointer, &mut f);
-            return;
+            if pointer.left {
+                Self::hot_changed(view_state, cx, false, &mut f);
+            }
         }
 
-        Self::event_inner(view_state, cx, event, &mut f);
+        if let Some(hovered) = event.get::<ViewHovered>() {
+            let hot = Some(view_state.id()) == hovered.view;
+            Self::hot_changed(view_state, cx, hot, &mut f);
+        }
     }
 
     /// Layout a pod view.
@@ -199,6 +198,7 @@ impl<V> Pod<V> {
         // create the canvas layer
         let mut canvas = canvas.layer();
         canvas.transform *= view_state.transform;
+        canvas.view = None;
 
         // create the draw context
         let mut new_cx = cx.layer();

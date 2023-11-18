@@ -535,6 +535,11 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
         updated
     }
 
+    /// Get whether a child view is hot.
+    pub fn has_hot(&self) -> bool {
+        self.view_state.has_hot()
+    }
+
     /// Get whether a child view is active.
     pub fn has_active(&self) -> bool {
         self.view_state.has_active()

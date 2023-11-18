@@ -10,7 +10,7 @@ use crate::{
     delegate::{Delegate, DelegateCx},
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyboardEvent, Modifiers, OpenWindow,
-        PointerButton, PointerEvent, PointerId, RequestFocus, SwitchFocus,
+        PointerButton, PointerEvent, PointerId, RequestFocus, SwitchFocus, ViewHovered,
     },
     layout::{Point, Vector},
     text::Fonts,
@@ -253,37 +253,46 @@ impl<T> Ui<T> {
     pub fn pointer_moved(
         &mut self,
         window_id: WindowId,
-        id: PointerId,
+        pointer: PointerId,
         position: Point,
     ) -> UiRequests<T> {
         let window_ui = self.window_mut(window_id).window_mut();
 
-        let prev = window_ui.pointer(id).map_or(Point::ZERO, |p| p.position);
+        let prev = (window_ui.pointer(pointer)).map_or(Point::ZERO, |p| p.position);
         let delta = position - prev;
 
-        window_ui.pointer_moved(id, position);
+        window_ui.pointer_moved(pointer, position);
 
         let event = PointerEvent {
             position,
             delta,
             modifiers: self.modifiers,
-            ..PointerEvent::new(id)
+            ..PointerEvent::new(pointer)
         };
 
-        self.event(window_id, &Event::new(event))
+        let mut requests = self.event(window_id, &Event::new(event));
+
+        let scene = self.window(window_id).scene();
+        let event = ViewHovered {
+            pointer,
+            view: scene.hit_test(position),
+        };
+        requests.extend(self.event(window_id, &Event::new(event)));
+
+        requests
     }
 
     /// Tell the UI that a pointer has left the window.
-    pub fn pointer_left(&mut self, window_id: WindowId, id: PointerId) -> UiRequests<T> {
+    pub fn pointer_left(&mut self, window_id: WindowId, pointer: PointerId) -> UiRequests<T> {
         let event = PointerEvent {
-            position: self.pointer_position(window_id, id),
+            position: self.pointer_position(window_id, pointer),
             modifiers: self.modifiers,
             left: true,
-            ..PointerEvent::new(id)
+            ..PointerEvent::new(pointer)
         };
 
         let window_ui = self.window_mut(window_id).window_mut();
-        window_ui.pointer_left(id);
+        window_ui.pointer_left(pointer);
 
         self.event(window_id, &Event::new(event))
     }
@@ -292,14 +301,14 @@ impl<T> Ui<T> {
     pub fn pointer_scroll(
         &mut self,
         window_id: WindowId,
-        id: PointerId,
+        pointer: PointerId,
         delta: Vector,
     ) -> UiRequests<T> {
         let event = PointerEvent {
-            position: self.pointer_position(window_id, id),
+            position: self.pointer_position(window_id, pointer),
             modifiers: self.modifiers,
             scroll: delta,
-            ..PointerEvent::new(id)
+            ..PointerEvent::new(pointer)
         };
 
         self.event(window_id, &Event::new(event))
@@ -309,16 +318,16 @@ impl<T> Ui<T> {
     pub fn pointer_button(
         &mut self,
         window_id: WindowId,
-        id: PointerId,
+        pointer: PointerId,
         button: PointerButton,
         pressed: bool,
     ) -> UiRequests<T> {
         let event = PointerEvent {
-            position: self.pointer_position(window_id, id),
+            position: self.pointer_position(window_id, pointer),
             modifiers: self.modifiers,
             button: Some(button),
             pressed,
-            ..PointerEvent::new(id)
+            ..PointerEvent::new(pointer)
         };
 
         self.event(window_id, &Event::new(event))

@@ -1,4 +1,4 @@
-use crate::layout::Rect;
+use crate::layout::{Point, Rect};
 
 use super::{Background, BorderRadius, BorderWidth, Color, Mesh};
 
@@ -37,6 +37,8 @@ impl Quad {
 /// A primitive to be rendered.
 #[derive(Clone, Debug)]
 pub enum Primitive {
+    /// A trigger primitive.
+    Trigger(Rect),
     /// A quad primitive.
     Quad(Quad),
     /// A mesh primitive.
@@ -49,6 +51,15 @@ impl Primitive {
         match self {
             Self::Quad(quad) => quad.is_ineffective(),
             _ => false,
+        }
+    }
+
+    /// Get whether the primitive intersects with the given point.
+    pub fn intersects_point(&self, point: Point) -> bool {
+        match self {
+            Self::Trigger(rect) => rect.contains(point),
+            Self::Quad(quad) => quad.rect.contains(point),
+            Self::Mesh(mesh) => mesh.intersects_point(point),
         }
     }
 }

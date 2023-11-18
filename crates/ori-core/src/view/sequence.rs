@@ -357,9 +357,15 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
     }
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        let mut view_state = Vec::with_capacity(self.len());
+
+        for _ in 0..self.len() {
+            view_state.push(ViewState::default());
+        }
+
         SeqState {
             content: Pod::<V>::build(cx, |cx| self.views.build(cx, data)),
-            view_state: vec![ViewState::default(); self.len()],
+            view_state,
         }
     }
 

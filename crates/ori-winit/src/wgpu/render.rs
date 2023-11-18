@@ -214,6 +214,7 @@ impl WgpuRender {
 
         for fragment in fragments {
             match fragment.primitive {
+                Primitive::Trigger(_) => {}
                 Primitive::Quad(ref quad) => {
                     if !mesh_batch.is_empty() {
                         self.push_mesh_batch(

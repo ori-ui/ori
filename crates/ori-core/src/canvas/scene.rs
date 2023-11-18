@@ -1,6 +1,9 @@
 use std::cmp::Ordering;
 
-use crate::layout::{Affine, Rect};
+use crate::{
+    layout::{Affine, Point, Rect},
+    view::ViewId,
+};
 
 use super::Primitive;
 
@@ -44,7 +47,32 @@ impl Scene {
             a.depth.partial_cmp(&b.depth).unwrap_or(Ordering::Equal)
         }
 
-        self.fragments.sort_by(cmp)
+        self.fragments.sort_by(cmp);
+    }
+
+    /// Get the fragment that intersect with the given point.
+    pub fn hit_test(&self, point: Point) -> Option<ViewId> {
+        for fragment in self.fragments.iter().rev() {
+            // discard fragments without a view
+            let view = match fragment.view {
+                Some(view) => view,
+                None => continue,
+            };
+
+            // discard fragments that are clipped
+            if !fragment.clip.contains(point) {
+                continue;
+            }
+
+            let local = fragment.transform.inverse() * point;
+
+            // if the primitive intersects with the point, return the view
+            if fragment.primitive.intersects_point(local) {
+                return Some(view);
+            }
+        }
+
+        None
     }
 }
 
@@ -59,4 +87,6 @@ pub struct Fragment {
     pub depth: f32,
     /// The clip rectangle of the primitive.
     pub clip: Rect,
+    /// The view that the primitive is being drawn for.
+    pub view: Option<ViewId>,
 }

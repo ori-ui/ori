@@ -1,5 +1,18 @@
 use std::cell::Cell;
 
+use crate::view::ViewId;
+
+use super::PointerId;
+
+/// Event emitted when a view is hovered.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ViewHovered {
+    /// The pointer that is hovering the view.
+    pub pointer: PointerId,
+    /// The view that is hovered.
+    pub view: Option<ViewId>,
+}
+
 /// Event emitted to a view when its hot state changes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct HotChanged(pub bool);

@@ -99,6 +99,7 @@ impl<V> Scroll<V> {
 #[doc(hidden)]
 #[derive(Default)]
 pub struct ScrollState {
+    scrollbar_hot: bool,
     scroll: f32,
     t: f32,
 }
@@ -135,18 +136,19 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         // handle ponter event
         if let Some(pointer) = event.get::<PointerEvent>() {
-            if !event.is_handled() || cx.is_active() {
-                let local = cx.local(pointer.position);
+            let local = cx.local(pointer.position);
 
-                let scrollbar_rect = self.scrollbar_rect(cx.rect());
+            let scrollbar_rect = self.scrollbar_rect(cx.rect());
+            state.scrollbar_hot = scrollbar_rect.contains(local);
 
+            if cx.is_active() || cx.has_hot() || state.scrollbar_hot {
                 // handle pointer events when scrollbar is hovered
-                if scrollbar_rect.contains(local) && pointer.is_move() {
+                if state.scrollbar_hot && pointer.is_move() {
                     event.handle();
                 }
 
                 // handle pointer events when scrollbar is pressed
-                if scrollbar_rect.contains(local) && pointer.is_press() {
+                if state.scrollbar_hot && pointer.is_press() {
                     cx.set_active(true);
                     cx.request_draw();
                     event.handle();
@@ -171,17 +173,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                     event.handle();
                 }
             }
-
-            // don't propagate pointer events when the pointer is outside the scroll area
-            if !cx.is_hot() && !pointer.is_release() {
-                let is_handled = event.is_handled();
-
-                event.handle();
-                self.content.event(content, cx, data, event);
-                event.set_handled(is_handled);
-
-                return;
-            }
         }
 
         // propagate event
@@ -193,7 +184,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            let on = cx.is_hot() || cx.is_active();
+            let on = cx.has_hot() || cx.is_active() || state.scrollbar_hot;
 
             if (self.transition).step(&mut state.t, on, *dt) {
                 cx.request_animation_frame();
@@ -203,7 +194,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         }
 
         // handle scroll
-        if event.is_handled() || !(cx.is_hot() || cx.is_active()) {
+        if event.is_handled() || !(cx.has_hot() || cx.is_active()) {
             return;
         }
 
@@ -248,6 +239,9 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
+        canvas.view(cx.id());
+        canvas.trigger(cx.rect());
+
         let overflow = self.overflow(content.size(), cx.size());
         state.scroll = state.scroll.clamp(0.0, overflow);
         content.translate(self.axis.pack(-state.scroll, 0.0));

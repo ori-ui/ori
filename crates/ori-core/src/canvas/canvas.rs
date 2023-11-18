@@ -1,4 +1,7 @@
-use crate::layout::{Affine, Point, Rect, Size, Vector};
+use crate::{
+    layout::{Affine, Point, Rect, Size, Vector},
+    view::ViewId,
+};
 
 use super::{Background, BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad, Scene};
 
@@ -11,6 +14,8 @@ pub struct Canvas<'a> {
     pub depth: f32,
     /// The clip rectangle of the canvas.
     pub clip: Rect,
+    /// The view that the canvas is being drawn for.
+    pub view: Option<ViewId>,
 }
 
 impl<'a> Canvas<'a> {
@@ -21,6 +26,7 @@ impl<'a> Canvas<'a> {
             transform: Affine::IDENTITY,
             depth: 0.0,
             clip: Rect::min_size(Point::ZERO, window_size),
+            view: None,
         }
     }
 
@@ -31,6 +37,7 @@ impl<'a> Canvas<'a> {
             transform: self.transform,
             depth: self.depth + 1.0,
             clip: self.clip,
+            view: self.view,
         }
     }
 
@@ -52,6 +59,25 @@ impl<'a> Canvas<'a> {
     /// Scale the canvas.
     pub fn scale(&mut self, scale: Vector) {
         self.transform *= Affine::scale(scale);
+    }
+
+    /// Set the clip rectangle of the canvas.
+    pub fn clip(&mut self, clip: Rect) {
+        self.clip = self.clip.intersect(clip);
+    }
+
+    /// Set the view that the canvas is being drawn for.
+    ///
+    /// This will enable hit testing for the view.
+    pub fn view(&mut self, view: ViewId) {
+        self.view = Some(view);
+    }
+
+    /// Draw a trigger to the canvas.
+    ///
+    /// This will enable hit testing without drawing anything.
+    pub fn trigger(&mut self, rect: Rect) {
+        self.draw(Primitive::Trigger(rect));
     }
 
     /// Draw a fragment to the canvas.
@@ -76,6 +102,7 @@ impl<'a> Canvas<'a> {
             transform: self.transform,
             depth: self.depth,
             clip: self.clip,
+            view: self.view,
         });
     }
 
@@ -86,6 +113,7 @@ impl<'a> Canvas<'a> {
             transform: self.transform.round(),
             depth: self.depth,
             clip: self.clip,
+            view: self.view,
         });
     }
 

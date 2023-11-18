@@ -157,6 +157,8 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
+        // we need to set the view to be enable hit testing
+        canvas.view(cx.id());
         self.content.draw(content, cx, data, canvas);
 
         let Some(ref glyphs) = state.glyphs else {

@@ -36,6 +36,11 @@ impl<T, V: View<T> + ?Sized> DerefMut for State<T, V> {
     }
 }
 
+/// Create a new [`Pod`] view.
+pub fn pod<V>(view: V) -> Pod<V> {
+    Pod::new(view)
+}
+
 /// A view that has separate [`ViewState`] from its content.
 ///
 /// When calling for example [`View::event`], an [`EventCx`] is passed to the

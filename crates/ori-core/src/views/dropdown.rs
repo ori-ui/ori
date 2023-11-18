@@ -138,6 +138,8 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
         canvas: &mut Canvas,
     ) {
         canvas.view(cx.id());
+        canvas.trigger(cx.rect());
+
         self.header.draw(header, cx, data, canvas);
 
         if !cx.is_focused() {

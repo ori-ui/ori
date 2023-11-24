@@ -1,6 +1,6 @@
 use crate::{
     canvas::Canvas,
-    event::{ActiveChanged, AnimationFrame, Event},
+    event::{AnimationFrame, Event},
     layout::{Size, Space},
     theme::{theme_snapshot, Theme},
     transition::Transition,
@@ -83,8 +83,8 @@ pub fn transition_focused<T, V>(
     let mut was_focused = false;
 
     animate(move |t: &mut f32, cx, _data: &mut T, event| {
-        if cx.is_focused() != was_focused {
-            was_focused = cx.is_focused();
+        if cx.has_focused() != was_focused {
+            was_focused = cx.has_focused();
             cx.request_animation_frame();
         }
 

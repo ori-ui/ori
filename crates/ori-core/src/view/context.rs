@@ -530,6 +530,11 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
         self.view_state.has_hot()
     }
 
+    /// Get whether a child view is focused.
+    pub fn has_focused(&self) -> bool {
+        self.view_state.has_focused()
+    }
+
     /// Get whether a child view is active.
     pub fn has_active(&self) -> bool {
         self.view_state.has_active()

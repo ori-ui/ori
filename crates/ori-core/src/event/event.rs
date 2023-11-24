@@ -1,10 +1,15 @@
-use std::{any::Any, cell::Cell};
+use std::{
+    any::{Any, TypeId},
+    cell::Cell,
+};
 
 use crate::command::Command;
 
 /// An event that can be sent to a view.
 #[derive(Debug)]
 pub struct Event {
+    // SAFETY: This is always the type ID of the type of the `Self::event`.
+    type_id: TypeId,
     event: Box<dyn Any>,
     handled: Cell<bool>,
     propagate: bool,
@@ -15,6 +20,7 @@ impl Event {
     /// Create a new event from a command.
     pub fn from_command(command: Command) -> Self {
         Self {
+            type_id: command.command.as_ref().type_id(),
             event: command.command,
             handled: Cell::new(false),
             propagate: true,
@@ -25,6 +31,7 @@ impl Event {
     /// Create a new event.
     pub fn new<T: Any>(event: T) -> Self {
         Self {
+            type_id: TypeId::of::<T>(),
             event: Box::new(event),
             handled: Cell::new(false),
             propagate: true,
@@ -35,6 +42,7 @@ impl Event {
     /// Create a new event with a name.
     pub fn new_with_name<T: Any>(event: T, name: &'static str) -> Self {
         Self {
+            type_id: TypeId::of::<T>(),
             event: Box::new(event),
             handled: Cell::new(false),
             propagate: true,
@@ -45,6 +53,7 @@ impl Event {
     /// Create a new non-propagating event.
     pub fn new_non_propagating<T: Any>(event: T) -> Self {
         Self {
+            type_id: TypeId::of::<T>(),
             event: Box::new(event),
             handled: Cell::new(false),
             propagate: false,
@@ -59,13 +68,18 @@ impl Event {
 
     /// Check whether the event is of the given type.
     pub fn is<T: Any>(&self) -> bool {
-        self.event.is::<T>()
+        self.type_id == TypeId::of::<T>()
     }
 
     /// Try to downcast the event to the given type.
     pub fn get<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
-            self.event.downcast_ref::<T>()
+            // SAFETY: We just checked that the type is correct.
+            //
+            // We need unsafe here because <dyn Any>::downcast_ref does a dynamic call to
+            // check the type, which is slow... This function is called a lot, so we want
+            // to avoid that.
+            unsafe { Some(&*(self.event.as_ref() as *const _ as *const T)) }
         } else {
             None
         }
@@ -74,8 +88,7 @@ impl Event {
     /// Try to downcast the event to the given type.
     pub fn take<T: Any>(self) -> Result<T, Event> {
         if self.is::<T>() {
-            let event = self.event.downcast::<T>().unwrap();
-            Ok(*event)
+            Ok(*self.event.downcast::<T>().unwrap())
         } else {
             Err(self)
         }

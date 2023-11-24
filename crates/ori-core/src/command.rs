@@ -28,12 +28,12 @@ impl Command {
 #[derive(Clone)]
 pub struct CommandProxy {
     tx: Sender<Command>,
-    waker: Arc<dyn Fn()>,
+    waker: Arc<dyn Fn() + Send + Sync>,
 }
 
 impl CommandProxy {
     /// Create a new [`CommandProxy`] channel.
-    pub fn new(waker: Arc<dyn Fn()>) -> (Self, Receiver<Command>) {
+    pub fn new(waker: Arc<dyn Fn() + Send + Sync>) -> (Self, Receiver<Command>) {
         let (tx, rx) = crossbeam_channel::unbounded();
         (Self { tx, waker }, rx)
     }

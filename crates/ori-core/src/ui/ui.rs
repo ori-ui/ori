@@ -52,7 +52,7 @@ pub struct Ui<T: 'static> {
 
 impl<T> Ui<T> {
     /// Create a new [`Ui`] with the given data.
-    pub fn new(data: T, waker: Arc<dyn Fn()>) -> Self {
+    pub fn new(data: T, waker: Arc<dyn Fn() + Send + Sync>) -> Self {
         let mut fonts = Fonts::default();
 
         fonts.load_font(font!("font/NotoSans-Regular.ttf")).unwrap();

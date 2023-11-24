@@ -6,7 +6,7 @@ use crossbeam_channel::Receiver;
 use ori_macro::font;
 
 use crate::{
-    command::{Command, CommandProxy, EventLoopWaker},
+    command::{Command, CommandProxy},
     delegate::{Delegate, DelegateCx},
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyboardEvent, Modifiers, OpenWindow,
@@ -52,7 +52,7 @@ pub struct Ui<T: 'static> {
 
 impl<T> Ui<T> {
     /// Create a new [`Ui`] with the given data.
-    pub fn new(data: T, waker: Arc<dyn EventLoopWaker>) -> Self {
+    pub fn new(data: T, waker: Arc<dyn Fn()>) -> Self {
         let mut fonts = Fonts::default();
 
         fonts.load_font(font!("font/NotoSans-Regular.ttf")).unwrap();

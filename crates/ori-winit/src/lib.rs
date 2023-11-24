@@ -10,7 +10,6 @@ mod error;
 mod launch;
 mod launcher;
 mod log;
-mod proxy;
 mod window;
 
 #[cfg(feature = "wgpu")]

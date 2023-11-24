@@ -13,7 +13,7 @@ use ori_core::{
 };
 use winit::event_loop::{EventLoop, EventLoopBuilder};
 
-use crate::{proxy::WinitWaker, Error};
+use crate::Error;
 
 /// A launcher for an application.
 pub struct Launcher<T: 'static> {
@@ -46,15 +46,19 @@ impl<T: 'static> Launcher<T> {
     {
         let event_loop = Self::build_event_loop();
 
-        let waker = WinitWaker {
-            proxy: event_loop.create_proxy().into(),
-        };
+        let waker = Arc::new({
+            let proxy = event_loop.create_proxy();
+
+            move || {
+                let _ = proxy.send_event(());
+            }
+        });
 
         let mut app = Self {
             event_loop,
             window: WindowDescriptor::default(),
             builder: Box::new(move |data| Box::new(builder(data))),
-            ui: Ui::new(data, Arc::new(waker)),
+            ui: Ui::new(data, waker),
             msaa: true,
         };
 

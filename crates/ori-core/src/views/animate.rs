@@ -1,6 +1,6 @@
 use crate::{
     canvas::Canvas,
-    event::{ActiveChanged, AnimationFrame, Event, HotChanged},
+    event::{ActiveChanged, AnimationFrame, Event},
     layout::{Size, Space},
     theme::{theme_snapshot, Theme},
     transition::Transition,
@@ -20,9 +20,11 @@ pub fn transition_hot<T, V>(
     mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
+    let mut was_hot = false;
 
     animate(move |t: &mut f32, cx, _data: &mut T, event| {
-        if event.is::<HotChanged>() {
+        if cx.has_hot() != was_hot {
+            was_hot = cx.has_hot();
             cx.request_animation_frame();
         }
 
@@ -48,9 +50,11 @@ pub fn transition_active<T, V>(
     mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
+    let mut was_active = false;
 
     animate(move |t: &mut f32, cx, _data: &mut T, event| {
-        if event.is::<ActiveChanged>() {
+        if cx.has_active() != was_active {
+            was_active = cx.has_active();
             cx.request_animation_frame();
         }
 

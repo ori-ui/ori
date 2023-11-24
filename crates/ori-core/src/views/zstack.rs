@@ -11,12 +11,12 @@ pub use crate::zstack;
 #[macro_export]
 macro_rules! zstack {
     (for $data:ident in $content:expr) => {
-        $crate::views::overlay(
+        $crate::views::zstack(
             <::std::vec::Vec<_> as ::std::iter::FromIterator<_>>::from_iter($iter)
         )
     };
     ($($child:expr),* $(,)?) => {
-        $crate::views::overlay(($($child,)*))
+        $crate::views::zstack(($($child,)*))
     };
 }
 

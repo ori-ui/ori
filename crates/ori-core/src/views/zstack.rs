@@ -5,11 +5,11 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq},
 };
 
-pub use crate::overlay;
+pub use crate::zstack;
 
-/// Create a new [`Overlay`] view.
+/// Create a new [`ZStack`] view.
 #[macro_export]
-macro_rules! overlay {
+macro_rules! zstack {
     (for $data:ident in $content:expr) => {
         $crate::views::overlay(
             <::std::vec::Vec<_> as ::std::iter::FromIterator<_>>::from_iter($iter)
@@ -20,18 +20,18 @@ macro_rules! overlay {
     };
 }
 
-/// Create a new [`Overlay`] view.
-pub fn overlay<V>(content: V) -> Overlay<V> {
-    Overlay::new(content)
+/// Create a new [`ZStack`] view.
+pub fn zstack<V>(content: V) -> ZStack<V> {
+    ZStack::new(content)
 }
 
 /// A view that overlays its content on top of each other.
-pub struct Overlay<V> {
+pub struct ZStack<V> {
     /// The content to overlay.
     pub content: PodSeq<V>,
 }
 
-impl<V> Overlay<V> {
+impl<V> ZStack<V> {
     /// Create a new overlay view.
     pub fn new(content: V) -> Self {
         Self {
@@ -40,7 +40,7 @@ impl<V> Overlay<V> {
     }
 }
 
-impl<T, V: ViewSeq<T>> View<T> for Overlay<V> {
+impl<T, V: ViewSeq<T>> View<T> for ZStack<V> {
     type State = SeqState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {

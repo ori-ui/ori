@@ -1,6 +1,7 @@
 use std::{
     fmt::{Debug, Display},
-    sync::atomic::{AtomicUsize, Ordering},
+    num::NonZeroU64,
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use crate::{
@@ -21,9 +22,10 @@ bitflags::bitflags! {
 }
 
 /// An opaque unique identifier for a view.
+#[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViewId {
-    id: usize,
+    id: NonZeroU64,
 }
 
 impl Default for ViewId {
@@ -35,10 +37,20 @@ impl Default for ViewId {
 impl ViewId {
     /// Create a new [`ViewId`].
     pub fn new() -> Self {
-        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        Self { id }
+        Self {
+            // SAFETY: This technically isn't safe in the case where the
+            //        `NEXT_ID` wraps around, but if that happens, we have
+            //        bigger problems.
+            id: unsafe { NonZeroU64::new_unchecked(id) },
+        }
+    }
+
+    /// Get the underlying id as a [`u64`].
+    pub fn as_u64(&self) -> u64 {
+        self.id.get()
     }
 }
 

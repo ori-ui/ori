@@ -257,12 +257,12 @@ impl<T> Ui<T> {
         pointer: PointerId,
         position: Point,
     ) -> UiRequests<T> {
-        let window_ui = self.window_mut(window_id).window_mut();
+        let window = self.window_mut(window_id).window_mut();
 
-        let prev = (window_ui.pointer(pointer)).map_or(Point::ZERO, |p| p.position);
+        let prev = (window.pointer(pointer)).map_or(Point::ZERO, |p| p.position);
         let delta = position - prev;
 
-        window_ui.pointer_moved(pointer, position);
+        window.pointer_moved(pointer, position);
 
         let scene = self.window_mut(window_id).scene_mut();
         let view = scene.view_at(position);
@@ -270,9 +270,8 @@ impl<T> Ui<T> {
         #[cfg(feature = "tracing")]
         tracing::trace!("pointer_moved: {} -> {:?}", position, view);
 
-        if let Some(pointer) = self.window_mut(window_id).window_mut().pointer_mut(pointer) {
-            pointer.set_hovered(view);
-        }
+        let window = self.window_mut(window_id).window_mut();
+        window.pointer_hovered(pointer, view);
 
         let event = PointerMoved {
             id: pointer,

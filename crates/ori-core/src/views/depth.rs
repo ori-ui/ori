@@ -63,7 +63,7 @@ impl<T, V: View<T>> View<T> for Depth<V> {
         canvas: &mut Canvas,
     ) {
         let mut layer = canvas.layer();
-        layer.depth = self.depth;
+        layer.depth += self.depth;
         self.content.draw(state, cx, data, &mut layer);
     }
 }

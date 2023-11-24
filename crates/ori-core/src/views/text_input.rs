@@ -1,6 +1,9 @@
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
-    event::{AnimationFrame, Code, Event, KeyboardEvent, Modifiers, PointerEvent, RequestFocus},
+    event::{
+        AnimationFrame, Code, Event, HotChanged, KeyboardEvent, Modifiers, PointerPressed,
+        RequestFocus,
+    },
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{
@@ -297,32 +300,6 @@ impl<T> TextInput<T> {
         cursor
     }
 
-    fn handle_pointer_event(
-        &mut self,
-        state: &mut TextInputState,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &PointerEvent,
-    ) {
-        let local = cx.local(event.position);
-
-        if cx.is_hot() {
-            cx.set_cursor(Cursor::Text);
-        } else {
-            cx.set_cursor(None);
-        }
-
-        if event.is_press() && cx.is_hot() {
-            state.cursor_index = self.hit_text(state, data, local);
-            cx.set_focused(true);
-            cx.request_draw();
-        }
-
-        if event.is_press() && !cx.is_hot() {
-            cx.set_focused(false);
-        }
-    }
-
     fn prev_char(&mut self, state: &mut TextInputState, data: &mut T) -> Option<char> {
         for i in 1..=4 {
             if state.cursor_index < i {
@@ -567,8 +544,22 @@ impl<T> View<T> for TextInput<T> {
             event.handle();
         }
 
-        if let Some(pointer_event) = event.get::<PointerEvent>() {
-            self.handle_pointer_event(state, cx, data, pointer_event);
+        match event.get() {
+            Some(HotChanged(true)) => cx.set_cursor(Cursor::Text),
+            Some(HotChanged(false)) => cx.set_cursor(None),
+            _ => {}
+        }
+
+        if let Some(pressed) = event.get::<PointerPressed>() {
+            let local = cx.local(pressed.position);
+
+            if cx.is_hot() {
+                state.cursor_index = self.hit_text(state, data, local);
+                cx.set_focused(true);
+                cx.request_draw();
+            } else {
+                cx.set_focused(false);
+            }
         }
 
         if let Some(keyboard_event) = event.get::<KeyboardEvent>() {

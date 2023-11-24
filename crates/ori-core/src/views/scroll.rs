@@ -1,6 +1,9 @@
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
-    event::{AnimationFrame, Event, HotChanged, PointerEvent},
+    event::{
+        AnimationFrame, Event, HotChanged, PointerMoved, PointerPressed, PointerReleased,
+        PointerScrolled,
+    },
     layout::{Axis, Rect, Size, Space, Vector},
     log::warn_internal,
     rebuild::Rebuild,
@@ -135,7 +138,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let overflow = self.overflow(content.size(), cx.size());
 
         // handle ponter event
-        if let Some(pointer) = event.get::<PointerEvent>() {
+        if let Some(pointer) = event.get::<PointerMoved>() {
             let local = cx.local(pointer.position);
 
             let scrollbar_rect = self.scrollbar_rect(cx.rect());
@@ -143,31 +146,29 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
             cx.request_animation_frame();
 
-            if cx.is_active() || cx.has_hot() || state.scrollbar_hot {
-                // handle pointer events when scrollbar is pressed
-                if state.scrollbar_hot && pointer.is_press() {
-                    cx.set_active(true);
-                    cx.request_draw();
-                } else if cx.is_active() && pointer.is_release() {
-                    cx.set_active(false);
-                    cx.request_draw();
-                }
+            if cx.is_active() {
+                let scroll_start = self.axis.major(scrollbar_rect.min);
+                let scroll_end = self.axis.major(scrollbar_rect.max);
+                let local_major = self.axis.major(local);
 
-                // handle pointer events when scrollbar is dragged
-                if cx.is_active() {
-                    let scroll_start = self.axis.major(scrollbar_rect.min);
-                    let scroll_end = self.axis.major(scrollbar_rect.max);
-                    let local_major = self.axis.major(local);
+                let scroll_fract = (local_major - scroll_start) / (scroll_end - scroll_start);
+                state.scroll = overflow * scroll_fract;
+                state.scroll = state.scroll.clamp(0.0, overflow);
 
-                    let scroll_fract = (local_major - scroll_start) / (scroll_end - scroll_start);
-                    state.scroll = overflow * scroll_fract;
-                    state.scroll = state.scroll.clamp(0.0, overflow);
+                content.translate(self.axis.pack(-state.scroll, 0.0));
 
-                    content.translate(self.axis.pack(-state.scroll, 0.0));
-
-                    cx.request_draw();
-                }
+                cx.request_draw();
             }
+        }
+
+        if event.is::<PointerPressed>() && state.scrollbar_hot {
+            cx.set_active(true);
+            cx.request_draw();
+        }
+
+        if event.is::<PointerReleased>() && cx.is_active() {
+            cx.set_active(false);
+            cx.request_draw();
         }
 
         // propagate event
@@ -193,15 +194,13 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             return;
         }
 
-        if let Some(pointer) = event.get::<PointerEvent>() {
-            if pointer.is_scroll() {
-                state.scroll -= pointer.scroll.y * 10.0;
-                state.scroll = state.scroll.clamp(0.0, overflow);
+        if let Some(pointer) = event.get::<PointerScrolled>() {
+            state.scroll -= pointer.delta.y * 10.0;
+            state.scroll = state.scroll.clamp(0.0, overflow);
 
-                content.translate(self.axis.pack(-state.scroll, 0.0));
+            content.translate(self.axis.pack(-state.scroll, 0.0));
 
-                cx.request_draw();
-            }
+            cx.request_draw();
         }
     }
 

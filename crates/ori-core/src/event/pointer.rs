@@ -1,6 +1,9 @@
 use std::hash::{Hash, Hasher};
 
-use crate::layout::{Point, Vector};
+use crate::{
+    layout::{Point, Vector},
+    view::ViewId,
+};
 
 use super::Modifiers;
 
@@ -29,12 +32,18 @@ pub struct Pointer {
     pub(crate) id: PointerId,
     /// The position of the pointer.
     pub(crate) position: Point,
+    /// The view that is currently hovered by the pointer.
+    pub(crate) hovered: Option<ViewId>,
 }
 
 impl Pointer {
     /// Create a new pointer.
     pub fn new(id: PointerId, position: Point) -> Self {
-        Self { id, position }
+        Self {
+            id,
+            position,
+            hovered: None,
+        }
     }
 
     /// Get the unique id of the pointer.
@@ -45,6 +54,16 @@ impl Pointer {
     /// Get the position of the pointer.
     pub fn position(&self) -> Point {
         self.position
+    }
+
+    /// Get the view that is currently hovered by the pointer.
+    pub fn hovered(&self) -> Option<ViewId> {
+        self.hovered
+    }
+
+    /// Set the view that is currently hovered by the pointer.
+    pub fn set_hovered(&mut self, hovered: Option<ViewId>) {
+        self.hovered = hovered;
     }
 }
 
@@ -65,69 +84,60 @@ pub enum PointerButton {
     Other(u16),
 }
 
-/// A pointer event.
+/// A pointer was moved.
 #[derive(Clone, Debug)]
-pub struct PointerEvent {
+pub struct PointerMoved {
     /// The unique id of the pointer.
     pub id: PointerId,
     /// The position of the pointer.
     pub position: Point,
     /// The delta of the pointer.
     pub delta: Vector,
-    /// The delta of the pointer wheel.
-    pub scroll: Vector,
-    /// Whether the pointer is pressed.
-    pub pressed: bool,
-    /// Whether the pointer left the window.
-    pub left: bool,
-    /// The button that was pressed or released.
-    pub button: Option<PointerButton>,
-    /// The modifiers that were active when the event was triggered.
+    /// The modifiers of the pointer.
     pub modifiers: Modifiers,
 }
 
-impl PointerEvent {
-    /// Create a new empty pointer event.
-    pub fn new(id: PointerId) -> Self {
-        Self {
-            id,
-            position: Point::ZERO,
-            delta: Vector::ZERO,
-            scroll: Vector::ZERO,
-            pressed: false,
-            left: false,
-            button: None,
-            modifiers: Modifiers::default(),
-        }
-    }
+/// A pointer left the window.
+pub struct PointerLeft {
+    /// The unique id of the pointer.
+    pub id: PointerId,
+}
 
-    /// Returns true if the event is a move event.
-    pub fn is_move(&self) -> bool {
-        (self.delta != Vector::ZERO || self.left) && self.button.is_none()
-    }
+/// A pointer button was pressed.
+#[derive(Clone, Debug)]
+pub struct PointerPressed {
+    /// The unique id of the pointer.
+    pub id: PointerId,
+    /// The position of the pointer.
+    pub position: Point,
+    /// The button of the pointer.
+    pub button: PointerButton,
+    /// The modifiers of the pointer.
+    pub modifiers: Modifiers,
+}
 
-    /// Returns true if the event is a scroll event.
-    pub fn is_scroll(&self) -> bool {
-        self.scroll != Vector::ZERO && self.button.is_none()
-    }
+/// A pointer button was released.
+#[derive(Clone, Debug)]
+pub struct PointerReleased {
+    /// The unique id of the pointer.
+    pub id: PointerId,
+    /// The position of the pointer.
+    pub position: Point,
+    /// The button of the pointer.
+    pub button: PointerButton,
+    /// The modifiers of the pointer.
+    pub modifiers: Modifiers,
+}
 
-    /// Returns true if `button` was pressed.
-    pub fn is_pressed(&self, button: PointerButton) -> bool {
-        self.pressed && self.button == Some(button)
-    }
-
-    /// Returns true if `button` was released.
-    pub fn is_released(&self, button: PointerButton) -> bool {
-        !self.pressed && self.button == Some(button)
-    }
-
-    /// Returns true if any button was pressed.
-    pub fn is_press(&self) -> bool {
-        self.pressed && self.button.is_some()
-    }
-
-    /// Returns true if any button was released.
-    pub fn is_release(&self) -> bool {
-        !self.pressed && self.button.is_some()
-    }
+/// A pointer wheel was scrolled.
+#[derive(Clone, Debug)]
+pub struct PointerScrolled {
+    /// The unique id of the pointer.
+    pub id: PointerId,
+    /// The position of the pointer.
+    pub position: Point,
+    /// The delta of the pointer.
+    pub delta: Vector,
+    /// The modifiers of the pointer.
+    pub modifiers: Modifiers,
 }

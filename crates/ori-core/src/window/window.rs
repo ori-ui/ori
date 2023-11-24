@@ -8,6 +8,7 @@ use crate::{
     event::{Pointer, PointerId},
     image::Image,
     layout::{Point, Size},
+    view::ViewId,
 };
 
 use super::{Cursor, RawWindow};
@@ -88,6 +89,11 @@ impl Window {
         if let Some(index) = self.pointers.iter().position(|p| p.id() == id) {
             self.pointers.swap_remove(index);
         }
+    }
+
+    /// Get the pointer that is currently hovered over the given view.
+    pub fn is_hovered(&self, view: ViewId) -> bool {
+        self.pointers.iter().any(|p| p.hovered() == Some(view))
     }
 
     /// Try to downcast the window to a specific type.

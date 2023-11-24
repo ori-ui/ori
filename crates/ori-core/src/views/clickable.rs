@@ -1,6 +1,6 @@
 use crate::{
     canvas::Canvas,
-    event::{ActiveChanged, Event, PointerEvent},
+    event::{ActiveChanged, Event, PointerPressed, PointerReleased},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
@@ -117,12 +117,10 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if let Some(pointer) = event.get::<PointerEvent>() {
-            if pointer.is_press() {
-                state.click_start = pointer.position;
-            }
+        if let Some(pressed) = event.get::<PointerPressed>() {
+            state.click_start = pressed.position;
 
-            if pointer.is_press() && cx.is_hot() {
+            if cx.is_hot() {
                 if let Some(ref mut on_press) = self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
@@ -132,8 +130,10 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                 let event = Event::new_non_propagating(ActiveChanged(true));
                 self.content.event(content, cx, data, &event);
             }
+        }
 
-            if pointer.is_release() && cx.is_active() {
+        if let Some(released) = event.get::<PointerReleased>() {
+            if cx.is_active() {
                 if let Some(ref mut on_release) = self.on_release {
                     on_release(cx, data);
                     cx.request_rebuild();
@@ -143,7 +143,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                 let event = Event::new_non_propagating(ActiveChanged(false));
                 self.content.event(content, cx, data, &event);
 
-                let click_distance = (pointer.position - state.click_start).length();
+                let click_distance = (released.position - state.click_start).length();
                 if click_distance <= Self::MAX_CLICK_DISTANCE {
                     if let Some(ref mut on_click) = self.on_click {
                         on_click(cx, data);

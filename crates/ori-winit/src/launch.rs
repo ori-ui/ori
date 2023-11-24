@@ -349,7 +349,9 @@ impl<T> AppState<T> {
                 }
 
                 if let Some(text) = text {
-                    requests.extend(self.ui.keyboard_text(id, text.into()));
+                    if is_pressed(state) {
+                        requests.extend(self.ui.keyboard_text(id, text.into()));
+                    }
                 }
 
                 return requests;

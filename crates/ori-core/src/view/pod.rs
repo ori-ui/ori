@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
-    event::{Event, HotChanged, PointerEvent, SwitchFocus, ViewHovered},
+    event::{Event, HotChanged, PointerLeft, PointerMoved, SwitchFocus},
     layout::{Size, Space},
 };
 
@@ -128,8 +128,7 @@ impl<V> Pod<V> {
         if view_state.is_hot() != hot {
             view_state.set_hot(hot);
 
-            let hot_changed = HotChanged(hot);
-            let event = Event::new_non_propagating(hot_changed);
+            let event = Event::new_non_propagating(HotChanged(hot));
             Self::event_inner(view_state, cx, &event, f);
         }
     }
@@ -154,14 +153,8 @@ impl<V> Pod<V> {
 
         Self::event_inner(view_state, cx, event, &mut f);
 
-        if let Some(pointer) = event.get::<PointerEvent>() {
-            if pointer.left {
-                Self::hot_changed(view_state, cx, false, &mut f);
-            }
-        }
-
-        if let Some(hovered) = event.get::<ViewHovered>() {
-            let hot = Some(view_state.id()) == hovered.view;
+        if event.is::<PointerMoved>() || event.is::<PointerLeft>() {
+            let hot = cx.window().is_hovered(view_state.id());
             Self::hot_changed(view_state, cx, hot, &mut f);
         }
     }

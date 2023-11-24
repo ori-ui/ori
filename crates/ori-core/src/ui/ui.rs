@@ -10,7 +10,8 @@ use crate::{
     delegate::{Delegate, DelegateCx},
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyboardEvent, Modifiers, OpenWindow,
-        PointerButton, PointerEvent, PointerId, RequestFocus, SwitchFocus, ViewHovered,
+        PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
+        PointerScrolled, RequestFocus, SwitchFocus,
     },
     layout::{Point, Vector},
     text::Fonts,
@@ -263,35 +264,29 @@ impl<T> Ui<T> {
 
         window_ui.pointer_moved(pointer, position);
 
-        let event = PointerEvent {
-            position,
-            delta,
-            modifiers: self.modifiers,
-            ..PointerEvent::new(pointer)
-        };
-
-        let mut requests = self.event(window_id, &Event::new(event));
-
         let scene = self.window_mut(window_id).scene_mut();
         let view = scene.view_at(position);
 
         #[cfg(feature = "tracing")]
         tracing::trace!("pointer_moved: {} -> {:?}", position, view);
 
-        let event = ViewHovered { pointer, view };
-        requests.extend(self.event(window_id, &Event::new(event)));
+        if let Some(pointer) = self.window_mut(window_id).window_mut().pointer_mut(pointer) {
+            pointer.set_hovered(view);
+        }
 
-        requests
+        let event = PointerMoved {
+            id: pointer,
+            position,
+            delta,
+            modifiers: self.modifiers,
+        };
+
+        self.event(window_id, &Event::new(event))
     }
 
     /// Tell the UI that a pointer has left the window.
     pub fn pointer_left(&mut self, window_id: WindowId, pointer: PointerId) -> UiRequests<T> {
-        let event = PointerEvent {
-            position: self.pointer_position(window_id, pointer),
-            modifiers: self.modifiers,
-            left: true,
-            ..PointerEvent::new(pointer)
-        };
+        let event = PointerLeft { id: pointer };
 
         let window_ui = self.window_mut(window_id).window_mut();
         window_ui.pointer_left(pointer);
@@ -306,11 +301,11 @@ impl<T> Ui<T> {
         pointer: PointerId,
         delta: Vector,
     ) -> UiRequests<T> {
-        let event = PointerEvent {
+        let event = PointerScrolled {
+            id: pointer,
             position: self.pointer_position(window_id, pointer),
             modifiers: self.modifiers,
-            scroll: delta,
-            ..PointerEvent::new(pointer)
+            delta,
         };
 
         self.event(window_id, &Event::new(event))
@@ -324,15 +319,25 @@ impl<T> Ui<T> {
         button: PointerButton,
         pressed: bool,
     ) -> UiRequests<T> {
-        let event = PointerEvent {
-            position: self.pointer_position(window_id, pointer),
-            modifiers: self.modifiers,
-            button: Some(button),
-            pressed,
-            ..PointerEvent::new(pointer)
-        };
+        if pressed {
+            let event = PointerPressed {
+                id: pointer,
+                position: self.pointer_position(window_id, pointer),
+                modifiers: self.modifiers,
+                button,
+            };
 
-        self.event(window_id, &Event::new(event))
+            self.event(window_id, &Event::new(event))
+        } else {
+            let event = PointerReleased {
+                id: pointer,
+                position: self.pointer_position(window_id, pointer),
+                modifiers: self.modifiers,
+                button,
+            };
+
+            self.event(window_id, &Event::new(event))
+        }
     }
 
     /// Tell the UI that a keyboard key has been pressed or released.

@@ -39,8 +39,8 @@ pub mod prelude {
         delegate::{Delegate, DelegateCx},
         event::{
             ActiveChanged, AnimationFrame, CloseRequested, CloseWindow, Code, Event, HotChanged,
-            KeyboardEvent, Modifiers, OpenWindow, Pointer, PointerButton, PointerEvent, PointerId,
-            RequestFocus,
+            KeyboardEvent, Modifiers, OpenWindow, Pointer, PointerButton, PointerId, PointerLeft,
+            PointerMoved, PointerPressed, PointerReleased, PointerScrolled, RequestFocus,
         },
         image::{gradient, Image, ImageData, ImageId},
         layout::{

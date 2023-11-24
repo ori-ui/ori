@@ -2,7 +2,7 @@ use ori_macro::Rebuild;
 
 use crate::{
     canvas::Canvas,
-    event::{Event, PointerEvent},
+    event::{Event, PointerPressed},
     layout::{Size, Space, Vector},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
@@ -77,17 +77,13 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
             cx.request_draw();
         }
 
-        if let Some(pointer) = event.get::<PointerEvent>() {
+        if event.is::<PointerPressed>() {
             if !self.toggle && cx.is_focused() && !cx.has_hot() {
                 cx.set_focused(false);
                 cx.request_draw();
             }
 
-            if self.toggle
-                && pointer.is_press()
-                && (cx.is_hot() || cx.is_focused())
-                && !content.has_hot()
-            {
+            if self.toggle && (cx.is_hot() || cx.is_focused()) && !content.has_hot() {
                 cx.set_focused(!cx.is_focused());
                 cx.request_draw();
             }

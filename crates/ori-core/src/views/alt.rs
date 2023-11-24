@@ -1,6 +1,6 @@
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
-    event::{AnimationFrame, Event, PointerEvent},
+    event::{AnimationFrame, Event, PointerMoved},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{
@@ -100,11 +100,11 @@ impl<T, V: View<T>> View<T> for Alt<V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if let Some(pointer) = event.get::<PointerEvent>() {
+        if let Some(moved) = event.get::<PointerMoved>() {
             state.timer = 0.0;
 
-            if cx.is_hot() && pointer.is_move() {
-                state.position = pointer.position;
+            if cx.is_hot() {
+                state.position = moved.position;
                 cx.request_animation_frame();
                 event.handle();
             }

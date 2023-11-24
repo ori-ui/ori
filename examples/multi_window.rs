@@ -17,7 +17,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
         data.windows.retain(|window| *window != window_id);
     }));
 
-    let content = container(overlay![center(text("Hello World!")), close])
+    let content = container(zstack![center(text("Hello World!")), close])
         .background(style(Palette::BACKGROUND))
         .border_radius([rem(1.0), 0.0, rem(1.0), 0.0])
         .border_width(pt(2.0))

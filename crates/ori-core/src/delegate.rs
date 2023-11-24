@@ -42,8 +42,7 @@ pub trait Delegate<T> {
     /// Called when the application starts.
     fn init(&mut self, _cx: &mut DelegateCx, _data: &mut T) {}
 
-    /// Handle an event, returning whether it was handled. If true,
-    /// the event will not be send to the `view-tree`.
+    /// Handle an event, returning whether it was handled.
     fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event);
 
     /// Called when the event loop is idle.

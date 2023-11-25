@@ -29,6 +29,18 @@ impl FontFamily {
     }
 }
 
+impl From<&str> for FontFamily {
+    fn from(name: &str) -> Self {
+        Self::Name(name.to_owned())
+    }
+}
+
+impl From<String> for FontFamily {
+    fn from(name: String) -> Self {
+        Self::Name(name)
+    }
+}
+
 /// A font weight.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FontWeight(pub u16);

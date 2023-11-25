@@ -212,9 +212,9 @@ impl<T> AppState<T> {
         let raw_window = Box::new(WinitWindow::from(window));
         let mut window = Window::new(raw_window, desc.id);
 
-        window.set_maximized(desc.maximized);
         window.set_icon(desc.icon.as_ref());
         window.set_visible(desc.visible);
+        window.set_maximized(desc.maximized);
         window.set_color(desc.color);
 
         /* add the window to the ui */

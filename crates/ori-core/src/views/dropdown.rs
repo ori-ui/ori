@@ -97,24 +97,14 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let mut header_size = self.header.layout(header, cx, data, space);
+        let header_size = self.header.layout(header, cx, data, space);
 
         // make sure the content is at least as wide as the header
         let content_space = Space {
             min: Size::new(header_size.width, 0.0),
             max: cx.window().size(),
         };
-        let content_size = self.content.layout(content, cx, data, content_space);
-
-        // if the content is wider than the header, make the header as wide as the content
-        if content_size.width > header_size.width {
-            let header_space = Space {
-                min: Size::new(content_size.width, space.min.height),
-                max: Size::new(content_size.width, space.max.height),
-            };
-
-            header_size = self.header.layout(header, cx, data, header_space);
-        }
+        self.content.layout(content, cx, data, content_space);
 
         // translate the content below the header
         content.translate(Vector::new(0.0, header_size.height));

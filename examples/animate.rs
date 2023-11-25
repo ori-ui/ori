@@ -17,7 +17,6 @@ fn app(_data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    Launcher::new(app, Data::default())
-        .title("Animate (examples/animate.rs)")
-        .launch();
+    let window = WindowDescriptor::new().title("Animate (examples/animate.rs)");
+    Launcher::new(Data::default()).window(window, app).launch();
 }

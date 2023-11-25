@@ -17,7 +17,6 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    Launcher::new(app, Data::default())
-        .title("Transition (examples/transition.rs)")
-        .launch();
+    let window = WindowDescriptor::new().title("Transition (examples/transition.rs)");
+    Launcher::new(Data::default()).window(window, app).launch();
 }

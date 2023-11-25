@@ -1,6 +1,6 @@
 use ori::prelude::*;
 
-struct Data {}
+struct Data;
 
 fn app(_data: &mut Data) -> impl View<Data> {
     let mut buttons = Vec::with_capacity(1000);
@@ -18,7 +18,6 @@ fn app(_data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    Launcher::new(app, Data {})
-        .title("Thousand Buttons (examples/thousand_buttons.rs)")
-        .launch()
+    let window = WindowDescriptor::new().title("Thousand Buttons (examples/thousand_buttons.rs)");
+    Launcher::new(Data).window(window, app).launch()
 }

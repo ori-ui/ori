@@ -28,7 +28,7 @@ pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
-    let mut state = AppState::new(app.window, app.builder, app.ui, app.msaa);
+    let mut state = AppState::new(app.windows, app.ui, app.msaa);
 
     app.event_loop.run(move |event, target| {
         match event {
@@ -67,8 +67,7 @@ pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
 
 struct AppState<T: 'static> {
     init: bool,
-    window: WindowDescriptor,
-    builder: UiBuilder<T>,
+    windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
     ui: Ui<T>,
     msaa: bool,
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
@@ -79,11 +78,10 @@ struct AppState<T: 'static> {
 }
 
 impl<T> AppState<T> {
-    fn new(window: WindowDescriptor, builder: UiBuilder<T>, ui: Ui<T>, msaa: bool) -> Self {
+    fn new(windows: Vec<(WindowDescriptor, UiBuilder<T>)>, ui: Ui<T>, msaa: bool) -> Self {
         Self {
             init: false,
-            window,
-            builder,
+            windows,
             ui,
             msaa,
             window_ids: HashMap::new(),
@@ -101,10 +99,11 @@ impl<T> AppState<T> {
 
         self.init = true;
 
-        let builder = mem::replace(&mut self.builder, Box::new(|_| unreachable!()));
-        if let Err(err) = self.create_window(target, self.window.clone(), builder) {
-            error_internal!("Failed to create window: {}", err);
-            return;
+        for (desc, builder) in mem::take(&mut self.windows) {
+            if let Err(err) = self.create_window(target, desc, builder) {
+                error_internal!("Failed to create window: {}", err);
+                return;
+            }
         }
 
         let requests = self.ui.init();

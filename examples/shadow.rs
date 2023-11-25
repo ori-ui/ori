@@ -14,7 +14,6 @@ impl Data {
 }
 
 fn main() {
-    Launcher::new(Data::ui, Data)
-        .title("Shadow (examples/shadow.rs)")
-        .launch();
+    let window = WindowDescriptor::new().title("Shadow (examples/shadow.rs)");
+    Launcher::new(Data).window(window, Data::ui).launch();
 }

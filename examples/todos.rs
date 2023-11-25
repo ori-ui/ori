@@ -216,8 +216,10 @@ fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
 
 #[ori::main]
 fn main() {
-    Launcher::new(app, Data::default())
-        .title("Todos (examples/todos.rs)")
+    let window = WindowDescriptor::new().title("Todos (examples/todos.rs)");
+
+    Launcher::new(Data::default())
+        .window(window, app)
         .delegate(delegate)
         .theme(theme)
         .launch();

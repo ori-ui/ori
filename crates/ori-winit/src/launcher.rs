@@ -1,14 +1,12 @@
 use std::sync::Arc;
 
 use ori_core::{
-    canvas::Color,
     command::CommandProxy,
     delegate::Delegate,
-    image::Image,
     text::FontSource,
     theme::{Palette, Theme},
     ui::{Ui, UiBuilder},
-    view::View,
+    view::{any, View},
     window::WindowDescriptor,
 };
 use winit::event_loop::{EventLoop, EventLoopBuilder};
@@ -18,8 +16,7 @@ use crate::Error;
 /// A launcher for an application.
 pub struct Launcher<T: 'static> {
     pub(crate) event_loop: EventLoop<()>,
-    pub(crate) window: WindowDescriptor,
-    pub(crate) builder: UiBuilder<T>,
+    pub(crate) windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
     pub(crate) ui: Ui<T>,
     pub(crate) msaa: bool,
 }
@@ -40,10 +37,7 @@ impl<T: 'static> Launcher<T> {
     }
 
     /// Creates a new application.
-    pub fn new<V>(mut builder: impl FnMut(&mut T) -> V + 'static, data: T) -> Self
-    where
-        V: View<T> + 'static,
-    {
+    pub fn new(data: T) -> Self {
         let event_loop = Self::build_event_loop();
 
         let waker = Arc::new({
@@ -56,8 +50,7 @@ impl<T: 'static> Launcher<T> {
 
         let mut app = Self {
             event_loop,
-            window: WindowDescriptor::default(),
-            builder: Box::new(move |data| Box::new(builder(data))),
+            windows: Vec::new(),
             ui: Ui::new(data, waker),
             msaa: true,
         };
@@ -120,58 +113,14 @@ impl<T: 'static> Launcher<T> {
         self.delegate(delegate)
     }
 
-    /// Set the title of the window.
-    pub fn title(mut self, title: impl Into<String>) -> Self {
-        self.window.title = title.into();
-        self
-    }
-
-    /// Set the icon of the window.
-    pub fn icon(mut self, icon: impl Into<Option<Image>>) -> Self {
-        self.window.icon = icon.into();
-        self
-    }
-
-    /// Set the size of the window.
-    pub fn size(mut self, width: u32, height: u32) -> Self {
-        self.window.width = width;
-        self.window.height = height;
-        self
-    }
-
-    /// Set whether the window is resizable.
-    pub fn resizable(mut self, resizable: bool) -> Self {
-        self.window.resizable = resizable;
-        self
-    }
-
-    /// Set whether the window is decorated.
-    pub fn decorated(mut self, decorated: bool) -> Self {
-        self.window.decorated = decorated;
-        self
-    }
-
-    /// Set whether the window is transparent.
-    pub fn transparent(mut self, transparent: bool) -> Self {
-        self.window.transparent = transparent;
-        self
-    }
-
-    /// Set the background color of the window.
-    pub fn color(mut self, color: Color) -> Self {
-        self.window.color = Some(color);
-        self
-    }
-
-    /// Set whether the window is maximized.
-    pub fn maximized(mut self, maximized: bool) -> Self {
-        self.window.maximized = maximized;
-        self
-    }
-
-    /// Set whether the window is visible.
-    pub fn visible(mut self, visible: bool) -> Self {
-        self.window.visible = visible;
+    /// Push a window to the application.
+    pub fn window<V: View<T> + 'static>(
+        mut self,
+        descriptor: WindowDescriptor,
+        mut ui: impl FnMut(&mut T) -> V + 'static,
+    ) -> Self {
+        let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
+        self.windows.push((descriptor, builder));
         self
     }
 

@@ -60,7 +60,6 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    Launcher::new(app, Data::default())
-        .title("With State (examples/with_state.rs)")
-        .launch();
+    let window = WindowDescriptor::new().title("With State (examples/with_state.rs)");
+    Launcher::new(Data::default()).window(window, app).launch();
 }

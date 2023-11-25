@@ -42,9 +42,9 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
+    let window = WindowDescriptor::new().title("Counter (examples/counter.rs)");
+
     // We create a new app with our `app` function and initial `Data` struct.
     // Then we set the title of the window and run the app.
-    Launcher::new(app, Data::default())
-        .title("Counter (examples/counter.rs)")
-        .launch();
+    Launcher::new(Data::default()).window(window, app).launch();
 }

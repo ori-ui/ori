@@ -48,7 +48,6 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    Launcher::new(app, Data::default())
-        .title("Text Input (examples/text_input.rs)")
-        .launch();
+    let window = WindowDescriptor::new().title("Text Input (examples/text_input.rs)");
+    Launcher::new(Data::default()).window(window, app).launch();
 }

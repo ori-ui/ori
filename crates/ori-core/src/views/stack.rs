@@ -340,23 +340,13 @@ impl<V> Stack<V> {
 
             let size = (self.content).layout_nth(i, content, cx, data, content_space);
 
-            let (mut child_major, mut child_minor) = self.axis.unpack(size);
+            let (mut child_major, child_minor) = self.axis.unpack(size);
 
             if content[i].is_flex() && !child_major.is_finite() {
                 child_major = max_major;
             } else if !child_major.is_finite() && !max_major.is_finite() {
                 warn_internal!(
                     "A view in a stack has an infinite major, [{}] = {}",
-                    i,
-                    size,
-                );
-            }
-
-            if content[i].is_flex() && !child_minor.is_finite() {
-                child_minor = max_minor;
-            } else if !child_minor.is_finite() && !max_minor.is_finite() {
-                warn_internal!(
-                    "A view in a stack has an infinite minor, [{}] = {}",
                     i,
                     size,
                 );

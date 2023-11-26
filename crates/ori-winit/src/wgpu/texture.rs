@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ori_core::image::{Image, ImageId, Texture, TextureId, WeakImage};
+use ori_core::image::{Image, ImageId, Texture, WeakImage};
 use wgpu::{
     util::DeviceExt, AddressMode, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Device,
@@ -22,7 +22,7 @@ pub struct CachedTexture {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum TextureCacheKey {
     Image(ImageId),
-    Texture(TextureId),
+    Texture(*const TextureView),
 }
 
 #[derive(Debug)]
@@ -77,7 +77,10 @@ impl TextureCache {
     pub fn get(&mut self, context: &WgpuContext, texture: &Texture) -> Arc<CachedTexture> {
         let id = match texture {
             Texture::Image(image) => TextureCacheKey::Image(image.id()),
-            Texture::Backend(texture) => TextureCacheKey::Texture(*texture),
+            Texture::Backend(texture) => {
+                let texture = context.textures.get(texture).expect("texture not found");
+                TextureCacheKey::Texture(texture.as_ref() as *const TextureView)
+            }
         };
 
         if let Some(image) = self.images.get(&id) {

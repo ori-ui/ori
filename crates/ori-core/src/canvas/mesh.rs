@@ -78,10 +78,31 @@ impl Mesh {
     pub fn rect(rect: Rect, color: Color) -> Self {
         let mut mesh = Mesh::new();
 
-        (mesh.vertices).push(Vertex::new_color(rect.top_left(), color));
-        (mesh.vertices).push(Vertex::new_color(rect.top_right(), color));
-        (mesh.vertices).push(Vertex::new_color(rect.bottom_right(), color));
-        (mesh.vertices).push(Vertex::new_color(rect.bottom_left(), color));
+        let v0 = Vertex {
+            position: rect.top_left(),
+            tex_coords: Point::new(0.0, 0.0),
+            color,
+        };
+        let v1 = Vertex {
+            position: rect.top_right(),
+            tex_coords: Point::new(1.0, 0.0),
+            color,
+        };
+        let v2 = Vertex {
+            position: rect.bottom_right(),
+            tex_coords: Point::new(1.0, 1.0),
+            color,
+        };
+        let v3 = Vertex {
+            position: rect.bottom_left(),
+            tex_coords: Point::new(0.0, 1.0),
+            color,
+        };
+
+        mesh.vertices.push(v0);
+        mesh.vertices.push(v1);
+        mesh.vertices.push(v2);
+        mesh.vertices.push(v3);
 
         mesh.indices.push(0);
         mesh.indices.push(1);

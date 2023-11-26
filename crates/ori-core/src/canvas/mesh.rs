@@ -2,7 +2,7 @@ use std::{f32::consts::PI, mem, slice};
 
 use crate::{
     image::Texture,
-    layout::{Point, Vector},
+    layout::{Point, Rect, Vector},
 };
 
 use super::{Color, Curve};
@@ -70,6 +70,25 @@ impl Mesh {
                 mesh.indices.push(i as u32 + 2);
             }
         }
+
+        mesh
+    }
+
+    /// Create a rectangle mesh with the given `rect` and `color`.
+    pub fn rect(rect: Rect, color: Color) -> Self {
+        let mut mesh = Mesh::new();
+
+        (mesh.vertices).push(Vertex::new_color(rect.top_left(), color));
+        (mesh.vertices).push(Vertex::new_color(rect.top_right(), color));
+        (mesh.vertices).push(Vertex::new_color(rect.bottom_right(), color));
+        (mesh.vertices).push(Vertex::new_color(rect.bottom_left(), color));
+
+        mesh.indices.push(0);
+        mesh.indices.push(1);
+        mesh.indices.push(2);
+        mesh.indices.push(0);
+        mesh.indices.push(2);
+        mesh.indices.push(3);
 
         mesh
     }

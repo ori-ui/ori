@@ -116,6 +116,7 @@ impl Fonts {
             let settings = FontSettings {
                 scale: 80.0,
                 collection_index: index,
+                load_substitutions: true,
             };
 
             Font::from_bytes(data, settings)

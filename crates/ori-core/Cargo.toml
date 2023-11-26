@@ -14,7 +14,7 @@ bitflags = "2.4"
 crossbeam-channel = "0.5"
 etagere = "0.2"
 fontdb = "0.16"
-fontdue = "0.7"
+fontdue = "0.8"
 seahash = "4.1"
 smol_str = "0.2"
 

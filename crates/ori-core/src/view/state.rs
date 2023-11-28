@@ -39,12 +39,17 @@ impl ViewId {
     pub fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
-        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        Self {
-            // SAFETY: This technically isn't safe in the case where the
-            //        `NEXT_ID` wraps around, but if that happens, we have
-            //        bigger problems.
-            id: unsafe { NonZeroU64::new_unchecked(id) },
+        loop {
+            let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+
+            if id == 0 {
+                continue;
+            }
+
+            break Self {
+                // SAFETY: `id` is never 0.
+                id: unsafe { NonZeroU64::new_unchecked(id) },
+            };
         }
     }
 

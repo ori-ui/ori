@@ -8,8 +8,8 @@ fn app(_data: &mut Data) -> impl View<Data> {
     for _ in 0..1000 {
         buttons.push(
             button(text("B"))
-                .padding(pt(4.0))
-                .border_radius(pt(4.0))
+                .padding(4.0)
+                .border_radius(4.0)
                 .on_click(|_, _| {}),
         );
     }

@@ -17,18 +17,9 @@ use crate::layout::Size;
 pub(crate) const SCALE_FACTOR: Key<f32> = Key::new("window.scale_factor");
 pub(crate) const WINDOW_SIZE: Key<Size> = Key::new("window.size");
 
-/// Get a size in pixels, relative to the [`scale factor`].
-///
-/// [`scale factor`]: crate::window::Window::scale_factor
-pub fn pt(size: f32) -> f32 {
-    size * SCALE_FACTOR.get()
-}
-
-/// Get a size in pixels, relative to the default font size.
-///
-/// This is a shorthand for `pt(size) * 16.0`.
-pub fn rem(size: f32) -> f32 {
-    pt(size) * 16.0
+/// Get the scale factor of the window.
+pub fn scale_factor() -> f32 {
+    SCALE_FACTOR.get()
 }
 
 /// Get the window size in physical pixels.

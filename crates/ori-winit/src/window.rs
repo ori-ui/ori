@@ -3,7 +3,7 @@ use ori_core::{
     image::Image,
     window::{Cursor, RawWindow},
 };
-use winit::{dpi::PhysicalSize, window::Icon};
+use winit::{dpi::LogicalSize, window::Icon};
 
 use crate::convert::convert_cursor_icon;
 
@@ -44,12 +44,13 @@ impl RawWindow for WinitWindow {
     }
 
     fn size(&self) -> (u32, u32) {
-        self.window.inner_size().into()
+        let physical = self.window.inner_size();
+        (physical.to_logical::<f32>(self.window.scale_factor())).into()
     }
 
     fn set_size(&mut self, width: u32, height: u32) {
-        (self.window).set_min_inner_size(Some(PhysicalSize::new(width, height)));
-        (self.window).set_max_inner_size(Some(PhysicalSize::new(width, height)));
+        (self.window).set_min_inner_size(Some(LogicalSize::new(width, height)));
+        (self.window).set_max_inner_size(Some(LogicalSize::new(width, height)));
     }
 
     fn resizable(&self) -> bool {

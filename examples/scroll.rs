@@ -32,7 +32,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
     );
 
     let button = button(text("hello")).fancy(4.0);
-    center(zstack![scroll, pad(rem(0.5), bottom_right(button))])
+    center(zstack![scroll, pad(8.0, bottom_right(button))])
 }
 
 fn main() {

@@ -10,7 +10,7 @@ fn app(data: &mut Data) -> impl View<Data> {
         let text_color = Color::RED.mix(Color::GREEN, t);
 
         let label = text("Click me");
-        button(label.color(text_color)).fancy(pt(4.0))
+        button(label.color(text_color)).fancy(4.0)
     });
 
     center(on_click(button, |_, data: &mut Data| data.on = !data.on))

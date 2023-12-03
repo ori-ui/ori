@@ -19,8 +19,8 @@ fn window(_data: &mut Data) -> impl View<Data> {
 
     let content = container(zstack![center(text("Hello World!")), close])
         .background(style(Palette::BACKGROUND))
-        .border_radius([rem(1.0), 0.0, rem(1.0), 0.0])
-        .border_width(pt(2.0))
+        .border_radius([16.0, 0.0, 16.0, 0.0])
+        .border_width(2.0)
         .border_color(style(Palette::SECONDARY_DARKER));
 
     on_press(content, |cx, _| {
@@ -30,7 +30,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
 
 fn open_window_button() -> impl View<Data> {
     let open_window = button(text("Open window"))
-        .fancy(pt(4.0))
+        .fancy(4.0)
         .color(style(Palette::ACCENT));
 
     on_click(open_window, |cx, data: &mut Data| {
@@ -56,7 +56,7 @@ fn close_window_button(data: &mut Data) -> impl View<Data> {
 
         button(text("Close window"))
             .color(inactive.mix(active, t))
-            .fancy(pt(4.0))
+            .fancy(4.0)
     });
 
     on_click(close_window, |cx, data: &mut Data| {
@@ -69,7 +69,7 @@ fn close_window_button(data: &mut Data) -> impl View<Data> {
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    let stack = vstack![open_window_button(), close_window_button(data)].gap(rem(0.5));
+    let stack = vstack![open_window_button(), close_window_button(data)].gap(8.0);
 
     center(stack)
 }

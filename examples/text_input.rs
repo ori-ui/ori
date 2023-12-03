@@ -19,7 +19,7 @@ fn input(data: &mut Data) -> impl View<Data> {
         .multiline(data.multiline)
         .min_width(150.0);
 
-    container(pad(pt(8.0), input))
+    container(pad(8.0, input))
         .background(style(Palette::SECONDARY))
         .border_radius(6.0)
 }

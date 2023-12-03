@@ -6,7 +6,7 @@ use crate::{
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
     },
-    theme::{alt, pt, style, text},
+    theme::{alt, style, text},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -132,7 +132,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
     ) -> Size {
         let text = TextSection {
             text: &self.alt,
-            font_size: pt(14.0),
+            font_size: 14.0,
             font_family: FontFamily::SansSerif,
             font_weight: FontWeight::NORMAL,
             font_stretch: FontStretch::Normal,
@@ -172,7 +172,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         }
 
         let size = glyphs.size() + self.padding.size();
-        let offset = Vector::new(-size.width / 2.0, pt(20.0));
+        let offset = Vector::new(-size.width / 2.0, 20.0);
         let text_rect = Rect::min_size(
             state.position + offset + self.padding.offset(),
             glyphs.size(),

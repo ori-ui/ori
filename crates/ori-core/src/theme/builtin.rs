@@ -9,7 +9,7 @@ pub mod text {
     use crate::{
         canvas::Color,
         text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
-        theme::{rem, Key, Palette, Theme},
+        theme::{Key, Palette, Theme},
     };
 
     /// The font size.
@@ -34,7 +34,7 @@ pub mod text {
     pub const WRAP: Key<TextWrap> = Key::new("text.wrap");
 
     pub(super) fn builtin(theme: &mut Theme) {
-        theme.set(FONT_SIZE, rem(1.0));
+        theme.set(FONT_SIZE, 16.0);
         theme.set(FONT_FAMILY, FontFamily::SansSerif);
         theme.set(FONT_WEIGHT, FontWeight::NORMAL);
         theme.set(FONT_STRETCH, FontStretch::Normal);
@@ -52,7 +52,7 @@ pub mod text_input {
     use crate::{
         canvas::Color,
         text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
-        theme::{rem, Key, Palette, Theme},
+        theme::{Key, Palette, Theme},
     };
 
     /// The font size.
@@ -77,7 +77,7 @@ pub mod text_input {
     pub const WRAP: Key<TextWrap> = Key::new("text.wrap");
 
     pub(super) fn builtin(theme: &mut Theme) {
-        theme.set(FONT_SIZE, rem(1.0));
+        theme.set(FONT_SIZE, 16.0);
         theme.set(FONT_FAMILY, FontFamily::SansSerif);
         theme.set(FONT_WEIGHT, FontWeight::NORMAL);
         theme.set(FONT_STRETCH, FontStretch::Normal);
@@ -95,7 +95,7 @@ pub mod alt {
     use crate::{
         canvas::{BorderRadius, BorderWidth, Color},
         layout::Padding,
-        theme::{pt, Key, Palette, Theme},
+        theme::{Key, Palette, Theme},
     };
 
     /// The padding.
@@ -110,9 +110,9 @@ pub mod alt {
     pub const BORDER_COLOR: Key<Color> = Key::new("alt.border_color");
 
     pub(super) fn builtin(theme: &mut Theme) {
-        theme.set(PADDING, [pt(4.0), pt(2.0)]);
+        theme.set(PADDING, [4.0, 2.0]);
         theme.map(BACKGROUND, |theme| theme.get(Palette::BACKGROUND_DARKER));
-        theme.set(BORDER_RADIUS, BorderRadius::all(pt(4.0)));
+        theme.set(BORDER_RADIUS, BorderRadius::all(4.0));
         theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
         theme.set(BORDER_COLOR, Color::TRANSPARENT);
     }
@@ -146,7 +146,7 @@ pub mod container {
 pub mod scroll {
     use crate::{
         canvas::{BorderRadius, Color},
-        theme::{rem, Key, Palette, Theme},
+        theme::{Key, Palette, Theme},
         transition::Transition,
     };
 
@@ -165,9 +165,9 @@ pub mod scroll {
 
     pub(super) fn builtin(theme: &mut Theme) {
         theme.set(TRANSITION, Transition::ease(0.1));
-        theme.set(WIDTH, rem(0.5));
-        theme.set(INSET, rem(0.3));
-        theme.set(BORDER_RADIUS, BorderRadius::all(rem(0.25)));
+        theme.set(WIDTH, 8.0);
+        theme.set(INSET, 6.0);
+        theme.set(BORDER_RADIUS, BorderRadius::all(4.0));
         theme.map(COLOR, |theme| theme.get(Palette::SECONDARY_DARK));
         theme.map(KNOB_COLOR, |theme| theme.get(Palette::SECONDARY_DARKER));
     }
@@ -177,7 +177,7 @@ pub mod scroll {
 pub mod button {
     use crate::{
         canvas::{Background, BorderRadius, BorderWidth, Color},
-        theme::{rem, Key, Palette, Theme},
+        theme::{Key, Palette, Theme},
         transition::Transition,
     };
 
@@ -195,7 +195,7 @@ pub mod button {
     pub(super) fn builtin(theme: &mut Theme) {
         theme.set(TRANSITION, Transition::ease(0.1));
         theme.map(COLOR, |theme| Background::new(theme.get(Palette::PRIMARY)));
-        theme.set(BORDER_RADIUS, BorderRadius::all(rem(0.5)));
+        theme.set(BORDER_RADIUS, BorderRadius::all(8.0));
         theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
         theme.set(BORDER_COLOR, Color::TRANSPARENT);
     }
@@ -204,7 +204,7 @@ pub mod button {
 /// Styles for [`Checkbox`](crate::views::Checkbox)s.
 pub mod checkbox {
     use crate::{
-        theme::{pt, rem, Key, Palette},
+        theme::{Key, Palette},
         transition::Transition,
     };
 
@@ -229,12 +229,12 @@ pub mod checkbox {
 
     pub(super) fn builtin(theme: &mut crate::theme::Theme) {
         theme.set(TRANSITION, Transition::ease(0.1));
-        theme.set(SIZE, rem(1.5));
+        theme.set(SIZE, 24.0);
         theme.map(COLOR, |theme| theme.get(Palette::ACCENT));
-        theme.set(STROKE, pt(2.0));
+        theme.set(STROKE, 2.0);
         theme.set(BACKGROUND, Color::TRANSPARENT);
-        theme.set(BORDER_RADIUS, BorderRadius::all(rem(0.4)));
-        theme.set(BORDER_WIDTH, BorderWidth::all(pt(1.0)));
+        theme.set(BORDER_RADIUS, BorderRadius::all(6.0));
+        theme.set(BORDER_WIDTH, BorderWidth::all(1.0));
         theme.map(BORDER_COLOR, |theme| theme.get(Palette::TEXT_BRIGHTER));
     }
 }

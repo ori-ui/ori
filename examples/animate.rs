@@ -8,9 +8,9 @@ fn app(_data: &mut Data) -> impl View<Data> {
         let border = Color::RED.mix(Color::GREEN, t);
 
         button(text("Click me"))
-            .border_width(pt(2.0))
+            .border_width(2.0)
             .border_color(border)
-            .fancy(pt(4.0))
+            .fancy(4.0)
     });
 
     center(on_click(click_me, |_, _| info!("Clicked!")))

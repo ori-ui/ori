@@ -101,13 +101,7 @@ impl<T> Ui<T> {
     pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window) -> UiRequests<T> {
         let theme = Self::build_theme(&mut self.theme_builder, &window);
 
-        let mut needs_rebuild = false;
-        let mut base = BaseCx::new(
-            &mut self.fonts,
-            &mut self.contexts,
-            &mut self.command_proxy,
-            &mut needs_rebuild,
-        );
+        base_cx!(self, needs_rebuild, base);
 
         let window_id = window.id();
         let window_ui = WindowUi::new(builder, &mut base, &mut self.data, theme, window);

@@ -72,6 +72,6 @@ impl<T> View<T> for Painter<T> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        (self.draw)(cx, data, canvas);
+        Theme::with_global(&mut self.theme, || (self.draw)(cx, data, canvas));
     }
 }

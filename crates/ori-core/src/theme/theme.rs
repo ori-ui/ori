@@ -1,5 +1,6 @@
 use std::{
     any::Any,
+    borrow::Cow,
     cell::RefCell,
     collections::HashMap,
     fmt::{Debug, Display},
@@ -8,18 +9,16 @@ use std::{
     sync::Arc,
 };
 
+use crate::log::warn_internal;
+
 use super::SCALE_FACTOR;
 
 use super::Key;
 
-thread_local! {
-    static THEME: RefCell<Theme> = Default::default();
-}
-
 impl<T: Any> Key<T> {
     /// Set a value in the global [`Theme`].
     pub fn set(self, value: impl Into<T>) {
-        THEME.with(|theme| theme.borrow_mut().set(self, value));
+        Theme::global(|theme| theme.set(self, value));
     }
 
     /// Get a value from the global [`Theme`].
@@ -27,7 +26,7 @@ impl<T: Any> Key<T> {
     where
         T: Clone + Default,
     {
-        THEME.with(|theme| theme.borrow().get(self))
+        Theme::GLOBAL.with(|theme| theme.borrow().get(self))
     }
 }
 
@@ -42,23 +41,13 @@ pub fn set_theme(theme: impl Into<Theme>) {
 }
 
 /// Get a value from the current theme.
-pub fn style<T: Clone + Default + Any>(key: Key<T>) -> T {
-    key.get()
+pub fn style<T: Clone + Default + Any>(key: impl AsRef<Key<T>>) -> T {
+    key.as_ref().get()
 }
 
 /// Get a snapshot of the global theme.
 pub fn theme_snapshot() -> Theme {
-    Theme::global_snapshot()
-}
-
-/// Run a function with a temporary global theme.
-///
-/// This restores the previous global theme after the function returns.
-pub fn themed<T>(f: impl FnOnce() -> T) -> T {
-    let snapshot = Theme::global_snapshot();
-    let result = f();
-    Theme::make_global(snapshot);
-    result
+    Theme::snapshot()
 }
 
 #[derive(Clone, Debug)]
@@ -105,7 +94,7 @@ impl BuildHasher for ThemeHasher {
 /// A map of style values.
 #[derive(Clone, Debug)]
 pub struct Theme {
-    values: HashMap<&'static str, ThemeEntry, ThemeHasher>,
+    values: Arc<HashMap<Cow<'static, str>, ThemeEntry, ThemeHasher>>,
 }
 
 impl Default for Theme {
@@ -115,10 +104,21 @@ impl Default for Theme {
 }
 
 impl Theme {
+    thread_local! {
+        /// The global theme.
+        ///
+        /// This is used by [`style`](crate::style) and [`set_style`](crate::set_style).
+        pub static GLOBAL: RefCell<Theme> = Default::default();
+    }
+
     fn empty() -> Self {
         Self {
             values: Default::default(),
         }
+    }
+
+    fn values_mut(&mut self) -> &mut HashMap<Cow<'static, str>, ThemeEntry, ThemeHasher> {
+        Arc::make_mut(&mut self.values)
     }
 
     /// Create a new theme.
@@ -139,13 +139,13 @@ impl Theme {
     /// Set a value in the theme.
     pub fn set<T: Any>(&mut self, key: Key<T>, value: impl Into<T>) {
         let value = Arc::new(value.into());
-        self.values.insert(key.name(), ThemeEntry::Value(value));
+        (self.values_mut()).insert(Cow::Borrowed(key.name()), ThemeEntry::Value(value));
     }
 
     /// Map a value in the theme.
     pub fn map<T: Any>(&mut self, key: Key<T>, map: impl Fn(&Theme) -> T + 'static) {
         let map: Box<dyn Fn(&Theme) -> T> = Box::new(move |theme: &Theme| map(theme));
-        (self.values).insert(key.name(), ThemeEntry::Getter(Arc::new(map)));
+        (self.values_mut()).insert(Cow::Borrowed(key.name()), ThemeEntry::Getter(Arc::new(map)));
     }
 
     /// Set a value in the theme and return the theme.
@@ -156,7 +156,12 @@ impl Theme {
 
     /// Extend the theme with another theme.
     pub fn extend(&mut self, other: impl Into<Self>) {
-        self.values.extend(other.into().values);
+        let other = match Arc::try_unwrap(other.into().values) {
+            Ok(other) => other,
+            Err(other) => other.as_ref().clone(),
+        };
+
+        self.values_mut().extend(other);
     }
 
     fn downcast<'a, T: Any>(value: &'a dyn Any, name: &'static str) -> Result<&'a T, ThemeError> {
@@ -175,16 +180,16 @@ impl Theme {
     }
 
     /// Get a value from the theme.
-    pub fn try_get<T: Clone + Any>(&self, key: Key<T>) -> Option<T> {
-        self.try_get_inner(key.name()).ok()
+    pub fn try_get<T: Clone + Any>(&self, key: impl AsRef<Key<T>>) -> Option<T> {
+        self.try_get_inner(key.as_ref().name()).ok()
     }
 
     /// Get a value from the theme.
-    pub fn get<T: Clone + Default + Any>(&self, key: Key<T>) -> T {
-        match self.try_get_inner(key.name()) {
+    pub fn get<T: Clone + Default + Any>(&self, key: impl AsRef<Key<T>>) -> T {
+        match self.try_get_inner(key.as_ref().name()) {
             Ok(value) => value,
             Err(err) => {
-                crate::log::warn_internal!("{}", err);
+                warn_internal!("{}", err);
                 T::default()
             }
         }
@@ -192,35 +197,22 @@ impl Theme {
 
     /// Get a mutable reference to the global theme.
     pub fn global<T>(f: impl FnOnce(&mut Self) -> T) -> T {
-        THEME.with(|theme| {
-            let mut theme = theme.borrow_mut();
-            f(&mut theme)
-        })
+        Self::GLOBAL.with(|theme| f(&mut *theme.borrow_mut()))
     }
 
     /// Get a snapshot of the global theme.
-    pub fn global_snapshot() -> Self {
-        THEME.with(|theme| theme.borrow().clone())
-    }
-
-    /// Make this theme the global theme.
-    ///
-    /// This returns the previous global theme.
-    pub fn make_global(mut this: Self) -> Self {
-        THEME.with(|theme| {
-            let mut theme = theme.borrow_mut();
-            mem::swap(&mut *theme, &mut this);
-        });
-
-        this
+    pub fn snapshot() -> Self {
+        Self::GLOBAL.with(|theme| theme.borrow().clone())
     }
 
     /// Swap this theme with the global theme.
     pub fn swap_global(this: &mut Self) {
-        THEME.with(|theme| {
-            let mut theme = theme.borrow_mut();
-            mem::swap(&mut *theme, this);
-        });
+        Self::global(|theme| mem::swap(&mut *theme, this));
+    }
+
+    /// Set this theme as the global theme.
+    pub fn set_global(this: Self) -> Self {
+        Self::global(|theme| mem::replace(&mut *theme, this))
     }
 
     /// Run a function with this theme as the global theme.

@@ -2,6 +2,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
+    theme::Theme,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -17,6 +18,8 @@ pub struct Painter<T> {
     /// The draw function.
     #[allow(clippy::type_complexity)]
     pub draw: Box<dyn FnMut(&mut DrawCx, &mut T, &mut Canvas)>,
+    /// The theme snapshot.
+    pub theme: Theme,
 }
 
 impl<T> Painter<T> {
@@ -24,6 +27,7 @@ impl<T> Painter<T> {
     pub fn new(draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static) -> Self {
         Self {
             draw: Box::new(draw),
+            theme: Theme::snapshot(),
         }
     }
 }

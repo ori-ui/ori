@@ -5,6 +5,7 @@ use std::{
 };
 
 /// A key used to identify a style property.
+#[repr(transparent)]
 pub struct Key<T> {
     name: &'static str,
     marker: PhantomData<fn() -> T>,
@@ -50,5 +51,17 @@ impl<T> Key<T> {
     /// Get the name of the key.
     pub const fn name(self) -> &'static str {
         self.name
+    }
+}
+
+impl<T> AsRef<Key<T>> for Key<T> {
+    fn as_ref(&self) -> &Key<T> {
+        self
+    }
+}
+
+impl<T> AsRef<Key<T>> for &'static str {
+    fn as_ref(&self) -> &Key<T> {
+        unsafe { &*(self as *const &'static str as *const Key<T>) }
     }
 }

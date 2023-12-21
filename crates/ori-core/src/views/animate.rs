@@ -2,7 +2,7 @@ use crate::{
     canvas::Canvas,
     event::{AnimationFrame, Event},
     layout::{Size, Space},
-    theme::{theme_snapshot, Theme},
+    theme::Theme,
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
@@ -147,7 +147,7 @@ impl<T, V, S> Animate<T, V, S> {
     ) -> Self {
         Self {
             animate: Box::new(animate),
-            theme: theme_snapshot(),
+            theme: Theme::snapshot(),
         }
     }
 }

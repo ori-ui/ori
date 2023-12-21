@@ -22,9 +22,9 @@ where
 /// A view that stores some additional data.
 pub struct WithState<T, U, V> {
     build: Box<dyn Fn() -> U>,
-    theme: Theme,
     #[allow(clippy::type_complexity)]
     view: Box<dyn FnMut(&mut T, &mut U) -> V>,
+    theme: Theme,
 }
 
 impl<T, U, V> WithState<T, U, V> {
@@ -35,8 +35,8 @@ impl<T, U, V> WithState<T, U, V> {
     ) -> Self {
         Self {
             build: Box::new(build),
-            theme: Theme::global_snapshot(),
             view: Box::new(view),
+            theme: Theme::snapshot(),
         }
     }
 

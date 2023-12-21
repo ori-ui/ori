@@ -54,8 +54,8 @@ pub mod prelude {
             Glyph, Glyphs, TextAlign, TextSection, TextWrap,
         },
         theme::{
-            builtin::*, scale_factor, set_style, set_theme, style, themed, vh, vw, window_size,
-            Key, Palette, Theme,
+            builtin::*, scale_factor, set_style, set_theme, style, theme_snapshot, vh, vw,
+            window_size, Key, Palette, Theme,
         },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{

@@ -204,7 +204,7 @@ pub mod button {
 /// Styles for [`Checkbox`](crate::views::Checkbox)s.
 pub mod checkbox {
     use crate::{
-        theme::{Key, Palette},
+        theme::{Key, Palette, Theme},
         transition::Transition,
     };
 
@@ -227,7 +227,7 @@ pub mod checkbox {
     /// The border color.
     pub const BORDER_COLOR: Key<Color> = Key::new("checkbox.border_color");
 
-    pub(super) fn builtin(theme: &mut crate::theme::Theme) {
+    pub(super) fn builtin(theme: &mut Theme) {
         theme.set(TRANSITION, Transition::ease(0.1));
         theme.set(SIZE, 24.0);
         theme.map(COLOR, |theme| theme.get(Palette::ACCENT));

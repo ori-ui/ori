@@ -39,14 +39,16 @@ impl<T> WindowUi<T> {
         mut theme: Theme,
         mut window: Window,
     ) -> Self {
-        // we first build the view tree, with `theme` as the global theme
-        let view = Theme::with_global(&mut theme, || builder(data));
-        let mut view = Pod::new(view);
-
-        // then we build the state tree, with `theme` as the global theme
         let mut animation_frame = None;
         let mut cx = BuildCx::new(base, &mut window, &mut animation_frame);
-        let state = Theme::with_global(&mut theme, || view.build(&mut cx, data));
+
+        // we build the view tree and state tree, with the global theme
+        let (view, state) = Theme::with_global(&mut theme, || {
+            let mut view = Pod::new(builder(data));
+            let state = view.build(&mut cx, data);
+
+            (view, state)
+        });
 
         Self {
             builder,
@@ -162,10 +164,6 @@ impl<T> WindowUi<T> {
         // mark the window as not needing to rebuilt
         self.needs_rebuild = false;
 
-        // build the new view tree
-        let new_view = Theme::with_global(&mut self.theme, || (self.builder)(data));
-        let mut new_view = Pod::new(new_view);
-
         let mut cx = RebuildCx::new(
             base,
             &mut self.view_state,
@@ -174,8 +172,10 @@ impl<T> WindowUi<T> {
         );
 
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
-        Theme::with_global(&mut self.theme, || {
+        let new_view = Theme::with_global(&mut self.theme, || {
+            let mut new_view = Pod::new((self.builder)(data));
             new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
+            new_view
         });
 
         // replace the old view tree with the new one

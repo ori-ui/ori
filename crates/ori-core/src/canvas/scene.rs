@@ -1,11 +1,11 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, mem};
 
 use crate::{
     layout::{Affine, Point, Rect},
     view::ViewId,
 };
 
-use super::Primitive;
+use super::{Batch, BatchedMesh, BatchedQuad, MeshBatch, Primitive, QuadBatch};
 
 /// A collection of fragments to be rendered.
 #[derive(Clone, Debug)]
@@ -73,6 +73,111 @@ impl Scene {
         }
 
         None
+    }
+
+    /// Get the batches in the scene.
+    pub fn batches(&self) -> Vec<Batch> {
+        let mut batches = Vec::new();
+
+        let mut quad_image = None;
+        let mut quad_clip = None;
+        let mut batched_quads = Vec::new();
+        let mut quad_count = 0;
+
+        let mut mesh_image = None;
+        let mut mesh_clip = None;
+        let mut batched_meshes = Vec::new();
+        let mut mesh_count = 0;
+
+        for fragment in &self.fragments {
+            match fragment.primitive {
+                Primitive::Quad(ref quad) => {
+                    if !batched_meshes.is_empty() {
+                        batches.push(Batch::Mesh(MeshBatch {
+                            index: mesh_count,
+                            meshes: mem::take(&mut batched_meshes),
+                            texture: mem::take(&mut mesh_image),
+                            clip: mesh_clip.unwrap(),
+                        }));
+
+                        mesh_count += 1;
+                    }
+
+                    let image = quad.background.texture.clone();
+                    let compatible = quad_clip == Some(fragment.clip) && quad_image == image;
+                    if !compatible && !batched_quads.is_empty() {
+                        batches.push(Batch::Quad(QuadBatch {
+                            index: quad_count,
+                            quads: mem::take(&mut batched_quads),
+                            texture: mem::take(&mut quad_image),
+                            clip: quad_clip.unwrap(),
+                        }));
+
+                        quad_count += 1;
+                    }
+
+                    quad_image = image;
+                    quad_clip = Some(fragment.clip);
+                    batched_quads.push(BatchedQuad {
+                        quad: quad.clone(),
+                        transform: fragment.transform,
+                    });
+                }
+                Primitive::Mesh(ref mesh) => {
+                    if !batched_quads.is_empty() {
+                        batches.push(Batch::Quad(QuadBatch {
+                            index: quad_count,
+                            quads: mem::take(&mut batched_quads),
+                            texture: mem::take(&mut quad_image),
+                            clip: quad_clip.unwrap(),
+                        }));
+
+                        quad_count += 1;
+                    }
+
+                    let image = mesh.texture.clone();
+                    let compatible = mesh_clip == Some(fragment.clip) && mesh_image == image;
+                    if !compatible && !batched_meshes.is_empty() {
+                        batches.push(Batch::Mesh(MeshBatch {
+                            index: mesh_count,
+                            meshes: mem::take(&mut batched_meshes),
+                            texture: mem::take(&mut mesh_image),
+                            clip: mesh_clip.unwrap(),
+                        }));
+
+                        mesh_count += 1;
+                    }
+
+                    mesh_image = image;
+                    mesh_clip = Some(fragment.clip);
+                    batched_meshes.push(BatchedMesh {
+                        mesh: mesh.clone(),
+                        transform: fragment.transform,
+                    });
+                }
+                Primitive::Trigger(_) => {}
+            }
+        }
+
+        if !batched_quads.is_empty() {
+            batches.push(Batch::Quad(QuadBatch {
+                index: quad_count,
+                quads: mem::take(&mut batched_quads),
+                texture: mem::take(&mut quad_image),
+                clip: quad_clip.unwrap(),
+            }));
+        }
+
+        if !batched_meshes.is_empty() {
+            batches.push(Batch::Mesh(MeshBatch {
+                index: mesh_count,
+                meshes: mem::take(&mut batched_meshes),
+                texture: mem::take(&mut mesh_image),
+                clip: mesh_clip.unwrap(),
+            }));
+        }
+
+        batches
     }
 }
 

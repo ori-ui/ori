@@ -31,7 +31,7 @@ impl Vertex {
 }
 
 /// A mesh containing vertices, indices and an optional image.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Mesh {
     /// The vertices of the mesh.
     pub vertices: Vec<Vertex>,

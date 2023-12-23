@@ -1,8 +1,8 @@
 use std::{mem, sync::Arc};
 
 use ori_core::{
-    canvas::Quad,
-    layout::{Affine, Point, Rect, Size},
+    canvas::{Quad, QuadBatch},
+    layout::{Rect, Size},
 };
 use wgpu::{
     include_wgsl, vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry,
@@ -277,9 +277,9 @@ impl QuadRender {
     fn batch_image(
         context: &WgpuContext,
         cache: &mut TextureCache,
-        batch: &[(&Quad, Affine)],
+        batch: &QuadBatch,
     ) -> Arc<CachedTexture> {
-        match batch[0].0.background.texture {
+        match batch.texture {
             Some(ref image) => cache.get(context, image),
             None => cache.fallback(context),
         }
@@ -290,52 +290,48 @@ impl QuadRender {
         &mut self,
         context: &WgpuContext,
         cache: &mut TextureCache,
-        index: usize,
-        quads: &[(&Quad, Affine)],
-        clip: Rect,
+        batch: &QuadBatch,
         resolution: Size,
     ) {
-        assert!(!quads.is_empty());
-
         self.write_uniforms(&context.queue, resolution);
-        self.resize_batches(&context.device, index + 1);
+        self.resize_batches(&context.device, batch.index + 1);
 
-        let batch = &mut self.batches[index];
-        batch.resize(&context.device, &self.data_layout, quads.len());
-        batch.vertex_count = quads.len() * 6;
-        batch.image = Some(Self::batch_image(context, cache, quads));
-        batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
+        let prepared = &mut self.batches[batch.index];
+        prepared.resize(&context.device, &self.data_layout, batch.quads.len());
+        prepared.vertex_count = batch.quads.len() * 6;
+        prepared.image = Some(Self::batch_image(context, cache, batch));
+        prepared.clip = batch.clip.clamp(resolution).round();
 
-        let mut datas = Vec::with_capacity(quads.len());
-        let mut vertices = Vec::with_capacity(quads.len() * 6);
+        let mut datas = Vec::with_capacity(batch.quads.len());
+        let mut vertices = Vec::with_capacity(batch.quads.len() * 6);
 
-        for (quad, transform) in quads {
+        for quad in batch.quads.iter() {
             let data = QuadData {
-                translation: transform.translation.into(),
-                matrix: transform.matrix.into(),
-                min: quad.rect.min.into(),
-                max: quad.rect.max.into(),
+                translation: quad.transform.translation.into(),
+                matrix: quad.transform.matrix.into(),
+                min: quad.quad.rect.min.into(),
+                max: quad.quad.rect.max.into(),
                 _padding: [0; 8],
-                color: quad.background.color.into(),
-                border_radius: quad.border_radius.into(),
-                border_width: quad.border_width.into(),
-                border_color: quad.border_color.into(),
+                color: quad.quad.background.color.into(),
+                border_radius: quad.quad.border_radius.into(),
+                border_width: quad.quad.border_width.into(),
+                border_color: quad.quad.border_color.into(),
             };
 
             datas.push(data);
-            vertices.extend(Batch::vertices(quad));
+            vertices.extend(Batch::vertices(&quad.quad));
         }
 
         unsafe {
             let datas = bytes_of_slice(&datas);
             let vertices = bytes_of_slice(&vertices);
 
-            (context.queue).write_buffer(&batch.data_buffer, 0, datas);
-            (context.queue).write_buffer(&batch.vertex_buffer, 0, vertices);
+            (context.queue).write_buffer(&prepared.data_buffer, 0, datas);
+            (context.queue).write_buffer(&prepared.vertex_buffer, 0, vertices);
         }
     }
 
-    pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
+    pub fn render_batch<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
         let batch = &self.batches[index];
 
         let image_bind_group = &batch.image.as_ref().unwrap().bind_group;

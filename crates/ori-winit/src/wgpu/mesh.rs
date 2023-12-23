@@ -1,8 +1,8 @@
 use std::{mem, sync::Arc};
 
 use ori_core::{
-    canvas::{Mesh, Vertex},
-    layout::{Affine, Point, Rect, Size},
+    canvas::{Mesh, MeshBatch, Vertex},
+    layout::{Affine, Rect, Size},
 };
 use wgpu::{
     include_wgsl, vertex_attr_array, BindGroup, BindGroupDescriptor, BindGroupEntry,
@@ -202,20 +202,26 @@ impl MeshRender {
         }
     }
 
-    fn batch_index_count(batch: &[(&Mesh, Affine)]) -> usize {
-        batch.iter().map(|(mesh, _)| mesh.indices.len()).sum()
+    fn batch_index_count(batch: &MeshBatch) -> usize {
+        (batch.meshes)
+            .iter()
+            .map(|mesh| mesh.mesh.indices.len())
+            .sum()
     }
 
-    fn batch_vertex_count(batch: &[(&Mesh, Affine)]) -> usize {
-        batch.iter().map(|(mesh, _)| mesh.vertices.len()).sum()
+    fn batch_vertex_count(batch: &MeshBatch) -> usize {
+        (batch.meshes)
+            .iter()
+            .map(|mesh| mesh.mesh.vertices.len())
+            .sum()
     }
 
     fn batch_image(
         context: &WgpuContext,
         cache: &mut TextureCache,
-        batch: &[(&Mesh, Affine)],
+        batch: &MeshBatch,
     ) -> Arc<CachedTexture> {
-        match batch[0].0.texture {
+        match batch.texture {
             Some(ref image) => cache.get(context, image),
             None => cache.fallback(context),
         }
@@ -249,43 +255,39 @@ impl MeshRender {
         &mut self,
         context: &WgpuContext,
         cache: &mut TextureCache,
-        index: usize,
-        meshes: &[(&Mesh, Affine)],
-        clip: Rect,
+        batch: &MeshBatch,
         resolution: Size,
     ) {
-        assert!(!meshes.is_empty());
-
         self.write_uniforms(&context.queue, resolution);
-        self.resize_batches(&context.device, index + 1);
+        self.resize_batches(&context.device, batch.index + 1);
 
-        let index_count = Self::batch_index_count(meshes);
-        let vertex_count = Self::batch_vertex_count(meshes);
+        let index_count = Self::batch_index_count(batch);
+        let vertex_count = Self::batch_vertex_count(batch);
 
-        let batch = &mut self.batches[index];
-        batch.resize_index_buffer(&context.device, index_count);
-        batch.resize_vertex_buffer(&context.device, vertex_count);
-        batch.index_count = index_count;
-        batch.image = Some(Self::batch_image(context, cache, meshes));
-        batch.clip = clip.clamp(Rect::min_size(Point::ZERO, resolution)).round();
+        let prepared = &mut self.batches[batch.index];
+        prepared.resize_index_buffer(&context.device, index_count);
+        prepared.resize_vertex_buffer(&context.device, vertex_count);
+        prepared.index_count = index_count;
+        prepared.image = Some(Self::batch_image(context, cache, batch));
+        prepared.clip = batch.clip.clamp(resolution).round();
 
         let mut vertices = Vec::with_capacity(vertex_count);
         let mut indices = Vec::with_capacity(index_count);
 
-        for (mesh, transform) in meshes {
-            Self::append_mesh_to_batch(&mut vertices, &mut indices, mesh, *transform);
+        for mesh in batch.meshes.iter() {
+            Self::append_mesh_to_batch(&mut vertices, &mut indices, &mesh.mesh, mesh.transform);
         }
 
         unsafe {
             let vertices = bytes_of_slice(&vertices);
             let indices = bytes_of_slice(&indices);
 
-            (context.queue).write_buffer(&batch.vertex_buffer, 0, vertices);
-            (context.queue).write_buffer(&batch.index_buffer, 0, indices);
+            (context.queue).write_buffer(&prepared.vertex_buffer, 0, vertices);
+            (context.queue).write_buffer(&prepared.index_buffer, 0, indices);
         }
     }
 
-    pub fn render<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
+    pub fn render_batch<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
         let batch = &self.batches[index];
 
         let image_bind_group = &batch.image.as_ref().unwrap().bind_group;

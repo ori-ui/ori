@@ -4,6 +4,7 @@
 //! to a [`Scene`].
 
 mod background;
+mod batch;
 mod border;
 mod canvas;
 mod color;
@@ -15,6 +16,7 @@ mod shadow;
 mod stroke;
 
 pub use background::*;
+pub use batch::*;
 pub use border::*;
 pub use canvas::*;
 pub use color::*;

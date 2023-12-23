@@ -53,7 +53,9 @@ impl Rect {
     }
 
     /// Clamp the rectangle to the given rectangle.
-    pub fn clamp(self, other: Self) -> Self {
+    pub fn clamp(self, other: impl Into<Self>) -> Self {
+        let other = other.into();
+
         Self {
             min: self.min.clamp(other.min, other.max),
             max: self.max.clamp(other.min, other.max),
@@ -193,6 +195,12 @@ impl Rect {
             min: Point::new(min_x, min_y),
             max: Point::new(max_x, max_y),
         }
+    }
+}
+
+impl From<Size> for Rect {
+    fn from(size: Size) -> Self {
+        Self::new(Point::ZERO, size.into())
     }
 }
 

@@ -197,7 +197,7 @@ impl Theme {
 
     /// Get a mutable reference to the global theme.
     pub fn global<T>(f: impl FnOnce(&mut Self) -> T) -> T {
-        Self::GLOBAL.with(|theme| f(&mut *theme.borrow_mut()))
+        Self::GLOBAL.with(|theme| f(&mut theme.borrow_mut()))
     }
 
     /// Get a snapshot of the global theme.

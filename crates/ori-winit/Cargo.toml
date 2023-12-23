@@ -17,6 +17,14 @@ version = "0.29"
 default-features = false
 features = ["android-native-activity", "rwh_05"]
 
+[dependencies.glow]
+version = "0.13"
+optional = true
+
+[dependencies.glutin]
+version = "0.31"
+optional = true
+
 [dependencies.wgpu]
 version = "0.18"
 optional = true
@@ -36,4 +44,5 @@ tracing = ["dep:tracing", "dep:tracing-subscriber"]
 x11 = ["winit/x11"]
 wayland = ["winit/wayland"]
 
+glow = ["dep:glow", "dep:glutin"]
 wgpu = ["dep:wgpu"]

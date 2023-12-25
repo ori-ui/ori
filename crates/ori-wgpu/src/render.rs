@@ -9,10 +9,9 @@ use wgpu::{
     TextureView,
 };
 
-use crate::{log::warn_internal, WgpuContext};
+use crate::{MeshRender, TextureCache, WgpuContext, WgpuError, WgpuRenderInstance};
 
-use super::{MeshRender, TextureCache, WgpuError, WgpuRenderInstance};
-
+/// A renderer for a [`ori_core::canvas::Scene`].
 #[derive(Debug)]
 pub struct WgpuRender {
     surface: Surface,
@@ -24,6 +23,7 @@ pub struct WgpuRender {
 }
 
 impl WgpuRender {
+    /// Create a new renderer.
     pub fn new(
         instance: &WgpuRenderInstance,
         surface: Surface,
@@ -104,6 +104,7 @@ impl WgpuRender {
         texture.create_view(&wgpu::TextureViewDescriptor::default())
     }
 
+    /// Clean up unused resources.
     pub fn clean(&mut self) {
         self.image.clean();
     }
@@ -112,7 +113,7 @@ impl WgpuRender {
         Size::new(self.config.width as f32, self.config.height as f32)
     }
 
-    pub fn resize(&mut self, context: &WgpuContext, width: u32, height: u32) {
+    fn resize(&mut self, context: &WgpuContext, width: u32, height: u32) {
         if self.config.width == width && self.config.height == height {
             return;
         }
@@ -176,6 +177,7 @@ impl WgpuRender {
         }
     }
 
+    /// Render the given [`ori_core::canvas::Scene`].
     pub fn render_scene(
         &mut self,
         context: &WgpuContext,
@@ -200,7 +202,7 @@ impl WgpuRender {
             Ok(target) => target,
             Err(SurfaceError::OutOfMemory) => panic!("Out of memory"),
             Err(err) => {
-                warn_internal!("Surface error: {:?}", err);
+                eprintln!("Surface error: {:?}", err);
                 return;
             }
         };

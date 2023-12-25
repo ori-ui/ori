@@ -10,11 +10,7 @@ mod error;
 mod launch;
 mod launcher;
 mod log;
-mod util;
 mod window;
-
-#[cfg(feature = "wgpu")]
-mod wgpu;
 
 #[cfg(feature = "tracing")]
 mod tracing;
@@ -23,7 +19,7 @@ pub use error::*;
 pub use launcher::*;
 
 #[cfg(feature = "wgpu")]
-pub use wgpu::WgpuContext;
+pub use ori_wgpu::WgpuContext;
 
 #[doc(hidden)]
 pub mod __private {

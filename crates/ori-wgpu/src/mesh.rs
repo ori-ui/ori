@@ -13,9 +13,11 @@ use wgpu::{
     VertexBufferLayout, VertexState, VertexStepMode,
 };
 
-use crate::{util::bytes_of, WgpuContext};
+use crate::{CachedTexture, TextureCache, WgpuContext};
 
-use super::{CachedTexture, TextureCache};
+unsafe fn bytes_of<T>(data: &T) -> &[u8] {
+    std::slice::from_raw_parts(data as *const _ as *const u8, std::mem::size_of::<T>())
+}
 
 #[repr(C)]
 #[derive(Clone, Copy)]

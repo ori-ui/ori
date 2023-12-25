@@ -18,6 +18,7 @@ use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 
 use super::{mesh::MeshRender, GlowError};
 
+/// A renderer for a [`ori_core::canvas::Scene`].
 #[derive(Debug)]
 pub struct GlowRender {
     #[allow(dead_code)]
@@ -50,6 +51,7 @@ impl GlowRender {
         Self::find_first_config(display, fallback.build())
     }
 
+    /// Create a new renderer.
     pub fn new(
         window_handle: RawWindowHandle,
         display_handle: RawDisplayHandle,
@@ -141,12 +143,14 @@ impl GlowRender {
         Ok(())
     }
 
+    /// Clean up unused resources.
     pub fn clean(&mut self) {
         unsafe {
             self.mesh.clean(&self.gl);
         }
     }
 
+    /// Render the given [`ori_core::canvas::Scene`].
     pub fn render_scene(
         &mut self,
         scene: &Scene,

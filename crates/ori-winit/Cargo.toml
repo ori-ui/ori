@@ -11,19 +11,15 @@ license.workspace = true
 # ori dependencies
 ori-core = { path = "../ori-core", version = "0.1.0-alpha.1" }
 ori-glow = { path = "../ori-glow", version = "0.1.0-alpha.1", optional = true }
+ori-wgpu = { path = "../ori-wgpu", version = "0.1.0-alpha.1", optional = true }
 
 # other dependencies
-pollster = "0.3"
 raw-window-handle = "0.5"
 
 [dependencies.winit] 
 version = "0.29"
 default-features = false
 features = ["android-native-activity", "rwh_05"]
-
-[dependencies.wgpu]
-version = "0.18"
-optional = true
 
 [dependencies.tracing]
 version = "0.1"
@@ -41,4 +37,4 @@ x11 = ["winit/x11", "ori-glow?/x11"]
 wayland = ["winit/wayland", "ori-glow?/wayland"]
 
 glow = ["dep:ori-glow"]
-wgpu = ["dep:wgpu"]
+wgpu = ["dep:ori-wgpu"]

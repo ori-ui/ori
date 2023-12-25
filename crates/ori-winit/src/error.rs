@@ -10,7 +10,7 @@ pub enum Error {
     Glow(ori_glow::GlowError),
     /// A wgpu render error.
     #[cfg(feature = "wgpu")]
-    Render(crate::wgpu::WgpuError),
+    Wgpu(ori_wgpu::WgpuError),
     /// An OS error.
     OsError(OsError),
     /// An error occurred with the event loop.
@@ -25,9 +25,9 @@ impl From<ori_glow::GlowError> for Error {
 }
 
 #[cfg(feature = "wgpu")]
-impl From<crate::wgpu::WgpuError> for Error {
-    fn from(err: crate::wgpu::WgpuError) -> Self {
-        Self::Render(err)
+impl From<ori_wgpu::WgpuError> for Error {
+    fn from(err: ori_wgpu::WgpuError) -> Self {
+        Self::Wgpu(err)
     }
 }
 
@@ -49,7 +49,7 @@ impl Display for Error {
             #[cfg(feature = "glow")]
             Error::Glow(err) => write!(f, "{}", err),
             #[cfg(feature = "wgpu")]
-            Error::Glow(err) => write!(f, "{}", err),
+            Error::Wgpu(err) => write!(f, "{}", err),
             Error::OsError(err) => write!(f, "{}", err),
             Error::EventLoop(err) => write!(f, "{}", err),
         }

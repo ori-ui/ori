@@ -1,3 +1,7 @@
+#![warn(missing_docs)]
+
+//! A renderer using [`glow`].
+
 mod mesh;
 mod render;
 
@@ -5,10 +9,14 @@ use std::fmt::Display;
 
 pub use render::*;
 
+/// An error that can occur when rendering.
 #[derive(Debug)]
 pub enum GlowError {
+    /// Failed to create a surface.
     Glutin(glutin::error::Error),
+    /// No compatible config found.
     ConfigNotFound,
+    /// Failed to request a device.
     Gl(String),
 }
 

@@ -78,9 +78,9 @@ struct AppState<T: 'static> {
 
     /* wgpu */
     #[cfg(feature = "wgpu")]
-    renders: HashMap<ori_core::window::WindowId, crate::wgpu::WgpuRender>,
+    renders: HashMap<ori_core::window::WindowId, ori_wgpu::WgpuRender>,
     #[cfg(feature = "wgpu")]
-    instance: Option<crate::wgpu::WgpuRenderInstance>,
+    instance: Option<ori_wgpu::WgpuRenderInstance>,
 }
 
 impl<T> AppState<T> {
@@ -145,11 +145,10 @@ impl<T> AppState<T> {
     fn init_wgpu(
         &mut self,
         window: &winit::window::Window,
-    ) -> Result<(crate::wgpu::WgpuRenderInstance, wgpu::Surface), Error> {
-        use crate::wgpu::WgpuContext;
+    ) -> Result<(ori_wgpu::WgpuRenderInstance, ori_wgpu::Surface), Error> {
+        use ori_wgpu::WgpuContext;
 
-        let instance = unsafe { crate::wgpu::WgpuRenderInstance::new(window) };
-        let (instance, surface) = pollster::block_on(instance)?;
+        let (instance, surface) = unsafe { ori_wgpu::WgpuRenderInstance::new(window)? };
 
         let context = WgpuContext {
             device: instance.device.clone(),
@@ -167,7 +166,7 @@ impl<T> AppState<T> {
         window: &winit::window::Window,
         id: ori_core::window::WindowId,
     ) -> Result<(), Error> {
-        use crate::wgpu::WgpuRender;
+        use ori_wgpu::WgpuRender;
 
         let (instance, surface) = if let Some(ref instance) = self.instance {
             let surface = unsafe { instance.create_surface(window)? };
@@ -301,7 +300,7 @@ impl<T> AppState<T> {
 
         #[cfg(feature = "wgpu")]
         if let Some(render) = self.renders.get_mut(&window_id) {
-            let context = self.ui.contexts.get::<crate::wgpu::WgpuContext>().unwrap();
+            let context = self.ui.contexts.get::<ori_wgpu::WgpuContext>().unwrap();
             render.render_scene(context, scene, clear_color, width, height);
         }
 

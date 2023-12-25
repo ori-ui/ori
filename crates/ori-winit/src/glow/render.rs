@@ -139,6 +139,12 @@ impl GlowRender {
         Ok(())
     }
 
+    pub fn clean(&mut self) {
+        unsafe {
+            self.mesh.clean(&self.gl);
+        }
+    }
+
     pub fn render_scene(
         &mut self,
         scene: &Scene,

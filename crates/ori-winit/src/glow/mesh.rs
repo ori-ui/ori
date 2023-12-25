@@ -185,6 +185,25 @@ impl MeshRender {
         }
     }
 
+    unsafe fn clean_textures(&mut self, gl: &glow::Context) {
+        let mut invalid = Vec::new();
+
+        for (image, texture) in self.textures.iter() {
+            if image.strong_count() == 0 {
+                invalid.push((image.clone(), *texture));
+            }
+        }
+
+        for (image, texture) in invalid {
+            gl.delete_texture(texture);
+            self.textures.remove(&image);
+        }
+    }
+
+    pub unsafe fn clean(&mut self, gl: &glow::Context) {
+        self.clean_textures(gl);
+    }
+
     pub unsafe fn render_batch(
         &mut self,
         gl: &glow::Context,

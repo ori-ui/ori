@@ -207,6 +207,11 @@ impl<T> AppState<T> {
         let requests = self.ui.idle();
         self.handle_requests(target, requests);
 
+        #[cfg(feature = "glow")]
+        for render in self.renders.values_mut() {
+            render.clean();
+        }
+
         #[cfg(feature = "wgpu")]
         for render in self.renders.values_mut() {
             render.clean();

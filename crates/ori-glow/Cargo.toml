@@ -9,7 +9,7 @@ license.workspace = true
 
 [dependencies]
 # ori dependencies
-ori-core = { path = "../ori-core", version = "0.1.0-alpha.1" }
+ori-core = { workspace = true }
 
 # other dependencies
 glow = "0.13"

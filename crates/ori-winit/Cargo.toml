@@ -9,9 +9,9 @@ license.workspace = true
 
 [dependencies]
 # ori dependencies
-ori-core = { path = "../ori-core", version = "0.1.0-alpha.1" }
-ori-glow = { path = "../ori-glow", version = "0.1.0-alpha.1", optional = true }
-ori-wgpu = { path = "../ori-wgpu", version = "0.1.0-alpha.1", optional = true }
+ori-core = { workspace = true }
+ori-glow = { workspace = true, optional = true }
+ori-wgpu = { workspace = true, optional = true }
 
 # other dependencies
 raw-window-handle = "0.5"

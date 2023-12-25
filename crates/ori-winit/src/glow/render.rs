@@ -4,8 +4,8 @@ use glow::HasContext;
 use glutin::{
     config::{Config, ConfigTemplate, ConfigTemplateBuilder},
     context::{
-        ContextApi, ContextAttributesBuilder, NotCurrentGlContext, PossiblyCurrentContext,
-        PossiblyCurrentGlContext, Version,
+        ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentGlContext,
+        PossiblyCurrentContext, PossiblyCurrentGlContext, Version,
     },
     display::{Display, DisplayApiPreference, GlDisplay},
     surface::{GlSurface, Surface, SurfaceAttributesBuilder, WindowSurface},
@@ -14,7 +14,7 @@ use ori_core::{
     canvas::{Color, Scene},
     layout::Size,
 };
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
 use super::{mesh::MeshRender, GlowError};
@@ -38,8 +38,14 @@ impl GlowRender {
         displays.next().ok_or(GlowError::ConfigNotFound)
     }
 
-    fn find_config(display: &Display, samples: u8) -> Result<Config, GlowError> {
-        let transparent = ConfigTemplateBuilder::new()
+    fn find_config(
+        display: &Display,
+        handle_window: RawWindowHandle,
+        samples: u8,
+    ) -> Result<Config, GlowError> {
+        let fallback = ConfigTemplateBuilder::new().compatible_with_native_window(handle_window);
+
+        let transparent = (fallback.clone())
             .with_transparency(true)
             .with_multisampling(samples);
 
@@ -47,30 +53,30 @@ impl GlowRender {
             return Ok(config);
         }
 
-        Self::find_first_config(display, Default::default())
+        Self::find_first_config(display, fallback.build())
     }
 
     pub fn new(window: &Window, samples: u8) -> Result<Self, GlowError> {
         let display_handle = window.raw_display_handle();
+        let window_handle = window.raw_window_handle();
         let display = unsafe { Display::new(display_handle, DisplayApiPreference::Egl)? };
 
-        let config = Self::find_config(&display, samples)?;
+        let config = Self::find_config(&display, window_handle, samples)?;
 
         let size = window.inner_size();
         let width = NonZeroU32::new(size.width).unwrap();
         let height = NonZeroU32::new(size.height).unwrap();
 
-        let surface_attributes = SurfaceAttributesBuilder::<WindowSurface>::new().build(
-            window.raw_window_handle(),
-            width,
-            height,
-        );
+        let surface_attributes = SurfaceAttributesBuilder::<WindowSurface>::new()
+            .with_srgb(None)
+            .build(window_handle, width, height);
 
         let surface = unsafe { display.create_window_surface(&config, &surface_attributes)? };
 
         let context_attributes = ContextAttributesBuilder::new()
-            .with_context_api(ContextApi::OpenGl(Some(Version::new(3, 3))))
-            .build(Some(window.raw_window_handle()));
+            .with_profile(GlProfile::Core)
+            .with_context_api(ContextApi::OpenGl(None))
+            .build(Some(window_handle));
 
         let context = unsafe { display.create_context(&config, &context_attributes)? };
         let context = context.make_current(&surface)?;

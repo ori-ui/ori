@@ -225,6 +225,7 @@ impl MeshRender {
 
         let location = gl.get_uniform_location(self.program, "image");
         gl.uniform_1_i32(location.as_ref(), 0);
+
         gl.active_texture(glow::TEXTURE0);
         gl.bind_texture(glow::TEXTURE_2D, Some(texture));
 

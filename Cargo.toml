@@ -20,16 +20,24 @@ edition = "2021"
 authors = ["Ori Contributors"]
 license = "MIT OR Apache-2.0"
 
+[workspace.dependencies]
+ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
+ori-font-awesome = { path = "crates/ori-font-awesome", version = "0.1.0-alpha.1" }
+ori-glow = { path = "crates/ori-glow", version = "0.1.0-alpha.1" }
+ori-macro = { path = "crates/ori-macro", version = "0.1.0-alpha.1" }
+ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1" }
+ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1" }
+
 [dependencies]
 # Internal dependencies
-ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
-ori-macro = { path = "crates/ori-macro", version = "0.1.0-alpha.1" }
+ori-core = { workspace = true }
+ori-macro = { workspace = true }
 
 # Optional dependencies
-ori-font-awesome = { path = "crates/ori-font-awesome", version = "0.1.0-alpha.1", optional = true }
+ori-font-awesome = { workspace = true, optional = true }
 
 # Backend dependencies
-ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1", optional = true }
+ori-winit = { workspace = true, optional = true }
 
 [dev-dependencies.ori]
 path = "."

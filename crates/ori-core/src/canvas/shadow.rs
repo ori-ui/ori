@@ -70,11 +70,10 @@ impl BoxShadow {
 
         for step in 0..=steps {
             let fraction = step as f32 / steps as f32;
-            let angle = angle + fraction * PI / 2.0;
-            let (sin, cos) = angle.sin_cos();
+            let angle = Vector::from_angle(angle + fraction * PI / 2.0);
 
-            let inner_point = point + Vector::new(inner_radius * cos, inner_radius * sin);
-            let outer_point = point + Vector::new(outer_radius * cos, outer_radius * sin);
+            let inner_point = point + angle * inner_radius;
+            let outer_point = point + angle * outer_radius;
 
             let index = mesh.vertices.len();
 

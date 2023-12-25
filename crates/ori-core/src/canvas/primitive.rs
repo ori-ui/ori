@@ -1,38 +1,6 @@
 use crate::layout::{Point, Rect};
 
-use super::{Background, BorderRadius, BorderWidth, Color, Mesh};
-
-/// A quad primitive.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Quad {
-    /// The rectangle of the quad.
-    pub rect: Rect,
-    /// The color of the quad.
-    pub background: Background,
-    /// The border radius of the quad.
-    pub border_radius: BorderRadius,
-    /// The border width of the quad.
-    pub border_width: BorderWidth,
-    /// The border color of the quad.
-    pub border_color: Color,
-}
-
-impl Quad {
-    /// Get whether the quad is ineffective, i.e. it has no effect on the canvas.
-    pub fn is_ineffective(&self) -> bool {
-        // if the rect has zero area, the quad is ineffective
-        let area_zero = self.rect.area() == 0.0;
-
-        let background_transparent = self.background.color.is_transparent();
-
-        let border_zero = self.border_width == BorderWidth::ZERO;
-        let border_transparent = self.border_color.is_transparent();
-
-        let border_ineffective = border_zero || border_transparent;
-
-        area_zero || (background_transparent && border_ineffective)
-    }
-}
+use super::{Mesh, Quad};
 
 /// A primitive to be rendered.
 #[derive(Clone, Debug)]

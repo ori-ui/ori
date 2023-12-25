@@ -43,6 +43,12 @@ pub enum Texture {
     Backend(TextureId),
 }
 
+impl Default for Texture {
+    fn default() -> Self {
+        Self::Image(Image::default())
+    }
+}
+
 impl From<Image> for Texture {
     fn from(image: Image) -> Self {
         Self::Image(image)

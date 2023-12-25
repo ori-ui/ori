@@ -44,6 +44,12 @@ impl Vector {
         Self::new(value, value)
     }
 
+    /// Create a new vector from an angle.
+    pub fn from_angle(angle: f32) -> Self {
+        let (sin, cos) = angle.sin_cos();
+        Self::new(sin, cos)
+    }
+
     /// Get the min of self and other by element.
     pub fn min(self, other: Self) -> Self {
         Self::new(self.x.min(other.x), self.y.min(other.y))
@@ -72,6 +78,11 @@ impl Vector {
     /// Round the vector by element.
     pub fn round(self) -> Self {
         Self::new(self.x.round(), self.y.round())
+    }
+
+    /// Get the absolute value of the vector.
+    pub fn signum(self) -> Self {
+        Self::new(self.x.signum(), self.y.signum())
     }
 
     /// Get the length of the vector squared.

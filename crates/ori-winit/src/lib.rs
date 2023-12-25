@@ -10,8 +10,11 @@ mod error;
 mod launch;
 mod launcher;
 mod log;
+mod util;
 mod window;
 
+#[cfg(feature = "glow")]
+mod glow;
 #[cfg(feature = "wgpu")]
 mod wgpu;
 
@@ -20,6 +23,8 @@ mod tracing;
 
 pub use error::*;
 pub use launcher::*;
+
+#[cfg(feature = "wgpu")]
 pub use wgpu::WgpuContext;
 
 #[doc(hidden)]

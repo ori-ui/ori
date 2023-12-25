@@ -1,5 +1,5 @@
 use ori_core::{
-    canvas::{Batch, Color, Scene},
+    canvas::{Color, Scene},
     layout::Size,
 };
 use wgpu::{
@@ -9,9 +9,9 @@ use wgpu::{
     TextureView,
 };
 
-use crate::{log::warn_internal, RenderError, WgpuContext};
+use crate::{log::warn_internal, WgpuContext};
 
-use super::{MeshRender, QuadRender, TextureCache, WgpuRenderInstance};
+use super::{MeshRender, TextureCache, WgpuError, WgpuRenderInstance};
 
 #[derive(Debug)]
 pub struct WgpuRender {
@@ -20,7 +20,6 @@ pub struct WgpuRender {
     samples: u32,
     image: TextureCache,
     msaa: Option<TextureView>,
-    quad: QuadRender,
     mesh: MeshRender,
 }
 
@@ -31,11 +30,11 @@ impl WgpuRender {
         samples: u32,
         width: u32,
         height: u32,
-    ) -> Result<Self, RenderError> {
+    ) -> Result<Self, WgpuError> {
         let device = &instance.device;
 
         let config = surface.get_default_config(&instance.adapter, width, height);
-        let mut config = config.ok_or(RenderError::SurfaceIncompatible)?;
+        let mut config = config.ok_or(WgpuError::SurfaceIncompatible)?;
 
         match config.format {
             TextureFormat::Bgra8UnormSrgb => {
@@ -46,7 +45,7 @@ impl WgpuRender {
             }
             TextureFormat::Bgra8Unorm | TextureFormat::Rgba8Unorm => {}
             _ => {
-                return Err(RenderError::SurfaceIncompatible);
+                return Err(WgpuError::SurfaceIncompatible);
             }
         }
 
@@ -68,7 +67,6 @@ impl WgpuRender {
             None
         };
 
-        let quad = QuadRender::new(device, config.format, samples, cache.bind_group_layout());
         let mesh = MeshRender::new(device, config.format, samples, cache.bind_group_layout());
 
         Ok(Self {
@@ -77,7 +75,6 @@ impl WgpuRender {
             samples,
             image: cache,
             msaa,
-            quad,
             mesh,
         })
     }
@@ -192,14 +189,7 @@ impl WgpuRender {
 
         let size = self.size();
         for batch in batches.iter() {
-            match batch {
-                Batch::Quad(batch) => {
-                    (self.quad).prepare_batch(context, &mut self.image, batch, size);
-                }
-                Batch::Mesh(batch) => {
-                    (self.mesh).prepare_batch(context, &mut self.image, batch, size);
-                }
-            }
+            (self.mesh).prepare_batch(context, &mut self.image, batch, size);
         }
 
         let mut encoder = (context.device).create_command_encoder(&CommandEncoderDescriptor {
@@ -220,14 +210,7 @@ impl WgpuRender {
         let mut pass = self.begin_render_pass(&mut encoder, &target_view, clear_color);
 
         for batch in batches.iter() {
-            match batch {
-                Batch::Quad(batch) => {
-                    self.quad.render_batch(&mut pass, batch.index);
-                }
-                Batch::Mesh(batch) => {
-                    self.mesh.render_batch(&mut pass, batch.index);
-                }
-            }
+            self.mesh.render_batch(&mut pass, batch.index);
         }
 
         drop(pass);

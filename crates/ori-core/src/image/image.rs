@@ -165,3 +165,17 @@ impl WeakImage {
         self.data.weak_count()
     }
 }
+
+impl PartialEq for WeakImage {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for WeakImage {}
+
+impl Hash for WeakImage {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}

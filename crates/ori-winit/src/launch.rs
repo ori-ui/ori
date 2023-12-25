@@ -71,6 +71,12 @@ struct AppState<T: 'static> {
     ui: Ui<T>,
     msaa: bool,
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
+
+    /* glow */
+    #[cfg(feature = "glow")]
+    renders: HashMap<ori_core::window::WindowId, crate::glow::GlowRender>,
+
+    /* wgpu */
     #[cfg(feature = "wgpu")]
     renders: HashMap<ori_core::window::WindowId, crate::wgpu::WgpuRender>,
     #[cfg(feature = "wgpu")]
@@ -85,6 +91,12 @@ impl<T> AppState<T> {
             ui,
             msaa,
             window_ids: HashMap::new(),
+
+            /* glow */
+            #[cfg(feature = "glow")]
+            renders: HashMap::new(),
+
+            /* wgpu */
             #[cfg(feature = "wgpu")]
             renders: HashMap::new(),
             #[cfg(feature = "wgpu")]
@@ -124,7 +136,7 @@ impl<T> AppState<T> {
         request: UiRequest<T>,
     ) -> Result<(), Error> {
         match request {
-            UiRequest::Render(window) => self.render(window),
+            UiRequest::Render(window) => self.render(window)?,
             UiRequest::CreateWindow(desc, builder) => self.create_window(target, desc, builder)?,
             UiRequest::RemoveWindow(window_id) => self.remove_window(window_id),
         }
@@ -177,6 +189,20 @@ impl<T> AppState<T> {
         Ok(())
     }
 
+    #[cfg(feature = "glow")]
+    fn create_glow_render(
+        &mut self,
+        window: &winit::window::Window,
+        id: ori_core::window::WindowId,
+    ) -> Result<(), Error> {
+        let samples = if self.msaa { 4 } else { 1 };
+
+        let render = crate::glow::GlowRender::new(window, samples)?;
+        self.renders.insert(id, render);
+
+        Ok(())
+    }
+
     fn idle(&mut self, target: &EventLoopWindowTarget<()>) {
         let requests = self.ui.idle();
         self.handle_requests(target, requests);
@@ -204,6 +230,9 @@ impl<T> AppState<T> {
             .build(target)?;
 
         self.window_ids.insert(window.id(), desc.id);
+
+        #[cfg(feature = "glow")]
+        self.create_glow_render(&window, desc.id)?;
 
         #[cfg(feature = "wgpu")]
         self.create_wgpu_render(&window, desc.id)?;
@@ -242,25 +271,33 @@ impl<T> AppState<T> {
         }
     }
 
-    fn render(&mut self, window: ori_core::window::WindowId) {
-        #[cfg(feature = "wgpu")]
-        {
-            if let Some(render) = self.renders.get_mut(&window) {
-                // sort the scene
-                self.ui.window_mut(window).scene_mut().sort();
+    fn render(&mut self, window_id: ori_core::window::WindowId) -> Result<(), Error> {
+        // sort the scene
+        self.ui.window_mut(window_id).scene_mut().sort();
 
-                let window = self.ui.window(window);
+        let window = self.ui.window(window_id);
 
-                let clear_color = window.color();
+        let clear_color = window.color();
 
-                let width = window.window().width();
-                let height = window.window().height();
-                let scene = window.scene();
+        let width = window.window().width();
+        let height = window.window().height();
+        let scene = window.scene();
 
-                let context = self.ui.contexts.get::<crate::wgpu::WgpuContext>().unwrap();
-                render.render_scene(context, scene, clear_color, width, height);
-            }
+        /* glow */
+        #[cfg(feature = "glow")]
+        if let Some(render) = self.renders.get_mut(&window_id) {
+            render.render_scene(scene, clear_color, width, height)?;
         }
+
+        /* wgpu */
+
+        #[cfg(feature = "wgpu")]
+        if let Some(render) = self.renders.get_mut(&window_id) {
+            let context = self.ui.contexts.get::<crate::wgpu::WgpuContext>().unwrap();
+            render.render_scene(context, scene, clear_color, width, height);
+        }
+
+        Ok(())
     }
 
     fn window_event(

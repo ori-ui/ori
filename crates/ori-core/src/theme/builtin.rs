@@ -234,7 +234,7 @@ pub mod checkbox {
         theme.set(STROKE, 2.0);
         theme.set(BACKGROUND, Color::TRANSPARENT);
         theme.set(BORDER_RADIUS, BorderRadius::all(6.0));
-        theme.set(BORDER_WIDTH, BorderWidth::all(1.0));
+        theme.set(BORDER_WIDTH, BorderWidth::all(2.0));
         theme.map(BORDER_COLOR, |theme| theme.get(Palette::TEXT_BRIGHTER));
     }
 }

@@ -5,9 +5,9 @@
 mod mesh;
 mod render;
 
-use std::fmt::Display;
-
 pub use render::*;
+
+use std::fmt::Display;
 
 /// An error that can occur when rendering.
 #[derive(Debug)]

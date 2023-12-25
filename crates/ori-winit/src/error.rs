@@ -7,7 +7,7 @@ use winit::error::{EventLoopError, OsError};
 pub enum Error {
     /// A glow render error.
     #[cfg(feature = "glow")]
-    Render(crate::glow::GlowError),
+    Glow(ori_glow::GlowError),
     /// A wgpu render error.
     #[cfg(feature = "wgpu")]
     Render(crate::wgpu::WgpuError),
@@ -18,9 +18,9 @@ pub enum Error {
 }
 
 #[cfg(feature = "glow")]
-impl From<crate::glow::GlowError> for Error {
-    fn from(err: crate::glow::GlowError) -> Self {
-        Self::Render(err)
+impl From<ori_glow::GlowError> for Error {
+    fn from(err: ori_glow::GlowError) -> Self {
+        Self::Glow(err)
     }
 }
 
@@ -47,9 +47,9 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             #[cfg(feature = "glow")]
-            Error::Render(err) => write!(f, "{}", err),
+            Error::Glow(err) => write!(f, "{}", err),
             #[cfg(feature = "wgpu")]
-            Error::Render(err) => write!(f, "{}", err),
+            Error::Glow(err) => write!(f, "{}", err),
             Error::OsError(err) => write!(f, "{}", err),
             Error::EventLoop(err) => write!(f, "{}", err),
         }

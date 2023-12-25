@@ -3,7 +3,7 @@ use std::{collections::HashMap, mem};
 use ori_core::{
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
-    ui::{Ui, UiBuilder, UiRequest, UiRequests},
+    ui::{Ui, UiBuilder, UiRequest},
     window::{Window, WindowDescriptor},
 };
 use winit::{
@@ -41,21 +41,21 @@ pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
             Event::AboutToWait => {
                 // after all events for a frame have been processed, we need to
                 // run the idle function
-                state.idle(target);
+                state.idle();
             }
 
             // this event is sent by [`WinitWaker`] telling us that there are
             // commands that need to be processed
             Event::UserEvent(_) => {
-                let requests = state.ui.handle_commands();
-                state.handle_requests(target, requests);
+                state.ui.handle_commands();
             }
             Event::WindowEvent { window_id, event } => {
-                let requests = state.window_event(target, window_id, event);
-                state.handle_requests(target, requests);
+                state.window_event(window_id, event);
             }
             _ => {}
         }
+
+        state.handle_requests(target);
 
         if state.ui.should_exit() && state.init {
             target.exit();
@@ -74,7 +74,7 @@ struct AppState<T: 'static> {
 
     /* glow */
     #[cfg(feature = "glow")]
-    renders: HashMap<ori_core::window::WindowId, crate::glow::GlowRender>,
+    renders: HashMap<ori_core::window::WindowId, ori_glow::GlowRender>,
 
     /* wgpu */
     #[cfg(feature = "wgpu")]
@@ -117,13 +117,10 @@ impl<T> AppState<T> {
                 return;
             }
         }
-
-        let requests = self.ui.init();
-        self.handle_requests(target, requests);
     }
 
-    fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>, requests: UiRequests<T>) {
-        for request in requests {
+    fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>) {
+        for request in self.ui.take_requests() {
             if let Err(err) = self.handle_request(target, request) {
                 error_internal!("Failed to handle request: {}", err);
             }
@@ -195,17 +192,25 @@ impl<T> AppState<T> {
         window: &winit::window::Window,
         id: ori_core::window::WindowId,
     ) -> Result<(), Error> {
+        use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
+
         let samples = if self.msaa { 4 } else { 1 };
 
-        let render = crate::glow::GlowRender::new(window, samples)?;
+        let size = window.inner_size();
+        let render = ori_glow::GlowRender::new(
+            window.raw_window_handle(),
+            window.raw_display_handle(),
+            size.width,
+            size.height,
+            samples,
+        )?;
         self.renders.insert(id, render);
 
         Ok(())
     }
 
-    fn idle(&mut self, target: &EventLoopWindowTarget<()>) {
-        let requests = self.ui.idle();
-        self.handle_requests(target, requests);
+    fn idle(&mut self) {
+        self.ui.idle();
 
         #[cfg(feature = "glow")]
         for render in self.renders.values_mut() {
@@ -252,8 +257,7 @@ impl<T> AppState<T> {
         window.set_color(desc.color);
 
         /* add the window to the ui */
-        let requests = self.ui.add_window(builder, window);
-        self.handle_requests(target, requests);
+        self.ui.add_window(builder, window);
 
         Ok(())
     }
@@ -267,12 +271,11 @@ impl<T> AppState<T> {
         self.renders.remove(&window_id);
     }
 
-    fn redraw(&mut self, target: &EventLoopWindowTarget<()>, window_id: winit::window::WindowId) {
+    fn redraw(&mut self, window_id: winit::window::WindowId) {
         // if the window id is not in the map, we ignore the event
         if let Some(&window_id) = self.window_ids.get(&window_id) {
             // render the window
-            let requests = self.ui.render(window_id);
-            self.handle_requests(target, requests);
+            self.ui.render(window_id);
         }
     }
 
@@ -305,24 +308,18 @@ impl<T> AppState<T> {
         Ok(())
     }
 
-    fn window_event(
-        &mut self,
-        target: &EventLoopWindowTarget<()>,
-        winit_id: winit::window::WindowId,
-        event: WindowEvent,
-    ) -> UiRequests<T> {
+    fn window_event(&mut self, winit_id: winit::window::WindowId, event: WindowEvent) {
         // if the window id is not in the map, we ignore the event
         let Some(&id) = self.window_ids.get(&winit_id) else {
-            return UiRequests::new();
+            return;
         };
 
         match event {
             WindowEvent::RedrawRequested => {
-                self.redraw(target, winit_id);
+                self.redraw(winit_id);
             }
             WindowEvent::CloseRequested => {
-                let requests = self.ui.close_requested(id);
-                self.handle_requests(target, requests);
+                self.ui.close_requested(id);
             }
             WindowEvent::Resized(_) => {
                 self.ui.resized(id);
@@ -335,14 +332,14 @@ impl<T> AppState<T> {
                 position,
                 ..
             } => {
-                return self.ui.pointer_moved(
+                self.ui.pointer_moved(
                     id,
                     PointerId::from_hash(&device_id),
                     Point::new(position.x as f32, position.y as f32),
                 );
             }
             WindowEvent::CursorLeft { device_id } => {
-                return self.ui.pointer_left(id, PointerId::from_hash(&device_id));
+                self.ui.pointer_left(id, PointerId::from_hash(&device_id));
             }
             WindowEvent::MouseInput {
                 device_id,
@@ -350,7 +347,7 @@ impl<T> AppState<T> {
                 button,
                 ..
             } => {
-                return self.ui.pointer_button(
+                self.ui.pointer_button(
                     id,
                     PointerId::from_hash(&device_id),
                     convert_mouse_button(button),
@@ -361,16 +358,10 @@ impl<T> AppState<T> {
                 delta: MouseScrollDelta::LineDelta(x, y),
                 device_id,
                 ..
-            } => {
-                return self.ui.pointer_scroll(
-                    id,
-                    PointerId::from_hash(&device_id),
-                    Vector::new(x, y),
-                );
-            }
+            } => (self.ui).pointer_scroll(id, PointerId::from_hash(&device_id), Vector::new(x, y)),
             // since we're using a pointer model we need to handle touch
             // by emulating pointer events
-            WindowEvent::Touch(event) => return self.touch_event(id, event),
+            WindowEvent::Touch(event) => self.touch_event(id, event),
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
@@ -381,21 +372,17 @@ impl<T> AppState<T> {
                     },
                 ..
             } => {
-                let mut requests = UiRequests::new();
-
                 if let PhysicalKey::Code(code) = physical_key {
                     if let Some(key) = convert_key(code) {
-                        requests.extend(self.ui.keyboard_key(id, key, is_pressed(state)));
+                        self.ui.keyboard_key(id, key, is_pressed(state));
                     }
                 }
 
                 if let Some(text) = text {
                     if is_pressed(state) {
-                        requests.extend(self.ui.keyboard_text(id, text.into()));
+                        self.ui.keyboard_text(id, text.into());
                     }
                 }
-
-                return requests;
             }
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.ui.modifiers_changed(Modifiers {
@@ -407,38 +394,30 @@ impl<T> AppState<T> {
             }
             _ => {}
         }
-
-        UiRequests::new()
     }
 
-    fn touch_event(
-        &mut self,
-        window_id: ori_core::window::WindowId,
-        event: winit::event::Touch,
-    ) -> UiRequests<T> {
+    fn touch_event(&mut self, window_id: ori_core::window::WindowId, event: winit::event::Touch) {
         let position = Point::new(event.location.x as f32, event.location.y as f32);
         let pointer_id = PointerId::from_hash(&event.device_id);
 
         // we always send a pointer moved event first because the ui
         // needs to know where the pointer is. this will also ensure
         // that hot state is updated correctly
-        let mut requests = self.ui.pointer_moved(window_id, pointer_id, position);
+        self.ui.pointer_moved(window_id, pointer_id, position);
 
         match event.phase {
             TouchPhase::Started => {
-                let new_requests = self.ui.pointer_button(
+                self.ui.pointer_button(
                     window_id,
                     pointer_id,
                     // a touch event is always the primary button
                     PointerButton::Primary,
                     true,
                 );
-
-                requests.extend(new_requests);
             }
             TouchPhase::Moved => {}
             TouchPhase::Ended | TouchPhase::Cancelled => {
-                let new_requests = self.ui.pointer_button(
+                self.ui.pointer_button(
                     window_id,
                     pointer_id,
                     // a touch event is always the primary button
@@ -446,16 +425,10 @@ impl<T> AppState<T> {
                     false,
                 );
 
-                requests.extend(new_requests);
-
                 // we also need to send a pointer left event because
                 // the ui needs to know that the pointer left the window
-                let new_requests = self.ui.pointer_left(window_id, pointer_id);
-
-                requests.extend(new_requests);
+                self.ui.pointer_left(window_id, pointer_id);
             }
         }
-
-        requests
     }
 }

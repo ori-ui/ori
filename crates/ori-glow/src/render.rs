@@ -5,7 +5,7 @@ use glutin::{
     config::{Config, ConfigTemplate, ConfigTemplateBuilder},
     context::{
         ContextApi, ContextAttributesBuilder, GlProfile, NotCurrentGlContext,
-        PossiblyCurrentContext, PossiblyCurrentGlContext, Version,
+        PossiblyCurrentContext, PossiblyCurrentGlContext,
     },
     display::{Display, DisplayApiPreference, GlDisplay},
     surface::{GlSurface, Surface, SurfaceAttributesBuilder, WindowSurface},
@@ -14,8 +14,7 @@ use ori_core::{
     canvas::{Color, Scene},
     layout::Size,
 };
-use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle, RawWindowHandle};
-use winit::window::Window;
+use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 
 use super::{mesh::MeshRender, GlowError};
 
@@ -28,7 +27,6 @@ pub struct GlowRender {
     gl: glow::Context,
     width: u32,
     height: u32,
-
     mesh: MeshRender,
 }
 
@@ -52,20 +50,23 @@ impl GlowRender {
         Self::find_first_config(display, fallback.build())
     }
 
-    pub fn new(window: &Window, samples: u8) -> Result<Self, GlowError> {
-        let display_handle = window.raw_display_handle();
-        let window_handle = window.raw_window_handle();
+    pub fn new(
+        window_handle: RawWindowHandle,
+        display_handle: RawDisplayHandle,
+        width: u32,
+        height: u32,
+        samples: u8,
+    ) -> Result<Self, GlowError> {
         let display = unsafe { Display::new(display_handle, DisplayApiPreference::Egl)? };
 
         let config = Self::find_config(&display, samples)?;
 
-        let size = window.inner_size();
-        let width = NonZeroU32::new(size.width).unwrap();
-        let height = NonZeroU32::new(size.height).unwrap();
+        let non_zero_width = NonZeroU32::new(width).unwrap();
+        let non_zero_height = NonZeroU32::new(height).unwrap();
 
         let surface_attributes = SurfaceAttributesBuilder::<WindowSurface>::new()
             .with_srgb(None)
-            .build(window_handle, width, height);
+            .build(window_handle, non_zero_width, non_zero_height);
 
         let surface = unsafe { display.create_window_surface(&config, &surface_attributes)? };
 
@@ -88,9 +89,8 @@ impl GlowRender {
             surface,
             context,
             gl,
-            width: size.width,
-            height: size.height,
-
+            width,
+            height,
             mesh,
         })
     }

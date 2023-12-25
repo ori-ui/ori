@@ -13,8 +13,6 @@ mod log;
 mod util;
 mod window;
 
-#[cfg(feature = "glow")]
-mod glow;
 #[cfg(feature = "wgpu")]
 mod wgpu;
 

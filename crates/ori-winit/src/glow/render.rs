@@ -38,12 +38,8 @@ impl GlowRender {
         displays.next().ok_or(GlowError::ConfigNotFound)
     }
 
-    fn find_config(
-        display: &Display,
-        handle_window: RawWindowHandle,
-        samples: u8,
-    ) -> Result<Config, GlowError> {
-        let fallback = ConfigTemplateBuilder::new().compatible_with_native_window(handle_window);
+    fn find_config(display: &Display, samples: u8) -> Result<Config, GlowError> {
+        let fallback = ConfigTemplateBuilder::new();
 
         let transparent = (fallback.clone())
             .with_transparency(true)
@@ -61,7 +57,7 @@ impl GlowRender {
         let window_handle = window.raw_window_handle();
         let display = unsafe { Display::new(display_handle, DisplayApiPreference::Egl)? };
 
-        let config = Self::find_config(&display, window_handle, samples)?;
+        let config = Self::find_config(&display, samples)?;
 
         let size = window.inner_size();
         let width = NonZeroU32::new(size.width).unwrap();

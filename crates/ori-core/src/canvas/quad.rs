@@ -38,25 +38,18 @@ impl Quad {
     // number of segments per pixel
     const RESOLUTION: f32 = 3.0;
 
-    fn add_corner(
-        &self,
-        mesh: &mut Mesh,
-        center_index: u32,
-        corner: Point,
-        angle: f32,
-        index: usize,
-    ) -> CornerIndices {
-        fn lerp(a: f32, b: f32, t: f32) -> f32 {
-            a + (b - a) * t
-        }
+    fn lerp(a: f32, b: f32, t: f32) -> f32 {
+        a + (b - a) * t
+    }
 
-        fn uv(rect: Rect, point: Point) -> Point {
-            let size = rect.size();
-            let point = point - rect.top_left();
+    fn uv(rect: Rect, point: Point) -> Point {
+        let size = rect.size();
+        let point = point - rect.top_left();
 
-            point.to_point() / size
-        }
+        point.to_point() / size
+    }
 
+    fn corner_data(&self, index: usize) -> (f32, f32, f32) {
         let radi: [f32; 4] = self.border_radius.into();
         let widths: [f32; 4] = self.border_width.into();
 
@@ -64,69 +57,122 @@ impl Quad {
         let start_width = widths[index];
         let end_width = widths[(index + 3) % 4];
 
+        (radius, start_width, end_width)
+    }
+
+    fn add_corner(
+        &self,
+        mesh: &mut Mesh,
+        center_index: u32,
+        corner: Point,
+        angle: f32,
+        index: usize,
+    ) {
+        let (radius, start_width, end_width) = self.corner_data(index);
+
         let length = FRAC_PI_2 * radius;
         let segments = u32::max(1, (length / Self::RESOLUTION).ceil() as u32);
 
         let sign = Vector::signum(corner - self.rect.center());
         let center = corner - sign * radius;
 
-        let start = CornerIndices::start(mesh, start_width > 0.0);
+        for segment in 0..=segments {
+            let fraction = segment as f32 / segments as f32;
+            let angle = Vector::from_angle(angle + fraction * FRAC_PI_2);
+
+            let width = Self::lerp(start_width, end_width, fraction);
+            let inner_radius = radius - width;
+
+            let inner_point = center + angle * inner_radius;
+
+            let index = mesh.vertices.len() as u32;
+            mesh.vertices.push(Vertex {
+                position: inner_point,
+                tex_coords: Self::uv(self.rect, inner_point),
+                color: self.background.color,
+            });
+
+            if segment > 0 {
+                mesh.indices.push(index - 1);
+                mesh.indices.push(index);
+                mesh.indices.push(center_index);
+            }
+        }
+    }
+
+    fn add_border_corner(&self, mesh: &mut Mesh, corner: Point, angle: f32, index: usize) -> bool {
+        let (radius, start_width, end_width) = self.corner_data(index);
+
+        if start_width == 0.0 && end_width == 0.0 {
+            return false;
+        }
+
+        let length = FRAC_PI_2 * radius;
+        let segments = u32::max(1, (length / Self::RESOLUTION).ceil() as u32);
+
+        let sign = Vector::signum(corner - self.rect.center());
+        let center = corner - sign * radius;
 
         for segment in 0..=segments {
             let fraction = segment as f32 / segments as f32;
             let angle = Vector::from_angle(angle + fraction * FRAC_PI_2);
 
-            let width = lerp(start_width, end_width, fraction);
+            let width = Self::lerp(start_width, end_width, fraction);
             let inner_radius = radius - width;
 
             let inner_point = center + angle * inner_radius;
             let outer_point = center + angle * radius;
 
             let index = mesh.vertices.len() as u32;
-
             mesh.vertices.push(Vertex {
                 position: inner_point,
-                tex_coords: uv(self.rect, inner_point),
-                color: self.background.color,
+                tex_coords: Self::uv(self.rect, inner_point),
+                color: self.border_color,
+            });
+            mesh.vertices.push(Vertex {
+                position: outer_point,
+                tex_coords: Self::uv(self.rect, outer_point),
+                color: self.border_color,
             });
 
             if segment > 0 {
-                if width > 0.0 {
-                    mesh.indices.push(index - 2);
-                } else {
-                    mesh.indices.push(index - 1);
-                }
+                mesh.indices.push(index - 2);
+                mesh.indices.push(index - 1);
+                mesh.indices.push(index + 1);
 
+                mesh.indices.push(index - 2);
+                mesh.indices.push(index + 1);
                 mesh.indices.push(index);
-                mesh.indices.push(center_index);
-            }
-
-            if width > 0.0 {
-                mesh.vertices.push(Vertex {
-                    position: outer_point,
-                    tex_coords: uv(self.rect, outer_point),
-                    color: self.border_color,
-                });
-
-                if segment > 0 {
-                    mesh.indices.push(index - 2);
-                    mesh.indices.push(index - 1);
-                    mesh.indices.push(index);
-
-                    mesh.indices.push(index - 1);
-                    mesh.indices.push(index);
-                    mesh.indices.push(index + 1);
-                }
             }
         }
 
-        let end = CornerIndices::end(mesh, end_width > 0.0);
+        true
+    }
 
-        CornerIndices::new(start, end)
+    fn connect_corners(mesh: &mut Mesh, center: u32, start: u32, end: u32) {
+        mesh.indices.push(start);
+        mesh.indices.push(end);
+        mesh.indices.push(center);
+    }
+
+    fn connect_border(mesh: &mut Mesh, should_connect: bool, start: u32, end: u32) {
+        if !should_connect {
+            return;
+        }
+
+        mesh.indices.push(start);
+        mesh.indices.push(start + 1);
+        mesh.indices.push(end);
+
+        mesh.indices.push(start + 1);
+        mesh.indices.push(end + 1);
+        mesh.indices.push(end);
     }
 
     /// Compute the mesh of the quad.
     pub fn compute_mesh(&self) -> Mesh {
+        // TODO: this is jank to the max, but it's 4 AM and I'm tired
+
         let mut mesh = Mesh::new();
 
         // add the center vertex
@@ -143,84 +189,39 @@ impl Quad {
         let bl = self.rect.bottom_left();
 
         // add the corner vertices
-        let tl = self.add_corner(&mut mesh, center_index, tl, PI, 0);
-        let br = self.add_corner(&mut mesh, center_index, br, 0.0, 2);
-        let bl = self.add_corner(&mut mesh, center_index, bl, -FRAC_PI_2, 3);
-        let tr = self.add_corner(&mut mesh, center_index, tr, FRAC_PI_2, 1);
+        let tl_index = mesh.vertices.len() as u32;
+        self.add_corner(&mut mesh, center_index, tl, PI, 0);
+        let bl_index = mesh.vertices.len() as u32;
+        self.add_corner(&mut mesh, center_index, bl, -FRAC_PI_2, 3);
+        let br_index = mesh.vertices.len() as u32;
+        self.add_corner(&mut mesh, center_index, br, 0.0, 2);
+        let tr_index = mesh.vertices.len() as u32;
+        self.add_corner(&mut mesh, center_index, tr, FRAC_PI_2, 1);
+        let end_index = mesh.vertices.len() as u32 - 1;
 
-        // connect the corners
-        tl.connect(&mut mesh, &bl, center_index);
-        bl.connect(&mut mesh, &br, center_index);
-        br.connect(&mut mesh, &tr, center_index);
-        tr.connect(&mut mesh, &tl, center_index);
+        // connect the corner vertices
+        Self::connect_corners(&mut mesh, center_index, end_index, tl_index);
+        Self::connect_corners(&mut mesh, center_index, bl_index - 1, bl_index);
+        Self::connect_corners(&mut mesh, center_index, br_index - 1, br_index);
+        Self::connect_corners(&mut mesh, center_index, tr_index - 1, tr_index);
 
-        //println!("self: {:?}, vertices: {}", self.rect, mesh.vertices.len());
+        // add the border vertices
+        let tl_index = mesh.vertices.len() as u32;
+        let tl_border = self.add_border_corner(&mut mesh, tl, PI, 0);
+        let bl_index = mesh.vertices.len() as u32;
+        let bl_border = self.add_border_corner(&mut mesh, bl, -FRAC_PI_2, 3);
+        let br_index = mesh.vertices.len() as u32;
+        let br_border = self.add_border_corner(&mut mesh, br, 0.0, 2);
+        let tr_index = mesh.vertices.len() as u32;
+        let tr_border = self.add_border_corner(&mut mesh, tr, FRAC_PI_2, 1);
+        let end_index = mesh.vertices.len() as u32 - 2;
+
+        // connect the border vertices
+        Self::connect_border(&mut mesh, tr_border && tl_border, end_index, tl_index);
+        Self::connect_border(&mut mesh, tl_border && bl_border, bl_index - 2, bl_index);
+        Self::connect_border(&mut mesh, bl_border && br_border, br_index - 2, br_index);
+        Self::connect_border(&mut mesh, br_border && tr_border, tr_index - 2, tr_index);
 
         mesh
-    }
-}
-
-struct CornerIndices {
-    start_inner: u32,
-    start_outer: Option<u32>,
-    end_inner: u32,
-    end_outer: Option<u32>,
-}
-
-impl CornerIndices {
-    fn new(
-        (start_inner, start_outer): (u32, Option<u32>),
-        (end_inner, end_outer): (u32, Option<u32>),
-    ) -> Self {
-        Self {
-            start_inner,
-            start_outer,
-            end_inner,
-            end_outer,
-        }
-    }
-
-    fn start(mesh: &Mesh, has_outer: bool) -> (u32, Option<u32>) {
-        if has_outer {
-            let start_inner = mesh.vertices.len() as u32;
-            let start_outer = start_inner + 1;
-
-            (start_inner, Some(start_outer))
-        } else {
-            let start_inner = mesh.vertices.len() as u32;
-            let start_outer = None;
-
-            (start_inner, start_outer)
-        }
-    }
-
-    fn end(mesh: &Mesh, has_outer: bool) -> (u32, Option<u32>) {
-        if has_outer {
-            let end_inner = mesh.vertices.len() as u32 - 2;
-            let end_outer = end_inner + 1;
-
-            (end_inner, Some(end_outer))
-        } else {
-            let end_inner = mesh.vertices.len() as u32 - 1;
-            let end_outer = None;
-
-            (end_inner, end_outer)
-        }
-    }
-
-    fn connect(&self, mesh: &mut Mesh, end: &Self, center: u32) {
-        if let (Some(start_outer), Some(end_outer)) = (self.end_outer, end.start_outer) {
-            mesh.indices.push(self.end_inner);
-            mesh.indices.push(start_outer);
-            mesh.indices.push(end_outer);
-
-            mesh.indices.push(self.end_inner);
-            mesh.indices.push(end_outer);
-            mesh.indices.push(end.start_inner);
-        }
-
-        mesh.indices.push(center);
-        mesh.indices.push(self.end_inner);
-        mesh.indices.push(end.start_inner);
     }
 }

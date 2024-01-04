@@ -4,10 +4,8 @@ use super::Theme;
 
 /// A builder for [`Theme`]s.
 ///
-/// Themes might want to use the global theme to build themselves. For example
-/// [`pt`](super::pt) is used in a lot of places. So themes need to be rebuilt
-/// when the scale factor or window size changes. The builders have the previous theme
-/// as the global theme when building themselves.
+/// Themes might want to use the global theme to build themselves.
+/// The builders have the previous theme as the global theme when building themselves.
 #[derive(Default)]
 pub struct ThemeBuilder {
     builders: Vec<Box<dyn FnMut() -> Theme>>,

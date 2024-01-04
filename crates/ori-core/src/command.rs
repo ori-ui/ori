@@ -1,10 +1,16 @@
-//! A channel for sending commands to the event loop.
+//! A channel for sending commands to the user interface.
 
 use std::{any::Any, fmt::Debug, sync::Arc};
 
 use crossbeam_channel::{Receiver, Sender};
 
 use crate::log::warn_internal;
+
+/// A waker for the event loop.
+///
+/// When called, the event loop should wake up and process any pending commands,
+/// by calling [`Ui::handle_commands()`](crate::ui::Ui::handle_commands).
+pub type CommandWaker = Arc<dyn Fn() + Send + Sync>;
 
 /// A command.
 #[derive(Debug)]
@@ -28,12 +34,12 @@ impl Command {
 #[derive(Clone)]
 pub struct CommandProxy {
     tx: Sender<Command>,
-    waker: Arc<dyn Fn() + Send + Sync>,
+    waker: CommandWaker,
 }
 
 impl CommandProxy {
     /// Create a new [`CommandProxy`] channel.
-    pub fn new(waker: Arc<dyn Fn() + Send + Sync>) -> (Self, Receiver<Command>) {
+    pub fn new(waker: CommandWaker) -> (Self, Receiver<Command>) {
         let (tx, rx) = crossbeam_channel::unbounded();
         (Self { tx, waker }, rx)
     }

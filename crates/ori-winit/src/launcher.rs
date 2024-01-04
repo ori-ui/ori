@@ -98,7 +98,7 @@ impl<T: 'static> Launcher<T> {
     ///
     /// Delegates are called in order of insertion.
     pub fn delegate(mut self, delegate: impl Delegate<T> + 'static) -> Self {
-        self.ui.push_delegate(delegate);
+        self.ui.push_delegate(Box::new(delegate));
         self
     }
 

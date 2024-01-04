@@ -25,6 +25,8 @@ pub struct WindowDescriptor {
     pub maximized: bool,
     /// Whether the window is visible.
     pub visible: bool,
+    /// Whether the window uses anti-aliasing.
+    pub anti_aliasing: bool,
     /// The background color of the window.
     ///
     /// If this is `None`, the background color will be the default background color.
@@ -44,6 +46,7 @@ impl Default for WindowDescriptor {
             transparent: true,
             maximized: false,
             visible: true,
+            anti_aliasing: true,
             color: None,
         }
     }
@@ -113,6 +116,12 @@ impl WindowDescriptor {
     /// Set whether the window is visible.
     pub fn visible(mut self, visible: bool) -> Self {
         self.visible = visible;
+        self
+    }
+
+    /// Set whether the window uses anti-aliasing.
+    pub fn anti_aliasing(mut self, anti_aliasing: bool) -> Self {
+        self.anti_aliasing = anti_aliasing;
         self
     }
 

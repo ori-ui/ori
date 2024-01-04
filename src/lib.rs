@@ -28,8 +28,9 @@ pub mod winit {
 pub mod prelude {
     //! Convenient imports for Ori.
 
+    /// Type alias for [`ori_core::launcher::Launcher`] with [`ori_winit::WinitShell`].
     #[cfg(feature = "winit")]
-    pub use crate::winit::Launcher;
+    pub type Launcher<T> = ori_core::launcher::Launcher<T, ori_winit::WinitShell>;
 
     pub use ori_core::{
         canvas::{

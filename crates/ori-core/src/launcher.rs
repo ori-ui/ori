@@ -1,63 +1,40 @@
-use std::sync::Arc;
+//! Launcher for an application.
 
-use ori_core::{
+use crate::{
     command::CommandProxy,
     delegate::Delegate,
+    shell::Shell,
     text::FontSource,
     theme::{Palette, Theme},
     ui::{Ui, UiBuilder},
     view::{any, View},
     window::WindowDescriptor,
 };
-use winit::event_loop::{EventLoop, EventLoopBuilder};
-
-use crate::Error;
 
 /// A launcher for an application.
-pub struct Launcher<T: 'static> {
-    pub(crate) event_loop: EventLoop<()>,
+pub struct Launcher<T: 'static, S> {
     pub(crate) windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
+    pub(crate) shell: S,
     pub(crate) ui: Ui<T>,
-    pub(crate) msaa: bool,
 }
 
-impl<T: 'static> Launcher<T> {
-    fn build_event_loop() -> EventLoop<()> {
-        let mut builder = EventLoopBuilder::new();
-
-        #[cfg(target_os = "android")]
-        {
-            use winit::platform::android::EventLoopBuilderExtAndroid;
-
-            let app = crate::android::get_android_app();
-            builder.with_android_app(app);
-        }
-
-        builder.build().unwrap()
-    }
-
-    /// Creates a new application.
+impl<T, S: Shell> Launcher<T, S> {
+    /// Crate a new application.
     pub fn new(data: T) -> Self {
-        let event_loop = Self::build_event_loop();
+        let (shell, waker) = S::init();
 
-        let waker = Arc::new({
-            let proxy = event_loop.create_proxy();
+        let mut ui = Ui::new(data, waker);
 
-            move || {
-                let _ = proxy.send_event(());
-            }
-        });
+        ui.fonts.load_system_fonts();
 
-        let mut app = Self {
-            event_loop,
+        ui.push_theme(|| Palette::light().into());
+        ui.push_theme(Theme::builtin);
+
+        Self {
             windows: Vec::new(),
-            ui: Ui::new(data, waker),
-            msaa: true,
-        };
-
-        app.ui.fonts.load_system_fonts();
-
-        app.theme(Palette::light).theme(Theme::builtin)
+            shell,
+            ui,
+        }
     }
 
     /// Append the theme of the application.
@@ -85,12 +62,6 @@ impl<T: 'static> Launcher<T> {
     /// This is useful when starting background tasks.
     pub fn with_proxy(self, f: impl FnOnce(CommandProxy)) -> Self {
         f(self.proxy());
-        self
-    }
-
-    /// Set whether the application uses multisample anti-aliasing.
-    pub fn msaa(mut self, msaa: bool) -> Self {
-        self.msaa = msaa;
         self
     }
 
@@ -124,15 +95,13 @@ impl<T: 'static> Launcher<T> {
         self
     }
 
-    /// Try to run the application.
-    pub fn try_launch(self) -> Result<(), Error> {
-        crate::launch::launch(self)
+    /// Try to launch the application.
+    pub fn try_launch(self) -> Result<(), S::Error> {
+        self.shell.run(self.ui, self.windows)
     }
 
-    /// Run the application.
+    /// Launch the application.
     pub fn launch(self) {
-        if let Err(err) = self.try_launch() {
-            panic!("Failed running the application: {}", err);
-        }
+        self.try_launch().unwrap();
     }
 }

@@ -9,7 +9,7 @@ use ori_core::{
 use winit::{
     dpi::PhysicalSize,
     event::{Event, KeyEvent, MouseScrollDelta, TouchPhase, WindowEvent},
-    event_loop::EventLoopWindowTarget,
+    event_loop::{EventLoop, EventLoopWindowTarget},
     keyboard::{ModifiersState, PhysicalKey},
     window::WindowBuilder,
 };
@@ -18,19 +18,23 @@ use crate::{
     convert::{convert_key, convert_mouse_button, is_pressed},
     log::error_internal,
     window::WinitWindow,
-    Error, Launcher,
+    Error,
 };
 
-pub(crate) fn launch<T: 'static>(app: Launcher<T>) -> Result<(), Error> {
+pub(crate) fn launch<T: 'static>(
+    event_loop: EventLoop<()>,
+    ui: Ui<T>,
+    windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
+) -> Result<(), Error> {
     /* initialize tracing if enabled */
     #[cfg(feature = "tracing")]
     if let Err(err) = crate::tracing::init_tracing() {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
-    let mut state = AppState::new(app.windows, app.ui, app.msaa);
+    let mut state = AppState::new(ui, windows);
 
-    app.event_loop.run(move |event, target| {
+    event_loop.run(move |event, target| {
         match event {
             // we need to recreate the surfaces when the event loop is resumed
             //
@@ -69,7 +73,6 @@ struct AppState<T: 'static> {
     init: bool,
     windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
     ui: Ui<T>,
-    msaa: bool,
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
 
     /* glow */
@@ -84,12 +87,11 @@ struct AppState<T: 'static> {
 }
 
 impl<T> AppState<T> {
-    fn new(windows: Vec<(WindowDescriptor, UiBuilder<T>)>, ui: Ui<T>, msaa: bool) -> Self {
+    fn new(ui: Ui<T>, windows: Vec<(WindowDescriptor, UiBuilder<T>)>) -> Self {
         Self {
             init: false,
             windows,
             ui,
-            msaa,
             window_ids: HashMap::new(),
 
             /* glow */
@@ -164,7 +166,7 @@ impl<T> AppState<T> {
     fn create_wgpu_render(
         &mut self,
         window: &winit::window::Window,
-        id: ori_core::window::WindowId,
+        desc: &WindowDescriptor,
     ) -> Result<(), Error> {
         use ori_wgpu::WgpuRender;
 
@@ -176,11 +178,11 @@ impl<T> AppState<T> {
             (self.instance.insert(instance) as _, surface)
         };
 
-        let samples = if self.msaa { 4 } else { 1 };
+        let samples = if desc.anti_aliasing { 4 } else { 1 };
         let size = window.inner_size();
         let render = WgpuRender::new(instance, surface, samples, size.width, size.height)?;
 
-        self.renders.insert(id, render);
+        self.renders.insert(desc.id, render);
 
         Ok(())
     }
@@ -189,13 +191,12 @@ impl<T> AppState<T> {
     fn create_glow_render(
         &mut self,
         window: &winit::window::Window,
-        id: ori_core::window::WindowId,
+        desc: &WindowDescriptor,
     ) -> Result<(), Error> {
         use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
-        let samples = if self.msaa { 4 } else { 1 };
-
         let size = window.inner_size();
+        let samples = if desc.anti_aliasing { 4 } else { 1 };
         let render = ori_glow::GlowRender::new(
             window.raw_window_handle(),
             window.raw_display_handle(),
@@ -203,7 +204,7 @@ impl<T> AppState<T> {
             size.height,
             samples,
         )?;
-        self.renders.insert(id, render);
+        self.renders.insert(desc.id, render);
 
         Ok(())
     }
@@ -241,10 +242,10 @@ impl<T> AppState<T> {
         self.window_ids.insert(window.id(), desc.id);
 
         #[cfg(feature = "glow")]
-        self.create_glow_render(&window, desc.id)?;
+        self.create_glow_render(&window, &desc)?;
 
         #[cfg(feature = "wgpu")]
-        self.create_wgpu_render(&window, desc.id)?;
+        self.create_wgpu_render(&window, &desc)?;
 
         /* create the initial window */
         let raw_window = Box::new(WinitWindow::from(window));

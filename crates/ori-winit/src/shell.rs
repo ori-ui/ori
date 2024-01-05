@@ -1,10 +1,7 @@
-use std::sync::Arc;
-
 use ori_core::{
     command::CommandWaker,
-    shell::Shell,
-    ui::{Ui, UiBuilder},
-    window::WindowDescriptor,
+    shell::{Shell, Windows},
+    ui::Ui,
 };
 use winit::event_loop::{EventLoop, EventLoopBuilder};
 
@@ -37,7 +34,7 @@ impl Shell for WinitShell {
     fn init() -> (Self, CommandWaker) {
         let event_loop = Self::build_event_loop();
 
-        let waker = Arc::new({
+        let waker = CommandWaker::new({
             let proxy = event_loop.create_proxy();
 
             move || {
@@ -50,11 +47,7 @@ impl Shell for WinitShell {
         (shell, waker)
     }
 
-    fn run<T>(
-        self,
-        ui: Ui<T>,
-        windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
-    ) -> Result<(), Self::Error> {
+    fn run<T>(self, ui: Ui<T>, windows: Windows<T>) -> Result<(), Self::Error> {
         crate::launch::launch(self.event_loop, ui, windows)
     }
 }

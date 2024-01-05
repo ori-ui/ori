@@ -3,6 +3,7 @@ use std::{collections::HashMap, mem};
 use ori_core::{
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
+    shell::Windows,
     ui::{Ui, UiBuilder, UiRequest},
     window::{Window, WindowDescriptor},
 };
@@ -24,7 +25,7 @@ use crate::{
 pub(crate) fn launch<T: 'static>(
     event_loop: EventLoop<()>,
     ui: Ui<T>,
-    windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
+    windows: Windows<T>,
 ) -> Result<(), Error> {
     /* initialize tracing if enabled */
     #[cfg(feature = "tracing")]
@@ -71,7 +72,7 @@ pub(crate) fn launch<T: 'static>(
 
 struct AppState<T: 'static> {
     init: bool,
-    windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
+    windows: Windows<T>,
     ui: Ui<T>,
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
 
@@ -87,7 +88,7 @@ struct AppState<T: 'static> {
 }
 
 impl<T> AppState<T> {
-    fn new(ui: Ui<T>, windows: Vec<(WindowDescriptor, UiBuilder<T>)>) -> Self {
+    fn new(ui: Ui<T>, windows: Windows<T>) -> Self {
         Self {
             init: false,
             windows,

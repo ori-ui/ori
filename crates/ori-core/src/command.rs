@@ -10,7 +10,32 @@ use crate::log::warn_internal;
 ///
 /// When called, the event loop should wake up and process any pending commands,
 /// by calling [`Ui::handle_commands()`](crate::ui::Ui::handle_commands).
-pub type CommandWaker = Arc<dyn Fn() + Send + Sync>;
+#[derive(Clone)]
+pub struct CommandWaker(Arc<dyn Fn() + Send + Sync>);
+
+impl CommandWaker {
+    /// Create a new [`CommandWaker`].
+    pub fn new(waker: impl Fn() + Send + Sync + 'static) -> Self {
+        Self(Arc::new(waker))
+    }
+
+    /// Wake the event loop.
+    pub fn wake(&self) {
+        (self.0)();
+    }
+}
+
+impl From<Arc<dyn Fn() + Send + Sync>> for CommandWaker {
+    fn from(waker: Arc<dyn Fn() + Send + Sync>) -> Self {
+        Self(waker)
+    }
+}
+
+impl Debug for CommandWaker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CommandWaker").finish()
+    }
+}
 
 /// A command.
 #[derive(Debug)]
@@ -46,7 +71,7 @@ impl CommandProxy {
 
     /// Wake the event loop.
     pub fn wake(&self) {
-        (self.waker)();
+        self.waker.wake();
     }
 
     /// Send a command without waking the event loop.

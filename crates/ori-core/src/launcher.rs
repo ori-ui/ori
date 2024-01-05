@@ -3,7 +3,7 @@
 use crate::{
     command::CommandProxy,
     delegate::Delegate,
-    shell::Shell,
+    shell::{Shell, Windows},
     text::FontSource,
     theme::{Palette, Theme},
     ui::{Ui, UiBuilder},
@@ -13,9 +13,9 @@ use crate::{
 
 /// A launcher for an application.
 pub struct Launcher<T: 'static, S> {
-    pub(crate) windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
     pub(crate) shell: S,
     pub(crate) ui: Ui<T>,
+    pub(crate) windows: Windows<T>,
 }
 
 impl<T, S: Shell> Launcher<T, S> {
@@ -31,9 +31,9 @@ impl<T, S: Shell> Launcher<T, S> {
         ui.push_theme(Theme::builtin);
 
         Self {
-            windows: Vec::new(),
             shell,
             ui,
+            windows: Windows::new(),
         }
     }
 
@@ -91,7 +91,7 @@ impl<T, S: Shell> Launcher<T, S> {
         mut ui: impl FnMut(&mut T) -> V + 'static,
     ) -> Self {
         let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
-        self.windows.push((descriptor, builder));
+        self.windows.push(descriptor, builder);
         self
     }
 

@@ -8,7 +8,7 @@ use ori_core::{
     window::{Window, WindowDescriptor},
 };
 use winit::{
-    dpi::PhysicalSize,
+    dpi::LogicalSize,
     event::{Event, KeyEvent, MouseScrollDelta, TouchPhase, WindowEvent},
     event_loop::{EventLoop, EventLoopWindowTarget},
     keyboard::{ModifiersState, PhysicalKey},
@@ -233,7 +233,7 @@ impl<T> AppState<T> {
         /* create the window */
         let window = WindowBuilder::new()
             .with_title(&desc.title)
-            .with_inner_size(PhysicalSize::new(desc.width, desc.height))
+            .with_inner_size(LogicalSize::new(desc.width, desc.height))
             .with_resizable(desc.resizable)
             .with_decorations(desc.decorated)
             .with_transparent(desc.transparent)
@@ -288,21 +288,21 @@ impl<T> AppState<T> {
 
         let clear_color = window.color();
 
-        let width = window.window().width();
-        let height = window.window().height();
+        let logical = window.window().size();
+        let physical = window.window().physical_size();
         let scene = window.scene();
 
         /* glow */
         #[cfg(feature = "glow")]
         if let Some(render) = self.renders.get_mut(&window_id) {
-            render.render_scene(scene, clear_color, width, height)?;
+            render.render_scene(scene, clear_color, logical, physical)?;
         }
 
         /* wgpu */
         #[cfg(feature = "wgpu")]
         if let Some(render) = self.renders.get_mut(&window_id) {
-            let context = self.ui.contexts.get::<ori_wgpu::WgpuContext>().unwrap();
-            render.render_scene(context, scene, clear_color, width, height);
+            let cx = self.ui.contexts.get::<ori_wgpu::WgpuContext>().unwrap();
+            render.render_scene(cx, scene, clear_color, logical, physical);
         }
 
         Ok(())
@@ -332,11 +332,9 @@ impl<T> AppState<T> {
                 position,
                 ..
             } => {
-                self.ui.pointer_moved(
-                    id,
-                    PointerId::from_hash(&device_id),
-                    Point::new(position.x as f32, position.y as f32),
-                );
+                let scale_factor = self.ui.window(id).window().scale_factor();
+                let position = Point::new(position.x as f32, position.y as f32) / scale_factor;
+                (self.ui).pointer_moved(id, PointerId::from_hash(&device_id), position);
             }
             WindowEvent::CursorLeft { device_id } => {
                 self.ui.pointer_left(id, PointerId::from_hash(&device_id));
@@ -397,7 +395,8 @@ impl<T> AppState<T> {
     }
 
     fn touch_event(&mut self, window_id: ori_core::window::WindowId, event: winit::event::Touch) {
-        let position = Point::new(event.location.x as f32, event.location.y as f32);
+        let scale_factor = self.ui.window(window_id).window().scale_factor();
+        let position = Point::new(event.location.x as f32, event.location.y as f32) / scale_factor;
         let pointer_id = PointerId::from_hash(&event.device_id);
 
         // we always send a pointer moved event first because the ui

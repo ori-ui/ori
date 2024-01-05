@@ -25,4 +25,3 @@ pub use primitive::*;
 pub use quad::*;
 pub use scene::*;
 pub use shadow::*;
-pub use stroke::*;

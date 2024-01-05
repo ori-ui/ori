@@ -128,6 +128,11 @@ impl Window {
         Size::new(width as f32, height as f32)
     }
 
+    /// Get the physical size of the window.
+    pub fn physical_size(&self) -> Size {
+        self.size() * self.scale_factor()
+    }
+
     /// Get the width of the window.
     pub fn width(&self) -> u32 {
         self.raw.size().0
@@ -136,6 +141,18 @@ impl Window {
     /// Get the height of the window.
     pub fn height(&self) -> u32 {
         self.raw.size().1
+    }
+
+    /// Get the physical width of the window.
+    pub fn physical_width(&self) -> u32 {
+        let width = self.width() as f32 * self.scale_factor();
+        width as u32
+    }
+
+    /// Get the physical height of the window.
+    pub fn physical_height(&self) -> u32 {
+        let height = self.height() as f32 * self.scale_factor();
+        height as u32
     }
 
     /// Set the size of the window.

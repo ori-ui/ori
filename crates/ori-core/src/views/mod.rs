@@ -38,7 +38,6 @@ pub use dropdown::*;
 pub use event_handler::*;
 pub use flex::*;
 pub use focus::*;
-pub use image::*;
 pub use pad::*;
 pub use painter::*;
 pub use rebuild_handler::*;

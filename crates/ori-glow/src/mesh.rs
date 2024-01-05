@@ -89,8 +89,17 @@ impl MeshRender {
     unsafe fn create_program(gl: &glow::Context) -> Result<glow::Program, GlowError> {
         let program = gl.create_program().map_err(GlowError::Gl)?;
 
-        let vert_source = include_str!("shader/mesh.vert");
-        let frag_source = include_str!("shader/mesh.frag");
+        #[cfg(not(target_os = "android"))]
+        let (vert_source, frag_source) = (
+            include_str!("shader/mesh_gl.vert"),
+            include_str!("shader/mesh_gl.frag"),
+        );
+
+        #[cfg(target_os = "android")]
+        let (vert_source, frag_source) = (
+            include_str!("shader/mesh_es.vert"),
+            include_str!("shader/mesh_es.frag"),
+        );
 
         let vert_shader = Self::create_shader(gl, glow::VERTEX_SHADER, vert_source)?;
         let frag_shader = Self::create_shader(gl, glow::FRAGMENT_SHADER, frag_source)?;

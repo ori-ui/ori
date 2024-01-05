@@ -72,9 +72,15 @@ impl GlowRender {
 
         let surface = unsafe { display.create_window_surface(&config, &surface_attributes)? };
 
+        #[cfg(not(target_os = "android"))]
+        let context_api = ContextApi::OpenGl(None);
+
+        #[cfg(target_os = "android")]
+        let context_api = ContextApi::Gles(None);
+
         let context_attributes = ContextAttributesBuilder::new()
             .with_profile(GlProfile::Core)
-            .with_context_api(ContextApi::OpenGl(None))
+            .with_context_api(context_api)
             .build(Some(window_handle));
 
         let context = unsafe { display.create_context(&config, &context_attributes)? };
@@ -98,11 +104,13 @@ impl GlowRender {
     }
 
     fn make_current(&self) -> Result<(), GlowError> {
-        self.context.make_current(&self.surface)?;
-        Ok(())
+        Ok(self.context.make_current(&self.surface)?)
     }
 
-    unsafe fn resize(&mut self, width: u32, height: u32) {
+    unsafe fn resize(&mut self, physical_size: Size) {
+        let width = physical_size.width as u32;
+        let height = physical_size.height as u32;
+
         if self.width == width && self.height == height {
             return;
         }
@@ -116,7 +124,12 @@ impl GlowRender {
         self.gl.viewport(0, 0, width as i32, height as i32);
     }
 
-    unsafe fn render(&mut self, scene: &Scene, clear: Color) -> Result<(), GlowError> {
+    unsafe fn render(
+        &mut self,
+        scene: &Scene,
+        clear: Color,
+        logical_size: Size,
+    ) -> Result<(), GlowError> {
         let batches = scene.batches();
 
         self.gl.clear_color(clear.r, clear.g, clear.b, clear.a);
@@ -134,8 +147,7 @@ impl GlowRender {
         self.gl.enable(glow::MULTISAMPLE);
 
         for batch in batches.iter() {
-            let size = Size::new(self.width as f32, self.height as f32);
-            self.mesh.render_batch(&self.gl, batch, size)?;
+            self.mesh.render_batch(&self.gl, batch, logical_size)?;
         }
 
         self.surface.swap_buffers(&self.context)?;
@@ -155,15 +167,15 @@ impl GlowRender {
         &mut self,
         scene: &Scene,
         clear: Color,
-        width: u32,
-        height: u32,
+        logical_size: Size,
+        physical_size: Size,
     ) -> Result<(), GlowError> {
         self.make_current()?;
 
         unsafe {
-            self.resize(width, height);
-            self.render(scene, clear)
-        }?;
+            self.resize(physical_size);
+            self.render(scene, clear, logical_size)?;
+        };
 
         Ok(())
     }

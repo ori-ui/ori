@@ -113,7 +113,10 @@ impl WgpuRender {
         Size::new(self.config.width as f32, self.config.height as f32)
     }
 
-    fn resize(&mut self, context: &WgpuContext, width: u32, height: u32) {
+    fn resize(&mut self, context: &WgpuContext, physical_size: Size) {
+        let width = physical_size.width as u32;
+        let height = physical_size.height as u32;
+
         if self.config.width == width && self.config.height == height {
             return;
         }
@@ -183,15 +186,14 @@ impl WgpuRender {
         context: &WgpuContext,
         scene: &Scene,
         clear_color: Color,
-        width: u32,
-        height: u32,
+        logical_size: Size,
+        physical_size: Size,
     ) {
-        self.resize(context, width, height);
+        self.resize(context, physical_size);
         let batches = scene.batches();
 
-        let size = self.size();
         for batch in batches.iter() {
-            (self.mesh).prepare_batch(context, &mut self.image, batch, size);
+            (self.mesh).prepare_batch(context, &mut self.image, batch, logical_size);
         }
 
         let mut encoder = (context.device).create_command_encoder(&CommandEncoderDescriptor {

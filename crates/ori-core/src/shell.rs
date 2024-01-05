@@ -8,7 +8,7 @@ use crate::{
 
 /// A collection of windows to be created.
 ///
-/// This is built by the [`Launcher`], and passed to the [`Shell`] to create the windows.
+/// This is built by the [`Launcher`](crate::launcher::Launcher), and passed to the [`Shell`] to create the windows.
 pub struct Windows<T> {
     windows: Vec<(WindowDescriptor, UiBuilder<T>)>,
 }

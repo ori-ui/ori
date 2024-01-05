@@ -7,9 +7,6 @@ pub fn main(
 ) -> manyhow::Result<proc_macro::TokenStream> {
     let input = syn::parse::<syn::ItemFn>(input)?;
 
-    let vis = &input.vis;
-    let attrs = &input.attrs;
-    let sig = &input.sig;
     let body = &input.block;
     let winit = crate::find_winit();
 
@@ -23,12 +20,7 @@ pub fn main(
             body();
         }
 
-        #[allow(dead_code, clippy::needless_return)]
-        #(#attrs)*
-        #vis #sig {
-            #[warn(dead_code, clippy::needless_return)]
-            #body
-        }
+        #input
     };
 
     Ok(expanded.into())

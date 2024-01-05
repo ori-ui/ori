@@ -32,10 +32,10 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
 
 /// A delegate for handling events.
 ///
-/// Delegate is implemented for functions like this:
+/// Delegate is implemented for functions like:
 /// ```ignore
 /// fn delegate<T>(cx: &mut DelegateCx, data: &mut T, event: &Event) {
-///     ...
+///     // ...
 /// }
 /// ```
 pub trait Delegate<T> {

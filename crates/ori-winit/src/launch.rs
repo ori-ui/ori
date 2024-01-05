@@ -299,7 +299,6 @@ impl<T> AppState<T> {
         }
 
         /* wgpu */
-
         #[cfg(feature = "wgpu")]
         if let Some(render) = self.renders.get_mut(&window_id) {
             let context = self.ui.contexts.get::<ori_wgpu::WgpuContext>().unwrap();

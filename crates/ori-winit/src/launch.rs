@@ -113,6 +113,7 @@ impl<T> AppState<T> {
         }
 
         self.init = true;
+        self.ui.init();
 
         for (desc, builder) in mem::take(&mut self.windows) {
             if let Err(err) = self.create_window(target, desc, builder) {

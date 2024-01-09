@@ -29,7 +29,7 @@ use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, ViewState};
 ///     This can be quite tedius to write out, so the [`Rebuild`] derive macro can be
 ///     used to generate this code.
 /// - [`View::event`] is called when an event occurs. The should then handle the
-///     event. Custom events can be send using [`EventCx::cmd`].
+///     event. Custom events can be send using [`BaseCx::cmd`].
 /// - [`View::layout`] is called when the view needs to be laid out. A leaf view
 ///     should compute it's own size in accordance with the given [`Space`], and
 ///     return it. A container view should pass an appropriate [`Space`] to it's
@@ -39,6 +39,7 @@ use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, ViewState};
 ///
 /// For examples see the implementation of views like [`Button`] or [`Checkbox`].
 ///
+/// [`BaseCx::cmd`]: super::BaseCx::cmd
 /// [`State`]: super::State
 /// [`SeqState`]: super::SeqState
 /// [`ViewState`]: super::ViewState

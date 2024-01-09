@@ -1,14 +1,16 @@
+use cosmic_text::{Action, Buffer, Edit, Editor, Metrics, Shaping};
+use ori_macro::Build;
+
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
     event::{
-        AnimationFrame, Code, Event, HotChanged, KeyboardEvent, Modifiers, PointerPressed,
-        RequestFocus,
+        AnimationFrame, Code, Event, KeyboardEvent, PointerMoved, PointerPressed, RequestFocus,
     },
-    layout::{Point, Rect, Size, Space, Vector},
+    layout::{Point, Rect, Size, Space},
     rebuild::Rebuild,
     text::{
-        FontFamily, FontStretch, FontStyle, FontWeight, Glyph, Glyphs, TextAlign, TextSection,
-        TextWrap,
+        FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
+        TextBuffer, TextWrap,
     },
     theme::{style, text_input},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
@@ -21,16 +23,21 @@ pub fn text_input<T>() -> TextInput<T> {
 }
 
 /// A text input.
-#[derive(Rebuild)]
+#[derive(Rebuild, Build)]
 pub struct TextInput<T> {
+    /// The text.
+    #[rebuild(layout)]
+    #[build(ignore)]
+    pub text: Option<String>,
     /// A function that returns the text to display.
+    #[build(ignore)]
     #[allow(clippy::type_complexity)]
-    pub bind_text: Option<Box<dyn FnMut(&mut T) -> &mut String>>,
+    pub on_change: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
     /// A function that is called when the input is submitted.
+    #[build(ignore)]
     #[allow(clippy::type_complexity)]
     pub on_submit: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
-    /// The space to fill.
-    pub space: Space,
+
     /// Placeholder text to display when the input is empty.
     #[rebuild(layout)]
     pub placeholder: String,
@@ -81,10 +88,10 @@ impl<T> TextInput<T> {
     /// Create a new text input view.
     pub fn new() -> Self {
         Self {
-            bind_text: None,
+            text: None,
+            on_change: None,
             on_submit: None,
-            space: Space::UNBOUNDED,
-            placeholder: String::from("Text..."),
+            placeholder: String::from("Placeholder"),
             multiline: false,
             font_size: style(text_input::FONT_SIZE),
             font_family: style(text_input::FONT_FAMILY),
@@ -99,13 +106,22 @@ impl<T> TextInput<T> {
         }
     }
 
-    /// Set the text.
-    pub fn bind_text(mut self, text: impl FnMut(&mut T) -> &mut String + 'static) -> Self {
-        self.bind_text = Some(Box::new(text));
+    /// Set the text of the input.
+    pub fn text(mut self, text: impl AsRef<str>) -> Self {
+        self.text = Some(text.as_ref().to_string());
         self
     }
 
-    /// Set the on submit callback.
+    /// Set the callback that is called when the input changes.
+    pub fn on_change(
+        mut self,
+        on_change: impl FnMut(&mut EventCx, &mut T, String) + 'static,
+    ) -> Self {
+        self.on_change = Some(Box::new(on_change));
+        self
+    }
+
+    /// Set the callback that is called when the input is submitted.
     pub fn on_submit(
         mut self,
         on_submit: impl FnMut(&mut EventCx, &mut T, String) + 'static,
@@ -114,507 +130,271 @@ impl<T> TextInput<T> {
         self
     }
 
-    /// Set the size.
-    pub fn size(mut self, size: impl Into<Size>) -> Self {
-        self.space = Space::from_size(size.into());
-        self
-    }
-
-    /// Set the width.
-    pub fn width(mut self, width: f32) -> Self {
-        self.space.min.width = width;
-        self.space.max.width = width;
-        self
-    }
-
-    /// Set the height.
-    pub fn height(mut self, height: f32) -> Self {
-        self.space.min.height = height;
-        self.space.max.height = height;
-        self
-    }
-
-    /// Set the minimum width.
-    pub fn min_width(mut self, min_width: f32) -> Self {
-        self.space.min.width = min_width;
-        self
-    }
-
-    /// Set the minimum height.
-    pub fn min_height(mut self, min_height: f32) -> Self {
-        self.space.min.height = min_height;
-        self
-    }
-
-    /// Set the maximum width.
-    pub fn max_width(mut self, max_width: f32) -> Self {
-        self.space.max.width = max_width;
-        self
-    }
-
-    /// Set the maximum height.
-    pub fn max_height(mut self, max_height: f32) -> Self {
-        self.space.max.height = max_height;
-        self
-    }
-
-    /// Set the placeholder text.
-    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
-        self.placeholder = placeholder.into();
-        self
-    }
-
-    /// Set whether the input is multi-line.
-    pub fn multiline(mut self, multiline: bool) -> Self {
-        self.multiline = multiline;
-        self
-    }
-
-    /// Set the font size.
-    pub fn font_size(mut self, font_size: f32) -> Self {
-        self.font_size = font_size;
-        self
-    }
-
-    /// Set the font family.
-    pub fn font_family(mut self, font_family: impl Into<FontFamily>) -> Self {
-        self.font_family = font_family.into();
-        self
-    }
-
-    /// Set the font weight.
-    pub fn font_weight(mut self, font_weight: impl Into<FontWeight>) -> Self {
-        self.font_weight = font_weight.into();
-        self
-    }
-
-    /// Set the font stretch.
-    pub fn font_stretch(mut self, font_stretch: impl Into<FontStretch>) -> Self {
-        self.font_stretch = font_stretch.into();
-        self
-    }
-
-    /// Set the font.into.
-    pub fn font_style(mut self, font_style: impl Into<FontStyle>) -> Self {
-        self.font_style = font_style.into();
-        self
-    }
-
-    /// Set the color.
-    pub fn color(mut self, color: impl Into<Color>) -> Self {
-        self.color = color.into();
-        self
-    }
-
-    /// Set the vertical alignment.
-    pub fn v_align(mut self, v_align: impl Into<TextAlign>) -> Self {
-        self.v_align = v_align.into();
-        self
-    }
-
-    /// Set the horizontal alignment.
-    pub fn h_align(mut self, h_align: impl Into<TextAlign>) -> Self {
-        self.h_align = h_align.into();
-        self
-    }
-
-    /// Set the line height.
-    pub fn line_height(mut self, line_height: f32) -> Self {
-        self.line_height = line_height;
-        self
-    }
-
-    /// Set the text wrap.
-    pub fn wrap(mut self, wrap: impl Into<TextWrap>) -> Self {
-        self.wrap = wrap.into();
-        self
-    }
-
-    fn get_text<'a>(&'a mut self, state: &'a TextInputState, data: &'a mut T) -> &'a str {
-        match self.bind_text {
-            Some(ref mut text) => text(data),
-            None => &state.text,
-        }
-    }
-
-    fn get_text_mut<'a>(
-        &'a mut self,
-        state: &'a mut TextInputState,
-        data: &'a mut T,
-    ) -> &'a mut String {
-        match self.bind_text {
-            Some(ref mut text) => text(data),
-            None => &mut state.text,
-        }
-    }
-
-    fn request_update(&mut self, cx: &mut EventCx) {
-        if self.bind_text.is_some() {
-            cx.request_rebuild();
-        } else {
-            cx.request_layout();
-        }
-    }
-
-    fn hit_text(&mut self, state: &mut TextInputState, data: &mut T, local: Point) -> usize {
-        if self.get_text(state, data).is_empty() {
-            return 0;
-        }
-
-        let mut line = None;
-        let mut dist = f32::MAX;
-        let mut cursor = 0;
-
-        for glyph in state.glyphs.iter().flatten() {
-            let delta = local - glyph.rect.center();
-
-            if glyph.rect.contains(local) {
-                cursor = glyph.byte_offset;
-
-                if delta.x > 0.0 {
-                    cursor = glyph.code.len_utf8();
-                }
-
-                return cursor;
-            }
-
-            if line != Some(glyph.line) && line.is_some() {
-                continue;
-            }
-
-            let line_top = glyph.baseline - glyph.line_descent;
-            let line_bottom = glyph.baseline - glyph.line_ascent;
-
-            if local.y < line_bottom || local.y > line_top {
-                continue;
-            }
-
-            if delta.length_squared() < dist {
-                line = Some(glyph.line);
-                dist = delta.length_squared();
-
-                cursor = glyph.byte_offset;
-            }
-        }
-
-        cursor
-    }
-
-    fn prev_char(&mut self, state: &mut TextInputState, data: &mut T) -> Option<char> {
-        for i in 1..=4 {
-            if state.cursor_index < i {
-                continue;
-            }
-
-            let text = self.get_text(state, data);
-            if text.is_char_boundary(state.cursor_index - i) {
-                return text[state.cursor_index - i..].chars().next();
-            }
-        }
-
-        None
-    }
-
-    fn next_char(&mut self, state: &mut TextInputState, data: &mut T) -> Option<char> {
-        self.get_text(state, data)[state.cursor_index..]
-            .chars()
-            .next()
-    }
-
-    fn input_text(
-        &mut self,
-        state: &mut TextInputState,
-        cx: &mut EventCx,
-        data: &mut T,
-        input: &str,
-    ) {
-        let mut input = input.replace('\x08', "");
-
-        if !self.multiline {
-            input = input.replace(['\n', '\r'], "");
-        }
-
-        let index = state.cursor_index;
-        let text = self.get_text_mut(state, data);
-        text.insert_str(index, &input);
-
-        state.cursor_index += input.len();
-        state.cursor_blink = 0.0;
-
-        self.request_update(cx);
-    }
-
-    fn input_key(
-        &mut self,
-        state: &mut TextInputState,
-        cx: &mut EventCx,
-        data: &mut T,
-        modifiers: Modifiers,
-        key: Code,
-    ) {
-        match key {
-            Code::Escape => {
-                cx.set_focused(false);
-            }
-            Code::Backspace => self.input_backspace(state, cx, data),
-            Code::Enter => self.input_enter(state, cx, data, modifiers),
-            Code::Left => self.input_left(state, cx, data),
-            Code::Right => self.input_right(state, cx, data),
-            Code::Up => self.input_up(state, cx, data),
-            Code::Down => self.input_down(state, cx, data),
-            _ => {}
-        }
-    }
-
-    fn input_backspace(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
-        let Some(prev_char) = self.prev_char(state, data) else {
-            return;
+    fn set_attributes(&self, fonts: &mut Fonts, state: &mut TextInputState) {
+        let attrs = TextAttributes {
+            family: self.font_family.clone(),
+            stretch: self.font_stretch,
+            weight: self.font_weight,
+            style: self.font_style,
+            color: self.color,
+        };
+        let placeholder_attrs = TextAttributes {
+            family: self.font_family.clone(),
+            stretch: self.font_stretch,
+            weight: self.font_weight,
+            style: self.font_style,
+            color: self.color.lighten(0.3),
+        };
+        let metrics = Metrics {
+            font_size: self.font_size,
+            line_height: self.line_height * self.font_size,
         };
 
-        let index = state.cursor_index;
-        let text = self.get_text_mut(state, data);
-        text.remove(index - prev_char.len_utf8());
+        /* editor */
+        let buffer = state.editor.buffer_mut();
+        buffer.set_wrap(&mut fonts.font_system, self.wrap.to_cosmic());
+        buffer.set_metrics(&mut fonts.font_system, metrics);
 
-        state.cursor_index -= prev_char.len_utf8();
-        state.cursor_blink = 0.0;
+        let text = self.get_text(state);
+        state.editor.buffer_mut().set_text(
+            &mut fonts.font_system,
+            &text,
+            attrs.to_cosmic(),
+            Shaping::Advanced,
+        );
 
-        self.request_update(cx);
+        /* placeholder */
+        state.placeholder.set_wrap(fonts, self.wrap);
+        (state.placeholder).set_metrics(fonts, self.font_size, self.line_height);
+        (state.placeholder).set_text(fonts, &self.placeholder, placeholder_attrs);
     }
 
-    fn submit(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
-        let text = String::from(self.get_text(state, data));
-
-        if let Some(ref mut on_submit) = self.on_submit {
-            on_submit(cx, data, text);
-            cx.set_focused(false);
-            cx.request_rebuild();
-
-            if self.bind_text.is_none() {
-                state.text.clear();
-            }
-        }
-    }
-
-    fn input_enter(
-        &mut self,
-        state: &mut TextInputState,
-        cx: &mut EventCx,
-        data: &mut T,
-        modifiers: Modifiers,
-    ) {
-        if self.on_submit.is_none() || modifiers.shift {
-            return;
-        }
-
-        if !self.multiline {
-            self.submit(state, cx, data);
-
-            return;
-        }
-
-        let text = self.get_text(state, data);
-
-        if state.cursor_index == text.len() {
-            self.submit(state, cx, data);
-        }
-    }
-
-    fn input_left(&mut self, state: &mut TextInputState, _cx: &mut EventCx, data: &mut T) {
-        if let Some(prev_char) = self.prev_char(state, data) {
-            state.cursor_index -= prev_char.len_utf8();
-            state.cursor_blink = 0.0;
-        }
-    }
-
-    fn input_right(&mut self, state: &mut TextInputState, _cx: &mut EventCx, data: &mut T) {
-        if let Some(next_char) = self.next_char(state, data) {
-            state.cursor_index += next_char.len_utf8();
-            state.cursor_blink = 0.0;
-        }
-    }
-
-    fn input_up(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
-        if let Some(position) = self.cursor_position(state, cx.rect()) {
-            let line_offset = Vector::NEG_Y * self.font_size * self.line_height * 0.8;
-
-            state.cursor_index = self.hit_text(state, data, position + line_offset);
-            cx.request_draw();
-        }
-    }
-
-    fn input_down(&mut self, state: &mut TextInputState, cx: &mut EventCx, data: &mut T) {
-        if let Some(position) = self.cursor_position(state, cx.rect()) {
-            let line_offset = Vector::Y * self.font_size * self.line_height * 0.8;
-
-            state.cursor_index = self.hit_text(state, data, position + line_offset);
-            cx.request_draw();
-        }
-    }
-
-    fn handle_keyboard_event(
-        &mut self,
-        state: &mut TextInputState,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &KeyboardEvent,
-    ) {
-        if !cx.is_focused() {
-            return;
-        }
-
-        if let Some(ref input) = event.text {
-            self.input_text(state, cx, data, input);
-        }
-
-        if let Some(key) = event.code {
-            if event.is_press() {
-                self.input_key(state, cx, data, event.modifiers, key);
-            }
-        }
-    }
-
-    fn find_glyph(&self, state: &TextInputState) -> Option<Glyph> {
-        let glyphs = state.glyphs.as_ref()?;
-
-        glyphs
-            .iter()
-            .find(|glyph| glyph.byte_offset == state.cursor_index)
-            .copied()
-    }
-
-    fn glyph_position(&self, state: &TextInputState) -> Option<Point> {
-        let glyph = self.find_glyph(state)?;
-
-        Some(Point::new(
-            glyph.rect.min.x,
-            glyph.baseline - (glyph.line_ascent + glyph.line_descent) / 2.0,
-        ))
-    }
-
-    fn cursor_position(&self, state: &TextInputState, rect: Rect) -> Option<Point> {
-        let offset = state.glyphs.as_ref()?.offset(rect);
-
-        match self.glyph_position(state) {
-            Some(position) => Some(position + offset),
-            None => Some(rect.left()),
+    fn get_text(&self, state: &TextInputState) -> String {
+        if let Some(ref text) = self.text {
+            text.clone()
+        } else {
+            state.text()
         }
     }
 }
 
 #[doc(hidden)]
-#[derive(Default, Debug)]
 pub struct TextInputState {
-    glyphs: Option<Glyphs>,
-    cursor_blink: f32,
-    cursor_index: usize,
-    text: String,
+    editor: Editor,
+    placeholder: TextBuffer,
+    blink: f32,
+}
+
+impl TextInputState {
+    fn text(&self) -> String {
+        let mut text = String::new();
+
+        for (i, line) in self.editor.buffer().lines.iter().enumerate() {
+            if i > 0 {
+                text.push('\n');
+            }
+
+            text.push_str(line.text());
+        }
+
+        text
+    }
 }
 
 impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
-    fn build(&mut self, _cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let text = match self.bind_text {
-            Some(ref mut text) => text(data).clone(),
-            None => String::new(),
+    fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        let editor = Editor::new(Buffer::new(
+            &mut cx.fonts().font_system,
+            Metrics {
+                font_size: self.font_size,
+                line_height: self.line_height * self.font_size,
+            },
+        ));
+
+        let placeholder = TextBuffer::new(cx.fonts(), self.font_size, self.line_height);
+
+        let mut state = TextInputState {
+            editor,
+            placeholder,
+            blink: 0.0,
         };
 
-        TextInputState {
-            text,
-            ..Default::default()
-        }
+        self.set_attributes(cx.fonts(), &mut state);
+
+        state
     }
 
-    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
-
-        if let Some(ref mut text) = self.bind_text {
-            let new_text = text(data).clone();
-
-            if new_text != state.text {
-                state.text = new_text;
-                cx.request_layout();
-            }
-        }
+        self.set_attributes(cx.fonts(), state);
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         if event.is::<RequestFocus>() {
             cx.set_focused(true);
+            cx.request_animation_frame();
+            cx.request_draw();
             event.handle();
         }
 
-        match event.get() {
-            Some(HotChanged(true)) => cx.set_cursor(Cursor::Text),
-            Some(HotChanged(false)) => cx.set_cursor(None),
-            _ => {}
-        }
+        if let Some(e) = event.get::<KeyboardEvent>() {
+            if !cx.is_focused() {
+                return;
+            }
 
-        if let Some(pressed) = event.get::<PointerPressed>() {
-            let local = cx.local(pressed.position);
+            let editor = &mut state.editor;
 
-            if cx.is_hot() {
-                state.cursor_index = self.hit_text(state, data, local);
-                cx.set_focused(true);
-                cx.request_draw();
-            } else {
+            let mut changed = false;
+            let mut submit = false;
+
+            if let Some(ref text) = e.text {
+                for c in text.chars() {
+                    editor.action(&mut cx.fonts().font_system, Action::Insert(c));
+                    cx.request_layout();
+                    changed = true;
+                }
+            }
+
+            if e.is_pressed(Code::Backspace) {
+                editor.action(&mut cx.fonts().font_system, Action::Backspace);
+                cx.request_layout();
+                changed = true;
+            }
+
+            if e.is_pressed(Code::Delete) {
+                editor.action(&mut cx.fonts().font_system, Action::Delete);
+                cx.request_layout();
+                changed = true;
+            }
+
+            if e.is_pressed(Code::Enter) && self.multiline {
+                editor.action(&mut cx.fonts().font_system, Action::Enter);
+                cx.request_layout();
+                changed = true;
+            }
+
+            if e.is_pressed(Code::Enter) && !self.multiline {
                 cx.set_focused(false);
+                submit = true;
+            }
+
+            if e.is_pressed(Code::Left) {
+                editor.action(&mut cx.fonts().font_system, Action::Left);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if e.is_pressed(Code::Right) {
+                editor.action(&mut cx.fonts().font_system, Action::Right);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if e.is_pressed(Code::Up) {
+                editor.action(&mut cx.fonts().font_system, Action::Up);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if e.is_pressed(Code::Down) {
+                editor.action(&mut cx.fonts().font_system, Action::Down);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if changed || submit {
+                let text = state.text();
+
+                if changed {
+                    if let Some(ref mut on_change) = self.on_change {
+                        on_change(cx, data, text.clone());
+                    }
+                }
+
+                if submit {
+                    if let Some(ref mut on_submit) = self.on_submit {
+                        on_submit(cx, data, text);
+                        cx.request_rebuild();
+
+                        if self.text.is_none() {
+                            state.editor.buffer_mut().lines.clear();
+                            state.editor.set_cursor(cosmic_text::Cursor::default());
+                        }
+                    }
+                }
             }
         }
 
-        if let Some(keyboard_event) = event.get::<KeyboardEvent>() {
-            self.handle_keyboard_event(state, cx, data, keyboard_event);
+        if let Some(e) = event.get::<PointerPressed>() {
+            if !cx.is_hot() {
+                if cx.is_focused() {
+                    cx.set_focused(false);
+                    cx.request_draw();
+                }
+
+                return;
+            }
+
+            cx.set_focused(true);
+            cx.request_animation_frame();
+
+            state.blink = 0.0;
+
+            let local = cx.local(e.position);
+            state.editor.action(
+                &mut cx.fonts().font_system,
+                Action::Click {
+                    x: local.x as i32,
+                    y: local.y as i32,
+                },
+            );
+        }
+
+        if event.is::<PointerMoved>() {
+            if cx.is_hot() {
+                cx.set_cursor(Cursor::Text);
+            } else {
+                cx.set_cursor(None);
+            }
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            state.cursor_blink += dt * 10.0;
-            cx.request_draw();
-        }
+            if cx.is_focused() {
+                cx.request_animation_frame();
+                cx.request_draw();
 
-        cx.set_soft_input(cx.is_focused());
+                state.blink += *dt * 10.0;
+            }
+        }
     }
 
     fn layout(
         &mut self,
         state: &mut Self::State,
         cx: &mut LayoutCx,
-        data: &mut T,
+        _data: &mut T,
         space: Space,
     ) -> Size {
-        let mut color = self.color;
+        state.editor.buffer_mut().set_size(
+            &mut cx.fonts().font_system,
+            space.max.width,
+            space.max.height,
+        );
+        state.placeholder.set_bounds(cx.fonts(), space.max);
 
-        let text = self.get_text(state, data);
-        if text.is_empty() {
-            color = color.brighten(0.3);
-        }
+        // FIXME: this is bad
+        state.editor.shape_as_needed(&mut cx.fonts().font_system);
 
-        let mut text = if text.is_empty() {
-            self.placeholder.clone()
+        let mut size = if !self.get_text(state).is_empty() {
+            Fonts::buffer_size(state.editor.buffer())
         } else {
-            String::from(text)
+            state.placeholder.size()
         };
 
-        text.push(' ');
-
-        let space = self.space.constrain(space);
-        let section = TextSection {
-            text: &text,
-            font_size: self.font_size,
-            font_family: self.font_family.clone(),
-            font_weight: self.font_weight,
-            font_stretch: self.font_stretch,
-            font_style: self.font_style,
-            color,
-            v_align: self.v_align,
-            h_align: self.h_align,
-            line_height: self.line_height,
-            wrap: self.wrap,
-            bounds: space.max,
-        };
-
-        state.glyphs = cx.layout_text(&section);
-        let text_size = state.glyphs.as_ref().map_or(Size::ZERO, Glyphs::size);
-        space.fit(text_size)
+        size.height = f32::max(size.height, self.font_size);
+        space.fit(size)
     }
 
     fn draw(
@@ -624,40 +404,55 @@ impl<T> View<T> for TextInput<T> {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
-        // make sure the view is enabled for hit testing
-        canvas.view(cx.id());
-        canvas.trigger(cx.rect());
+        canvas.trigger(cx.id(), cx.rect());
 
-        let Some(ref glyphs) = state.glyphs else {
-            return;
+        // FIXME: this is bad
+        state.editor.shape_as_needed(&mut cx.fonts().font_system);
+
+        let mesh = if !self.get_text(state).is_empty() {
+            cx.rasterize_text_raw(state.editor.buffer(), cx.rect())
+        } else {
+            cx.rasterize_text(&state.placeholder, cx.rect())
         };
 
-        if let Some(mesh) = cx.text_mesh(glyphs, cx.rect()) {
-            let mut layer = canvas.layer();
-            layer.clip &= cx.rect().transform(layer.transform);
-
-            layer.draw_pixel_perfect(mesh);
-        }
+        canvas.draw_pixel_perfect(mesh);
 
         if !cx.is_focused() {
             return;
         }
 
-        cx.request_animation_frame();
+        let cursor = state.editor.cursor();
+        let layout = state.editor.buffer().layout_cursor(&cursor);
 
-        let cursor_center = self.cursor_position(state, cx.rect()).unwrap();
-        let cursor_size = Size::new(1.0, self.font_size);
-        let cursor_min = cursor_center - cursor_size / 2.0;
+        for (i, run) in state.editor.buffer().layout_runs().enumerate() {
+            if i == layout.line {
+                let size = Size::new(1.0, state.editor.buffer().metrics().line_height);
 
-        let mut color = self.color;
-        color.a = state.cursor_blink.sin() * 0.5 + 0.5;
+                let position = match run.glyphs.get(layout.glyph) {
+                    Some(glyph) => {
+                        let physical = glyph.physical((cx.rect().min.x, cx.rect().min.y), 1.0);
 
-        canvas.draw_pixel_perfect(Quad {
-            rect: Rect::min_size(cursor_min.round(), cursor_size),
-            background: Background::color(color),
-            border_radius: BorderRadius::ZERO,
-            border_width: BorderWidth::ZERO,
-            border_color: Color::TRANSPARENT,
-        });
+                        Point::new(physical.x as f32, run.line_top + physical.y as f32)
+                    }
+                    None if layout.glyph == 0 => {
+                        Point::new(cx.rect().min.x, run.line_top + cx.rect().min.y)
+                    }
+                    None => {
+                        Point::new(cx.rect().min.x + run.line_w, run.line_top + cx.rect().min.y)
+                    }
+                };
+
+                let cursor = Rect::min_size(position, size);
+
+                let blink = state.blink.cos() * 0.5 + 0.5;
+                canvas.draw_pixel_perfect(Quad {
+                    rect: cursor,
+                    background: Background::new(self.color * blink),
+                    border_radius: BorderRadius::ZERO,
+                    border_width: BorderWidth::ZERO,
+                    border_color: Color::TRANSPARENT,
+                });
+            }
+        }
     }
 }

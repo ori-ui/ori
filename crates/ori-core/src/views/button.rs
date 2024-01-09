@@ -162,11 +162,11 @@ impl<T, V: View<T>> View<T> for Button<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        canvas.view(cx.id());
+        canvas.set_view(cx.id());
 
         let dark = self.color.color.darken(0.05);
         let dim = self.color.color.darken(0.025);
-        let bright = self.color.color.brighten(0.05);
+        let bright = self.color.color.lighten(0.05);
 
         let hot = self.transition.get(state.hot);
         let active = self.transition.get(state.active);

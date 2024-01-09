@@ -293,7 +293,7 @@ impl Color {
     }
 
     /// Brighten the color by the given `amount`.
-    pub fn brighten(self, amount: f32) -> Self {
+    pub fn lighten(self, amount: f32) -> Self {
         let (h, s, l, a) = self.to_hsla();
         Self::hsla(h, s, l + amount, a)
     }

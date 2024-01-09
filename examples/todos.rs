@@ -62,7 +62,7 @@ fn title() -> impl View<Data> {
 fn input(border: bool) -> impl View<Data> {
     let input = text_input()
         .placeholder("What needs to be done?")
-        .on_submit(|_, data: &mut Data, text| data.input(text))
+        .on_submit(|_, data: &mut Data, text| data.input(text.to_string()))
         .font_size(20.0);
 
     let border = border as i32 as f32 * 2.0;
@@ -76,7 +76,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = alt("Toggle whether the todo is completed", completed);
 
     let title_color = if todo.completed {
-        style(Palette::TEXT_BRIGHTER)
+        style(Palette::TEXT_LIGHTER)
     } else {
         style(Palette::TEXT)
     };

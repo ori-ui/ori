@@ -1,15 +1,18 @@
 use std::{
     any::{type_name, Any},
     mem,
+    ops::{Deref, DerefMut},
     time::Instant,
 };
+
+use cosmic_text::Buffer;
 
 use crate::{
     canvas::Mesh,
     command::{Command, CommandProxy},
     event::{CloseWindow, OpenWindow},
     layout::{Affine, Point, Rect, Size},
-    text::{Fonts, Glyphs, TextSection},
+    text::{Fonts, TextBuffer},
     view::ViewState,
     window::{Cursor, Window, WindowDescriptor, WindowId},
 };
@@ -162,6 +165,11 @@ impl<'a> BaseCx<'a> {
             Some(context) => context,
             None => panic!("context not found: {}", type_name::<T>()),
         }
+    }
+
+    /// Get a context or insert a `default`.
+    pub fn context_or_default<T: Any + Default>(&mut self) -> &mut T {
+        self.contexts.get_or_default::<T>()
     }
 
     /// Request a rebuild of the view tree.
@@ -375,11 +383,40 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         }
     }
 
-    /// Create a mesh for the given glyphs.
-    pub fn text_mesh(&mut self, glyphs: &Glyphs, rect: Rect) -> Option<Mesh> {
-        self.base.fonts.text_mesh(glyphs, rect)
+    /// Create a mesh for the given text buffer.
+    pub fn rasterize_text(&mut self, buffer: &TextBuffer, rect: Rect) -> Mesh {
+        self.base.fonts.rasterize_text(buffer.raw(), rect)
+    }
+
+    /// Create a mesh for the given raw cosmic text buffer.
+    pub fn rasterize_text_raw(&mut self, buffer: &Buffer, rect: Rect) -> Mesh {
+        self.base.fonts.rasterize_text(buffer, rect)
     }
 }
+
+macro_rules! impl_deref {
+    ($ident:ident) => {
+        impl<'a, 'b> Deref for $ident<'a, 'b> {
+            type Target = BaseCx<'b>;
+
+            fn deref(&self) -> &Self::Target {
+                self.base
+            }
+        }
+
+        impl<'a, 'b> DerefMut for $ident<'a, 'b> {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                self.base
+            }
+        }
+    };
+}
+
+impl_deref!(BuildCx);
+impl_deref!(RebuildCx);
+impl_deref!(EventCx);
+impl_deref!(LayoutCx);
+impl_deref!(DrawCx);
 
 macro_rules! impl_context {
     ($ty:ty { $($impl:item)* }) => {
@@ -430,6 +467,11 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// - If the context is not found.
     pub fn context_mut<T: Any>(&mut self) -> &mut T {
         self.base.context_mut::<T>()
+    }
+
+    /// Get a context or insert a `default`.
+    pub fn context_or_default<T: Any + Default>(&mut self) -> &mut T {
+        self.base.context_or_default::<T>()
     }
 
     /// Get the fonts.
@@ -602,10 +644,5 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
     /// Request a draw of the view tree.
     pub fn request_draw(&mut self) {
         self.view_state.request_draw();
-    }
-
-    /// Layout the given [`TextSection`].
-    pub fn layout_text(&mut self, text: &TextSection<'_>) -> Option<Glyphs> {
-        self.base.fonts.layout_text(text)
     }
 }}

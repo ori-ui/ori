@@ -14,12 +14,11 @@ impl Data {
 
 fn input(data: &mut Data) -> impl View<Data> {
     let input = text_input()
-        .bind_text(|data: &mut Data| &mut data.text)
-        .on_submit(|_, _, text| info!("Submitted: {}", text))
-        .multiline(data.multiline)
-        .min_width(150.0);
+        .text(&data.text)
+        .on_change(|_, data: &mut Data, text| data.text = text)
+        .multiline(data.multiline);
 
-    container(pad(8.0, input))
+    container(pad(8.0, min_width(150.0, input)))
         .background(style(Palette::SECONDARY))
         .border_radius(6.0)
 }

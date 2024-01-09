@@ -233,8 +233,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        canvas.view(cx.id());
-        canvas.trigger(cx.rect());
+        canvas.trigger(cx.id(), cx.rect());
 
         let overflow = self.overflow(content.size(), cx.size());
         state.scroll = state.scroll.clamp(0.0, overflow);

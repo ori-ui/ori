@@ -27,7 +27,7 @@ pub mod text {
     /// The vertical alignment.
     pub const V_ALIGN: Key<TextAlign> = Key::new("text.v_align");
     /// The horizontal alignment.
-    pub const H_ALIGN: Key<TextAlign> = Key::new("text.h_align");
+    pub const ALIGN: Key<TextAlign> = Key::new("text.h_align");
     /// The line height.
     pub const LINE_HEIGHT: Key<f32> = Key::new("text.line_height");
     /// The text wrap.
@@ -41,7 +41,7 @@ pub mod text {
         theme.set(FONT_STYLE, FontStyle::Normal);
         theme.map(COLOR, |theme| theme.get(Palette::TEXT));
         theme.set(V_ALIGN, TextAlign::Top);
-        theme.set(H_ALIGN, TextAlign::Left);
+        theme.set(ALIGN, TextAlign::Left);
         theme.set(LINE_HEIGHT, 1.0);
         theme.set(WRAP, TextWrap::Word);
     }
@@ -235,7 +235,7 @@ pub mod checkbox {
         theme.set(BACKGROUND, Color::TRANSPARENT);
         theme.set(BORDER_RADIUS, BorderRadius::all(6.0));
         theme.set(BORDER_WIDTH, BorderWidth::all(2.0));
-        theme.map(BORDER_COLOR, |theme| theme.get(Palette::TEXT_BRIGHTER));
+        theme.map(BORDER_COLOR, |theme| theme.get(Palette::TEXT_LIGHTER));
     }
 }
 

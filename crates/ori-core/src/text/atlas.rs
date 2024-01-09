@@ -1,18 +1,38 @@
 use std::{collections::HashMap, fmt::Debug};
 
+use cosmic_text::{CacheKey, FontSystem, LayoutGlyph, SwashCache, SwashContent};
 use etagere::{size2, AtlasAllocator};
-use fontdue::{layout::GlyphRasterConfig, Font};
 
 use crate::{
     image::{Image, ImageData},
-    layout::{Point, Rect, Size},
+    layout::{Point, Rect, Size, Vector},
 };
+
+/// A rasterized glyph.
+#[derive(Clone, Copy, Debug)]
+pub struct RasterizedGlyph {
+    /// The UV coordinates of the glyph in the [`FontAtlas`].
+    pub uv: Rect,
+    /// The offset of the glyph.
+    pub offset: Vector,
+    /// The size of the glyph.
+    pub size: Size,
+}
+
+impl RasterizedGlyph {
+    /// A glyph that does nothing
+    pub const NULL: Self = Self {
+        uv: Rect::ZERO,
+        offset: Vector::ZERO,
+        size: Size::ZERO,
+    };
+}
 
 /// A font atlas managing a texture of rasterized glyphs.
 #[derive(Clone)]
 pub struct FontAtlas {
     allocator: AtlasAllocator,
-    glyphs: HashMap<GlyphRasterConfig, Rect>,
+    glyphs: HashMap<CacheKey, RasterizedGlyph>,
     image: Image,
 }
 
@@ -32,7 +52,7 @@ impl Default for FontAtlas {
 }
 
 impl FontAtlas {
-    const PADDING: u32 = 2;
+    const PADDING: i32 = 2;
 
     /// Creates a new font atlas.
     pub fn new() -> Self {
@@ -74,59 +94,69 @@ impl FontAtlas {
     /// Rasterizes a glyph and returns its [`Rect`] in the atlas.
     ///
     /// Returns `None` if the atlas is full, in which case [`FontAtlas::grow`], should be called.
-    pub fn glyph_rect(&mut self, font: &Font, config: GlyphRasterConfig) -> Option<Rect> {
-        if let Some(&glyph) = self.glyphs.get(&config) {
+    pub fn rasterize_glyph(
+        &mut self,
+        cache: &mut SwashCache,
+        font_system: &mut FontSystem,
+        glyph: &LayoutGlyph,
+    ) -> Option<RasterizedGlyph> {
+        let physical = glyph.physical((0.0, 0.0), 1.0);
+
+        if let Some(&glyph) = self.glyphs.get(&physical.cache_key) {
             return Some(glyph);
         }
 
-        let (metrics, pixels) = font.rasterize_config(config);
+        let Some(image) = cache.get_image_uncached(font_system, physical.cache_key) else {
+            panic!("failed to rasterize glyph");
+        };
 
-        if metrics.width == 0 || metrics.height == 0 {
-            self.glyphs.insert(config, Rect::ZERO);
-            return Some(Rect::ZERO);
+        if image.placement.width == 0 || image.placement.height == 0 {
+            return Some(RasterizedGlyph::NULL);
         }
 
-        let allocation_size = size2(
-            metrics.width as i32 + Self::PADDING as i32 * 2,
-            metrics.height as i32 + Self::PADDING as i32 * 2,
-        );
-        let allocation = self.allocator.allocate(allocation_size)?;
+        let width = image.placement.width as i32;
+        let height = image.placement.height as i32;
+        let image_size = size2(width, height);
+        let padding_size = size2(Self::PADDING, Self::PADDING) * 2;
 
-        let min_x = allocation.rectangle.min.x as u32 + Self::PADDING;
-        let min_y = allocation.rectangle.min.y as u32 + Self::PADDING;
+        let alloc = self.allocator.allocate(image_size + padding_size)?;
 
-        let size = Size::new(metrics.width as f32, metrics.height as f32);
+        let min_x = alloc.rectangle.min.x;
+        let min_y = alloc.rectangle.min.y;
 
         self.image.modify(|data| {
-            for y in 0..metrics.height {
-                for x in 0..metrics.width {
-                    let index = y * metrics.width + x;
-                    let pixel = pixels[index];
+            for y in 0..height {
+                for x in 0..width {
+                    let i = (width * y + x) as usize;
 
-                    let x = x as u32 + min_x;
-                    let y = y as u32 + min_y;
-                    data.set_pixel(x, y, [255, 255, 255, pixel]);
+                    let color = match image.content {
+                        SwashContent::Mask => [255, 255, 255, image.data[i]],
+                        SwashContent::SubpixelMask => todo!(),
+                        SwashContent::Color => [
+                            image.data[i * 4],
+                            image.data[i * 4 + 1],
+                            image.data[i * 4 + 2],
+                            image.data[i * 4 + 3],
+                        ],
+                    };
+
+                    let x = min_x + x + Self::PADDING;
+                    let y = min_y + y + Self::PADDING;
+                    data.set_pixel(x as u32, y as u32, color);
                 }
             }
         });
 
-        let rect = Rect::min_size(Point::new(min_x as f32, min_y as f32), size);
-        self.glyphs.insert(config, rect);
+        let size = Size::new(image.placement.width as f32, image.placement.height as f32);
+        let offset = Vector::new(image.placement.left as f32, -image.placement.top as f32);
 
-        Some(rect)
-    }
+        let min = Point::new(min_x as f32, min_y as f32) + Self::PADDING as f32;
+        let uv = Rect::min_size(min / self.size() as f32, size / self.size() as f32);
+        let glyph = RasterizedGlyph { uv, offset, size };
 
-    /// Rasterizes a glyph and returns its [`Rect`], in uv coodinates.
-    ///
-    /// Returns `None` if the atlas is full, in which case [`FontAtlas::grow`], should be called.
-    pub fn glyph_rect_uv(&mut self, font: &Font, config: GlyphRasterConfig) -> Option<Rect> {
-        let rect = self.glyph_rect(font, config)?;
+        self.glyphs.insert(physical.cache_key, glyph);
 
-        let size = Size::all(self.size() as f32);
-        let min = rect.min / size;
-        let max = rect.max / size;
-
-        Some(Rect::new(min, max))
+        Some(glyph)
     }
 
     /// Returns the image handle of the atlas.

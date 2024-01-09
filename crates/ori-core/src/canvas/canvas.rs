@@ -69,15 +69,26 @@ impl<'a> Canvas<'a> {
     /// Set the view that the canvas is being drawn for.
     ///
     /// This will enable hit testing for the view.
-    pub fn view(&mut self, view: ViewId) {
+    pub fn set_view(&mut self, view: ViewId) {
         self.view = Some(view);
+    }
+
+    /// Temporarily set the view, see [`Canvas::set_view`].
+    pub fn with_view<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
+        let t = self.view;
+        self.view = Some(view);
+        let result = f(self);
+        self.view = t;
+        result
     }
 
     /// Draw a trigger to the canvas.
     ///
     /// This will enable hit testing without drawing anything.
-    pub fn trigger(&mut self, rect: Rect) {
-        self.draw(Primitive::Trigger(rect));
+    pub fn trigger(&mut self, view: ViewId, rect: Rect) {
+        self.with_view(view, |canvas| {
+            canvas.draw(Primitive::Trigger(rect));
+        });
     }
 
     /// Draw a fragment to the canvas.

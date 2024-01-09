@@ -7,7 +7,8 @@ use crate::{
     layout::{Size, Space},
     rebuild::Rebuild,
     text::{
-        FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
+        FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
+        TextBuffer, TextWrap,
     },
     theme::{style, text},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
@@ -42,12 +43,9 @@ pub struct Text {
     /// The color of the text.
     #[rebuild(layout)]
     pub color: Color,
-    /// The vertical alignment of the text.
-    #[rebuild(layout)]
-    pub v_align: TextAlign,
     /// The horizontal alignment of the text.
     #[rebuild(layout)]
-    pub h_align: TextAlign,
+    pub align: TextAlign,
     /// The line height of the text.
     #[rebuild(layout)]
     pub line_height: f32,
@@ -67,23 +65,41 @@ impl Text {
             font_stretch: style(text::FONT_STRETCH),
             font_style: style(text::FONT_STYLE),
             color: style(text::COLOR),
-            v_align: style(text::V_ALIGN),
-            h_align: style(text::H_ALIGN),
+            align: style(text::ALIGN),
             line_height: style(text::LINE_HEIGHT),
             wrap: style(text::WRAP),
         }
     }
+
+    fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer) {
+        buffer.set_wrap(fonts, self.wrap);
+        buffer.set_align(self.align);
+        buffer.set_text(
+            fonts,
+            &self.text,
+            TextAttributes {
+                family: self.font_family.clone(),
+                stretch: self.font_stretch,
+                weight: self.font_weight,
+                style: self.font_style,
+                color: self.color,
+            },
+        );
+    }
 }
 
 impl<T> View<T> for Text {
-    type State = Option<Glyphs>;
+    type State = TextBuffer;
 
-    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        None
+    fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        let mut buffer = TextBuffer::new(cx.fonts(), self.font_size, self.line_height);
+        self.set_attributes(cx.fonts(), &mut buffer);
+        buffer
     }
 
-    fn rebuild(&mut self, _state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
+        self.set_attributes(cx.fonts(), state);
     }
 
     fn event(
@@ -102,24 +118,8 @@ impl<T> View<T> for Text {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        let section = TextSection {
-            text: &self.text,
-            font_size: self.font_size,
-            font_family: self.font_family.clone(),
-            font_weight: self.font_weight,
-            font_stretch: self.font_stretch,
-            font_style: self.font_style,
-            color: self.color,
-            v_align: self.v_align,
-            h_align: self.h_align,
-            line_height: self.line_height,
-            wrap: self.wrap,
-            bounds: space.max,
-        };
-
-        *state = cx.layout_text(&section);
-
-        (state.as_ref()).map_or(space.min, |glyphs| space.fit(glyphs.size()))
+        state.set_bounds(cx.fonts(), space.max);
+        state.size()
     }
 
     fn draw(
@@ -129,10 +129,7 @@ impl<T> View<T> for Text {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
-        if let Some(glyphs) = state {
-            if let Some(mesh) = cx.text_mesh(glyphs, cx.rect()) {
-                canvas.draw_pixel_perfect(mesh);
-            }
-        }
+        let mesh = cx.rasterize_text(state, cx.rect());
+        canvas.draw_pixel_perfect(mesh);
     }
 }

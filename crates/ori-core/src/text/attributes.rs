@@ -1,3 +1,7 @@
+use cosmic_text::fontdb;
+
+use crate::canvas::Color;
+
 /// A font family.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FontFamily {
@@ -138,15 +142,82 @@ impl FontStyle {
     }
 }
 
-/// A query for a font.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct FontQuery {
-    /// The font family.
+/// Alignment of a section of text.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum TextAlign {
+    /// Align text at the start.
+    #[default]
+    Start,
+    /// Align text in the center.
+    Center,
+    /// Align text at the end.
+    End,
+}
+
+#[allow(non_upper_case_globals, missing_docs)]
+impl TextAlign {
+    pub const Left: Self = Self::Start;
+    pub const Top: Self = Self::Start;
+    pub const Middle: Self = Self::Center;
+    pub const Right: Self = Self::End;
+    pub const Bottom: Self = Self::End;
+
+    pub(crate) fn to_cosmic(self) -> cosmic_text::Align {
+        match self {
+            TextAlign::Start => cosmic_text::Align::Left,
+            TextAlign::Center => cosmic_text::Align::Center,
+            TextAlign::End => cosmic_text::Align::Right,
+        }
+    }
+}
+
+/// Wrapping of a section of text.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum TextWrap {
+    /// Do not wrap text.
+    None,
+    /// Wrap text at the word boundary.
+    #[default]
+    Word,
+}
+
+impl TextWrap {
+    pub(crate) fn to_cosmic(self) -> cosmic_text::Wrap {
+        match self {
+            Self::None => cosmic_text::Wrap::None,
+            Self::Word => cosmic_text::Wrap::Word,
+        }
+    }
+}
+
+/// Attributes of a section of text.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TextAttributes {
+    /// The font family of the text.
     pub family: FontFamily,
-    /// The font weight.
-    pub weight: FontWeight,
-    /// The font stretch.
+    /// The font size of the text.
     pub stretch: FontStretch,
-    /// The font style.
+    /// The font weight of the text.
+    pub weight: FontWeight,
+    /// The font style of the text.
     pub style: FontStyle,
+    /// The color of the text.
+    pub color: Color,
+}
+
+impl TextAttributes {
+    pub(crate) fn to_cosmic(&self) -> cosmic_text::Attrs<'_> {
+        let [r, g, b, a] = self.color.to_rgba8();
+
+        cosmic_text::Attrs {
+            color_opt: Some(cosmic_text::Color::rgba(r, g, b, a)),
+            family: self.family.to_fontdb(),
+            stretch: self.stretch.to_fontdb(),
+            style: self.style.to_fontdb(),
+            weight: self.weight.to_fontdb(),
+            metadata: 0,
+        }
+    }
 }

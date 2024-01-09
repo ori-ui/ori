@@ -112,7 +112,7 @@ fn build_field(name: TokenStream, field: &syn::Field) -> manyhow::Result<TokenSt
     let ty = &field.ty;
 
     let doc_name = name.to_string().replace('_', " ");
-    let doc = format!("Set the {}.", doc_name);
+    let doc = format!("Set [`Self::{}`].", doc_name);
 
     Ok(quote! {
         #[doc = #doc]

@@ -119,8 +119,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        canvas.view(cx.id());
-        canvas.trigger(cx.rect());
+        canvas.trigger(cx.id(), cx.rect());
 
         self.header.draw(header, cx, data, canvas);
 

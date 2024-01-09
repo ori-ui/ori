@@ -3,9 +3,7 @@ use crate::{
     event::{AnimationFrame, Event, PointerMoved},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    text::{
-        FontFamily, FontStretch, FontStyle, FontWeight, Glyphs, TextAlign, TextSection, TextWrap,
-    },
+    text::{FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAttributes, TextBuffer},
     theme::{alt, style, text},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
@@ -57,11 +55,25 @@ impl<V> Alt<V> {
             border_color: style(alt::BORDER_COLOR),
         }
     }
+
+    fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer) {
+        buffer.set_text(
+            fonts,
+            &self.alt,
+            TextAttributes {
+                family: FontFamily::SansSerif,
+                weight: FontWeight::NORMAL,
+                stretch: FontStretch::Normal,
+                style: FontStyle::Normal,
+                color: self.color,
+            },
+        );
+    }
 }
 
 #[doc(hidden)]
 pub struct AltState {
-    pub glyphs: Option<Glyphs>,
+    pub buffer: TextBuffer,
     pub timer: f32,
     pub position: Point,
 }
@@ -70,23 +82,26 @@ impl<T, V: View<T>> View<T> for Alt<V> {
     type State = (AltState, V::State);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let state = AltState {
-            glyphs: None,
+        let mut state = AltState {
+            buffer: TextBuffer::new(cx.fonts(), 12.0, 1.0),
             timer: 0.0,
             position: Point::ZERO,
         };
+
+        self.set_attributes(cx.fonts(), &mut state.buffer);
 
         (state, self.content.build(cx, data))
     }
 
     fn rebuild(
         &mut self,
-        (_state, content): &mut Self::State,
+        (state, content): &mut Self::State,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
+        self.set_attributes(cx.fonts(), &mut state.buffer);
 
         (self.content).rebuild(content, cx, data, &old.content);
     }
@@ -130,22 +145,8 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let text = TextSection {
-            text: &self.alt,
-            font_size: 14.0,
-            font_family: FontFamily::SansSerif,
-            font_weight: FontWeight::NORMAL,
-            font_stretch: FontStretch::Normal,
-            font_style: FontStyle::Normal,
-            color: self.color,
-            v_align: TextAlign::Start,
-            h_align: TextAlign::Start,
-            line_height: 1.0,
-            wrap: TextWrap::Word,
-            bounds: cx.window().size() - self.padding.size(),
-        };
-
-        state.glyphs = cx.layout_text(&text);
+        let bounds = cx.window().size() - self.padding.size();
+        state.buffer.set_bounds(cx.fonts(), bounds);
 
         self.content.layout(content, cx, data, space)
     }
@@ -158,12 +159,8 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         canvas: &mut Canvas,
     ) {
         // we need to set the view to be enable hit testing
-        canvas.view(cx.id());
+        canvas.set_view(cx.id());
         self.content.draw(content, cx, data, canvas);
-
-        let Some(ref glyphs) = state.glyphs else {
-            return;
-        };
 
         let alpha = f32::clamp(state.timer * 10.0 - 9.0, 0.0, 1.0);
 
@@ -171,11 +168,11 @@ impl<T, V: View<T>> View<T> for Alt<V> {
             return;
         }
 
-        let size = glyphs.size() + self.padding.size();
+        let size = state.buffer.size() + self.padding.size();
         let offset = Vector::new(-size.width / 2.0, 20.0);
         let text_rect = Rect::min_size(
             state.position + offset + self.padding.offset(),
-            glyphs.size(),
+            state.buffer.size(),
         );
 
         let mut layer = canvas.layer();
@@ -191,10 +188,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
             self.border_color.fade(alpha),
         );
 
-        let mut glyphs = glyphs.clone();
-        glyphs.set_color(self.color.fade(alpha));
-        if let Some(mesh) = cx.text_mesh(&glyphs, text_rect) {
-            layer.draw_pixel_perfect(mesh);
-        }
+        let mesh = cx.rasterize_text(&state.buffer, text_rect);
+        layer.draw(mesh);
     }
 }

@@ -50,7 +50,7 @@ pub mod prelude {
         rebuild::Rebuild,
         text::{
             font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, FontsError,
-            Glyph, Glyphs, TextAlign, TextSection, TextWrap,
+            TextAlign, TextBuffer, TextWrap,
         },
         theme::{
             builtin::*, scale_factor, set_style, set_theme, style, theme_snapshot, vh, vw,

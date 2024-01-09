@@ -411,6 +411,7 @@ impl<T> View<T> for TextInput<T> {
         // FIXME: this is bad
         state.editor.shape_as_needed(&mut cx.fonts().font_system);
 
+        // if the text is empty, we need to layout the placeholder
         let mut size = if !self.get_text(state).is_empty() {
             Fonts::buffer_size(state.editor.buffer())
         } else {
@@ -433,21 +434,10 @@ impl<T> View<T> for TextInput<T> {
         // FIXME: this is bad
         state.editor.shape_as_needed(&mut cx.fonts().font_system);
 
-        let mesh = if !self.get_text(state).is_empty() {
-            cx.rasterize_text_raw(state.editor.buffer(), cx.rect())
-        } else {
-            cx.rasterize_text(&state.placeholder, cx.rect())
-        };
-
-        canvas.draw_pixel_perfect(mesh);
-
-        if !cx.is_focused() {
-            return;
-        }
-
         let cursor = state.editor.cursor();
         let layout = state.editor.buffer().layout_cursor(&cursor);
 
+        /* draw the highlights and the cursor */
         for (i, run) in state.editor.buffer().layout_runs().enumerate() {
             if let Some(select) = state.editor.select_opt() {
                 let start = cursor.min(select);
@@ -471,7 +461,7 @@ impl<T> View<T> for TextInput<T> {
                 }
             }
 
-            if i == layout.line {
+            if i == layout.line && cx.is_focused() {
                 let size = Size::new(1.0, self.font_size * 1.5);
 
                 let min = match run.glyphs.get(layout.glyph) {
@@ -500,5 +490,14 @@ impl<T> View<T> for TextInput<T> {
                 });
             }
         }
+
+        /* draw the text */
+        let mesh = if !self.get_text(state).is_empty() {
+            cx.rasterize_text_raw(state.editor.buffer(), cx.rect())
+        } else {
+            cx.rasterize_text(&state.placeholder, cx.rect())
+        };
+
+        canvas.draw_pixel_perfect(mesh);
     }
 }

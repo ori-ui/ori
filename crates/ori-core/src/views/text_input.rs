@@ -7,7 +7,7 @@ use crate::{
         AnimationFrame, Code, Event, KeyPressed, PointerMoved, PointerPressed, PointerReleased,
         RequestFocus,
     },
-    layout::{Point, Rect, Size, Space, Vector},
+    layout::{Point, Rect, Size, Space},
     rebuild::Rebuild,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
@@ -67,10 +67,7 @@ pub struct TextInput<T> {
     pub color: Color,
     /// The vertical alignment of the text.
     #[rebuild(layout)]
-    pub v_align: TextAlign,
-    /// The horizontal alignment of the text.
-    #[rebuild(layout)]
-    pub h_align: TextAlign,
+    pub align: TextAlign,
     /// The line height of the text.
     #[rebuild(layout)]
     pub line_height: f32,
@@ -100,8 +97,7 @@ impl<T> TextInput<T> {
             font_stretch: style(text_input::FONT_STRETCH),
             font_style: style(text_input::FONT_STYLE),
             color: style(text_input::COLOR),
-            v_align: style(text_input::V_ALIGN),
-            h_align: style(text_input::H_ALIGN),
+            align: style(text_input::ALIGN),
             line_height: style(text_input::LINE_HEIGHT),
             wrap: style(text_input::WRAP),
         }
@@ -156,7 +152,12 @@ impl<T> TextInput<T> {
         buffer.set_wrap(&mut fonts.font_system, self.wrap.to_cosmic());
         buffer.set_metrics(&mut fonts.font_system, metrics);
 
-        let text = self.get_text(state);
+        let mut text = self.get_text(state);
+
+        if text.ends_with('\n') {
+            text.push('\n');
+        }
+
         state.editor.buffer_mut().set_text(
             &mut fonts.font_system,
             &text,
@@ -255,26 +256,35 @@ impl<T> View<T> for TextInput<T> {
             if let Some(ref text) = e.text {
                 for c in text.chars() {
                     editor.action(&mut cx.fonts().font_system, Action::Insert(c));
-                    cx.request_layout();
-                    changed = true;
                 }
+
+                cx.request_layout();
+                state.blink = 0.0;
+                changed = true;
             }
 
             if e.is(Code::Backspace) {
                 editor.action(&mut cx.fonts().font_system, Action::Backspace);
                 cx.request_layout();
+                state.blink = 0.0;
                 changed = true;
             }
 
             if e.is(Code::Delete) {
                 editor.action(&mut cx.fonts().font_system, Action::Delete);
                 cx.request_layout();
+                state.blink = 0.0;
                 changed = true;
+            }
+
+            if e.is(Code::Escape) {
+                editor.action(&mut cx.fonts().font_system, Action::Escape);
             }
 
             if e.is(Code::Enter) && self.multiline {
                 editor.action(&mut cx.fonts().font_system, Action::Enter);
                 cx.request_layout();
+                state.blink = 0.0;
                 changed = true;
             }
 
@@ -283,26 +293,50 @@ impl<T> View<T> for TextInput<T> {
                 submit = true;
             }
 
-            if e.is(Code::Left) {
+            if e.is(Code::Left) && !e.modifiers.ctrl {
                 editor.action(&mut cx.fonts().font_system, Action::Left);
                 cx.request_layout();
                 state.blink = 0.0;
             }
 
-            if e.is(Code::Right) {
+            if e.is(Code::Right) && !e.modifiers.ctrl {
                 editor.action(&mut cx.fonts().font_system, Action::Right);
                 cx.request_layout();
                 state.blink = 0.0;
             }
 
-            if e.is(Code::Up) {
+            if e.is(Code::Up) && !e.modifiers.ctrl {
                 editor.action(&mut cx.fonts().font_system, Action::Up);
                 cx.request_layout();
                 state.blink = 0.0;
             }
 
-            if e.is(Code::Down) {
+            if e.is(Code::Down) && !e.modifiers.ctrl {
                 editor.action(&mut cx.fonts().font_system, Action::Down);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if e.is(Code::Left) && e.modifiers.ctrl {
+                editor.action(&mut cx.fonts().font_system, Action::LeftWord);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if e.is(Code::Right) && e.modifiers.ctrl {
+                editor.action(&mut cx.fonts().font_system, Action::RightWord);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if e.is(Code::Home) && !e.modifiers.ctrl {
+                editor.action(&mut cx.fonts().font_system, Action::Home);
+                cx.request_layout();
+                state.blink = 0.0;
+            }
+
+            if e.is(Code::End) && !e.modifiers.ctrl {
+                editor.action(&mut cx.fonts().font_system, Action::End);
                 cx.request_layout();
                 state.blink = 0.0;
             }
@@ -311,10 +345,9 @@ impl<T> View<T> for TextInput<T> {
                 let text = state.text();
 
                 if changed {
-                    cx.request_rebuild();
-
                     if let Some(ref mut on_change) = self.on_change {
                         on_change(cx, data, text.clone());
+                        cx.request_rebuild();
                     }
                 }
 
@@ -435,7 +468,6 @@ impl<T> View<T> for TextInput<T> {
         state.editor.shape_as_needed(&mut cx.fonts().font_system);
 
         let cursor = state.editor.cursor();
-        let layout = state.editor.buffer().layout_cursor(&cursor);
 
         /* draw the highlights and the cursor */
         for (i, run) in state.editor.buffer().layout_runs().enumerate() {
@@ -445,11 +477,9 @@ impl<T> View<T> for TextInput<T> {
 
                 if let Some((start, width)) = run.highlight(start, end) {
                     let min = Point::new(cx.rect().min.x + start, cx.rect().min.y + run.line_top);
-                    let size = Size::new(width, self.font_size * 1.5);
+                    let size = Size::new(width, self.font_size * self.line_height);
 
-                    let offset = Vector::new(0.0, -self.font_size / 4.0);
-
-                    let highlight = Rect::min_size(min + offset, size);
+                    let highlight = Rect::min_size(min, size);
 
                     canvas.draw_pixel_perfect(Quad {
                         rect: highlight,
@@ -461,15 +491,15 @@ impl<T> View<T> for TextInput<T> {
                 }
             }
 
-            if i == layout.line && cx.is_focused() {
-                let size = Size::new(1.0, self.font_size * 1.5);
+            if i == cursor.line && cx.is_focused() {
+                let size = Size::new(1.0, self.font_size * self.line_height);
 
-                let min = match run.glyphs.get(layout.glyph) {
+                let min = match run.glyphs.get(cursor.index) {
                     Some(glyph) => {
                         let physical = glyph.physical((cx.rect().min.x, cx.rect().min.y), 1.0);
                         Point::new(physical.x as f32, run.line_top + physical.y as f32)
                     }
-                    None if layout.glyph == 0 => {
+                    None if cursor.index == 0 => {
                         Point::new(cx.rect().min.x, cx.rect().min.y + run.line_top)
                     }
                     None => {
@@ -477,8 +507,7 @@ impl<T> View<T> for TextInput<T> {
                     }
                 };
 
-                let offset = Vector::new(0.0, -self.font_size / 4.0);
-                let cursor = Rect::min_size(min + offset, size);
+                let cursor = Rect::min_size(min, size);
 
                 let blink = state.blink.cos() * 0.5 + 0.5;
                 canvas.draw_pixel_perfect(Quad {

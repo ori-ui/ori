@@ -24,8 +24,6 @@ pub mod text {
     pub const FONT_STYLE: Key<FontStyle> = Key::new("text.font_style");
     /// The color.
     pub const COLOR: Key<Color> = Key::new("text.color");
-    /// The vertical alignment.
-    pub const V_ALIGN: Key<TextAlign> = Key::new("text.v_align");
     /// The horizontal alignment.
     pub const ALIGN: Key<TextAlign> = Key::new("text.h_align");
     /// The line height.
@@ -40,9 +38,8 @@ pub mod text {
         theme.set(FONT_STRETCH, FontStretch::Normal);
         theme.set(FONT_STYLE, FontStyle::Normal);
         theme.map(COLOR, |theme| theme.get(Palette::TEXT));
-        theme.set(V_ALIGN, TextAlign::Top);
         theme.set(ALIGN, TextAlign::Left);
-        theme.set(LINE_HEIGHT, 1.0);
+        theme.set(LINE_HEIGHT, 1.3);
         theme.set(WRAP, TextWrap::Word);
     }
 }
@@ -68,9 +65,7 @@ pub mod text_input {
     /// The color.
     pub const COLOR: Key<Color> = Key::new("text.color");
     /// The vertical alignment.
-    pub const V_ALIGN: Key<TextAlign> = Key::new("text.v_align");
-    /// The horizontal alignment.
-    pub const H_ALIGN: Key<TextAlign> = Key::new("text.h_align");
+    pub const ALIGN: Key<TextAlign> = Key::new("text.align");
     /// The line height.
     pub const LINE_HEIGHT: Key<f32> = Key::new("text.line_height");
     /// The text wrap.
@@ -83,9 +78,8 @@ pub mod text_input {
         theme.set(FONT_STRETCH, FontStretch::Normal);
         theme.set(FONT_STYLE, FontStyle::Normal);
         theme.map(COLOR, |theme| theme.get(Palette::TEXT));
-        theme.set(V_ALIGN, TextAlign::Top);
-        theme.set(H_ALIGN, TextAlign::Left);
-        theme.set(LINE_HEIGHT, 1.0);
+        theme.set(ALIGN, TextAlign::Top);
+        theme.set(LINE_HEIGHT, 1.3);
         theme.set(WRAP, TextWrap::Word);
     }
 }

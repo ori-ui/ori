@@ -109,10 +109,6 @@ impl WgpuRender {
         self.image.clean();
     }
 
-    fn size(&self) -> Size {
-        Size::new(self.config.width as f32, self.config.height as f32)
-    }
-
     fn resize(&mut self, context: &WgpuContext, physical_size: Size) {
         let width = physical_size.width as u32;
         let height = physical_size.height as u32;

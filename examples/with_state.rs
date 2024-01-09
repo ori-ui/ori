@@ -14,7 +14,9 @@ struct Data {
 fn form() -> impl View<Data> {
     // the `with_state` view is used to store state that is not part of the data
     with_state(User::default, |_data, user| {
-        let name = text_input().bind_text(|(_, user): &mut (_, User)| &mut user.name);
+        let name = text_input()
+            .text(&user.name)
+            .on_change(|_, (_, user): &mut (_, User), text| user.name = text);
 
         let age = hstack![
             text(format!("Age: {}", user.age)),

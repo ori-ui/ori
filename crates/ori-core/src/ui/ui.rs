@@ -9,7 +9,7 @@ use crate::{
     command::{Command, CommandProxy, CommandWaker},
     delegate::{Delegate, DelegateCx},
     event::{
-        CloseRequested, CloseWindow, Code, Event, KeyboardEvent, Modifiers, OpenWindow,
+        CloseRequested, CloseWindow, Code, Event, KeyPressed, KeyReleased, Modifiers, OpenWindow,
         PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
         PointerScrolled, RequestFocus, SwitchFocus,
     },
@@ -331,17 +331,31 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a keyboard key has been pressed or released.
-    pub fn keyboard_key(&mut self, window_id: WindowId, key: Code, pressed: bool) {
-        let event = KeyboardEvent {
-            modifiers: self.modifiers,
-            code: Some(key),
-            pressed,
-            ..Default::default()
-        };
+    pub fn keyboard_key(
+        &mut self,
+        window_id: WindowId,
+        code: Option<Code>,
+        text: Option<String>,
+        pressed: bool,
+    ) {
+        if pressed {
+            let event = KeyPressed {
+                code,
+                text,
+                modifiers: self.modifiers,
+            };
 
-        self.event(window_id, &Event::new(event));
+            self.event(window_id, &Event::new(event));
+        } else {
+            let event = KeyReleased {
+                code,
+                modifiers: self.modifiers,
+            };
 
-        if key == Code::Tab && pressed {
+            self.event(window_id, &Event::new(event));
+        }
+
+        if code == Some(Code::Tab) && pressed {
             let event = Event::new(SwitchFocus::new(!self.modifiers.shift));
             self.event(window_id, &event);
 
@@ -350,17 +364,6 @@ impl<T> Ui<T> {
                 self.event(window_id, &event);
             }
         }
-    }
-
-    /// Tell the UI that a keyboard character has been entered.
-    pub fn keyboard_text(&mut self, window_id: WindowId, text: String) {
-        let event = KeyboardEvent {
-            modifiers: self.modifiers,
-            text: Some(text),
-            ..Default::default()
-        };
-
-        self.event(window_id, &Event::new(event));
     }
 
     /// Tell the UI that the modifiers have changed.

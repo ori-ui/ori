@@ -4,9 +4,10 @@ use ori_macro::Build;
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
     event::{
-        AnimationFrame, Code, Event, KeyboardEvent, PointerMoved, PointerPressed, RequestFocus,
+        AnimationFrame, Code, Event, KeyPressed, PointerMoved, PointerPressed, PointerReleased,
+        RequestFocus,
     },
-    layout::{Point, Rect, Size, Space},
+    layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
@@ -182,6 +183,7 @@ impl<T> TextInput<T> {
 pub struct TextInputState {
     editor: Editor,
     placeholder: TextBuffer,
+    dragging: bool,
     blink: f32,
 }
 
@@ -218,6 +220,7 @@ impl<T> View<T> for TextInput<T> {
         let mut state = TextInputState {
             editor,
             placeholder,
+            dragging: false,
             blink: 0.0,
         };
 
@@ -239,7 +242,7 @@ impl<T> View<T> for TextInput<T> {
             event.handle();
         }
 
-        if let Some(e) = event.get::<KeyboardEvent>() {
+        if let Some(e) = event.get::<KeyPressed>() {
             if !cx.is_focused() {
                 return;
             }
@@ -257,48 +260,48 @@ impl<T> View<T> for TextInput<T> {
                 }
             }
 
-            if e.is_pressed(Code::Backspace) {
+            if e.is(Code::Backspace) {
                 editor.action(&mut cx.fonts().font_system, Action::Backspace);
                 cx.request_layout();
                 changed = true;
             }
 
-            if e.is_pressed(Code::Delete) {
+            if e.is(Code::Delete) {
                 editor.action(&mut cx.fonts().font_system, Action::Delete);
                 cx.request_layout();
                 changed = true;
             }
 
-            if e.is_pressed(Code::Enter) && self.multiline {
+            if e.is(Code::Enter) && self.multiline {
                 editor.action(&mut cx.fonts().font_system, Action::Enter);
                 cx.request_layout();
                 changed = true;
             }
 
-            if e.is_pressed(Code::Enter) && !self.multiline {
+            if e.is(Code::Enter) && !self.multiline {
                 cx.set_focused(false);
                 submit = true;
             }
 
-            if e.is_pressed(Code::Left) {
+            if e.is(Code::Left) {
                 editor.action(&mut cx.fonts().font_system, Action::Left);
                 cx.request_layout();
                 state.blink = 0.0;
             }
 
-            if e.is_pressed(Code::Right) {
+            if e.is(Code::Right) {
                 editor.action(&mut cx.fonts().font_system, Action::Right);
                 cx.request_layout();
                 state.blink = 0.0;
             }
 
-            if e.is_pressed(Code::Up) {
+            if e.is(Code::Up) {
                 editor.action(&mut cx.fonts().font_system, Action::Up);
                 cx.request_layout();
                 state.blink = 0.0;
             }
 
-            if e.is_pressed(Code::Down) {
+            if e.is(Code::Down) {
                 editor.action(&mut cx.fonts().font_system, Action::Down);
                 cx.request_layout();
                 state.blink = 0.0;
@@ -308,6 +311,8 @@ impl<T> View<T> for TextInput<T> {
                 let text = state.text();
 
                 if changed {
+                    cx.request_rebuild();
+
                     if let Some(ref mut on_change) = self.on_change {
                         on_change(cx, data, text.clone());
                     }
@@ -341,6 +346,7 @@ impl<T> View<T> for TextInput<T> {
             cx.request_animation_frame();
 
             state.blink = 0.0;
+            state.dragging = true;
 
             let local = cx.local(e.position);
             state.editor.action(
@@ -352,7 +358,25 @@ impl<T> View<T> for TextInput<T> {
             );
         }
 
-        if event.is::<PointerMoved>() {
+        if event.is::<PointerReleased>() {
+            state.dragging = false;
+        }
+
+        if let Some(e) = event.get::<PointerMoved>() {
+            let local = cx.local(e.position);
+
+            if state.dragging {
+                state.editor.action(
+                    &mut cx.fonts().font_system,
+                    Action::Drag {
+                        x: local.x as i32,
+                        y: local.y as i32,
+                    },
+                );
+
+                cx.request_draw();
+            }
+
             if cx.is_hot() {
                 cx.set_cursor(Cursor::Text);
             } else {
@@ -425,24 +449,46 @@ impl<T> View<T> for TextInput<T> {
         let layout = state.editor.buffer().layout_cursor(&cursor);
 
         for (i, run) in state.editor.buffer().layout_runs().enumerate() {
-            if i == layout.line {
-                let size = Size::new(1.0, state.editor.buffer().metrics().line_height);
+            if let Some(select) = state.editor.select_opt() {
+                let start = cursor.min(select);
+                let end = cursor.max(select);
 
-                let position = match run.glyphs.get(layout.glyph) {
+                if let Some((start, width)) = run.highlight(start, end) {
+                    let min = Point::new(cx.rect().min.x + start, cx.rect().min.y + run.line_top);
+                    let size = Size::new(width, self.font_size * 1.5);
+
+                    let offset = Vector::new(0.0, -self.font_size / 4.0);
+
+                    let highlight = Rect::min_size(min + offset, size);
+
+                    canvas.draw_pixel_perfect(Quad {
+                        rect: highlight,
+                        background: Background::new(Color::hex("#25d0ea80")),
+                        border_radius: BorderRadius::ZERO,
+                        border_width: BorderWidth::ZERO,
+                        border_color: Color::TRANSPARENT,
+                    });
+                }
+            }
+
+            if i == layout.line {
+                let size = Size::new(1.0, self.font_size * 1.5);
+
+                let min = match run.glyphs.get(layout.glyph) {
                     Some(glyph) => {
                         let physical = glyph.physical((cx.rect().min.x, cx.rect().min.y), 1.0);
-
                         Point::new(physical.x as f32, run.line_top + physical.y as f32)
                     }
                     None if layout.glyph == 0 => {
-                        Point::new(cx.rect().min.x, run.line_top + cx.rect().min.y)
+                        Point::new(cx.rect().min.x, cx.rect().min.y + run.line_top)
                     }
                     None => {
-                        Point::new(cx.rect().min.x + run.line_w, run.line_top + cx.rect().min.y)
+                        Point::new(cx.rect().min.x + run.line_w, cx.rect().min.y + run.line_top)
                     }
                 };
 
-                let cursor = Rect::min_size(position, size);
+                let offset = Vector::new(0.0, -self.font_size / 4.0);
+                let cursor = Rect::min_size(min + offset, size);
 
                 let blink = state.blink.cos() * 0.5 + 0.5;
                 canvas.draw_pixel_perfect(Quad {

@@ -371,17 +371,12 @@ impl<T> AppState<T> {
                     },
                 ..
             } => {
-                if let PhysicalKey::Code(code) = physical_key {
-                    if let Some(key) = convert_key(code) {
-                        self.ui.keyboard_key(id, key, is_pressed(state));
-                    }
-                }
+                let code = match physical_key {
+                    PhysicalKey::Code(code) => convert_key(code),
+                    _ => None,
+                };
 
-                if let Some(text) = text {
-                    if is_pressed(state) {
-                        self.ui.keyboard_text(id, text.into());
-                    }
-                }
+                (self.ui).keyboard_key(id, code, text.map(Into::into), is_pressed(state));
             }
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.ui.modifiers_changed(Modifiers {

@@ -1,10 +1,8 @@
 use super::Modifiers;
 
-/// A keyboard event.
+/// An event fired when a key is pressed.
 #[derive(Clone, Debug, Default)]
-pub struct KeyboardEvent {
-    /// Whether the key was pressed or released.
-    pub pressed: bool,
+pub struct KeyPressed {
     /// The key that was pressed or released.
     pub code: Option<Code>,
     /// The text that was entered.
@@ -13,25 +11,26 @@ pub struct KeyboardEvent {
     pub modifiers: Modifiers,
 }
 
-impl KeyboardEvent {
+impl KeyPressed {
     /// Check if the `key` is pressed.
-    pub fn is_pressed(&self, key: Code) -> bool {
-        self.pressed && self.code == Some(key)
+    pub fn is(&self, key: Code) -> bool {
+        self.code == Some(key)
     }
+}
 
+/// An event fired when a key is released.
+#[derive(Clone, Debug, Default)]
+pub struct KeyReleased {
+    /// The key that was pressed or released.
+    pub code: Option<Code>,
+    /// The modifiers that were active.
+    pub modifiers: Modifiers,
+}
+
+impl KeyReleased {
     /// Check if the `key` is released.
-    pub fn is_released(&self, key: Code) -> bool {
-        !self.pressed && self.code == Some(key)
-    }
-
-    /// Check if the event is a key press.
-    pub fn is_press(&self) -> bool {
-        self.pressed && self.code.is_some()
-    }
-
-    /// Check if the event is a key release.
-    pub fn is_release(&self) -> bool {
-        !self.pressed && self.code.is_some()
+    pub fn is(&self, key: Code) -> bool {
+        self.code == Some(key)
     }
 }
 

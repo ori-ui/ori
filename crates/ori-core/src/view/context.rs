@@ -176,6 +176,28 @@ impl<'a> BaseCx<'a> {
     pub fn request_rebuild(&mut self) {
         *self.needs_rebuild = true;
     }
+
+    /// Quit the application.
+    pub fn quit(&mut self) {
+        self.cmd(Quit);
+    }
+
+    /// Open a new window.
+    pub fn open_window<T: 'static, V: View<T> + 'static>(
+        &mut self,
+        desc: WindowDescriptor,
+        ui: impl FnMut(&mut T) -> V + Send + 'static,
+    ) {
+        let mut cmd = OpenWindow::new(ui);
+        cmd.desc = desc;
+
+        self.cmd(cmd);
+    }
+
+    /// Close the window.
+    pub fn close_window(&mut self, id: WindowId) {
+        self.cmd(CloseWindow::new(id));
+    }
 }
 
 /// A context for building the view tree.
@@ -443,62 +465,6 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, DrawCx<'_, '_> {
 }}
 
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
-    /// Get a context.
-    pub fn get_context<T: Any>(&self) -> Option<&T> {
-        self.base.get_context::<T>()
-    }
-
-    /// Get a mutable context.
-    pub fn get_context_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.base.get_context_mut::<T>()
-    }
-
-    /// Get a context.
-    ///
-    /// # Panics
-    /// - If the context is not found.
-    pub fn context<T: Any>(&self) -> &T {
-        self.base.context::<T>()
-    }
-
-    /// Get a mutable context.
-    ///
-    /// # Panics
-    /// - If the context is not found.
-    pub fn context_mut<T: Any>(&mut self) -> &mut T {
-        self.base.context_mut::<T>()
-    }
-
-    /// Get a context or insert a `default`.
-    pub fn context_or_default<T: Any + Default>(&mut self) -> &mut T {
-        self.base.context_or_default::<T>()
-    }
-
-    /// Get the fonts.
-    pub fn fonts(&mut self) -> &mut Fonts {
-        self.base.fonts()
-    }
-
-    /// Get the window.
-    pub fn window(&mut self) -> &mut Window {
-        self.window
-    }
-
-    /// Get a proxy for sending commands.
-    pub fn proxy(&self) -> CommandProxy {
-        self.base.proxy()
-    }
-
-    /// Emit a command.
-    pub fn cmd<T: Any + Send>(&mut self, command: T) {
-        self.base.cmd(command);
-    }
-
-    /// Quit the application.
-    pub fn quit(&mut self) {
-        self.cmd(Quit);
-    }
-
     /// Request an animation frame.
     pub fn request_animation_frame(&mut self) {
         if self.animation_frame.is_none() {
@@ -506,21 +472,9 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         }
     }
 
-    /// Open a new window.
-    pub fn open_window<T: 'static, V: View<T> +'static>(
-        &mut self,
-        desc: WindowDescriptor,
-        ui: impl FnMut(&mut T) -> V + Send + 'static,
-    ) {
-        let mut cmd = OpenWindow::new(ui);
-        cmd.desc = desc;
-
-        self.cmd(cmd);
-    }
-
-    /// Close the window.
-    pub fn close_window(&mut self, id: WindowId) {
-        self.cmd(CloseWindow::new(id));
+    /// Get the window.
+    pub fn window(&mut self) -> &mut Window {
+        self.window
     }
 }}
 

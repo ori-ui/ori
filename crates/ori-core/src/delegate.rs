@@ -1,6 +1,9 @@
 //! Delegates for handling commands and events for the entire application.
 
-use std::any::Any;
+use std::{
+    any::Any,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{command::CommandProxy, event::Event, view::BaseCx};
 
@@ -27,6 +30,20 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
         self.base.request_rebuild();
+    }
+}
+
+impl<'a, 'b> Deref for DelegateCx<'a, 'b> {
+    type Target = BaseCx<'b>;
+
+    fn deref(&self) -> &Self::Target {
+        self.base
+    }
+}
+
+impl<'a, 'b> DerefMut for DelegateCx<'a, 'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.base
     }
 }
 

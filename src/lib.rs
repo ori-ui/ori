@@ -39,7 +39,7 @@ pub mod prelude {
         event::{
             ActiveChanged, AnimationFrame, CloseRequested, CloseWindow, Code, Event, HotChanged,
             KeyPressed, Modifiers, OpenWindow, Pointer, PointerButton, PointerId, PointerLeft,
-            PointerMoved, PointerPressed, PointerReleased, PointerScrolled, RequestFocus,
+            PointerMoved, PointerPressed, PointerReleased, PointerScrolled, Quit, RequestFocus,
         },
         image::{gradient, Image, ImageData, ImageId},
         layout::{

@@ -10,7 +10,7 @@ use cosmic_text::Buffer;
 use crate::{
     canvas::Mesh,
     command::{Command, CommandProxy},
-    event::{CloseWindow, OpenWindow},
+    event::{CloseWindow, OpenWindow, Quit},
     layout::{Affine, Point, Rect, Size},
     text::{Fonts, TextBuffer},
     view::ViewState,
@@ -492,6 +492,11 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// Emit a command.
     pub fn cmd<T: Any + Send>(&mut self, command: T) {
         self.base.cmd(command);
+    }
+
+    /// Quit the application.
+    pub fn quit(&mut self) {
+        self.cmd(Quit);
     }
 
     /// Request an animation frame.

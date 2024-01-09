@@ -62,7 +62,7 @@ pub(crate) fn launch<T: 'static>(
 
         state.handle_requests(target);
 
-        if state.ui.should_exit() && state.init {
+        if state.ui.should_quit() && state.init {
             target.exit();
         }
     })?;

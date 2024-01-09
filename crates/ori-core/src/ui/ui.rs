@@ -11,7 +11,7 @@ use crate::{
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyPressed, KeyReleased, Modifiers, OpenWindow,
         PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
-        PointerScrolled, RequestFocus, SwitchFocus,
+        PointerScrolled, Quit, RequestFocus, SwitchFocus,
     },
     layout::{Point, Vector},
     text::Fonts,
@@ -43,6 +43,7 @@ pub struct Ui<T: 'static> {
     command_proxy: CommandProxy,
     command_rx: Receiver<Command>,
     requests: UiRequests<T>,
+    quit_requested: bool,
     /// The contexts used by the UI.
     pub contexts: Contexts,
     /// The fonts used by the UI.
@@ -67,6 +68,7 @@ impl<T> Ui<T> {
             theme_builder: ThemeBuilder::default(),
             command_proxy,
             command_rx,
+            quit_requested: false,
             requests: UiRequests::new(),
             contexts: Contexts::new(),
             fonts,
@@ -155,9 +157,9 @@ impl<T> Ui<T> {
         self.windows.keys().copied().collect()
     }
 
-    /// Get whether the UI should exit.
-    pub fn should_exit(&self) -> bool {
-        self.windows.is_empty()
+    /// Get whether the UI should quit.
+    pub fn should_quit(&self) -> bool {
+        self.windows.is_empty() || self.quit_requested
     }
 
     /// Get a command proxy to the UI.
@@ -371,9 +373,13 @@ impl<T> Ui<T> {
         self.modifiers = modifiers;
     }
 
-    fn handle_window_commands(&mut self, event: Event) {
+    fn handle_builtin_commands(&mut self, event: Event) {
         if let Some(close) = event.get::<CloseWindow>() {
             self.requests.push(UiRequest::RemoveWindow(close.window));
+        }
+
+        if event.is::<Quit>() && !event.is_handled() {
+            self.quit_requested = true;
         }
 
         if event.is::<OpenWindow<T>>() && !event.is_handled() {
@@ -403,7 +409,7 @@ impl<T> Ui<T> {
             }
         }
 
-        self.handle_window_commands(event);
+        self.handle_builtin_commands(event);
     }
 
     /// Handle all pending commands.

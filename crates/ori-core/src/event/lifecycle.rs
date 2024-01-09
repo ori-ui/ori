@@ -1,5 +1,9 @@
 use std::cell::Cell;
 
+/// Command sent to quit the application.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Quit;
+
 /// Event emitted to a view when its hot state changes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct HotChanged(pub bool);

@@ -174,6 +174,7 @@ impl Quad {
         // TODO: this is jank to the max, but it's 4 AM and I'm tired
 
         let mut mesh = Mesh::new();
+        mesh.texture = self.background.texture.clone();
 
         // add the center vertex
         let center_index = mesh.vertices.len() as u32;

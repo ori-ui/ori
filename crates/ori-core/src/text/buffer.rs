@@ -4,7 +4,7 @@ use crate::layout::Size;
 
 use super::{Fonts, TextAlign, TextAttributes, TextWrap};
 
-/// A text buffer.
+/// A convenient wrapper around a [`cosmic_text::Buffer`].
 pub struct TextBuffer {
     buffer: Buffer,
 }
@@ -52,7 +52,7 @@ impl TextBuffer {
     /// Set the align of the text buffer.
     pub fn set_align(&mut self, align: TextAlign) {
         for line in &mut self.buffer.lines {
-            line.set_align(Some(align.to_cosmic()));
+            line.set_align(Some(align.to_cosmic_text()));
         }
     }
 
@@ -77,14 +77,14 @@ impl TextBuffer {
         self.buffer.set_text(
             &mut fonts.font_system,
             text,
-            attrs.to_cosmic(),
+            attrs.to_cosmic_text(),
             Shaping::Advanced,
         );
     }
 
     /// Set the wrapping mode of the text buffer.
     pub fn set_wrap(&mut self, fonts: &mut Fonts, wrap: TextWrap) {
-        (self.buffer).set_wrap(&mut fonts.font_system, wrap.to_cosmic());
+        (self.buffer).set_wrap(&mut fonts.font_system, wrap.to_cosmic_text());
     }
 }
 

@@ -1,30 +1,6 @@
-use std::{
-    io,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 pub use ori_macro::font;
-
-/// An error that occurred while loading fonts.
-#[derive(Debug)]
-pub enum FontsError {
-    /// An I/O error occurred.
-    Io(io::Error),
-    /// A fontdue error occurred.
-    Fontdue(&'static str),
-}
-
-impl From<io::Error> for FontsError {
-    fn from(err: io::Error) -> Self {
-        Self::Io(err)
-    }
-}
-
-impl From<&'static str> for FontsError {
-    fn from(err: &'static str) -> Self {
-        Self::Fontdue(err)
-    }
-}
 
 /// A source for a font.
 #[derive(Clone, Debug)]
@@ -64,5 +40,11 @@ impl From<&Path> for FontSource {
 impl From<PathBuf> for FontSource {
     fn from(path: PathBuf) -> Self {
         Self::Path(path)
+    }
+}
+
+impl From<Vec<FontSource>> for FontSource {
+    fn from(sources: Vec<FontSource>) -> Self {
+        Self::Set(sources)
     }
 }

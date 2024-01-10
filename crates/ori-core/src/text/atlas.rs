@@ -102,28 +102,39 @@ impl FontAtlas {
     ) -> Option<RasterizedGlyph> {
         let physical = glyph.physical((0.0, 0.0), 1.0);
 
+        // check the cache
         if let Some(&glyph) = self.glyphs.get(&physical.cache_key) {
             return Some(glyph);
         }
 
         let Some(image) = cache.get_image_uncached(font_system, physical.cache_key) else {
+            // TODO: do something better than panicing!
             panic!("failed to rasterize glyph");
         };
 
+        // don't rasterize empty glyphs
         if image.placement.width == 0 || image.placement.height == 0 {
-            return Some(RasterizedGlyph::NULL);
+            let glyph = RasterizedGlyph::NULL;
+
+            // caching the null here probably doesn't matter, but it's good practice
+            self.glyphs.insert(physical.cache_key, glyph);
+
+            return Some(glyph);
         }
 
+        // calculate the size of the image and the padding
         let width = image.placement.width as i32;
         let height = image.placement.height as i32;
         let image_size = size2(width, height);
         let padding_size = size2(Self::PADDING, Self::PADDING) * 2;
 
+        // allocate space for the image
         let alloc = self.allocator.allocate(image_size + padding_size)?;
 
         let min_x = alloc.rectangle.min.x;
         let min_y = alloc.rectangle.min.y;
 
+        // write the image to the atlas
         self.image.modify(|data| {
             for y in 0..height {
                 for x in 0..width {
@@ -147,6 +158,7 @@ impl FontAtlas {
             }
         });
 
+        // calculate the metrics of the glyph
         let size = Size::new(image.placement.width as f32, image.placement.height as f32);
         let offset = Vector::new(image.placement.left as f32, -image.placement.top as f32);
 
@@ -154,6 +166,7 @@ impl FontAtlas {
         let uv = Rect::min_size(min / self.size() as f32, size / self.size() as f32);
         let glyph = RasterizedGlyph { uv, offset, size };
 
+        // cache the glyph, this is very important!
         self.glyphs.insert(physical.cache_key, glyph);
 
         Some(glyph)

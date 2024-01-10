@@ -25,8 +25,6 @@ impl<T, S: Shell> Launcher<T, S> {
 
         let mut ui = Ui::new(data, waker);
 
-        ui.fonts.load_system_fonts();
-
         ui.push_theme(|| Palette::light().into());
         ui.push_theme(Theme::builtin);
 

@@ -9,7 +9,11 @@ use crate::{
 
 use super::{FontAtlas, FontSource};
 
-/// A collection of loaded fonts.
+/// A context for loading and rasterizing fonts.
+///
+/// This is a wrapper around the [`cosmic_text`] crate, and provides a simple interface for
+/// loading and rasterizing fonts. Interacting with this directly is not necessary for most
+/// applications, see [`Text`](crate::views::Text) and [`TextInput`](crate::views::TextInput).
 #[derive(Debug)]
 pub struct Fonts {
     /// The swash cache.
@@ -27,7 +31,7 @@ impl Default for Fonts {
 }
 
 impl Fonts {
-    /// Creates a new font collection.
+    /// Creates a new font context.
     pub fn new() -> Self {
         let swash_cache = SwashCache::new();
         let font_system = FontSystem::new();
@@ -40,7 +44,10 @@ impl Fonts {
         }
     }
 
-    /// Loads a font from a file.
+    /// Loads a font from a [`FontSource`].
+    ///
+    /// This will usually either be a path to a font file or the font data itself, but can also
+    /// be a [`Vec<FontSource>`] to load multiple fonts at once.
     pub fn load_font(&mut self, source: impl Into<FontSource>) -> Result<(), io::Error> {
         match source.into() {
             FontSource::Data(data) => {
@@ -60,11 +67,22 @@ impl Fonts {
     }
 
     /// Loads the system fonts.
+    ///
+    /// This is a platform-specific operation, for more information see the
+    /// documentation for [`fontdb::Database::load_system_fonts`](cosmic_text::fontdb::Database::load_system_fonts).
     pub fn load_system_fonts(&mut self) {
-        self.font_system.db_mut().load_system_fonts();
+        let db = self.font_system.db_mut();
+
+        db.load_font_data(include_bytes!("../../font/NotoSans-Regular.ttf").to_vec());
+        db.load_system_fonts();
+        db.set_sans_serif_family("Noto Sans");
     }
 
-    /// Get the size of a text buffer.
+    /// Calculates the size of a text buffer.
+    ///
+    /// The resulting size is the smallest rectangle that can contain the text,
+    /// and is roughly equal to the widest line and the line height multiplied
+    /// the number of laid out lines.
     pub fn buffer_size(buffer: &Buffer) -> Size {
         let mut width = 0.0;
         let mut height = 0.0;
@@ -78,7 +96,14 @@ impl Fonts {
     }
 
     /// Convert a text buffer to a mesh.
+    ///
+    /// This involves shapind the text, rasterizing the glyphs, laying out the glyphs,
+    /// and creating the mesh itself, and should ideally be done as little as possible.
     pub fn rasterize_text(&mut self, buffer: &Buffer, rect: Rect) -> Mesh {
+        // if rasterizing returns None, it means the font atlas is full
+        // so we need to grow it and try again
+        //
+        // TODO: handle the case where the font atlas is full and we can't grow it
         loop {
             if let Some(mesh) = self.try_rasterize_text(buffer, rect.min.to_vector()) {
                 break mesh;
@@ -122,26 +147,29 @@ impl Fonts {
         for (uv, rect, color) in glyphs {
             let index = mesh.vertices.len() as u32;
 
+            // NOTE: rounding the positions here makes the text look a lot better
+            // i'm not sure why, and i'm not sure if it's the right way to go
+            //
+            // TODO: maybe we should round the positions in physical coordinates instead?
+            // do note that this would require knowing the scale factor of the window and
+            // re-rasterizing the text if the scale factor changes, which is not ideal
             mesh.vertices.push(Vertex {
-                position: rect.top_left(),
+                position: rect.top_left().round(),
                 tex_coords: uv.top_left(),
                 color,
             });
-
             mesh.vertices.push(Vertex {
-                position: rect.top_right(),
+                position: rect.top_right().round(),
                 tex_coords: uv.top_right(),
                 color,
             });
-
             mesh.vertices.push(Vertex {
-                position: rect.bottom_right(),
+                position: rect.bottom_right().round(),
                 tex_coords: uv.bottom_right(),
                 color,
             });
-
             mesh.vertices.push(Vertex {
-                position: rect.bottom_left(),
+                position: rect.bottom_left().round(),
                 tex_coords: uv.bottom_left(),
                 color,
             });

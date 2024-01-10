@@ -149,7 +149,7 @@ impl<T> TextInput<T> {
 
         /* editor */
         let buffer = state.editor.buffer_mut();
-        buffer.set_wrap(&mut fonts.font_system, self.wrap.to_cosmic());
+        buffer.set_wrap(&mut fonts.font_system, self.wrap.to_cosmic_text());
         buffer.set_metrics(&mut fonts.font_system, metrics);
 
         let mut text = self.get_text(state);
@@ -161,7 +161,7 @@ impl<T> TextInput<T> {
         state.editor.buffer_mut().set_text(
             &mut fonts.font_system,
             &text,
-            attrs.to_cosmic(),
+            attrs.to_cosmic_text(),
             Shaping::Advanced,
         );
 

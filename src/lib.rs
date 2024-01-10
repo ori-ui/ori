@@ -49,8 +49,8 @@ pub mod prelude {
         log::*,
         rebuild::Rebuild,
         text::{
-            font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, FontsError,
-            TextAlign, TextBuffer, TextWrap,
+            font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, TextAlign,
+            TextBuffer, TextWrap,
         },
         theme::{
             builtin::*, scale_factor, set_style, set_theme, style, theme_snapshot, vh, vw,

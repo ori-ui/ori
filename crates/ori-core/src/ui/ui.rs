@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 
 use crossbeam_channel::Receiver;
-use ori_macro::font;
 
 use crate::{
     command::{Command, CommandProxy, CommandWaker},
@@ -56,8 +55,7 @@ impl<T> Ui<T> {
     /// Create a new [`Ui`] with the given data.
     pub fn new(data: T, waker: CommandWaker) -> Self {
         let mut fonts = Fonts::default();
-
-        fonts.load_font(font!("font/NotoSans-Regular.ttf")).unwrap();
+        fonts.load_system_fonts();
 
         let (command_proxy, command_rx) = CommandProxy::new(waker);
 

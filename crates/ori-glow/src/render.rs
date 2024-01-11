@@ -135,9 +135,15 @@ impl GlowRender {
         self.gl.clear_color(clear.r, clear.g, clear.b, clear.a);
         self.gl.clear(glow::COLOR_BUFFER_BIT);
 
+        // enable alpha blending
         self.gl.enable(glow::BLEND);
         self.gl.blend_equation(glow::FUNC_ADD);
-        (self.gl).blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+        self.gl.blend_func_separate(
+            glow::SRC_ALPHA,
+            glow::ONE_MINUS_SRC_ALPHA,
+            glow::ONE,
+            glow::ONE_MINUS_SRC_ALPHA,
+        );
 
         self.gl.disable(glow::DEPTH_TEST);
         self.gl.disable(glow::CULL_FACE);

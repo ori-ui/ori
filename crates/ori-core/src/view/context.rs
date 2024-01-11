@@ -1,5 +1,6 @@
 use std::{
     any::{type_name, Any},
+    future::Future,
     mem,
     ops::{Deref, DerefMut},
     time::Instant,
@@ -133,6 +134,16 @@ impl<'a> BaseCx<'a> {
     /// Emit a command.
     pub fn cmd<T: Any + Send>(&mut self, command: T) {
         self.proxy.cmd_silent(Command::new(command));
+    }
+
+    /// Spawn a future.
+    pub fn spawn_async(&mut self, future: impl Future<Output = ()> + Send + 'static) {
+        self.proxy.spawn_async(future);
+    }
+
+    /// Spawn a future sending a command when it completes.
+    pub fn cmd_async<T: Any + Send>(&self, future: impl Future<Output = T> + Send + 'static) {
+        self.proxy.cmd_async(future);
     }
 
     /// Get a context.

@@ -39,10 +39,13 @@ ori-font-awesome = { workspace = true, optional = true }
 # Backend dependencies
 ori-winit = { workspace = true, optional = true }
 
+[dev-dependencies]
+async-std = "1"
+
 [dev-dependencies.ori]
 path = "."
 version = "0.1.0-alpha.1"
-features = ["font-awesome", "image", "tracing"]
+features = ["full"]
 
 [features]
 default = ["winit", "glow", "x11"]

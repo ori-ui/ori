@@ -1,11 +1,11 @@
 //! User interface state.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crossbeam_channel::Receiver;
 
 use crate::{
-    command::{Command, CommandProxy, CommandWaker},
+    command::{Command, CommandProxy, CommandTask, CommandWaker},
     delegate::{Delegate, DelegateCx},
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyPressed, KeyReleased, Modifiers, OpenWindow,
@@ -372,12 +372,19 @@ impl<T> Ui<T> {
     }
 
     fn handle_builtin_commands(&mut self, event: Event) {
+        if let Some(task) = event.get::<Arc<CommandTask>>() {
+            task.poll();
+            return;
+        }
+
         if let Some(close) = event.get::<CloseWindow>() {
             self.requests.push(UiRequest::RemoveWindow(close.window));
+            return;
         }
 
         if event.is::<Quit>() && !event.is_handled() {
             self.quit_requested = true;
+            return;
         }
 
         if event.is::<OpenWindow<T>>() && !event.is_handled() {
@@ -389,24 +396,7 @@ impl<T> Ui<T> {
 
     fn handle_command(&mut self, command: Command) {
         let event = Event::from_command(command);
-
-        base_cx!(self, needs_rebuild, base);
-        let mut cx = DelegateCx::new(&mut base);
-
-        for delegate in &mut self.delegates {
-            delegate.event(&mut cx, &mut self.data, &event);
-        }
-
-        if needs_rebuild {
-            self.request_rebuild();
-        }
-
-        if !event.is_handled() {
-            for window_id in self.window_ids() {
-                self.event(window_id, &event);
-            }
-        }
-
+        self.event_all(&event);
         self.handle_builtin_commands(event);
     }
 

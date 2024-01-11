@@ -1,6 +1,14 @@
 //! A channel for sending commands to the user interface.
 
-use std::{any::Any, fmt::Debug, sync::Arc};
+use std::{
+    any::Any,
+    fmt::Debug,
+    future::Future,
+    mem::ManuallyDrop,
+    pin::Pin,
+    sync::{Arc, Mutex},
+    task::{Context, RawWaker, RawWakerVTable, Waker},
+};
 
 use crossbeam_channel::{Receiver, Sender};
 
@@ -88,10 +96,95 @@ impl CommandProxy {
         self.cmd_silent(Command::new(command));
         self.wake();
     }
+
+    /// Spawn a future that is polled when commands are handled.
+    pub fn spawn_async(&self, future: impl Future<Output = ()> + Send + 'static) {
+        let task = Arc::new(CommandTask::new(self, future));
+        task.poll();
+    }
+
+    /// Spawn a future sending a command when it completes.
+    ///
+    /// See [`CommandProxy::spawn_async`] for more information.
+    pub fn cmd_async<T: Any + Send>(&self, future: impl Future<Output = T> + Send + 'static) {
+        let proxy = self.clone();
+
+        self.spawn_async(async move {
+            proxy.cmd(future.await);
+        });
+    }
 }
 
 impl Debug for CommandProxy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CommandProxy").finish()
+    }
+}
+
+type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+pub(crate) struct CommandTask {
+    proxy: CommandProxy,
+    future: Mutex<Option<BoxFuture<'static, ()>>>,
+}
+
+impl CommandTask {
+    fn new(proxy: &CommandProxy, future: impl Future<Output = ()> + Send + 'static) -> Self {
+        Self {
+            proxy: proxy.clone(),
+            future: Mutex::new(Some(Box::pin(future))),
+        }
+    }
+
+    fn raw_waker_vtable() -> &'static RawWakerVTable {
+        &RawWakerVTable::new(
+            CommandTask::waker_clone,
+            CommandTask::waker_wake,
+            CommandTask::waker_wake_by_ref,
+            CommandTask::waker_drop,
+        )
+    }
+
+    unsafe fn increase_refcount(data: *const ()) {
+        let arc = ManuallyDrop::new(Arc::from_raw(data.cast::<Self>()));
+        let _arc_clone = arc.clone();
+    }
+
+    unsafe fn waker_clone(data: *const ()) -> RawWaker {
+        Self::increase_refcount(data);
+        RawWaker::new(data, Self::raw_waker_vtable())
+    }
+
+    unsafe fn waker_wake(data: *const ()) {
+        let arc = Arc::from_raw(data.cast::<Self>());
+        arc.proxy.cmd(arc.clone());
+    }
+
+    unsafe fn waker_wake_by_ref(data: *const ()) {
+        let arc = ManuallyDrop::new(Arc::from_raw(data.cast::<Self>()));
+        let task: Arc<Self> = (*arc).clone();
+        arc.proxy.cmd(task);
+    }
+
+    unsafe fn waker_drop(data: *const ()) {
+        drop(Arc::from_raw(data.cast::<Self>()));
+    }
+
+    fn raw_waker(self: &Arc<Self>) -> RawWaker {
+        let data = Arc::into_raw(self.clone());
+        RawWaker::new(data.cast(), Self::raw_waker_vtable())
+    }
+
+    pub(crate) fn poll(self: &Arc<Self>) {
+        let mut future_slot = self.future.lock().unwrap();
+
+        if let Some(mut future) = future_slot.take() {
+            let waker = unsafe { Waker::from_raw(self.raw_waker()) };
+            let mut cx = Context::from_waker(&waker);
+
+            if future.as_mut().poll(&mut cx).is_pending() {
+                *future_slot = Some(future);
+            }
+        }
     }
 }

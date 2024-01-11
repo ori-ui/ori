@@ -1,12 +1,13 @@
 //! A channel for sending commands to the user interface.
 
 use std::{
-    any::Any,
+    any::{Any, TypeId},
+    cell::UnsafeCell,
     fmt::Debug,
     future::Future,
     mem::ManuallyDrop,
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::Arc,
     task::{Context, RawWaker, RawWakerVTable, Waker},
 };
 
@@ -48,18 +49,48 @@ impl Debug for CommandWaker {
 /// A command.
 #[derive(Debug)]
 pub struct Command {
-    pub(crate) command: Box<dyn Any + Send>,
-    pub(crate) name: &'static str,
+    type_id: TypeId,
+    data: Box<dyn Any + Send>,
+    name: &'static str,
 }
 
 impl Command {
     /// Create a new command.
     pub fn new<T: Any + Send>(command: T) -> Self {
         Self {
-            command: Box::new(command),
-
+            type_id: TypeId::of::<T>(),
+            data: Box::new(command),
             name: std::any::type_name::<T>(),
         }
+    }
+
+    /// Check whether the command is of type `T`.
+    pub fn is<T: Any>(&self) -> bool {
+        self.type_id == TypeId::of::<T>()
+    }
+
+    /// Try to downcast the command to `T`.
+    pub fn get<T: Any>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            // SAFETY: We just checked that the type is correct.
+            //
+            // We need unsafe here because <dyn Any>::downcast_ref does a dynamic call to
+            // check the type, which is slow... This function is called a lot, so we want
+            // to avoid that.
+            unsafe { Some(&*(self.data.as_ref() as *const _ as *const T)) }
+        } else {
+            None
+        }
+    }
+
+    /// Get the name of the command.
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Convert the command into a boxed [`Any`] value.
+    pub fn to_any(self) -> Box<dyn Any + Send> {
+        self.data
     }
 }
 
@@ -72,9 +103,9 @@ pub struct CommandProxy {
 
 impl CommandProxy {
     /// Create a new [`CommandProxy`] channel.
-    pub fn new(waker: CommandWaker) -> (Self, Receiver<Command>) {
+    pub fn new(waker: CommandWaker) -> (Self, CommandReceiver) {
         let (tx, rx) = crossbeam_channel::unbounded();
-        (Self { tx, waker }, rx)
+        (Self { tx, waker }, CommandReceiver { rx })
     }
 
     /// Wake the event loop.
@@ -100,7 +131,10 @@ impl CommandProxy {
     /// Spawn a future that is polled when commands are handled.
     pub fn spawn_async(&self, future: impl Future<Output = ()> + Send + 'static) {
         let task = Arc::new(CommandTask::new(self, future));
-        task.poll();
+
+        // SAFETY: the task was just created, so it's impossible for there to be any clones of the
+        // Arc, which means we have unique access to the task.
+        unsafe { task.poll() };
     }
 
     /// Spawn a future sending a command when it completes.
@@ -121,18 +155,44 @@ impl Debug for CommandProxy {
     }
 }
 
+/// A receiver for [`Command`]s.
+#[derive(Debug)]
+pub struct CommandReceiver {
+    rx: Receiver<Command>,
+}
+
+impl CommandReceiver {
+    /// Try receive a command.
+    pub fn try_recv(&mut self) -> Option<Command> {
+        let command = self.rx.try_recv().ok()?;
+
+        if let Some(task) = command.get::<Arc<CommandTask>>() {
+            // SAFETY: the only way to send a CommandTask is through CommandProxy::spawn_async,
+            // since CommandTask is not public. and CommandReceiver does not implement Clone.
+            // therefore, we have unique access to the task and can safely poll.
+            unsafe { task.poll() };
+            return None;
+        }
+
+        Some(command)
+    }
+}
+
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-pub(crate) struct CommandTask {
+struct CommandTask {
     proxy: CommandProxy,
-    future: Mutex<Option<BoxFuture<'static, ()>>>,
+    future: UnsafeCell<Option<BoxFuture<'static, ()>>>,
 }
+
+// SAFETY: CommandTask::future is only ever accessed from one thread at a time.
+unsafe impl Sync for CommandTask {}
 
 impl CommandTask {
     fn new(proxy: &CommandProxy, future: impl Future<Output = ()> + Send + 'static) -> Self {
         Self {
             proxy: proxy.clone(),
-            future: Mutex::new(Some(Box::pin(future))),
+            future: UnsafeCell::new(Some(Box::pin(future))),
         }
     }
 
@@ -175,11 +235,12 @@ impl CommandTask {
         RawWaker::new(data.cast(), Self::raw_waker_vtable())
     }
 
-    pub(crate) fn poll(self: &Arc<Self>) {
-        let mut future_slot = self.future.lock().unwrap();
+    // SAFETY: this must only be called from one thread at a time.
+    unsafe fn poll(self: &Arc<Self>) {
+        let future_slot = &mut *self.future.get();
 
         if let Some(mut future) = future_slot.take() {
-            let waker = unsafe { Waker::from_raw(self.raw_waker()) };
+            let waker = Waker::from_raw(self.raw_waker());
             let mut cx = Context::from_waker(&waker);
 
             if future.as_mut().poll(&mut cx).is_pending() {

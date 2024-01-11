@@ -1,11 +1,9 @@
 //! User interface state.
 
-use std::{collections::HashMap, sync::Arc};
-
-use crossbeam_channel::Receiver;
+use std::collections::HashMap;
 
 use crate::{
-    command::{Command, CommandProxy, CommandTask, CommandWaker},
+    command::{Command, CommandProxy, CommandReceiver, CommandWaker},
     delegate::{Delegate, DelegateCx},
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyPressed, KeyReleased, Modifiers, OpenWindow,
@@ -40,7 +38,7 @@ pub struct Ui<T: 'static> {
     delegates: Vec<Box<dyn Delegate<T>>>,
     theme_builder: ThemeBuilder,
     command_proxy: CommandProxy,
-    command_rx: Receiver<Command>,
+    command_rx: CommandReceiver,
     requests: UiRequests<T>,
     quit_requested: bool,
     /// The contexts used by the UI.
@@ -372,11 +370,6 @@ impl<T> Ui<T> {
     }
 
     fn handle_builtin_commands(&mut self, event: Event) {
-        if let Some(task) = event.get::<Arc<CommandTask>>() {
-            task.poll();
-            return;
-        }
-
         if let Some(close) = event.get::<CloseWindow>() {
             self.requests.push(UiRequest::RemoveWindow(close.window));
             return;
@@ -395,14 +388,14 @@ impl<T> Ui<T> {
     }
 
     fn handle_command(&mut self, command: Command) {
-        let event = Event::from_command(command);
+        let event = Event::from(command);
         self.event_all(&event);
         self.handle_builtin_commands(event);
     }
 
     /// Handle all pending commands.
     pub fn handle_commands(&mut self) {
-        while let Ok(command) = self.command_rx.try_recv() {
+        while let Some(command) = self.command_rx.try_recv() {
             self.handle_command(command);
         }
     }

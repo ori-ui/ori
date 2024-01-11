@@ -244,7 +244,7 @@ impl<T> View<T> for TextInput<T> {
         }
 
         if let Some(e) = event.get::<KeyPressed>() {
-            if !cx.is_focused() {
+            if !cx.is_focused() || e.modifiers.ctrl || e.modifiers.alt || e.modifiers.meta {
                 return;
             }
 

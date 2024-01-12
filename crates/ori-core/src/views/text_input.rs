@@ -89,7 +89,7 @@ impl<T> TextInput<T> {
             text: None,
             on_change: None,
             on_submit: None,
-            placeholder: String::from("Placeholder"),
+            placeholder: String::from("..."),
             multiline: false,
             font_size: style(text_input::FONT_SIZE),
             font_family: style(text_input::FONT_FAMILY),

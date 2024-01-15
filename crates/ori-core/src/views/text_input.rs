@@ -273,7 +273,7 @@ impl<T> View<T> for TextInput<T> {
             let mut changed = false;
             let mut submit = false;
 
-            if !e.modifiers.any() {
+            if !e.modifiers.ctrl && !e.modifiers.alt && !e.modifiers.meta {
                 if let Some(ref text) = e.text {
                     for c in text.chars() {
                         editor.action(&mut cx.fonts().font_system, Action::Insert(c));

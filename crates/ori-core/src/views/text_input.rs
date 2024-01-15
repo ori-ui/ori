@@ -334,6 +334,7 @@ impl<T> View<T> for TextInput<T> {
             if e.is(Code::V) && e.modifiers.ctrl {
                 let text = cx.clipboard().get();
                 editor.insert_string(&text, None);
+                changed = true;
             }
 
             if !(changed || submit) {

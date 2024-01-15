@@ -99,7 +99,6 @@ impl Contexts {
 
 /// A base context that is shared between all other contexts.
 pub struct BaseCx<'a> {
-    pub(crate) fonts: &'a mut Fonts,
     pub(crate) contexts: &'a mut Contexts,
     pub(crate) proxy: &'a mut CommandProxy,
     pub(crate) needs_rebuild: &'a mut bool,
@@ -108,13 +107,11 @@ pub struct BaseCx<'a> {
 impl<'a> BaseCx<'a> {
     /// Create a new base context.
     pub fn new(
-        fonts: &'a mut Fonts,
         contexts: &'a mut Contexts,
         proxy: &'a mut CommandProxy,
         needs_rebuild: &'a mut bool,
     ) -> Self {
         Self {
-            fonts,
             contexts,
             proxy,
             needs_rebuild,
@@ -123,7 +120,7 @@ impl<'a> BaseCx<'a> {
 
     /// Get the [`Fonts`].
     pub fn fonts(&mut self) -> &mut Fonts {
-        self.fonts
+        self.context_or_default()
     }
 
     /// Get the [`CommandProxy`].
@@ -418,12 +415,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
 
     /// Create a mesh for the given text buffer.
     pub fn rasterize_text(&mut self, buffer: &TextBuffer, rect: Rect) -> Mesh {
-        self.base.fonts.rasterize_text(buffer.raw(), rect)
+        self.fonts().rasterize_text(buffer.raw(), rect)
     }
 
     /// Create a mesh for the given raw cosmic text buffer.
     pub fn rasterize_text_raw(&mut self, buffer: &Buffer, rect: Rect) -> Mesh {
-        self.base.fonts.rasterize_text(buffer, rect)
+        self.fonts().rasterize_text(buffer, rect)
     }
 }
 

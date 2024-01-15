@@ -23,7 +23,6 @@ macro_rules! base_cx {
     ($self:expr, $needs_rebuild:ident, $base:ident) => {
         let mut $needs_rebuild = false;
         let mut $base = BaseCx::new(
-            &mut $self.fonts,
             &mut $self.contexts,
             &mut $self.command_proxy,
             &mut $needs_rebuild,
@@ -43,8 +42,6 @@ pub struct Ui<T: 'static> {
     quit_requested: bool,
     /// The contexts used by the UI.
     pub contexts: Contexts,
-    /// The fonts used by the UI.
-    pub fonts: Fonts,
     /// The data used by the UI.
     pub data: T,
 }
@@ -67,7 +64,6 @@ impl<T> Ui<T> {
             quit_requested: false,
             requests: UiRequests::new(),
             contexts: Contexts::new(),
-            fonts,
             data,
         }
     }
@@ -151,6 +147,11 @@ impl<T> Ui<T> {
     /// Get the Ids of all windows.
     pub fn window_ids(&self) -> Vec<WindowId> {
         self.windows.keys().copied().collect()
+    }
+
+    /// Get a mutable reference to the [`Fonts`] context.
+    pub fn fonts(&mut self) -> &mut Fonts {
+        self.contexts.get_or_default()
     }
 
     /// Get whether the UI should quit.

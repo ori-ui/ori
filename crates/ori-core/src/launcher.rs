@@ -43,7 +43,7 @@ impl<T, S: Shell> Launcher<T, S> {
 
     /// Load a font from a [`FontSource`].
     pub fn font(mut self, font: impl Into<FontSource>) -> Self {
-        if let Err(err) = self.ui.fonts.load_font(font) {
+        if let Err(err) = self.ui.fonts().load_font(font) {
             eprintln!("Failed to load font: {:?}", err);
         }
 

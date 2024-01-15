@@ -470,7 +470,12 @@ impl<T> View<T> for TextInput<T> {
         let cursor = state.editor.cursor();
 
         /* draw the highlights and the cursor */
+        // FIXME: this is bad
         for (i, run) in state.editor.buffer().layout_runs().enumerate() {
+            if !cx.is_focused() {
+                break;
+            }
+
             if let Some(select) = state.editor.select_opt() {
                 let start = cursor.min(select);
                 let end = cursor.max(select);
@@ -491,7 +496,7 @@ impl<T> View<T> for TextInput<T> {
                 }
             }
 
-            if i == cursor.line && cx.is_focused() {
+            if i == cursor.line {
                 let size = Size::new(1.0, self.font_size * self.line_height);
 
                 let min = match run.glyphs.get(cursor.index) {

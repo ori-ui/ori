@@ -118,7 +118,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         if let Some(moved) = event.get::<PointerMoved>() {
             state.timer = 0.0;
 
-            if cx.is_hot() {
+            if cx.has_hot() {
                 state.position = moved.position;
                 cx.request_animation_frame();
                 event.handle();
@@ -126,9 +126,8 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if cx.is_hot() && state.timer < 1.0 {
+            if cx.has_hot() && state.timer < 1.0 {
                 state.timer += dt * 2.0;
-
                 cx.request_animation_frame();
             }
 

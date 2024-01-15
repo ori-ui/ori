@@ -5,6 +5,7 @@
 
 #[cfg(target_os = "android")]
 mod android;
+mod clipboard;
 mod convert;
 mod error;
 mod launch;

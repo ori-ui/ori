@@ -10,6 +10,7 @@ use cosmic_text::Buffer;
 
 use crate::{
     canvas::Mesh,
+    clipboard::Clipboard,
     command::{Command, CommandProxy},
     event::{CloseWindow, OpenWindow, Quit},
     layout::{Affine, Point, Rect, Size},
@@ -120,6 +121,11 @@ impl<'a> BaseCx<'a> {
 
     /// Get the [`Fonts`].
     pub fn fonts(&mut self) -> &mut Fonts {
+        self.context_or_default()
+    }
+
+    /// Get the [`Clipboard`].
+    pub fn clipboard(&mut self) -> &mut Clipboard {
         self.context_or_default()
     }
 

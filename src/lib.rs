@@ -35,6 +35,7 @@ pub mod prelude {
             hex, hsl, hsla, oklab, oklaba, rgb, rgba, BorderRadius, BorderWidth, BoxShadow, Canvas,
             Color, Curve, Fragment, Mesh, Primitive, Vertex,
         },
+        clipboard::Clipboard,
         delegate::{Delegate, DelegateCx},
         event::{
             ActiveChanged, AnimationFrame, CloseRequested, CloseWindow, Code, Event, HotChanged,

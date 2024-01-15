@@ -204,6 +204,26 @@ impl TextInputState {
     }
 }
 
+fn move_key(e: &KeyPressed) -> Option<Action> {
+    match e.code {
+        Some(Code::Left) if e.modifiers.ctrl => Some(Action::LeftWord),
+        Some(Code::Right) if e.modifiers.ctrl => Some(Action::RightWord),
+        Some(Code::Left) => Some(Action::Left),
+        Some(Code::Right) => Some(Action::Right),
+        Some(Code::Up) => Some(Action::Up),
+        Some(Code::Down) => Some(Action::Down),
+        _ => None,
+    }
+}
+
+fn delete_key(e: &KeyPressed) -> Option<Action> {
+    match e.code {
+        Some(Code::Backspace) => Some(Action::Backspace),
+        Some(Code::Delete) => Some(Action::Delete),
+        _ => None,
+    }
+}
+
 impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
@@ -244,7 +264,7 @@ impl<T> View<T> for TextInput<T> {
         }
 
         if let Some(e) = event.get::<KeyPressed>() {
-            if !cx.is_focused() || e.modifiers.ctrl || e.modifiers.alt || e.modifiers.meta {
+            if !cx.is_focused() {
                 return;
             }
 
@@ -253,25 +273,20 @@ impl<T> View<T> for TextInput<T> {
             let mut changed = false;
             let mut submit = false;
 
-            if let Some(ref text) = e.text {
-                for c in text.chars() {
-                    editor.action(&mut cx.fonts().font_system, Action::Insert(c));
+            if !e.modifiers.any() {
+                if let Some(ref text) = e.text {
+                    for c in text.chars() {
+                        editor.action(&mut cx.fonts().font_system, Action::Insert(c));
+                    }
+
+                    cx.request_layout();
+                    state.blink = 0.0;
+                    changed = true;
                 }
-
-                cx.request_layout();
-                state.blink = 0.0;
-                changed = true;
             }
 
-            if e.is(Code::Backspace) {
-                editor.action(&mut cx.fonts().font_system, Action::Backspace);
-                cx.request_layout();
-                state.blink = 0.0;
-                changed = true;
-            }
-
-            if e.is(Code::Delete) {
-                editor.action(&mut cx.fonts().font_system, Action::Delete);
+            if let Some(action) = delete_key(e) {
+                editor.action(&mut cx.fonts().font_system, action);
                 cx.request_layout();
                 state.blink = 0.0;
                 changed = true;
@@ -279,6 +294,8 @@ impl<T> View<T> for TextInput<T> {
 
             if e.is(Code::Escape) {
                 editor.action(&mut cx.fonts().font_system, Action::Escape);
+                cx.set_focused(false);
+                cx.request_draw();
             }
 
             if e.is(Code::Enter) && self.multiline {
@@ -293,73 +310,53 @@ impl<T> View<T> for TextInput<T> {
                 submit = true;
             }
 
-            if e.is(Code::Left) && !e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::Left);
-                cx.request_layout();
+            if let Some(action) = move_key(e) {
+                editor.action(&mut cx.fonts().font_system, action);
+                cx.request_draw();
                 state.blink = 0.0;
             }
 
-            if e.is(Code::Right) && !e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::Right);
-                cx.request_layout();
-                state.blink = 0.0;
+            if e.is(Code::C) && e.modifiers.ctrl {
+                if let Some(selection) = editor.copy_selection() {
+                    cx.clipboard().set(selection);
+                }
             }
 
-            if e.is(Code::Up) && !e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::Up);
-                cx.request_layout();
-                state.blink = 0.0;
-            }
-
-            if e.is(Code::Down) && !e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::Down);
-                cx.request_layout();
-                state.blink = 0.0;
-            }
-
-            if e.is(Code::Left) && e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::LeftWord);
-                cx.request_layout();
-                state.blink = 0.0;
-            }
-
-            if e.is(Code::Right) && e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::RightWord);
-                cx.request_layout();
-                state.blink = 0.0;
-            }
-
-            if e.is(Code::Home) && !e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::Home);
-                cx.request_layout();
-                state.blink = 0.0;
-            }
-
-            if e.is(Code::End) && !e.modifiers.ctrl {
-                editor.action(&mut cx.fonts().font_system, Action::End);
-                cx.request_layout();
-                state.blink = 0.0;
-            }
-
-            if changed || submit {
-                let text = state.text();
-
-                if changed {
-                    if let Some(ref mut on_change) = self.on_change {
-                        on_change(cx, data, text.clone());
-                        cx.request_rebuild();
-                    }
+            if e.is(Code::X) && e.modifiers.ctrl {
+                if let Some(selection) = editor.copy_selection() {
+                    cx.clipboard().set(selection);
                 }
 
-                if submit {
-                    if let Some(ref mut on_submit) = self.on_submit {
-                        on_submit(cx, data, text);
-                        cx.request_rebuild();
+                editor.delete_selection();
+                changed = true;
+            }
 
-                        if self.text.is_none() {
-                            state.editor.buffer_mut().lines.clear();
-                            state.editor.set_cursor(cosmic_text::Cursor::default());
-                        }
+            if e.is(Code::V) && e.modifiers.ctrl {
+                let text = cx.clipboard().get();
+                editor.insert_string(&text, None);
+            }
+
+            if !(changed || submit) {
+                return;
+            }
+
+            let text = state.text();
+
+            if changed {
+                if let Some(ref mut on_change) = self.on_change {
+                    on_change(cx, data, text.clone());
+                    cx.request_rebuild();
+                }
+            }
+
+            if submit {
+                if let Some(ref mut on_submit) = self.on_submit {
+                    on_submit(cx, data, text);
+                    cx.request_rebuild();
+
+                    if self.text.is_none() {
+                        state.editor.buffer_mut().lines.clear();
+                        state.editor.set_cursor(cosmic_text::Cursor::default());
                     }
                 }
             }
@@ -368,6 +365,7 @@ impl<T> View<T> for TextInput<T> {
         if let Some(e) = event.get::<PointerPressed>() {
             if !cx.is_hot() {
                 if cx.is_focused() {
+                    (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                     cx.set_focused(false);
                     cx.request_draw();
                 }

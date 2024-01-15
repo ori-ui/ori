@@ -10,3 +10,10 @@ pub struct Modifiers {
     /// Whether the meta key is held down.
     pub meta: bool,
 }
+
+impl Modifiers {
+    /// Check if any modifiers are held down.
+    pub fn any(&self) -> bool {
+        self.shift || self.ctrl || self.alt || self.meta
+    }
+}

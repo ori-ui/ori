@@ -16,6 +16,7 @@ use winit::{
 };
 
 use crate::{
+    clipboard::WinitClipboardProvider,
     convert::{convert_key, convert_mouse_button, is_pressed},
     log::error_internal,
     window::WinitWindow,
@@ -34,6 +35,7 @@ pub(crate) fn launch<T: 'static>(
     }
 
     let mut state = AppState::new(ui, windows);
+    state.ui.set_clipboard(WinitClipboardProvider::new());
 
     event_loop.run(move |event, target| {
         match event {

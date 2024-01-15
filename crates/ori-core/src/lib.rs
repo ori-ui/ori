@@ -4,6 +4,7 @@
 //! Core library for the Ori UI framework.
 
 pub mod canvas;
+pub mod clipboard;
 pub mod command;
 pub mod delegate;
 pub mod event;

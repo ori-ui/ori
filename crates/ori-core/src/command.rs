@@ -162,16 +162,21 @@ pub struct CommandReceiver {
 }
 
 impl CommandReceiver {
-    /// Try receive a command.
-    pub fn try_recv(&mut self) -> Option<Command> {
-        let command = self.rx.try_recv().ok()?;
+    fn try_recv_inner(&self) -> Option<Command> {
+        self.rx.try_recv().ok()
+    }
 
-        if let Some(task) = command.get::<Arc<CommandTask>>() {
+    /// Try receive a command.
+    pub fn try_recv(&self) -> Option<Command> {
+        let mut command = self.try_recv_inner()?;
+
+        while let Some(task) = command.get::<Arc<CommandTask>>() {
             // SAFETY: the only way to send a CommandTask is through CommandProxy::spawn_async,
-            // since CommandTask is not public. and CommandReceiver does not implement Clone.
-            // therefore, we have unique access to the task and can safely poll.
+            // since CommandTask is not public, and CommandReceiver does not implement Clone or
+            // Sync. therefore, it is impossible for `task` to be polled from multiple threads at
+            // once.
             unsafe { task.poll() };
-            return None;
+            command = self.try_recv_inner()?;
         }
 
         Some(command)
@@ -235,7 +240,7 @@ impl CommandTask {
         RawWaker::new(data.cast(), Self::raw_waker_vtable())
     }
 
-    // SAFETY: this must only be called from one thread at a time.
+    // SAFETY: must never be called anywhere other than `CommandReceiver::try_recv`
     unsafe fn poll(self: &Arc<Self>) {
         let future_slot = &mut *self.future.get();
 

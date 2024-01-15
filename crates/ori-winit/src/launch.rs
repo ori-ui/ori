@@ -119,7 +119,7 @@ impl<T> AppState<T> {
 
         for (desc, builder) in mem::take(&mut self.windows) {
             if let Err(err) = self.create_window(target, desc, builder) {
-                error_internal!("Failed to create window: {:?}", err);
+                error_internal!("Failed to create window: {}", err);
                 return;
             }
         }

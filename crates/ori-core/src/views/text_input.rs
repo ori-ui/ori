@@ -409,9 +409,9 @@ impl<T> View<T> for TextInput<T> {
             }
 
             if cx.is_hot() {
-                cx.set_cursor(Cursor::Text);
+                cx.view_state.set_cursor(Some(Cursor::Text));
             } else {
-                cx.set_cursor(None);
+                cx.view_state.set_cursor(None);
             }
         }
 

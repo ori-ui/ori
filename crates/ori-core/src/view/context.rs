@@ -16,7 +16,7 @@ use crate::{
     layout::{Affine, Point, Rect, Size},
     text::{Fonts, TextBuffer},
     view::ViewState,
-    window::{Cursor, Window, WindowDescriptor, WindowId},
+    window::{Window, WindowDescriptor, WindowId},
 };
 
 use super::{View, ViewId};
@@ -570,35 +570,6 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, 
     /// Get whether a child view is active.
     pub fn has_active(&self) -> bool {
         self.view_state.has_active()
-    }
-
-    /// Set the cursor of the view.
-    pub fn set_cursor(&mut self, cursor: impl Into<Option<Cursor>>) {
-        self.view_state.cursor = cursor.into();
-    }
-
-    /// Get whether the a child view has the cursor.
-    pub fn has_cursor(&self) -> bool {
-        self.view_state.has_cursor()
-    }
-
-    /// Get whether the view has soft input.
-    pub fn has_soft_input(&self) -> bool {
-        self.view_state.has_soft_input()
-    }
-
-    /// Set whether the view has soft input.
-    pub fn set_soft_input(&mut self, soft_input: bool) {
-        self.view_state.soft_input = soft_input;
-    }
-
-    pub(crate) fn update(&mut self) {
-        match self.view_state.cursor {
-            Some(cursor) if !self.view_state.has_cursor() => {
-                self.window.set_cursor(cursor);
-            }
-            _ => {}
-        }
     }
 
     /// Get the flex grow of the view.

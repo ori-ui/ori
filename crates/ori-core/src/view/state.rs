@@ -21,6 +21,38 @@ bitflags::bitflags! {
     }
 }
 
+bitflags::bitflags! {
+    /// Flags that indicate state of a view.
+    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+    pub struct ViewFlags: u8 {
+        /// The view is hot.
+        const HOT = 1 << 0;
+        /// The view is focused.
+        const FOCUSED = 1 << 1;
+        /// The view is active.
+        const ACTIVE = 1 << 2;
+        /// The view has a hot child.
+        const HAS_HOT = 1 << 3;
+        /// The view has a focused child.
+        const HAS_FOCUSED = 1 << 4;
+        /// The view has an active child.
+        const HAS_ACTIVE = 1 << 5;
+
+        /// Equivalent to `Self::HAS_HOT | Self::HAS_FOCUSED | Self::HAS_ACTIVE`.
+        const HAS_ALL = Self::HAS_HOT.bits() | Self::HAS_FOCUSED.bits() | Self::HAS_ACTIVE.bits();
+    }
+}
+
+impl ViewFlags {
+    fn has(self) -> Self {
+        Self::from_bits_retain((self & Self::HAS_ALL).bits() << 3)
+    }
+
+    fn propagate(self) -> Self {
+        self.has() | (self & Self::HAS_ALL)
+    }
+}
+
 /// An opaque unique identifier for a view.
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -76,12 +108,7 @@ impl Display for ViewId {
 pub struct ViewState {
     pub(crate) id: ViewId,
     /* flags */
-    pub(crate) hot: bool,
-    pub(crate) focused: bool,
-    pub(crate) active: bool,
-    pub(crate) has_hot: bool,
-    pub(crate) has_focused: bool,
-    pub(crate) has_active: bool,
+    pub(crate) flags: ViewFlags,
     pub(crate) update: Update,
     /* layout */
     pub(crate) flex_grow: f32,
@@ -90,10 +117,7 @@ pub struct ViewState {
     pub(crate) transform: Affine,
     /* cursor */
     pub(crate) cursor: Option<Cursor>,
-    pub(crate) has_cursor: bool,
-    /* input */
-    pub(crate) soft_input: bool,
-    pub(crate) has_soft_input: bool,
+    pub(crate) inherited_cursor: Option<Cursor>,
 }
 
 impl Default for ViewState {
@@ -101,12 +125,7 @@ impl Default for ViewState {
         Self {
             id: ViewId::new(),
             /* flags */
-            hot: false,
-            focused: false,
-            active: false,
-            has_hot: false,
-            has_focused: false,
-            has_active: false,
+            flags: ViewFlags::default(),
             update: Update::LAYOUT | Update::DRAW,
             /* layout */
             flex_grow: 0.0,
@@ -115,22 +134,15 @@ impl Default for ViewState {
             transform: Affine::IDENTITY,
             /* cursor */
             cursor: None,
-            has_cursor: false,
-            /* input */
-            soft_input: false,
-            has_soft_input: false,
+            inherited_cursor: None,
         }
     }
 }
 
 impl ViewState {
     pub(crate) fn prepare(&mut self) {
-        self.has_hot = false;
-        self.has_focused = false;
-        self.has_active = false;
-
-        self.has_cursor = false;
-        self.has_soft_input = false;
+        self.flags.remove(ViewFlags::HAS_ALL);
+        self.inherited_cursor = self.cursor;
     }
 
     pub(crate) fn prepare_layout(&mut self) {
@@ -144,13 +156,9 @@ impl ViewState {
     }
 
     pub(crate) fn propagate(&mut self, child: &mut Self) {
-        self.has_hot |= self.hot || child.hot || child.has_hot;
-        self.has_focused |= self.focused || child.focused || child.has_focused;
-        self.has_active |= self.hot || child.active || child.has_active;
-
-        self.has_cursor |= child.has_cursor || child.cursor.is_some();
-        self.has_soft_input |= self.has_soft_input || child.has_soft_input || child.soft_input;
         self.update |= child.update;
+        self.flags |= self.flags.propagate() | child.flags.propagate();
+        self.inherited_cursor = self.cursor().or(child.cursor());
     }
 }
 
@@ -162,57 +170,47 @@ impl ViewState {
 
     /// Get whether the view is hot.
     pub fn is_hot(&self) -> bool {
-        self.hot
+        self.flags.contains(ViewFlags::HOT)
     }
 
     /// Set whether the view is hot.
     pub fn set_hot(&mut self, hot: bool) {
-        self.hot = hot;
+        self.flags.set(ViewFlags::HOT, hot);
     }
 
     /// Get whether the view is focused.
     pub fn is_focused(&self) -> bool {
-        self.focused
+        self.flags.contains(ViewFlags::FOCUSED)
     }
 
     /// Set whether the view is focused.
     pub fn set_focused(&mut self, focused: bool) {
-        self.focused = focused;
+        self.flags.set(ViewFlags::FOCUSED, focused);
     }
 
     /// Get whether the view is active.
     pub fn is_active(&self) -> bool {
-        self.active
+        self.flags.contains(ViewFlags::ACTIVE)
     }
 
     /// Set whether the view is active.
     pub fn set_active(&mut self, active: bool) {
-        self.active = active;
+        self.flags.set(ViewFlags::ACTIVE, active);
     }
 
     /// Get whether the view has a hot child.
     pub fn has_hot(&self) -> bool {
-        self.has_hot
+        self.flags.contains(ViewFlags::HAS_HOT)
     }
 
     /// Get whether the view has a focused child.
     pub fn has_focused(&self) -> bool {
-        self.has_focused
+        self.flags.contains(ViewFlags::HAS_FOCUSED)
     }
 
     /// Get whether the view has an active child.
     pub fn has_active(&self) -> bool {
-        self.has_active
-    }
-
-    /// Get whether the view has a child with a cursor.
-    pub fn has_cursor(&self) -> bool {
-        self.has_cursor
-    }
-
-    /// Get whether the view has a child with soft input.
-    pub fn has_soft_input(&self) -> bool {
-        self.has_soft_input
+        self.flags.contains(ViewFlags::HAS_ACTIVE)
     }
 
     /// Get the flex grow of the view.
@@ -275,21 +273,6 @@ impl ViewState {
         self.transform = Affine::translate(translation);
     }
 
-    /// Get the cursor of the view.
-    pub fn cursor(&self) -> Option<Cursor> {
-        self.cursor
-    }
-
-    /// Set the cursor of the view.
-    pub fn set_cursor(&mut self, cursor: impl Into<Option<Cursor>>) {
-        self.cursor = cursor.into();
-    }
-
-    /// Set whether the view has soft input.
-    pub fn set_soft_input(&mut self, soft_input: bool) {
-        self.soft_input = soft_input;
-    }
-
     /// Request a layout of the view tree.
     pub fn request_layout(&mut self) {
         self.update |= Update::LAYOUT | Update::DRAW;
@@ -327,5 +310,27 @@ impl ViewState {
     /// Get the [`Update`] of the view.
     pub fn update(&self) -> Update {
         self.update
+    }
+
+    /// Get the cursor of the view.
+    pub fn cursor(&self) -> Option<Cursor> {
+        self.cursor.or(self.inherited_cursor)
+    }
+
+    /// Set the cursor of the view.
+    pub fn set_cursor(&mut self, cursor: Option<Cursor>) {
+        self.cursor = cursor;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_propagate() {
+        assert_eq!(ViewFlags::HOT.propagate(), ViewFlags::HAS_HOT);
+        assert_eq!(ViewFlags::FOCUSED.propagate(), ViewFlags::HAS_FOCUSED);
+        assert_eq!(ViewFlags::ACTIVE.propagate(), ViewFlags::HAS_ACTIVE);
     }
 }

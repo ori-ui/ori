@@ -9,7 +9,7 @@ use crate::{
         BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View,
         ViewState,
     },
-    window::{Cursor, Window},
+    window::Window,
 };
 
 use super::{UiRequest, UiRequests};
@@ -132,17 +132,6 @@ impl<T> WindowUi<T> {
         self.view_state.request_layout();
     }
 
-    fn update_cursor(&mut self) {
-        if !self.view_state.has_cursor {
-            self.window_mut().set_cursor(Cursor::default());
-        }
-    }
-
-    fn update_soft_input(&mut self) {
-        let soft_input = self.view_state.has_soft_input;
-        self.window_mut().set_soft_input(soft_input);
-    }
-
     fn request_redraw_if_needed(&mut self) {
         // if anything needs to be updated after the event, we request a draw
         //
@@ -153,9 +142,10 @@ impl<T> WindowUi<T> {
     }
 
     fn update(&mut self) {
-        self.update_cursor();
-        self.update_soft_input();
         self.request_redraw_if_needed();
+
+        let cursor = self.view_state.cursor().unwrap_or_default();
+        self.window.set_cursor(cursor);
     }
 
     fn rebuild(&mut self, base: &mut BaseCx, data: &mut T) {
@@ -259,10 +249,6 @@ impl<T> WindowUi<T> {
         Theme::with_global(&mut self.theme, || {
             self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
         });
-
-        if !self.view_state.has_cursor {
-            self.window_mut().set_cursor(Cursor::default());
-        }
     }
 
     /// Render the scene.

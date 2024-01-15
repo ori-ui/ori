@@ -17,7 +17,7 @@ pub struct State<T, V: View<T> + ?Sized> {
 impl<T, V: View<T> + ?Sized> State<T, V> {
     /// Set the state to `active`.
     pub fn with_active(mut self, active: bool) -> Self {
-        self.view_state.active = active;
+        self.view_state.set_active(active);
         self
     }
 }
@@ -97,7 +97,6 @@ impl<V> Pod<V> {
 
         f(&mut new_cx);
 
-        new_cx.update();
         cx.view_state.propagate(view_state);
     }
 
@@ -114,7 +113,6 @@ impl<V> Pod<V> {
         new_cx.view_state = view_state;
 
         f(&mut new_cx, event);
-        new_cx.update();
 
         cx.view_state.propagate(view_state);
     }
@@ -171,7 +169,6 @@ impl<V> Pod<V> {
         new_cx.view_state = view_state;
 
         let size = f(&mut new_cx);
-        new_cx.update();
 
         view_state.size = size;
         cx.view_state.propagate(view_state);
@@ -199,7 +196,6 @@ impl<V> Pod<V> {
 
         // draw the content
         f(&mut new_cx, &mut canvas);
-        new_cx.update();
 
         // propagate the view state
         cx.view_state.propagate(view_state);

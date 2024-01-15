@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use crate::{
     clipboard::{Clipboard, ClipboardProvider},
     command::{Command, CommandProxy, CommandReceiver, CommandWaker},
-    delegate::{Delegate, DelegateCx},
+    delegate::Delegate,
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyPressed, KeyReleased, Modifiers, OpenWindow,
         PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
@@ -14,7 +14,7 @@ use crate::{
     layout::{Point, Vector},
     text::Fonts,
     theme::{Theme, ThemeBuilder, SCALE_FACTOR, WINDOW_SIZE},
-    view::{BaseCx, Contexts},
+    view::{BaseCx, Contexts, DelegateCx},
     window::{Window, WindowId},
 };
 

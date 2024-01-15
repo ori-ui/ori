@@ -214,6 +214,17 @@ impl<'a> BaseCx<'a> {
     }
 }
 
+/// A context for a [`Delegate`](crate::delegate::Delegate).
+pub struct DelegateCx<'a, 'b> {
+    pub(crate) base: &'a mut BaseCx<'b>,
+}
+
+impl<'a, 'b> DelegateCx<'a, 'b> {
+    pub(crate) fn new(base: &'a mut BaseCx<'b>) -> Self {
+        Self { base }
+    }
+}
+
 /// A context for building the view tree.
 pub struct BuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
@@ -446,13 +457,19 @@ macro_rules! impl_deref {
             }
         }
     };
+    ($($ident:ident),* $(,)?) => {
+        $(impl_deref!($ident);)*
+    };
 }
 
-impl_deref!(BuildCx);
-impl_deref!(RebuildCx);
-impl_deref!(EventCx);
-impl_deref!(LayoutCx);
-impl_deref!(DrawCx);
+impl_deref! {
+    DelegateCx,
+    BuildCx,
+    RebuildCx,
+    EventCx,
+    LayoutCx,
+    DrawCx,
+}
 
 macro_rules! impl_context {
     ($ty:ty { $($impl:item)* }) => {

@@ -36,7 +36,7 @@ pub mod prelude {
             Color, Curve, Fragment, Mesh, Primitive, Vertex,
         },
         clipboard::Clipboard,
-        delegate::{Delegate, DelegateCx},
+        delegate::Delegate,
         event::{
             ActiveChanged, AnimationFrame, CloseRequested, CloseWindow, Code, Event, HotChanged,
             KeyPressed, Modifiers, OpenWindow, Pointer, PointerButton, PointerId, PointerLeft,
@@ -59,8 +59,8 @@ pub mod prelude {
         },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
-            any, pod, AnyView, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, PodSeq,
-            RebuildCx, SeqState, State, View, ViewSeq, ViewState,
+            any, pod, AnyView, BoxedView, BuildCx, DelegateCx, DrawCx, EventCx, LayoutCx, Pod,
+            PodSeq, RebuildCx, SeqState, State, View, ViewSeq, ViewState,
         },
         views::*,
         window::{Cursor, Window, WindowDescriptor, WindowId},

@@ -59,8 +59,15 @@ impl GlowRender {
         height: u32,
         samples: u8,
     ) -> Result<Self, GlowError> {
-        let display = unsafe { Display::new(display_handle, DisplayApiPreference::Egl)? };
+        #[allow(unused)]
+        let mut api = DisplayApiPreference::Egl;
 
+        #[cfg(target_os = "windows")]
+        {
+            api = DisplayApiPreference::Wgl(Some(window_handle));
+        }
+
+        let display = unsafe { Display::new(display_handle, api)? };
         let config = Self::find_config(&display, samples)?;
 
         let non_zero_width = NonZeroU32::new(width).unwrap();

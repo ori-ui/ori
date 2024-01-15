@@ -238,7 +238,10 @@ impl<T> Ui<T> {
     /// Tell the UI that a window has been resized.
     pub fn resized(&mut self, window_id: WindowId) {
         self.rebuild_theme(window_id);
-        self.window_mut(window_id).request_layout();
+
+        if let Some(window) = self.windows.get_mut(&window_id) {
+            window.request_layout();
+        }
     }
 
     /// Tell the UI that a window wants to close.

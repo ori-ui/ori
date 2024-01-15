@@ -146,7 +146,10 @@ impl<T> View<T> for Icon {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
+        let offset = cx.rect().center() - state.rect().center();
+
         let mesh = cx.rasterize_text(state, cx.rect());
+        canvas.translate(offset);
         canvas.draw(mesh);
     }
 }

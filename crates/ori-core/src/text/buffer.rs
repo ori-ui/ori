@@ -1,6 +1,6 @@
 use cosmic_text::{Buffer, Shaping};
 
-use crate::layout::Size;
+use crate::layout::{Point, Rect, Size};
 
 use super::{Fonts, TextAlign, TextAttributes, TextWrap};
 
@@ -59,6 +59,11 @@ impl TextBuffer {
     /// Get the size of the text buffer.
     pub fn size(&self) -> Size {
         Fonts::buffer_size(&self.buffer)
+    }
+
+    /// Get the rect of the text buffer.
+    pub fn rect(&self) -> Rect {
+        Rect::min_size(Point::ZERO, self.size())
     }
 
     /// Get the bounds of the text buffer.

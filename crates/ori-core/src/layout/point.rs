@@ -74,6 +74,11 @@ impl Point {
         Self::new(self.x.round(), self.y.round())
     }
 
+    /// Get the fractional component by element.
+    pub fn fract(self) -> Self {
+        Self::new(self.x.fract(), self.y.fract())
+    }
+
     /// Compute the dot distance between two points.
     pub fn distance(self, other: Self) -> f32 {
         Vector::length(other - self)

@@ -146,30 +146,25 @@ impl Fonts {
 
         for (uv, rect, color) in glyphs {
             let index = mesh.vertices.len() as u32;
+            let offset = rect.top_left().fract().to_vector();
 
-            // NOTE: rounding the positions here makes the text look a lot better
-            // i'm not sure why, and i'm not sure if it's the right way to go
-            //
-            // TODO: maybe we should round the positions in physical coordinates instead?
-            // do note that this would require knowing the scale factor of the window and
-            // re-rasterizing the text if the scale factor changes, which is not ideal
             mesh.vertices.push(Vertex {
-                position: rect.top_left().round(),
+                position: rect.top_left() - offset,
                 tex_coords: uv.top_left(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.top_right().round(),
+                position: rect.top_right() - offset,
                 tex_coords: uv.top_right(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.bottom_right().round(),
+                position: rect.bottom_right() - offset,
                 tex_coords: uv.bottom_right(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.bottom_left().round(),
+                position: rect.bottom_left() - offset,
                 tex_coords: uv.bottom_left(),
                 color,
             });

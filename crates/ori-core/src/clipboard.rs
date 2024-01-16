@@ -3,7 +3,7 @@
 use crate::log::warn_internal;
 
 /// A clipboard.
-pub trait ClipboardProvider {
+pub trait Clipboard {
     /// Returns the contents of the clipboard.
     fn get(&mut self) -> String;
 
@@ -13,7 +13,7 @@ pub trait ClipboardProvider {
 
 struct DummyClipboard;
 
-impl ClipboardProvider for DummyClipboard {
+impl Clipboard for DummyClipboard {
     fn get(&mut self) -> String {
         warn_internal!("Clipboard context not set!");
         String::new()
@@ -25,17 +25,17 @@ impl ClipboardProvider for DummyClipboard {
 }
 
 /// The clipboard context.
-pub struct Clipboard {
-    provider: Box<dyn ClipboardProvider>,
+pub struct ClipboardContext {
+    provider: Box<dyn Clipboard>,
 }
 
-impl Default for Clipboard {
+impl Default for ClipboardContext {
     fn default() -> Self {
         Self::dummy()
     }
 }
 
-impl Clipboard {
+impl ClipboardContext {
     /// Creates a dummy clipboard, that does nothing.
     pub fn dummy() -> Self {
         Self {
@@ -44,7 +44,7 @@ impl Clipboard {
     }
 
     /// Creates a new clipboard.
-    pub fn new(provider: impl ClipboardProvider + 'static) -> Self {
+    pub fn new(provider: impl Clipboard + 'static) -> Self {
         Self {
             provider: Box::new(provider),
         }
@@ -58,5 +58,15 @@ impl Clipboard {
     /// Sets the contents of the clipboard.
     pub fn set(&mut self, contents: String) {
         self.provider.set(contents);
+    }
+}
+
+impl Clipboard for ClipboardContext {
+    fn get(&mut self) -> String {
+        self.get()
+    }
+
+    fn set(&mut self, contents: String) {
+        self.set(contents);
     }
 }

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    clipboard::{Clipboard, ClipboardProvider},
+    clipboard::{Clipboard, ClipboardContext},
     command::{Command, CommandProxy, CommandReceiver, CommandWaker},
     delegate::Delegate,
     event::{
@@ -95,8 +95,8 @@ impl<T> Ui<T> {
     }
 
     /// Set the clipboard provider.
-    pub fn set_clipboard(&mut self, provider: impl ClipboardProvider + 'static) {
-        self.contexts.insert(Clipboard::new(provider));
+    pub fn set_clipboard(&mut self, provider: impl Clipboard + 'static) {
+        self.contexts.insert(ClipboardContext::new(provider));
     }
 
     /// Add a new window.

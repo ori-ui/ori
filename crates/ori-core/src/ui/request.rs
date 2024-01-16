@@ -11,7 +11,7 @@ use super::UiBuilder;
 #[must_use]
 pub enum UiRequest<T> {
     /// Render a window.
-    Render(WindowId),
+    RedrawWindow(WindowId),
     /// Create a window.
     CreateWindow(WindowDescriptor, UiBuilder<T>),
     /// Remove a window.
@@ -21,7 +21,7 @@ pub enum UiRequest<T> {
 impl<T> Debug for UiRequest<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            UiRequest::Render(id) => write!(f, "Render({:?})", id),
+            UiRequest::RedrawWindow(id) => write!(f, "Render({:?})", id),
             UiRequest::CreateWindow(desc, _) => write!(f, "CreateWindow({:?})", desc),
             UiRequest::RemoveWindow(id) => write!(f, "RemoveWindow({:?})", id),
         }
@@ -40,6 +40,13 @@ impl<T> UiRequests<T> {
         Self {
             requests: LinkedList::new(),
         }
+    }
+
+    /// Create a new list of requests with one element.
+    pub fn one(request: UiRequest<T>) -> Self {
+        let mut requests = Self::new();
+        requests.push(request);
+        requests
     }
 
     /// Get the number of requests in the list.

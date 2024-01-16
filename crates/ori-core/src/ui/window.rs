@@ -112,6 +112,19 @@ impl<T> WindowUi<T> {
         self.view_state.needs_draw()
     }
 
+    /// Get whether the window needs to be re-drawn.
+    pub fn needs_redraw(&self) -> bool {
+        !self.view_state.update.is_empty() || self.animation_frame.is_some()
+    }
+
+    fn redraw_requests(&self) -> UiRequests<T> {
+        if !self.view_state.update.is_empty() || self.animation_frame.is_some() {
+            UiRequests::one(UiRequest::RedrawWindow(self.window.id()))
+        } else {
+            UiRequests::new()
+        }
+    }
+
     /// Get the background color of the window.
     pub fn color(&self) -> Color {
         if let Some(color) = self.window.color() {
@@ -132,18 +145,7 @@ impl<T> WindowUi<T> {
         self.view_state.request_layout();
     }
 
-    fn request_redraw_if_needed(&mut self) {
-        // if anything needs to be updated after the event, we request a draw
-        //
-        // FIXME: this will sometimes cause unnecessary re-renders
-        if !self.view_state.update.is_empty() || self.animation_frame.is_some() {
-            self.window.request_draw();
-        }
-    }
-
     fn update(&mut self) {
-        self.request_redraw_if_needed();
-
         let cursor = self.view_state.cursor().unwrap_or_default();
         self.window.set_cursor(cursor);
     }
@@ -175,7 +177,7 @@ impl<T> WindowUi<T> {
     /// Handle an event.
     ///
     /// This will rebuild or layout the view if necessary.
-    pub fn event(&mut self, base: &mut BaseCx, data: &mut T, event: &Event) {
+    pub fn event(&mut self, base: &mut BaseCx, data: &mut T, event: &Event) -> UiRequests<T> {
         // if the view tree needs to be rebuilt, we do that first, as the
         // event and layout might depend on the new view tree
         if self.needs_rebuild() {
@@ -203,6 +205,7 @@ impl<T> WindowUi<T> {
         });
 
         self.update();
+        self.redraw_requests()
     }
 
     fn layout(&mut self, base: &mut BaseCx, data: &mut T) {
@@ -258,7 +261,7 @@ impl<T> WindowUi<T> {
         if let Some(animation_frame) = self.animation_frame.take() {
             let dt = animation_frame.elapsed().as_secs_f32();
             let event = Event::new(AnimationFrame(dt));
-            self.event(base, data, &event);
+            let _ = self.event(base, data, &event);
         }
 
         // if the view tree needs to be rebuilt, do that first, as the
@@ -279,9 +282,6 @@ impl<T> WindowUi<T> {
         }
 
         self.update();
-
-        let mut requests = UiRequests::new();
-        requests.push(UiRequest::Render(self.window.id()));
-        requests
+        self.redraw_requests()
     }
 }

@@ -139,7 +139,7 @@ impl<T> AppState<T> {
         request: UiRequest<T>,
     ) -> Result<(), Error> {
         match request {
-            UiRequest::Render(window) => self.render(window)?,
+            UiRequest::RedrawWindow(window) => self.redraw_window(window),
             UiRequest::CreateWindow(desc, builder) => self.create_window(target, desc, builder)?,
             UiRequest::RemoveWindow(window_id) => self.remove_window(window_id),
         }
@@ -275,16 +275,13 @@ impl<T> AppState<T> {
         self.renders.remove(&window_id);
     }
 
-    fn redraw(&mut self, window_id: winit::window::WindowId) {
-        // if the window id is not in the map, we ignore the event
-        if let Some(&window_id) = self.window_ids.get(&window_id) {
-            // render the window
-            self.ui.render(window_id);
-        }
+    fn redraw_window(&mut self, window_id: ori_core::window::WindowId) {
+        self.ui.window_mut(window_id).window_mut().request_draw();
     }
 
     fn render(&mut self, window_id: ori_core::window::WindowId) -> Result<(), Error> {
         // sort the scene
+        self.ui.render(window_id);
         self.ui.window_mut(window_id).scene_mut().sort();
 
         let window = self.ui.window(window_id);
@@ -311,7 +308,11 @@ impl<T> AppState<T> {
         Ok(())
     }
 
-    fn window_event(&mut self, winit_id: winit::window::WindowId, event: WindowEvent) {
+    fn window_event(
+        &mut self,
+        winit_id: winit::window::WindowId,
+        event: WindowEvent,
+    ) {
         // if the window id is not in the map, we ignore the event
         let Some(&id) = self.window_ids.get(&winit_id) else {
             return;
@@ -319,7 +320,9 @@ impl<T> AppState<T> {
 
         match event {
             WindowEvent::RedrawRequested => {
-                self.redraw(winit_id);
+                if let Err(err) = self.render(id) {
+                    error_internal!("Failed to render: {}", err);
+                }
             }
             WindowEvent::CloseRequested => {
                 self.ui.close_requested(id);

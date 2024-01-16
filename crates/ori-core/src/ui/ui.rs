@@ -434,7 +434,8 @@ impl<T> Ui<T> {
 
         if !event.is_handled() {
             if let Some(window_ui) = self.windows.get_mut(&window_id) {
-                window_ui.event(&mut base, &mut self.data, event);
+                let requests = window_ui.event(&mut base, &mut self.data, event);
+                self.requests.extend(requests);
             }
         }
 
@@ -456,7 +457,8 @@ impl<T> Ui<T> {
 
         if !event.is_handled() {
             for window_ui in self.windows.values_mut() {
-                window_ui.event(&mut base, &mut self.data, event);
+                let requests = window_ui.event(&mut base, &mut self.data, event);
+                self.requests.extend(requests);
             }
         }
 

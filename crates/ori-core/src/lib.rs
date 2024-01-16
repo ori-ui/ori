@@ -11,7 +11,6 @@ pub mod event;
 pub mod image;
 pub mod launcher;
 pub mod layout;
-pub mod log;
 pub mod rebuild;
 pub mod shell;
 pub mod text;
@@ -22,3 +21,6 @@ pub mod view;
 pub mod window;
 
 pub mod views;
+
+#[allow(unused_imports)]
+pub mod log;

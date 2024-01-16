@@ -1,11 +1,11 @@
 use clipboard::ClipboardProvider as _;
-use ori_core::clipboard::ClipboardProvider;
+use ori_core::clipboard::Clipboard;
 
-pub(crate) struct WinitClipboardProvider {
+pub(crate) struct WinitClipboard {
     inner: clipboard::ClipboardContext,
 }
 
-impl WinitClipboardProvider {
+impl WinitClipboard {
     pub(crate) fn new() -> Self {
         Self {
             inner: clipboard::ClipboardContext::new().unwrap(),
@@ -13,7 +13,7 @@ impl WinitClipboardProvider {
     }
 }
 
-impl ClipboardProvider for WinitClipboardProvider {
+impl Clipboard for WinitClipboard {
     fn get(&mut self) -> String {
         self.inner.get_contents().unwrap_or_default()
     }

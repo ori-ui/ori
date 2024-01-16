@@ -106,10 +106,10 @@ impl Icon {
 fn generate(f: &mut impl Write, icons: &[Icon]) -> io::Result<()> {
     /* generate the Icon enum */
 
-    writeln!(f, "/// An icon kind.")?;
+    writeln!(f, "/// An icon code.")?;
     writeln!(f, "#[non_exhaustive]")?;
     writeln!(f, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]")?;
-    writeln!(f, "pub enum IconKind {{")?;
+    writeln!(f, "pub enum IconCode {{")?;
 
     for icon in icons {
         writeln!(
@@ -124,7 +124,7 @@ fn generate(f: &mut impl Write, icons: &[Icon]) -> io::Result<()> {
 
     /* generate the Icon impl */
 
-    writeln!(f, "impl IconKind {{")?;
+    writeln!(f, "impl IconCode {{")?;
 
     /* generate the Icon::code_point method */
 
@@ -134,6 +134,19 @@ fn generate(f: &mut impl Write, icons: &[Icon]) -> io::Result<()> {
 
     for icon in icons {
         writeln!(f, "Self::{} => '\\u{{{}}}',", icon.ident(), icon.unicode)?;
+    }
+
+    writeln!(f, "}}")?;
+    writeln!(f, "}}")?;
+
+    /* generate the Icon::as_str method */
+
+    writeln!(f, "/// The code point of the icon as a `&str`.")?;
+    writeln!(f, "pub fn as_str(self) -> &'static str {{")?;
+    writeln!(f, "match self {{")?;
+
+    for icon in icons {
+        writeln!(f, "Self::{} => \"\\u{{{}}}\",", icon.ident(), icon.unicode)?;
     }
 
     writeln!(f, "}}")?;

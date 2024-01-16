@@ -3,18 +3,18 @@ use ori_core::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    text::{FontStretch, FontStyle, FontWeight, TextAttributes, TextBuffer},
+    text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
     view::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
-use crate::IconKind;
+use crate::IconCode;
 
 const REGULAR: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Regular-400.otf");
 const SOLID: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Solid-900.otf");
 const BRAND: &[u8] = include_bytes!("../font/Font Awesome 6 Brands-Regular-400.otf");
 
 /// Create a new [`Icon`].
-pub fn icon(icon: impl Into<IconKind>) -> Icon {
+pub fn icon(icon: impl Into<IconCode>) -> Icon {
     Icon::new(icon)
 }
 
@@ -26,7 +26,7 @@ pub fn icon(icon: impl Into<IconKind>) -> Icon {
 pub struct Icon {
     /// The codepoint of the icon to display.
     #[rebuild(layout)]
-    pub icon: IconKind,
+    pub icon: IconCode,
     /// The size of the icon.
     #[rebuild(layout)]
     pub size: f32,
@@ -37,7 +37,7 @@ pub struct Icon {
 
 impl Icon {
     /// Create a new icon view.
-    pub fn new(icon: impl Into<IconKind>) -> Self {
+    pub fn new(icon: impl Into<IconCode>) -> Self {
         Self {
             icon: icon.into(),
             size: 16.0,
@@ -58,13 +58,6 @@ impl Icon {
     }
 
     fn set_attributes(&self, cx: &mut BaseCx, buffer: &mut TextBuffer) {
-        let mut bytes = [0; 4];
-        let code_point = self.icon.code_point();
-        code_point.encode_utf8(&mut bytes);
-        let bytes = &bytes[0..code_point.len_utf8()];
-
-        let family = self.icon.font().family();
-
         struct FontsLoaded;
 
         // ensure that all the fonts are loaded
@@ -79,11 +72,11 @@ impl Icon {
         buffer.set_metrics(cx.fonts(), self.size, 1.0);
         buffer.set_text(
             cx.fonts(),
-            std::str::from_utf8(bytes).unwrap(),
+            self.icon.as_str(),
             TextAttributes {
-                family,
+                family: self.icon.font().family(),
                 stretch: FontStretch::Normal,
-                weight: FontWeight::NORMAL,
+                weight: self.icon.font().weight(),
                 style: FontStyle::Normal,
                 color: self.color,
             },

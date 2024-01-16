@@ -50,10 +50,10 @@ pub struct Ui<T: 'static> {
 impl<T> Ui<T> {
     /// Create a new [`Ui`] with the given data.
     pub fn new(data: T, waker: CommandWaker) -> Self {
-        let mut fonts = Fonts::default();
-        fonts.load_system_fonts();
-
         let (command_proxy, command_rx) = CommandProxy::new(waker);
+
+        let mut contexts = Contexts::new();
+        contexts.insert(Fonts::default());
 
         Self {
             windows: HashMap::new(),
@@ -64,7 +64,7 @@ impl<T> Ui<T> {
             command_rx,
             quit_requested: false,
             requests: UiRequests::new(),
-            contexts: Contexts::new(),
+            contexts,
             data,
         }
     }

@@ -7,18 +7,11 @@ use ori_core::{
     view::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
-use crate::{IconFont, IconKind};
+use crate::IconKind;
 
 const REGULAR: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Regular-400.otf");
 const SOLID: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Solid-900.otf");
 const BRAND: &[u8] = include_bytes!("../font/Font Awesome 6 Brands-Regular-400.otf");
-
-#[derive(Default)]
-struct IconFonts {
-    regular: bool,
-    solid: bool,
-    brand: bool,
-}
 
 /// Create a new [`Icon`].
 pub fn icon(icon: impl Into<IconKind>) -> Icon {
@@ -29,7 +22,7 @@ pub fn icon(icon: impl Into<IconKind>) -> Icon {
 ///
 /// By default, the icon is rendered using the `icon.font` font family.
 /// This uses the [Font Awesome 6 Regular Free](https://fontawesome.com/) font by default.
-#[derive(Rebuild)]
+#[derive(Rebuild, PartialEq)]
 pub struct Icon {
     /// The codepoint of the icon to display.
     #[rebuild(layout)]
@@ -65,33 +58,28 @@ impl Icon {
     }
 
     fn set_attributes(&self, cx: &mut BaseCx, buffer: &mut TextBuffer) {
-        let mut code_point = [0; 4];
-        self.icon.code_point().encode_utf8(&mut code_point);
+        let mut bytes = [0; 4];
+        let code_point = self.icon.code_point();
+        code_point.encode_utf8(&mut bytes);
+        let bytes = &bytes[0..code_point.len_utf8()];
 
         let family = self.icon.font().family();
 
-        let fonts = cx.context_or_default::<IconFonts>();
+        struct FontsLoaded;
 
-        match self.icon.font() {
-            IconFont::Regular if !fonts.regular => {
-                fonts.regular = true;
-                cx.fonts().load_font(REGULAR).unwrap();
-            }
-            IconFont::Solid if !fonts.solid => {
-                fonts.solid = true;
-                cx.fonts().load_font(SOLID).unwrap();
-            }
-            IconFont::Brand if !fonts.brand => {
-                fonts.brand = true;
-                cx.fonts().load_font(BRAND).unwrap();
-            }
-            _ => {}
+        // ensure that all the fonts are loaded
+        if !cx.contains_context::<FontsLoaded>() {
+            cx.fonts().load_font(REGULAR).unwrap();
+            cx.fonts().load_font(SOLID).unwrap();
+            cx.fonts().load_font(BRAND).unwrap();
+
+            cx.insert_context(FontsLoaded);
         }
 
         buffer.set_metrics(cx.fonts(), self.size, 1.0);
         buffer.set_text(
             cx.fonts(),
-            std::str::from_utf8(&code_point).unwrap(),
+            std::str::from_utf8(bytes).unwrap(),
             TextAttributes {
                 family,
                 stretch: FontStretch::Normal,
@@ -116,7 +104,10 @@ impl<T> View<T> for Icon {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
-        self.set_attributes(cx, state);
+
+        if self != old {
+            self.set_attributes(cx, state);
+        }
     }
 
     fn event(

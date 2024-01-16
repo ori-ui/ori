@@ -149,6 +149,26 @@ impl<'a> BaseCx<'a> {
         self.proxy.cmd_async(future);
     }
 
+    /// Get a reference to the [`Contexts`].
+    pub fn contexts(&self) -> &Contexts {
+        self.contexts
+    }
+
+    /// Get a mutable reference to the [`Contexts`].
+    pub fn contexts_mut(&mut self) -> &mut Contexts {
+        self.contexts
+    }
+
+    /// Insert a context.
+    pub fn insert_context<T: Any>(&mut self, context: T) -> Option<T> {
+        self.contexts.insert(context)
+    }
+
+    /// Check if a context is contained.
+    pub fn contains_context<T: Any>(&self) -> bool {
+        self.contexts.contains::<T>()
+    }
+
     /// Get a context.
     pub fn get_context<T: Any>(&self) -> Option<&T> {
         self.contexts.get::<T>()

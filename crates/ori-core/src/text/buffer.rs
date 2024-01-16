@@ -5,6 +5,7 @@ use crate::layout::{Point, Rect, Size};
 use super::{Fonts, TextAlign, TextAttributes, TextWrap};
 
 /// A convenient wrapper around a [`cosmic_text::Buffer`].
+#[derive(Debug)]
 pub struct TextBuffer {
     buffer: Buffer,
 }

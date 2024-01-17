@@ -6,7 +6,7 @@ struct Data {
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    let button = transition(ease(1.0), data.on, |_, t| {
+    let button = transition(ease(1.0), data.on, |_, _, t| {
         let text_color = Color::RED.mix(Color::GREEN, t);
 
         let label = text("Click me");

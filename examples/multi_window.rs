@@ -50,7 +50,7 @@ fn open_window_button() -> impl View<Data> {
 }
 
 fn close_window_button(data: &mut Data) -> impl View<Data> {
-    let close_window = transition(ease(0.5), !data.windows.is_empty(), |_cx, t| {
+    let close_window = transition(ease(0.5), !data.windows.is_empty(), |_cx, _, t| {
         let active = style(Palette::PRIMARY);
         let inactive = style(Palette::SECONDARY_DARKER);
 

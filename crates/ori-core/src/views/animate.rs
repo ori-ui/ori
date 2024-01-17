@@ -17,12 +17,12 @@ pub fn animate<T, V, S>(
 /// Animate a view when hot changes.
 pub fn transition_hot<T, V>(
     transition: Transition,
-    mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
+    mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
     let mut was_hot = false;
 
-    animate(move |t: &mut f32, cx, _data: &mut T, event| {
+    animate(move |t: &mut f32, cx, data: &mut T, event| {
         if cx.has_hot() != was_hot {
             was_hot = cx.has_hot();
             cx.request_animation_frame();
@@ -31,13 +31,13 @@ pub fn transition_hot<T, V>(
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, cx.is_hot(), *dt) {
                 cx.request_animation_frame();
-                return Some(view(cx, transition.get(*t)));
+                return Some(view(cx, data, transition.get(*t)));
             }
         }
 
         if !built {
             built = true;
-            Some(view(cx, transition.get(*t)))
+            Some(view(cx, data, transition.get(*t)))
         } else {
             None
         }
@@ -47,12 +47,12 @@ pub fn transition_hot<T, V>(
 /// Animate a view when active changes.
 pub fn transition_active<T, V>(
     transition: Transition,
-    mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
+    mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
     let mut was_active = false;
 
-    animate(move |t: &mut f32, cx, _data: &mut T, event| {
+    animate(move |t: &mut f32, cx, data: &mut T, event| {
         if cx.has_active() != was_active {
             was_active = cx.has_active();
             cx.request_animation_frame();
@@ -61,13 +61,13 @@ pub fn transition_active<T, V>(
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, cx.is_active(), *dt) {
                 cx.request_animation_frame();
-                return Some(view(cx, transition.get(*t)));
+                return Some(view(cx, data, transition.get(*t)));
             }
         }
 
         if !built {
             built = true;
-            Some(view(cx, transition.get(*t)))
+            Some(view(cx, data, transition.get(*t)))
         } else {
             None
         }
@@ -77,12 +77,12 @@ pub fn transition_active<T, V>(
 /// Animate a view when focused changes.
 pub fn transition_focused<T, V>(
     transition: Transition,
-    mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
+    mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
     let mut was_focused = false;
 
-    animate(move |t: &mut f32, cx, _data: &mut T, event| {
+    animate(move |t: &mut f32, cx, data: &mut T, event| {
         if cx.has_focused() != was_focused {
             was_focused = cx.has_focused();
             cx.request_animation_frame();
@@ -91,13 +91,13 @@ pub fn transition_focused<T, V>(
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, cx.is_focused(), *dt) {
                 cx.request_animation_frame();
-                return Some(view(cx, transition.get(*t)));
+                return Some(view(cx, data, transition.get(*t)));
             }
         }
 
         if !built {
             built = true;
-            Some(view(cx, transition.get(*t)))
+            Some(view(cx, data, transition.get(*t)))
         } else {
             None
         }
@@ -108,21 +108,21 @@ pub fn transition_focused<T, V>(
 pub fn transition<T, V>(
     transition: Transition,
     active: bool,
-    mut view: impl FnMut(&mut EventCx, f32) -> V + 'static,
+    mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
 
-    animate(move |t: &mut f32, cx, _data: &mut T, event| {
+    animate(move |t: &mut f32, cx, data: &mut T, event| {
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, active, *dt) {
                 cx.request_animation_frame();
-                return Some(view(cx, transition.get(*t)));
+                return Some(view(cx, data, transition.get(*t)));
             }
         }
 
         if !built {
             built = true;
-            Some(view(cx, transition.get(*t)))
+            Some(view(cx, data, transition.get(*t)))
         } else {
             None
         }

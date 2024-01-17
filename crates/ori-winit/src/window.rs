@@ -117,7 +117,7 @@ impl RawWindow for WinitWindow {
         self.soft_input = visible;
     }
 
-    fn drag_window(&mut self) {
+    fn drag(&mut self) {
         let _ = self.window.drag_window();
     }
 

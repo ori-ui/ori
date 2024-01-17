@@ -63,7 +63,7 @@ pub trait RawWindow: Any {
     fn set_soft_input(&mut self, visible: bool);
 
     /// Drag the window.
-    fn drag_window(&mut self);
+    fn drag(&mut self);
 
     /// Get whether the window is focused.
     fn request_draw(&mut self);

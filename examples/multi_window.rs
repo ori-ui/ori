@@ -24,7 +24,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
         .border_color(style(Palette::SECONDARY_DARKER));
 
     on_press(content, |cx, _| {
-        cx.window().drag_window();
+        cx.window().drag();
     })
 }
 

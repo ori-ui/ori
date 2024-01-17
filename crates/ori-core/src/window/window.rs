@@ -236,8 +236,8 @@ impl Window {
     }
 
     /// Drag the window.
-    pub fn drag_window(&mut self) {
-        self.raw.drag_window();
+    pub fn drag(&mut self) {
+        self.raw.drag();
     }
 
     /// Request a redraw of the window.

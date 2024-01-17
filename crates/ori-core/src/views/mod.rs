@@ -22,6 +22,7 @@ mod stack;
 mod text;
 mod text_input;
 mod transform;
+mod trigger;
 mod with_state;
 mod zstack;
 
@@ -46,5 +47,6 @@ pub use stack::*;
 pub use text::*;
 pub use text_input::*;
 pub use transform::*;
+pub use trigger::*;
 pub use with_state::*;
 pub use zstack::*;

@@ -182,6 +182,7 @@ impl<T> Ui<T> {
     /// This should be called after all initial windows have been added.
     pub fn init(&mut self) {
         self.init_delegate();
+        self.event_all(&Event::new(()));
     }
 
     fn init_delegate(&mut self) {

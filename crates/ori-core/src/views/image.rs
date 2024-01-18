@@ -76,6 +76,7 @@ impl<T> View<T> for Image {
 
         mesh.texture = Some(Texture::Image(self.clone()));
 
+        canvas.trigger(cx.id(), cx.rect());
         canvas.draw(mesh);
     }
 }

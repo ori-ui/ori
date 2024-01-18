@@ -39,16 +39,16 @@ bitflags::bitflags! {
         const HAS_ACTIVE = 1 << 5;
 
         /// Equivalent to `Self::HOT | Self::FOCUSED | Self::ACTIVE`.
-        const IS_ALL = Self::HOT.bits() | Self::FOCUSED.bits() | Self::ACTIVE.bits();
+        const IS = Self::HOT.bits() | Self::FOCUSED.bits() | Self::ACTIVE.bits();
 
         /// Equivalent to `Self::HAS_HOT | Self::HAS_FOCUSED | Self::HAS_ACTIVE`.
-        const HAS_ALL = Self::HAS_HOT.bits() | Self::HAS_FOCUSED.bits() | Self::HAS_ACTIVE.bits();
+        const HAS = Self::HAS_HOT.bits() | Self::HAS_FOCUSED.bits() | Self::HAS_ACTIVE.bits();
     }
 }
 
 impl ViewFlags {
     fn has(self) -> Self {
-        Self::from_bits_retain((self & Self::IS_ALL).bits() << 3)
+        (self & Self::HAS) | Self::from_bits_retain((self & Self::IS).bits() << 3)
     }
 }
 
@@ -142,7 +142,7 @@ impl Default for ViewState {
 
 impl ViewState {
     pub(crate) fn prepare(&mut self) {
-        self.flags.remove(ViewFlags::HAS_ALL);
+        self.flags.remove(ViewFlags::HAS);
         self.inherited_cursor = self.cursor;
     }
 
@@ -158,7 +158,7 @@ impl ViewState {
 
     pub(crate) fn propagate(&mut self, child: &mut Self) {
         self.update |= child.update;
-        self.flags |= child.flags.has();
+        self.flags |= self.flags.has() | child.flags.has();
         self.inherited_cursor = self.cursor().or(child.cursor());
     }
 }

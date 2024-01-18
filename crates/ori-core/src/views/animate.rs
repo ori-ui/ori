@@ -29,7 +29,7 @@ pub fn transition_hot<T, V>(
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if transition.step(t, cx.is_hot(), *dt) {
+            if transition.step(t, cx.has_hot(), *dt) {
                 cx.request_animation_frame();
                 return Some(view(cx, data, transition.get(*t)));
             }
@@ -59,7 +59,7 @@ pub fn transition_active<T, V>(
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if transition.step(t, cx.is_active(), *dt) {
+            if transition.step(t, cx.has_active(), *dt) {
                 cx.request_animation_frame();
                 return Some(view(cx, data, transition.get(*t)));
             }
@@ -89,7 +89,7 @@ pub fn transition_focused<T, V>(
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if transition.step(t, cx.is_focused(), *dt) {
+            if transition.step(t, cx.has_focused(), *dt) {
                 cx.request_animation_frame();
                 return Some(view(cx, data, transition.get(*t)));
             }
@@ -181,38 +181,27 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        fn update_view<T, V: View<T>>(
-            cx: &mut EventCx,
-            data: &mut T,
-            state: &mut Option<(V::State, V)>,
-            mut new_view: V,
-            event: &Event,
-        ) {
-            if let Some((ref mut view_state, ref mut old_view)) = state {
-                new_view.rebuild(view_state, &mut cx.rebuild_cx(), data, old_view);
-                new_view.event(view_state, cx, data, event);
-
-                *old_view = new_view;
-            } else {
-                let mut new_state = new_view.build(&mut cx.build_cx(), data);
-
-                new_view.event(&mut new_state, cx, data, event);
-                *state = Some((new_state, new_view));
-            }
+        if let Some((ref mut state, ref mut view)) = state.view {
+            view.event(state, cx, data, event);
         }
 
         let new_view = Theme::with_global(&mut self.theme, || {
             (self.animate)(&mut state.animate_state, cx, data, event)
         });
 
-        match new_view {
-            Some(new_view) => update_view(cx, data, &mut state.view, new_view, event),
-            None => {
-                if let Some((ref mut view_state, ref mut view)) = state.view {
-                    view.event(view_state, cx, data, event);
+        if let Some(mut new_view) = new_view {
+            match state.view {
+                Some((ref mut view_state, ref mut view)) => {
+                    new_view.rebuild(view_state, &mut cx.rebuild_cx(), data, view);
+                    *view = new_view;
+                }
+                None => {
+                    let mut view_state = new_view.build(&mut cx.build_cx(), data);
+                    new_view.event(&mut view_state, cx, data, event);
+                    state.view = Some((view_state, new_view));
                 }
             }
-        };
+        }
     }
 
     fn layout(

@@ -1,4 +1,4 @@
-use cosmic_text::{Action, Buffer, Edit, Editor, Metrics, Shaping};
+use cosmic_text::{Action, AttrsList, Buffer, Edit, Editor, Metrics, Shaping};
 use ori_macro::Build;
 
 use crate::{
@@ -8,7 +8,6 @@ use crate::{
         RequestFocus,
     },
     layout::{Point, Rect, Size, Space},
-    rebuild::Rebuild,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -24,10 +23,9 @@ pub fn text_input<T>() -> TextInput<T> {
 }
 
 /// A text input.
-#[derive(Rebuild, Build)]
+#[derive(Build)]
 pub struct TextInput<T> {
     /// The text.
-    #[rebuild(layout)]
     #[build(ignore)]
     pub text: Option<String>,
     /// A function that returns the text to display.
@@ -40,39 +38,28 @@ pub struct TextInput<T> {
     pub on_submit: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
 
     /// Placeholder text to display when the input is empty.
-    #[rebuild(layout)]
     pub placeholder: String,
     /// Whether the input is multi-line.
     ///
     /// When disabled (the default), the input will only accept a single line of text.
-    #[rebuild(layout)]
     pub multiline: bool,
     /// The font size of the text.
-    #[rebuild(layout)]
     pub font_size: f32,
     /// The font family of the text.
-    #[rebuild(layout)]
     pub font_family: FontFamily,
     /// The font weight of the text.
-    #[rebuild(layout)]
     pub font_weight: FontWeight,
     /// The font stretch of the text.
-    #[rebuild(layout)]
     pub font_stretch: FontStretch,
     /// The font.into of the text.
-    #[rebuild(layout)]
     pub font_style: FontStyle,
     /// The color of the text.
-    #[rebuild(layout)]
     pub color: Color,
     /// The vertical alignment of the text.
-    #[rebuild(layout)]
     pub align: TextAlign,
     /// The line height of the text.
-    #[rebuild(layout)]
     pub line_height: f32,
     /// The text wrap of the text.
-    #[rebuild(layout)]
     pub wrap: TextWrap,
 }
 
@@ -171,6 +158,22 @@ impl<T> TextInput<T> {
         (state.placeholder).set_text(fonts, &self.placeholder, placeholder_attrs);
     }
 
+    fn set_attrs_list(&self, buffer: &mut Buffer) {
+        let attrs = TextAttributes {
+            family: self.font_family.clone(),
+            stretch: self.font_stretch,
+            weight: self.font_weight,
+            style: self.font_style,
+            color: self.color,
+        };
+
+        let attrs_list = AttrsList::new(attrs.to_cosmic_text());
+
+        for line in buffer.lines.iter_mut() {
+            line.set_attrs_list(attrs_list.clone());
+        }
+    }
+
     fn get_text(&self, state: &TextInputState) -> String {
         if let Some(ref text) = self.text {
             text.clone()
@@ -251,8 +254,76 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
-        Rebuild::rebuild(self, cx, old);
-        self.set_attributes(cx.fonts(), state);
+        let buffer = state.editor.buffer_mut();
+        let placeholder = &mut state.placeholder;
+
+        if self.wrap != old.wrap {
+            buffer.set_wrap(&mut cx.fonts().font_system, self.wrap.to_cosmic_text());
+            placeholder.set_wrap(cx.fonts(), self.wrap);
+
+            cx.request_layout();
+        }
+
+        if self.align != old.align {
+            for line in buffer.lines.iter_mut() {
+                line.set_align(Some(self.align.to_cosmic_text()));
+            }
+
+            placeholder.set_align(self.align);
+
+            cx.request_layout();
+        }
+
+        let attrs_changed = self.font_family != old.font_family
+            || self.font_weight != old.font_weight
+            || self.font_stretch != old.font_stretch
+            || self.font_style != old.font_style
+            || self.color != old.color;
+
+        if self.text != old.text && attrs_changed {
+            if let Some(mut text) = self.text.clone() {
+                let attrs = TextAttributes {
+                    family: self.font_family.clone(),
+                    stretch: self.font_stretch,
+                    weight: self.font_weight,
+                    style: self.font_style,
+                    color: self.color,
+                };
+
+                if text.ends_with('\n') {
+                    text.push('\n');
+                }
+
+                buffer.set_text(
+                    &mut cx.fonts().font_system,
+                    &text,
+                    attrs.to_cosmic_text(),
+                    Shaping::Advanced,
+                );
+
+                cx.request_layout();
+            }
+        } else if attrs_changed {
+            self.set_attrs_list(buffer);
+
+            cx.request_layout();
+        }
+
+        if self.placeholder != old.placeholder || attrs_changed {
+            placeholder.set_text(
+                cx.fonts(),
+                &self.placeholder,
+                TextAttributes {
+                    family: self.font_family.clone(),
+                    stretch: self.font_stretch,
+                    weight: self.font_weight,
+                    style: self.font_style,
+                    color: self.color.lighten(0.3),
+                },
+            );
+
+            cx.request_layout();
+        }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
@@ -278,6 +349,8 @@ impl<T> View<T> for TextInput<T> {
                     for c in text.chars() {
                         editor.action(&mut cx.fonts().font_system, Action::Insert(c));
                     }
+
+                    self.set_attrs_list(editor.buffer_mut());
 
                     cx.request_layout();
                     state.blink = 0.0;
@@ -516,7 +589,7 @@ impl<T> View<T> for TextInput<T> {
                 let blink = state.blink.cos() * 0.5 + 0.5;
                 canvas.draw_pixel_perfect(Quad {
                     rect: cursor,
-                    background: Background::new(self.color * blink),
+                    background: Background::new(self.color.fade(blink)),
                     border_radius: BorderRadius::ZERO,
                     border_width: BorderWidth::ZERO,
                     border_color: Color::TRANSPARENT,

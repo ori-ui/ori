@@ -183,9 +183,8 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
             if (self.transition).step(&mut state.t, on, *dt) {
                 cx.request_animation_frame();
+                cx.request_draw();
             }
-
-            cx.request_draw();
         }
 
         // handle scroll

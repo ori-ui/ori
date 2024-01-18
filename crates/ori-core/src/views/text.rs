@@ -5,7 +5,6 @@ use crate::{
     canvas::{Canvas, Color},
     event::Event,
     layout::{Size, Space},
-    rebuild::Rebuild,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -20,37 +19,27 @@ pub fn text(text: impl Into<SmolStr>) -> Text {
 }
 
 /// A view that displays text.
-#[derive(Build, Rebuild)]
+#[derive(Build)]
 pub struct Text {
     /// The text.
-    #[rebuild(layout)]
     pub text: SmolStr,
     /// The font size of the text.
-    #[rebuild(layout)]
     pub font_size: f32,
     /// The font family of the text.
-    #[rebuild(layout)]
     pub font_family: FontFamily,
     /// The font weight of the text.
-    #[rebuild(layout)]
     pub font_weight: FontWeight,
     /// The font stretch of the text.
-    #[rebuild(layout)]
     pub font_stretch: FontStretch,
     /// The font.into of the text.
-    #[rebuild(layout)]
     pub font_style: FontStyle,
     /// The color of the text.
-    #[rebuild(layout)]
     pub color: Color,
     /// The horizontal alignment of the text.
-    #[rebuild(layout)]
     pub align: TextAlign,
     /// The line height of the text.
-    #[rebuild(layout)]
     pub line_height: f32,
     /// The text wrap of the text.
-    #[rebuild(layout)]
     pub wrap: TextWrap,
 }
 
@@ -98,8 +87,39 @@ impl<T> View<T> for Text {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
-        Rebuild::rebuild(self, cx, old);
-        self.set_attributes(cx.fonts(), state);
+        if self.wrap != old.wrap {
+            state.set_wrap(cx.fonts(), self.wrap);
+
+            cx.request_layout();
+        }
+
+        if self.align != old.align {
+            state.set_align(self.align);
+
+            cx.request_layout();
+        }
+
+        if self.text != old.text
+            || self.font_family != old.font_family
+            || self.font_weight != old.font_weight
+            || self.font_stretch != old.font_stretch
+            || self.font_style != old.font_style
+            || self.color != old.color
+        {
+            state.set_text(
+                cx.fonts(),
+                &self.text,
+                TextAttributes {
+                    family: self.font_family.clone(),
+                    stretch: self.font_stretch,
+                    weight: self.font_weight,
+                    style: self.font_style,
+                    color: self.color,
+                },
+            );
+
+            cx.request_layout();
+        }
     }
 
     fn event(

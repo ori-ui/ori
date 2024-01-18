@@ -89,7 +89,7 @@ impl Fonts {
 
         for run in buffer.layout_runs() {
             width = f32::max(width, run.line_w);
-            height += buffer.metrics().line_height;
+            height = f32::max(height, run.line_y);
         }
 
         Size::new(width, height)

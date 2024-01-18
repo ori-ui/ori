@@ -13,9 +13,16 @@ impl Data {
 }
 
 fn input(data: &mut Data) -> impl View<Data> {
+    let font = if data.multiline {
+        FontFamily::Monospace
+    } else {
+        FontFamily::SansSerif
+    };
+
     let input = text_input()
         .text(&data.text)
         .on_change(|_, data: &mut Data, text| data.text = text)
+        .font_family(font)
         .multiline(data.multiline);
 
     container(pad(8.0, min_width(150.0, input)))

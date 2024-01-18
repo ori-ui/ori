@@ -38,9 +38,9 @@ pub mod prelude {
         clipboard::ClipboardContext,
         delegate::Delegate,
         event::{
-            ActiveChanged, AnimationFrame, CloseRequested, CloseWindow, Code, Event, HotChanged,
-            KeyPressed, Modifiers, OpenWindow, Pointer, PointerButton, PointerId, PointerLeft,
-            PointerMoved, PointerPressed, PointerReleased, PointerScrolled, Quit, RequestFocus,
+            AnimationFrame, CloseRequested, CloseWindow, Code, Event, KeyPressed, Modifiers,
+            OpenWindow, Pointer, PointerButton, PointerId, PointerLeft, PointerMoved,
+            PointerPressed, PointerReleased, PointerScrolled, Quit, RequestFocus,
         },
         image::{gradient, Image, ImageData, ImageId},
         layout::{

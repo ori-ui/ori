@@ -1,6 +1,6 @@
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Curve},
-    event::{AnimationFrame, Event, HotChanged},
+    event::{AnimationFrame, Event},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     theme::{checkbox, style},
@@ -122,7 +122,7 @@ impl<T> View<T> for Checkbox {
     }
 
     fn event(&mut self, t: &mut Self::State, cx: &mut EventCx, _data: &mut T, event: &Event) {
-        if event.is::<HotChanged>() {
+        if cx.hot_changed() {
             cx.request_animation_frame();
         }
 

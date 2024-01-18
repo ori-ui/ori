@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
-    event::{Event, HotChanged, PointerLeft, PointerMoved, SwitchFocus},
+    event::{Event, PointerLeft, PointerMoved, SwitchFocus},
     layout::{Size, Space},
 };
 
@@ -100,12 +100,25 @@ impl<V> Pod<V> {
         cx.view_state.propagate(view_state);
     }
 
-    fn event_inner(
+    /// Handle an event.
+    pub fn event(
         view_state: &mut ViewState,
         cx: &mut EventCx,
         event: &Event,
-        f: &mut impl FnMut(&mut EventCx, &Event),
+        mut f: impl FnMut(&mut EventCx, &Event),
     ) {
+        if let Some(SwitchFocus::Next(focused)) | Some(SwitchFocus::Prev(focused)) = event.get() {
+            if view_state.is_focused() {
+                view_state.set_focused(false);
+                focused.set(true);
+            }
+        }
+
+        // update the hot state
+        if event.is::<PointerMoved>() || event.is::<PointerLeft>() {
+            view_state.set_hot(cx.window().is_hovered(view_state.id()));
+        }
+
         view_state.prepare();
 
         let mut new_cx = cx.child();
@@ -114,47 +127,9 @@ impl<V> Pod<V> {
 
         f(&mut new_cx, event);
 
+        view_state.prev_flags = view_state.flags;
+
         cx.view_state.propagate(view_state);
-    }
-
-    fn hot_changed(
-        view_state: &mut ViewState,
-        cx: &mut EventCx,
-        hot: bool,
-        f: &mut impl FnMut(&mut EventCx, &Event),
-    ) {
-        if view_state.is_hot() != hot {
-            view_state.set_hot(hot);
-
-            let event = Event::new_non_propagating(HotChanged(hot));
-            Self::event_inner(view_state, cx, &event, f);
-        }
-    }
-
-    /// Handle an event.
-    pub fn event(
-        view_state: &mut ViewState,
-        cx: &mut EventCx,
-        event: &Event,
-        mut f: impl FnMut(&mut EventCx, &Event),
-    ) {
-        if !event.should_propagate() {
-            return;
-        }
-
-        if let Some(SwitchFocus::Next(focused)) | Some(SwitchFocus::Prev(focused)) = event.get() {
-            if view_state.is_focused() {
-                view_state.set_focused(false);
-                focused.set(true);
-            }
-        }
-
-        Self::event_inner(view_state, cx, event, &mut f);
-
-        if event.is::<PointerMoved>() || event.is::<PointerLeft>() {
-            let hot = cx.window().is_hovered(view_state.id());
-            Self::hot_changed(view_state, cx, hot, &mut f);
-        }
     }
 
     /// Layout a pod view.

@@ -2,7 +2,7 @@ use ori_macro::Build;
 
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
-    event::{ActiveChanged, AnimationFrame, Event, HotChanged},
+    event::{AnimationFrame, Event},
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
     theme::{button, style},
@@ -123,7 +123,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if event.is::<HotChanged>() || event.is::<ActiveChanged>() {
+        if cx.hot_changed() || cx.active_changed() {
             cx.request_animation_frame();
         }
 

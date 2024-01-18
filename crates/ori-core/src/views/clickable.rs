@@ -1,6 +1,6 @@
 use crate::{
     canvas::Canvas,
-    event::{ActiveChanged, Event, PointerPressed, PointerReleased},
+    event::{Event, PointerPressed, PointerReleased},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
@@ -115,8 +115,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         data: &mut T,
         event: &Event,
     ) {
-        self.content.event(content, cx, data, event);
-
         if let Some(pressed) = event.get::<PointerPressed>() {
             state.click_start = pressed.position;
 
@@ -127,8 +125,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                 }
 
                 cx.set_active(true);
-                let event = Event::new_non_propagating(ActiveChanged(true));
-                self.content.event(content, cx, data, &event);
             }
         }
 
@@ -140,8 +136,6 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                 }
 
                 cx.set_active(false);
-                let event = Event::new_non_propagating(ActiveChanged(false));
-                self.content.event(content, cx, data, &event);
 
                 let click_distance = (released.position - state.click_start).length();
                 if click_distance <= Self::MAX_CLICK_DISTANCE {
@@ -152,6 +146,8 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                 }
             }
         }
+
+        self.content.event(content, cx, data, event);
     }
 
     fn layout(

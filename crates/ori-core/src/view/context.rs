@@ -19,7 +19,7 @@ use crate::{
     window::{Window, WindowDescriptor, WindowId},
 };
 
-use super::{View, ViewId};
+use super::{View, ViewFlags, ViewId};
 
 /// A context for a view.
 #[derive(Debug, Default)]
@@ -380,6 +380,66 @@ impl<'a, 'b> EventCx<'a, 'b> {
             self.window,
             self.animation_frame,
         )
+    }
+
+    /// Get whether the view was hot last call.
+    pub fn was_hot(&self) -> bool {
+        self.view_state.prev_flags.contains(ViewFlags::HOT)
+    }
+
+    /// Get whether the view was focused last call.
+    pub fn was_focused(&self) -> bool {
+        self.view_state.prev_flags.contains(ViewFlags::FOCUSED)
+    }
+
+    /// Get whether the view was active last call.
+    pub fn was_active(&self) -> bool {
+        self.view_state.prev_flags.contains(ViewFlags::ACTIVE)
+    }
+
+    /// Get whether a child view was hot last call.
+    pub fn had_hot(&self) -> bool {
+        self.view_state.prev_flags.contains(ViewFlags::HAS_HOT)
+    }
+
+    /// Get whether a child view was focused last call.
+    pub fn had_focused(&self) -> bool {
+        self.view_state.prev_flags.contains(ViewFlags::HAS_FOCUSED)
+    }
+
+    /// Get whether a child view was active last call.
+    pub fn had_active(&self) -> bool {
+        self.view_state.prev_flags.contains(ViewFlags::HAS_ACTIVE)
+    }
+
+    /// Get whether the view's hot state changed.
+    pub fn hot_changed(&self) -> bool {
+        self.was_hot() != self.is_hot()
+    }
+
+    /// Get whether the view's focused state changed.
+    pub fn focused_changed(&self) -> bool {
+        self.was_focused() != self.is_focused()
+    }
+
+    /// Get whether the view's active state changed.
+    pub fn active_changed(&self) -> bool {
+        self.was_active() != self.is_active()
+    }
+
+    /// Get whether a child view's hot state changed.
+    pub fn has_hot_changed(&self) -> bool {
+        self.had_hot() != self.has_hot()
+    }
+
+    /// Get whether a child view's focused state changed.
+    pub fn has_focused_changed(&self) -> bool {
+        self.had_focused() != self.has_focused()
+    }
+
+    /// Get whether a child view's active state changed.
+    pub fn has_active_changed(&self) -> bool {
+        self.had_active() != self.has_active()
     }
 }
 

@@ -1,8 +1,7 @@
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
     event::{
-        AnimationFrame, Event, HotChanged, PointerMoved, PointerPressed, PointerReleased,
-        PointerScrolled,
+        AnimationFrame, Event, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
     },
     layout::{Axis, Rect, Size, Space, Vector},
     log::warn_internal,
@@ -175,7 +174,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         self.content.event(content, cx, data, event);
 
         // animate the scrollbar
-        if event.is::<HotChanged>() {
+        if cx.hot_changed() {
             cx.request_animation_frame();
         }
 

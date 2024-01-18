@@ -4,14 +4,6 @@ use std::cell::Cell;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Quit;
 
-/// Event emitted to a view when its hot state changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct HotChanged(pub bool);
-
-/// Event emitted to a view when its active state changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ActiveChanged(pub bool);
-
 /// Event emitted when a view should be focused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum RequestFocus {

@@ -45,7 +45,7 @@ pub struct Clickable<T, V> {
     /// Whether the item should be clickable when it's descendants are clicked.
     ///
     /// Defaults to `true`.
-    pub decendants: bool,
+    pub descendants: bool,
     /// The callback for when the button is pressed.
     #[allow(clippy::type_complexity)]
     #[build(ignore)]
@@ -67,7 +67,7 @@ impl<T, V> Clickable<T, V> {
     pub fn new(content: V) -> Self {
         Self {
             content,
-            decendants: true,
+            descendants: true,
             on_press: None,
             on_release: None,
             on_click: None,
@@ -128,7 +128,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         if let Some(pressed) = event.get::<PointerPressed>() {
             state.click_start = pressed.position;
 
-            if cx.is_hot() || (cx.has_hot() && self.decendants) {
+            if cx.is_hot() || (cx.has_hot() && self.descendants) {
                 if let Some(ref mut on_press) = self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();

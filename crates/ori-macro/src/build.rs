@@ -110,12 +110,20 @@ fn build_field(name: TokenStream, field: &syn::Field) -> manyhow::Result<TokenSt
     }
 
     let ty = &field.ty;
+    let doc = format!("Set `self.{}`.", name);
 
-    let doc_name = name.to_string().replace('_', " ");
-    let doc = format!("Set [`Self::{}`].", doc_name);
+    let mut field_doc = Vec::new();
+
+    for attr in &field.attrs {
+        if attr.path().is_ident("doc") {
+            field_doc.push(attr);
+        }
+    }
 
     Ok(quote! {
         #[doc = #doc]
+        #[doc = ""]
+        #(#field_doc)*
         pub fn #name(mut self, #name: impl Into<#ty>) -> Self {
             self.#name = ::std::convert::Into::into(#name);
             self

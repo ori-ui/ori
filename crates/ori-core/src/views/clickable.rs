@@ -1,3 +1,5 @@
+use ori_macro::Build;
+
 use crate::{
     canvas::Canvas,
     event::{Event, PointerPressed, PointerReleased},
@@ -36,18 +38,25 @@ pub fn on_click<T, V>(
 }
 
 /// A click handler.
-#[derive(Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Clickable<T, V> {
     /// The content.
     pub content: V,
+    /// Whether the item should be clickable when it's descendants are clicked.
+    ///
+    /// Defaults to `true`.
+    pub decendants: bool,
     /// The callback for when the button is pressed.
     #[allow(clippy::type_complexity)]
+    #[build(ignore)]
     pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
     /// The callback for when the button is released.
     #[allow(clippy::type_complexity)]
+    #[build(ignore)]
     pub on_release: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
     /// The callback for when the button is clicked.
     #[allow(clippy::type_complexity)]
+    #[build(ignore)]
     pub on_click: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
 }
 
@@ -58,6 +67,7 @@ impl<T, V> Clickable<T, V> {
     pub fn new(content: V) -> Self {
         Self {
             content,
+            decendants: true,
             on_press: None,
             on_release: None,
             on_click: None,
@@ -118,7 +128,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         if let Some(pressed) = event.get::<PointerPressed>() {
             state.click_start = pressed.position;
 
-            if cx.is_hot() {
+            if cx.is_hot() || (cx.has_hot() && self.decendants) {
                 if let Some(ref mut on_press) = self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();

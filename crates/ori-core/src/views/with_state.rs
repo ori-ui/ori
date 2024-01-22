@@ -11,36 +11,40 @@ use crate::{
 use super::focus;
 
 /// Create a new [`WithState`].
-pub fn with_state<T, U, V>(
-    build: impl Fn() -> U + 'static,
-    view: impl FnMut(&mut T, &mut U) -> V + 'static,
-) -> WithState<T, U, V>
-where
-    V: View<(T, U)>,
-{
+pub fn with_state<T, S, V: View<(T, S)>>(
+    build: impl Fn() -> S + 'static,
+    view: impl FnMut(&mut T, &mut S) -> V + 'static,
+) -> WithState<T, S, V> {
     WithState::new(build, view)
+}
+
+/// Create a new [`WithState`] using `S::default()`.
+pub fn with_state_default<T, S: Default + 'static, V: View<(T, S)>>(
+    view: impl FnMut(&mut T, &mut S) -> V + 'static,
+) -> WithState<T, S, V> {
+    with_state(Default::default, view)
 }
 
 /// Create a new view unwrapping some state from the data.
 ///
 /// This is equivalent to `focus(|(data, _state), lens| lens(data), view)`.
-pub fn without_state<T, U, V: View<T>>(view: V) -> impl View<(T, U)> {
+pub fn without_state<T, S, V: View<T>>(view: V) -> impl View<(T, S)> {
     focus(|(data, _state), lens| lens(data), view)
 }
 
 /// A view that stores some additional data.
-pub struct WithState<T, U, V> {
-    build: Box<dyn Fn() -> U>,
+pub struct WithState<T, S, V> {
+    build: Box<dyn Fn() -> S>,
     #[allow(clippy::type_complexity)]
-    view: Box<dyn FnMut(&mut T, &mut U) -> V>,
+    view: Box<dyn FnMut(&mut T, &mut S) -> V>,
     theme: Theme,
 }
 
-impl<T, U, V> WithState<T, U, V> {
+impl<T, S, V> WithState<T, S, V> {
     /// Create a new [`WithState`].
     pub fn new(
-        build: impl Fn() -> U + 'static,
-        view: impl FnMut(&mut T, &mut U) -> V + 'static,
+        build: impl Fn() -> S + 'static,
+        view: impl FnMut(&mut T, &mut S) -> V + 'static,
     ) -> Self {
         Self {
             build: Box::new(build),
@@ -50,14 +54,16 @@ impl<T, U, V> WithState<T, U, V> {
     }
 
     // NOTE: this seems incredibly dodgy and i don't know if it's safe
-    fn data<O>(state: &mut U, data: &mut T, f: impl FnOnce(&mut (T, U)) -> O) -> O {
-        let mut data_state = unsafe { ManuallyDrop::new((ptr::read(data), ptr::read(state))) };
+    fn data<O>(state: &mut S, data: &mut T, f: impl FnOnce(&mut (T, S)) -> O) -> O {
+        let mut data_state: ManuallyDrop<(T, S)> =
+            unsafe { ManuallyDrop::new((ptr::read(data), ptr::read(state))) };
 
         let result = f(&mut data_state);
 
-        let (data_inner, state_inner) = ManuallyDrop::into_inner(data_state);
-
         unsafe {
+            // note that we don't drop the data and state here
+            // see ptr::write.
+            let (data_inner, state_inner): (T, S) = ManuallyDrop::into_inner(data_state);
             ptr::write(data, data_inner);
             ptr::write(state, state_inner);
         }
@@ -70,14 +76,15 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
     type State = (Pod<V>, U, State<(T, U), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        Theme::with_global(&mut self.theme, || {
+        let (mut view, mut state) = Theme::with_global(&mut self.theme, || {
             let mut state = (self.build)();
-            let mut view = Pod::new((self.view)(data, &mut state));
+            let view = Pod::new((self.view)(data, &mut state));
+            (view, state)
+        });
 
-            let content = Self::data(&mut state, data, |data| view.build(cx, data));
+        let content = Self::data(&mut state, data, |data| view.build(cx, data));
 
-            (view, state, content)
-        })
+        (view, state, content)
     }
 
     fn rebuild(
@@ -87,12 +94,13 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         _old: &Self,
     ) {
-        let mut new_view = Pod::new((self.view)(data, data_state));
+        let mut new_view = Theme::with_global(&mut self.theme, || {
+            // we need apply the global theme here
+            Pod::new((self.view)(data, data_state))
+        });
 
-        Theme::with_global(&mut self.theme, || {
-            Self::data(data_state, data, |data| {
-                new_view.rebuild(state, cx, data, view)
-            });
+        Self::data(data_state, data, |data| {
+            new_view.rebuild(state, cx, data, view)
         });
 
         *view = new_view;
@@ -105,9 +113,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         event: &Event,
     ) {
-        Theme::with_global(&mut self.theme, || {
-            Self::data(data_state, data, |data| view.event(state, cx, data, event));
-        });
+        Self::data(data_state, data, |data| view.event(state, cx, data, event));
     }
 
     fn layout(
@@ -117,9 +123,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        Theme::with_global(&mut self.theme, || {
-            Self::data(data_state, data, |data| view.layout(state, cx, data, space))
-        })
+        Self::data(data_state, data, |data| view.layout(state, cx, data, space))
     }
 
     fn draw(
@@ -129,8 +133,6 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        Theme::with_global(&mut self.theme, || {
-            Self::data(data_state, data, |data| view.draw(state, cx, data, canvas));
-        });
+        Self::data(data_state, data, |data| view.draw(state, cx, data, canvas));
     }
 }

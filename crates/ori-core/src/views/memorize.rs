@@ -2,6 +2,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
+    theme::Theme,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -14,11 +15,12 @@ pub fn memo<T, V, D: PartialEq>(
 }
 
 /// A view that only builds the inner view when certain data changes.
-pub struct Memo<T, V, D: PartialEq> {
+pub struct Memo<T, V, D> {
     #[allow(clippy::type_complexity)]
     data: Option<Box<dyn FnOnce(&mut T) -> D>>,
     #[allow(clippy::type_complexity)]
     build: Option<Box<dyn FnOnce(&mut T) -> V>>,
+    theme: Theme,
 }
 
 impl<T, V, D: PartialEq> Memo<T, V, D> {
@@ -30,15 +32,20 @@ impl<T, V, D: PartialEq> Memo<T, V, D> {
         Self {
             data: Some(Box::new(data)),
             build: Some(Box::new(build)),
+            theme: Theme::snapshot(),
         }
     }
 
     fn data(&mut self, data: &mut T) -> D {
-        (self.data.take().expect("Memo::data called twice"))(data)
+        Theme::with_global(&mut self.theme, || {
+            (self.data.take().expect("Memo::data called twice"))(data)
+        })
     }
 
     fn build(&mut self, data: &mut T) -> V {
-        (self.build.take().expect("Memo::build called twice"))(data)
+        Theme::with_global(&mut self.theme, || {
+            (self.build.take().expect("Memo::build called twice"))(data)
+        })
     }
 }
 

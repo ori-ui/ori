@@ -30,6 +30,7 @@ pub mod prelude {
     #[cfg(feature = "winit")]
     pub type Launcher<T> = ori_core::launcher::Launcher<T, ori_winit::WinitShell>;
 
+    #[allow(unused_imports)]
     pub use ori_core::{
         canvas::{
             hex, hsl, hsla, oklab, oklaba, rgb, rgba, Background, BorderRadius, BorderWidth,

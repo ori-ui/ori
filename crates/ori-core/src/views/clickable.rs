@@ -128,7 +128,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         if let Some(pressed) = event.get::<PointerPressed>() {
             state.click_start = pressed.position;
 
-            if cx.is_hot() || (cx.has_hot() && self.descendants) {
+            if cx.is_hot() || (cx.was_hot() && self.descendants) {
                 if let Some(ref mut on_press) = self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();

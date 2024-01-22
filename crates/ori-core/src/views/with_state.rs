@@ -8,6 +8,8 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
+use super::focus;
+
 /// Create a new [`WithState`].
 pub fn with_state<T, U, V>(
     build: impl Fn() -> U + 'static,
@@ -17,6 +19,13 @@ where
     V: View<(T, U)>,
 {
     WithState::new(build, view)
+}
+
+/// Create a new view unwrapping some state from the data.
+///
+/// This is equivalent to `focus(|(data, _state), lens| lens(data), view)`.
+pub fn without_state<T, U, V: View<T>>(view: V) -> impl View<(T, U)> {
+    focus(|(data, _state), lens| lens(data), view)
 }
 
 /// A view that stores some additional data.

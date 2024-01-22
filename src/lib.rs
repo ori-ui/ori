@@ -32,8 +32,8 @@ pub mod prelude {
 
     pub use ori_core::{
         canvas::{
-            hex, hsl, hsla, oklab, oklaba, rgb, rgba, BorderRadius, BorderWidth, BoxShadow, Canvas,
-            Color, Curve, Fragment, Mesh, Primitive, Vertex,
+            hex, hsl, hsla, oklab, oklaba, rgb, rgba, Background, BorderRadius, BorderWidth,
+            BoxShadow, Canvas, Color, Curve, Fragment, Mesh, Primitive, Vertex,
         },
         clipboard::Clipboard,
         command::CommandProxy,

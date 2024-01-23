@@ -254,6 +254,13 @@ impl MeshRender {
             glow::STREAM_DRAW,
         );
 
+        gl.scissor(
+            batch.clip.min.x as i32,
+            batch.clip.min.y as i32,
+            batch.clip.width() as i32,
+            batch.clip.height() as i32,
+        );
+
         let index_count = batch.mesh.indices.len() as i32;
         gl.draw_elements(glow::TRIANGLES, index_count, glow::UNSIGNED_INT, 0);
 

@@ -308,11 +308,7 @@ impl<T> AppState<T> {
         Ok(())
     }
 
-    fn window_event(
-        &mut self,
-        winit_id: winit::window::WindowId,
-        event: WindowEvent,
-    ) {
+    fn window_event(&mut self, winit_id: winit::window::WindowId, event: WindowEvent) {
         // if the window id is not in the map, we ignore the event
         let Some(&id) = self.window_ids.get(&winit_id) else {
             return;

@@ -8,7 +8,9 @@ use crate::{
     layout::{Align, Axis, Justify, Size, Space},
     log::warn_internal,
     rebuild::Rebuild,
-    view::{AnyView, BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq},
+    view::{
+        AnyView, BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq,
+    },
 };
 
 pub use crate::{hstack, vstack};
@@ -311,7 +313,7 @@ impl<V> Stack<V> {
         let mut start = 0;
 
         for i in 0..self.content.len() {
-            let content_space = if self.wrap {
+            let content_space = if !self.wrap {
                 Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor))
             } else {
                 Space::UNBOUNDED

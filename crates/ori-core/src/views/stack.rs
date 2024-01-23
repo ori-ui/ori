@@ -8,7 +8,7 @@ use crate::{
     layout::{Align, Axis, Justify, Size, Space},
     log::warn_internal,
     rebuild::Rebuild,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq},
+    view::{AnyView, BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq},
 };
 
 pub use crate::{hstack, vstack};
@@ -49,15 +49,22 @@ pub fn vstack<V>(content: V) -> Stack<V> {
     Stack::vstack(content)
 }
 
+/// Create a horizontal [`Stack`], with dynamic content.
+pub fn hstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
+    Stack::hstack_any()
+}
+
+/// Create a vertical [`Stack`], with dynamic content.
+pub fn vstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
+    Stack::vstack_any()
+}
+
 /// A view that stacks its content in a line.
 #[derive(Build, Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.
     #[build(ignore)]
     pub content: PodSeq<V>,
-    /// The size of the stack.
-    #[rebuild(layout)]
-    pub space: Space,
     /// The axis of the stack.
     #[rebuild(layout)]
     pub axis: Axis,
@@ -86,7 +93,6 @@ impl<V> Stack<V> {
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
             content: PodSeq::new(content),
-            space: Space::UNBOUNDED,
             axis,
             wrap: false,
             justify_content: Justify::Start,
@@ -107,55 +113,28 @@ impl<V> Stack<V> {
         Self::new(Axis::Vertical, content)
     }
 
-    /// Set the size of the stack.
-    pub fn size(mut self, size: impl Into<Size>) -> Self {
-        self.space = Space::from_size(size.into());
-        self
-    }
-
-    /// Set the width of the stack.
-    pub fn width(mut self, width: f32) -> Self {
-        self.space.min.width = width;
-        self.space.max.width = width;
-        self
-    }
-
-    /// Set the height of the stack.
-    pub fn height(mut self, height: f32) -> Self {
-        self.space.min.height = height;
-        self.space.max.height = height;
-        self
-    }
-
-    /// Set the minimum width of the stack.
-    pub fn min_width(mut self, min_width: f32) -> Self {
-        self.space.min.width = min_width;
-        self
-    }
-
-    /// Set the minimum height of the stack.
-    pub fn min_height(mut self, min_height: f32) -> Self {
-        self.space.min.height = min_height;
-        self
-    }
-
-    /// Set the maximum width of the stack.
-    pub fn max_width(mut self, max_width: f32) -> Self {
-        self.space.max.width = max_width;
-        self
-    }
-
-    /// Set the maximum height of the stack.
-    pub fn max_height(mut self, max_height: f32) -> Self {
-        self.space.max.height = max_height;
-        self
-    }
-
     /// Set the gap between columns and rows.
     pub fn gap(mut self, gap: f32) -> Self {
         self.column_gap = gap;
         self.row_gap = gap;
         self
+    }
+}
+
+impl<'a, T> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
+    /// Create a new horizontal [`Stack`], with dynamic content.
+    pub fn hstack_any() -> Self {
+        Self::hstack(Vec::new())
+    }
+
+    /// Create a new vertical [`Stack`], with dynamic content.
+    pub fn vstack_any() -> Self {
+        Self::vstack(Vec::new())
+    }
+
+    /// Push a view to the stack.
+    pub fn push(&mut self, view: impl AnyView<T> + 'a) {
+        self.content.push(Box::new(view));
     }
 }
 
@@ -333,9 +312,9 @@ impl<V> Stack<V> {
 
         for i in 0..self.content.len() {
             let content_space = if self.wrap {
-                Space::UNBOUNDED
-            } else {
                 Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor))
+            } else {
+                Space::UNBOUNDED
             };
 
             let size = (self.content).layout_nth(i, content, cx, data, content_space);
@@ -571,9 +550,6 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         space: Space,
     ) -> Size {
         state.debug.clear();
-
-        // calculate bounds and other data needed for layout
-        let space = self.space.constrain(space);
 
         let (max_major, max_minor) = self.axis.unpack(space.max);
         let min_major = self.axis.major(space.min);

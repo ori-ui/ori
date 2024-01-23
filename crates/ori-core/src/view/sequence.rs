@@ -349,6 +349,20 @@ impl<V> From<V> for PodSeq<V> {
     }
 }
 
+impl<V> Deref for PodSeq<V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.views
+    }
+}
+
+impl<V> DerefMut for PodSeq<V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.views
+    }
+}
+
 impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
     type State = SeqState<T, V>;
 

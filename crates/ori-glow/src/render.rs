@@ -125,8 +125,8 @@ impl GlowRender {
         self.width = width;
         self.height = height;
 
-        let non_zero_width = NonZeroU32::new(width).unwrap();
-        let non_zero_height = NonZeroU32::new(height).unwrap();
+        let non_zero_width = NonZeroU32::new(width).unwrap_or(NonZeroU32::MIN);
+        let non_zero_height = NonZeroU32::new(height).unwrap_or(NonZeroU32::MIN);
         (self.surface).resize(&self.context, non_zero_width, non_zero_height);
         self.gl.viewport(0, 0, width as i32, height as i32);
     }

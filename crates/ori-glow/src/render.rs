@@ -152,6 +152,8 @@ impl GlowRender {
             glow::ONE_MINUS_SRC_ALPHA,
         );
 
+        self.gl.enable(glow::SCISSOR_TEST);
+
         self.gl.disable(glow::DEPTH_TEST);
         self.gl.disable(glow::CULL_FACE);
         self.gl.disable(glow::FRAMEBUFFER_SRGB);
@@ -162,6 +164,8 @@ impl GlowRender {
         for batch in batches.iter() {
             self.mesh.render_batch(&self.gl, batch, logical_size)?;
         }
+
+        self.gl.disable(glow::SCISSOR_TEST);
 
         self.surface.swap_buffers(&self.context)?;
 

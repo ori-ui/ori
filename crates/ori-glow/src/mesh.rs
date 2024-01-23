@@ -254,11 +254,13 @@ impl MeshRender {
             glow::STREAM_DRAW,
         );
 
+        // opengl is bad... i don't like having to do this...
+        let scissor_y = resolution.height - batch.clip.max.y;
         gl.scissor(
-            batch.clip.min.x as i32,
-            batch.clip.min.y as i32,
-            batch.clip.width() as i32,
-            batch.clip.height() as i32,
+            batch.clip.min.x.round() as i32,
+            scissor_y.round() as i32,
+            batch.clip.width().round() as i32,
+            batch.clip.height().round() as i32,
         );
 
         let index_count = batch.mesh.indices.len() as i32;

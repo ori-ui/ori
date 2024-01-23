@@ -1,4 +1,4 @@
-use cosmic_text::{Action, AttrsList, Buffer, Edit, Editor, Metrics, Shaping};
+use cosmic_text::{Action, Attrs, AttrsList, Buffer, BufferLine, Edit, Editor, Metrics, Shaping};
 use ori_macro::Build;
 
 use crate::{
@@ -204,6 +204,21 @@ impl TextInputState {
         }
 
         text
+    }
+
+    fn clear_text(&mut self) {
+        self.editor.buffer_mut().lines = vec![BufferLine::new(
+            "",
+            AttrsList::new(Attrs {
+                color_opt: None,
+                family: cosmic_text::Family::SansSerif,
+                stretch: cosmic_text::Stretch::Normal,
+                style: cosmic_text::Style::Normal,
+                weight: cosmic_text::Weight::NORMAL,
+                metadata: 0,
+            }),
+            Shaping::Advanced,
+        )];
     }
 }
 
@@ -429,9 +444,10 @@ impl<T> View<T> for TextInput<T> {
                     cx.request_rebuild();
 
                     if self.text.is_none() {
-                        state.editor.buffer_mut().lines.clear();
-                        state.editor.set_cursor(cosmic_text::Cursor::default());
+                        state.clear_text();
                     }
+
+                    state.editor.set_cursor(cosmic_text::Cursor::default());
                 }
             }
         }

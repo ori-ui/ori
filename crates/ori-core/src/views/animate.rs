@@ -20,11 +20,9 @@ pub fn transition_hot<T, V>(
     mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
-    let mut was_hot = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if cx.has_hot() != was_hot {
-            was_hot = cx.has_hot();
+        if cx.has_hot_changed() {
             cx.request_animation_frame();
         }
 
@@ -50,11 +48,9 @@ pub fn transition_active<T, V>(
     mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
-    let mut was_active = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if cx.has_active() != was_active {
-            was_active = cx.has_active();
+        if cx.has_active_changed() {
             cx.request_animation_frame();
         }
 
@@ -80,11 +76,9 @@ pub fn transition_focused<T, V>(
     mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
-    let mut was_focused = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if cx.has_focused() != was_focused {
-            was_focused = cx.has_focused();
+        if cx.has_focused_changed() {
             cx.request_animation_frame();
         }
 

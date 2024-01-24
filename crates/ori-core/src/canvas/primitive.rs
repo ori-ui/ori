@@ -30,6 +30,11 @@ impl Primitive {
             Self::Mesh(mesh) => mesh.intersects_point(point),
         }
     }
+
+    /// Get whether `self` is a `Mesh`.
+    pub fn is_mesh(&self) -> bool {
+        matches!(self, Self::Mesh(_))
+    }
 }
 
 impl From<Quad> for Primitive {

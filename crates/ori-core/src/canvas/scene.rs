@@ -112,7 +112,12 @@ impl Scene {
                 });
             }
 
-            mesh.extend_transformed(&fragment_mesh, fragment.transform);
+            if fragment.pixel_perfect && fragment.primitive.is_mesh() {
+                mesh.extend_transformed_pixel_perfect(&fragment_mesh, fragment.transform);
+            } else {
+                mesh.extend_transformed(&fragment_mesh, fragment.transform);
+            }
+
             mesh.texture = fragment_mesh.texture;
 
             clip = Some(fragment.clip);
@@ -143,4 +148,6 @@ pub struct Fragment {
     pub clip: Rect,
     /// The view that the primitive is being drawn for.
     pub view: Option<ViewId>,
+    /// Whether the fragment should be drawn pixel perfect.
+    pub pixel_perfect: bool,
 }

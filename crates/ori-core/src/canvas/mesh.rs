@@ -72,8 +72,23 @@ impl Mesh {
 
     /// Extend the mesh with the vertices and indices of `other` transformed by `transform`.
     pub fn extend_transformed(&mut self, other: &Self, transform: Affine) {
+        self.extend_with(other, |v| v.transform(transform));
+    }
+
+    /// Extend the mesh with the vertices and indices of `other` transformed by `transform`,
+    /// rounding every position.
+    pub fn extend_transformed_pixel_perfect(&mut self, other: &Self, transform: Affine) {
+        self.extend_with(other, |mut vertex| {
+            vertex = vertex.transform(transform);
+            vertex.position = vertex.position.round();
+            vertex
+        })
+    }
+
+    /// Extend the mesh with the vertices and indices of `other` applying `f` to every vertex.
+    pub fn extend_with(&mut self, other: &Self, mut f: impl FnMut(Vertex) -> Vertex) {
         let offset = self.vertices.len() as u32;
-        let transformed_vertices = other.vertices.iter().map(|v| v.transform(transform));
+        let transformed_vertices = other.vertices.iter().map(|v| f(*v));
         let offset_indices = other.indices.iter().map(|i| i + offset);
 
         self.vertices.extend(transformed_vertices);

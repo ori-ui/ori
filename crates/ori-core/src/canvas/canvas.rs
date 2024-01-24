@@ -114,6 +114,7 @@ impl<'a> Canvas<'a> {
             depth: self.depth,
             clip: self.clip,
             view: self.view,
+            pixel_perfect: false,
         });
     }
 
@@ -125,6 +126,7 @@ impl<'a> Canvas<'a> {
             depth: self.depth,
             clip: self.clip,
             view: self.view,
+            pixel_perfect: true,
         });
     }
 

@@ -51,5 +51,5 @@ pub trait Shell: Sized {
     fn init() -> (Self, CommandWaker);
 
     /// Run the application.
-    fn run<T>(self, ui: Ui<T>, windows: Windows<T>) -> Result<(), Self::Error>;
+    fn run<T>(self, data: T, ui: Ui<T>, windows: Windows<T>) -> Result<(), Self::Error>;
 }

@@ -43,13 +43,11 @@ pub struct Ui<T: 'static> {
     quit_requested: bool,
     /// The contexts used by the UI.
     pub contexts: Contexts,
-    /// The data used by the UI.
-    pub data: T,
 }
 
 impl<T> Ui<T> {
     /// Create a new [`Ui`] with the given data.
-    pub fn new(data: T, waker: CommandWaker) -> Self {
+    pub fn new(waker: CommandWaker) -> Self {
         let (command_proxy, command_rx) = CommandProxy::new(waker);
 
         let mut contexts = Contexts::new();
@@ -65,7 +63,6 @@ impl<T> Ui<T> {
             quit_requested: false,
             requests: UiRequests::new(),
             contexts,
-            data,
         }
     }
 
@@ -100,20 +97,20 @@ impl<T> Ui<T> {
     }
 
     /// Add a new window.
-    pub fn add_window(&mut self, builder: UiBuilder<T>, window: Window) {
+    pub fn add_window(&mut self, data: &mut T, builder: UiBuilder<T>, window: Window) {
         let theme = Self::build_theme(&mut self.theme_builder, &window);
 
         base_cx!(self, needs_rebuild, base);
 
         let window_id = window.id();
-        let window_ui = WindowUi::new(builder, &mut base, &mut self.data, theme, window);
+        let window_ui = WindowUi::new(builder, &mut base, data, theme, window);
         self.windows.insert(window_id, window_ui);
 
         if needs_rebuild {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands(data);
     }
 
     /// Remove a window.
@@ -180,40 +177,40 @@ impl<T> Ui<T> {
     /// Initialize the UI.
     ///
     /// This should be called after all initial windows have been added.
-    pub fn init(&mut self) {
-        self.init_delegate();
-        self.event_all(&Event::new(()));
+    pub fn init(&mut self, data: &mut T) {
+        self.init_delegate(data);
+        self.event_all(data, &Event::new(()));
     }
 
-    fn init_delegate(&mut self) {
+    fn init_delegate(&mut self, data: &mut T) {
         base_cx!(self, needs_rebuild, base);
         let mut cx = DelegateCx::new(&mut base);
 
         for delegate in &mut self.delegates {
-            delegate.init(&mut cx, &mut self.data);
+            delegate.init(&mut cx, data);
         }
 
         if needs_rebuild {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands(data);
     }
 
     /// Tell the UI that the event loop idle.
-    pub fn idle(&mut self) {
+    pub fn idle(&mut self, data: &mut T) {
         base_cx!(self, needs_rebuild, base);
         let mut cx = DelegateCx::new(&mut base);
 
         for delegate in &mut self.delegates {
-            delegate.idle(&mut cx, &mut self.data);
+            delegate.idle(&mut cx, data);
         }
 
         if needs_rebuild {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands(data);
     }
 
     /// Rebuild the theme for a window.
@@ -246,9 +243,9 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a window wants to close.
-    pub fn close_requested(&mut self, window_id: WindowId) {
+    pub fn close_requested(&mut self, data: &mut T, window_id: WindowId) {
         let event = Event::new(CloseRequested::new(window_id));
-        self.event(window_id, &event);
+        self.event(data, window_id, &event);
 
         if !event.is_handled() {
             self.requests.push(UiRequest::RemoveWindow(window_id));
@@ -261,7 +258,13 @@ impl<T> Ui<T> {
     }
 
     /// Tell the UI that a pointer has moved.
-    pub fn pointer_moved(&mut self, window_id: WindowId, pointer: PointerId, position: Point) {
+    pub fn pointer_moved(
+        &mut self,
+        data: &mut T,
+        window_id: WindowId,
+        pointer: PointerId,
+        position: Point,
+    ) {
         let window = self.window_mut(window_id).window_mut();
 
         let prev = (window.pointer(pointer)).map_or(Point::ZERO, |p| p.position);
@@ -285,21 +288,27 @@ impl<T> Ui<T> {
             modifiers: self.modifiers,
         };
 
-        self.event(window_id, &Event::new(event));
+        self.event(data, window_id, &Event::new(event));
     }
 
     /// Tell the UI that a pointer has left the window.
-    pub fn pointer_left(&mut self, window_id: WindowId, pointer: PointerId) {
+    pub fn pointer_left(&mut self, data: &mut T, window_id: WindowId, pointer: PointerId) {
         let event = PointerLeft { id: pointer };
 
         let window_ui = self.window_mut(window_id).window_mut();
         window_ui.pointer_left(pointer);
 
-        self.event(window_id, &Event::new(event))
+        self.event(data, window_id, &Event::new(event))
     }
 
     /// Tell the UI that a pointer has scrolled.
-    pub fn pointer_scroll(&mut self, window_id: WindowId, pointer: PointerId, delta: Vector) {
+    pub fn pointer_scroll(
+        &mut self,
+        data: &mut T,
+        window_id: WindowId,
+        pointer: PointerId,
+        delta: Vector,
+    ) {
         let event = PointerScrolled {
             id: pointer,
             position: self.pointer_position(window_id, pointer),
@@ -307,12 +316,13 @@ impl<T> Ui<T> {
             delta,
         };
 
-        self.event(window_id, &Event::new(event));
+        self.event(data, window_id, &Event::new(event));
     }
 
     /// Tell the UI that a pointer button has been pressed or released.
     pub fn pointer_button(
         &mut self,
+        data: &mut T,
         window_id: WindowId,
         pointer: PointerId,
         button: PointerButton,
@@ -326,7 +336,7 @@ impl<T> Ui<T> {
                 button,
             };
 
-            self.event(window_id, &Event::new(event));
+            self.event(data, window_id, &Event::new(event));
         } else {
             let event = PointerReleased {
                 id: pointer,
@@ -335,13 +345,14 @@ impl<T> Ui<T> {
                 button,
             };
 
-            self.event(window_id, &Event::new(event));
+            self.event(data, window_id, &Event::new(event));
         }
     }
 
     /// Tell the UI that a keyboard key has been pressed or released.
     pub fn keyboard_key(
         &mut self,
+        data: &mut T,
         window_id: WindowId,
         code: Option<Code>,
         text: Option<String>,
@@ -354,23 +365,23 @@ impl<T> Ui<T> {
                 modifiers: self.modifiers,
             };
 
-            self.event(window_id, &Event::new(event));
+            self.event(data, window_id, &Event::new(event));
         } else {
             let event = KeyReleased {
                 code,
                 modifiers: self.modifiers,
             };
 
-            self.event(window_id, &Event::new(event));
+            self.event(data, window_id, &Event::new(event));
         }
 
         if code == Some(Code::Tab) && pressed {
             let event = Event::new(SwitchFocus::new(!self.modifiers.shift));
-            self.event(window_id, &event);
+            self.event(data, window_id, &event);
 
             if !event.is_handled() {
                 let event = Event::new(RequestFocus::new(!self.modifiers.shift));
-                self.event(window_id, &event);
+                self.event(data, window_id, &event);
             }
         }
     }
@@ -398,25 +409,25 @@ impl<T> Ui<T> {
         }
     }
 
-    fn handle_command(&mut self, command: Command) {
+    fn handle_command(&mut self, data: &mut T, command: Command) {
         let event = Event::from(command);
-        self.event_all(&event);
+        self.event_all(data, &event);
         self.handle_builtin_commands(event);
     }
 
     /// Handle all pending commands.
-    pub fn handle_commands(&mut self) {
+    pub fn handle_commands(&mut self, data: &mut T) {
         while let Some(command) = self.command_rx.try_recv() {
-            self.handle_command(command);
+            self.handle_command(data, command);
         }
     }
 
-    fn event_delegate(&mut self, event: &Event) {
+    fn event_delegate(&mut self, data: &mut T, event: &Event) {
         base_cx!(self, needs_rebuild, base);
         let mut cx = DelegateCx::new(&mut base);
 
         for delegate in &mut self.delegates {
-            delegate.event(&mut cx, &mut self.data, event);
+            delegate.event(&mut cx, data, event);
         }
 
         if needs_rebuild {
@@ -425,17 +436,17 @@ impl<T> Ui<T> {
     }
 
     /// Handle an event for a single window.
-    pub fn event(&mut self, window_id: WindowId, event: &Event) {
+    pub fn event(&mut self, data: &mut T, window_id: WindowId, event: &Event) {
         #[cfg(feature = "tracing")]
         tracing::trace!("event: {} -> {}", event.name(), window_id);
 
-        self.event_delegate(event);
+        self.event_delegate(data, event);
 
         base_cx!(self, needs_rebuild, base);
 
         if !event.is_handled() {
             if let Some(window_ui) = self.windows.get_mut(&window_id) {
-                let requests = window_ui.event(&mut base, &mut self.data, event);
+                let requests = window_ui.event(&mut base, data, event);
                 self.requests.extend(requests);
             }
         }
@@ -444,21 +455,21 @@ impl<T> Ui<T> {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands(data);
     }
 
     /// Handle an event for all windows.
-    pub fn event_all(&mut self, event: &Event) {
+    pub fn event_all(&mut self, data: &mut T, event: &Event) {
         #[cfg(feature = "tracing")]
         tracing::trace!("event: {}", event.name());
 
-        self.event_delegate(event);
+        self.event_delegate(data, event);
 
         base_cx!(self, needs_rebuild, base);
 
         if !event.is_handled() {
             for window_ui in self.windows.values_mut() {
-                let requests = window_ui.event(&mut base, &mut self.data, event);
+                let requests = window_ui.event(&mut base, data, event);
                 self.requests.extend(requests);
             }
         }
@@ -467,21 +478,21 @@ impl<T> Ui<T> {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands(data);
     }
 
     /// Render a window.
-    pub fn render(&mut self, window_id: WindowId) {
+    pub fn render(&mut self, data: &mut T, window_id: WindowId) {
         base_cx!(self, needs_rebuild, base);
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            (self.requests).extend(window_ui.render(&mut base, &mut self.data));
+            (self.requests).extend(window_ui.render(&mut base, data));
         }
 
         if needs_rebuild {
             self.request_rebuild();
         }
 
-        self.handle_commands();
+        self.handle_commands(data);
     }
 }

@@ -47,7 +47,7 @@ impl Shell for WinitShell {
         (shell, waker)
     }
 
-    fn run<T>(self, ui: Ui<T>, windows: Windows<T>) -> Result<(), Self::Error> {
-        crate::launch::launch(self.event_loop, ui, windows)
+    fn run<T>(self, data: T, ui: Ui<T>, windows: Windows<T>) -> Result<(), Self::Error> {
+        crate::launch::launch(data, self.event_loop, ui, windows)
     }
 }

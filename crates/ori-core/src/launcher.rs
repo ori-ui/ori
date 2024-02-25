@@ -14,6 +14,7 @@ use crate::{
 /// A launcher for an application.
 pub struct Launcher<T: 'static, S> {
     pub(crate) shell: S,
+    pub(crate) data: T,
     pub(crate) ui: Ui<T>,
     pub(crate) windows: Windows<T>,
 }
@@ -23,13 +24,14 @@ impl<T, S: Shell> Launcher<T, S> {
     pub fn new(data: T) -> Self {
         let (shell, waker) = S::init();
 
-        let mut ui = Ui::new(data, waker);
+        let mut ui = Ui::new(waker);
 
         ui.push_theme(|| Palette::light().into());
         ui.push_theme(Theme::builtin);
 
         Self {
             shell,
+            data,
             ui,
             windows: Windows::new(),
         }
@@ -95,7 +97,7 @@ impl<T, S: Shell> Launcher<T, S> {
 
     /// Try to launch the application.
     pub fn try_launch(self) -> Result<(), S::Error> {
-        self.shell.run(self.ui, self.windows)
+        self.shell.run(self.data, self.ui, self.windows)
     }
 
     /// Launch the application.

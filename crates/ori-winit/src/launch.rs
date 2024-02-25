@@ -24,6 +24,7 @@ use crate::{
 };
 
 pub(crate) fn launch<T: 'static>(
+    data: T,
     event_loop: EventLoop<()>,
     ui: Ui<T>,
     windows: Windows<T>,
@@ -34,7 +35,7 @@ pub(crate) fn launch<T: 'static>(
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
-    let mut state = AppState::new(ui, windows);
+    let mut state = AppState::new(data, ui, windows);
     state.ui.set_clipboard(WinitClipboard::new());
 
     event_loop.run(move |event, target| {
@@ -54,7 +55,7 @@ pub(crate) fn launch<T: 'static>(
             // this event is sent by [`WinitWaker`] telling us that there are
             // commands that need to be processed
             Event::UserEvent(_) => {
-                state.ui.handle_commands();
+                state.ui.handle_commands(&mut state.data);
             }
             Event::WindowEvent { window_id, event } => {
                 state.window_event(window_id, event);
@@ -75,6 +76,7 @@ pub(crate) fn launch<T: 'static>(
 struct AppState<T: 'static> {
     init: bool,
     windows: Windows<T>,
+    data: T,
     ui: Ui<T>,
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
 
@@ -90,10 +92,11 @@ struct AppState<T: 'static> {
 }
 
 impl<T> AppState<T> {
-    fn new(ui: Ui<T>, windows: Windows<T>) -> Self {
+    fn new(data: T, ui: Ui<T>, windows: Windows<T>) -> Self {
         Self {
             init: false,
             windows,
+            data,
             ui,
             window_ids: HashMap::new(),
 
@@ -115,7 +118,7 @@ impl<T> AppState<T> {
         }
 
         self.init = true;
-        self.ui.init();
+        self.ui.init(&mut self.data);
 
         for (desc, builder) in mem::take(&mut self.windows) {
             if let Err(err) = self.create_window(target, desc, builder) {
@@ -214,7 +217,7 @@ impl<T> AppState<T> {
     }
 
     fn idle(&mut self) {
-        self.ui.idle();
+        self.ui.idle(&mut self.data);
 
         #[cfg(feature = "glow")]
         for render in self.renders.values_mut() {
@@ -261,7 +264,7 @@ impl<T> AppState<T> {
         window.set_color(desc.color);
 
         /* add the window to the ui */
-        self.ui.add_window(builder, window);
+        self.ui.add_window(&mut self.data, builder, window);
 
         Ok(())
     }
@@ -281,7 +284,7 @@ impl<T> AppState<T> {
 
     fn render(&mut self, window_id: ori_core::window::WindowId) -> Result<(), Error> {
         // sort the scene
-        self.ui.render(window_id);
+        self.ui.render(&mut self.data, window_id);
         self.ui.window_mut(window_id).scene_mut().sort();
 
         let window = self.ui.window(window_id);
@@ -321,7 +324,7 @@ impl<T> AppState<T> {
                 }
             }
             WindowEvent::CloseRequested => {
-                self.ui.close_requested(id);
+                self.ui.close_requested(&mut self.data, id);
             }
             WindowEvent::Resized(_) => {
                 self.ui.resized(id);
@@ -336,10 +339,15 @@ impl<T> AppState<T> {
             } => {
                 let scale_factor = self.ui.window(id).window().scale_factor();
                 let position = Point::new(position.x as f32, position.y as f32) / scale_factor;
-                (self.ui).pointer_moved(id, PointerId::from_hash(&device_id), position);
+                self.ui.pointer_moved(
+                    &mut self.data,
+                    id,
+                    PointerId::from_hash(&device_id),
+                    position,
+                );
             }
             WindowEvent::CursorLeft { device_id } => {
-                self.ui.pointer_left(id, PointerId::from_hash(&device_id));
+                (self.ui).pointer_left(&mut self.data, id, PointerId::from_hash(&device_id));
             }
             WindowEvent::MouseInput {
                 device_id,
@@ -348,6 +356,7 @@ impl<T> AppState<T> {
                 ..
             } => {
                 self.ui.pointer_button(
+                    &mut self.data,
                     id,
                     PointerId::from_hash(&device_id),
                     convert_mouse_button(button),
@@ -358,7 +367,12 @@ impl<T> AppState<T> {
                 delta: MouseScrollDelta::LineDelta(x, y),
                 device_id,
                 ..
-            } => (self.ui).pointer_scroll(id, PointerId::from_hash(&device_id), Vector::new(x, y)),
+            } => self.ui.pointer_scroll(
+                &mut self.data,
+                id,
+                PointerId::from_hash(&device_id),
+                Vector::new(x, y),
+            ),
             // since we're using a pointer model we need to handle touch
             // by emulating pointer events
             WindowEvent::Touch(event) => self.touch_event(id, event),
@@ -377,7 +391,13 @@ impl<T> AppState<T> {
                     _ => None,
                 };
 
-                (self.ui).keyboard_key(id, code, text.map(Into::into), is_pressed(state));
+                self.ui.keyboard_key(
+                    &mut self.data,
+                    id,
+                    code,
+                    text.map(Into::into),
+                    is_pressed(state),
+                );
             }
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.ui.modifiers_changed(Modifiers {
@@ -399,11 +419,13 @@ impl<T> AppState<T> {
         // we always send a pointer moved event first because the ui
         // needs to know where the pointer is. this will also ensure
         // that hot state is updated correctly
-        self.ui.pointer_moved(window_id, pointer_id, position);
+        self.ui
+            .pointer_moved(&mut self.data, window_id, pointer_id, position);
 
         match event.phase {
             TouchPhase::Started => {
                 self.ui.pointer_button(
+                    &mut self.data,
                     window_id,
                     pointer_id,
                     // a touch event is always the primary button
@@ -414,6 +436,7 @@ impl<T> AppState<T> {
             TouchPhase::Moved => {}
             TouchPhase::Ended | TouchPhase::Cancelled => {
                 self.ui.pointer_button(
+                    &mut self.data,
                     window_id,
                     pointer_id,
                     // a touch event is always the primary button
@@ -423,7 +446,7 @@ impl<T> AppState<T> {
 
                 // we also need to send a pointer left event because
                 // the ui needs to know that the pointer left the window
-                self.ui.pointer_left(window_id, pointer_id);
+                self.ui.pointer_left(&mut self.data, window_id, pointer_id);
             }
         }
     }

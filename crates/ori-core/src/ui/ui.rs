@@ -46,7 +46,7 @@ pub struct Ui<T: 'static> {
 }
 
 impl<T> Ui<T> {
-    /// Create a new [`Ui`] with the given data.
+    /// Create a new [`Ui`].
     pub fn new(waker: CommandWaker) -> Self {
         let (command_proxy, command_rx) = CommandProxy::new(waker);
 

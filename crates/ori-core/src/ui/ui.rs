@@ -77,8 +77,8 @@ impl<T> Ui<T> {
     }
 
     /// Add a new theme.
-    pub fn push_theme(&mut self, theme: impl FnMut() -> Theme + 'static) {
-        self.theme_builder.push(Box::new(theme));
+    pub fn push_theme<U: Into<Theme>>(&mut self, theme: impl FnMut() -> U + 'static) {
+        self.theme_builder.push(theme);
     }
 
     fn build_theme(builder: &mut ThemeBuilder, window: &Window) -> Theme {

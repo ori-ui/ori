@@ -28,8 +28,8 @@ impl ThemeBuilder {
     }
 
     /// Push a theme builder.
-    pub fn push(&mut self, builder: impl FnMut() -> Theme + 'static) {
-        self.builders.push(Box::new(builder));
+    pub fn push<T: Into<Theme>>(&mut self, mut builder: impl FnMut() -> T + 'static) {
+        self.builders.push(Box::new(move || builder().into()));
     }
 
     /// Clear the theme builders.

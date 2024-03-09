@@ -26,7 +26,7 @@ impl<T, S: Shell> Launcher<T, S> {
 
         let mut ui = Ui::new(waker);
 
-        ui.push_theme(|| Palette::light().into());
+        ui.push_theme(Palette::light);
         ui.push_theme(Theme::builtin);
 
         Self {

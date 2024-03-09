@@ -13,6 +13,7 @@ use std::fmt::Display;
 #[derive(Debug)]
 pub enum GlowError {
     /// Failed to create a surface.
+    #[cfg(feature = "glutin")]
     Glutin(glutin::error::Error),
     /// No compatible config found.
     ConfigNotFound,
@@ -20,6 +21,7 @@ pub enum GlowError {
     Gl(String),
 }
 
+#[cfg(feature = "glutin")]
 impl From<glutin::error::Error> for GlowError {
     fn from(err: glutin::error::Error) -> Self {
         Self::Glutin(err)
@@ -29,6 +31,7 @@ impl From<glutin::error::Error> for GlowError {
 impl Display for GlowError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            #[cfg(feature = "glutin")]
             GlowError::Glutin(err) => write!(f, "{}", err),
             GlowError::ConfigNotFound => write!(f, "No compatible config found"),
             GlowError::Gl(err) => write!(f, "{}", err),

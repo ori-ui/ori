@@ -204,7 +204,7 @@ impl<T> AppState<T> {
 
         let size = window.inner_size();
         let samples = if desc.anti_aliasing { 4 } else { 1 };
-        let render = ori_glow::GlowRender::new(
+        let render = ori_glow::GlowRender::glutin(
             window.raw_window_handle(),
             window.raw_display_handle(),
             size.width,

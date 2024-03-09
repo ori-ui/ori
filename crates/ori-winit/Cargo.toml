@@ -37,5 +37,5 @@ tracing = ["dep:tracing", "dep:tracing-subscriber"]
 x11 = ["winit/x11", "ori-glow?/x11"]
 wayland = ["winit/wayland", "ori-glow?/wayland"]
 
-glow = ["dep:ori-glow"]
+glow = ["dep:ori-glow", "ori-glow/glutin"]
 wgpu = ["dep:ori-wgpu"]

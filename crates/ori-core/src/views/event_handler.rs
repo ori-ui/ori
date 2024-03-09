@@ -15,7 +15,7 @@ pub fn on_event_before<T, V>(
 }
 
 /// Create a new [`EventHandler`], with an after callback.
-pub fn on_event_after<T, V>(
+pub fn on_event<T, V>(
     content: V,
     handler: impl FnMut(&mut EventCx, &mut T, &Event) + 'static,
 ) -> EventHandler<T, V> {

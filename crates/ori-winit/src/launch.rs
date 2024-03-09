@@ -419,8 +419,7 @@ impl<T> AppState<T> {
         // we always send a pointer moved event first because the ui
         // needs to know where the pointer is. this will also ensure
         // that hot state is updated correctly
-        self.ui
-            .pointer_moved(&mut self.data, window_id, pointer_id, position);
+        (self.ui).pointer_moved(&mut self.data, window_id, pointer_id, position);
 
         match event.phase {
             TouchPhase::Started => {

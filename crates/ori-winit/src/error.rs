@@ -8,6 +8,9 @@ pub enum Error {
     /// A glow render error.
     #[cfg(feature = "glow")]
     Glow(ori_glow::GlowError),
+    /// A glutin render error.
+    #[cfg(feature = "glow")]
+    Glutin(ori_glow::GlutinError),
     /// A wgpu render error.
     #[cfg(feature = "wgpu")]
     Wgpu(ori_wgpu::WgpuError),
@@ -21,6 +24,13 @@ pub enum Error {
 impl From<ori_glow::GlowError> for Error {
     fn from(err: ori_glow::GlowError) -> Self {
         Self::Glow(err)
+    }
+}
+
+#[cfg(feature = "glow")]
+impl From<ori_glow::GlutinError> for Error {
+    fn from(err: ori_glow::GlutinError) -> Self {
+        Self::Glutin(err)
     }
 }
 
@@ -48,6 +58,8 @@ impl Display for Error {
         match self {
             #[cfg(feature = "glow")]
             Error::Glow(err) => write!(f, "{}", err),
+            #[cfg(feature = "glow")]
+            Error::Glutin(err) => write!(f, "{}", err),
             #[cfg(feature = "wgpu")]
             Error::Wgpu(err) => write!(f, "{}", err),
             Error::OsError(err) => write!(f, "{}", err),

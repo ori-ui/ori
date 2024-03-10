@@ -39,7 +39,9 @@ fn clear_button() -> impl View<Data> {
 fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
     hstack![
         text("Multiline"),
-        checkbox(data.multiline).on_press(|_, data: &mut Data| data.toogle_multiline())
+        on_click(checkbox(data.multiline), |_, data: &mut Data| {
+            data.toogle_multiline();
+        })
     ]
 }
 

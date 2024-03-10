@@ -72,7 +72,7 @@ fn input(border: bool) -> impl View<Data> {
 }
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
-    let completed = checkbox(todo.completed).on_press(|_, data: &mut Todo| data.toggle());
+    let completed = on_press(checkbox(todo.completed), |_, data: &mut Todo| data.toggle());
     let completed = alt("Toggle whether the todo is completed", completed);
 
     let title_color = if todo.completed {

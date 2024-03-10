@@ -17,7 +17,31 @@ pub type BoxedView<T> = Box<dyn AnyView<T>>;
 ///
 /// This is useful for when you need to create a view that needs
 /// to change its type dynamically.
-pub fn any<T>(view: impl AnyView<T> + 'static) -> BoxedView<T> {
+///
+/// ```compile_fail
+/// # use ori_core::{views::*, view::View};
+/// // this will fail to compile because the type of each branch is different
+/// fn ui(data: &mut bool) -> impl View<bool> {
+///     if *data {
+///         button(text("True"))
+///     } else {
+///         text("False")
+///     }
+/// }
+/// ```
+///
+/// ```no_run
+/// # use ori_core::{views::*, view::View};
+/// // whereas this will compile using `any`
+/// fn ui(data: &mut bool) -> impl View<bool> {
+///     if *data {
+///         any(button(text("True")))
+///     } else {
+///         any(text("False"))
+///     }
+/// }
+/// ```
+pub fn any<'a, T>(view: impl AnyView<T> + 'a) -> Box<dyn AnyView<T> + 'a> {
     Box::new(view)
 }
 

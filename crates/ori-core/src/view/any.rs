@@ -89,6 +89,8 @@ where
         } else {
             *state = self.dyn_build(&mut cx.build_cx(), data);
             *cx.view_state = Default::default();
+
+            cx.request_layout();
         }
     }
 

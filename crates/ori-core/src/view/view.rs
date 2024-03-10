@@ -168,3 +168,63 @@ impl<T, V: View<T>> View<T> for Option<V> {
         }
     }
 }
+
+impl<T, V: View<T>, E: View<T>> View<T> for Result<V, E> {
+    type State = Result<V::State, E::State>;
+
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        match self {
+            Ok(view) => Ok(view.build(cx, data)),
+            Err(view) => Err(view.build(cx, data)),
+        }
+    }
+
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        match (&mut *self, &mut *state, old) {
+            (Ok(view), Ok(state), Ok(old)) => view.rebuild(state, cx, data, old),
+            (Err(view), Err(state), Err(old)) => view.rebuild(state, cx, data, old),
+            _ => {
+                *state = self.build(&mut cx.build_cx(), data);
+                *cx.view_state = Default::default();
+
+                cx.request_layout();
+            }
+        }
+    }
+
+    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        match (self, state) {
+            (Ok(view), Ok(state)) => view.event(state, cx, data, event),
+            (Err(view), Err(state)) => view.event(state, cx, data, event),
+            _ => {}
+        }
+    }
+
+    fn layout(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut LayoutCx,
+        data: &mut T,
+        space: Space,
+    ) -> Size {
+        match (self, state) {
+            (Ok(view), Ok(state)) => view.layout(state, cx, data, space),
+            (Err(view), Err(state)) => view.layout(state, cx, data, space),
+            _ => space.min,
+        }
+    }
+
+    fn draw(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut DrawCx,
+        data: &mut T,
+        canvas: &mut Canvas,
+    ) {
+        match (self, state) {
+            (Ok(view), Ok(state)) => view.draw(state, cx, data, canvas),
+            (Err(view), Err(state)) => view.draw(state, cx, data, canvas),
+            _ => {}
+        }
+    }
+}

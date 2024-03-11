@@ -65,6 +65,7 @@ pub struct MeshRender {
     batches: Vec<PreparedBatch>,
     program: glow::Program,
     textures: HashMap<WeakImage, glow::Texture>,
+    fallback: glow::Texture,
 }
 
 impl MeshRender {
@@ -123,11 +124,13 @@ impl MeshRender {
 
     pub unsafe fn new(gl: &glow::Context) -> Result<Self, GlowError> {
         let program = Self::create_program(gl)?;
+        let fallback = Self::create_texture(gl, &Image::default())?;
 
         Ok(Self {
             batches: Vec::new(),
             program,
             textures: HashMap::new(),
+            fallback,
         })
     }
 
@@ -190,7 +193,7 @@ impl MeshRender {
                     Ok(texture)
                 }
             },
-            _ => self.get_texture(gl, &Some(Default::default())),
+            _ => Ok(self.fallback),
         }
     }
 
@@ -277,6 +280,7 @@ impl MeshRender {
 
     pub unsafe fn delete(&self, gl: &glow::Context) {
         gl.delete_program(self.program);
+        gl.delete_texture(self.fallback);
 
         for batch in self.batches.iter() {
             batch.delete(gl);

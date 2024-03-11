@@ -226,7 +226,8 @@ impl<T> AppState<T> {
         self.ui.idle(&mut self.data);
 
         #[cfg(feature = "glow")]
-        for (render, _) in self.renders.values_mut() {
+        for (render, context) in self.renders.values_mut() {
+            let _ = context.make_current().is_ok();
             render.clean();
         }
 

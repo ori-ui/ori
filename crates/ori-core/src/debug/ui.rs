@@ -169,6 +169,10 @@ fn debug_tree_content(
     selected: Option<&[usize]>,
     path: &mut Vec<usize>,
 ) -> impl View<(DebugData, DebugState)> {
+    if !state.expanded {
+        return None;
+    }
+
     (state.content).resize_with(tree.content().len(), TreeState::default);
 
     let mut content = vstack_any().align_items(Align::Start);
@@ -182,7 +186,7 @@ fn debug_tree_content(
         path.pop();
     }
 
-    hstack![expand(1.0, content)]
+    Some(hstack![expand(1.0, content)])
 }
 
 fn debug_tree_node(
@@ -192,12 +196,7 @@ fn debug_tree_node(
     path: &mut Vec<usize>,
 ) -> impl View<(DebugData, DebugState)> {
     let header = debug_tree_header(tree, state, selected, path);
-
-    let content = if state.expanded {
-        Some(debug_tree_content(tree, state, selected, path))
-    } else {
-        None
-    };
+    let content = debug_tree_content(tree, state, selected, path);
 
     vstack![header, content].align_items(Align::Stretch)
 }

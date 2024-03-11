@@ -8,17 +8,12 @@ use crate::{
 
 /// Create a new [`Flex`] view.
 pub fn flex<V>(flex: f32, content: V) -> Flex<V> {
-    Flex::new(flex, 1.0, content)
+    Flex::new(flex, false, content)
 }
 
-/// Create a new [`Flex`] view with a flexible grow value.
-pub fn flex_grow<V>(flex: f32, content: V) -> Flex<V> {
-    Flex::new(flex, 0.0, content)
-}
-
-/// Create a new [`Flex`] view with a flexible shrink value.
-pub fn flex_shrink<V>(flex: f32, content: V) -> Flex<V> {
-    Flex::new(0.0, flex, content)
+/// Create a new expanded [`Flex`] view.
+pub fn expand<V>(flex: f32, content: V) -> Flex<V> {
+    Flex::new(flex, true, content)
 }
 
 /// A flexible view.
@@ -26,19 +21,19 @@ pub fn flex_shrink<V>(flex: f32, content: V) -> Flex<V> {
 pub struct Flex<V> {
     /// The content of the view.
     pub content: V,
-    /// The flex grow value of the view.
-    pub grow: f32,
-    /// The flex shrink value of the view.
-    pub shrink: f32,
+    /// The flex value of the view.
+    pub flex: f32,
+    /// Whether the view is tight.
+    pub tight: bool,
 }
 
 impl<V> Flex<V> {
     /// Create a new flexible view.
-    pub fn new(grow: f32, shrink: f32, content: V) -> Self {
+    pub fn new(flex: f32, tight: bool, content: V) -> Self {
         Self {
             content,
-            grow,
-            shrink,
+            flex,
+            tight,
         }
     }
 }
@@ -51,6 +46,8 @@ impl<T, V: View<T>> View<T> for Flex<V> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        cx.set_flex(self.flex);
+        cx.set_tight(self.tight);
         self.content.rebuild(state, cx, data, &old.content);
     }
 
@@ -65,8 +62,8 @@ impl<T, V: View<T>> View<T> for Flex<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        cx.set_flex_grow(self.grow);
-        cx.set_flex_shrink(self.shrink);
+        cx.set_flex(self.flex);
+        cx.set_tight(self.tight);
         self.content.layout(state, cx, data, space)
     }
 

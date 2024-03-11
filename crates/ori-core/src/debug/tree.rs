@@ -1,21 +1,58 @@
 use std::{
     any::type_name,
     hash::{Hash, Hasher},
+    mem,
     time::Duration,
 };
 
 use crate::layout::{Affine, Rect, Space};
 
+/// Debug information about how a debug tree was laid out.
+#[derive(Clone, Debug, Default)]
+pub struct DebugLayout {
+    /// The space.
+    pub space: Space,
+    /// The flex.
+    pub flex: f32,
+    /// Whether the flex is tight.
+    pub tight: bool,
+}
+
+impl Hash for DebugLayout {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.space.hash(state);
+        self.flex.to_bits().hash(state);
+        self.tight.hash(state);
+    }
+}
+
+/// Debug information about how a debug tree was drawn.
+#[derive(Clone, Debug, Default)]
+pub struct DebugDraw {
+    /// The rect.
+    pub rect: Rect,
+    /// The transform.
+    pub transform: Affine,
+    /// The depth.
+    pub depth: f32,
+}
+
+impl Hash for DebugDraw {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.rect.hash(state);
+        self.transform.hash(state);
+        self.depth.to_bits().hash(state);
+    }
+}
+
 /// A debug tree.
 #[derive(Clone, Debug)]
 pub struct DebugTree {
     name: Option<&'static str>,
-    content: Vec<Option<DebugTree>>,
-    rect: Option<Rect>,
-    transform: Option<Affine>,
-    space: Option<Space>,
-    flex: Option<(f32, f32)>,
-    depth: Option<f32>,
+    content: Vec<DebugTree>,
+    layout: Option<DebugLayout>,
+    draw: Option<DebugDraw>,
+    decay: bool,
 
     build_time: Option<Duration>,
     rebuild_time: Option<Duration>,
@@ -34,8 +71,8 @@ impl Hash for DebugTree {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         self.content.hash(state);
-        self.rect.hash(state);
-        self.transform.hash(state);
+        self.layout.hash(state);
+        self.draw.hash(state);
     }
 }
 
@@ -45,11 +82,9 @@ impl DebugTree {
         Self {
             name: None,
             content: Vec::new(),
-            rect: None,
-            transform: None,
-            space: None,
-            flex: None,
-            depth: None,
+            layout: None,
+            draw: None,
+            decay: false,
 
             build_time: None,
             rebuild_time: None,
@@ -62,11 +97,13 @@ impl DebugTree {
     /// Set the name.
     pub fn set_type<T: ?Sized>(&mut self) {
         self.name = Some(type_name::<T>());
+        self.decay = false;
     }
 
     /// Set the name.
     pub fn set_name(&mut self, name: &'static str) {
         self.name = Some(name);
+        self.decay = false;
     }
 
     /// Get the name.
@@ -163,60 +200,91 @@ impl DebugTree {
     }
 
     /// Set the layout.
-    pub fn set_rect(&mut self, rect: Rect) {
-        self.rect = Some(rect);
+    pub fn set_layout(&mut self, layout: DebugLayout) {
+        self.layout = Some(layout);
     }
 
-    /// Add a child.
-    pub fn rect(&self) -> Rect {
-        self.rect.unwrap_or_default()
+    /// Get the layout.
+    pub fn layout(&self) -> DebugLayout {
+        self.layout.clone().unwrap_or_default()
     }
 
-    /// Set the transform.
-    pub fn set_transform(&mut self, transform: Affine) {
-        self.transform = Some(transform);
+    /// Set the draw.
+    pub fn set_draw(&mut self, draw: DebugDraw) {
+        self.draw = Some(draw);
     }
 
-    /// Get the transform.
-    pub fn transform(&self) -> Affine {
-        self.transform.unwrap_or_default()
+    /// Get the draw.
+    pub fn draw(&self) -> DebugDraw {
+        self.draw.clone().unwrap_or_default()
     }
 
-    /// Set the space.
-    pub fn set_space(&mut self, space: Space) {
-        self.space = Some(space);
+    /// Insert a child.
+    pub fn insert(&mut self, index: usize, child: DebugTree) {
+        if index >= self.content.len() {
+            self.content.resize_with(index + 1, Self::default);
+        }
+
+        self.content[index] = child;
     }
 
-    /// Get the space.
-    pub fn space(&self) -> Space {
-        self.space.unwrap_or_default()
+    /// Remove a child.
+    pub fn remove(&mut self, index: usize) -> Option<DebugTree> {
+        self.get_child_mut(index).map(mem::take)
     }
 
-    /// Set the flex.
-    pub fn set_flex(&mut self, shrink: f32, grow: f32) {
-        self.flex = Some((shrink, grow));
+    /// Remove a child or create a new one.
+    pub fn remove_or_new(&mut self, index: usize) -> DebugTree {
+        self.remove(index).unwrap_or_default()
     }
 
-    /// Get the flex shrink.
-    pub fn flex_shrink(&self) -> f32 {
-        self.flex.unwrap_or_default().0
+    /// Truncate the number of children.
+    pub fn truncate(&mut self, len: usize) {
+        self.content.truncate(len);
     }
 
-    /// Get the flex grow.
-    pub fn flex_grow(&self) -> f32 {
-        self.flex.unwrap_or_default().1
+    /// Get a tree at the given path.
+    pub fn get_path(&self, path: &[usize]) -> Option<&DebugTree> {
+        let mut tree = self;
+
+        for &index in path {
+            tree = tree.get_child(index)?;
+        }
+
+        Some(tree)
     }
 
-    /// Set the depth.
-    pub fn set_depth(&mut self, depth: f32) {
-        self.depth = Some(depth);
+    /// Get the child at the given index.
+    pub fn get_child(&self, index: usize) -> Option<&DebugTree> {
+        self.content.get(index)
     }
 
-    /// Get the depth.
-    pub fn depth(&self) -> f32 {
-        self.depth.unwrap_or_default()
+    /// Get the child at the given index.
+    pub fn get_child_mut(&mut self, index: usize) -> Option<&mut DebugTree> {
+        self.content.get_mut(index)
     }
 
+    /// Get the number of children.
+    pub fn content(&self) -> &[DebugTree] {
+        &self.content
+    }
+
+    /// Decay the tree, pruning any stale branches.
+    pub fn decay(&mut self) {
+        self.decay = true;
+
+        self.content.retain_mut(|child| {
+            if child.decay {
+                false
+            } else {
+                child.decay();
+                true
+            }
+        });
+    }
+}
+
+impl DebugTree {
     /// Set the build time.
     pub fn set_build_time(&mut self, time: Duration) {
         self.build_time = Some(time);
@@ -265,55 +333,5 @@ impl DebugTree {
     /// Get the draw time.
     pub fn draw_time(&self) -> Option<Duration> {
         self.draw_time
-    }
-
-    /// Insert a child.
-    pub fn insert(&mut self, index: usize, child: DebugTree) {
-        if index >= self.content.len() {
-            self.content.resize_with(index + 1, || None);
-        }
-
-        self.content[index] = Some(child);
-    }
-
-    /// Remove a child.
-    pub fn remove(&mut self, index: usize) -> Option<DebugTree> {
-        self.content.get_mut(index).and_then(Option::take)
-    }
-
-    /// Remove a child or create a new one.
-    pub fn remove_or_new(&mut self, index: usize) -> DebugTree {
-        self.remove(index).unwrap_or_default()
-    }
-
-    /// Truncate the number of children.
-    pub fn truncate(&mut self, len: usize) {
-        self.content.truncate(len);
-    }
-
-    /// Get a tree at the given path.
-    pub fn get_path(&self, path: &[usize]) -> Option<&DebugTree> {
-        let mut tree = self;
-
-        for &index in path {
-            tree = tree.get_child(index)?;
-        }
-
-        Some(tree)
-    }
-
-    /// Get the child at the given index.
-    pub fn get_child(&self, index: usize) -> Option<&DebugTree> {
-        self.content.get(index).and_then(Option::as_ref)
-    }
-
-    /// Get the child at the given index.
-    pub fn get_child_mut(&mut self, index: usize) -> Option<&mut DebugTree> {
-        self.content.get_mut(index).and_then(Option::as_mut)
-    }
-
-    /// Get the number of children.
-    pub fn content(&self) -> impl Iterator<Item = &DebugTree> {
-        self.content.iter().filter_map(Option::as_ref)
     }
 }

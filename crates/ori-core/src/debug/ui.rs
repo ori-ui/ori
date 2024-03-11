@@ -59,7 +59,7 @@ fn debug_tree_expand_button(
     state: &TreeState,
     path: &[usize],
 ) -> impl View<(DebugData, DebugState)> {
-    if tree.content().count() == 0 {
+    if tree.content().is_empty() {
         return Err(width(12.0, ()));
     }
 
@@ -84,19 +84,15 @@ fn debug_tree_name(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
 }
 
 fn debug_tree_size(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
-    debug_text!("[{} x {}]", tree.rect().width(), tree.rect().height())
+    debug_text!("{}", tree.draw().rect.size())
 }
 
 fn debug_tree_child_count(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
-    let count = tree.content().count();
-
-    if count == 0 {
+    if tree.content().is_empty() {
         return None;
     }
 
-    let count = debug_text!("({})", count);
-
-    Some(count)
+    Some(debug_text!("({})", tree.content().len()))
 }
 
 fn debug_tree_hightlight(
@@ -104,7 +100,7 @@ fn debug_tree_hightlight(
     state: &TreeState,
     content: impl View<(DebugData, DebugState)>,
 ) -> impl View<(DebugData, DebugState)> {
-    let rect = tree.rect();
+    let rect = tree.draw().rect;
     let transform = state.transform;
 
     on_draw(trigger(content), move |cx, _, canvas| {
@@ -173,13 +169,13 @@ fn debug_tree_content(
     selected: Option<&[usize]>,
     path: &mut Vec<usize>,
 ) -> impl View<(DebugData, DebugState)> {
-    (state.content).resize_with(tree.content().count(), TreeState::default);
+    (state.content).resize_with(tree.content().len(), TreeState::default);
 
     let mut content = vstack_any().align_items(Align::Start);
 
-    for (i, child) in tree.content().enumerate() {
+    for (i, child) in tree.content().iter().enumerate() {
         let child_state = &mut state.content[i];
-        child_state.transform = state.transform * child.transform();
+        child_state.transform = state.transform * child.draw().transform;
 
         path.push(i);
         content.push(debug_tree_node(child, child_state, selected, path));
@@ -253,16 +249,24 @@ fn debug_tree_performance(tree: &DebugTree) -> impl View<(DebugData, DebugState)
 }
 
 fn debug_tree_layout(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
-    let transform = tree.transform();
+    let layout = tree.layout();
+    let draw = tree.draw();
 
-    let offset = debug_text!("Offset: {}", transform.translation);
-    let size = debug_text!("Size: {}", tree.rect().size());
-    let min_size = debug_text!("Min size: {}", tree.space().min);
-    let max_size = debug_text!("Max size: {}", tree.space().max);
-    let flex = debug_text!("Flex: {}, {}", tree.flex_shrink(), tree.flex_grow());
-    let depth = debug_text!("Depth: {}", tree.depth());
+    let layout = vstack![
+        debug_text!("Min size: {}", layout.space.min),
+        debug_text!("Max size: {}", layout.space.max),
+        debug_text!("Flex: {}, {}", layout.flex, layout.tight),
+    ]
+    .align_items(Align::Start);
 
-    vstack![offset, size, min_size, max_size, flex, depth].align_items(Align::Start)
+    let draw = vstack![
+        debug_text!("Offset: {}", draw.transform.translation),
+        debug_text!("Size: {}", draw.rect.size()),
+        debug_text!("Depth: {}", draw.depth),
+    ]
+    .align_items(Align::Start);
+
+    vstack![layout, draw].align_items(Align::Start)
 }
 
 fn debug_selected_tree(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {

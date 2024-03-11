@@ -1,4 +1,7 @@
-use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, Sub, SubAssign};
+use std::{
+    hash::{Hash, Hasher},
+    ops::{Add, AddAssign, BitAnd, BitAndAssign, Sub, SubAssign},
+};
 
 use super::Size;
 
@@ -154,5 +157,12 @@ impl Sub<Size> for Space {
 impl SubAssign<Size> for Space {
     fn sub_assign(&mut self, rhs: Size) {
         *self = *self - rhs;
+    }
+}
+
+impl Hash for Space {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.min.hash(state);
+        self.max.hash(state);
     }
 }

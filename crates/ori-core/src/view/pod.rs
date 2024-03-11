@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     canvas::Canvas,
-    debug::DebugTree,
+    debug::{DebugDraw, DebugLayout, DebugTree},
     event::{Event, PointerLeft, PointerMoved, SwitchFocus},
     layout::{Size, Space},
 };
@@ -282,9 +282,12 @@ impl<T, V: View<T>> View<T> for Pod<V> {
             let time = start.elapsed();
 
             let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
-            child_tree.set_space(space);
-            child_tree.set_flex(state.view_state.flex, state.view_state.flex);
             child_tree.set_layout_time(time);
+            child_tree.set_layout(DebugLayout {
+                space,
+                flex: state.view_state.flex(),
+                tight: state.view_state.is_tight(),
+            });
 
             debug_tree.insert(0, child_tree);
             cx.insert_context(debug_tree);
@@ -318,9 +321,11 @@ impl<T, V: View<T>> View<T> for Pod<V> {
 
             let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
             child_tree.set_draw_time(time);
-            child_tree.set_rect(state.view_state.rect());
-            child_tree.set_depth(canvas.depth);
-            child_tree.set_transform(state.view_state.transform);
+            child_tree.set_draw(DebugDraw {
+                rect: state.view_state.rect(),
+                transform: state.view_state.transform(),
+                depth: canvas.depth,
+            });
 
             debug_tree.insert(0, child_tree);
             cx.insert_context(debug_tree);

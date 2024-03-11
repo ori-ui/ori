@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     canvas::Canvas,
-    debug::DebugTree,
+    debug::{DebugDraw, DebugLayout, DebugTree},
     event::Event,
     layout::{Size, Space},
 };
@@ -494,9 +494,12 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
             });
 
             let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
-            child_tree.set_space(space);
-            child_tree.set_flex(state.view_state[n].flex, state.view_state[n].flex);
             child_tree.set_layout_time(start.elapsed());
+            child_tree.set_layout(DebugLayout {
+                space,
+                flex: state.view_state[n].flex(),
+                tight: state.view_state[n].is_tight(),
+            });
 
             debug_tree.insert(n, child_tree);
             cx.insert_context(debug_tree);
@@ -528,10 +531,12 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
             });
 
             let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
-            child_tree.set_rect(state.view_state[n].rect());
-            child_tree.set_transform(state.view_state[n].transform());
-            child_tree.set_depth(canvas.depth);
             child_tree.set_draw_time(start.elapsed());
+            child_tree.set_draw(DebugDraw {
+                rect: state.view_state[n].rect(),
+                transform: state.view_state[n].transform(),
+                depth: canvas.depth,
+            });
 
             debug_tree.insert(n, child_tree);
             cx.insert_context(debug_tree);

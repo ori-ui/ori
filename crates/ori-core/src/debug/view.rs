@@ -76,27 +76,28 @@ impl<V: View<T>, D: View<DebugData>, T> View<T> for DebugView<V, D> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
-        let debug_tree = state.debug_tree.take().unwrap();
-
-        cx.insert_context(debug_tree);
-        (self.content).rebuild(&mut state.content, cx, data, &old.content);
-
+        // if state isn't open, we don't need to build the debug tree
         if !state.is_open {
-            state.debug_tree = cx.remove_context::<DebugTree>();
+            (self.content).rebuild(&mut state.content, cx, data, &old.content);
             return;
         }
 
-        let debug_tree = cx.remove_context::<DebugTree>().unwrap();
+        cx.insert_context(state.debug_tree.take().unwrap());
+        (self.content).rebuild(&mut state.content, cx, data, &old.content);
 
+        // create the debug data
         let mut data = DebugData {
             history: cx.remove_context::<History>().unwrap(),
-            tree: debug_tree,
+            tree: cx.remove_context::<DebugTree>().unwrap(),
             is_open: state.is_open,
         };
 
         let debugger = self.debugger(&mut data);
         let old_debugger = old.debugger.as_ref().unwrap();
         debugger.rebuild(&mut state.debugger, cx, &mut data, old_debugger);
+
+        // decay the tree, this will remove any old nodes that haven't been rebuilt
+        data.tree.decay();
 
         cx.insert_context(data.history);
         state.debug_tree = Some(data.tree);
@@ -113,21 +114,17 @@ impl<V: View<T>, D: View<DebugData>, T> View<T> for DebugView<V, D> {
             }
         }
 
-        let debug_tree = state.debug_tree.take().unwrap();
-
-        cx.insert_context(debug_tree);
-        (self.content).event(&mut state.content, cx, data, event);
-
         if !state.is_open {
-            state.debug_tree = cx.remove_context::<DebugTree>();
+            (self.content).event(&mut state.content, cx, data, event);
             return;
         }
 
-        let debug_tree = cx.remove_context::<DebugTree>().unwrap();
+        cx.insert_context(state.debug_tree.take().unwrap());
+        (self.content).event(&mut state.content, cx, data, event);
 
         let mut data = DebugData {
             history: cx.remove_context::<History>().unwrap(),
-            tree: debug_tree,
+            tree: cx.remove_context::<DebugTree>().unwrap(),
             is_open: state.is_open,
         };
 
@@ -150,29 +147,27 @@ impl<V: View<T>, D: View<DebugData>, T> View<T> for DebugView<V, D> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let mut content_space = space;
-
-        if state.is_open {
-            let mut debug_data = DebugData {
-                history: cx.remove_context::<History>().unwrap(),
-                tree: state.debug_tree.take().unwrap(),
-                is_open: state.is_open,
-            };
-
-            let debugger = self.debugger(&mut debug_data);
-            let size = debugger.layout(&mut state.debugger, cx, &mut debug_data, space.loosen());
-
-            let offset = Vector::new(0.0, space.max.height - size.height);
-            state.debugger.translate(offset);
-
-            content_space = space.shrink(Size::new(0.0, size.height));
-
-            cx.insert_context(debug_data.history);
-            cx.insert_context(debug_data.tree);
-            state.is_open = debug_data.is_open;
-        } else {
-            cx.insert_context(state.debug_tree.take().unwrap());
+        if !state.is_open {
+            return (self.content).layout(&mut state.content, cx, data, space);
         }
+
+        let mut debug_data = DebugData {
+            history: cx.remove_context::<History>().unwrap(),
+            tree: state.debug_tree.take().unwrap(),
+            is_open: state.is_open,
+        };
+
+        let debugger = self.debugger(&mut debug_data);
+        let size = debugger.layout(&mut state.debugger, cx, &mut debug_data, space.loosen());
+
+        let offset = Vector::new(0.0, space.max.height - size.height);
+        state.debugger.translate(offset);
+
+        let content_space = space.shrink(Size::new(0.0, size.height));
+
+        cx.insert_context(debug_data.history);
+        cx.insert_context(debug_data.tree);
+        state.is_open = debug_data.is_open;
 
         (self.content).layout(&mut state.content, cx, data, content_space);
         state.debug_tree = cx.remove_context::<DebugTree>();
@@ -187,17 +182,16 @@ impl<V: View<T>, D: View<DebugData>, T> View<T> for DebugView<V, D> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        let debug_tree = state.debug_tree.take().unwrap();
-
-        let tree_hash = debug_tree.fast_hash();
-
-        cx.insert_context(debug_tree);
-        (self.content).draw(&mut state.content, cx, data, canvas);
-
         if !state.is_open {
-            state.debug_tree = cx.remove_context::<DebugTree>();
+            (self.content).draw(&mut state.content, cx, data, canvas);
             return;
         }
+
+        let debug_tree = state.debug_tree.take().unwrap();
+        let tree_hash = debug_tree.fast_hash();
+        cx.insert_context(debug_tree);
+
+        (self.content).draw(&mut state.content, cx, data, canvas);
 
         let mut data = DebugData {
             history: cx.remove_context::<History>().unwrap(),

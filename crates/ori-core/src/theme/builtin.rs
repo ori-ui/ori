@@ -114,7 +114,7 @@ pub mod alt {
 pub mod container {
     use crate::{
         canvas::{Background, BorderRadius, BorderWidth, Color},
-        theme::{Key, Theme},
+        theme::{Key, Palette, Theme},
     };
 
     /// The background color.
@@ -127,10 +127,10 @@ pub mod container {
     pub const BORDER_COLOR: Key<Color> = Key::new("container.border_color");
 
     pub(super) fn builtin(theme: &mut Theme) {
-        theme.set(BACKGROUND, Color::TRANSPARENT);
+        theme.map(BACKGROUND, |theme| theme.get(Palette::SECONDARY).into());
         theme.set(BORDER_RADIUS, BorderRadius::all(0.0));
         theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
-        theme.set(BORDER_COLOR, Color::TRANSPARENT);
+        theme.map(BORDER_COLOR, |theme| theme.get(Palette::SECONDARY_DARK));
     }
 }
 
@@ -186,7 +186,7 @@ pub mod button {
 
     pub(super) fn builtin(theme: &mut Theme) {
         theme.set(TRANSITION, Transition::ease(0.1));
-        theme.map(COLOR, |theme| Background::new(theme.get(Palette::PRIMARY)));
+        theme.map(COLOR, |theme| theme.get(Palette::PRIMARY).into());
         theme.set(BORDER_RADIUS, BorderRadius::all(8.0));
         theme.set(BORDER_WIDTH, BorderWidth::all(0.0));
         theme.set(BORDER_COLOR, Color::TRANSPARENT);

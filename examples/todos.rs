@@ -195,12 +195,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn theme() -> Theme {
-    Theme::new()
-        .with(container::BACKGROUND, style(Palette::BACKGROUND_DARK))
-        .with(container::BORDER_WIDTH, BorderWidth::all(0.0))
-        .with(container::BORDER_RADIUS, BorderRadius::all(0.0))
-        .with(container::BORDER_COLOR, style(Palette::SECONDARY_DARK))
-        .with(checkbox::BORDER_RADIUS, BorderRadius::all(12.0))
+    Theme::new().with(checkbox::BORDER_RADIUS, BorderRadius::all(12.0))
 }
 
 // we define a delegate to handle the custom command

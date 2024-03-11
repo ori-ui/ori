@@ -208,13 +208,15 @@ fn debug_tree_node(
 
 fn debug_tree(data: &mut DebugData, state: &mut DebugState) -> impl View<(DebugData, DebugState)> {
     let root = data.tree.get_child(0).unwrap_or(&data.tree);
+
     let tree = debug_tree_node(
         root,
         &mut state.tree,
         state.selected_tree.as_deref(),
         &mut Vec::new(),
     );
-    vscroll(tree)
+
+    container(vscroll(tree))
 }
 
 fn selected_tree<'a>(data: &'a DebugData, state: &DebugState) -> Option<&'a DebugTree> {
@@ -278,9 +280,6 @@ fn debug_inspector_right_panel(
     let content = width(350.0, pad(8.0, vscroll(content)));
 
     container(content)
-        .background(style(Palette::SECONDARY))
-        .border_color(style(Palette::SECONDARY_DARK))
-        .border_left(1.0)
 }
 
 fn debug_inspector(
@@ -292,6 +291,7 @@ fn debug_inspector(
         debug_inspector_right_panel(data, state),
     ]
     .align_items(Align::Start)
+    .gap(1.0)
 }
 
 fn average_time<T>(event: &str, time: Option<Duration>) -> impl View<T> {
@@ -314,7 +314,7 @@ fn debug_profiler(
     ]
     .align_items(Align::Start);
 
-    pad(8.0, hstack![stack])
+    container(pad(8.0, hstack![stack]))
 }
 
 fn debug_bar_button<T>(content: impl View<T>) -> Button<impl View<T>> {
@@ -356,29 +356,23 @@ fn debug_bar(state: &mut DebugState) -> impl View<(DebugData, DebugState)> {
         debug_tab(state, DebugTab::Profiler)
     ];
 
-    hstack![tabs, debug_close_button()].justify_content(Justify::SpaceBetween)
+    let stack = hstack![tabs, debug_close_button()].justify_content(Justify::SpaceBetween);
+
+    container(stack)
 }
 
 fn debug_panel(data: &mut DebugData, state: &mut DebugState) -> impl View<(DebugData, DebugState)> {
-    let content = match state.tab {
+    match state.tab {
         DebugTab::Inspector => any(debug_inspector(data, state)),
         DebugTab::Profiler => any(debug_profiler(data, state)),
-    };
-
-    container(pad_top(1.0, content))
-        .background(style(Palette::SECONDARY))
-        .border_color(style(Palette::SECONDARY_DARK))
-        .border_top(1.0)
+    }
 }
 
 fn debug(_data: &mut DebugData) -> impl View<DebugData> {
     with_state(DebugState::default, |data, state| {
-        let stack = vstack![debug_bar(state), expand(1.0, debug_panel(data, state))];
+        let stack = vstack![debug_bar(state), expand(1.0, debug_panel(data, state))].gap(1.0);
 
-        let container = container(pad_top(1.0, stack))
-            .background(style(Palette::SECONDARY))
-            .border_color(style(Palette::SECONDARY_DARK))
-            .border_top(1.0);
+        let container = container(pad_top(1.0, stack)).background(style(Palette::SECONDARY_DARK));
 
         size([FILL, window_size().height / 3.0], container)
     })

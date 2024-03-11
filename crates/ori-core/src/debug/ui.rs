@@ -135,7 +135,7 @@ fn debug_tree_header(
     let child_count = debug_tree_child_count(tree);
 
     let stack = hstack![expand, name, size, child_count]
-        .align_items(Align::Start)
+        .align(Align::Start)
         .gap(4.0);
 
     let color = if Some(path) == selected {
@@ -175,7 +175,7 @@ fn debug_tree_content(
 
     (state.content).resize_with(tree.content().len(), TreeState::default);
 
-    let mut content = vstack_any().align_items(Align::Start);
+    let mut content = vstack_any().align(Align::Start);
 
     for (i, child) in tree.content().iter().enumerate() {
         let child_state = &mut state.content[i];
@@ -198,7 +198,7 @@ fn debug_tree_node(
     let header = debug_tree_header(tree, state, selected, path);
     let content = debug_tree_content(tree, state, selected, path);
 
-    vstack![header, content].align_items(Align::Stretch)
+    vstack![header, content].align(Align::Stretch)
 }
 
 fn debug_tree(data: &mut DebugData, state: &mut DebugState) -> impl View<(DebugData, DebugState)> {
@@ -246,7 +246,7 @@ fn debug_tree_performance(tree: &DebugTree) -> impl View<(DebugData, DebugState)
         tree_time("layout", tree.layout_time()),
         tree_time("draw", tree.draw_time()),
     ]
-    .align_items(Align::Start)
+    .align(Align::Start)
 }
 
 fn debug_tree_layout(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
@@ -259,7 +259,7 @@ fn debug_tree_layout(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
         debug_text!("Max size: {}", layout.space.max),
         debug_text!("Flex: {}, {}", layout.flex, layout.tight),
     ]
-    .align_items(Align::Start);
+    .align(Align::Start);
 
     // information about the draw of the node
     let draw = vstack![
@@ -267,9 +267,9 @@ fn debug_tree_layout(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
         debug_text!("Size: {}", draw.rect.size()),
         debug_text!("Depth: {}", draw.depth),
     ]
-    .align_items(Align::Start);
+    .align(Align::Start);
 
-    vstack![layout, draw].align_items(Align::Start)
+    vstack![layout, draw].align(Align::Start).gap(8.0)
 }
 
 fn debug_selected_tree(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
@@ -298,7 +298,7 @@ fn debug_inspector(
         expand(1.0, debug_tree(data, state)),
         debug_inspector_right_panel(data, state),
     ]
-    .align_items(Align::Start)
+    .align(Align::Start)
     .gap(1.0)
 }
 
@@ -321,7 +321,7 @@ fn debug_profiler(
         average_time("layout", data.history.average_layout_time()),
         average_time("draw", data.history.average_draw_time()),
     ]
-    .align_items(Align::Start);
+    .align(Align::Start);
 
     container(pad(8.0, hstack![stack]))
 }
@@ -373,7 +373,7 @@ fn debug_bar(state: &mut DebugState) -> impl View<(DebugData, DebugState)> {
         // and the close button to the right
         debug_close_button(),
     ]
-    .justify_content(Justify::SpaceBetween);
+    .justify(Justify::SpaceBetween);
 
     container(stack)
 }

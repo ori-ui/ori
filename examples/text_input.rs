@@ -51,7 +51,7 @@ fn app(data: &mut Data) -> impl View<Data> {
             multiline_checkbox(data),
             hstack![input(data), clear_button()],
         ]
-        .align_items(Align::Start),
+        .align(Align::Start),
     )
 }
 

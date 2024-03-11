@@ -71,10 +71,10 @@ pub struct Stack<V> {
     pub axis: Axis,
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
-    pub justify_content: Justify,
+    pub justify: Justify,
     /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
-    pub align_items: Align,
+    pub align: Align,
     /// The gap between children.
     #[rebuild(layout)]
     pub gap: f32,
@@ -86,8 +86,8 @@ impl<V> Stack<V> {
         Self {
             content: PodSeq::new(content),
             axis,
-            justify_content: Justify::Start,
-            align_items: Align::Center,
+            justify: Justify::Start,
+            align: Align::Center,
             gap: 0.0,
         }
     }
@@ -365,7 +365,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         let (min_major, mut min_minor) = self.axis.unpack(space.min);
         let (max_major, max_minor) = self.axis.unpack(space.max);
 
-        if self.align_items == Align::Stretch {
+        if self.align == Align::Stretch {
             min_minor = max_minor;
         }
 
@@ -448,11 +448,11 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         let major = f32::clamp(state.major() + total_gap, min_major, max_major);
         let minor = f32::clamp(state.minor(), min_minor, max_minor);
 
-        for (i, child_major) in (self.justify_content)
+        for (i, child_major) in (self.justify)
             .layout(&state.majors, major, self.gap)
             .enumerate()
         {
-            let child_minor = self.align_items.align(minor, state.minors[i]);
+            let child_minor = self.align.align(minor, state.minors[i]);
             let offset = self.axis.pack(child_major, child_minor);
             content[i].translate(offset);
         }

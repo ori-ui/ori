@@ -97,7 +97,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let remove = alt("Remove todo", remove);
 
     let left = hstack![completed, title].gap(24.0);
-    let row = hstack![left, remove].justify_content(Justify::SpaceBetween);
+    let row = hstack![left, remove].justify(Justify::SpaceBetween);
 
     let container = container(pad(16.0, row));
 
@@ -175,7 +175,7 @@ fn selection(data: &mut Data) -> impl View<Data> {
     });
 
     let items = hstack![all, active, completed].gap(16.0);
-    let row = hstack![active_count(data), items].justify_content(Justify::SpaceBetween);
+    let row = hstack![active_count(data), items].justify(Justify::SpaceBetween);
 
     let container = container(pad([16.0, 8.0], row)).border_top(2.0);
 

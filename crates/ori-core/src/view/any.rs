@@ -31,7 +31,7 @@ pub type BoxedView<T> = Box<dyn AnyView<T>>;
 /// ```
 ///
 /// ```no_run
-/// # use ori_core::{views::*, view::View};
+/// # use ori_core::{views::*, view::{View, any}};
 /// // whereas this will compile using `any`
 /// fn ui(data: &mut bool) -> impl View<bool> {
 ///     if *data {

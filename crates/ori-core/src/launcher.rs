@@ -2,6 +2,7 @@
 
 use crate::{
     command::CommandProxy,
+    debug::debug_ui,
     delegate::Delegate,
     shell::{Shell, Windows},
     text::FontSource,
@@ -17,6 +18,7 @@ pub struct Launcher<T: 'static, S> {
     pub(crate) data: T,
     pub(crate) ui: Ui<T>,
     pub(crate) windows: Windows<T>,
+    pub(crate) debug: bool,
 }
 
 impl<T, S: Shell> Launcher<T, S> {
@@ -34,7 +36,16 @@ impl<T, S: Shell> Launcher<T, S> {
             data,
             ui,
             windows: Windows::new(),
+            debug: cfg!(debug_assertions),
         }
+    }
+
+    /// Set the debug mode of the application.
+    ///
+    /// This is be default set to `cfg!(debug_assertions)`.
+    pub fn debug(mut self, debug: bool) -> Self {
+        self.debug = debug;
+        self
     }
 
     /// Append the theme of the application.
@@ -90,7 +101,15 @@ impl<T, S: Shell> Launcher<T, S> {
         descriptor: WindowDescriptor,
         mut ui: impl FnMut(&mut T) -> V + 'static,
     ) -> Self {
-        let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
+        let debug = self.debug;
+        let builder: UiBuilder<T> = Box::new(move |data| {
+            if debug {
+                any(debug_ui(ui(data)))
+            } else {
+                any(ui(data))
+            }
+        });
+
         self.windows.push(descriptor, builder);
         self
     }

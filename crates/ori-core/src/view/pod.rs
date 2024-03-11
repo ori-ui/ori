@@ -2,6 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     canvas::Canvas,
+    debug::DebugTree,
     event::{Event, PointerLeft, PointerMoved, SwitchFocus},
     layout::{Size, Space},
 };
@@ -208,15 +209,43 @@ impl<T, V: View<T>> View<T> for Pod<V> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        let mut debug_tree = cx.remove_context::<DebugTree>();
+
+        if let Some(ref mut debug_tree) = debug_tree {
+            let child_tree = debug_tree.remove_or_new(0);
+            cx.insert_context(child_tree);
+        }
+
         Self::rebuild(&mut state.view_state, cx, |cx| {
             (self.view).rebuild(&mut state.content, cx, data, &old.view);
         });
+
+        if let Some(mut debug_tree) = debug_tree {
+            let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
+            child_tree.set_type::<V>();
+
+            debug_tree.insert(0, child_tree);
+            cx.insert_context(debug_tree);
+        }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        let mut debug_tree = cx.remove_context::<DebugTree>();
+
+        if let Some(ref mut debug_tree) = debug_tree {
+            let child_tree = debug_tree.remove_or_new(0);
+            cx.insert_context(child_tree);
+        }
+
         Self::event(&mut state.view_state, cx, event, |cx, event| {
             (self.view).event(&mut state.content, cx, data, event);
         });
+
+        if let Some(mut debug_tree) = debug_tree {
+            let child_tree = cx.remove_context::<DebugTree>().unwrap();
+            debug_tree.insert(0, child_tree);
+            cx.insert_context(debug_tree);
+        }
     }
 
     fn layout(
@@ -226,9 +255,24 @@ impl<T, V: View<T>> View<T> for Pod<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        Self::layout(&mut state.view_state, cx, |cx| {
+        let mut debug_tree = cx.remove_context::<DebugTree>();
+
+        if let Some(ref mut debug_tree) = debug_tree {
+            let child_tree = debug_tree.remove_or_new(0);
+            cx.insert_context(child_tree);
+        }
+
+        let size = Self::layout(&mut state.view_state, cx, |cx| {
             (self.view).layout(&mut state.content, cx, data, space)
-        })
+        });
+
+        if let Some(mut debug_tree) = debug_tree {
+            let child_tree = cx.remove_context::<DebugTree>().unwrap();
+            debug_tree.insert(0, child_tree);
+            cx.insert_context(debug_tree);
+        }
+
+        size
     }
 
     fn draw(
@@ -238,8 +282,24 @@ impl<T, V: View<T>> View<T> for Pod<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
+        let mut debug_tree = cx.remove_context::<DebugTree>();
+
+        if let Some(ref mut debug_tree) = debug_tree {
+            let child_tree = debug_tree.remove_or_new(0);
+            cx.insert_context(child_tree);
+        }
+
         Self::draw(&mut state.view_state, cx, canvas, |cx, canvas| {
             (self.view).draw(&mut state.content, cx, data, canvas);
         });
+
+        if let Some(mut debug_tree) = debug_tree {
+            let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
+            child_tree.set_rect(state.view_state.rect());
+            child_tree.set_transform(state.view_state.transform);
+
+            debug_tree.insert(0, child_tree);
+            cx.insert_context(debug_tree);
+        }
     }
 }

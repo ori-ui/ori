@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::{
     clipboard::{Clipboard, ClipboardContext},
     command::{Command, CommandProxy, CommandReceiver, CommandWaker},
+    debug::History,
     delegate::Delegate,
     event::{
         CloseRequested, CloseWindow, Code, Event, KeyPressed, KeyReleased, Modifiers, OpenWindow,
@@ -19,17 +20,6 @@ use crate::{
 };
 
 use super::{UiBuilder, UiRequest, UiRequests, WindowUi};
-
-macro_rules! base_cx {
-    ($self:expr, $needs_rebuild:ident, $base:ident) => {
-        let mut $needs_rebuild = false;
-        let mut $base = BaseCx::new(
-            &mut $self.contexts,
-            &mut $self.command_proxy,
-            &mut $needs_rebuild,
-        );
-    };
-}
 
 /// State for running a user interface.
 pub struct Ui<T: 'static> {
@@ -52,6 +42,7 @@ impl<T> Ui<T> {
 
         let mut contexts = Contexts::new();
         contexts.insert(Fonts::default());
+        contexts.insert(History::with_max_items(1000));
 
         Self {
             windows: HashMap::new(),
@@ -100,7 +91,12 @@ impl<T> Ui<T> {
     pub fn add_window(&mut self, data: &mut T, builder: UiBuilder<T>, window: Window) {
         let theme = Self::build_theme(&mut self.theme_builder, &window);
 
-        base_cx!(self, needs_rebuild, base);
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(
+            &mut self.contexts,
+            &mut self.command_proxy,
+            &mut needs_rebuild,
+        );
 
         let window_id = window.id();
         let window_ui = WindowUi::new(builder, &mut base, data, theme, window);
@@ -183,7 +179,13 @@ impl<T> Ui<T> {
     }
 
     fn init_delegate(&mut self, data: &mut T) {
-        base_cx!(self, needs_rebuild, base);
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(
+            &mut self.contexts,
+            &mut self.command_proxy,
+            &mut needs_rebuild,
+        );
+
         let mut cx = DelegateCx::new(&mut base);
 
         for delegate in &mut self.delegates {
@@ -199,7 +201,13 @@ impl<T> Ui<T> {
 
     /// Tell the UI that the event loop idle.
     pub fn idle(&mut self, data: &mut T) {
-        base_cx!(self, needs_rebuild, base);
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(
+            &mut self.contexts,
+            &mut self.command_proxy,
+            &mut needs_rebuild,
+        );
+
         let mut cx = DelegateCx::new(&mut base);
 
         for delegate in &mut self.delegates {
@@ -423,7 +431,13 @@ impl<T> Ui<T> {
     }
 
     fn event_delegate(&mut self, data: &mut T, event: &Event) {
-        base_cx!(self, needs_rebuild, base);
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(
+            &mut self.contexts,
+            &mut self.command_proxy,
+            &mut needs_rebuild,
+        );
+
         let mut cx = DelegateCx::new(&mut base);
 
         for delegate in &mut self.delegates {
@@ -442,7 +456,12 @@ impl<T> Ui<T> {
 
         self.event_delegate(data, event);
 
-        base_cx!(self, needs_rebuild, base);
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(
+            &mut self.contexts,
+            &mut self.command_proxy,
+            &mut needs_rebuild,
+        );
 
         if !event.is_handled() {
             if let Some(window_ui) = self.windows.get_mut(&window_id) {
@@ -465,7 +484,12 @@ impl<T> Ui<T> {
 
         self.event_delegate(data, event);
 
-        base_cx!(self, needs_rebuild, base);
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(
+            &mut self.contexts,
+            &mut self.command_proxy,
+            &mut needs_rebuild,
+        );
 
         if !event.is_handled() {
             for window_ui in self.windows.values_mut() {
@@ -483,7 +507,12 @@ impl<T> Ui<T> {
 
     /// Render a window.
     pub fn render(&mut self, data: &mut T, window_id: WindowId) {
-        base_cx!(self, needs_rebuild, base);
+        let mut needs_rebuild = false;
+        let mut base = BaseCx::new(
+            &mut self.contexts,
+            &mut self.command_proxy,
+            &mut needs_rebuild,
+        );
 
         if let Some(window_ui) = self.windows.get_mut(&window_id) {
             (self.requests).extend(window_ui.render(&mut base, data));

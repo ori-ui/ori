@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use crate::{
     canvas::{Canvas, Color, Scene},
+    debug::{BuildItem, DrawItem, EventItem, History, LayoutItem, RebuildItem},
     event::{AnimationFrame, Event},
     layout::{Size, Space},
     theme::{Palette, Theme},
@@ -42,6 +43,8 @@ impl<T> WindowUi<T> {
         let mut animation_frame = None;
         let mut cx = BuildCx::new(base, &mut window, &mut animation_frame);
 
+        let start = Instant::now();
+
         // we build the view tree and state tree, with the global theme
         let (view, state) = Theme::with_global(&mut theme, || {
             let mut view = Pod::new(builder(data));
@@ -49,6 +52,9 @@ impl<T> WindowUi<T> {
 
             (view, state)
         });
+
+        let item = BuildItem::new(start, cx.window().id());
+        cx.context_mut::<History>().push(item);
 
         Self {
             builder,
@@ -163,12 +169,17 @@ impl<T> WindowUi<T> {
             &mut self.animation_frame,
         );
 
+        let start = Instant::now();
+
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
         let new_view = Theme::with_global(&mut self.theme, || {
             let mut new_view = Pod::new((self.builder)(data));
             new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
             new_view
         });
+
+        let item = RebuildItem::new(start, cx.window().id());
+        cx.context_mut::<History>().push(item);
 
         // replace the old view tree with the new one
         self.view = new_view;
@@ -199,10 +210,15 @@ impl<T> WindowUi<T> {
             &mut self.animation_frame,
         );
 
+        let start = Instant::now();
+
         // handle the event, with the global theme
         Theme::with_global(&mut self.theme, || {
             self.view.event(&mut self.state, &mut cx, data, event);
         });
+
+        let item = EventItem::new(start, cx.window().id(), event);
+        cx.context_mut::<History>().push(item);
 
         self.update();
         self.redraw_requests()
@@ -223,10 +239,15 @@ impl<T> WindowUi<T> {
             &mut self.animation_frame,
         );
 
+        let start = Instant::now();
+
         // layout the view tree, with the global theme
         let size = Theme::with_global(&mut self.theme, || {
             self.view.layout(&mut self.state, &mut cx, data, space)
         });
+
+        let item = LayoutItem::new(start, cx.window().id());
+        cx.context_mut::<History>().push(item);
 
         self.view_state.size = size;
     }
@@ -248,10 +269,15 @@ impl<T> WindowUi<T> {
             &mut self.animation_frame,
         );
 
+        let start = Instant::now();
+
         // draw the view tree, with the global theme
         Theme::with_global(&mut self.theme, || {
             self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
         });
+
+        let item = DrawItem::new(start, cx.window().id());
+        cx.context_mut::<History>().push(item);
     }
 
     /// Render the scene.

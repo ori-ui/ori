@@ -1,7 +1,5 @@
 //! Builtin styles.
 
-use crate::canvas::{Background, BorderRadius, BorderWidth, Color};
-
 use super::Theme;
 
 /// Styles for [`Text`](crate::views::Text)s.
@@ -198,11 +196,10 @@ pub mod button {
 /// Styles for [`Checkbox`](crate::views::Checkbox)s.
 pub mod checkbox {
     use crate::{
+        canvas::{Background, BorderRadius, BorderWidth, Color},
         theme::{Key, Palette, Theme},
         transition::Transition,
     };
-
-    use super::{Background, BorderRadius, BorderWidth, Color};
 
     /// The transition when the checkbox is hovered.
     pub const TRANSITION: Key<Transition> = Key::new("checkbox.transition");
@@ -233,6 +230,40 @@ pub mod checkbox {
     }
 }
 
+/// Styles for [`Collapsing`](crate::views::Collapsing)s.
+pub mod collapsing {
+    use crate::{
+        canvas::{Background, BorderRadius, BorderWidth, Color},
+        theme::{Key, Palette, Theme},
+        transition::Transition,
+    };
+
+    /// The transition when the content is collapsed.
+    pub const TRANSITION: Key<Transition> = Key::new("collapsing.transition");
+    /// The size of the icon.
+    pub const ICON_SIZE: Key<f32> = Key::new("collapsing.icon_size");
+    /// The color of the icon.
+    pub const ICON_COLOR: Key<Color> = Key::new("collapsing.icon_color");
+    /// The background of the header.
+    pub const BACKGROUND: Key<Background> = Key::new("collapsing.background");
+    /// The border width of the header.
+    pub const BORDER_WIDTH: Key<BorderWidth> = Key::new("collapsing.border_width");
+    /// The border radius of the header.
+    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("collapsing.border_radius");
+    /// The border color of the header.
+    pub const BORDER_COLOR: Key<Color> = Key::new("collapsing.border_color");
+
+    pub(super) fn builtin(theme: &mut Theme) {
+        theme.set(TRANSITION, Transition::ease(0.2));
+        theme.set(ICON_SIZE, 16.0);
+        theme.map(ICON_COLOR, |theme| theme.get(Palette::TEXT));
+        theme.set(BACKGROUND, Color::TRANSPARENT);
+        theme.set(BORDER_WIDTH, BorderWidth::new(0.0, 0.0, 1.0, 0.0));
+        theme.set(BORDER_RADIUS, 0.0);
+        theme.map(BORDER_COLOR, |theme| theme.get(Palette::SECONDARY_DARK));
+    }
+}
+
 impl Theme {
     /// Get the builtin theme.
     pub fn builtin() -> Self {
@@ -245,6 +276,7 @@ impl Theme {
         scroll::builtin(&mut theme);
         button::builtin(&mut theme);
         checkbox::builtin(&mut theme);
+        collapsing::builtin(&mut theme);
 
         theme
     }

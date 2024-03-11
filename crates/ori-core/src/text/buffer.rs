@@ -75,7 +75,11 @@ impl TextBuffer {
 
     /// Set the bounds of the text buffer.
     pub fn set_bounds(&mut self, fonts: &mut Fonts, bounds: Size) {
-        (self.buffer).set_size(&mut fonts.font_system, bounds.width, bounds.height);
+        let (width, height) = self.buffer.size();
+
+        if width != bounds.width || height != bounds.height {
+            (self.buffer).set_size(&mut fonts.font_system, bounds.width, bounds.height);
+        }
     }
 
     /// Set the text of the text buffer.

@@ -1,3 +1,5 @@
+use core::slice;
+
 /// The alignment of items along the cross axis.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Align {
@@ -47,72 +49,46 @@ pub enum Justify {
 
 impl Justify {
     /// Layout the items in a stack container.
-    pub fn layout(
-        self,
-        sizes: impl ExactSizeIterator<Item = f32> + Clone,
-        mut set_position: impl FnMut(usize, f32),
-        size: f32,
-        gap: f32,
-    ) {
-        if sizes.len() == 0 {
-            return;
-        }
-
+    pub fn layout(self, sizes: &[f32], size: f32, gap: f32) -> JustifyIterator {
         let total_gap = gap * (sizes.len() - 1) as f32;
-        let total_size = sizes.clone().sum::<f32>() + total_gap;
+        let total_size = sizes.iter().sum::<f32>() + total_gap;
 
-        match self {
-            Justify::Start => {
-                let mut position = 0.0;
+        let position = match self {
+            Self::Start | Self::SpaceBetween => 0.0,
+            Self::Center => (size - total_size) / 2.0,
+            Self::End => size - total_size,
+            Self::SpaceAround => gap / 2.0,
+            Self::SpaceEvenly => gap,
+        };
 
-                for (i, size) in sizes.enumerate() {
-                    set_position(i, position);
-                    position += size + gap;
-                }
-            }
-            Justify::Center => {
-                let mut position = (size - total_size) / 2.0;
+        let gap = match self {
+            Self::Start | Self::End | Self::Center => gap,
+            Self::SpaceBetween => (size - (total_size - total_gap)) / (sizes.len() - 1) as f32,
+            Self::SpaceAround => (size - total_size) / (sizes.len() - 1) as f32,
+            Self::SpaceEvenly => (size - total_size) / (sizes.len() + 1) as f32,
+        };
 
-                for (i, size) in sizes.enumerate() {
-                    set_position(i, position);
-                    position += size + gap;
-                }
-            }
-            Justify::End => {
-                let mut position = size - total_size;
-
-                for (i, size) in sizes.enumerate() {
-                    set_position(i, position);
-                    position += size + gap;
-                }
-            }
-            Justify::SpaceBetween => {
-                let gap = (size - (total_size - total_gap)) / (sizes.len() - 1) as f32;
-                let mut position = 0.0;
-
-                for (i, size) in sizes.enumerate() {
-                    set_position(i, position);
-                    position += size + gap;
-                }
-            }
-            Justify::SpaceAround => {
-                let gap = (size - total_size) / (sizes.len() - 1) as f32;
-                let mut position = gap / 2.0;
-
-                for (i, size) in sizes.enumerate() {
-                    set_position(i, position);
-                    position += size + gap;
-                }
-            }
-            Justify::SpaceEvenly => {
-                let gap = (size - total_size) / (sizes.len() + 1) as f32;
-                let mut position = gap;
-
-                for (i, size) in sizes.enumerate() {
-                    set_position(i, position);
-                    position += size + gap;
-                }
-            }
+        JustifyIterator {
+            sizes: sizes.iter(),
+            position,
+            gap,
         }
+    }
+}
+
+/// An iterator over the positions of items in a stack container.
+pub struct JustifyIterator<'a> {
+    sizes: slice::Iter<'a, f32>,
+    position: f32,
+    gap: f32,
+}
+
+impl<'a> Iterator for JustifyIterator<'a> {
+    type Item = f32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let position = self.position;
+        self.position += *self.sizes.next()? + self.gap;
+        Some(position)
     }
 }

@@ -35,7 +35,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
     // create a Text view with the current count. all builtin views have
     // shorthand functions for creating them, note that Text::new() is
     // would work just as well.
-    let count = text(format!("Clicked {} times", data.count));
+    let count = text!("Clicked {} times", data.count);
 
     // create a button that increments the count when clicked.
     let count = on_click(

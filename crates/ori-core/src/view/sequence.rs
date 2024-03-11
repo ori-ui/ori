@@ -1,6 +1,7 @@
 use std::{
     any::type_name,
     ops::{Deref, DerefMut},
+    time::Instant,
 };
 
 use crate::{
@@ -421,23 +422,26 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         data: &mut T,
         old: &Self,
     ) {
-        let mut debug_tree = cx.remove_context::<DebugTree>();
-
-        if let Some(ref mut debug_tree) = debug_tree {
+        if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);
-        }
 
-        Pod::<V>::rebuild(&mut state.view_state[n], cx, |cx| {
-            (self.views).rebuild_nth(n, &mut state.content, cx, data, &old.views);
-        });
+            let start = Instant::now();
 
-        if let Some(mut debug_tree) = debug_tree {
+            Pod::<V>::rebuild(&mut state.view_state[n], cx, |cx| {
+                (self.views).rebuild_nth(n, &mut state.content, cx, data, &old.views);
+            });
+
             let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
             child_tree.set_name(self.views.debug_name(n));
+            child_tree.set_rebuild_time(start.elapsed());
 
             debug_tree.insert(n, child_tree);
             cx.insert_context(debug_tree);
+        } else {
+            Pod::<V>::rebuild(&mut state.view_state[n], cx, |cx| {
+                (self.views).rebuild_nth(n, &mut state.content, cx, data, &old.views);
+            });
         }
     }
 
@@ -449,21 +453,25 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         data: &mut T,
         event: &Event,
     ) {
-        let mut debug_tree = cx.remove_context::<DebugTree>();
-
-        if let Some(ref mut debug_tree) = debug_tree {
+        if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);
-        }
 
-        Pod::<V>::event(&mut state.view_state[n], cx, event, |cx, event| {
-            (self.views).event_nth(n, &mut state.content, cx, data, event);
-        });
+            let start = Instant::now();
 
-        if let Some(mut debug_tree) = debug_tree {
-            let child_tree = cx.remove_context::<DebugTree>().unwrap();
+            Pod::<V>::event(&mut state.view_state[n], cx, event, |cx, event| {
+                (self.views).event_nth(n, &mut state.content, cx, data, event);
+            });
+
+            let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
+            child_tree.set_event_time(start.elapsed());
+
             debug_tree.insert(n, child_tree);
             cx.insert_context(debug_tree);
+        } else {
+            Pod::<V>::event(&mut state.view_state[n], cx, event, |cx, event| {
+                (self.views).event_nth(n, &mut state.content, cx, data, event);
+            });
         }
     }
 
@@ -475,24 +483,30 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let mut debug_tree = cx.remove_context::<DebugTree>();
-
-        if let Some(ref mut debug_tree) = debug_tree {
+        if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);
-        }
 
-        let size = Pod::<V>::layout(&mut state.view_state[n], cx, |cx| {
-            (self.views).layout_nth(n, &mut state.content, cx, data, space)
-        });
+            let start = Instant::now();
 
-        if let Some(mut debug_tree) = debug_tree {
-            let child_tree = cx.remove_context::<DebugTree>().unwrap();
+            let size = Pod::<V>::layout(&mut state.view_state[n], cx, |cx| {
+                (self.views).layout_nth(n, &mut state.content, cx, data, space)
+            });
+
+            let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
+            child_tree.set_space(space);
+            child_tree.set_flex(state.view_state[n].flex, state.view_state[n].flex);
+            child_tree.set_layout_time(start.elapsed());
+
             debug_tree.insert(n, child_tree);
             cx.insert_context(debug_tree);
-        }
 
-        size
+            size
+        } else {
+            Pod::<V>::layout(&mut state.view_state[n], cx, |cx| {
+                (self.views).layout_nth(n, &mut state.content, cx, data, space)
+            })
+        }
     }
 
     fn draw_nth(
@@ -503,24 +517,28 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        let mut debug_tree = cx.remove_context::<DebugTree>();
-
-        if let Some(ref mut debug_tree) = debug_tree {
+        if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);
-        }
 
-        Pod::<V>::draw(&mut state.view_state[n], cx, canvas, |cx, canvas| {
-            (self.views).draw_nth(n, &mut state.content, cx, data, canvas);
-        });
+            let start = Instant::now();
 
-        if let Some(mut debug_tree) = debug_tree {
+            Pod::<V>::draw(&mut state.view_state[n], cx, canvas, |cx, canvas| {
+                (self.views).draw_nth(n, &mut state.content, cx, data, canvas)
+            });
+
             let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
             child_tree.set_rect(state.view_state[n].rect());
             child_tree.set_transform(state.view_state[n].transform());
+            child_tree.set_depth(canvas.depth);
+            child_tree.set_draw_time(start.elapsed());
 
             debug_tree.insert(n, child_tree);
             cx.insert_context(debug_tree);
+        } else {
+            Pod::<V>::draw(&mut state.view_state[n], cx, canvas, |cx, canvas| {
+                (self.views).draw_nth(n, &mut state.content, cx, data, canvas)
+            });
         }
     }
 }

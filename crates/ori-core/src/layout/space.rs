@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign};
+use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, Sub, SubAssign};
 
 use super::Size;
 
@@ -61,6 +61,18 @@ impl Space {
         Self::new(Size::ZERO, self.max)
     }
 
+    /// Loosen the width, setting the minimum width to zero.
+    pub fn loosen_width(mut self) -> Self {
+        self.min.width = 0.0;
+        self
+    }
+
+    /// Loosen the height, setting the minimum height to zero.
+    pub fn loosen_height(mut self) -> Self {
+        self.min.height = 0.0;
+        self
+    }
+
     /// Get the most constraning space between `self` and `other
     pub fn constrain(self, other: Self) -> Self {
         let min = self.min.max(other.min);
@@ -85,6 +97,22 @@ impl Space {
 
         Size::new(width.min(self.max.width), height.min(self.max.height))
     }
+
+    /// Get whether the space is finite.
+    pub fn is_finite(self) -> bool {
+        self.min.is_finite() && self.max.is_finite()
+    }
+
+    /// Get whether the space is infinite.
+    pub fn is_infinite(self) -> bool {
+        self.min.is_infinite() && self.max.is_infinite()
+    }
+}
+
+impl From<Size> for Space {
+    fn from(size: Size) -> Self {
+        Self::new(size, size)
+    }
 }
 
 impl BitAnd for Space {
@@ -98,5 +126,33 @@ impl BitAnd for Space {
 impl BitAndAssign for Space {
     fn bitand_assign(&mut self, rhs: Self) {
         *self = *self & rhs;
+    }
+}
+
+impl Add<Size> for Space {
+    type Output = Self;
+
+    fn add(self, rhs: Size) -> Self::Output {
+        self.expand(rhs)
+    }
+}
+
+impl AddAssign<Size> for Space {
+    fn add_assign(&mut self, rhs: Size) {
+        *self = *self + rhs;
+    }
+}
+
+impl Sub<Size> for Space {
+    type Output = Self;
+
+    fn sub(self, rhs: Size) -> Self::Output {
+        self.shrink(rhs)
+    }
+}
+
+impl SubAssign<Size> for Space {
+    fn sub_assign(&mut self, rhs: Size) {
+        *self = *self - rhs;
     }
 }

@@ -43,18 +43,19 @@ impl<T> WindowUi<T> {
         let mut animation_frame = None;
         let mut cx = BuildCx::new(base, &mut window, &mut animation_frame);
 
-        let start = Instant::now();
-
         // we build the view tree and state tree, with the global theme
         let (view, state) = Theme::with_global(&mut theme, || {
+            let start = Instant::now();
+
             let mut view = Pod::new(builder(data));
+
+            let item = BuildItem::new(start, cx.window().id());
+            cx.context_mut::<History>().push(item);
+
             let state = view.build(&mut cx, data);
 
             (view, state)
         });
-
-        let item = BuildItem::new(start, cx.window().id());
-        cx.context_mut::<History>().push(item);
 
         Self {
             builder,
@@ -169,17 +170,24 @@ impl<T> WindowUi<T> {
             &mut self.animation_frame,
         );
 
-        let start = Instant::now();
-
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
         let new_view = Theme::with_global(&mut self.theme, || {
+            let start = Instant::now();
+
             let mut new_view = Pod::new((self.builder)(data));
+
+            let item = BuildItem::new(start, cx.window().id());
+            cx.context_mut::<History>().push(item);
+
+            let start = Instant::now();
+
             new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
+
+            let item = RebuildItem::new(start, cx.window().id());
+            cx.context_mut::<History>().push(item);
+
             new_view
         });
-
-        let item = RebuildItem::new(start, cx.window().id());
-        cx.context_mut::<History>().push(item);
 
         // replace the old view tree with the new one
         self.view = new_view;

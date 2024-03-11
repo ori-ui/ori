@@ -129,6 +129,19 @@ pub struct PointerReleased {
     pub modifiers: Modifiers,
 }
 
+/// A pointer was clicked.
+#[derive(Clone, Debug)]
+pub struct PointerClicked {
+    /// The unique id of the pointer.
+    pub id: PointerId,
+    /// The position of the pointer.
+    pub position: Point,
+    /// The button of the pointer.
+    pub button: PointerButton,
+    /// The modifiers of the pointer.
+    pub modifiers: Modifiers,
+}
+
 /// A pointer wheel was scrolled.
 #[derive(Clone, Debug)]
 pub struct PointerScrolled {

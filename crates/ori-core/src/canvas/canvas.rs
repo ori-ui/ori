@@ -30,15 +30,24 @@ impl<'a> Canvas<'a> {
         }
     }
 
-    /// Create a new layer.
-    pub fn layer(&mut self) -> Canvas<'_> {
+    /// Fork the canvas.
+    ///
+    /// Setting parameters on the forked canvas will not affect the original canvas.
+    pub fn fork(&mut self) -> Canvas<'_> {
         Canvas {
             scene: self.scene,
             transform: self.transform,
-            depth: self.depth + 1.0,
+            depth: self.depth,
             clip: self.clip,
             view: self.view,
         }
+    }
+
+    /// Create a new layer.
+    pub fn layer(&mut self) -> Canvas<'_> {
+        let mut canvas = self.fork();
+        canvas.depth += 1.0;
+        canvas
     }
 
     /// Translate the canvas.
@@ -64,6 +73,11 @@ impl<'a> Canvas<'a> {
     /// Set the clip rectangle of the canvas.
     pub fn clip(&mut self, clip: Rect) {
         self.clip = self.clip.intersect(clip);
+    }
+
+    /// Run a function with a forked canvas.
+    pub fn forked(&mut self, f: impl FnOnce(&mut Canvas<'_>)) {
+        f(&mut self.fork());
     }
 
     /// Set the view that the canvas is being drawn for.

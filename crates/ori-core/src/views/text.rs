@@ -1,3 +1,5 @@
+use std::fmt::{self, Write};
+
 use ori_macro::Build;
 use smol_str::SmolStr;
 
@@ -12,6 +14,20 @@ use crate::{
     theme::{style, text},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
+
+use smol_str;
+
+pub use crate::format_text as text;
+
+/// Create a formatted [`Text`].
+///
+/// This macro is slightly more efficient than using [`format!`] and [`Text::new`].
+#[macro_export]
+macro_rules! format_text {
+    ($($tt:tt)*) => {
+        $crate::views::Text::from(::std::format_args!($($tt)*))
+    };
+}
 
 /// Create a new [`Text`].
 pub fn text(text: impl Into<SmolStr>) -> Text {
@@ -154,5 +170,13 @@ impl<T> View<T> for Text {
         let mesh = cx.rasterize_text(state, cx.rect());
         canvas.translate(offset);
         canvas.draw_pixel_perfect(mesh);
+    }
+}
+
+impl From<fmt::Arguments<'_>> for Text {
+    fn from(args: fmt::Arguments<'_>) -> Text {
+        let mut w = smol_str::Writer::new();
+        let _ = w.write_fmt(args);
+        Text::new(w)
     }
 }

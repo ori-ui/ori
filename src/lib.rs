@@ -51,6 +51,7 @@ pub mod prelude {
         },
         log::*,
         rebuild::Rebuild,
+        text,
         text::{
             font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, TextAlign,
             TextBuffer, TextWrap,

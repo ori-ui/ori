@@ -4,7 +4,7 @@ use crate::{
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAttributes, TextBuffer},
-    theme::{alt, style, text},
+    theme::{alt, style, text, window_size},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -101,7 +101,10 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
-        self.set_attributes(cx.fonts(), &mut state.buffer);
+
+        if self.alt != old.alt {
+            self.set_attributes(cx.fonts(), &mut state.buffer);
+        }
 
         (self.content).rebuild(content, cx, data, &old.content);
     }
@@ -144,7 +147,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let bounds = cx.window().size() - self.padding.size();
+        let bounds = window_size() - self.padding.size();
         state.buffer.set_bounds(cx.fonts(), bounds);
 
         self.content.layout(content, cx, data, space)

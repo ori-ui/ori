@@ -217,7 +217,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         let size = space.fit(content_size);
 
-        if !size.is_finite() {
+        if !size.is_finite() && space.is_finite() {
             warn_internal!("Contents of a scroll view has an infinite size");
         }
 

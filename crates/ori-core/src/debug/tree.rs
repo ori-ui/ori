@@ -1,22 +1,41 @@
 use std::{
     any::type_name,
     hash::{Hash, Hasher},
+    time::Duration,
 };
 
-use crate::layout::{Affine, Rect};
+use crate::layout::{Affine, Rect, Space};
 
 /// A debug tree.
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug)]
 pub struct DebugTree {
     name: Option<&'static str>,
     content: Vec<Option<DebugTree>>,
     rect: Option<Rect>,
     transform: Option<Affine>,
+    space: Option<Space>,
+    flex: Option<(f32, f32)>,
+    depth: Option<f32>,
+
+    build_time: Option<Duration>,
+    rebuild_time: Option<Duration>,
+    event_time: Option<Duration>,
+    layout_time: Option<Duration>,
+    draw_time: Option<Duration>,
 }
 
 impl Default for DebugTree {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Hash for DebugTree {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.content.hash(state);
+        self.rect.hash(state);
+        self.transform.hash(state);
     }
 }
 
@@ -28,14 +47,21 @@ impl DebugTree {
             content: Vec::new(),
             rect: None,
             transform: None,
+            space: None,
+            flex: None,
+            depth: None,
+
+            build_time: None,
+            rebuild_time: None,
+            event_time: None,
+            layout_time: None,
+            draw_time: None,
         }
     }
 
     /// Set the name.
     pub fn set_type<T: ?Sized>(&mut self) {
-        if self.name.is_none() {
-            self.name = Some(type_name::<T>());
-        }
+        self.name = Some(type_name::<T>());
     }
 
     /// Set the name.
@@ -89,7 +115,7 @@ impl DebugTree {
         collapsed
     }
 
-    fn short_name_recurse(&self, name: &'static str) -> String {
+    fn short_name_internal(&self, name: &'static str) -> String {
         const MAX_NAME_LEN: usize = 64;
 
         let mut ranges = Vec::new();
@@ -131,7 +157,7 @@ impl DebugTree {
     /// Get the short name.
     pub fn short_name(&self) -> String {
         match self.name {
-            Some(name) => self.short_name_recurse(name),
+            Some(name) => self.short_name_internal(name),
             None => "unknown".to_string(),
         }
     }
@@ -156,6 +182,91 @@ impl DebugTree {
         self.transform.unwrap_or_default()
     }
 
+    /// Set the space.
+    pub fn set_space(&mut self, space: Space) {
+        self.space = Some(space);
+    }
+
+    /// Get the space.
+    pub fn space(&self) -> Space {
+        self.space.unwrap_or_default()
+    }
+
+    /// Set the flex.
+    pub fn set_flex(&mut self, shrink: f32, grow: f32) {
+        self.flex = Some((shrink, grow));
+    }
+
+    /// Get the flex shrink.
+    pub fn flex_shrink(&self) -> f32 {
+        self.flex.unwrap_or_default().0
+    }
+
+    /// Get the flex grow.
+    pub fn flex_grow(&self) -> f32 {
+        self.flex.unwrap_or_default().1
+    }
+
+    /// Set the depth.
+    pub fn set_depth(&mut self, depth: f32) {
+        self.depth = Some(depth);
+    }
+
+    /// Get the depth.
+    pub fn depth(&self) -> f32 {
+        self.depth.unwrap_or_default()
+    }
+
+    /// Set the build time.
+    pub fn set_build_time(&mut self, time: Duration) {
+        self.build_time = Some(time);
+    }
+
+    /// Get the build time.
+    pub fn build_time(&self) -> Option<Duration> {
+        self.build_time
+    }
+
+    /// Set the rebuild time.
+    pub fn set_rebuild_time(&mut self, time: Duration) {
+        self.rebuild_time = Some(time);
+    }
+
+    /// Get the rebuild time.
+    pub fn rebuild_time(&self) -> Option<Duration> {
+        self.rebuild_time
+    }
+
+    /// Set the event time.
+    pub fn set_event_time(&mut self, time: Duration) {
+        self.event_time = Some(time);
+    }
+
+    /// Get the event time.
+    pub fn event_time(&self) -> Option<Duration> {
+        self.event_time
+    }
+
+    /// Set the layout time.
+    pub fn set_layout_time(&mut self, time: Duration) {
+        self.layout_time = Some(time);
+    }
+
+    /// Get the layout time.
+    pub fn layout_time(&self) -> Option<Duration> {
+        self.layout_time
+    }
+
+    /// Set the draw time.
+    pub fn set_draw_time(&mut self, time: Duration) {
+        self.draw_time = Some(time);
+    }
+
+    /// Get the draw time.
+    pub fn draw_time(&self) -> Option<Duration> {
+        self.draw_time
+    }
+
     /// Insert a child.
     pub fn insert(&mut self, index: usize, child: DebugTree) {
         if index >= self.content.len() {
@@ -178,6 +289,17 @@ impl DebugTree {
     /// Truncate the number of children.
     pub fn truncate(&mut self, len: usize) {
         self.content.truncate(len);
+    }
+
+    /// Get a tree at the given path.
+    pub fn get_path(&self, path: &[usize]) -> Option<&DebugTree> {
+        let mut tree = self;
+
+        for &index in path {
+            tree = tree.get_child(index)?;
+        }
+
+        Some(tree)
     }
 
     /// Get the child at the given index.

@@ -111,8 +111,8 @@ pub struct ViewState {
     pub(crate) flags: ViewFlags,
     pub(crate) update: Update,
     /* layout */
-    pub(crate) flex_grow: f32,
-    pub(crate) flex_shrink: f32,
+    pub(crate) flex: f32,
+    pub(crate) is_tight: bool,
     pub(crate) size: Size,
     pub(crate) transform: Affine,
     /* cursor */
@@ -129,8 +129,8 @@ impl Default for ViewState {
             flags: ViewFlags::default(),
             update: Update::LAYOUT | Update::DRAW,
             /* layout */
-            flex_grow: 0.0,
-            flex_shrink: 0.0,
+            flex: 0.0,
+            is_tight: false,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
             /* cursor */
@@ -214,39 +214,29 @@ impl ViewState {
         self.flags.contains(ViewFlags::HAS_ACTIVE)
     }
 
-    /// Get the flex grow of the view.
-    pub fn flex_grow(&self) -> f32 {
-        self.flex_grow
+    /// Get the flex of the view.
+    pub fn flex(&self) -> f32 {
+        self.flex
     }
 
-    /// Get the flex shrink of the view.
-    pub fn flex_shrink(&self) -> f32 {
-        self.flex_shrink
-    }
-
-    /// Set the flex grow of the view.
-    pub fn set_flex_grow(&mut self, flex: f32) {
-        self.flex_grow = flex;
-    }
-
-    /// Set the flex shrink of the view.
-    pub fn set_flex_shrink(&mut self, flex: f32) {
-        self.flex_shrink = flex;
-    }
-
-    /// Get whether the view is growable.
-    pub fn is_grow(&self) -> bool {
-        self.flex_grow > 0.0
-    }
-
-    /// Get whether the view is shrinkable.
-    pub fn is_shrink(&self) -> bool {
-        self.flex_shrink > 0.0
+    /// Set the flex of the view.
+    pub fn set_flex(&mut self, flex: f32) {
+        self.flex = flex;
     }
 
     /// Get whether the view is flexible.
     pub fn is_flex(&self) -> bool {
-        self.is_grow() || self.is_shrink()
+        self.flex > 0.0
+    }
+
+    /// Get whether the view is tight.
+    pub fn is_tight(&self) -> bool {
+        self.is_tight
+    }
+
+    /// Set whether the view is tight.
+    pub fn set_tight(&mut self, tight: bool) {
+        self.is_tight = tight;
     }
 
     /// Get the size of the view.

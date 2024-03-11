@@ -139,7 +139,7 @@ impl From<Size> for [f32; 2] {
 
 impl Display for Size {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}x{}", self.width, self.height)
+        write!(f, "[{} x {}]", self.width, self.height)
     }
 }
 

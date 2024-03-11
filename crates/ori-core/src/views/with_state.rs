@@ -32,6 +32,13 @@ pub fn without_state<T, S, V: View<T>>(view: V) -> impl View<(T, S)> {
     focus(|(data, _state), lens| lens(data), view)
 }
 
+/// Create a new view unwrapping some data from the state.
+///
+/// This is equivalent to `focus(|(_data, state), lens| lens(state), view)`.
+pub fn without_data<T, S, V: View<S>>(view: V) -> impl View<(T, S)> {
+    focus(|(_data, state), lens| lens(state), view)
+}
+
 /// A view that stores some additional data.
 pub struct WithState<T, S, V> {
     build: Box<dyn Fn() -> S>,

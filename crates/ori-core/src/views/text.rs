@@ -139,7 +139,7 @@ impl<T> View<T> for Text {
         space: Space,
     ) -> Size {
         state.set_bounds(cx.fonts(), space.max);
-        state.size()
+        space.fit(state.size())
     }
 
     fn draw(
@@ -149,7 +149,10 @@ impl<T> View<T> for Text {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
+        let offset = cx.rect().center() - state.rect().center();
+
         let mesh = cx.rasterize_text(state, cx.rect());
+        canvas.translate(offset);
         canvas.draw_pixel_perfect(mesh);
     }
 }

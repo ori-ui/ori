@@ -72,13 +72,13 @@ impl<T, V: View<T>> View<T> for EventHandler<T, V> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if let Some(before) = &mut self.before {
+        if let Some(ref mut before) = self.before {
             before(cx, data, event);
         }
 
         self.content.event(state, cx, data, event);
 
-        if let Some(after) = &mut self.after {
+        if let Some(ref mut after) = self.after {
             after(cx, data, event);
         }
     }

@@ -73,7 +73,7 @@ impl Contexts {
         let index = self.index_of::<T>()?;
 
         let context = self.contexts.remove(index);
-        Some(*context.downcast::<T>().ok()?)
+        Some(*context.downcast::<T>().expect("downcast failed"))
     }
 
     /// Get a context.
@@ -169,6 +169,11 @@ impl<'a> BaseCx<'a> {
         self.contexts.contains::<T>()
     }
 
+    /// Remove a context.
+    pub fn remove_context<T: Any>(&mut self) -> Option<T> {
+        self.contexts.remove::<T>()
+    }
+
     /// Get a context.
     pub fn get_context<T: Any>(&self) -> Option<&T> {
         self.contexts.get::<T>()
@@ -183,6 +188,7 @@ impl<'a> BaseCx<'a> {
     ///
     /// # Panics
     /// - If the context is not found.
+    #[track_caller]
     pub fn context<T: Any>(&self) -> &T {
         match self.get_context::<T>() {
             Some(context) => context,
@@ -194,6 +200,7 @@ impl<'a> BaseCx<'a> {
     ///
     /// # Panics
     /// - If the context is not found.
+    #[track_caller]
     pub fn context_mut<T: Any>(&mut self) -> &mut T {
         match self.get_context_mut::<T>() {
             Some(context) => context,

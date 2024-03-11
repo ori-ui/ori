@@ -4,7 +4,7 @@ use crate::{
     layout::{Size, Space},
 };
 
-use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, ViewState};
+use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx};
 
 /// A single UI component.
 ///
@@ -124,15 +124,17 @@ impl<T, V: View<T>> View<T> for Option<V> {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         if let Some(view) = self {
+            if state.is_none() {
+                *state = Some(view.build(&mut cx.build_cx(), data));
+            }
+
             if let Some(old_view) = old {
                 view.rebuild(state.as_mut().unwrap(), cx, data, old_view);
-            } else {
-                *state = Some(view.build(&mut cx.build_cx(), data));
-                *cx.view_state = ViewState::default();
             }
-        } else {
-            *state = None;
-            *cx.view_state = ViewState::default();
+        }
+
+        if self.is_some() != old.is_some() {
+            cx.request_layout();
         }
     }
 

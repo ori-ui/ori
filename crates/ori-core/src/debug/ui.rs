@@ -216,6 +216,8 @@ fn debug_tree(data: &mut DebugData, state: &mut DebugState) -> impl View<(DebugD
 }
 
 fn selected_tree<'a>(data: &'a DebugData, state: &DebugState) -> Option<&'a DebugTree> {
+    // we want to skip the root as that is always just "unknown"
+    // which doesn't provide a lot of information
     let root = data.tree.get_child(0)?;
     root.get_path(state.selected_tree.as_ref()?)
 }
@@ -252,6 +254,7 @@ fn debug_tree_layout(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
     let layout = tree.layout();
     let draw = tree.draw();
 
+    // information about the layout of the node
     let layout = vstack![
         debug_text!("Min size: {}", layout.space.min),
         debug_text!("Max size: {}", layout.space.max),
@@ -259,6 +262,7 @@ fn debug_tree_layout(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
     ]
     .align_items(Align::Start);
 
+    // information about the draw of the node
     let draw = vstack![
         debug_text!("Offset: {}", draw.transform.translation),
         debug_text!("Size: {}", draw.rect.size()),
@@ -286,6 +290,7 @@ fn debug_inspector_right_panel(
     container(content)
 }
 
+// the inspector panel
 fn debug_inspector(
     data: &mut DebugData,
     state: &mut DebugState,
@@ -305,6 +310,7 @@ fn average_time<T>(event: &str, time: Option<Duration>) -> impl View<T> {
     }
 }
 
+// the profiler panel
 fn debug_profiler(
     data: &mut DebugData,
     _state: &mut DebugState,
@@ -321,6 +327,7 @@ fn debug_profiler(
     container(pad(8.0, hstack![stack]))
 }
 
+// a button in the top bar
 fn debug_bar_button<T>(content: impl View<T>) -> Button<impl View<T>> {
     button(content)
         .color(style(Palette::SECONDARY))
@@ -328,28 +335,29 @@ fn debug_bar_button<T>(content: impl View<T>) -> Button<impl View<T>> {
         .padding(0.0)
 }
 
+// a tab in the top bar
 fn debug_tab(state: &mut DebugState, tab: DebugTab) -> impl View<(DebugData, DebugState)> {
-    let content = debug_text!("{:?}", tab);
-
-    let mut button = debug_bar_button(pad(4.0, content)).border_color(style(Palette::PRIMARY));
+    let mut button = debug_bar_button(pad(4.0, debug_text!("{:?}", tab)));
 
     if tab == state.tab {
-        button = button.border_bottom(4.0);
+        button = button
+            .border_bottom(4.0)
+            .border_color(style(Palette::PRIMARY));
     }
 
-    on_click(
-        height(24.0, button),
-        move |_, (_, state): &mut (_, DebugState)| {
-            state.tab = tab;
-        },
-    )
+    let button = height(24.0, button);
+    on_click(button, move |_, (_, state): &mut (_, DebugState)| {
+        state.tab = tab;
+    })
 }
 
+// the close button in the top right corner
 fn debug_close_button() -> impl View<(DebugData, DebugState)> {
-    let content = text("✕").font_family(FontFamily::Monospace);
-    let button = debug_bar_button(content);
+    let cross = text("✕").font_family(FontFamily::Monospace);
+    let button = size(24.0, debug_bar_button(cross));
 
-    on_click(size(24.0, button), |_, (data, _): &mut (DebugData, _)| {
+    // close the debugger when the button is clicked
+    on_click(button, |_, (data, _): &mut (DebugData, _)| {
         data.is_open = false;
     })
 }
@@ -360,7 +368,13 @@ fn debug_bar(state: &mut DebugState) -> impl View<(DebugData, DebugState)> {
         debug_tab(state, DebugTab::Profiler)
     ];
 
-    let stack = hstack![tabs, debug_close_button()].justify_content(Justify::SpaceBetween);
+    let stack = hstack![
+        // layout the tabs to the left
+        tabs,
+        // and the close button to the right
+        debug_close_button(),
+    ]
+    .justify_content(Justify::SpaceBetween);
 
     container(stack)
 }
@@ -372,12 +386,21 @@ fn debug_panel(data: &mut DebugData, state: &mut DebugState) -> impl View<(Debug
     }
 }
 
+// the main ui for the debugger
 fn debug(_data: &mut DebugData) -> impl View<DebugData> {
     with_state(DebugState::default, |data, state| {
-        let stack = vstack![debug_bar(state), expand(1.0, debug_panel(data, state))].gap(1.0);
+        let stack = vstack![
+            // layout the debug bar at the top
+            debug_bar(state),
+            // the take up the rest of the space with the selected panel
+            expand(1.0, debug_panel(data, state)),
+        ]
+        .gap(1.0);
 
+        // fill the background with a dark color to have clear sepration between panels
         let container = container(pad_top(1.0, stack)).background(style(Palette::SECONDARY_DARK));
 
+        // fill the bottom third of the window
         size([FILL, window_size().height / 3.0], container)
     })
 }

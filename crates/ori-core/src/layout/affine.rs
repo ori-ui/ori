@@ -3,7 +3,7 @@ use std::ops::{Mul, MulAssign};
 use super::{Matrix, Point, Vector};
 
 /// An affine transformation in 2 dimensional space.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub struct Affine {
     /// The translation of the affine transformation.
     pub translation: Vector,

@@ -257,4 +257,99 @@ impl History {
     pub fn items(&self) -> impl Iterator<Item = &HistoryItem> {
         self.items.iter()
     }
+
+    /// Get the average build time of the history.
+    pub fn average_build_time(&self) -> Option<Duration> {
+        let mut total = Duration::ZERO;
+        let mut count = 0;
+
+        for item in self.items.iter() {
+            if let HistoryItem::Build(item) = item {
+                total += item.duration;
+                count += 1;
+            }
+        }
+
+        if count > 0 {
+            Some(total / count)
+        } else {
+            None
+        }
+    }
+
+    /// Get the average rebuild time of the history.
+    pub fn average_rebuild_time(&self) -> Option<Duration> {
+        let mut total = Duration::ZERO;
+        let mut count = 0;
+
+        for item in self.items.iter() {
+            if let HistoryItem::Rebuild(item) = item {
+                total += item.duration;
+                count += 1;
+            }
+        }
+
+        if count > 0 {
+            Some(total / count)
+        } else {
+            None
+        }
+    }
+
+    /// Get the average event time of the history.
+    pub fn average_event_time(&self) -> Option<Duration> {
+        let mut total = Duration::ZERO;
+        let mut count = 0;
+
+        for item in self.items.iter() {
+            if let HistoryItem::Event(item) = item {
+                total += item.duration;
+                count += 1;
+            }
+        }
+
+        if count > 0 {
+            Some(total / count)
+        } else {
+            None
+        }
+    }
+
+    /// Get the average layout time of the history.
+    pub fn average_layout_time(&self) -> Option<Duration> {
+        let mut total = Duration::ZERO;
+        let mut count = 0;
+
+        for item in self.items.iter() {
+            if let HistoryItem::Layout(item) = item {
+                total += item.duration;
+                count += 1;
+            }
+        }
+
+        if count > 0 {
+            Some(total / count)
+        } else {
+            None
+        }
+    }
+
+    /// Get the average draw time of the history.
+    pub fn average_draw_time(&self) -> Option<Duration> {
+        let mut total = Duration::ZERO;
+        let mut count = 0;
+
+        for item in self.items.iter() {
+            if let HistoryItem::Draw(item) = item {
+                total += item.duration;
+                count += 1;
+            }
+        }
+
+        if count > 0 {
+            Some(total / count)
+        } else {
+            None
+        }
+    }
 }

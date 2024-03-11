@@ -239,6 +239,10 @@ impl<T> Ui<T> {
     /// Tell the UI that the scale factor of a window has changed.
     pub fn scale_factor_changed(&mut self, window_id: WindowId) {
         self.rebuild_theme(window_id);
+
+        if let Some(window) = self.windows.get_mut(&window_id) {
+            window.request_layout();
+        }
     }
 
     /// Tell the UI that a window has been resized.

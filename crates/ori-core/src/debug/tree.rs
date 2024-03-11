@@ -1,9 +1,12 @@
-use std::any::type_name;
+use std::{
+    any::type_name,
+    hash::{Hash, Hasher},
+};
 
 use crate::layout::{Affine, Rect};
 
 /// A debug tree.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct DebugTree {
     name: Option<&'static str>,
     content: Vec<Option<DebugTree>>,
@@ -43,6 +46,13 @@ impl DebugTree {
     /// Get the name.
     pub fn name(&self) -> &'static str {
         self.name.unwrap_or("unknown")
+    }
+
+    /// Get a fast hash of the tree.
+    pub fn fast_hash(&self) -> u64 {
+        let mut hasher = seahash::SeaHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
     }
 
     fn collapse_name(name: &str) -> String {

@@ -1,5 +1,6 @@
 use std::{
     fmt::Display,
+    hash::{Hash, Hasher},
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
 };
 
@@ -179,3 +180,10 @@ impl_math_op!(Sub, SubAssign, sub, sub_assign, -);
 impl_math_op!(Mul, MulAssign, mul, mul_assign, *);
 impl_math_op!(Div, DivAssign, div, div_assign, /);
 impl_math_op!(Rem, RemAssign, rem, rem_assign, %);
+
+impl Hash for Size {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.width.to_bits().hash(state);
+        self.height.to_bits().hash(state);
+    }
+}

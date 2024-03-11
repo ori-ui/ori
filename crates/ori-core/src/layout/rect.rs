@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign, BitAnd, BitAndAssign, Sub, SubAssign};
 use super::{Affine, Point, Size, Vector};
 
 /// A rectangle defined by its minimum and maximum points.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Hash)]
 pub struct Rect {
     /// The minimum point of the rectangle.
     pub min: Point,

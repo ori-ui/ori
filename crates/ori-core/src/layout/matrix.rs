@@ -4,7 +4,7 @@ use super::{Point, Vector};
 
 /// A 2x2 matrix.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Hash)]
 pub struct Matrix {
     /// The x axis of the matrix.
     pub x: Vector,

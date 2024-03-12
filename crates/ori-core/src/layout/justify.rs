@@ -50,7 +50,9 @@ pub enum Justify {
 impl Justify {
     /// Layout the items in a stack container.
     pub fn layout(self, sizes: &[f32], size: f32, gap: f32) -> JustifyIterator {
-        let total_gap = gap * (sizes.len() - 1) as f32;
+        let count = sizes.len() as f32;
+
+        let total_gap = gap * (count - 1.0);
         let total_size = sizes.iter().sum::<f32>() + total_gap;
 
         let position = match self {
@@ -63,9 +65,9 @@ impl Justify {
 
         let gap = match self {
             Self::Start | Self::End | Self::Center => gap,
-            Self::SpaceBetween => (size - (total_size - total_gap)) / (sizes.len() - 1) as f32,
-            Self::SpaceAround => (size - total_size) / (sizes.len() - 1) as f32,
-            Self::SpaceEvenly => (size - total_size) / (sizes.len() + 1) as f32,
+            Self::SpaceBetween => (size - (total_size - total_gap)) / (count - 1.0),
+            Self::SpaceAround => (size - total_size) / (count - 1.0),
+            Self::SpaceEvenly => (size - total_size) / (count + 1.0),
         };
 
         JustifyIterator {

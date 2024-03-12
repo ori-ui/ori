@@ -125,7 +125,7 @@ fn todos(data: &mut Data) -> impl View<Data> {
         todos.push(todo);
     }
 
-    vstack![for todos].gap(0.0)
+    vstack(todos).gap(0.0)
 }
 
 fn active_count(data: &mut Data) -> impl View<Data> {

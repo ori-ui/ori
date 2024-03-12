@@ -1,10 +1,8 @@
-use std::cell::Cell;
-
 use ori_macro::Build;
 
 use crate::{
     canvas::Canvas,
-    event::{Event, RequestFocus, SwitchFocus},
+    event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
     view::{
@@ -17,11 +15,6 @@ pub use crate::{hstack, vstack};
 /// Create a horizontal [`Stack`].
 #[macro_export]
 macro_rules! hstack {
-    (for $iter:expr) => {
-        $crate::views::hstack(
-            <::std::vec::Vec<_> as ::std::iter::FromIterator<_>>::from_iter($iter)
-        )
-    };
     ($($child:expr),* $(,)?) => {
         $crate::views::hstack(($($child,)*))
     };
@@ -30,11 +23,6 @@ macro_rules! hstack {
 /// Create a vertical [`Stack`].
 #[macro_export]
 macro_rules! vstack {
-    (for $iter:expr) => {
-        $crate::views::vstack(
-            <::std::vec::Vec<_> as ::std::iter::FromIterator<_>>::from_iter($iter)
-        )
-    };
     ($($child:expr),* $(,)?) => {
         $crate::views::vstack(($($child,)*))
     };
@@ -60,7 +48,7 @@ pub fn vstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
     Stack::vstack_any()
 }
 
-/// A view that stacks its content in a line.
+/// A view that stacks it's content in a line.
 #[derive(Build, Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.
@@ -117,157 +105,6 @@ impl<'a, T> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
     /// Push a view to the stack.
     pub fn push(&mut self, view: impl AnyView<T> + 'a) {
         self.content.push(Box::new(view));
-    }
-}
-
-impl<V> Stack<V> {
-    fn event_first<T>(
-        &mut self,
-        content: &mut SeqState<T, V>,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &Event,
-    ) where
-        V: ViewSeq<T>,
-    {
-        for i in 0..self.content.len() {
-            if event.is_handled() {
-                break;
-            }
-
-            self.content.event_nth(i, content, cx, data, event);
-        }
-    }
-
-    fn event_last<T>(
-        &mut self,
-        content: &mut SeqState<T, V>,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &Event,
-    ) where
-        V: ViewSeq<T>,
-    {
-        for i in (0..self.content.len()).rev() {
-            if event.is_handled() {
-                break;
-            }
-
-            self.content.event_nth(i, content, cx, data, event);
-        }
-    }
-
-    fn focus_next<T>(
-        &mut self,
-        content: &mut SeqState<T, V>,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &Event,
-        focused: &Cell<bool>,
-    ) where
-        V: ViewSeq<T>,
-    {
-        let mut next = None;
-
-        for i in 0..self.content.len() {
-            self.content.event_nth(i, content, cx, data, event);
-
-            if event.is_handled() {
-                return;
-            }
-
-            if focused.get() {
-                next = Some(i + 1);
-                break;
-            }
-        }
-
-        if let Some(next) = next {
-            for i in next..self.content.len() {
-                let focused = Event::new(RequestFocus::First);
-                self.content.event_nth(i, content, cx, data, &focused);
-
-                if focused.is_handled() {
-                    event.handle();
-                    break;
-                }
-            }
-        }
-    }
-
-    fn focus_prev<T>(
-        &mut self,
-        content: &mut SeqState<T, V>,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &Event,
-        focused: &Cell<bool>,
-    ) where
-        V: ViewSeq<T>,
-    {
-        let mut prev = None;
-
-        for i in (0..self.content.len()).rev() {
-            self.content.event_nth(i, content, cx, data, event);
-
-            if event.is_handled() {
-                return;
-            }
-
-            if focused.get() {
-                prev = i.checked_sub(1);
-                break;
-            }
-        }
-
-        if let Some(prev) = prev {
-            for i in (0..=prev).rev() {
-                let focused = Event::new(RequestFocus::Last);
-                self.content.event_nth(i, content, cx, data, &focused);
-
-                if focused.is_handled() {
-                    event.handle();
-                    break;
-                }
-            }
-        }
-    }
-
-    fn handle_focus<T>(
-        &mut self,
-        content: &mut SeqState<T, V>,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &Event,
-    ) -> bool
-    where
-        V: ViewSeq<T>,
-    {
-        match event.get::<SwitchFocus>() {
-            Some(SwitchFocus::Next(focused)) => {
-                self.focus_next(content, cx, data, event, focused);
-                return true;
-            }
-            Some(SwitchFocus::Prev(focused)) => {
-                self.focus_prev(content, cx, data, event, focused);
-                return true;
-            }
-            None => {}
-        }
-
-        match event.get::<RequestFocus>() {
-            Some(RequestFocus::First) => {
-                self.event_first(content, cx, data, event);
-                return true;
-            }
-            Some(RequestFocus::Last) => {
-                self.event_last(content, cx, data, event);
-                return true;
-            }
-            None => {}
-        }
-
-        false
     }
 }
 
@@ -346,10 +183,6 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         event: &Event,
     ) {
-        if self.handle_focus(content, cx, data, event) {
-            return;
-        }
-
         for i in 0..self.content.len() {
             self.content.event_nth(i, content, cx, data, event);
         }
@@ -452,8 +285,8 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
             .layout(&state.majors, major, self.gap)
             .enumerate()
         {
-            let child_minor = self.align.align(minor, state.minors[i]);
-            let offset = self.axis.pack(child_major, child_minor);
+            let child_align = self.align.align(minor, state.minors[i]);
+            let offset = self.axis.pack(child_major, child_align);
             content[i].translate(offset);
         }
 

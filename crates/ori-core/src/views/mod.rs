@@ -27,6 +27,7 @@ mod text_input;
 mod transform;
 mod trigger;
 mod with_state;
+mod wrap;
 mod zstack;
 
 pub use aligned::*;
@@ -55,4 +56,5 @@ pub use text_input::*;
 pub use transform::*;
 pub use trigger::*;
 pub use with_state::*;
+pub use wrap::*;
 pub use zstack::*;

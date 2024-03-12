@@ -19,7 +19,7 @@ fn form() -> impl View<Data> {
             .on_change(|_, (_, user): &mut (_, User), text| user.name = text);
 
         let age = hstack![
-            text(format!("Age: {}", user.age)),
+            text!("Age: {}", user.age),
             on_click(button(text("Add")), move |_, (_, user): &mut (_, User)| {
                 user.age += 1
             })
@@ -32,7 +32,7 @@ fn form() -> impl View<Data> {
             *user = User::default();
         });
 
-        vstack![container(vstack![name, age]), submit]
+        vstack![vstack![name, age], submit]
     })
 }
 
@@ -40,11 +40,7 @@ fn app(data: &mut Data) -> impl View<Data> {
     let mut users = Vec::new();
 
     for user in data.users.iter_mut() {
-        let fields = hstack![
-            text(format!("Name: {},", user.name)),
-            text(format!("Age: {}", user.age))
-        ]
-        .gap(16.0);
+        let fields = hstack![text!("Name: {},", user.name), text!("Age: {}", user.age)].gap(16.0);
 
         let user = container(pad(16.0, fields))
             .background(style(Palette::SECONDARY))

@@ -24,7 +24,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 
     center(vstack![
         button,
-        text(format!("Futures completed: {}", data.futures_completed))
+        text!("Futures completed: {}", data.futures_completed)
     ])
 }
 

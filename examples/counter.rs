@@ -32,10 +32,7 @@ fn counter_button() -> impl View<Data> {
 // eg. when the a button is clicked.
 fn app(data: &mut Data) -> impl View<Data> {
     // We use the `vstack!` macro to create a vertical stack of views.
-    let content = vstack![
-        counter_button(),
-        text(format!("Clicked {} time(s)", data.counter))
-    ];
+    let content = vstack![counter_button(), text!("Clicked {} time(s)", data.counter)];
 
     // We use the `center` function to center the content in the window.
     center(content)

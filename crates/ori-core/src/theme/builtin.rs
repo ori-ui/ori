@@ -23,7 +23,7 @@ pub mod text {
     /// The color.
     pub const COLOR: Key<Color> = Key::new("text.color");
     /// The horizontal alignment.
-    pub const ALIGN: Key<TextAlign> = Key::new("text.h_align");
+    pub const ALIGN: Key<TextAlign> = Key::new("text.align");
     /// The line height.
     pub const LINE_HEIGHT: Key<f32> = Key::new("text.line_height");
     /// The text wrap.

@@ -13,13 +13,13 @@ use crate::{
 };
 
 /// Create a new [`Collapsing`].
-pub fn collapsing<H, V>(header: H, content: V) -> Collapsing<H, V> {
+pub fn collapsing<T, H, V>(header: H, content: V) -> Collapsing<T, H, V> {
     Collapsing::new(header, content)
 }
 
 /// A collapsing view.
-#[derive(Clone, Debug, Build, Rebuild)]
-pub struct Collapsing<H, V> {
+#[derive(Build, Rebuild)]
+pub struct Collapsing<T, H, V> {
     /// The header.
     #[build(ignore)]
     pub header: Pod<H>,
@@ -27,6 +27,11 @@ pub struct Collapsing<H, V> {
     /// The content.
     #[build(ignore)]
     pub content: Pod<V>,
+
+    /// A callback for when the view is opened or closed.
+    #[build(ignore)]
+    #[allow(clippy::type_complexity)]
+    pub on_open: Option<Box<dyn FnMut(&mut EventCx, &mut T, bool)>>,
 
     /// Whether the view is open.
     #[rebuild(layout)]
@@ -63,12 +68,13 @@ pub struct Collapsing<H, V> {
     pub border_color: Color,
 }
 
-impl<H, V> Collapsing<H, V> {
+impl<T, H, V> Collapsing<T, H, V> {
     /// Create a new collapsing view.
     pub fn new(header: H, content: V) -> Self {
         Self {
             header: Pod::new(header),
             content: Pod::new(content),
+            on_open: None,
             open: None,
             default_open: false,
             transition: style(collapsing::TRANSITION),
@@ -80,6 +86,12 @@ impl<H, V> Collapsing<H, V> {
             border_color: style(collapsing::BORDER_COLOR),
         }
     }
+
+    /// Set a callback for when the view is opened or closed.
+    pub fn on_open(mut self, on_open: impl FnMut(&mut EventCx, &mut T, bool) + 'static) -> Self {
+        self.on_open = Some(Box::new(on_open));
+        self
+    }
 }
 
 #[doc(hidden)]
@@ -90,7 +102,7 @@ pub struct CollapsingState<T, H: View<T>, V: View<T>> {
     pub t: f32,
 }
 
-impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<H, V> {
+impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
     type State = CollapsingState<T, H, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {

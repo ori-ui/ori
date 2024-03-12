@@ -130,18 +130,19 @@ pub struct Animate<T, V, S = ()> {
     /// The animation callback.
     #[allow(clippy::type_complexity)]
     pub animate: Box<dyn FnMut(&mut S, &mut EventCx, &mut T, &Event) -> Option<V>>,
-    /// The theme to apply when building the view.
-    pub theme: Theme,
 }
 
 impl<T, V, S> Animate<T, V, S> {
     /// Create a new [`Animate`].
     pub fn new(
-        animate: impl FnMut(&mut S, &mut EventCx, &mut T, &Event) -> Option<V> + 'static,
+        mut animate: impl FnMut(&mut S, &mut EventCx, &mut T, &Event) -> Option<V> + 'static,
     ) -> Self {
+        let mut snapshot = Theme::snapshot();
+
         Self {
-            animate: Box::new(animate),
-            theme: Theme::snapshot(),
+            animate: Box::new(move |state, cx, data, event| {
+                Theme::with_global(&mut snapshot, || animate(state, cx, data, event))
+            }),
         }
     }
 }
@@ -179,9 +180,7 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
             view.event(state, cx, data, event);
         }
 
-        let new_view = Theme::with_global(&mut self.theme, || {
-            (self.animate)(&mut state.animate_state, cx, data, event)
-        });
+        let new_view = (self.animate)(&mut state.animate_state, cx, data, event);
 
         if let Some(mut new_view) = new_view {
             match state.view {

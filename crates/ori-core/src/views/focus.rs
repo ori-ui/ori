@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::{
     canvas::Canvas,
     event::Event,
@@ -25,7 +23,6 @@ pub struct Focus<T, U, V> {
     content: V,
     #[allow(clippy::type_complexity)]
     focus: Box<dyn FnMut(&mut T, &mut Lens<U>)>,
-    marker: PhantomData<fn() -> T>,
 }
 
 impl<T, U, V> Focus<T, U, V> {
@@ -34,7 +31,6 @@ impl<T, U, V> Focus<T, U, V> {
         Self {
             content,
             focus: Box::new(focus),
-            marker: PhantomData,
         }
     }
 }

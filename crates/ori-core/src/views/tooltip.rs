@@ -123,7 +123,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         if let Some(moved) = event.get::<PointerMoved>() {
             state.timer = 0.0;
 
-            if cx.has_hot() {
+            if cx.is_hot() || cx.has_hot() {
                 state.position = moved.position;
                 cx.request_animation_frame();
                 event.handle();
@@ -131,7 +131,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if cx.has_hot() && state.timer < 1.0 {
+            if cx.is_hot() || cx.has_hot() && state.timer < 1.0 {
                 state.timer += dt * 2.0;
                 cx.request_animation_frame();
             }
@@ -174,25 +174,24 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
         let size = state.buffer.size() + self.padding.size();
         let offset = Vector::new(-size.width / 2.0, 20.0);
-        let text_rect = Rect::min_size(
-            state.position + offset + self.padding.offset(),
-            state.buffer.size(),
-        );
 
         let mut layer = canvas.layer();
         layer.transform = Affine::IDENTITY;
+        layer.translate(Vector::from(state.position + offset));
         layer.depth += 1000.0;
         layer.clip = Rect::min_size(Point::ZERO, cx.window().size());
 
         layer.draw_quad(
-            Rect::min_size(state.position + offset, size),
+            Rect::min_size(Point::ZERO, size),
             self.background.fade(alpha),
             self.border_radius,
             self.border_width,
             self.border_color.fade(alpha),
         );
 
-        let mesh = cx.rasterize_text(&state.buffer, text_rect);
-        layer.draw(mesh);
+        layer.translate(self.padding.offset());
+
+        let mesh = cx.rasterize_text(&state.buffer);
+        layer.draw_pixel_perfect(mesh);
     }
 }

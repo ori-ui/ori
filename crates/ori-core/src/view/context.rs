@@ -516,16 +516,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             animation_frame: self.animation_frame,
         }
     }
-
-    /// Create a mesh for the given text buffer.
-    pub fn rasterize_text(&mut self, buffer: &TextBuffer, rect: Rect) -> Mesh {
-        self.fonts().rasterize_text(buffer.raw(), rect)
-    }
-
-    /// Create a mesh for the given raw cosmic text buffer.
-    pub fn rasterize_text_raw(&mut self, buffer: &Buffer, rect: Rect) -> Mesh {
-        self.fonts().rasterize_text(buffer, rect)
-    }
 }
 
 macro_rules! impl_deref {
@@ -593,6 +583,16 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// Get the window.
     pub fn window(&mut self) -> &mut Window {
         self.window
+    }
+
+    /// Create a mesh for the given text buffer.
+    pub fn rasterize_text(&mut self, buffer: &TextBuffer) -> Mesh {
+        self.fonts().rasterize_text(buffer.raw())
+    }
+
+    /// Create a mesh for the given raw cosmic text buffer.
+    pub fn rasterize_text_raw(&mut self, buffer: &Buffer) -> Mesh {
+        self.fonts().rasterize_text(buffer)
     }
 }}
 

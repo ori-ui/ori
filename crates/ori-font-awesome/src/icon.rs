@@ -132,7 +132,7 @@ impl<T> View<T> for Icon {
     ) {
         let offset = cx.rect().center() - state.rect().center();
 
-        let mesh = cx.rasterize_text(state, cx.rect());
+        let mesh = cx.rasterize_text(state);
         canvas.translate(offset);
         canvas.draw(mesh);
     }

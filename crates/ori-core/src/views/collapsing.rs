@@ -216,10 +216,12 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<H, V> {
 fn icon(color: Color) -> Mesh {
     let mut mesh = Mesh::new();
 
+    let d = 0.25;
+
     mesh.vertices.extend([
-        Vertex::new_color(Point::new(-0.3, -0.3 * SQRT_2), color),
-        Vertex::new_color(Point::new(0.3 * SQRT_2, 0.0), color),
-        Vertex::new_color(Point::new(-0.3, 0.3 * SQRT_2), color),
+        Vertex::new_color(Point::new(-d, -d * SQRT_2), color),
+        Vertex::new_color(Point::new(d * SQRT_2, 0.0), color),
+        Vertex::new_color(Point::new(-d, d * SQRT_2), color),
     ]);
 
     mesh.indices.extend([0, 1, 2]);

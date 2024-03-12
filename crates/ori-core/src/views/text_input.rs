@@ -615,9 +615,9 @@ impl<T> View<T> for TextInput<T> {
 
         /* draw the text */
         let mesh = if !self.get_text(state).is_empty() {
-            cx.rasterize_text_raw(state.editor.buffer(), cx.rect())
+            cx.rasterize_text_raw(state.editor.buffer())
         } else {
-            cx.rasterize_text(&state.placeholder, cx.rect())
+            cx.rasterize_text(&state.placeholder)
         };
 
         canvas.draw_pixel_perfect(mesh);

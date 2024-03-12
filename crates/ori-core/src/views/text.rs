@@ -4,7 +4,7 @@ use ori_macro::Build;
 use smol_str::SmolStr;
 
 use crate::{
-    canvas::{Canvas, Color},
+    canvas::{Canvas, Color, Mesh},
     event::Event,
     layout::{Size, Space},
     text::{
@@ -93,25 +93,34 @@ impl Text {
     }
 }
 
+#[doc(hidden)]
+pub struct TextState {
+    buffer: TextBuffer,
+    mesh: Option<Mesh>,
+}
+
 impl<T> View<T> for Text {
-    type State = TextBuffer;
+    type State = TextState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         let mut buffer = TextBuffer::new(cx.fonts(), self.font_size, self.line_height);
         self.set_attributes(cx.fonts(), &mut buffer);
-        buffer
+
+        TextState { buffer, mesh: None }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         if self.wrap != old.wrap {
-            state.set_wrap(cx.fonts(), self.wrap);
+            state.buffer.set_wrap(cx.fonts(), self.wrap);
 
+            state.mesh = None;
             cx.request_layout();
         }
 
         if self.align != old.align {
-            state.set_align(self.align);
+            state.buffer.set_align(self.align);
 
+            state.mesh = None;
             cx.request_layout();
         }
 
@@ -122,7 +131,7 @@ impl<T> View<T> for Text {
             || self.font_style != old.font_style
             || self.color != old.color
         {
-            state.set_text(
+            state.buffer.set_text(
                 cx.fonts(),
                 &self.text,
                 TextAttributes {
@@ -134,6 +143,7 @@ impl<T> View<T> for Text {
                 },
             );
 
+            state.mesh = None;
             cx.request_layout();
         }
     }
@@ -154,8 +164,12 @@ impl<T> View<T> for Text {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        state.set_bounds(cx.fonts(), space.max);
-        space.fit(state.size())
+        if state.mesh.is_none() || state.buffer.bounds() != space.max {
+            state.buffer.set_bounds(cx.fonts(), space.max);
+            state.mesh = Some(cx.rasterize_text(&state.buffer));
+        }
+
+        space.fit(state.buffer.size())
     }
 
     fn draw(
@@ -165,11 +179,12 @@ impl<T> View<T> for Text {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
-        let offset = cx.rect().center() - state.rect().center();
+        let offset = cx.rect().center() - state.buffer.rect().center();
 
-        let mesh = cx.rasterize_text(state, cx.rect());
-        canvas.translate(offset);
-        canvas.draw_pixel_perfect(mesh);
+        if let Some(ref mesh) = state.mesh {
+            canvas.translate(offset);
+            canvas.draw_pixel_perfect(mesh.clone());
+        }
     }
 }
 

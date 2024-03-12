@@ -4,7 +4,7 @@ use cosmic_text::{Buffer, FontSystem, SwashCache};
 
 use crate::{
     canvas::{Color, Mesh, Vertex},
-    layout::{Point, Rect, Size, Vector},
+    layout::{Point, Rect, Size},
 };
 
 use super::{FontAtlas, FontSource};
@@ -99,13 +99,13 @@ impl Fonts {
     ///
     /// This involves shapind the text, rasterizing the glyphs, laying out the glyphs,
     /// and creating the mesh itself, and should ideally be done as little as possible.
-    pub fn rasterize_text(&mut self, buffer: &Buffer, rect: Rect) -> Mesh {
+    pub fn rasterize_text(&mut self, buffer: &Buffer) -> Mesh {
         // if rasterizing returns None, it means the font atlas is full
         // so we need to grow it and try again
         //
         // TODO: handle the case where the font atlas is full and we can't grow it
         loop {
-            if let Some(mesh) = self.try_rasterize_text(buffer, rect.min.to_vector()) {
+            if let Some(mesh) = self.try_rasterize_text(buffer) {
                 break mesh;
             }
 
@@ -113,7 +113,7 @@ impl Fonts {
         }
     }
 
-    fn try_rasterize_text(&mut self, buffer: &Buffer, offset: Vector) -> Option<Mesh> {
+    fn try_rasterize_text(&mut self, buffer: &Buffer) -> Option<Mesh> {
         let mut mesh = Mesh::new();
         let mut glyphs = Vec::<(Rect, Rect, Color)>::new();
 
@@ -125,7 +125,7 @@ impl Fonts {
                     glyph,
                 )?;
 
-                let physical = glyph.physical((offset.x, offset.y), 1.0);
+                let physical = glyph.physical((0.0, 0.0), 1.0);
 
                 let min = Point::new(physical.x as f32, run.line_y + physical.y as f32);
                 let rect = Rect::min_size(min + rasterized.offset, rasterized.size);
@@ -146,25 +146,24 @@ impl Fonts {
 
         for (uv, rect, color) in glyphs {
             let index = mesh.vertices.len() as u32;
-            let offset = rect.top_left().fract().to_vector();
 
             mesh.vertices.push(Vertex {
-                position: rect.top_left() - offset,
+                position: rect.top_left(),
                 tex_coords: uv.top_left(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.top_right() - offset,
+                position: rect.top_right(),
                 tex_coords: uv.top_right(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.bottom_right() - offset,
+                position: rect.bottom_right(),
                 tex_coords: uv.bottom_right(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.bottom_left() - offset,
+                position: rect.bottom_left(),
                 tex_coords: uv.bottom_left(),
                 color,
             });

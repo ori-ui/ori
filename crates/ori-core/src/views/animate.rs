@@ -22,12 +22,12 @@ pub fn transition_hot<T, V>(
     let mut built = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if cx.has_hot_changed() {
+        if cx.is_hot() || cx.has_hot_changed() {
             cx.request_animation_frame();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if transition.step(t, cx.has_hot(), *dt) {
+            if transition.step(t, cx.is_hot() || cx.has_hot(), *dt) {
                 cx.request_animation_frame();
                 return Some(view(cx, data, transition.get(*t)));
             }
@@ -50,12 +50,12 @@ pub fn transition_active<T, V>(
     let mut built = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if cx.has_active_changed() {
+        if cx.active_changed() || cx.has_active_changed() {
             cx.request_animation_frame();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if transition.step(t, cx.has_active(), *dt) {
+            if transition.step(t, cx.is_active() || cx.has_active(), *dt) {
                 cx.request_animation_frame();
                 return Some(view(cx, data, transition.get(*t)));
             }
@@ -78,12 +78,12 @@ pub fn transition_focused<T, V>(
     let mut built = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if cx.has_focused_changed() {
+        if cx.focused_changed() || cx.has_focused_changed() {
             cx.request_animation_frame();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
-            if transition.step(t, cx.has_focused(), *dt) {
+            if transition.step(t, cx.is_focused() || cx.has_focused(), *dt) {
                 cx.request_animation_frame();
                 return Some(view(cx, data, transition.get(*t)));
             }

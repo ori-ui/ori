@@ -1,7 +1,6 @@
 //! The builtin views in Ori.
 
 mod aligned;
-mod alt;
 mod animate;
 mod button;
 mod checkbox;
@@ -24,6 +23,7 @@ mod scroll;
 mod stack;
 mod text;
 mod text_input;
+mod tooltip;
 mod transform;
 mod trigger;
 mod with_state;
@@ -31,7 +31,6 @@ mod wrap;
 mod zstack;
 
 pub use aligned::*;
-pub use alt::*;
 pub use animate::*;
 pub use button::*;
 pub use checkbox::*;
@@ -53,6 +52,7 @@ pub use scroll::*;
 pub use stack::*;
 pub use text::*;
 pub use text_input::*;
+pub use tooltip::*;
 pub use transform::*;
 pub use trigger::*;
 pub use with_state::*;

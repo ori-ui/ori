@@ -1,26 +1,28 @@
+use smol_str::SmolStr;
+
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     event::{AnimationFrame, Event, PointerMoved},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAttributes, TextBuffer},
-    theme::{alt, style, text, window_size},
+    theme::{style, text, tooltip, window_size},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
-/// Create a new [`Alt`] view.
-pub fn alt<V>(alt: impl ToString, content: V) -> Alt<V> {
-    Alt::new(alt, content)
+/// Create a new [`Tooltip`] view.
+pub fn tooltip<V>(alt: impl Into<SmolStr>, content: V) -> Tooltip<V> {
+    Tooltip::new(alt, content)
 }
 
 /// A view that displays some text when the content is hovered.
 #[derive(Rebuild)]
-pub struct Alt<V> {
+pub struct Tooltip<V> {
     /// The content to display.
     pub content: V,
-    /// The alternative text to display.
+    /// The text to display.
     #[rebuild(layout)]
-    pub alt: String,
+    pub text: SmolStr,
     /// The padding of the text.
     #[rebuild(draw)]
     pub padding: Padding,
@@ -41,25 +43,25 @@ pub struct Alt<V> {
     pub border_color: Color,
 }
 
-impl<V> Alt<V> {
-    /// Create a new alt view.
-    pub fn new(alt: impl ToString, content: V) -> Self {
+impl<V> Tooltip<V> {
+    /// Create a new tooltip view.
+    pub fn new(text: impl Into<SmolStr>, content: V) -> Self {
         Self {
             content,
-            alt: alt.to_string(),
+            text: text.into(),
             color: style(text::COLOR),
-            padding: style(alt::PADDING),
-            background: style(alt::BACKGROUND),
-            border_radius: style(alt::BORDER_RADIUS),
-            border_width: style(alt::BORDER_WIDTH),
-            border_color: style(alt::BORDER_COLOR),
+            padding: style(tooltip::PADDING),
+            background: style(tooltip::BACKGROUND),
+            border_radius: style(tooltip::BORDER_RADIUS),
+            border_width: style(tooltip::BORDER_WIDTH),
+            border_color: style(tooltip::BORDER_COLOR),
         }
     }
 
     fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer) {
         buffer.set_text(
             fonts,
-            &self.alt,
+            &self.text,
             TextAttributes {
                 family: FontFamily::SansSerif,
                 weight: FontWeight::NORMAL,
@@ -72,17 +74,17 @@ impl<V> Alt<V> {
 }
 
 #[doc(hidden)]
-pub struct AltState {
+pub struct TooltipState {
     pub buffer: TextBuffer,
     pub timer: f32,
     pub position: Point,
 }
 
-impl<T, V: View<T>> View<T> for Alt<V> {
-    type State = (AltState, V::State);
+impl<T, V: View<T>> View<T> for Tooltip<V> {
+    type State = (TooltipState, V::State);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let mut state = AltState {
+        let mut state = TooltipState {
             buffer: TextBuffer::new(cx.fonts(), 12.0, 1.0),
             timer: 0.0,
             position: Point::ZERO,
@@ -102,7 +104,7 @@ impl<T, V: View<T>> View<T> for Alt<V> {
     ) {
         Rebuild::rebuild(self, cx, old);
 
-        if self.alt != old.alt {
+        if self.text != old.text {
             self.set_attributes(cx.fonts(), &mut state.buffer);
         }
 

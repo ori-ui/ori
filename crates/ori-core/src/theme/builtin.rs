@@ -82,8 +82,8 @@ pub mod text_input {
     }
 }
 
-/// Styles for [`Alt`](crate::views::Alt)s.
-pub mod alt {
+/// Styles for [`Tooltip`](crate::views::Tooltip)s.
+pub mod tooltip {
     use crate::{
         canvas::{BorderRadius, BorderWidth, Color},
         layout::Padding,
@@ -91,15 +91,15 @@ pub mod alt {
     };
 
     /// The padding.
-    pub const PADDING: Key<Padding> = Key::new("alt.padding");
+    pub const PADDING: Key<Padding> = Key::new("tooltip.padding");
     /// The background color.
-    pub const BACKGROUND: Key<Color> = Key::new("alt.background");
+    pub const BACKGROUND: Key<Color> = Key::new("tooltip.background");
     /// The border radius.
-    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("alt.border_radius");
+    pub const BORDER_RADIUS: Key<BorderRadius> = Key::new("tooltip.border_radius");
     /// The border width.
-    pub const BORDER_WIDTH: Key<BorderWidth> = Key::new("alt.border_width");
+    pub const BORDER_WIDTH: Key<BorderWidth> = Key::new("tooltip.border_width");
     /// The border color.
-    pub const BORDER_COLOR: Key<Color> = Key::new("alt.border_color");
+    pub const BORDER_COLOR: Key<Color> = Key::new("tooltip.border_color");
 
     pub(super) fn builtin(theme: &mut Theme) {
         theme.set(PADDING, [4.0, 2.0]);
@@ -271,7 +271,7 @@ impl Theme {
 
         text::builtin(&mut theme);
         text_input::builtin(&mut theme);
-        alt::builtin(&mut theme);
+        tooltip::builtin(&mut theme);
         container::builtin(&mut theme);
         scroll::builtin(&mut theme);
         button::builtin(&mut theme);

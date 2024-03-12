@@ -226,7 +226,7 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
             let (child_major, child_minor) = self.axis.unpack(content[i].size());
             let gap = if run_major > 0.0 { major_gap } else { 0.0 };
 
-            if run_major + gap <= max_major {
+            if run_major + child_major + gap <= max_major {
                 run_major += gap + child_major;
                 run_minor = f32::max(run_minor, child_minor);
                 continue;

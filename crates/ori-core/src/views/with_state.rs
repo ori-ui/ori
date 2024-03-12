@@ -83,7 +83,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
     type State = (Pod<V>, U, State<(T, U), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let (mut view, mut state) = Theme::with_global(&mut self.theme, || {
+        let (mut view, mut state) = Theme::as_global(&mut self.theme, || {
             let mut state = (self.build)();
             let view = Pod::new((self.view)(data, &mut state));
             (view, state)
@@ -101,7 +101,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         _old: &Self,
     ) {
-        let mut new_view = Theme::with_global(&mut self.theme, || {
+        let mut new_view = Theme::as_global(&mut self.theme, || {
             // we need apply the global theme here
             Pod::new((self.view)(data, data_state))
         });

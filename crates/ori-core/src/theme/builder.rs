@@ -40,7 +40,7 @@ impl ThemeBuilder {
     /// Build the theme.
     pub fn build(&mut self, theme: &mut Theme) {
         for builder in &mut self.builders {
-            let new_theme = Theme::with_global(theme, builder);
+            let new_theme = Theme::as_global(theme, builder);
             theme.extend(new_theme);
         }
     }

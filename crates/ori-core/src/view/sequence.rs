@@ -14,6 +14,7 @@ use crate::{
 use super::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, View, ViewState};
 
 /// A sequence of views.
+#[allow(clippy::len_without_is_empty)]
 pub trait ViewSeq<T> {
     /// The state of the sequence.
     type State;
@@ -21,18 +22,13 @@ pub trait ViewSeq<T> {
     /// The length of the sequence.
     fn len(&self) -> usize;
 
-    /// Whether the sequence is empty.
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     /// The debug name of the nth view.
     fn debug_name(&self, _n: usize) -> &'static str {
         type_name::<Self>()
     }
 
     /// Build the sequence state.
-    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State;
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> (Self::State, Vec<ViewState>);
 
     /// Rebuild the sequence state.
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut BuildCx, data: &mut T, old: &Self);
@@ -89,8 +85,17 @@ impl<T, V: View<T>> ViewSeq<T> for Vec<V> {
         type_name::<V>()
     }
 
-    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        self.iter_mut().map(|v| v.build(cx, data)).collect()
+    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> (Self::State, Vec<ViewState>) {
+        let mut states = Vec::with_capacity(self.len());
+        let mut view_states = Vec::with_capacity(self.len());
+
+        for view in self.iter_mut() {
+            let (state, view_state) = Pod::<V>::build(cx, |cx| view.build(cx, data));
+            view_states.push(view_state);
+            states.push(state);
+        }
+
+        (states, view_states)
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut BuildCx, data: &mut T, _old: &Self) {
@@ -157,7 +162,9 @@ impl<T> ViewSeq<T> for () {
         0
     }
 
-    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {}
+    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> (Self::State, Vec<ViewState>) {
+        ((), Vec::new())
+    }
 
     fn rebuild(&mut self, _state: &mut Self::State, _cx: &mut BuildCx, _data: &mut T, _old: &Self) {
     }
@@ -220,8 +227,16 @@ macro_rules! impl_tuple {
                 }
             }
 
-            fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-                ($(self.$index.build(cx, data),)*)
+            fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> (Self::State, Vec<ViewState>) {
+                let mut view_states = Vec::with_capacity(self.len());
+
+                let state = ($({
+                    let (state, view_state) = Pod::<$name>::build(cx, |cx| self.$index.build(cx, data));
+                    view_states.push(view_state);
+                    state
+                },)*);
+
+                (state, view_states)
             }
 
             fn rebuild(
@@ -384,27 +399,46 @@ impl<V> DerefMut for PodSeq<V> {
     }
 }
 
-impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
-    type State = SeqState<T, V>;
-
-    fn len(&self) -> usize {
+impl<V> PodSeq<V> {
+    /// The length of the sequence.
+    pub fn len<T>(&self) -> usize
+    where
+        V: ViewSeq<T>,
+    {
         self.views.len()
     }
 
-    fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let mut view_state = Vec::with_capacity(self.len());
+    /// Whether the sequence is empty.
+    pub fn is_empty<T>(&self) -> bool
+    where
+        V: ViewSeq<T>,
+    {
+        self.views.len() == 0
+    }
 
-        for _ in 0..self.len() {
-            view_state.push(ViewState::default());
-        }
+    /// Build the sequence state.
+    pub fn build<T>(&mut self, cx: &mut BuildCx, data: &mut T) -> SeqState<T, V>
+    where
+        V: ViewSeq<T>,
+    {
+        let (content, view_state) = self.views.build(cx, data);
 
         SeqState {
-            content: Pod::<V>::build(cx, |cx| self.views.build(cx, data)),
+            content,
             view_state,
         }
     }
 
-    fn rebuild(&mut self, state: &mut Self::State, cx: &mut BuildCx, data: &mut T, old: &Self) {
+    /// Rebuild the sequence state.
+    pub fn rebuild<T>(
+        &mut self,
+        state: &mut SeqState<T, V>,
+        cx: &mut BuildCx,
+        data: &mut T,
+        old: &Self,
+    ) where
+        V: ViewSeq<T>,
+    {
         if let Some(debug_tree) = cx.get_context_mut::<DebugTree>() {
             debug_tree.truncate(self.len());
         }
@@ -414,14 +448,17 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         (self.views).rebuild(&mut state.content, cx, data, &old.views);
     }
 
-    fn rebuild_nth(
+    /// Rebuild the nth view.
+    pub fn rebuild_nth<T>(
         &mut self,
         n: usize,
-        state: &mut Self::State,
+        state: &mut SeqState<T, V>,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
-    ) {
+    ) where
+        V: ViewSeq<T>,
+    {
         if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);
@@ -445,14 +482,17 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         }
     }
 
-    fn event_nth(
+    /// Handle an event for the nth view.
+    pub fn event_nth<T>(
         &mut self,
         n: usize,
-        state: &mut Self::State,
+        state: &mut SeqState<T, V>,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
+    ) where
+        V: ViewSeq<T>,
+    {
         if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);
@@ -475,14 +515,18 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         }
     }
 
-    fn layout_nth(
+    /// Layout the nth view.
+    pub fn layout_nth<T>(
         &mut self,
         n: usize,
-        state: &mut Self::State,
+        state: &mut SeqState<T, V>,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
-    ) -> Size {
+    ) -> Size
+    where
+        V: ViewSeq<T>,
+    {
         if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);
@@ -512,14 +556,17 @@ impl<T, V: ViewSeq<T>> ViewSeq<T> for PodSeq<V> {
         }
     }
 
-    fn draw_nth(
+    /// Draw the nth view.
+    pub fn draw_nth<T>(
         &mut self,
         n: usize,
-        state: &mut Self::State,
+        state: &mut SeqState<T, V>,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
-    ) {
+    ) where
+        V: ViewSeq<T>,
+    {
         if let Some(mut debug_tree) = cx.remove_context::<DebugTree>() {
             let child_tree = debug_tree.remove_or_new(n);
             cx.insert_context(child_tree);

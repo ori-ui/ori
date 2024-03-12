@@ -141,7 +141,7 @@ impl<T, V, S> Animate<T, V, S> {
 
         Self {
             animate: Box::new(move |state, cx, data, event| {
-                Theme::with_global(&mut snapshot, || animate(state, cx, data, event))
+                snapshot.as_global(|| animate(state, cx, data, event))
             }),
         }
     }

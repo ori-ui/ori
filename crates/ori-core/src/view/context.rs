@@ -255,6 +255,7 @@ impl<'a, 'b> DelegateCx<'a, 'b> {
 /// A context for building the view tree.
 pub struct BuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
+    pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
     pub(crate) animation_frame: &'a mut Option<Instant>,
 }
@@ -262,11 +263,13 @@ pub struct BuildCx<'a, 'b> {
 impl<'a, 'b> BuildCx<'a, 'b> {
     pub(crate) fn new(
         base: &'a mut BaseCx<'b>,
+        view_state: &'a mut ViewState,
         window: &'a mut Window,
         animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
+            view_state,
             window,
             animation_frame,
         }
@@ -276,14 +279,10 @@ impl<'a, 'b> BuildCx<'a, 'b> {
     pub fn child(&mut self) -> BuildCx<'_, 'b> {
         BuildCx {
             base: self.base,
+            view_state: self.view_state,
             window: self.window,
             animation_frame: self.animation_frame,
         }
-    }
-
-    /// Request a rebuild of the view tree.
-    pub fn request_rebuild(&mut self) {
-        self.base.request_rebuild();
     }
 }
 
@@ -322,7 +321,12 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base, self.window, self.animation_frame)
+        BuildCx::new(
+            self.base,
+            self.view_state,
+            self.window,
+            self.animation_frame,
+        )
     }
 }
 
@@ -376,7 +380,12 @@ impl<'a, 'b> EventCx<'a, 'b> {
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base, self.window, self.animation_frame)
+        BuildCx::new(
+            self.base,
+            self.view_state,
+            self.window,
+            self.animation_frame,
+        )
     }
 
     /// Get a rebuild context.
@@ -482,6 +491,26 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
             animation_frame: self.animation_frame,
         }
     }
+
+    /// Get a rebuild context.
+    pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
+        BuildCx::new(
+            self.base,
+            self.view_state,
+            self.window,
+            self.animation_frame,
+        )
+    }
+
+    /// Get a rebuild context.
+    pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
+        RebuildCx::new(
+            self.base,
+            self.view_state,
+            self.window,
+            self.animation_frame,
+        )
+    }
 }
 
 /// A context for drawing the view tree.
@@ -515,6 +544,16 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             window: self.window,
             animation_frame: self.animation_frame,
         }
+    }
+
+    /// Get a rebuild context.
+    pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
+        RebuildCx::new(
+            self.base,
+            self.view_state,
+            self.window,
+            self.animation_frame,
+        )
     }
 }
 
@@ -594,9 +633,7 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     pub fn rasterize_text_raw(&mut self, buffer: &Buffer) -> Mesh {
         self.fonts().rasterize_text(buffer)
     }
-}}
 
-impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the id of the view.
     pub fn id(&self) -> ViewId {
         self.view_state.id()

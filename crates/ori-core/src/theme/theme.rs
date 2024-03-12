@@ -206,22 +206,17 @@ impl Theme {
     }
 
     /// Swap this theme with the global theme.
-    pub fn swap_global(this: &mut Self) {
-        Self::global(|theme| mem::swap(&mut *theme, this));
-    }
-
-    /// Set this theme as the global theme.
-    pub fn set_global(this: Self) -> Self {
-        Self::global(|theme| mem::replace(&mut *theme, this))
+    pub fn swap_global(&mut self) {
+        Self::global(|theme| mem::swap(&mut *theme, self));
     }
 
     /// Run a function with this theme as the global theme.
     ///
     /// This restores the previous global theme after the function returns.
-    pub fn with_global<T>(this: &mut Self, f: impl FnOnce() -> T) -> T {
-        Self::swap_global(this);
+    pub fn as_global<T>(&mut self, f: impl FnOnce() -> T) -> T {
+        self.swap_global();
         let result = f();
-        Self::swap_global(this);
+        self.swap_global();
         result
     }
 }

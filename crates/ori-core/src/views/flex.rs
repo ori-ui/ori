@@ -42,12 +42,16 @@ impl<T, V: View<T>> View<T> for Flex<V> {
     type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_flex(self.flex);
+        cx.set_tight(self.tight);
+
         self.content.build(cx, data)
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         cx.set_flex(self.flex);
         cx.set_tight(self.tight);
+
         self.content.rebuild(state, cx, data, &old.content);
     }
 
@@ -62,8 +66,6 @@ impl<T, V: View<T>> View<T> for Flex<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        cx.set_flex(self.flex);
-        cx.set_tight(self.tight);
         self.content.layout(state, cx, data, space)
     }
 

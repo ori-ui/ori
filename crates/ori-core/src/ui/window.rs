@@ -40,11 +40,12 @@ impl<T> WindowUi<T> {
         mut theme: Theme,
         mut window: Window,
     ) -> Self {
+        let mut view_state = ViewState::default();
         let mut animation_frame = None;
-        let mut cx = BuildCx::new(base, &mut window, &mut animation_frame);
+        let mut cx = BuildCx::new(base, &mut view_state, &mut window, &mut animation_frame);
 
         // we build the view tree and state tree, with the global theme
-        let (view, state) = Theme::with_global(&mut theme, || {
+        let (view, state) = Theme::as_global(&mut theme, || {
             let start = Instant::now();
 
             let mut view = Pod::new(builder(data));
@@ -63,7 +64,7 @@ impl<T> WindowUi<T> {
             state,
             scene: Scene::new(),
             theme,
-            view_state: ViewState::default(),
+            view_state,
             needs_rebuild: false,
             animation_frame,
             window,
@@ -171,7 +172,7 @@ impl<T> WindowUi<T> {
         );
 
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
-        let new_view = Theme::with_global(&mut self.theme, || {
+        let new_view = Theme::as_global(&mut self.theme, || {
             let start = Instant::now();
 
             let mut new_view = Pod::new((self.builder)(data));
@@ -221,7 +222,7 @@ impl<T> WindowUi<T> {
         let start = Instant::now();
 
         // handle the event, with the global theme
-        Theme::with_global(&mut self.theme, || {
+        Theme::as_global(&mut self.theme, || {
             self.view.event(&mut self.state, &mut cx, data, event);
         });
 
@@ -250,7 +251,7 @@ impl<T> WindowUi<T> {
         let start = Instant::now();
 
         // layout the view tree, with the global theme
-        let size = Theme::with_global(&mut self.theme, || {
+        let size = Theme::as_global(&mut self.theme, || {
             self.view.layout(&mut self.state, &mut cx, data, space)
         });
 
@@ -280,7 +281,7 @@ impl<T> WindowUi<T> {
         let start = Instant::now();
 
         // draw the view tree, with the global theme
-        Theme::with_global(&mut self.theme, || {
+        Theme::as_global(&mut self.theme, || {
             self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
         });
 

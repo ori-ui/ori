@@ -87,9 +87,18 @@ impl<V> Pod<V> {
     }
 
     /// Build a pod view.
-    pub fn build<T>(cx: &mut BuildCx, f: impl FnOnce(&mut BuildCx) -> T) -> T {
+    pub fn build<T>(cx: &mut BuildCx, f: impl FnOnce(&mut BuildCx) -> T) -> (T, ViewState) {
+        let mut view_state = ViewState::default();
+        view_state.prepare();
+
         let mut new_cx = cx.child();
-        f(&mut new_cx)
+        new_cx.view_state = &mut view_state;
+
+        let state = f(&mut new_cx);
+
+        cx.view_state.propagate(&mut view_state);
+
+        (state, view_state)
     }
 
     /// Rebuild a pod view.
@@ -205,9 +214,11 @@ impl<T, V: View<T>> View<T> for Pod<V> {
     type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        let (content, view_state) = Self::build(cx, |cx| self.view.build(cx, data));
+
         State {
-            content: Self::build(cx, |cx| self.view.build(cx, data)),
-            view_state: ViewState::default(),
+            content,
+            view_state,
         }
     }
 

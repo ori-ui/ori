@@ -7,7 +7,9 @@ use crate::{
 };
 
 /// Create a new [`LayoutBuilder`] view.
-pub fn layout_builder<V>(builder: impl FnMut(Space) -> V + 'static) -> LayoutBuilder<V> {
+pub fn layout_builder<T, V>(
+    builder: impl FnMut(&mut LayoutCx, &mut T, Space) -> V + 'static,
+) -> LayoutBuilder<T, V> {
     LayoutBuilder {
         content: Box::new(builder),
     }
@@ -16,23 +18,26 @@ pub fn layout_builder<V>(builder: impl FnMut(Space) -> V + 'static) -> LayoutBui
 /// A view that builds its content based on the layout constraints.
 ///
 /// Note that the content is only built on layout.
-pub struct LayoutBuilder<V> {
+pub struct LayoutBuilder<T, V> {
     /// The builder function.
-    pub content: Box<dyn FnMut(Space) -> V>,
+    #[allow(clippy::type_complexity)]
+    pub content: Box<dyn FnMut(&mut LayoutCx, &mut T, Space) -> V>,
 }
 
-impl<V> LayoutBuilder<V> {
+impl<T, V> LayoutBuilder<T, V> {
     /// Create a new [`LayoutBuilder`] view.
-    pub fn new(mut builder: impl FnMut(Space) -> V + 'static) -> Self {
+    pub fn new(mut builder: impl FnMut(&mut LayoutCx, &mut T, Space) -> V + 'static) -> Self {
         let mut snapshot = Theme::snapshot();
 
         Self {
-            content: Box::new(move |space| snapshot.as_global(|| builder(space))),
+            content: Box::new(move |cx, data, space| {
+                snapshot.as_global(|| builder(cx, data, space))
+            }),
         }
     }
 }
 
-impl<T, V: View<T>> View<T> for LayoutBuilder<V> {
+impl<T, V: View<T>> View<T> for LayoutBuilder<T, V> {
     type State = Option<(V, V::State)>;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
@@ -63,7 +68,7 @@ impl<T, V: View<T>> View<T> for LayoutBuilder<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let mut new_view = (self.content)(space);
+        let mut new_view = (self.content)(cx, data, space);
 
         if let Some((ref mut view, ref mut state)) = state {
             new_view.rebuild(state, &mut cx.rebuild_cx(), data, view);

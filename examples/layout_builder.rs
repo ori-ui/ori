@@ -3,7 +3,7 @@ use ori::prelude::*;
 struct Data;
 
 fn app(_data: &mut Data) -> impl View<Data> {
-    center(layout_builder(|space| {
+    center(layout_builder(|_, _, space| {
         vstack![
             text!("I have {}..{}, space to work with.", space.min, space.max),
             text!("Try resizing the window!"),

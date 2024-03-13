@@ -13,8 +13,6 @@ struct Data {
 // This returns a type that implements the `View` trait with `Data`.
 fn counter_button() -> impl View<Data> {
     // We create a button with the text "Click me!", and a fancy value of `4.0`.
-    //
-    // `pt` uses the scale fractor from the window to convert points to pixels.
     let counter = button(text("Click me!")).fancy(4.0);
 
     // We use the `on_click` function to attach a callback to the button that

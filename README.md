@@ -17,51 +17,49 @@ For more examples, see [`ori/examples`](https://github.com/ChangeCaps/ori/tree/m
 ```rust,no_run
 use ori::prelude::*;
 
-// define the data model. this can be anything that implements 'static.
+// We create our application data struct that holds all the state of our app.
 //
-// here we just have a struct with a single field.
+// In this case, we only need a counter.
 #[derive(Default)]
 struct Data {
-    count: u32,
+    counter: u32,
 }
 
-// define the user interface builder. this is a function that takes a
-// mutable reference to the Data and returns a View of the data.
+// We create a counter button component that increments the `Data::counter` when clicked.
 //
-// this function is called once when the window is created, and again
-// whenever a rebuild is requested. it is therefore important that this
-// function is cheap to call, as it might be called many times per second.
-fn ui(data: &mut Data) -> impl View<Data> {
-    // create a Text view with the current count. all builtin views have
-    // shorthand functions for creating them, note that Text::new() is
-    // would work just as well.
-    let count = text!("Clicked {} times", data.count);
-
-    // create a button that increments the count when clicked.
-    let count = on_click(
-        // we use the button view to add some visual feedback.
-        button(count).fancy(4.0),
-        // this is the event handler, it is called when the content is clicked.
-        // note that this implicitly requests a rebuild of the view tree.
-        |_, data: &mut Data| data.count += 1,
-    );
-
-    // finally we center the the button in the window.
+// This returns a type that implements the `View` trait with `Data`.
+fn counter_button() -> impl View<Data> {
+    // We create a button with the text "Click me!", and a fancy value of `4.0`.
     //
-    // it should be noted that () implements View, a common issue is to
-    // accidentally add a semicolon after the last line, which will cause
-    // the function to return (), which can cause some confusing errors.
-    center(count)
+    // `pt` uses the scale fractor from the window to convert points to pixels.
+    let counter = button(text("Click me!")).fancy(4.0);
+
+    // We use the `on_click` function to attach a callback to the button that
+    // increments the counter.
+    //
+    // Note that the callback is a closure that takes a mutable reference to
+    // an `EventCx` and a mutable reference to the `Data` struct.
+    let counter = on_click(counter, |_, data: &mut Data| data.counter += 1);
+    tooltip("Click to increment the counter!", counter)
+}
+
+// We create our app function that creates the UI of our app.
+//
+// This will be called every time the UI needs to be rebuilt,
+// eg. when the a button is clicked.
+fn app(data: &mut Data) -> impl View<Data> {
+    // We use the `vstack!` macro to create a vertical stack of views.
+    let content = vstack![counter_button(), text!("Clicked {} time(s)", data.counter)];
+
+    // We use the `center` function to center the content in the window.
+    center(content)
 }
 
 fn main() {
-    // create a window descriptor.
-    let window = WindowDescriptor::new()
-        .title("Hello, world!"); // set the title of the window.
+    let window = WindowDescriptor::new().title("Counter (examples/counter.rs)");
 
-    // create a launcher with the data model.
-    Launcher::new(Data::default())
-        .window(window, ui) // add the window with the ui builder.
-        .launch(); // launch the application.
+    // We create a new app with our `app` function and initial `Data` struct.
+    // Then we set the title of the window and run the app.
+    Launcher::new(Data::default()).window(window, app).launch();
 }
 ```

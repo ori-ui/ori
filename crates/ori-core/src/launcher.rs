@@ -28,8 +28,7 @@ impl<T, S: Shell> Launcher<T, S> {
 
         let mut ui = Ui::new(waker);
 
-        ui.push_theme(Palette::light);
-        ui.push_theme(Theme::builtin);
+        ui.push_theme(Palette::light());
 
         Self {
             shell,
@@ -49,8 +48,8 @@ impl<T, S: Shell> Launcher<T, S> {
     }
 
     /// Append the theme of the application.
-    pub fn theme<I: Into<Theme>>(mut self, mut theme: impl FnMut() -> I + 'static) -> Self {
-        self.ui.push_theme(move || theme().into());
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.ui.push_theme(theme.into());
         self
     }
 

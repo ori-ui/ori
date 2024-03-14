@@ -15,10 +15,10 @@ crossbeam-channel = "0.5"
 etagere = "0.2"
 cosmic-text = "0.10"
 seahash = "4.1"
-smol_str = "0.2"
+smol_str = "0.2.1"
 
 [dependencies.image]
-version = "0.24"
+version = "0.25"
 default-features = false
 optional = true
 features = [

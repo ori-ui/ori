@@ -14,7 +14,7 @@ use crate::{
     },
     layout::{Point, Vector},
     text::Fonts,
-    theme::{Theme, ThemeBuilder, SCALE_FACTOR, WINDOW_SIZE},
+    theme::Theme,
     view::{BaseCx, Contexts, DelegateCx},
     window::{Window, WindowId},
 };
@@ -26,7 +26,7 @@ pub struct Ui<T: 'static> {
     windows: HashMap<WindowId, WindowUi<T>>,
     modifiers: Modifiers,
     delegates: Vec<Box<dyn Delegate<T>>>,
-    theme_builder: ThemeBuilder,
+    theme: Theme,
     command_proxy: CommandProxy,
     command_rx: CommandReceiver,
     requests: UiRequests<T>,
@@ -48,7 +48,7 @@ impl<T> Ui<T> {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegates: Vec::new(),
-            theme_builder: ThemeBuilder::default(),
+            theme: Theme::default(),
             command_proxy,
             command_rx,
             quit_requested: false,
@@ -68,18 +68,8 @@ impl<T> Ui<T> {
     }
 
     /// Add a new theme.
-    pub fn push_theme<U: Into<Theme>>(&mut self, theme: impl FnMut() -> U + 'static) {
-        self.theme_builder.push(theme);
-    }
-
-    fn build_theme(builder: &mut ThemeBuilder, window: &Window) -> Theme {
-        let mut theme = Theme::new();
-        theme.set(SCALE_FACTOR, window.scale_factor());
-        theme.set(WINDOW_SIZE, window.size());
-
-        builder.build(&mut theme);
-
-        theme
+    pub fn push_theme(&mut self, theme: impl Into<Theme>) {
+        self.theme.extend(theme.into());
     }
 
     /// Set the clipboard provider.
@@ -89,8 +79,6 @@ impl<T> Ui<T> {
 
     /// Add a new window.
     pub fn add_window(&mut self, data: &mut T, builder: UiBuilder<T>, window: Window) {
-        let theme = Self::build_theme(&mut self.theme_builder, &window);
-
         let mut needs_rebuild = false;
         let mut base = BaseCx::new(
             &mut self.contexts,
@@ -99,7 +87,7 @@ impl<T> Ui<T> {
         );
 
         let window_id = window.id();
-        let window_ui = WindowUi::new(builder, &mut base, data, theme, window);
+        let window_ui = WindowUi::new(builder, &mut base, data, self.theme.clone(), window);
         self.windows.insert(window_id, window_ui);
 
         if needs_rebuild {
@@ -221,14 +209,6 @@ impl<T> Ui<T> {
         self.handle_commands(data);
     }
 
-    /// Rebuild the theme for a window.
-    pub fn rebuild_theme(&mut self, window_id: WindowId) {
-        if let Some(window_ui) = self.windows.get_mut(&window_id) {
-            let theme = Self::build_theme(&mut self.theme_builder, window_ui.window());
-            self.window_mut(window_id).set_theme(theme);
-        }
-    }
-
     /// Request a rebuild of the view tree.
     pub fn request_rebuild(&mut self) {
         for window_ui in self.windows.values_mut() {
@@ -238,8 +218,6 @@ impl<T> Ui<T> {
 
     /// Tell the UI that the scale factor of a window has changed.
     pub fn scale_factor_changed(&mut self, window_id: WindowId) {
-        self.rebuild_theme(window_id);
-
         if let Some(window) = self.windows.get_mut(&window_id) {
             window.request_layout();
         }
@@ -247,8 +225,6 @@ impl<T> Ui<T> {
 
     /// Tell the UI that a window has been resized.
     pub fn resized(&mut self, window_id: WindowId) {
-        self.rebuild_theme(window_id);
-
         if let Some(window) = self.windows.get_mut(&window_id) {
             window.request_layout();
         }

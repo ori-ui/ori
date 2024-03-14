@@ -111,10 +111,8 @@ where
                 eprintln!("Failed to downcast state");
             }
         } else {
-            *state = self.dyn_build(&mut cx.build_cx(), data);
             *cx.view_state = Default::default();
-
-            cx.request_layout();
+            *state = self.dyn_build(&mut cx.build_cx(), data);
         }
     }
 

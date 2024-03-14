@@ -3,7 +3,7 @@ use crate::{
     event::{AnimationFrame, Event},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    theme::{checkbox, style},
+    theme::{style, Palette},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
@@ -50,14 +50,14 @@ impl Checkbox {
     pub fn new(checked: bool) -> Self {
         Self {
             checked,
-            transition: style(checkbox::TRANSITION),
-            size: style(checkbox::SIZE),
-            color: style(checkbox::COLOR),
-            stroke: style(checkbox::STROKE),
-            background: style(checkbox::BACKGROUND),
-            border_radius: style(checkbox::BORDER_RADIUS),
-            border_width: style(checkbox::BORDER_WIDTH),
-            border_color: style(checkbox::BORDER_COLOR),
+            transition: Transition::ease(0.1),
+            size: 24.0,
+            color: style(Palette::ACCENT),
+            stroke: 2.0,
+            background: Background::color(Color::TRANSPARENT),
+            border_radius: BorderRadius::all(6.0),
+            border_width: BorderWidth::all(2.0),
+            border_color: style(Palette::TEXT_DARK),
         }
     }
 

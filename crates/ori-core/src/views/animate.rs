@@ -141,7 +141,7 @@ impl<T, V, S> Animate<T, V, S> {
 
         Self {
             animate: Box::new(move |state, cx, data, event| {
-                snapshot.as_global(|| animate(state, cx, data, event))
+                snapshot.as_context(|| animate(state, cx, data, event))
             }),
         }
     }

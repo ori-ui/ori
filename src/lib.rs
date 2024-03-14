@@ -56,10 +56,7 @@ pub mod prelude {
             font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, TextAlign,
             TextBuffer, TextWrap,
         },
-        theme::{
-            builtin::*, scale_factor, set_style, set_theme, style, theme_snapshot, vh, vw,
-            window_size, Key, Palette, Theme,
-        },
+        theme::{style, Key, Palette, Theme},
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
             any, pod, AnyView, BoxedView, BuildCx, DelegateCx, DrawCx, EventCx, LayoutCx, Pod,

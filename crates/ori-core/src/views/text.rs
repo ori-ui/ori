@@ -11,7 +11,7 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    theme::{style, text},
+    theme::{style, Palette},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -64,15 +64,15 @@ impl Text {
     pub fn new(text: impl Into<SmolStr>) -> Text {
         Text {
             text: text.into(),
-            font_size: style(text::FONT_SIZE),
-            font_family: style(text::FONT_FAMILY),
-            font_weight: style(text::FONT_WEIGHT),
-            font_stretch: style(text::FONT_STRETCH),
-            font_style: style(text::FONT_STYLE),
-            color: style(text::COLOR),
-            align: style(text::ALIGN),
-            line_height: style(text::LINE_HEIGHT),
-            wrap: style(text::WRAP),
+            font_size: 16.0,
+            font_family: FontFamily::SansSerif,
+            font_weight: FontWeight::NORMAL,
+            font_stretch: FontStretch::Normal,
+            font_style: FontStyle::Normal,
+            color: style(Palette::TEXT),
+            align: TextAlign::Left,
+            line_height: 1.2,
+            wrap: TextWrap::Word,
         }
     }
 
@@ -113,15 +113,15 @@ impl<T> View<T> for Text {
         if self.wrap != old.wrap {
             state.buffer.set_wrap(cx.fonts(), self.wrap);
 
-            state.mesh = None;
-            cx.request_layout();
+            state.mesh = Some(cx.rasterize_text(&state.buffer));
+            cx.request_draw();
         }
 
         if self.align != old.align {
             state.buffer.set_align(self.align);
 
-            state.mesh = None;
-            cx.request_layout();
+            state.mesh = Some(cx.rasterize_text(&state.buffer));
+            cx.request_draw();
         }
 
         if self.text != old.text
@@ -143,7 +143,7 @@ impl<T> View<T> for Text {
                 },
             );
 
-            state.mesh = None;
+            state.mesh = Some(cx.rasterize_text(&state.buffer));
             cx.request_layout();
         }
     }

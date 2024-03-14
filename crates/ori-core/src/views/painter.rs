@@ -18,16 +18,15 @@ pub struct Painter<T> {
     /// The draw function.
     #[allow(clippy::type_complexity)]
     pub draw: Box<dyn FnMut(&mut DrawCx, &mut T, &mut Canvas)>,
-    /// The theme snapshot.
-    pub theme: Theme,
 }
 
 impl<T> Painter<T> {
     /// Create a new [`Painter`] view.
-    pub fn new(draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static) -> Self {
+    pub fn new(mut draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static) -> Self {
+        let mut snapshot = Theme::snapshot();
+
         Self {
-            draw: Box::new(draw),
-            theme: Theme::snapshot(),
+            draw: Box::new(move |cx, data, canvas| snapshot.as_context(|| draw(cx, data, canvas))),
         }
     }
 }
@@ -72,6 +71,6 @@ impl<T> View<T> for Painter<T> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        self.theme.as_global(|| (self.draw)(cx, data, canvas));
+        (self.draw)(cx, data, canvas);
     }
 }

@@ -45,7 +45,7 @@ impl<T> WindowUi<T> {
         let mut cx = BuildCx::new(base, &mut view_state, &mut window, &mut animation_frame);
 
         // we build the view tree and state tree, with the global theme
-        let (view, state) = Theme::as_global(&mut theme, || {
+        let (view, state) = theme.as_context(|| {
             let start = Instant::now();
 
             let mut view = Pod::new(builder(data));
@@ -172,7 +172,7 @@ impl<T> WindowUi<T> {
         );
 
         // rebuild the new view tree (new_view) comparing it to the old one (self.view)
-        let new_view = Theme::as_global(&mut self.theme, || {
+        let new_view = self.theme.as_context(|| {
             let start = Instant::now();
 
             let mut new_view = Pod::new((self.builder)(data));
@@ -222,7 +222,7 @@ impl<T> WindowUi<T> {
         let start = Instant::now();
 
         // handle the event, with the global theme
-        Theme::as_global(&mut self.theme, || {
+        self.theme.as_context(|| {
             self.view.event(&mut self.state, &mut cx, data, event);
         });
 
@@ -251,7 +251,8 @@ impl<T> WindowUi<T> {
         let start = Instant::now();
 
         // layout the view tree, with the global theme
-        let size = Theme::as_global(&mut self.theme, || {
+        let size = self.theme.as_context(|| {
+            // have a comment here to make rustfmt do what i want
             self.view.layout(&mut self.state, &mut cx, data, space)
         });
 
@@ -281,7 +282,7 @@ impl<T> WindowUi<T> {
         let start = Instant::now();
 
         // draw the view tree, with the global theme
-        Theme::as_global(&mut self.theme, || {
+        self.theme.as_context(|| {
             self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
         });
 

@@ -328,6 +328,16 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
             self.animation_frame,
         )
     }
+
+    /// Get a layout context.
+    pub fn layout_cx(&mut self) -> LayoutCx<'_, 'b> {
+        LayoutCx::new(
+            self.base,
+            self.view_state,
+            self.window,
+            self.animation_frame,
+        )
+    }
 }
 
 /// A context for handling events.

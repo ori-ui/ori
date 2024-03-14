@@ -7,7 +7,7 @@ use crate::{
     event::{AnimationFrame, Event, PointerPressed},
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    theme::{collapsing, style},
+    theme::{style, Palette},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
@@ -77,13 +77,13 @@ impl<T, H, V> Collapsing<T, H, V> {
             on_open: None,
             open: None,
             default_open: false,
-            transition: style(collapsing::TRANSITION),
-            icon_size: style(collapsing::ICON_SIZE),
-            icon_color: style(collapsing::ICON_COLOR),
-            background: style(collapsing::BACKGROUND),
-            border_width: style(collapsing::BORDER_WIDTH),
-            border_radius: style(collapsing::BORDER_RADIUS),
-            border_color: style(collapsing::BORDER_COLOR),
+            transition: Transition::ease(0.1),
+            icon_size: 16.0,
+            icon_color: style(Palette::TEXT_DARK),
+            background: Background::new(Color::TRANSPARENT),
+            border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
+            border_radius: BorderRadius::all(0.0),
+            border_color: style(Palette::SECONDARY_DARK),
         }
     }
 
@@ -127,12 +127,18 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         Rebuild::rebuild(self, cx, old);
 
         (self.header).rebuild(&mut state.header, cx, data, &old.header);
-        (self.content).rebuild(&mut state.content, cx, data, &old.content);
+
+        if self.transition.get(state.t) > 0.0 {
+            (self.content).rebuild(&mut state.content, cx, data, &old.content);
+        }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         self.header.event(&mut state.header, cx, data, event);
-        self.content.event(&mut state.content, cx, data, event);
+
+        if self.transition.get(state.t) > 0.0 {
+            self.content.event(&mut state.content, cx, data, event);
+        }
 
         if event.is::<PointerPressed>() && (state.header.is_hot() || state.header.has_hot()) {
             state.open = !state.open;
@@ -143,9 +149,8 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         if let Some(AnimationFrame(dt)) = event.get() {
             if self.transition.step(&mut state.t, state.open, *dt) {
                 cx.request_animation_frame();
+                cx.request_layout();
             }
-
-            cx.request_layout();
         }
     }
 

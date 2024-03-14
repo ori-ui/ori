@@ -72,7 +72,8 @@ fn input(border: bool) -> impl View<Data> {
 }
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
-    let completed = on_press(checkbox(todo.completed), |_, data: &mut Todo| data.toggle());
+    let completed = checkbox(todo.completed).border_radius(12.0);
+    let completed = on_press(completed, |_, data: &mut Todo| data.toggle());
     let completed = tooltip("Toggle whether the todo is completed", completed);
 
     let title_color = if todo.completed {
@@ -194,10 +195,6 @@ fn app(data: &mut Data) -> impl View<Data> {
     pad(64.0, align((0.5, 0.2), stack))
 }
 
-fn theme() -> Theme {
-    Theme::new().with(checkbox::BORDER_RADIUS, BorderRadius::all(12.0))
-}
-
 // we define a delegate to handle the custom command
 fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
     // when we receive the command we remove the todo
@@ -209,13 +206,11 @@ fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
     }
 }
 
-#[ori::main]
 fn main() {
     let window = WindowDescriptor::new().title("Todos (examples/todos.rs)");
 
     Launcher::new(Data::default())
         .window(window, app)
         .delegate(delegate)
-        .theme(theme)
         .launch();
 }

@@ -42,17 +42,19 @@ impl<T, V: View<T>> View<T> for Flex<V> {
     type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        let state = self.content.build(cx, data);
+
         cx.set_flex(self.flex);
         cx.set_tight(self.tight);
 
-        self.content.build(cx, data)
+        state
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        self.content.rebuild(state, cx, data, &old.content);
+
         cx.set_flex(self.flex);
         cx.set_tight(self.tight);
-
-        self.content.rebuild(state, cx, data, &old.content);
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {

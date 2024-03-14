@@ -11,6 +11,21 @@ pub struct Key<T> {
     marker: PhantomData<fn() -> T>,
 }
 
+impl<T> Key<T> {
+    /// Create a new key with the given name.
+    pub const fn new(name: &'static str) -> Self {
+        Self {
+            name,
+            marker: PhantomData,
+        }
+    }
+
+    /// Get the name of the key.
+    pub const fn name(self) -> &'static str {
+        self.name
+    }
+}
+
 impl<T> Clone for Key<T> {
     fn clone(&self) -> Self {
         *self
@@ -36,21 +51,6 @@ impl<T> Eq for Key<T> {}
 impl<T> Hash for Key<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
-    }
-}
-
-impl<T> Key<T> {
-    /// Create a new key with the given name.
-    pub const fn new(name: &'static str) -> Self {
-        Self {
-            name,
-            marker: PhantomData,
-        }
-    }
-
-    /// Get the name of the key.
-    pub const fn name(self) -> &'static str {
-        self.name
     }
 }
 

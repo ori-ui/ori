@@ -31,14 +31,21 @@ impl<T, V> LayoutBuilder<T, V> {
 
         Self {
             content: Box::new(move |cx, data, space| {
-                snapshot.as_global(|| builder(cx, data, space))
+                snapshot.as_context(|| builder(cx, data, space))
             }),
         }
     }
 }
 
+#[doc(hidden)]
+pub struct LayoutBuilderState<T, V: View<T>> {
+    state: V::State,
+    view: V,
+    space: Space,
+}
+
 impl<T, V: View<T>> View<T> for LayoutBuilder<T, V> {
-    type State = Option<(V, V::State)>;
+    type State = Option<LayoutBuilderState<T, V>>;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         cx.request_layout();
@@ -46,18 +53,19 @@ impl<T, V: View<T>> View<T> for LayoutBuilder<T, V> {
         None
     }
 
-    fn rebuild(
-        &mut self,
-        _state: &mut Self::State,
-        _cx: &mut RebuildCx,
-        _data: &mut T,
-        _old: &Self,
-    ) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, _old: &Self) {
+        if let Some(ref mut state) = state {
+            let mut new_view = (self.content)(&mut cx.layout_cx(), data, state.space);
+            new_view.rebuild(&mut state.state, cx, data, &state.view);
+            state.view = new_view;
+        } else {
+            cx.request_layout();
+        }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if let Some((ref mut view, ref mut state)) = state {
-            view.event(state, cx, data, event);
+        if let Some(ref mut state) = state {
+            state.view.event(&mut state.state, cx, data, event);
         }
     }
 
@@ -68,19 +76,26 @@ impl<T, V: View<T>> View<T> for LayoutBuilder<T, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let mut new_view = (self.content)(cx, data, space);
-
-        if let Some((ref mut view, ref mut state)) = state {
-            new_view.rebuild(state, &mut cx.rebuild_cx(), data, view);
-            *view = new_view;
+        if let Some(ref mut state) = state {
+            if state.space != space {
+                let mut new_view = (self.content)(cx, data, space);
+                new_view.rebuild(&mut state.state, &mut cx.rebuild_cx(), data, &state.view);
+                state.view = new_view;
+                state.space = space;
+            }
         } else {
+            let mut new_view = (self.content)(cx, data, space);
             let view_state = new_view.build(&mut cx.build_cx(), data);
-            *state = Some((new_view, view_state));
+            *state = Some(LayoutBuilderState {
+                state: view_state,
+                view: new_view,
+                space,
+            });
         }
 
-        let (view, state) = state.as_mut().expect("state was set earlier");
+        let state = state.as_mut().expect("state was set earlier");
 
-        view.layout(state, cx, data, space)
+        state.view.layout(&mut state.state, cx, data, space)
     }
 
     fn draw(
@@ -90,8 +105,8 @@ impl<T, V: View<T>> View<T> for LayoutBuilder<T, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        if let Some((ref mut view, ref mut state)) = state {
-            view.draw(state, cx, data, canvas);
+        if let Some(ref mut state) = state {
+            state.view.draw(&mut state.state, cx, data, canvas);
         }
     }
 }

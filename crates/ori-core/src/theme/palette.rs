@@ -19,36 +19,36 @@ pub struct Palette {
 
 #[allow(missing_docs)]
 impl Palette {
-    pub const TEXT: Key<Color> = Key::new("--text");
-    pub const BACKGROUND: Key<Color> = Key::new("--background");
-    pub const PRIMARY: Key<Color> = Key::new("--primary");
-    pub const SECONDARY: Key<Color> = Key::new("--secondary");
-    pub const ACCENT: Key<Color> = Key::new("--accent");
+    pub const TEXT: Key<Color> = Key::new("palette.text");
+    pub const BACKGROUND: Key<Color> = Key::new("palette.background");
+    pub const PRIMARY: Key<Color> = Key::new("palette.primary");
+    pub const SECONDARY: Key<Color> = Key::new("palette.secondary");
+    pub const ACCENT: Key<Color> = Key::new("palette.accent");
 
-    pub const TEXT_DARK: Key<Color> = Key::new("--text-dark");
-    pub const TEXT_DARKER: Key<Color> = Key::new("--text-darker");
-    pub const TEXT_LIGHT: Key<Color> = Key::new("--text-light");
-    pub const TEXT_LIGHTER: Key<Color> = Key::new("--text-lighter");
+    pub const TEXT_DARK: Key<Color> = Key::new("palette.text-dark");
+    pub const TEXT_DARKER: Key<Color> = Key::new("palette.text-darker");
+    pub const TEXT_LIGHT: Key<Color> = Key::new("palette.text-light");
+    pub const TEXT_LIGHTER: Key<Color> = Key::new("palette.text-lighter");
 
-    pub const BACKGROUND_DARK: Key<Color> = Key::new("--background-dark");
-    pub const BACKGROUND_DARKER: Key<Color> = Key::new("--background-darker");
-    pub const BACKGROUND_LIGHT: Key<Color> = Key::new("--background-light");
-    pub const BACKGROUND_LIGHTER: Key<Color> = Key::new("--background-lighter");
+    pub const BACKGROUND_DARK: Key<Color> = Key::new("palette.background-dark");
+    pub const BACKGROUND_DARKER: Key<Color> = Key::new("palette.background-darker");
+    pub const BACKGROUND_LIGHT: Key<Color> = Key::new("palette.background-light");
+    pub const BACKGROUND_LIGHTER: Key<Color> = Key::new("palette.background-lighter");
 
-    pub const PRIMARY_DARK: Key<Color> = Key::new("--primary-dark");
-    pub const PRIMARY_DARKER: Key<Color> = Key::new("--primary-darker");
-    pub const PRIMARY_LIGHT: Key<Color> = Key::new("--primary-light");
-    pub const PRIMARY_LIGHTER: Key<Color> = Key::new("--primary-lighter");
+    pub const PRIMARY_DARK: Key<Color> = Key::new("palette.primary-dark");
+    pub const PRIMARY_DARKER: Key<Color> = Key::new("palette.primary-darker");
+    pub const PRIMARY_LIGHT: Key<Color> = Key::new("palette.primary-light");
+    pub const PRIMARY_LIGHTER: Key<Color> = Key::new("palette.primary-lighter");
 
-    pub const SECONDARY_DARK: Key<Color> = Key::new("--secondary-dark");
-    pub const SECONDARY_DARKER: Key<Color> = Key::new("--secondary-darker");
-    pub const SECONDARY_LIGHT: Key<Color> = Key::new("--secondary-light");
-    pub const SECONDARY_LIGHTER: Key<Color> = Key::new("--secondary-lighter");
+    pub const SECONDARY_DARK: Key<Color> = Key::new("palette.secondary-dark");
+    pub const SECONDARY_DARKER: Key<Color> = Key::new("palette.secondary-darker");
+    pub const SECONDARY_LIGHT: Key<Color> = Key::new("palette.secondary-light");
+    pub const SECONDARY_LIGHTER: Key<Color> = Key::new("palette.secondary-lighter");
 
-    pub const ACCENT_DARK: Key<Color> = Key::new("--accent-dark");
-    pub const ACCENT_DARKER: Key<Color> = Key::new("--accent-darker");
-    pub const ACCENT_LIGHT: Key<Color> = Key::new("--accent-light");
-    pub const ACCENT_LIGHTER: Key<Color> = Key::new("--accent-lighter");
+    pub const ACCENT_DARK: Key<Color> = Key::new("palette.accent-dark");
+    pub const ACCENT_DARKER: Key<Color> = Key::new("palette.accent-darker");
+    pub const ACCENT_LIGHT: Key<Color> = Key::new("palette.accent-light");
+    pub const ACCENT_LIGHTER: Key<Color> = Key::new("palette.accent-lighter");
 }
 
 impl Palette {

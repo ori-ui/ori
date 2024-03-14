@@ -5,7 +5,7 @@ use crate::{
     event::{AnimationFrame, Event},
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
-    theme::{button, style},
+    theme::{style, Palette},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
@@ -51,11 +51,11 @@ impl<V> Button<V> {
             content: Pod::new(content),
             padding: Padding::all(8.0),
             fancy: 0.0,
-            transition: style(button::TRANSITION),
-            color: style(button::COLOR),
-            border_radius: style(button::BORDER_RADIUS),
-            border_width: style(button::BORDER_WIDTH),
-            border_color: style(button::BORDER_COLOR),
+            transition: Transition::ease(0.1),
+            color: style(Palette::PRIMARY).into(),
+            border_radius: BorderRadius::all(4.0),
+            border_width: BorderWidth::all(0.0),
+            border_color: style(Palette::PRIMARY_DARK),
         }
     }
 

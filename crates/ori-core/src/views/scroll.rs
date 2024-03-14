@@ -6,7 +6,7 @@ use crate::{
     layout::{Axis, Rect, Size, Space, Vector},
     log::warn_internal,
     rebuild::Rebuild,
-    theme::{scroll, style},
+    theme::{style, Palette},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
@@ -54,12 +54,12 @@ impl<V> Scroll<V> {
         Self {
             content: Pod::new(content),
             axis,
-            transition: style(scroll::TRANSITION),
-            width: style(scroll::WIDTH),
-            inset: style(scroll::INSET),
-            border_radius: style(scroll::BORDER_RADIUS),
-            color: style(scroll::COLOR),
-            knob_color: style(scroll::KNOB_COLOR),
+            transition: Transition::ease(0.1),
+            width: 6.0,
+            inset: 8.0,
+            border_radius: BorderRadius::all(3.0),
+            color: style(Palette::SECONDARY),
+            knob_color: style(Palette::SECONDARY_DARK),
         }
     }
 
@@ -250,6 +250,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         let mut scrollbar_layer = canvas.layer();
         scrollbar_layer.depth += 100.0;
+        scrollbar_layer.set_view(cx.id());
 
         scrollbar_layer.draw_quad(
             self.scrollbar_rect(cx.rect()),

@@ -37,11 +37,11 @@ impl<T, V, D: PartialEq> Memo<T, V, D> {
     }
 
     fn data(&mut self, data: &mut T) -> D {
-        (self.theme).as_global(|| (self.data.take().expect("Memo::data called twice"))(data))
+        (self.theme).as_context(|| (self.data.take().expect("Memo::data called twice"))(data))
     }
 
     fn build(&mut self, data: &mut T) -> V {
-        (self.theme).as_global(|| (self.build.take().expect("Memo::build called twice"))(data))
+        (self.theme).as_context(|| (self.build.take().expect("Memo::build called twice"))(data))
     }
 }
 

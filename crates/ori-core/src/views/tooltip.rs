@@ -6,7 +6,7 @@ use crate::{
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     text::{FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAttributes, TextBuffer},
-    theme::{style, text, tooltip, window_size},
+    theme::{style, Palette},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -49,12 +49,12 @@ impl<V> Tooltip<V> {
         Self {
             content,
             text: text.into(),
-            color: style(text::COLOR),
-            padding: style(tooltip::PADDING),
-            background: style(tooltip::BACKGROUND),
-            border_radius: style(tooltip::BORDER_RADIUS),
-            border_width: style(tooltip::BORDER_WIDTH),
-            border_color: style(tooltip::BORDER_COLOR),
+            color: style(Palette::TEXT),
+            padding: Padding::from([8.0, 4.0]),
+            background: style(Palette::SECONDARY),
+            border_radius: BorderRadius::all(4.0),
+            border_width: BorderWidth::all(1.0),
+            border_color: style(Palette::SECONDARY_DARK),
         }
     }
 
@@ -149,9 +149,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let bounds = window_size() - self.padding.size();
-        state.buffer.set_bounds(cx.fonts(), bounds);
-
+        state.buffer.set_bounds(cx.fonts(), Size::UNBOUNDED);
         self.content.layout(content, cx, data, space)
     }
 

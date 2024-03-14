@@ -4,11 +4,11 @@ use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad},
     layout::{Affine, Align, Justify, Point, Rect, FILL},
     text::FontFamily,
-    theme::{style, window_size, Palette},
+    theme::{style, Palette},
     view::{any, View},
     views::{
-        button, collapsing, container, expand, height, hstack, left, on_click, on_draw, pad,
-        pad_left, pad_top, size, text, top_left, trigger, vscroll, vstack, vstack_any, width,
+        button, collapsing, container, expand, height, hstack, layout_builder, left, on_click,
+        on_draw, pad, pad_left, pad_top, size, text, trigger, vscroll, vstack, vstack_any, width,
         with_state, Button,
     },
 };
@@ -158,7 +158,8 @@ fn debug_tree_header(
     let path = path.to_owned();
     let header = on_click(header, move |_, (_, state): &mut (_, DebugState)| {
         state.selected_tree = Some(path.clone());
-    });
+    })
+    .descendants(false);
 
     debug_tree_hightlight(tree, state, header)
 }
@@ -276,7 +277,7 @@ fn debug_selected_tree(tree: &DebugTree) -> impl View<(DebugData, DebugState)> {
     let performance = debug_selected_tree_group("Performance", debug_tree_performance(tree));
     let layout = debug_selected_tree_group("Layout", debug_tree_layout(tree));
 
-    top_left(vstack![performance, layout].gap(4.0))
+    vstack![performance, layout].gap(4.0)
 }
 
 fn debug_inspector_right_panel(
@@ -387,20 +388,23 @@ fn debug_panel(data: &mut DebugData, state: &mut DebugState) -> impl View<(Debug
 
 // the main ui for the debugger
 fn debug(_data: &mut DebugData) -> impl View<DebugData> {
-    with_state(DebugState::default, |data, state| {
-        let stack = vstack![
-            // layout the debug bar at the top
-            debug_bar(state),
-            // the take up the rest of the space with the selected panel
-            expand(1.0, debug_panel(data, state)),
-        ]
-        .gap(1.0);
+    with_state(DebugState::default, |_, _| {
+        layout_builder(|_, (data, state): &mut (DebugData, DebugState), space| {
+            let stack = vstack![
+                // layout the debug bar at the top
+                debug_bar(state),
+                // the take up the rest of the space with the selected panel
+                expand(1.0, debug_panel(data, state)),
+            ]
+            .gap(1.0);
 
-        // fill the background with a dark color to have clear sepration between panels
-        let container = container(pad_top(1.0, stack)).background(style(Palette::SECONDARY_DARK));
+            // fill the background with a dark color to have clear sepration between panels
+            let container =
+                container(pad_top(1.0, stack)).background(style(Palette::SECONDARY_DARK));
 
-        // fill the bottom third of the window
-        size([FILL, window_size().height / 3.0], container)
+            // fill the bottom third of the window
+            size([FILL, space.max.height / 3.0], container)
+        })
     })
 }
 

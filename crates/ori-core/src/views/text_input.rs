@@ -12,9 +12,13 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    theme::{style, Palette},
+    theme::{style, style_or, Palette},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
     window::Cursor,
+};
+
+use super::{
+    FONT_FAMILY, FONT_SIZE, FONT_STRETCH, FONT_STYLE, FONT_WEIGHT, LINE_HEIGHT, TEXT_ALIGN,
 };
 
 /// Create a new [`TextInput`].
@@ -78,14 +82,14 @@ impl<T> TextInput<T> {
             on_submit: None,
             placeholder: String::from("..."),
             multiline: false,
-            font_size: 16.0,
-            font_family: FontFamily::SansSerif,
-            font_weight: FontWeight::NORMAL,
-            font_stretch: FontStretch::Normal,
-            font_style: FontStyle::Normal,
+            font_size: style_or(FONT_SIZE, 16.0),
+            font_family: style_or(FONT_FAMILY, FontFamily::SansSerif),
+            font_weight: style_or(FONT_WEIGHT, FontWeight::NORMAL),
+            font_stretch: style_or(FONT_STRETCH, FontStretch::Normal),
+            font_style: style_or(FONT_STYLE, FontStyle::Normal),
             color: style(Palette::TEXT),
-            align: TextAlign::Left,
-            line_height: 1.5,
+            align: style_or(TEXT_ALIGN, TextAlign::Start),
+            line_height: style_or(LINE_HEIGHT, 1.2),
             wrap: TextWrap::Word,
         }
     }

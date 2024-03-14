@@ -15,6 +15,11 @@ pub fn style<T: Clone + Default + Any>(key: impl AsRef<Key<T>>) -> T {
     Theme::context(|theme| theme.get(key))
 }
 
+/// Get a value from the current theme or a default value.
+pub fn style_or<T: Clone + Any>(key: impl AsRef<Key<T>>, default: T) -> T {
+    Theme::context(|theme| theme.try_get(key).cloned().unwrap_or(default))
+}
+
 /// Get a value in a [`Theme`].
 #[derive(Clone, Debug)]
 pub struct Style {
@@ -61,12 +66,18 @@ impl Theme {
         Self::default()
     }
 
-    /// Set a value in the current theme.
+    /// Set a value in a theme.
     pub fn set<T: Any>(&mut self, key: impl AsRef<Key<T>>, value: T) {
         let key = key.as_ref().name();
         let value = Style::new(value);
 
         Arc::make_mut(&mut self.values).insert(key, value);
+    }
+
+    /// Set a value in a theme returning the theme.
+    pub fn with<T: Any>(mut self, key: impl AsRef<Key<T>>, value: T) -> Self {
+        self.set(key, value);
+        self
     }
 
     /// Get a value from the current theme.

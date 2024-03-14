@@ -11,13 +11,34 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    theme::{style, Palette},
+    theme::{style, style_or, Key, Palette},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
 use smol_str;
 
 pub use crate::format_text as text;
+
+/// Key for the default font size.
+pub const FONT_SIZE: Key<f32> = Key::new("font-size");
+
+/// Key for the default font family.
+pub const FONT_FAMILY: Key<FontFamily> = Key::new("font-family");
+
+/// Key for the default font weight.
+pub const FONT_WEIGHT: Key<FontWeight> = Key::new("font-weight");
+
+/// Key for the default font stretch.
+pub const FONT_STRETCH: Key<FontStretch> = Key::new("font-stretch");
+
+/// Key for the default font style.
+pub const FONT_STYLE: Key<FontStyle> = Key::new("font-style");
+
+/// Key for the default text color.
+pub const TEXT_ALIGN: Key<TextAlign> = Key::new("text-align");
+
+/// Key for the default text color.
+pub const LINE_HEIGHT: Key<f32> = Key::new("line-height");
 
 /// Create a formatted [`Text`].
 ///
@@ -60,18 +81,18 @@ pub struct Text {
 }
 
 impl Text {
-    /// Creates a new text.
+    /// Create a new text.
     pub fn new(text: impl Into<SmolStr>) -> Text {
         Text {
             text: text.into(),
-            font_size: 16.0,
-            font_family: FontFamily::SansSerif,
-            font_weight: FontWeight::NORMAL,
-            font_stretch: FontStretch::Normal,
-            font_style: FontStyle::Normal,
+            font_size: style_or(FONT_SIZE, 16.0),
+            font_family: style_or(FONT_FAMILY, FontFamily::SansSerif),
+            font_weight: style_or(FONT_WEIGHT, FontWeight::NORMAL),
+            font_stretch: style_or(FONT_STRETCH, FontStretch::Normal),
+            font_style: style_or(FONT_STYLE, FontStyle::Normal),
             color: style(Palette::TEXT),
-            align: TextAlign::Left,
-            line_height: 1.2,
+            align: style_or(TEXT_ALIGN, TextAlign::Start),
+            line_height: style_or(LINE_HEIGHT, 1.2),
             wrap: TextWrap::Word,
         }
     }

@@ -131,10 +131,8 @@ impl<T, V: View<T>> View<T> for Option<V> {
             if let Some(old_view) = old {
                 view.rebuild(state.as_mut().unwrap(), cx, data, old_view);
             }
-        }
-
-        if self.is_some() != old.is_some() {
-            cx.request_layout();
+        } else {
+            *state = None;
         }
     }
 

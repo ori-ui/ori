@@ -101,6 +101,8 @@ impl<T> TextInput<T> {
     }
 
     /// Set the callback that is called when the input changes.
+    ///
+    /// Note that this doesn't trigger a rebuild automatically.
     pub fn on_change(
         mut self,
         on_change: impl FnMut(&mut EventCx, &mut T, String) + 'static,
@@ -438,7 +440,6 @@ impl<T> View<T> for TextInput<T> {
             if changed {
                 if let Some(ref mut on_change) = self.on_change {
                     on_change(cx, data, text.clone());
-                    cx.request_rebuild();
                 }
             }
 

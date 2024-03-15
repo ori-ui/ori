@@ -57,6 +57,21 @@ impl Size {
         )
     }
 
+    /// Floor self by element.
+    pub fn floor(self) -> Self {
+        Self::new(self.width.floor(), self.height.floor())
+    }
+
+    /// Ceil self by element.
+    pub fn ceil(self) -> Self {
+        Self::new(self.width.ceil(), self.height.ceil())
+    }
+
+    /// Round self by element.
+    pub fn round(self) -> Self {
+        Self::new(self.width.round(), self.height.round())
+    }
+
     /// If self is finite, return self, otherwise return zero. Applied by element.
     pub fn finite_or_zero(self) -> Self {
         let width = if self.width.is_finite() {

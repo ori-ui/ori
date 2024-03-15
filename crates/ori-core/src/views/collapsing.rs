@@ -128,16 +128,27 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
 
         (self.header).rebuild(&mut state.header, cx, data, &old.header);
 
-        if self.transition.get(state.t) > 0.0 {
-            (self.content).rebuild(&mut state.content, cx, data, &old.content);
+        // if we can't see the content, we still need to rebuild it
+        // but we don't need to request either a layout or a draw
+        //
+        // FIXME: this is a bit of a hack, we should have a better way to do this
+        let update = cx.view_state.update;
+        (self.content).rebuild(&mut state.content, cx, data, &old.content);
+
+        if self.transition.get(state.t) == 0.0 {
+            cx.view_state.update = update;
         }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         self.header.event(&mut state.header, cx, data, event);
 
-        if self.transition.get(state.t) > 0.0 {
-            self.content.event(&mut state.content, cx, data, event);
+        // same deal as in rebuild
+        let update = cx.view_state.update;
+        self.content.event(&mut state.content, cx, data, event);
+
+        if self.transition.get(state.t) != 0.0 {
+            cx.view_state.update = update;
         }
 
         if event.is::<PointerPressed>() && (state.header.is_hot() || state.header.has_hot()) {

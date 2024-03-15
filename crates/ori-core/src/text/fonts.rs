@@ -92,7 +92,7 @@ impl Fonts {
             height += buffer.metrics().line_height;
         }
 
-        Size::new(width, height)
+        Size::new(width, height).round()
     }
 
     /// Convert a text buffer to a mesh.

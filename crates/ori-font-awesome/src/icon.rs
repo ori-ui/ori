@@ -4,6 +4,7 @@ use ori_core::{
     layout::{Size, Space},
     rebuild::Rebuild,
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
+    theme::{style, Palette},
     view::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -41,7 +42,7 @@ impl Icon {
         Self {
             icon: icon.into(),
             size: 16.0,
-            color: Color::BLACK,
+            color: style(Palette::TEXT),
         }
     }
 

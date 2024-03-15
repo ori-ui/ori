@@ -134,6 +134,6 @@ impl<T> View<T> for Icon {
 
         let mesh = cx.rasterize_text(state);
         canvas.translate(offset);
-        canvas.draw(mesh);
+        canvas.draw_pixel_perfect(mesh);
     }
 }

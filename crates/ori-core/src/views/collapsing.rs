@@ -9,7 +9,7 @@ use crate::{
     rebuild::Rebuild,
     theme::{style, Palette},
     transition::Transition,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, Update, View},
 };
 
 /// Create a new [`Collapsing`].
@@ -136,7 +136,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         (self.content).rebuild(&mut state.content, cx, data, &old.content);
 
         if self.transition.get(state.t) == 0.0 {
-            cx.view_state.update = update;
+            cx.view_state.update = update & !Update::DRAW;
         }
     }
 
@@ -148,7 +148,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         self.content.event(&mut state.content, cx, data, event);
 
         if self.transition.get(state.t) != 0.0 {
-            cx.view_state.update = update;
+            cx.view_state.update = update & !Update::DRAW;
         }
 
         if event.is::<PointerPressed>() && (state.header.is_hot() || state.header.has_hot()) {
@@ -181,17 +181,13 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
 
         (state.content).translate(Vector::new(0.0, header_size.height));
 
-        if t == 0.0 {
-            return header_size;
-        }
-
         let content_space = space - Size::new(0.0, header_size.height);
         let content_size = (self.content).layout(&mut state.content, cx, data, content_space);
 
-        Size::new(
-            f32::max(header_size.width, content_size.width),
-            header_size.height + content_size.height * t,
-        )
+        let width = f32::max(header_size.width, content_size.width);
+        let height = header_size.height + content_size.height * t;
+
+        Size::new(width, height)
     }
 
     fn draw(

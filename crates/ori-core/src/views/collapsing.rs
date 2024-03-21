@@ -174,18 +174,22 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
     ) -> Size {
         let t = self.transition.get(state.t);
 
-        state.header.translate(Vector::new(self.icon_size, 0.0));
-
         let header_space = space.loosen_height() - Size::new(self.icon_size, 0.0);
         let header_size = (self.header).layout(&mut state.header, cx, data, header_space);
 
-        (state.content).translate(Vector::new(0.0, header_size.height));
+        let header_width = header_size.width + self.icon_size;
+        let header_height = header_size.height.max(self.icon_size);
+
+        let header_offset = (header_height - header_size.height) / 2.0;
+        (state.header).translate(Vector::new(self.icon_size, header_offset));
 
         let content_space = space - Size::new(0.0, header_size.height);
         let content_size = (self.content).layout(&mut state.content, cx, data, content_space);
 
-        let width = f32::max(header_size.width, content_size.width);
-        let height = header_size.height + content_size.height * t;
+        (state.content).translate(Vector::new(0.0, header_size.height));
+
+        let width = f32::max(header_width, content_size.width);
+        let height = header_height + content_size.height * t;
 
         Size::new(width, height)
     }
@@ -199,7 +203,10 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
     ) {
         let t = self.transition.get(state.t);
 
-        let header_rect = state.header.rect() + Size::new(self.icon_size, 0.0);
+        let header_height = self.icon_size.max(state.header.size().height);
+        let header_size = Size::new(cx.rect().width(), header_height);
+        let header_rect = Rect::min_size(cx.rect().top_left(), header_size);
+
         canvas.trigger(state.header.id(), header_rect);
 
         canvas.draw_quad(
@@ -211,7 +218,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         );
 
         canvas.forked(|canvas| {
-            canvas.translate(Vector::all(self.icon_size / 2.0));
+            canvas.translate(Vector::new(self.icon_size / 2.0, header_height / 2.0));
             canvas.scale(Vector::all(self.icon_size));
 
             canvas.rotate(PI / 2.0 * t);

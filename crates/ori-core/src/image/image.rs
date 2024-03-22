@@ -10,21 +10,24 @@ use crate::canvas::Color;
 use super::ImageData;
 
 /// Include an image.
+///
+/// Path is relative to the `CARGO_MANIFEST_DIR` environment variable.
 #[macro_export]
 #[cfg(feature = "image")]
 macro_rules! image {
-    ($path:literal) => {
-        match $crate::image::Image::try_load_data(<[u8]>::to_vec(include_bytes!(::std::concat!(
-            ::std::env!("CARGO_MANIFEST_DIR"),
-            "/",
-            $path
-        )))) {
+    ($path:literal) => {{
+        let bytes = <[::std::primitive::u8]>::to_vec(::std::include_bytes!(
+            // use concant! to get the full path relative to the CARGO_MANIFEST_DIR
+            ::std::concat!(::std::env!("CARGO_MANIFEST_DIR"), "/", $path)
+        ));
+
+        match $crate::image::Image::try_load_data(bytes) {
             ::std::result::Result::Ok(image) => image,
             ::std::result::Result::Err(err) => {
-                panic!("Failed to load image:{}: {}", $path, err);
+                ::std::panic!("Failed to load image:{}: {}", $path, err);
             }
         }
-    };
+    }};
 }
 
 /// Create a new gradient image.

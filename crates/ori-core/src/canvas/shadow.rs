@@ -21,6 +21,60 @@ pub struct BoxShadow {
     pub offset: Vector,
 }
 
+impl From<f32> for BoxShadow {
+    fn from(blur: f32) -> Self {
+        Self {
+            color: Color::BLACK,
+            blur,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<(f32, f32)> for BoxShadow {
+    fn from((blur, spread): (f32, f32)) -> Self {
+        Self {
+            color: Color::BLACK,
+            blur,
+            spread,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<(f32, f32, Vector)> for BoxShadow {
+    fn from((blur, spread, offset): (f32, f32, Vector)) -> Self {
+        Self {
+            color: Color::BLACK,
+            blur,
+            spread,
+            offset,
+        }
+    }
+}
+
+impl From<(f32, f32, Color)> for BoxShadow {
+    fn from((blur, spread, color): (f32, f32, Color)) -> Self {
+        Self {
+            color,
+            blur,
+            spread,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<(f32, f32, Vector, Color)> for BoxShadow {
+    fn from((blur, spread, offset, color): (f32, f32, Vector, Color)) -> Self {
+        Self {
+            color,
+            blur,
+            spread,
+            offset,
+        }
+    }
+}
+
 impl BoxShadow {
     fn blur_image() -> Image {
         let size = 64;

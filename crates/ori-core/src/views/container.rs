@@ -7,6 +7,37 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
+/// Create a new [`Container`].
+pub fn container<V>(content: V) -> Container<V> {
+    Container::new(content)
+}
+
+/// Create a new [`Container`] with background.
+///
+/// # Examples
+/// ```
+/// # use ori_core::{canvas::Color, view::*, views::*};
+/// pub fn ui<T>(_data: T) -> impl View<T> {
+///     background(Color::RED, text("Hello, World!"))
+/// }
+/// ````
+pub fn background<V>(background: impl Into<Background>, content: V) -> Container<V> {
+    Container::new(content).background(background)
+}
+
+/// Create a new [`Container`] with shadow.
+///
+/// # Examples
+/// ```
+/// # use ori_core::{canvas::Color, view::*, views::*};
+/// pub fn ui<T>(_data: T) -> impl View<T> {
+///    shadow(10.0, text("Hello, World!"))
+/// }
+/// ```
+pub fn shadow<V>(shadow: impl Into<BoxShadow>, content: V) -> Container<V> {
+    Container::new(content).shadow(shadow)
+}
+
 /// A container view.
 #[derive(Rebuild)]
 pub struct Container<V> {
@@ -169,9 +200,4 @@ impl<T, V: View<T>> View<T> for Container<V> {
 
         self.content.draw(state, cx, data, canvas);
     }
-}
-
-/// Create a new [`Container`].
-pub fn container<V>(content: V) -> Container<V> {
-    Container::new(content)
 }

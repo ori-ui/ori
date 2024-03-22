@@ -186,12 +186,12 @@ fn selection(data: &mut Data) -> impl View<Data> {
 fn app(data: &mut Data) -> impl View<Data> {
     let rows = vstack![
         input(!data.todos.is_empty()),
-        flex(1.0, vscroll(todos(data))),
+        flex(vscroll(todos(data))),
         selection(data)
     ]
     .gap(0.0);
 
-    let stack = vstack![title(), flex(1.0, rows)].gap(16.0);
+    let stack = vstack![title(), flex(rows)].gap(16.0);
     pad(64.0, align((0.5, 0.2), stack))
 }
 

@@ -187,7 +187,7 @@ fn debug_tree_content(
         path.pop();
     }
 
-    Some(hstack![expand(1.0, content)])
+    Some(hstack![expand(content)])
 }
 
 fn debug_tree_node(
@@ -296,7 +296,7 @@ fn debug_inspector(
     state: &mut DebugState,
 ) -> impl View<(DebugData, DebugState)> {
     hstack![
-        expand(1.0, debug_tree(data, state)),
+        expand(debug_tree(data, state)),
         debug_inspector_right_panel(data, state),
     ]
     .align(Align::Start)
@@ -394,7 +394,7 @@ fn debug(_data: &mut DebugData) -> impl View<DebugData> {
                 // layout the debug bar at the top
                 debug_bar(state),
                 // the take up the rest of the space with the selected panel
-                expand(1.0, debug_panel(data, state)),
+                expand(debug_panel(data, state)),
             ]
             .gap(1.0);
 

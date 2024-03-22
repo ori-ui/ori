@@ -7,13 +7,13 @@ use crate::{
 };
 
 /// Create a new [`Flex`] view.
-pub fn flex<V>(flex: f32, content: V) -> Flex<V> {
-    Flex::new(flex, false, content)
+pub fn flex<V>(content: V) -> Flex<V> {
+    Flex::new(1.0, false, content)
 }
 
 /// Create a new expanded [`Flex`] view.
-pub fn expand<V>(flex: f32, content: V) -> Flex<V> {
-    Flex::new(flex, true, content)
+pub fn expand<V>(content: V) -> Flex<V> {
+    Flex::new(1.0, true, content)
 }
 
 /// A flexible view.
@@ -35,6 +35,12 @@ impl<V> Flex<V> {
             flex,
             tight,
         }
+    }
+
+    /// Set the flex value of the view.
+    pub fn factor(mut self, flex: f32) -> Self {
+        self.flex = flex;
+        self
     }
 }
 

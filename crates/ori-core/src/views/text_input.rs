@@ -1,4 +1,6 @@
-use cosmic_text::{Action, Attrs, AttrsList, Buffer, BufferLine, Edit, Editor, Metrics, Shaping};
+use cosmic_text::{
+    Action, Attrs, AttrsList, Buffer, BufferLine, BufferRef, Edit, Editor, Metrics, Motion, Shaping,
+};
 use ori_macro::Build;
 
 use crate::{
@@ -141,7 +143,7 @@ impl<T> TextInput<T> {
         };
 
         /* editor */
-        let buffer = state.editor.buffer_mut();
+        let buffer = state.buffer_mut();
         buffer.set_wrap(&mut fonts.font_system, self.wrap.to_cosmic_text());
         buffer.set_metrics(&mut fonts.font_system, metrics);
 
@@ -151,7 +153,7 @@ impl<T> TextInput<T> {
             text.push('\n');
         }
 
-        state.editor.buffer_mut().set_text(
+        state.buffer_mut().set_text(
             &mut fonts.font_system,
             &text,
             attrs.to_cosmic_text(),
@@ -191,17 +193,31 @@ impl<T> TextInput<T> {
 
 #[doc(hidden)]
 pub struct TextInputState {
-    editor: Editor,
+    editor: Editor<'static>,
     placeholder: TextBuffer,
     dragging: bool,
     blink: f32,
 }
 
 impl TextInputState {
+    fn buffer(&self) -> &Buffer {
+        match self.editor.buffer_ref() {
+            BufferRef::Owned(buffer) => buffer,
+            _ => unreachable!(),
+        }
+    }
+
+    fn buffer_mut(&mut self) -> &mut Buffer {
+        match self.editor.buffer_ref_mut() {
+            BufferRef::Owned(buffer) => buffer,
+            _ => unreachable!(),
+        }
+    }
+
     fn text(&self) -> String {
         let mut text = String::new();
 
-        for (i, line) in self.editor.buffer().lines.iter().enumerate() {
+        for (i, line) in self.buffer().lines.iter().enumerate() {
             if i > 0 {
                 text.push('\n');
             }
@@ -213,9 +229,10 @@ impl TextInputState {
     }
 
     fn clear_text(&mut self) {
-        self.editor.buffer_mut().lines = vec![BufferLine::new(
+        self.buffer_mut().lines = vec![BufferLine::new(
             "",
             AttrsList::new(Attrs {
+                cache_key_flags: cosmic_text::CacheKeyFlags::empty(),
                 color_opt: None,
                 family: cosmic_text::Family::SansSerif,
                 stretch: cosmic_text::Stretch::Normal,
@@ -228,14 +245,14 @@ impl TextInputState {
     }
 }
 
-fn move_key(e: &KeyPressed) -> Option<Action> {
+fn move_key(e: &KeyPressed) -> Option<Motion> {
     match e.code {
-        Some(Code::Left) if e.modifiers.ctrl => Some(Action::LeftWord),
-        Some(Code::Right) if e.modifiers.ctrl => Some(Action::RightWord),
-        Some(Code::Left) => Some(Action::Left),
-        Some(Code::Right) => Some(Action::Right),
-        Some(Code::Up) => Some(Action::Up),
-        Some(Code::Down) => Some(Action::Down),
+        Some(Code::Left) if e.modifiers.ctrl => Some(Motion::LeftWord),
+        Some(Code::Right) if e.modifiers.ctrl => Some(Motion::RightWord),
+        Some(Code::Left) => Some(Motion::Left),
+        Some(Code::Right) => Some(Motion::Right),
+        Some(Code::Up) => Some(Motion::Up),
+        Some(Code::Down) => Some(Motion::Down),
         _ => None,
     }
 }
@@ -275,22 +292,19 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
-        let buffer = state.editor.buffer_mut();
-        let placeholder = &mut state.placeholder;
-
         if self.wrap != old.wrap {
-            buffer.set_wrap(&mut cx.fonts().font_system, self.wrap.to_cosmic_text());
-            placeholder.set_wrap(cx.fonts(), self.wrap);
+            (state.buffer_mut()).set_wrap(&mut cx.fonts().font_system, self.wrap.to_cosmic_text());
+            state.placeholder.set_wrap(cx.fonts(), self.wrap);
 
             cx.request_layout();
         }
 
         if self.align != old.align {
-            for line in buffer.lines.iter_mut() {
+            for line in state.buffer_mut().lines.iter_mut() {
                 line.set_align(Some(self.align.to_cosmic_text()));
             }
 
-            placeholder.set_align(self.align);
+            state.placeholder.set_align(self.align);
 
             cx.request_layout();
         }
@@ -315,7 +329,7 @@ impl<T> View<T> for TextInput<T> {
                     text.push('\n');
                 }
 
-                buffer.set_text(
+                state.buffer_mut().set_text(
                     &mut cx.fonts().font_system,
                     &text,
                     attrs.to_cosmic_text(),
@@ -325,13 +339,13 @@ impl<T> View<T> for TextInput<T> {
                 cx.request_layout();
             }
         } else if attrs_changed {
-            self.set_attrs_list(buffer);
+            self.set_attrs_list(state.buffer_mut());
 
             cx.request_layout();
         }
 
         if self.placeholder != old.placeholder || attrs_changed {
-            placeholder.set_text(
+            state.placeholder.set_text(
                 cx.fonts(),
                 &self.placeholder,
                 TextAttributes {
@@ -360,18 +374,16 @@ impl<T> View<T> for TextInput<T> {
                 return;
             }
 
-            let editor = &mut state.editor;
-
             let mut changed = false;
             let mut submit = false;
 
             if !e.modifiers.ctrl && !e.modifiers.alt && !e.modifiers.meta {
                 if let Some(ref text) = e.text {
                     for c in text.chars() {
-                        editor.action(&mut cx.fonts().font_system, Action::Insert(c));
+                        (state.editor).action(&mut cx.fonts().font_system, Action::Insert(c));
                     }
 
-                    self.set_attrs_list(editor.buffer_mut());
+                    self.set_attrs_list(state.buffer_mut());
 
                     cx.request_layout();
                     state.blink = 0.0;
@@ -380,20 +392,20 @@ impl<T> View<T> for TextInput<T> {
             }
 
             if let Some(action) = delete_key(e) {
-                editor.action(&mut cx.fonts().font_system, action);
+                state.editor.action(&mut cx.fonts().font_system, action);
                 cx.request_layout();
                 state.blink = 0.0;
                 changed = true;
             }
 
             if e.is(Code::Escape) {
-                editor.action(&mut cx.fonts().font_system, Action::Escape);
+                (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                 cx.set_focused(false);
                 cx.request_draw();
             }
 
             if e.is(Code::Enter) && self.multiline {
-                editor.action(&mut cx.fonts().font_system, Action::Enter);
+                (state.editor).action(&mut cx.fonts().font_system, Action::Enter);
                 cx.request_layout();
                 state.blink = 0.0;
                 changed = true;
@@ -404,30 +416,30 @@ impl<T> View<T> for TextInput<T> {
                 submit = true;
             }
 
-            if let Some(action) = move_key(e) {
-                editor.action(&mut cx.fonts().font_system, action);
+            if let Some(motion) = move_key(e) {
+                (state.editor).action(&mut cx.fonts().font_system, Action::Motion(motion));
                 cx.request_draw();
                 state.blink = 0.0;
             }
 
             if e.is(Code::C) && e.modifiers.ctrl {
-                if let Some(selection) = editor.copy_selection() {
+                if let Some(selection) = state.editor.copy_selection() {
                     cx.clipboard().set(selection);
                 }
             }
 
             if e.is(Code::X) && e.modifiers.ctrl {
-                if let Some(selection) = editor.copy_selection() {
+                if let Some(selection) = state.editor.copy_selection() {
                     cx.clipboard().set(selection);
                 }
 
-                editor.delete_selection();
+                state.editor.delete_selection();
                 changed = true;
             }
 
             if e.is(Code::V) && e.modifiers.ctrl {
                 let text = cx.clipboard().get();
-                editor.insert_string(&text, None);
+                state.editor.insert_string(&text, None);
                 changed = true;
             }
 
@@ -527,7 +539,7 @@ impl<T> View<T> for TextInput<T> {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        state.editor.buffer_mut().set_size(
+        state.buffer_mut().set_size(
             &mut cx.fonts().font_system,
             space.max.width,
             space.max.height,
@@ -535,11 +547,11 @@ impl<T> View<T> for TextInput<T> {
         state.placeholder.set_bounds(cx.fonts(), space.max);
 
         // FIXME: this is bad
-        state.editor.shape_as_needed(&mut cx.fonts().font_system);
+        (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
 
         // if the text is empty, we need to layout the placeholder
         let mut size = if !self.get_text(state).is_empty() {
-            Fonts::buffer_size(state.editor.buffer())
+            Fonts::buffer_size(state.buffer())
         } else {
             state.placeholder.size()
         };
@@ -558,21 +570,18 @@ impl<T> View<T> for TextInput<T> {
         canvas.trigger(cx.id(), cx.rect());
 
         // FIXME: this is bad
-        state.editor.shape_as_needed(&mut cx.fonts().font_system);
+        (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
 
         let cursor = state.editor.cursor();
 
         /* draw the highlights and the cursor */
         // FIXME: this is bad
-        for (i, run) in state.editor.buffer().layout_runs().enumerate() {
+        for (i, run) in state.buffer().layout_runs().enumerate() {
             if !cx.is_focused() {
                 break;
             }
 
-            if let Some(select) = state.editor.select_opt() {
-                let start = cursor.min(select);
-                let end = cursor.max(select);
-
+            if let Some((start, end)) = state.editor.selection_bounds() {
                 if let Some((start, width)) = run.highlight(start, end) {
                     let min = Point::new(cx.rect().min.x + start, cx.rect().min.y + run.line_top);
                     let size = Size::new(width, self.font_size * self.line_height);
@@ -620,7 +629,7 @@ impl<T> View<T> for TextInput<T> {
 
         /* draw the text */
         let mesh = if !self.get_text(state).is_empty() {
-            cx.rasterize_text_raw(state.editor.buffer())
+            cx.rasterize_text_raw(state.buffer())
         } else {
             cx.rasterize_text(&state.placeholder)
         };

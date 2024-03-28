@@ -219,6 +219,7 @@ impl TextAttributes {
         let [r, g, b, a] = self.color.to_rgba8();
 
         cosmic_text::Attrs {
+            cache_key_flags: cosmic_text::CacheKeyFlags::empty(),
             color_opt: Some(cosmic_text::Color::rgba(r, g, b, a)),
             family: self.family.as_fontdb(),
             stretch: self.stretch.to_fontdb(),

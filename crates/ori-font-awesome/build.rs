@@ -9,6 +9,7 @@ use json::JsonValue;
 
 const ICONS_JSON_PATH: &str = "font/icons.json";
 
+#[allow(dead_code)]
 #[derive(Debug)]
 enum Error {
     Io(io::Error),

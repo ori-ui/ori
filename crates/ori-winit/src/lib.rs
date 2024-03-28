@@ -9,12 +9,9 @@ mod clipboard;
 mod convert;
 mod error;
 mod launch;
-mod log;
 mod shell;
-mod window;
-
-#[cfg(feature = "tracing")]
 mod tracing;
+mod window;
 
 pub use error::*;
 pub use shell::*;

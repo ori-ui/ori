@@ -18,7 +18,6 @@ use winit::{
 use crate::{
     clipboard::WinitClipboard,
     convert::{convert_key, convert_mouse_button, is_pressed},
-    log::error_internal,
     window::WinitWindow,
     Error,
 };
@@ -30,7 +29,6 @@ pub(crate) fn launch<T: 'static>(
     windows: Windows<T>,
 ) -> Result<(), Error> {
     /* initialize tracing if enabled */
-    #[cfg(feature = "tracing")]
     if let Err(err) = crate::tracing::init_tracing() {
         eprintln!("Failed to initialize tracing: {}", err);
     }
@@ -122,7 +120,7 @@ impl<T> AppState<T> {
 
         for (desc, builder) in mem::take(&mut self.windows) {
             if let Err(err) = self.create_window(target, desc, builder) {
-                error_internal!("Failed to create window: {}", err);
+                tracing::error!("Failed to create window: {}", err);
                 return;
             }
         }
@@ -131,7 +129,7 @@ impl<T> AppState<T> {
     fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>) {
         for request in self.ui.take_requests() {
             if let Err(err) = self.handle_request(target, request) {
-                error_internal!("Failed to handle request: {}", err);
+                tracing::error!("Failed to handle request: {}", err);
             }
         }
     }
@@ -329,7 +327,7 @@ impl<T> AppState<T> {
         match event {
             WindowEvent::RedrawRequested => {
                 if let Err(err) = self.render(id) {
-                    error_internal!("Failed to render: {}", err);
+                    tracing::error!("Failed to render: {}", err);
                 }
             }
             WindowEvent::CloseRequested => {

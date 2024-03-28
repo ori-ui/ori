@@ -51,10 +51,9 @@ features = ["full"]
 default = ["winit", "glow", "x11"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
-tracing = ["ori-core/tracing", "ori-winit/tracing"]
 
 # All features
-full = ["font-awesome", "image", "tracing"]
+full = ["font-awesome", "image"]
 
 # Backend features
 winit = ["dep:ori-winit"]

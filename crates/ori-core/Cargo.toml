@@ -16,6 +16,7 @@ etagere = "0.2"
 cosmic-text = "0.11"
 seahash = "4.1"
 smol_str = "0.2.1"
+tracing = "0.1"
 
 [dependencies.image]
 version = "0.25"
@@ -31,12 +32,6 @@ features = [
     "bmp", 
 ]
 
-[dependencies.tracing]
-version = "0.1"
-default-features = false
-optional = true
-
 [features]
 default = []
 image = ["dep:image"]
-tracing = ["dep:tracing"]

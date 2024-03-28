@@ -1,7 +1,5 @@
 //! Types pertaining to the clipboard.
 
-use crate::log::warn_internal;
-
 /// A clipboard.
 pub trait Clipboard {
     /// Returns the contents of the clipboard.
@@ -15,12 +13,12 @@ struct DummyClipboard;
 
 impl Clipboard for DummyClipboard {
     fn get(&mut self) -> String {
-        warn_internal!("Clipboard context not set!");
+        tracing::warn!("Clipboard context not set!");
         String::new()
     }
 
     fn set(&mut self, _contents: String) {
-        warn_internal!("Clipboard context not set!");
+        tracing::warn!("Clipboard context not set!");
     }
 }
 

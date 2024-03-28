@@ -99,7 +99,7 @@ impl ImageData {
         match Self::try_load_data(data) {
             Ok(data) => data,
             Err(err) => {
-                crate::log::error_internal!("Failed to load image data: {}", err);
+                tracing::error!("Failed to load image data: {}", err);
                 Self::default()
             }
         }
@@ -124,11 +124,7 @@ impl ImageData {
         match Self::try_load(path.as_ref()) {
             Ok(data) => data,
             Err(err) => {
-                crate::log::error_internal!(
-                    "Failed to load image: {}: {}",
-                    path.as_ref().display(),
-                    err
-                );
+                tracing::error!("Failed to load image: {}: {}", path.as_ref().display(), err);
                 Self::default()
             }
         }

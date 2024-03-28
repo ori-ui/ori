@@ -13,8 +13,6 @@ use std::{
 
 use crossbeam_channel::{Receiver, Sender};
 
-use crate::log::warn_internal;
-
 /// A waker for the event loop.
 ///
 /// When called, the event loop should wake up and process any pending commands,
@@ -118,7 +116,7 @@ impl CommandProxy {
     /// This is almost never what you want to do. Use [`CommandProxy::cmd`] instead.
     pub fn cmd_silent(&self, command: Command) {
         if let Err(err) = self.tx.send(command) {
-            warn_internal!("failed to send command: {}", err);
+            tracing::warn!("failed to send command: {}", err);
         }
     }
 

@@ -614,7 +614,7 @@ impl<T> View<T> for TextInput<T> {
                     }
                 };
 
-                let cursor = Rect::min_size(min, size);
+                let cursor = Rect::min_size(min.round(), size);
 
                 let blink = state.blink.cos() * 0.5 + 0.5;
                 canvas.draw_pixel_perfect(Quad {

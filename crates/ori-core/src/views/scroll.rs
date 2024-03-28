@@ -4,7 +4,6 @@ use crate::{
         AnimationFrame, Event, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
     },
     layout::{Axis, Rect, Size, Space, Vector},
-    log::warn_internal,
     rebuild::Rebuild,
     theme::{style, Palette},
     transition::Transition,
@@ -218,7 +217,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let size = space.fit(content_size);
 
         if !size.is_finite() && space.is_finite() {
-            warn_internal!("Contents of a scroll view has an infinite size");
+            tracing::warn!("Contents of a scroll view has an infinite size");
         }
 
         size

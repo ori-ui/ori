@@ -16,24 +16,16 @@ ori-wgpu = { workspace = true, optional = true }
 # other dependencies
 clipboard = "0.5"
 raw-window-handle = "0.5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.winit] 
 version = "0.29"
 default-features = false
 features = ["android-native-activity", "rwh_05"]
 
-[dependencies.tracing]
-version = "0.1"
-optional = true
-
-[dependencies.tracing-subscriber]
-version = "0.3" 
-features = ["env-filter"]
-optional = true
-
 [features]
 default = []
-tracing = ["dep:tracing", "dep:tracing-subscriber"]
 x11 = ["winit/x11", "ori-glow?/x11"]
 wayland = ["winit/wayland", "ori-glow?/wayland"]
 

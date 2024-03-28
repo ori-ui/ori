@@ -23,5 +23,4 @@ pub mod window;
 
 pub mod views;
 
-#[allow(unused_imports)]
-pub mod log;
+pub use tracing as log;

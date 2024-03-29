@@ -1,6 +1,7 @@
 use std::io;
 
 use cosmic_text::{Buffer, FontSystem, SwashCache};
+use ori_macro::font;
 
 use crate::{
     canvas::{Color, Mesh, Vertex},
@@ -73,9 +74,14 @@ impl Fonts {
     pub fn load_system_fonts(&mut self) {
         let db = self.font_system.db_mut();
 
-        db.load_font_data(include_bytes!("../../font/NotoSans-Regular.ttf").to_vec());
         db.load_system_fonts();
-        db.set_sans_serif_family("Noto Sans");
+        db.set_serif_family("Roboto");
+        db.set_sans_serif_family("Roboto");
+        db.set_monospace_family("Roboto");
+        db.set_cursive_family("Roboto");
+        db.set_fantasy_family("Roboto");
+
+        (self.load_font(font!("font"))).expect("loading builtin fonts works");
     }
 
     /// Calculates the size of a text buffer.

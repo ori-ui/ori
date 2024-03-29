@@ -51,12 +51,12 @@ pub mod prelude {
         },
         log::*,
         rebuild::Rebuild,
+        style::{palette, style, style_or, Palette, Style},
         text,
         text::{
             font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, TextAlign,
             TextBuffer, TextWrap,
         },
-        theme::{style, style_or, Key, Palette, Theme},
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
             any, pod, AnyView, BoxedView, BuildCx, DelegateCx, DrawCx, EventCx, LayoutCx, Pod,

@@ -2,7 +2,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    theme::Theme,
+    style::Style,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -23,7 +23,7 @@ pub struct Painter<T> {
 impl<T> Painter<T> {
     /// Create a new [`Painter`] view.
     pub fn new(mut draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static) -> Self {
-        let mut snapshot = Theme::snapshot();
+        let mut snapshot = Style::snapshot();
 
         Self {
             draw: Box::new(move |cx, data, canvas| snapshot.as_context(|| draw(cx, data, canvas))),

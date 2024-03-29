@@ -3,8 +3,8 @@ use ori_core::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
+    style::palette,
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
-    theme::{style, Palette},
     view::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -42,7 +42,7 @@ impl Icon {
         Self {
             icon: icon.into(),
             size: 16.0,
-            color: style(Palette::TEXT),
+            color: palette().text(),
         }
     }
 

@@ -77,9 +77,9 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = tooltip("Toggle whether the todo is completed", completed);
 
     let title_color = if todo.completed {
-        style(Palette::TEXT_LIGHTER)
+        palette().text_lighter()
     } else {
-        style(Palette::TEXT)
+        palette().text()
     };
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
@@ -148,9 +148,9 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
     fn color(a: Selection, b: Selection) -> Color {
         if a == b {
-            style(Palette::ACCENT)
+            palette().accent()
         } else {
-            style(Palette::PRIMARY)
+            palette().primary()
         }
     }
 

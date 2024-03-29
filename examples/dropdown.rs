@@ -4,9 +4,7 @@ struct Data;
 
 fn app(_data: &mut Data) -> impl View<Data> {
     let content = container(pad(8.0, text("content")))
-        .background(style(Palette::SECONDARY))
         .border_width(2.0)
-        .border_color(style(Palette::SECONDARY_DARKER))
         .border_radius(6.0);
 
     let content = vstack![

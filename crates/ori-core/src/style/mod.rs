@@ -1,9 +1,7 @@
 //! Styleing and theming.
 
-mod key;
 mod palette;
-mod theme;
+mod style;
 
-pub use key::*;
 pub use palette::*;
-pub use theme::*;
+pub use style::*;

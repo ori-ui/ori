@@ -2,7 +2,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    theme::Theme,
+    style::Style,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -20,7 +20,7 @@ pub struct Memo<T, V, D> {
     data: Option<Box<dyn FnOnce(&mut T) -> D>>,
     #[allow(clippy::type_complexity)]
     build: Option<Box<dyn FnOnce(&mut T) -> V>>,
-    theme: Theme,
+    theme: Style,
 }
 
 impl<T, V, D: PartialEq> Memo<T, V, D> {
@@ -32,7 +32,7 @@ impl<T, V, D: PartialEq> Memo<T, V, D> {
         Self {
             data: Some(Box::new(data)),
             build: Some(Box::new(build)),
-            theme: Theme::snapshot(),
+            theme: Style::snapshot(),
         }
     }
 

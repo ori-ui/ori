@@ -3,7 +3,7 @@ use crate::{
     event::Event,
     layout::{Size, Space, Vector},
     rebuild::Rebuild,
-    theme::{style, Palette},
+    style::palette,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
@@ -65,10 +65,10 @@ impl<V> Container<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            background: style(Palette::SECONDARY).into(),
+            background: palette().secondary().into(),
             border_radius: BorderRadius::all(0.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style(Palette::SECONDARY_DARK),
+            border_color: palette().secondary_dark(),
             shadow: BoxShadow::default(),
         }
     }

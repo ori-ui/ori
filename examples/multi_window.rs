@@ -18,10 +18,8 @@ fn window(_data: &mut Data) -> impl View<Data> {
     }));
 
     let content = container(zstack![center(text("Hello World!")), close])
-        .background(style(Palette::BACKGROUND))
         .border_radius([16.0, 0.0, 16.0, 0.0])
-        .border_width(2.0)
-        .border_color(style(Palette::SECONDARY_DARKER));
+        .border_width(2.0);
 
     on_press(content, |cx, _| {
         cx.window().drag();
@@ -31,7 +29,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
 fn open_window_button() -> impl View<Data> {
     let open_window = button(text("Open window"))
         .fancy(4.0)
-        .color(style(Palette::ACCENT));
+        .color(palette().accent());
 
     on_click(open_window, |cx, data: &mut Data| {
         let desc = WindowDescriptor::new()
@@ -51,8 +49,8 @@ fn open_window_button() -> impl View<Data> {
 
 fn close_window_button(data: &mut Data) -> impl View<Data> {
     let close_window = transition(ease(0.5), !data.windows.is_empty(), |_cx, _, t| {
-        let active = style(Palette::PRIMARY);
-        let inactive = style(Palette::SECONDARY_DARKER);
+        let active = palette().primary();
+        let inactive = palette().secondary_darker();
 
         button(text("Close window"))
             .color(inactive.mix(active, t))

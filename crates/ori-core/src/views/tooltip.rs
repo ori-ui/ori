@@ -5,8 +5,8 @@ use crate::{
     event::{AnimationFrame, Event, PointerMoved},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
+    style::palette,
     text::{FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAttributes, TextBuffer},
-    theme::{style, Palette},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -49,12 +49,12 @@ impl<V> Tooltip<V> {
         Self {
             content,
             text: text.into(),
-            color: style(Palette::TEXT),
+            color: palette().text(),
             padding: Padding::from([8.0, 4.0]),
-            background: style(Palette::SECONDARY),
+            background: palette().secondary(),
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(1.0),
-            border_color: style(Palette::SECONDARY_DARK),
+            border_color: palette().secondary_dark(),
         }
     }
 

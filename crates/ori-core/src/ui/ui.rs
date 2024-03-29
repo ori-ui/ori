@@ -13,8 +13,8 @@ use crate::{
         PointerScrolled, Quit, RequestFocus, SwitchFocus,
     },
     layout::{Point, Vector},
+    style::Style,
     text::Fonts,
-    theme::Theme,
     view::{BaseCx, Contexts, DelegateCx},
     window::{Window, WindowId},
 };
@@ -26,7 +26,7 @@ pub struct Ui<T: 'static> {
     windows: HashMap<WindowId, WindowUi<T>>,
     modifiers: Modifiers,
     delegates: Vec<Box<dyn Delegate<T>>>,
-    theme: Theme,
+    style: Style,
     command_proxy: CommandProxy,
     command_rx: CommandReceiver,
     requests: UiRequests<T>,
@@ -48,7 +48,7 @@ impl<T> Ui<T> {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegates: Vec::new(),
-            theme: Theme::default(),
+            style: Style::default(),
             command_proxy,
             command_rx,
             quit_requested: false,
@@ -67,9 +67,9 @@ impl<T> Ui<T> {
         &self.delegates
     }
 
-    /// Add a new theme.
-    pub fn push_theme(&mut self, theme: impl Into<Theme>) {
-        self.theme.extend(theme.into());
+    /// Add a new style.
+    pub fn push_style(&mut self, style: impl Into<Style>) {
+        self.style.extend(style.into());
     }
 
     /// Set the clipboard provider.
@@ -87,7 +87,7 @@ impl<T> Ui<T> {
         );
 
         let window_id = window.id();
-        let window_ui = WindowUi::new(builder, &mut base, data, self.theme.clone(), window);
+        let window_ui = WindowUi::new(builder, &mut base, data, self.style.clone(), window);
         self.windows.insert(window_id, window_ui);
 
         if needs_rebuild {

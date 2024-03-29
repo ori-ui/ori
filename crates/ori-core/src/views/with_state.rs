@@ -4,7 +4,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    theme::Theme,
+    style::Style,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
@@ -44,7 +44,7 @@ pub struct WithState<T, S, V> {
     build: Box<dyn Fn() -> S>,
     #[allow(clippy::type_complexity)]
     view: Box<dyn FnMut(&mut T, &mut S) -> V>,
-    theme: Theme,
+    theme: Style,
 }
 
 impl<T, S, V> WithState<T, S, V> {
@@ -56,7 +56,7 @@ impl<T, S, V> WithState<T, S, V> {
         Self {
             build: Box::new(build),
             view: Box::new(view),
-            theme: Theme::snapshot(),
+            theme: Style::snapshot(),
         }
     }
 

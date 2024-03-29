@@ -5,8 +5,8 @@ use crate::{
     debug::debug_ui,
     delegate::Delegate,
     shell::{Shell, Windows},
+    style::{Palette, Style},
     text::FontSource,
-    theme::{Palette, Theme},
     ui::{Ui, UiBuilder},
     view::{any, View},
     window::WindowDescriptor,
@@ -28,7 +28,7 @@ impl<T, S: Shell> Launcher<T, S> {
 
         let mut ui = Ui::new(waker);
 
-        ui.push_theme(Palette::light());
+        ui.push_style(Palette::light());
 
         Self {
             shell,
@@ -47,9 +47,9 @@ impl<T, S: Shell> Launcher<T, S> {
         self
     }
 
-    /// Append the theme of the application.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.ui.push_theme(theme.into());
+    /// Append the style of the application.
+    pub fn style(mut self, theme: impl Into<Style>) -> Self {
+        self.ui.push_style(theme.into());
         self
     }
 

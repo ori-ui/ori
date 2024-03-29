@@ -7,7 +7,7 @@ use crate::{
     event::{AnimationFrame, Event, PointerPressed},
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    theme::{style, Palette},
+    style::palette,
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, Update, View},
 };
@@ -79,11 +79,11 @@ impl<T, H, V> Collapsing<T, H, V> {
             default_open: false,
             transition: Transition::ease(0.1),
             icon_size: 16.0,
-            icon_color: style(Palette::TEXT_DARK),
+            icon_color: palette().text_dark(),
             background: Background::new(Color::TRANSPARENT),
             border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
             border_radius: BorderRadius::all(0.0),
-            border_color: style(Palette::SECONDARY_DARK),
+            border_color: palette().secondary_dark(),
         }
     }
 

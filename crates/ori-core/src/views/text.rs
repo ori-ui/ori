@@ -7,11 +7,11 @@ use crate::{
     canvas::{Canvas, Color, Mesh},
     event::Event,
     layout::{Size, Space},
+    style::{palette, style},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    theme::{style, style_or, Key, Palette},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -19,26 +19,41 @@ use smol_str;
 
 pub use crate::format_text as text;
 
-/// Key for the default font size.
-pub const FONT_SIZE: Key<f32> = Key::new("font-size");
+/// The style of a text.
+#[derive(Clone, Debug)]
+pub struct TextStyle {
+    /// The font size of the text.
+    pub font_size: f32,
+    /// The font family of the text.
+    pub font_family: FontFamily,
+    /// The font weight of the text.
+    pub font_weight: FontWeight,
+    /// The font stretch of the text.
+    pub font_stretch: FontStretch,
+    /// The font style of the text.
+    pub font_style: FontStyle,
+    /// The horizontal alignment of the text.
+    pub align: TextAlign,
+    /// The line height of the text.
+    pub line_height: f32,
+    /// The text wrap of the text.
+    pub wrap: TextWrap,
+}
 
-/// Key for the default font family.
-pub const FONT_FAMILY: Key<FontFamily> = Key::new("font-family");
-
-/// Key for the default font weight.
-pub const FONT_WEIGHT: Key<FontWeight> = Key::new("font-weight");
-
-/// Key for the default font stretch.
-pub const FONT_STRETCH: Key<FontStretch> = Key::new("font-stretch");
-
-/// Key for the default font style.
-pub const FONT_STYLE: Key<FontStyle> = Key::new("font-style");
-
-/// Key for the default text color.
-pub const TEXT_ALIGN: Key<TextAlign> = Key::new("text-align");
-
-/// Key for the default text color.
-pub const LINE_HEIGHT: Key<f32> = Key::new("line-height");
+impl Default for TextStyle {
+    fn default() -> Self {
+        Self {
+            font_size: 16.0,
+            font_family: FontFamily::SansSerif,
+            font_weight: FontWeight::NORMAL,
+            font_stretch: FontStretch::Normal,
+            font_style: FontStyle::Normal,
+            align: TextAlign::Start,
+            line_height: 1.2,
+            wrap: TextWrap::Word,
+        }
+    }
+}
 
 /// Create a formatted [`Text`].
 ///
@@ -83,17 +98,19 @@ pub struct Text {
 impl Text {
     /// Create a new text.
     pub fn new(text: impl Into<SmolStr>) -> Text {
+        let style = style::<TextStyle>();
+
         Text {
             text: text.into(),
-            font_size: style_or(FONT_SIZE, 16.0),
-            font_family: style_or(FONT_FAMILY, FontFamily::SansSerif),
-            font_weight: style_or(FONT_WEIGHT, FontWeight::NORMAL),
-            font_stretch: style_or(FONT_STRETCH, FontStretch::Normal),
-            font_style: style_or(FONT_STYLE, FontStyle::Normal),
-            color: style(Palette::TEXT),
-            align: style_or(TEXT_ALIGN, TextAlign::Start),
-            line_height: style_or(LINE_HEIGHT, 1.2),
-            wrap: TextWrap::Word,
+            font_size: style.font_size,
+            font_family: style.font_family,
+            font_weight: style.font_weight,
+            font_stretch: style.font_stretch,
+            font_style: style.font_style,
+            color: palette().text(),
+            align: style.align,
+            line_height: style.line_height,
+            wrap: style.wrap,
         }
     }
 

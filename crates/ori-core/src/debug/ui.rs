@@ -3,8 +3,8 @@ use std::time::Duration;
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad},
     layout::{Affine, Align, Justify, Point, Rect, FILL},
+    style::palette,
     text::FontFamily,
-    theme::{style, Palette},
     view::{any, View},
     views::{
         button, collapsing, container, expand, height, hstack, layout_builder, left, on_click,
@@ -111,7 +111,7 @@ fn debug_tree_hightlight(
                     background: Background::new(Color::TRANSPARENT),
                     border_radius: BorderRadius::all(0.0),
                     border_width: BorderWidth::all(2.0),
-                    border_color: style(Palette::ACCENT),
+                    border_color: palette().accent(),
                 }),
                 transform,
                 depth: f32::MAX,
@@ -139,9 +139,9 @@ fn debug_tree_header(
         .gap(4.0);
 
     let color = if Some(path) == selected {
-        style(Palette::PRIMARY_LIGHT)
+        palette().primary_light()
     } else {
-        style(Palette::SECONDARY)
+        palette().secondary()
     };
 
     let mut header = button(pad_left(path.len() as f32 * 10.0 + 20.0, stack))
@@ -150,9 +150,7 @@ fn debug_tree_header(
         .padding(0.0);
 
     if Some(path) == selected {
-        header = header
-            .border_bottom(2.0)
-            .border_color(style(Palette::PRIMARY));
+        header = header.border_bottom(2.0).border_color(palette().primary());
     }
 
     let path = path.to_owned();
@@ -330,7 +328,7 @@ fn debug_profiler(
 // a button in the top bar
 fn debug_bar_button<T>(content: impl View<T>) -> Button<impl View<T>> {
     button(content)
-        .color(style(Palette::SECONDARY))
+        .color(palette().secondary())
         .border_radius(0.0)
         .padding(0.0)
 }
@@ -340,9 +338,7 @@ fn debug_tab(state: &mut DebugState, tab: DebugTab) -> impl View<(DebugData, Deb
     let mut button = debug_bar_button(pad(4.0, debug_text!("{:?}", tab)));
 
     if tab == state.tab {
-        button = button
-            .border_bottom(4.0)
-            .border_color(style(Palette::PRIMARY));
+        button = button.border_bottom(4.0).border_color(palette().primary());
     }
 
     let button = height(24.0, button);
@@ -399,8 +395,7 @@ fn debug(_data: &mut DebugData) -> impl View<DebugData> {
             .gap(1.0);
 
             // fill the background with a dark color to have clear sepration between panels
-            let container =
-                container(pad_top(1.0, stack)).background(style(Palette::SECONDARY_DARK));
+            let container = container(pad_top(1.0, stack)).background(palette().secondary_dark());
 
             // fill the bottom third of the window
             size([FILL, space.max.height / 3.0], container)

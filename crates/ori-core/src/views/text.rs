@@ -49,7 +49,7 @@ impl Default for TextStyle {
             font_stretch: FontStretch::Normal,
             font_style: FontStyle::Normal,
             align: TextAlign::Start,
-            line_height: 1.2,
+            line_height: 1.3,
             wrap: TextWrap::Word,
         }
     }

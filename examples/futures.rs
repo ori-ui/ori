@@ -28,11 +28,15 @@ fn app(data: &mut Data) -> impl View<Data> {
     ])
 }
 
-fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
-    if let Some(msg) = event.get::<&str>() {
-        info!("Future says: {}", msg);
-        data.futures_completed += 1;
-        cx.request_rebuild();
+struct AppDelegate;
+
+impl Delegate<Data> for AppDelegate {
+    fn event(&mut self, cx: &mut DelegateCx, data: &mut Data, event: &Event) {
+        if let Some(msg) = event.get::<&str>() {
+            info!("Future says: {}", msg);
+            data.futures_completed += 1;
+            cx.request_rebuild();
+        }
     }
 }
 
@@ -41,6 +45,6 @@ fn main() {
 
     Launcher::new(Data::default())
         .window(window, app)
-        .delegate(delegate)
+        .delegate(AppDelegate)
         .launch();
 }

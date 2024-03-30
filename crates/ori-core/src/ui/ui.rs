@@ -13,7 +13,7 @@ use crate::{
         PointerScrolled, Quit, RequestFocus, SwitchFocus,
     },
     layout::{Point, Vector},
-    style::Style,
+    style::{IntoStyle, Style},
     text::Fonts,
     view::{BaseCx, Contexts, DelegateCx},
     window::{Window, WindowId},
@@ -68,8 +68,8 @@ impl<T> Ui<T> {
     }
 
     /// Add a new style.
-    pub fn push_style(&mut self, style: impl Into<Style>) {
-        self.style.extend(style.into());
+    pub fn push_style(&mut self, style: impl IntoStyle) {
+        self.style.extend(style.into_style());
     }
 
     /// Set the clipboard provider.

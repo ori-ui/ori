@@ -104,7 +104,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     ) {
         Rebuild::rebuild(self, cx, old);
 
-        if self.text != old.text {
+        if self.text != old.text || self.color != old.color {
             self.set_attributes(cx.fonts(), &mut state.buffer);
         }
 

@@ -5,7 +5,7 @@ use crate::{
     debug::debug_ui,
     delegate::Delegate,
     shell::{Shell, Windows},
-    style::{Palette, Style},
+    style::{IntoStyle, Palette},
     text::FontSource,
     ui::{Ui, UiBuilder},
     view::{any, View},
@@ -48,8 +48,8 @@ impl<T, S: Shell> Launcher<T, S> {
     }
 
     /// Append the style of the application.
-    pub fn style(mut self, theme: impl Into<Style>) -> Self {
-        self.ui.push_style(theme.into());
+    pub fn style(mut self, style: impl IntoStyle) -> Self {
+        self.ui.push_style(style);
         self
     }
 

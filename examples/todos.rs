@@ -39,6 +39,7 @@ impl Todo {
 struct Data {
     todos: Vec<Todo>,
     selection: Selection,
+    dark_mode: bool,
 }
 
 impl Data {
@@ -69,6 +70,26 @@ fn input(border: bool) -> impl View<Data> {
     let input = container(pad([64.0, 16.0], input)).border_bottom(border);
 
     width(28.0 * 16.0, input)
+}
+
+fn theme_button(data: &mut Data) -> impl View<Data> {
+    let icon = if data.dark_mode {
+        fa::icon("moon").color(Palette::light().text())
+    } else {
+        fa::icon("sun").color(Palette::dark().text())
+    };
+
+    let color = if data.dark_mode {
+        Palette::light().background()
+    } else {
+        Palette::dark().background()
+    };
+
+    let button = button(icon).fancy(4.0).color(color);
+
+    on_click(button, |_, data: &mut Data| {
+        data.dark_mode = !data.dark_mode;
+    })
 }
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
@@ -184,15 +205,25 @@ fn selection(data: &mut Data) -> impl View<Data> {
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    let rows = vstack![
-        input(!data.todos.is_empty()),
-        flex(vscroll(todos(data))),
-        selection(data)
-    ]
-    .gap(0.0);
+    let style = if data.dark_mode {
+        Palette::dark()
+    } else {
+        Palette::light()
+    };
 
-    let stack = vstack![title(), flex(rows)].gap(16.0);
-    pad(64.0, align((0.5, 0.2), stack))
+    styled(style, || {
+        let rows = vstack![
+            input(!data.todos.is_empty()),
+            flex(vscroll(todos(data))),
+            selection(data)
+        ]
+        .gap(0.0);
+
+        let stack = vstack![title(), flex(rows)].gap(16.0);
+        let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
+
+        background(palette().background(), pad(64.0, content))
+    })
 }
 
 struct AppDelegate;

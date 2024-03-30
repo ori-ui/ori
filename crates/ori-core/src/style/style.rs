@@ -3,7 +3,7 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     hash::BuildHasher,
-    mem,
+    mem::{self, ManuallyDrop},
     sync::Arc,
 };
 
@@ -15,6 +15,14 @@ pub fn style<T: Clone + Default + Any>() -> T {
 /// Get a value from the current theme or a default value.
 pub fn style_or<T: Clone + Any>(default: T) -> T {
     Style::context(|theme| theme.try_get().cloned().unwrap_or(default))
+}
+
+/// Run a closure with the given style.
+pub fn styled<T>(style: impl IntoStyle, f: impl FnOnce() -> T) -> T {
+    let mut new_style = Style::snapshot();
+    new_style.extend(style.into_style());
+
+    new_style.as_context(f)
 }
 
 /// A map of style values.
@@ -75,6 +83,30 @@ impl Style {
     /// Get a snapshot of the current theme.
     pub fn snapshot() -> Self {
         Self::context(|theme| theme.clone())
+    }
+}
+
+/// A trait for converting a value into a style.
+///
+/// Turns a value into a style by wrapping it in a `Style` instance, if it isn't already a `Style`.
+///
+/// This trait should not be implemented manually.
+pub trait IntoStyle {
+    /// Convert a value into a style.
+    fn into_style(self) -> Style;
+}
+
+impl<T: Any> IntoStyle for T {
+    fn into_style(self) -> Style {
+        // now this is all sorts of cursed but this is the only way to do this
+        if TypeId::of::<Self>() == TypeId::of::<Style>() {
+            let style = ManuallyDrop::new(self);
+
+            // SAFETY: we know that the type is Style
+            return unsafe { mem::transmute_copy(&style) };
+        }
+
+        Style::default().with(self)
     }
 }
 

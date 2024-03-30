@@ -72,12 +72,16 @@ fn app(data: &mut Data) -> impl View<Data> {
     center(stack)
 }
 
-fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
-    if let Some(request) = event.get::<CloseRequested>() {
-        data.windows.retain(|window| *window != request.window);
-        cx.request_rebuild();
+struct AppDelegate;
 
-        info!("Window {} closed", request.window);
+impl Delegate<Data> for AppDelegate {
+    fn event(&mut self, cx: &mut DelegateCx, data: &mut Data, event: &Event) {
+        if let Some(request) = event.get::<CloseRequested>() {
+            data.windows.retain(|window| *window != request.window);
+            cx.request_rebuild();
+
+            info!("Window {} closed", request.window);
+        }
     }
 }
 
@@ -86,6 +90,6 @@ fn main() {
 
     Launcher::new(Data::default())
         .window(window, app)
-        .delegate(delegate)
+        .delegate(AppDelegate)
         .launch();
 }

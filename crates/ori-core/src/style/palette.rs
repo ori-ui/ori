@@ -1,6 +1,6 @@
 use crate::canvas::Color;
 
-use super::{style, Style};
+use super::style;
 
 /// Get the palette of the style.
 pub fn palette() -> Palette {

@@ -195,14 +195,16 @@ fn app(data: &mut Data) -> impl View<Data> {
     pad(64.0, align((0.5, 0.2), stack))
 }
 
-// we define a delegate to handle the custom command
-fn delegate(cx: &mut DelegateCx, data: &mut Data, event: &Event) {
-    // when we receive the command we remove the todo
-    if let Some(remove) = event.get::<RemoveTodo>() {
-        data.remove_todo(remove.0);
+struct AppDelegate;
 
-        cx.request_rebuild();
-        event.handle();
+impl Delegate<Data> for AppDelegate {
+    fn event(&mut self, cx: &mut DelegateCx, data: &mut Data, event: &Event) {
+        if let Some(remove) = event.get::<RemoveTodo>() {
+            data.remove_todo(remove.0);
+
+            cx.request_rebuild();
+            event.handle();
+        }
     }
 }
 
@@ -211,6 +213,6 @@ fn main() {
 
     Launcher::new(Data::default())
         .window(window, app)
-        .delegate(delegate)
+        .delegate(AppDelegate)
         .launch();
 }

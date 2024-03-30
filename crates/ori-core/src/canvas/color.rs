@@ -276,6 +276,9 @@ impl Color {
     ///
     /// This uses a fractor `t` between `0.0` and `1.0`.
     /// Where `0.0` is `self` and `1.0` is `other`.
+    ///
+    /// Note that this is a linear interpolation in the oklab color space.
+    /// If rgb interpolation is required use `mix_rgb`.
     pub fn mix(self, other: Self, t: f32) -> Self {
         let (al, aa, ab, aalpha) = self.to_oklaba();
         let (bl, ba, bb, balpha) = other.to_oklaba();
@@ -286,6 +289,18 @@ impl Color {
         let alpha = aalpha * (1.0 - t) + balpha * t;
 
         Self::oklaba(l, a, b, alpha)
+    }
+
+    /// Linearly interpolate between two colors.
+    ///
+    /// This uses a fractor `t` between `0.0` and `1.0`.
+    /// Where `0.0` is `self` and `1.0` is `other`.
+    ///
+    /// Note that this is a linear interpolation in the sRGB color space.
+    /// If this isn't necessary use `mix`, as it uses the oklab color space,
+    /// which is more perceptually uniform.
+    pub fn mix_rgb(self, other: Self, t: f32) -> Self {
+        self * (1.0 - t) + other * t
     }
 
     /// Saturates the color by given `amount`.

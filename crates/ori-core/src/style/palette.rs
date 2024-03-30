@@ -178,9 +178,3 @@ impl Palette {
         self.accent.darken(Self::MODIFIER * 2.0)
     }
 }
-
-impl From<Palette> for Style {
-    fn from(palette: Palette) -> Self {
-        Style::new().with(palette)
-    }
-}

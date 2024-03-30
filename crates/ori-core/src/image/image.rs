@@ -31,6 +31,8 @@ macro_rules! image {
 }
 
 /// Create a new gradient image.
+///
+/// Note that `angle` is in degrees.
 pub fn gradient(angle: f32, colors: &[Color]) -> Image {
     Image::gradient(angle, colors)
 }

@@ -277,7 +277,15 @@ impl Color {
     /// This uses a fractor `t` between `0.0` and `1.0`.
     /// Where `0.0` is `self` and `1.0` is `other`.
     pub fn mix(self, other: Self, t: f32) -> Self {
-        other * t + self * (1.0 - t)
+        let (al, aa, ab, aalpha) = self.to_oklaba();
+        let (bl, ba, bb, balpha) = other.to_oklaba();
+
+        let l = al * (1.0 - t) + bl * t;
+        let a = aa * (1.0 - t) + ba * t;
+        let b = ab * (1.0 - t) + bb * t;
+        let alpha = aalpha * (1.0 - t) + balpha * t;
+
+        Self::oklaba(l, a, b, alpha)
     }
 
     /// Saturates the color by given `amount`.
@@ -294,14 +302,14 @@ impl Color {
 
     /// Brighten the color by the given `amount`.
     pub fn lighten(self, amount: f32) -> Self {
-        let (h, s, l, a) = self.to_hsla();
-        Self::hsla(h, s, l + amount, a)
+        let (l, a, b, alpha) = self.to_oklaba();
+        Self::oklaba(l + amount * 0.5, a, b, alpha)
     }
 
     /// Darken the color by the given `amount`.
     pub fn darken(self, amount: f32) -> Self {
-        let (h, s, l, a) = self.to_hsla();
-        Self::hsla(h, s, l - amount, a)
+        let (l, a, b, alpha) = self.to_oklaba();
+        Self::oklaba(l - amount * 0.5, a, b, alpha)
     }
 
     /// Fade the color by the given `amount`.

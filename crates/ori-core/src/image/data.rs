@@ -43,6 +43,8 @@ impl ImageData {
     }
 
     /// Create a new gradient image data.
+    ///
+    /// Note that `angle` is in degrees.
     pub fn gradient(angle: f32, colors: &[Color]) -> Self {
         let mut pixels = Vec::new();
 
@@ -51,7 +53,7 @@ impl ImageData {
         let direction = Vector::new(cos, sin);
         let length = sin.abs() + cos.abs();
 
-        let size = colors.len() as u32 * 4;
+        let size = colors.len() as u32 * 16;
         let max = size as f32 - 1.0;
 
         for y in 0..size {

@@ -8,6 +8,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
         let border = Color::RED.mix(Color::GREEN, t);
 
         button(text("Click me"))
+            .color(gradient(0.0, &[palette().primary(), palette().accent()]))
             .border_width(2.0)
             .border_color(border)
             .fancy(4.0)

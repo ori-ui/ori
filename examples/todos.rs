@@ -229,7 +229,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 struct AppDelegate;
 
 impl Delegate<Data> for AppDelegate {
-    fn event(&mut self, cx: &mut DelegateCx, data: &mut Data, event: &Event) {
+    fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) {
         if let Some(remove) = event.get::<RemoveTodo>() {
             data.remove_todo(remove.0);
 

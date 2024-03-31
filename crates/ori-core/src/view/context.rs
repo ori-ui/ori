@@ -12,14 +12,15 @@ use crate::{
     canvas::Mesh,
     clipboard::{Clipboard, ClipboardContext},
     command::{Command, CommandProxy},
-    event::{CloseWindow, OpenWindow, Quit},
+    event::Quit,
     layout::{Affine, Point, Rect, Size},
     text::{Fonts, TextBuffer},
+    ui::{UiBuilder, UiRequest, UiRequests},
     view::ViewState,
     window::{Window, WindowDescriptor, WindowId},
 };
 
-use super::{View, ViewFlags, ViewId};
+use super::{any, AnyView, ViewFlags, ViewId};
 
 /// A context for a view.
 #[derive(Debug, Default)]
@@ -222,33 +223,46 @@ impl<'a> BaseCx<'a> {
     pub fn quit(&mut self) {
         self.cmd(Quit);
     }
+}
+
+/// A context for a [`Delegate`](crate::delegate::Delegate).
+pub struct DelegateCx<'a, 'b, T> {
+    pub(crate) base: &'a mut BaseCx<'b>,
+    pub(crate) requests: &'a mut UiRequests<T>,
+}
+
+impl<'a, 'b, T> DelegateCx<'a, 'b, T> {
+    pub(crate) fn new(base: &'a mut BaseCx<'b>, requests: &'a mut UiRequests<T>) -> Self {
+        Self { base, requests }
+    }
 
     /// Open a new window.
-    pub fn open_window<T: 'static, V: View<T> + 'static>(
+    pub fn open_window<V: AnyView<T> + 'static>(
         &mut self,
         desc: WindowDescriptor,
-        ui: impl FnMut(&mut T) -> V + Send + 'static,
+        mut ui: impl FnMut(&mut T) -> V + Send + 'static,
     ) {
-        let mut cmd = OpenWindow::new(ui);
-        cmd.desc = desc;
-
-        self.cmd(cmd);
+        let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
+        self.requests.push(UiRequest::CreateWindow(desc, builder));
     }
 
     /// Close the window.
     pub fn close_window(&mut self, id: WindowId) {
-        self.cmd(CloseWindow::new(id));
+        self.requests.push(UiRequest::RemoveWindow(id));
     }
 }
 
-/// A context for a [`Delegate`](crate::delegate::Delegate).
-pub struct DelegateCx<'a, 'b> {
-    pub(crate) base: &'a mut BaseCx<'b>,
+impl<'a, 'b, T> Deref for DelegateCx<'a, 'b, T> {
+    type Target = BaseCx<'b>;
+
+    fn deref(&self) -> &Self::Target {
+        self.base
+    }
 }
 
-impl<'a, 'b> DelegateCx<'a, 'b> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>) -> Self {
-        Self { base }
+impl<'a, 'b, T> DerefMut for DelegateCx<'a, 'b, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.base
     }
 }
 
@@ -589,7 +603,6 @@ macro_rules! impl_deref {
 }
 
 impl_deref! {
-    DelegateCx,
     BuildCx,
     RebuildCx,
     EventCx,

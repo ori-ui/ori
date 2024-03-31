@@ -6,11 +6,11 @@ use crate::{event::Event, view::DelegateCx};
 /// ```
 pub trait Delegate<T> {
     /// Called when the application starts.
-    fn init(&mut self, _cx: &mut DelegateCx, _data: &mut T) {}
+    fn init(&mut self, _cx: &mut DelegateCx<T>, _data: &mut T) {}
 
     /// Handle an event, returning whether it was handled.
-    fn event(&mut self, cx: &mut DelegateCx, data: &mut T, event: &Event);
+    fn event(&mut self, cx: &mut DelegateCx<T>, data: &mut T, event: &Event);
 
     /// Called when the event loop is idle.
-    fn idle(&mut self, _cx: &mut DelegateCx, _data: &mut T) {}
+    fn idle(&mut self, _cx: &mut DelegateCx<T>, _data: &mut T) {}
 }

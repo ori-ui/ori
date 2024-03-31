@@ -22,7 +22,7 @@ use crate::{
     Error,
 };
 
-pub(crate) fn launch<T: 'static>(
+pub(crate) fn launch<T>(
     data: T,
     event_loop: EventLoop<()>,
     ui: Ui<T>,
@@ -71,7 +71,7 @@ pub(crate) fn launch<T: 'static>(
     Ok(())
 }
 
-struct AppState<T: 'static> {
+struct AppState<T> {
     init: bool,
     windows: Windows<T>,
     data: T,

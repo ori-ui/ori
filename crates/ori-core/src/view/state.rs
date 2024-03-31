@@ -37,6 +37,8 @@ bitflags::bitflags! {
         const HAS_FOCUSED = 1 << 4;
         /// The view has an active child.
         const HAS_ACTIVE = 1 << 5;
+        /// The view is focusable.
+        const FOCUSABLE = 1 << 6;
 
         /// Equivalent to `Self::HOT | Self::FOCUSED | Self::ACTIVE`.
         const IS = Self::HOT.bits() | Self::FOCUSED.bits() | Self::ACTIVE.bits();
@@ -212,6 +214,16 @@ impl ViewState {
     /// Get whether the view has an active child.
     pub fn has_active(&self) -> bool {
         self.flags.contains(ViewFlags::HAS_ACTIVE)
+    }
+
+    /// Get whether the view is focusable.
+    pub fn is_focusable(&self) -> bool {
+        self.flags.contains(ViewFlags::FOCUSABLE)
+    }
+
+    /// Set whether the view is focusable.
+    pub fn set_focusable(&mut self, focusable: bool) {
+        self.flags.set(ViewFlags::FOCUSABLE, focusable);
     }
 
     /// Get the flex of the view.

@@ -8,9 +8,9 @@ use crate::{
     debug::History,
     delegate::Delegate,
     event::{
-        CloseRequested, CloseWindow, Code, Event, KeyPressed, KeyReleased, Modifiers, OpenWindow,
-        PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
-        PointerScrolled, Quit, RequestFocus, SwitchFocus,
+        CloseRequested, Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId,
+        PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled, Quit,
+        RequestFocus, SwitchFocus,
     },
     layout::{Point, Vector},
     style::{IntoStyle, Style},
@@ -22,7 +22,7 @@ use crate::{
 use super::{UiBuilder, UiRequest, UiRequests, WindowUi};
 
 /// State for running a user interface.
-pub struct Ui<T: 'static> {
+pub struct Ui<T> {
     windows: HashMap<WindowId, WindowUi<T>>,
     modifiers: Modifiers,
     delegates: Vec<Box<dyn Delegate<T>>>,
@@ -174,7 +174,7 @@ impl<T> Ui<T> {
             &mut needs_rebuild,
         );
 
-        let mut cx = DelegateCx::new(&mut base);
+        let mut cx = DelegateCx::new(&mut base, &mut self.requests);
 
         for delegate in &mut self.delegates {
             delegate.init(&mut cx, data);
@@ -196,7 +196,7 @@ impl<T> Ui<T> {
             &mut needs_rebuild,
         );
 
-        let mut cx = DelegateCx::new(&mut base);
+        let mut cx = DelegateCx::new(&mut base, &mut self.requests);
 
         for delegate in &mut self.delegates {
             delegate.idle(&mut cx, data);
@@ -380,20 +380,8 @@ impl<T> Ui<T> {
     }
 
     fn handle_builtin_commands(&mut self, event: Event) {
-        if let Some(close) = event.get::<CloseWindow>() {
-            self.requests.push(UiRequest::RemoveWindow(close.window));
-            return;
-        }
-
         if event.is::<Quit>() && !event.is_handled() {
             self.quit_requested = true;
-            return;
-        }
-
-        if event.is::<OpenWindow<T>>() && !event.is_handled() {
-            let open = event.take::<OpenWindow<T>>().unwrap();
-            let request = UiRequest::CreateWindow(open.desc, open.builder);
-            self.requests.push(request);
         }
     }
 
@@ -418,7 +406,7 @@ impl<T> Ui<T> {
             &mut needs_rebuild,
         );
 
-        let mut cx = DelegateCx::new(&mut base);
+        let mut cx = DelegateCx::new(&mut base, &mut self.requests);
 
         for delegate in &mut self.delegates {
             delegate.event(&mut cx, data, event);

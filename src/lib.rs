@@ -40,9 +40,9 @@ pub mod prelude {
         command::CommandProxy,
         delegate::Delegate,
         event::{
-            AnimationFrame, CloseRequested, CloseWindow, Code, Event, KeyPressed, Modifiers,
-            OpenWindow, Pointer, PointerButton, PointerId, PointerLeft, PointerMoved,
-            PointerPressed, PointerReleased, PointerScrolled, Quit, RequestFocus,
+            AnimationFrame, CloseRequested, Code, Event, KeyPressed, Modifiers, Pointer,
+            PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
+            PointerScrolled, Quit, RequestFocus,
         },
         image::{gradient, Image, ImageData, ImageId},
         layout::{

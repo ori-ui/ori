@@ -41,8 +41,8 @@ impl Styled for TooltipStyle {
 }
 
 /// Create a new [`Tooltip`] view.
-pub fn tooltip<V>(alt: impl Into<SmolStr>, content: V) -> Tooltip<V> {
-    Tooltip::new(alt, content)
+pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
+    Tooltip::new(content, text)
 }
 
 /// A view that displays some text when the content is hovered.
@@ -75,7 +75,7 @@ pub struct Tooltip<V> {
 
 impl<V> Tooltip<V> {
     /// Create a new tooltip view.
-    pub fn new(text: impl Into<SmolStr>, content: V) -> Self {
+    pub fn new(content: V, text: impl Into<SmolStr>) -> Self {
         let style = style::<TooltipStyle>();
 
         Self {
@@ -181,7 +181,8 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        state.buffer.set_bounds(cx.fonts(), Size::UNBOUNDED);
+        let window_size = cx.window().size() - self.padding.size();
+        state.buffer.set_bounds(cx.fonts(), window_size);
         self.content.layout(content, cx, data, space)
     }
 
@@ -202,8 +203,19 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
             return;
         }
 
+        // we need to try to move the tooltip so it fits on the screen
+        let window_rect = cx.window().rect();
+
         let size = state.buffer.size() + self.padding.size();
-        let offset = Vector::new(-size.width / 2.0, 20.0);
+        let mut offset = Vector::new(-size.width / 2.0, 20.0);
+
+        let rect = Rect::min_size(state.position + offset, size);
+
+        let tl_delta = window_rect.top_left() - rect.top_left();
+        let br_delta = rect.bottom_right() - window_rect.bottom_right();
+
+        offset += Vector::max(tl_delta, Vector::ZERO);
+        offset -= Vector::max(br_delta, Vector::ZERO);
 
         let mut layer = canvas.layer();
         layer.transform = Affine::IDENTITY;

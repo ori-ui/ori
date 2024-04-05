@@ -7,7 +7,7 @@ use crate::{
     canvas::Color,
     event::{Pointer, PointerId},
     image::Image,
-    layout::{Point, Size},
+    layout::{Point, Rect, Size},
     view::ViewId,
 };
 
@@ -126,6 +126,11 @@ impl Window {
     pub fn size(&self) -> Size {
         let (width, height) = self.raw.size();
         Size::new(width as f32, height as f32)
+    }
+
+    /// Get the rect of the window.
+    pub fn rect(&self) -> Rect {
+        Rect::min_size(Point::ZERO, self.size())
     }
 
     /// Get the physical size of the window.

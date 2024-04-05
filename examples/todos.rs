@@ -95,7 +95,7 @@ fn theme_button(data: &mut Data) -> impl View<Data> {
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = checkbox(todo.completed).border_radius(12.0);
     let completed = on_press(completed, |_, data: &mut Todo| data.toggle());
-    let completed = tooltip("Toggle whether the todo is completed", completed);
+    let completed = tooltip(completed, "Toggle whether the todo is completed");
 
     let title_color = if todo.completed {
         palette().text_lighter()
@@ -116,7 +116,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
         cx.cmd(RemoveTodo(index));
     });
 
-    let remove = tooltip("Remove todo", remove);
+    let remove = tooltip(remove, "Remove todo");
 
     let left = hstack![completed, title].gap(24.0);
     let row = hstack![left, remove].justify(Justify::SpaceBetween);

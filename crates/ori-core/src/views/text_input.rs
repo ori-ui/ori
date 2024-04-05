@@ -10,7 +10,7 @@ use crate::{
         RequestFocus,
     },
     layout::{Point, Rect, Size, Space},
-    style::{palette, style},
+    style::style,
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -89,7 +89,7 @@ impl<T> TextInput<T> {
             font_weight: style.font_weight,
             font_stretch: style.font_stretch,
             font_style: style.font_style,
-            color: palette().text(),
+            color: style.color,
             align: style.align,
             line_height: style.line_height,
             wrap: style.wrap,

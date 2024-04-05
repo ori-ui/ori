@@ -5,10 +5,43 @@ use crate::{
     event::{AnimationFrame, Event},
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
-    style::palette,
+    style::{style, Styled, Styles},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
+
+/// The style of a button.
+#[derive(Clone, Debug)]
+pub struct ButtonStyle {
+    /// The padding of the button.
+    pub padding: Padding,
+    /// The distance of the fancy effect.
+    pub fancy: f32,
+    /// The transition of the button.
+    pub transition: Transition,
+    /// The color of the button.
+    pub color: Background,
+    /// The border radius of the button.
+    pub border_radius: BorderRadius,
+    /// The border width of the button.
+    pub border_width: BorderWidth,
+    /// The border color of the button.
+    pub border_color: Color,
+}
+
+impl Styled for ButtonStyle {
+    fn from_style(style: &Styles) -> Self {
+        Self {
+            padding: Padding::all(8.0),
+            fancy: 0.0,
+            transition: Transition::ease(0.1),
+            color: Background::new(style.palette().primary()),
+            border_radius: BorderRadius::all(4.0),
+            border_width: BorderWidth::all(0.0),
+            border_color: style.palette().secondary_dark(),
+        }
+    }
+}
 
 /// Create a new [`Button`].
 pub fn button<V>(content: V) -> Button<V> {
@@ -47,15 +80,17 @@ pub struct Button<V> {
 impl<V> Button<V> {
     /// Create a new [`Button`].
     pub fn new(content: V) -> Self {
+        let style = style::<ButtonStyle>();
+
         Self {
             content: Pod::new(content),
-            padding: Padding::all(8.0),
-            fancy: 0.0,
-            transition: Transition::ease(0.1),
-            color: palette().primary().into(),
-            border_radius: BorderRadius::all(4.0),
-            border_width: BorderWidth::all(0.0),
-            border_color: palette().primary_dark(),
+            padding: style.padding,
+            fancy: style.fancy,
+            transition: style.transition,
+            color: style.color,
+            border_radius: style.border_radius,
+            border_width: style.border_width,
+            border_color: style.border_color,
         }
     }
 

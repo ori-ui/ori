@@ -3,9 +3,36 @@ use crate::{
     event::Event,
     layout::{Size, Space, Vector},
     rebuild::Rebuild,
-    style::palette,
+    style::{style, Styled, Styles},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
+
+/// The style of a [`Container`].
+#[derive(Clone, Debug)]
+pub struct ContainerStyle {
+    /// The background color.
+    pub background: Background,
+    /// The border radius.
+    pub border_radius: BorderRadius,
+    /// The border width.
+    pub border_width: BorderWidth,
+    /// The border color.
+    pub border_color: Color,
+    /// The shadow.
+    pub shadow: BoxShadow,
+}
+
+impl Styled for ContainerStyle {
+    fn from_style(style: &Styles) -> Self {
+        Self {
+            background: style.palette().secondary().into(),
+            border_radius: BorderRadius::all(0.0),
+            border_width: BorderWidth::all(0.0),
+            border_color: style.palette().secondary_dark(),
+            shadow: BoxShadow::default(),
+        }
+    }
+}
 
 /// Create a new [`Container`].
 pub fn container<V>(content: V) -> Container<V> {
@@ -63,13 +90,15 @@ pub struct Container<V> {
 impl<V> Container<V> {
     /// Create a new [`Container`].
     pub fn new(content: V) -> Self {
+        let style = style::<ContainerStyle>();
+
         Self {
             content: Pod::new(content),
-            background: palette().secondary().into(),
-            border_radius: BorderRadius::all(0.0),
-            border_width: BorderWidth::all(0.0),
-            border_color: palette().secondary_dark(),
-            shadow: BoxShadow::default(),
+            background: style.background,
+            border_radius: style.border_radius,
+            border_width: style.border_width,
+            border_color: style.border_color,
+            shadow: style.shadow,
         }
     }
 

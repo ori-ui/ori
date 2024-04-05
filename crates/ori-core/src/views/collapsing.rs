@@ -7,10 +7,43 @@ use crate::{
     event::{AnimationFrame, Event, PointerPressed},
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::palette,
+    style::{style, Styled, Styles},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, Update, View},
 };
+
+/// The style of a collapsing view.
+#[derive(Clone, Debug)]
+pub struct CollapsingStyle {
+    /// The transition of the view.
+    pub transition: Transition,
+    /// The size of the icon.
+    pub icon_size: f32,
+    /// The color of the icon.
+    pub icon_color: Color,
+    /// The background color of the header.
+    pub background: Background,
+    /// The border width of the header.
+    pub border_width: BorderWidth,
+    /// The border radius of the header.
+    pub border_radius: BorderRadius,
+    /// The color of the border of the header.
+    pub border_color: Color,
+}
+
+impl Styled for CollapsingStyle {
+    fn from_style(style: &Styles) -> Self {
+        Self {
+            transition: Transition::ease(0.1),
+            icon_size: 16.0,
+            icon_color: style.palette().text_dark(),
+            background: Background::color(Color::TRANSPARENT),
+            border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
+            border_radius: BorderRadius::all(0.0),
+            border_color: style.palette().secondary_dark(),
+        }
+    }
+}
 
 /// Create a new [`Collapsing`].
 pub fn collapsing<T, H, V>(header: H, content: V) -> Collapsing<T, H, V> {
@@ -71,19 +104,21 @@ pub struct Collapsing<T, H, V> {
 impl<T, H, V> Collapsing<T, H, V> {
     /// Create a new collapsing view.
     pub fn new(header: H, content: V) -> Self {
+        let style = style::<CollapsingStyle>();
+
         Self {
             header: Pod::new(header),
             content: Pod::new(content),
             on_open: None,
             open: None,
             default_open: false,
-            transition: Transition::ease(0.1),
-            icon_size: 16.0,
-            icon_color: palette().text_dark(),
-            background: Background::new(Color::TRANSPARENT),
-            border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
-            border_radius: BorderRadius::all(0.0),
-            border_color: palette().secondary_dark(),
+            transition: style.transition,
+            icon_size: style.icon_size,
+            icon_color: style.icon_color,
+            background: style.background,
+            border_width: style.border_width,
+            border_radius: style.border_radius,
+            border_color: style.border_color,
         }
     }
 

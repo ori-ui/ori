@@ -3,7 +3,6 @@
 use crate::{event::Event, view::DelegateCx};
 
 /// A delegate for handling events.
-/// ```
 pub trait Delegate<T> {
     /// Called when the application starts.
     fn init(&mut self, _cx: &mut DelegateCx<T>, _data: &mut T) {}

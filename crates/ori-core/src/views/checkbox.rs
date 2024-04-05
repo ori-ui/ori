@@ -3,10 +3,46 @@ use crate::{
     event::{AnimationFrame, Event},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    style::palette,
+    style::{style, Styled, Styles},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
+
+/// The style of a checkbox.
+#[derive(Clone, Debug)]
+pub struct CheckboxStyle {
+    /// The transition of the checkbox.
+    pub transition: Transition,
+    /// The size of the checkbox.
+    pub size: f32,
+    /// The color of the checkbox.
+    pub color: Color,
+    /// The stroke width of the checkbox.
+    pub stroke: f32,
+    /// The background color.
+    pub background: Background,
+    /// The border radius.
+    pub border_radius: BorderRadius,
+    /// The border width.
+    pub border_width: BorderWidth,
+    /// The border color.
+    pub border_color: Color,
+}
+
+impl Styled for CheckboxStyle {
+    fn from_style(style: &Styles) -> Self {
+        Self {
+            transition: Transition::ease(0.1),
+            size: 24.0,
+            color: style.palette().accent(),
+            stroke: 2.0,
+            background: Background::color(Color::TRANSPARENT),
+            border_radius: BorderRadius::all(6.0),
+            border_width: BorderWidth::all(2.0),
+            border_color: style.palette().text_dark(),
+        }
+    }
+}
 
 /// Create a new [`Checkbox`].
 pub fn checkbox(checked: bool) -> Checkbox {
@@ -48,16 +84,18 @@ pub struct Checkbox {
 impl Checkbox {
     /// Create a new [`Checkbox`].
     pub fn new(checked: bool) -> Self {
+        let style = style::<CheckboxStyle>();
+
         Self {
             checked,
-            transition: Transition::ease(0.1),
-            size: 24.0,
-            color: palette().accent(),
-            stroke: 2.0,
-            background: Background::color(Color::TRANSPARENT),
-            border_radius: BorderRadius::all(6.0),
-            border_width: BorderWidth::all(2.0),
-            border_color: palette().text_dark(),
+            transition: style.transition,
+            size: style.size,
+            color: style.color,
+            stroke: style.stroke,
+            background: style.background,
+            border_radius: style.border_radius,
+            border_width: style.border_width,
+            border_color: style.border_color,
         }
     }
 

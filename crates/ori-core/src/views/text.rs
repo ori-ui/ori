@@ -7,7 +7,7 @@ use crate::{
     canvas::{Canvas, Color, Mesh},
     event::Event,
     layout::{Size, Space},
-    style::{palette, style},
+    style::{style, Styled, Styles},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -32,6 +32,8 @@ pub struct TextStyle {
     pub font_stretch: FontStretch,
     /// The font style of the text.
     pub font_style: FontStyle,
+    /// The color of the text.
+    pub color: Color,
     /// The horizontal alignment of the text.
     pub align: TextAlign,
     /// The line height of the text.
@@ -40,14 +42,15 @@ pub struct TextStyle {
     pub wrap: TextWrap,
 }
 
-impl Default for TextStyle {
-    fn default() -> Self {
+impl Styled for TextStyle {
+    fn from_style(style: &Styles) -> Self {
         Self {
             font_size: 16.0,
             font_family: FontFamily::SansSerif,
             font_weight: FontWeight::NORMAL,
             font_stretch: FontStretch::Normal,
             font_style: FontStyle::Normal,
+            color: style.palette().text(),
             align: TextAlign::Start,
             line_height: 1.3,
             wrap: TextWrap::Word,
@@ -107,7 +110,7 @@ impl Text {
             font_weight: style.font_weight,
             font_stretch: style.font_stretch,
             font_style: style.font_style,
-            color: palette().text(),
+            color: style.color,
             align: style.align,
             line_height: style.line_height,
             wrap: style.wrap,

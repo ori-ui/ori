@@ -2,7 +2,7 @@ use crate::{
     canvas::Canvas,
     event::{AnimationFrame, Event},
     layout::{Size, Space},
-    style::Style,
+    style::Styles,
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
@@ -137,7 +137,7 @@ impl<T, V, S> Animate<T, V, S> {
     pub fn new(
         mut animate: impl FnMut(&mut S, &mut EventCx, &mut T, &Event) -> Option<V> + 'static,
     ) -> Self {
-        let mut snapshot = Style::snapshot();
+        let mut snapshot = Styles::snapshot();
 
         Self {
             animate: Box::new(move |state, cx, data, event| {

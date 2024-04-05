@@ -5,10 +5,40 @@ use crate::{
     event::{AnimationFrame, Event, PointerMoved},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::palette,
+    style::{style, Styled, Styles},
     text::{FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAttributes, TextBuffer},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
+
+/// The style of a tooltip.
+#[derive(Clone, Debug)]
+pub struct TooltipStyle {
+    /// The padding of the tooltip.
+    pub padding: Padding,
+    /// The color of the text.
+    pub color: Color,
+    /// The background color of the text.
+    pub background: Color,
+    /// The border radius of the text.
+    pub border_radius: BorderRadius,
+    /// The border width of the text.
+    pub border_width: BorderWidth,
+    /// The border color of the text.
+    pub border_color: Color,
+}
+
+impl Styled for TooltipStyle {
+    fn from_style(style: &Styles) -> Self {
+        Self {
+            padding: Padding::from([8.0, 4.0]),
+            color: style.palette().text(),
+            background: style.palette().secondary(),
+            border_radius: BorderRadius::all(4.0),
+            border_width: BorderWidth::all(1.0),
+            border_color: style.palette().secondary_dark(),
+        }
+    }
+}
 
 /// Create a new [`Tooltip`] view.
 pub fn tooltip<V>(alt: impl Into<SmolStr>, content: V) -> Tooltip<V> {
@@ -46,15 +76,17 @@ pub struct Tooltip<V> {
 impl<V> Tooltip<V> {
     /// Create a new tooltip view.
     pub fn new(text: impl Into<SmolStr>, content: V) -> Self {
+        let style = style::<TooltipStyle>();
+
         Self {
             content,
             text: text.into(),
-            color: palette().text(),
-            padding: Padding::from([8.0, 4.0]),
-            background: palette().secondary(),
-            border_radius: BorderRadius::all(4.0),
-            border_width: BorderWidth::all(1.0),
-            border_color: palette().secondary_dark(),
+            padding: style.padding,
+            color: style.color,
+            background: style.background,
+            border_radius: style.border_radius,
+            border_width: style.border_width,
+            border_color: style.border_color,
         }
     }
 

@@ -2,7 +2,7 @@ use crate::{
     canvas::Canvas,
     event::Event,
     layout::{Size, Space},
-    style::Style,
+    style::Styles,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -27,7 +27,7 @@ pub struct LayoutBuilder<T, V> {
 impl<T, V> LayoutBuilder<T, V> {
     /// Create a new [`LayoutBuilder`] view.
     pub fn new(mut builder: impl FnMut(&mut LayoutCx, &mut T, Space) -> V + 'static) -> Self {
-        let mut snapshot = Style::snapshot();
+        let mut snapshot = Styles::snapshot();
 
         Self {
             content: Box::new(move |cx, data, space| {

@@ -5,7 +5,7 @@ use crate::{
     debug::{BuildItem, DrawItem, EventItem, History, LayoutItem, RebuildItem},
     event::{AnimationFrame, Event},
     layout::{Size, Space},
-    style::{Palette, Style},
+    style::{Palette, Styles},
     view::{
         BaseCx, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View,
         ViewState,
@@ -24,7 +24,7 @@ pub struct WindowUi<T> {
     view: Pod<BoxedView<T>>,
     state: State<T, BoxedView<T>>,
     scene: Scene,
-    theme: Style,
+    theme: Styles,
     view_state: ViewState,
     needs_rebuild: bool,
     animation_frame: Option<Instant>,
@@ -37,7 +37,7 @@ impl<T> WindowUi<T> {
         mut builder: UiBuilder<T>,
         base: &mut BaseCx,
         data: &mut T,
-        mut theme: Style,
+        mut theme: Styles,
         mut window: Window,
     ) -> Self {
         let mut view_state = ViewState::default();
@@ -82,7 +82,7 @@ impl<T> WindowUi<T> {
     }
 
     /// Get the theme.
-    pub fn theme(&self) -> &Style {
+    pub fn theme(&self) -> &Styles {
         &self.theme
     }
 
@@ -90,7 +90,7 @@ impl<T> WindowUi<T> {
     ///
     /// This will also request a rebuild of the view-tree, as the theme
     /// is _very_ likely to affect the view-tree.
-    pub fn set_theme(&mut self, theme: Style) {
+    pub fn set_theme(&mut self, theme: Styles) {
         self.theme = theme;
         self.request_rebuild();
     }

@@ -13,7 +13,7 @@ use crate::{
         RequestFocus, SwitchFocus,
     },
     layout::{Point, Vector},
-    style::{IntoStyle, Style},
+    style::Styles,
     text::Fonts,
     view::{BaseCx, Contexts, DelegateCx},
     window::{Window, WindowId},
@@ -26,13 +26,14 @@ pub struct Ui<T> {
     windows: HashMap<WindowId, WindowUi<T>>,
     modifiers: Modifiers,
     delegates: Vec<Box<dyn Delegate<T>>>,
-    style: Style,
     command_proxy: CommandProxy,
     command_rx: CommandReceiver,
     requests: UiRequests<T>,
     quit_requested: bool,
     /// The contexts used by the UI.
     pub contexts: Contexts,
+    /// The style of the UI.
+    pub style: Styles,
 }
 
 impl<T> Ui<T> {
@@ -48,7 +49,7 @@ impl<T> Ui<T> {
             windows: HashMap::new(),
             modifiers: Modifiers::default(),
             delegates: Vec::new(),
-            style: Style::default(),
+            style: Styles::default(),
             command_proxy,
             command_rx,
             quit_requested: false,
@@ -65,11 +66,6 @@ impl<T> Ui<T> {
     /// Get the delegates.
     pub fn delegates(&self) -> &[Box<dyn Delegate<T>>] {
         &self.delegates
-    }
-
-    /// Add a new style.
-    pub fn push_style(&mut self, style: impl IntoStyle) {
-        self.style.extend(style.into_style());
     }
 
     /// Set the clipboard provider.
@@ -263,7 +259,6 @@ impl<T> Ui<T> {
         let scene = self.window_mut(window_id).scene_mut();
         let view = scene.view_at(position);
 
-        #[cfg(feature = "tracing")]
         tracing::trace!("pointer_moved: {} -> {:?}", position, view);
 
         let window = self.window_mut(window_id).window_mut();
@@ -419,7 +414,6 @@ impl<T> Ui<T> {
 
     /// Handle an event for a single window.
     pub fn event(&mut self, data: &mut T, window_id: WindowId, event: &Event) {
-        #[cfg(feature = "tracing")]
         tracing::trace!("event: {} -> {}", event.name(), window_id);
 
         self.event_delegate(data, event);
@@ -447,7 +441,6 @@ impl<T> Ui<T> {
 
     /// Handle an event for all windows.
     pub fn event_all(&mut self, data: &mut T, event: &Event) {
-        #[cfg(feature = "tracing")]
         tracing::trace!("event: {}", event.name());
 
         self.event_delegate(data, event);

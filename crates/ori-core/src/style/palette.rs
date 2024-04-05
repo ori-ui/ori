@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use crate::canvas::Color;
 
 use super::style;
 
 /// Get the palette of the style.
-pub fn palette() -> Palette {
+pub fn palette() -> Arc<Palette> {
     style()
 }
 

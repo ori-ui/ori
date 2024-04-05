@@ -63,7 +63,7 @@ impl Styles {
     /// Build a value in a style.
     ///
     /// This is useful for when the value is dependent on other values in the style, like a [`Palette`].
-    pub fn build<T: Any>(&mut self, builder: impl Fn(&Styles) -> T + 'static) {
+    pub fn builder<T: Any>(&mut self, builder: impl Fn(&Styles) -> T + 'static) {
         let builder: Builder<T> = Box::new(builder);
         Arc::make_mut(&mut self.items).insert(TypeId::of::<T>(), Arc::new(builder));
     }
@@ -77,8 +77,8 @@ impl Styles {
     /// Set a value in a style returning the style.
     ///
     /// This is useful for when the value is dependent on other values in the style, like a [`Palette`].
-    pub fn with_build<T: Any>(mut self, builder: impl Fn(&Styles) -> T + 'static) -> Self {
-        self.build(builder);
+    pub fn build<T: Any>(mut self, builder: impl Fn(&Styles) -> T + 'static) -> Self {
+        self.builder(builder);
         self
     }
 

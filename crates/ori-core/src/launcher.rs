@@ -55,7 +55,7 @@ impl<T, S: Shell> Launcher<T, S> {
 
     /// Build the style of the application.
     pub fn build_style<U: 'static>(mut self, style: impl Fn(&Styles) -> U + 'static) -> Self {
-        self.ui.style.build(style);
+        self.ui.style.builder(style);
         self
     }
 

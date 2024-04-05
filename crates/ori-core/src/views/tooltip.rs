@@ -13,6 +13,8 @@ use crate::{
 /// The style of a tooltip.
 #[derive(Clone, Debug)]
 pub struct TooltipStyle {
+    /// The delay before the tooltip is displayed.
+    pub delay: f32,
     /// The padding of the tooltip.
     pub padding: Padding,
     /// The color of the text.
@@ -30,6 +32,7 @@ pub struct TooltipStyle {
 impl Styled for TooltipStyle {
     fn from_style(style: &Styles) -> Self {
         Self {
+            delay: 0.2,
             padding: Padding::from([8.0, 4.0]),
             color: style.palette().text(),
             background: style.palette().secondary(),
@@ -53,6 +56,8 @@ pub struct Tooltip<V> {
     /// The text to display.
     #[rebuild(layout)]
     pub text: SmolStr,
+    /// The delay before the tooltip is displayed.
+    pub delay: f32,
     /// The padding of the text.
     #[rebuild(draw)]
     pub padding: Padding,
@@ -81,6 +86,7 @@ impl<V> Tooltip<V> {
         Self {
             content,
             text: text.into(),
+            delay: style.delay,
             padding: style.padding,
             color: style.color,
             background: style.background,
@@ -164,7 +170,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
         if let Some(AnimationFrame(dt)) = event.get() {
             if cx.is_hot() || cx.has_hot() && state.timer < 1.0 {
-                state.timer += dt * 2.0;
+                state.timer += dt / self.delay;
                 cx.request_animation_frame();
             }
 

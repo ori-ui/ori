@@ -14,19 +14,24 @@ use super::ImageData;
 /// Path is relative to the `CARGO_MANIFEST_DIR` environment variable.
 #[macro_export]
 #[cfg(feature = "image")]
-macro_rules! image {
+macro_rules! include_image {
     ($path:literal) => {{
-        let bytes = <[::std::primitive::u8]>::to_vec(::std::include_bytes!(
-            // use concant! to get the full path relative to the CARGO_MANIFEST_DIR
-            ::std::concat!(::std::env!("CARGO_MANIFEST_DIR"), "/", $path)
-        ));
+        static IMAGE: ::std::sync::OnceLock<$crate::image::Image> = ::std::sync::OnceLock::new();
 
-        match $crate::image::Image::try_load_data(bytes) {
-            ::std::result::Result::Ok(image) => image,
-            ::std::result::Result::Err(err) => {
-                ::std::panic!("Failed to load image:{}: {}", $path, err);
+        ::std::sync::OnceLock::get_or_init(&IMAGE, || {
+            let bytes = <[::std::primitive::u8]>::to_vec(::std::include_bytes!(
+                // use concat! to get the full path relative to the CARGO_MANIFEST_DIR
+                ::std::concat!(::std::env!("CARGO_MANIFEST_DIR"), "/", $path)
+            ));
+
+            match $crate::image::Image::try_load_data(bytes) {
+                ::std::result::Result::Ok(image) => image,
+                ::std::result::Result::Err(err) => {
+                    ::std::panic!("Failed to load image:{}: {}", $path, err);
+                }
             }
-        }
+        })
+        .clone()
     }};
 }
 

@@ -6,7 +6,7 @@ struct Data;
 
 fn app(_data: &mut Data) -> impl View<Data> {
     center(vstack![
-        flex(image!("examples/flowers.jpg")),
+        flex(include_image!("examples/flowers.jpg")),
         max_width(300.0, text(ATTRIBUTION)),
     ])
 }

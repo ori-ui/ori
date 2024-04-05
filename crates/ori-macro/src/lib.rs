@@ -58,8 +58,8 @@ pub fn lowercase_ident(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
 /// Load a font from a file or directory.
 ///
 /// The path is relative to the `Cargo.toml` file.
-pub fn font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
-    font::font(input)
+pub fn include_font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
+    font::include_font(input)
 }
 
 /// Derive the `Rebuild` trait.

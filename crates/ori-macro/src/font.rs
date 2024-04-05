@@ -29,7 +29,7 @@ fn load_font(path: &Path) -> io::Result<Vec<String>> {
     }
 }
 
-pub fn font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
+pub fn include_font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     let input: LitStr = syn::parse(input)?;
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();

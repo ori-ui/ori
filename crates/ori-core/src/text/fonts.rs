@@ -1,7 +1,7 @@
 use std::io;
 
 use cosmic_text::{Buffer, FontSystem, SwashCache};
-use ori_macro::font;
+use ori_macro::include_font;
 
 use crate::{
     canvas::{Color, Mesh, Vertex},
@@ -81,7 +81,7 @@ impl Fonts {
         db.set_cursive_family("Roboto");
         db.set_fantasy_family("Roboto");
 
-        (self.load_font(font!("font"))).expect("loading builtin fonts works");
+        (self.load_font(include_font!("font"))).expect("loading builtin fonts works");
     }
 
     /// Calculates the size of a text buffer.

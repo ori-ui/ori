@@ -72,5 +72,5 @@ pub mod prelude {
     pub use ori_font_awesome as fa;
 
     #[cfg(feature = "image")]
-    pub use ori_core::image;
+    pub use ori_core::include_image;
 }

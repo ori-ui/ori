@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-pub use ori_macro::font;
+pub use ori_macro::include_font;
 
 /// A source for a font.
 #[derive(Clone, Debug)]

@@ -46,7 +46,7 @@ use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx};
 /// [`Rebuild`]: crate::rebuild::Rebuild
 /// [`Button`]: crate::views::Button
 /// [`Checkbox`]: crate::views::Checkbox
-pub trait View<T> {
+pub trait View<T: ?Sized = ()> {
     /// The state of the view, see top-level documentation for more information.
     type State;
 

@@ -54,8 +54,8 @@ pub mod prelude {
         style::{palette, style, style_or, styled, Palette, Styled, Styles},
         text,
         text::{
-            font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, TextAlign,
-            TextBuffer, TextWrap,
+            include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
+            TextAlign, TextBuffer, TextWrap,
         },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{

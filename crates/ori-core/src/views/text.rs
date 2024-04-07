@@ -101,8 +101,11 @@ pub struct Text {
 impl Text {
     /// Create a new text.
     pub fn new(text: impl Into<SmolStr>) -> Text {
-        let style = style::<TextStyle>();
+        Self::styled(text, style())
+    }
 
+    /// Create a new text with a style.
+    pub fn styled(text: impl Into<SmolStr>, style: TextStyle) -> Text {
         Text {
             text: text.into(),
             font_size: style.font_size,

@@ -6,7 +6,10 @@ use crate::{
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Styled, Styles},
-    text::{FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAttributes, TextBuffer},
+    text::{
+        FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
+        TextBuffer, TextWrap,
+    },
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
@@ -17,8 +20,24 @@ pub struct TooltipStyle {
     pub delay: f32,
     /// The padding of the tooltip.
     pub padding: Padding,
+    /// The font size of the text.
+    pub font_size: f32,
+    /// The font family of the text.
+    pub font_family: FontFamily,
+    /// The font weight of the text.
+    pub font_weight: FontWeight,
+    /// The font stretch of the text.
+    pub font_stretch: FontStretch,
+    /// The font style of the text.
+    pub font_style: FontStyle,
     /// The color of the text.
     pub color: Color,
+    /// The horizontal alignment of the text.
+    pub align: TextAlign,
+    /// The line height of the text.
+    pub line_height: f32,
+    /// The text wrap of the text.
+    pub wrap: TextWrap,
     /// The background color of the text.
     pub background: Color,
     /// The border radius of the text.
@@ -34,7 +53,15 @@ impl Styled for TooltipStyle {
         Self {
             delay: 0.2,
             padding: Padding::from([8.0, 4.0]),
+            font_size: 12.0,
+            font_family: FontFamily::SansSerif,
+            font_weight: FontWeight::NORMAL,
+            font_stretch: FontStretch::Normal,
+            font_style: FontStyle::Normal,
             color: style.palette().text(),
+            align: TextAlign::Start,
+            line_height: 1.3,
+            wrap: TextWrap::Word,
             background: style.palette().secondary(),
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(1.0),
@@ -53,26 +80,66 @@ pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
 pub struct Tooltip<V> {
     /// The content to display.
     pub content: V,
+
     /// The text to display.
     #[rebuild(layout)]
     pub text: SmolStr,
+
     /// The delay before the tooltip is displayed.
     pub delay: f32,
+
     /// The padding of the text.
-    #[rebuild(draw)]
+    #[rebuild(layout)]
     pub padding: Padding,
+
+    /// The font size of the text.
+    #[rebuild(layout)]
+    pub font_size: f32,
+
+    /// The font family of the text.
+    #[rebuild(layout)]
+    pub font_family: FontFamily,
+
+    /// The font weight of the text.
+    #[rebuild(layout)]
+    pub font_weight: FontWeight,
+
+    /// The font stretch of the text.
+    #[rebuild(layout)]
+    pub font_stretch: FontStretch,
+
+    /// The font style of the text.
+    #[rebuild(layout)]
+    pub font_style: FontStyle,
+
     /// The color of text.
     #[rebuild(draw)]
     pub color: Color,
+
+    /// The horizontal alignment of the text.
+    #[rebuild(layout)]
+    pub align: TextAlign,
+
+    /// The line height of the text.
+    #[rebuild(layout)]
+    pub line_height: f32,
+
+    /// The text wrap of the text.
+    #[rebuild(layout)]
+    pub wrap: TextWrap,
+
     /// The background color of the text.
     #[rebuild(draw)]
     pub background: Color,
+
     /// The border radius of the text.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
+
     /// The border width of the text.
     #[rebuild(draw)]
     pub border_width: BorderWidth,
+
     /// The border color of the text.
     #[rebuild(draw)]
     pub border_color: Color,
@@ -81,14 +148,25 @@ pub struct Tooltip<V> {
 impl<V> Tooltip<V> {
     /// Create a new tooltip view.
     pub fn new(content: V, text: impl Into<SmolStr>) -> Self {
-        let style = style::<TooltipStyle>();
+        Self::styled(content, text, style())
+    }
 
+    /// Create a new tooltip view with a style.
+    pub fn styled(content: V, text: impl Into<SmolStr>, style: TooltipStyle) -> Self {
         Self {
             content,
             text: text.into(),
             delay: style.delay,
             padding: style.padding,
+            font_size: style.font_size,
+            font_family: style.font_family,
+            font_weight: style.font_weight,
+            font_stretch: style.font_stretch,
+            font_style: style.font_style,
             color: style.color,
+            align: style.align,
+            line_height: style.line_height,
+            wrap: style.wrap,
             background: style.background,
             border_radius: style.border_radius,
             border_width: style.border_width,
@@ -97,14 +175,16 @@ impl<V> Tooltip<V> {
     }
 
     fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer) {
+        buffer.set_wrap(fonts, self.wrap);
+        buffer.set_align(self.align);
         buffer.set_text(
             fonts,
             &self.text,
             TextAttributes {
-                family: FontFamily::SansSerif,
-                weight: FontWeight::NORMAL,
-                stretch: FontStretch::Normal,
-                style: FontStyle::Normal,
+                family: self.font_family.clone(),
+                weight: self.font_weight,
+                stretch: self.font_stretch,
+                style: self.font_style,
                 color: self.color,
             },
         );
@@ -142,8 +222,34 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     ) {
         Rebuild::rebuild(self, cx, old);
 
-        if self.text != old.text || self.color != old.color {
-            self.set_attributes(cx.fonts(), &mut state.buffer);
+        if self.wrap != old.wrap {
+            state.buffer.set_wrap(cx.fonts(), self.wrap);
+        }
+
+        if self.align != old.align {
+            state.buffer.set_align(self.align);
+        }
+
+        if self.text != old.text
+            || self.font_family != old.font_family
+            || self.font_weight != old.font_weight
+            || self.font_stretch != old.font_stretch
+            || self.font_style != old.font_style
+            || self.color != old.color
+        {
+            state.buffer.set_text(
+                cx.fonts(),
+                &self.text,
+                TextAttributes {
+                    family: self.font_family.clone(),
+                    stretch: self.font_stretch,
+                    weight: self.font_weight,
+                    style: self.font_style,
+                    color: self.color,
+                },
+            );
+
+            cx.request_layout();
         }
 
         (self.content).rebuild(content, cx, data, &old.content);

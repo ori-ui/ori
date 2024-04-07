@@ -1,0 +1,66 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*.*.*'
+    workflow-dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  docs:
+    name: Build and test all components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Fetch all git history
+        run: git fetch --force --prune --tags --unshallow
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build all targets
+        uses: actions-rs/cargo@v1
+        with: 
+          command: doc
+          args: >-
+            --no-deps
+            -p ori
+            -p ori-core
+            -p ori-font-awesome
+            -p ori-glow
+            -p ori-macro
+            -p ori-wgpu
+            -p ori-winit
+      - name: Add a redirect index page
+        run: |
+          cat > target/doc/index.html <<EOF
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=ori">
+          EOF
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4.3.0
+        with:
+          branch: gh-pages
+          folder: target/doc
+          repository-name: ChangeCaps/ori-docs
+          ssh-key: ${{ secrets.DOCS_DEPLOY_KEY }}
+

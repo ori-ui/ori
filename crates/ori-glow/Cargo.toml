@@ -14,12 +14,14 @@ ori-core = { workspace = true }
 # other dependencies
 glow = "0.13"
 
-
-[dependencies.glutin]
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies.glutin]
 version = "0.31"
 default-features = false
 features = ["egl", "wgl"]
 optional = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3"
 
 [dependencies.raw-window-handle]
 version = "0.5"

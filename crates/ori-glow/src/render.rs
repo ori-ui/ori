@@ -1,4 +1,4 @@
-use std::{ffi::c_void, fmt::Debug};
+use std::fmt::Debug;
 
 use glow::HasContext;
 
@@ -20,12 +20,36 @@ pub struct GlowRender {
 
 impl GlowRender {
     /// Create a new renderer.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn new(
-        loader: impl FnMut(&str) -> *const c_void,
+        loader: impl FnMut(&str) -> *const std::ffi::c_void,
         width: u32,
         height: u32,
     ) -> Result<Self, GlowError> {
         let gl = unsafe { glow::Context::from_loader_function(loader) };
+
+        let mesh = unsafe { MeshRender::new(&gl)? };
+
+        Ok(Self {
+            gl,
+            width,
+            height,
+            mesh,
+        })
+    }
+
+    /// Create a new renderer for WebGL.
+    #[cfg(target_arch = "wasm32")]
+    pub fn new_webgl(
+        canvas: web_sys::HtmlCanvasElement,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, GlowError> {
+        use web_sys::wasm_bindgen::JsCast;
+
+        let webgl = canvas.get_context("webgl2").unwrap().unwrap();
+        let context = webgl.dyn_into::<web_sys::WebGlRenderingContext>().unwrap();
+        let gl = glow::Context::from_webgl1_context(context);
 
         let mesh = unsafe { MeshRender::new(&gl)? };
 

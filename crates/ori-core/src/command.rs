@@ -13,17 +13,29 @@ use std::{
 
 use crossbeam_channel::{Receiver, Sender};
 
+#[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
+type CommandWakerInner = std::sync::Arc<dyn Fn() + Send + Sync>;
+#[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+type CommandWakerInner = std::rc::Rc<dyn Fn()>;
+
 /// A waker for the event loop.
 ///
 /// When called, the event loop should wake up and process any pending commands,
 /// by calling [`Ui::handle_commands()`](crate::ui::Ui::handle_commands).
 #[derive(Clone)]
-pub struct CommandWaker(Arc<dyn Fn() + Send + Sync>);
+pub struct CommandWaker(CommandWakerInner);
 
 impl CommandWaker {
     /// Create a new [`CommandWaker`].
+    #[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
     pub fn new(waker: impl Fn() + Send + Sync + 'static) -> Self {
-        Self(Arc::new(waker))
+        Self(std::sync::Arc::new(waker))
+    }
+
+    /// Create a new [`CommandWaker`].
+    #[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+    pub fn new(waker: impl Fn() + 'static) -> Self {
+        Self(std::rc::Rc::new(waker))
     }
 
     /// Wake the event loop.
@@ -32,8 +44,8 @@ impl CommandWaker {
     }
 }
 
-impl From<Arc<dyn Fn() + Send + Sync>> for CommandWaker {
-    fn from(waker: Arc<dyn Fn() + Send + Sync>) -> Self {
+impl From<CommandWakerInner> for CommandWaker {
+    fn from(waker: CommandWakerInner) -> Self {
         Self(waker)
     }
 }
@@ -44,17 +56,33 @@ impl Debug for CommandWaker {
     }
 }
 
+#[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
+type CommandData = Box<dyn Any + Send>;
+#[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+type CommandData = Box<dyn Any>;
+
 /// A command.
 #[derive(Debug)]
 pub struct Command {
     type_id: TypeId,
-    data: Box<dyn Any + Send>,
+    data: CommandData,
     name: &'static str,
 }
 
 impl Command {
     /// Create a new command.
+    #[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
     pub fn new<T: Any + Send>(command: T) -> Self {
+        Self {
+            type_id: TypeId::of::<T>(),
+            data: Box::new(command),
+            name: std::any::type_name::<T>(),
+        }
+    }
+
+    /// Create a new command.
+    #[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+    pub fn new<T: Any>(command: T) -> Self {
         Self {
             type_id: TypeId::of::<T>(),
             data: Box::new(command),
@@ -87,7 +115,14 @@ impl Command {
     }
 
     /// Convert the command into a boxed [`Any`] value.
+    #[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
     pub fn to_any(self) -> Box<dyn Any + Send> {
+        self.data
+    }
+
+    /// Convert the command into a boxed [`Any`] value.
+    #[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+    pub fn to_any(self) -> Box<dyn Any> {
         self.data
     }
 }
@@ -121,14 +156,33 @@ impl CommandProxy {
     }
 
     /// Send a command.
+    #[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
     pub fn cmd(&self, command: impl Any + Send) {
         self.cmd_silent(Command::new(command));
         self.wake();
     }
 
+    /// Send a command.
+    #[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+    pub fn cmd(&self, command: impl Any) {
+        self.cmd_silent(Command::new(command));
+        self.wake();
+    }
+
     /// Spawn a future that is polled when commands are handled.
+    #[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
     pub fn spawn_async(&self, future: impl Future<Output = ()> + Send + 'static) {
-        let task = Arc::new(CommandTask::new(self, future));
+        let task = std::sync::Arc::new(CommandTask::new(self, future));
+
+        // SAFETY: the task was just created, so it's impossible for there to be any clones of the
+        // Arc, which means we have unique access to the task.
+        unsafe { task.poll() };
+    }
+
+    /// Spawn a future that is polled when commands are handled.
+    #[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+    pub fn spawn_async(&self, future: impl Future<Output = ()> + 'static) {
+        let task = std::rc::Rc::new(CommandTask::new(self, future));
 
         // SAFETY: the task was just created, so it's impossible for there to be any clones of the
         // Arc, which means we have unique access to the task.
@@ -168,7 +222,7 @@ impl CommandReceiver {
     pub fn try_recv(&self) -> Option<Command> {
         let mut command = self.try_recv_inner()?;
 
-        while let Some(task) = command.get::<Arc<CommandTask>>() {
+        while let Some(task) = command.get::<CommandTaskShared>() {
             // SAFETY: the only way to send a CommandTask is through CommandProxy::spawn_async,
             // since CommandTask is not public, and CommandReceiver does not implement Clone or
             // Sync. therefore, it is impossible for `task` to be polled from multiple threads at
@@ -181,18 +235,35 @@ impl CommandReceiver {
     }
 }
 
+#[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+#[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct CommandTask {
     proxy: CommandProxy,
     future: UnsafeCell<Option<BoxFuture<'static, ()>>>,
 }
 
+#[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
+type CommandTaskShared = std::sync::Arc<CommandTask>;
+#[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+type CommandTaskShared = std::rc::Rc<CommandTask>;
+
 // SAFETY: CommandTask::future is only ever accessed from one thread at a time.
 unsafe impl Sync for CommandTask {}
 
 impl CommandTask {
+    #[cfg(all(feature = "multithread", not(target_arch = "wasm32")))]
     fn new(proxy: &CommandProxy, future: impl Future<Output = ()> + Send + 'static) -> Self {
+        Self {
+            proxy: proxy.clone(),
+            future: UnsafeCell::new(Some(Box::pin(future))),
+        }
+    }
+
+    #[cfg(not(all(feature = "multithread", not(target_arch = "wasm32"))))]
+    fn new(proxy: &CommandProxy, future: impl Future<Output = ()> + 'static) -> Self {
         Self {
             proxy: proxy.clone(),
             future: UnsafeCell::new(Some(Box::pin(future))),
@@ -233,13 +304,13 @@ impl CommandTask {
         drop(Arc::from_raw(data.cast::<Self>()));
     }
 
-    fn raw_waker(self: &Arc<Self>) -> RawWaker {
-        let data = Arc::into_raw(self.clone());
+    fn raw_waker(self: &CommandTaskShared) -> RawWaker {
+        let data = CommandTaskShared::into_raw(self.clone());
         RawWaker::new(data.cast(), Self::raw_waker_vtable())
     }
 
     // SAFETY: must never be called anywhere other than `CommandReceiver::try_recv`
-    unsafe fn poll(self: &Arc<Self>) {
+    unsafe fn poll(self: &CommandTaskShared) {
         let future_slot = &mut *self.future.get();
 
         if let Some(mut future) = future_slot.take() {

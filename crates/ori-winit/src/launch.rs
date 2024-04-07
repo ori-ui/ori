@@ -79,8 +79,10 @@ struct AppState<T> {
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
 
     /* glow */
-    #[cfg(feature = "glow")]
+    #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
     renders: HashMap<ori_core::window::WindowId, (ori_glow::GlowRender, ori_glow::GlutinContext)>,
+    #[cfg(all(feature = "glow", target_arch = "wasm32"))]
+    renders: HashMap<ori_core::window::WindowId, ori_glow::GlowRender>,
 
     /* wgpu */
     #[cfg(feature = "wgpu")]
@@ -198,24 +200,39 @@ impl<T> AppState<T> {
         window: &winit::window::Window,
         desc: &WindowDescriptor,
     ) -> Result<(), Error> {
-        use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-
         let size = window.inner_size();
-        let samples = if desc.anti_aliasing { 4 } else { 1 };
-        let context = ori_glow::GlutinContext::new(
-            window.raw_window_handle(),
-            window.raw_display_handle(),
-            size.width,
-            size.height,
-            samples,
-        )?;
 
-        context.make_current()?;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
-        let proc_addr = |s: &str| context.get_proc_address(s);
-        let render = ori_glow::GlowRender::new(proc_addr, size.width, size.height)?;
+            let samples = if desc.anti_aliasing { 4 } else { 1 };
 
-        self.renders.insert(desc.id, (render, context));
+            let context = ori_glow::GlutinContext::new(
+                window.raw_window_handle(),
+                window.raw_display_handle(),
+                size.width,
+                size.height,
+                samples,
+            )?;
+
+            context.make_current()?;
+
+            let proc_addr = |s: &str| context.get_proc_address(s);
+            let render = ori_glow::GlowRender::new(proc_addr, size.width, size.height)?;
+
+            self.renders.insert(desc.id, (render, context));
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            use winit::platform::web::WindowExtWebSys;
+
+            let canvas = window.canvas().unwrap();
+            let render = ori_glow::GlowRender::new_webgl(canvas, size.width, size.height)?;
+
+            self.renders.insert(desc.id, render);
+        }
 
         Ok(())
     }
@@ -223,9 +240,14 @@ impl<T> AppState<T> {
     fn idle(&mut self) {
         self.ui.idle(&mut self.data);
 
-        #[cfg(feature = "glow")]
+        #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
         for (render, context) in self.renders.values_mut() {
             let _ = context.make_current().is_ok();
+            render.clean();
+        }
+
+        #[cfg(all(feature = "glow", target_arch = "wasm32"))]
+        for render in self.renders.values_mut() {
             render.clean();
         }
 
@@ -301,11 +323,16 @@ impl<T> AppState<T> {
         let scene = window.scene();
 
         /* glow */
-        #[cfg(feature = "glow")]
+        #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
         if let Some((render, context)) = self.renders.get_mut(&window_id) {
             context.make_current()?;
             render.render_scene(scene, clear_color, logical, physical)?;
             context.swap_buffers()?;
+        }
+
+        #[cfg(all(feature = "glow", target_arch = "wasm32"))]
+        if let Some(render) = self.renders.get_mut(&window_id) {
+            render.render_scene(scene, clear_color, logical, physical)?;
         }
 
         /* wgpu */

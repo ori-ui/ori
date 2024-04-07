@@ -5,12 +5,12 @@
 mod mesh;
 mod render;
 
-#[cfg(feature = "glutin")]
+#[cfg(all(feature = "glutin", not(target_arch = "wasm32")))]
 mod glutin;
 
 pub use render::*;
 
-#[cfg(feature = "glutin")]
+#[cfg(all(feature = "glutin", not(target_arch = "wasm32")))]
 pub use glutin::{GlutinContext, GlutinError};
 
 use std::fmt::Display;

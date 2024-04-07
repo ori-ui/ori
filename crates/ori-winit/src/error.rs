@@ -9,7 +9,7 @@ pub enum Error {
     #[cfg(feature = "glow")]
     Glow(ori_glow::GlowError),
     /// A glutin render error.
-    #[cfg(feature = "glow")]
+    #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
     Glutin(ori_glow::GlutinError),
     /// A wgpu render error.
     #[cfg(feature = "wgpu")]
@@ -27,7 +27,7 @@ impl From<ori_glow::GlowError> for Error {
     }
 }
 
-#[cfg(feature = "glow")]
+#[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
 impl From<ori_glow::GlutinError> for Error {
     fn from(err: ori_glow::GlutinError) -> Self {
         Self::Glutin(err)
@@ -58,7 +58,7 @@ impl Display for Error {
         match self {
             #[cfg(feature = "glow")]
             Error::Glow(err) => write!(f, "{}", err),
-            #[cfg(feature = "glow")]
+            #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
             Error::Glutin(err) => write!(f, "{}", err),
             #[cfg(feature = "wgpu")]
             Error::Wgpu(err) => write!(f, "{}", err),

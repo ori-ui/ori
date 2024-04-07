@@ -1,6 +1,6 @@
 use std::{
-    fmt::Display,
-    ops::{Add, AddAssign, Mul},
+    fmt::{Debug, Display},
+    ops::{Add, AddAssign, Deref, Mul},
 };
 
 /// Create a new color, with the given `red`, `green` and `blue` components.
@@ -151,14 +151,9 @@ impl Color {
         Self::try_hex(hex).expect("Invalid hex color")
     }
 
-    /// Convert the color to a hex string.
-    pub fn to_hex(self) -> String {
-        format!(
-            "#{:02x}{:02x}{:02x}",
-            (self.r * 255.0) as u8,
-            (self.g * 255.0) as u8,
-            (self.b * 255.0) as u8,
-        )
+    /// Convert the color to hex.
+    pub fn to_hex(self) -> DisplayHex {
+        DisplayHex::new(self.r8(), self.g8(), self.b8(), self.a8())
     }
 
     /// Returns a new color with the given hue, saturation, lightness and alpha components.
@@ -435,5 +430,85 @@ impl AddAssign for Color {
 impl Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "rgba({}, {}, {}, {})", self.r, self.g, self.b, self.a)
+    }
+}
+
+/// A type for displaying a color as a hex string.
+///
+/// This notably does not allocate.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct DisplayHex {
+    bytes: [u8; 9],
+}
+
+impl DisplayHex {
+    /// Create a new hex color display with the given `red`, `green`, `blue` and `alpha` components.
+    pub fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        fn to_hex(n: u8) -> [u8; 2] {
+            const HEX: &[u8] = b"0123456789abcdef";
+
+            let first = n / 16;
+            let second = n % 16;
+
+            [HEX[first as usize], HEX[second as usize]]
+        }
+
+        let [r1, r2] = to_hex(r);
+        let [g1, g2] = to_hex(g);
+        let [b1, b2] = to_hex(b);
+        let [a1, a2] = to_hex(a);
+
+        Self {
+            bytes: [b'#', r1, r2, g1, g2, b1, b2, a1, a2],
+        }
+    }
+}
+
+impl Debug for DisplayHex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
+    }
+}
+
+impl Display for DisplayHex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
+    }
+}
+
+impl From<DisplayHex> for String {
+    fn from(value: DisplayHex) -> Self {
+        String::from(value.as_ref())
+    }
+}
+
+impl AsRef<str> for DisplayHex {
+    fn as_ref(&self) -> &str {
+        std::str::from_utf8(&self.bytes).unwrap()
+    }
+}
+
+impl Deref for DisplayHex {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hex() {
+        let color = Color::hex("#ff00ff");
+        assert_eq!(color, Color::MAGENTA);
+    }
+
+    #[test]
+    fn test_hex_display() {
+        let display = DisplayHex::new(0xa0, 0xb2, 0xcb, 0xd6);
+        assert_eq!(display.as_ref(), "#a0b2cbd6");
     }
 }

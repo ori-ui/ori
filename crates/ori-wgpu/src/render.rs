@@ -184,6 +184,7 @@ impl WgpuRender {
         clear_color: Color,
         logical_size: Size,
         physical_size: Size,
+        scale_factor: f32,
     ) {
         self.resize(context, physical_size);
         let batches = scene.batches();
@@ -210,7 +211,7 @@ impl WgpuRender {
         let mut pass = self.begin_render_pass(&mut encoder, &target_view, clear_color);
 
         for batch in batches.iter() {
-            self.mesh.render_batch(&mut pass, batch.index);
+            self.mesh.render_batch(&mut pass, batch.index, scale_factor);
         }
 
         drop(pass);

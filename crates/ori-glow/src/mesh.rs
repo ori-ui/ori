@@ -220,7 +220,8 @@ impl MeshRender {
         &mut self,
         gl: &glow::Context,
         batch: &Batch,
-        resolution: Size,
+        logical_size: Size,
+        scale_factor: f32,
     ) -> Result<(), GlowError> {
         if self.batches.len() <= batch.index {
             self.batches.push(PreparedBatch::new(gl)?);
@@ -233,7 +234,7 @@ impl MeshRender {
         gl.use_program(Some(self.program));
 
         let location = gl.get_uniform_location(self.program, "resolution");
-        gl.uniform_2_f32(location.as_ref(), resolution.width, resolution.height);
+        gl.uniform_2_f32(location.as_ref(), logical_size.width, logical_size.height);
 
         let location = gl.get_uniform_location(self.program, "image");
         gl.uniform_1_i32(location.as_ref(), 0);
@@ -258,12 +259,18 @@ impl MeshRender {
         );
 
         // opengl is bad... i don't like having to do this...
-        let scissor_y = resolution.height - batch.clip.max.y;
+        let scissor_y = logical_size.height - batch.clip.max.y;
+
+        let clip_x = batch.clip.min.x * scale_factor;
+        let clip_y = scissor_y * scale_factor;
+        let clip_width = batch.clip.width() * scale_factor;
+        let clip_height = batch.clip.height() * scale_factor;
+
         gl.scissor(
-            batch.clip.min.x.round() as i32,
-            scissor_y.round() as i32,
-            batch.clip.width().round() as i32,
-            batch.clip.height().round() as i32,
+            clip_x.round() as i32,
+            clip_y.round() as i32,
+            clip_width.round() as i32,
+            clip_height.round() as i32,
         );
 
         let index_count = batch.mesh.indices.len() as i32;

@@ -15,6 +15,9 @@ pub struct Batch {
     /// The items to draw.
     pub mesh: Mesh,
     /// The clipping rectangle of the batch.
+    ///
+    /// Note that the clipping rectangle is in logical coordinates, and must be transformed to
+    /// physical coordinates before being used by the rendering backend.
     pub clip: Rect,
 }
 

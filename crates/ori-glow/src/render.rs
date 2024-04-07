@@ -80,6 +80,7 @@ impl GlowRender {
         scene: &Scene,
         clear: Color,
         logical_size: Size,
+        scale_factor: f32,
     ) -> Result<(), GlowError> {
         let batches = scene.batches();
 
@@ -106,7 +107,7 @@ impl GlowRender {
         self.gl.enable(glow::MULTISAMPLE);
 
         for batch in batches.iter() {
-            self.mesh.render_batch(&self.gl, batch, logical_size)?;
+            (self.mesh).render_batch(&self.gl, batch, logical_size, scale_factor)?;
         }
 
         self.gl.disable(glow::SCISSOR_TEST);
@@ -131,10 +132,11 @@ impl GlowRender {
         clear: Color,
         logical_size: Size,
         physical_size: Size,
+        scale_factor: f32,
     ) -> Result<(), GlowError> {
         unsafe {
             self.resize(physical_size);
-            self.render(scene, clear, logical_size)?;
+            self.render(scene, clear, logical_size, scale_factor)?;
         };
 
         Ok(())

@@ -243,16 +243,21 @@ impl MeshRender {
         (context.queue).write_buffer(&prepared.index_buffer, 0, index_bytes);
     }
 
-    pub fn render_batch<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize) {
+    pub fn render_batch<'a>(&'a self, pass: &mut RenderPass<'a>, index: usize, scale_factor: f32) {
         let batch = &self.batches[index];
 
         let image_bind_group = &batch.image.as_ref().unwrap().bind_group;
 
+        let clip_x = batch.clip.min.x * scale_factor;
+        let clip_y = batch.clip.min.y * scale_factor;
+        let clip_width = batch.clip.width() * scale_factor;
+        let clip_height = batch.clip.height() * scale_factor;
+
         pass.set_scissor_rect(
-            batch.clip.min.x as u32,
-            batch.clip.min.y as u32,
-            batch.clip.width() as u32,
-            batch.clip.height() as u32,
+            clip_x.round() as u32,
+            clip_y.round() as u32,
+            clip_width.round() as u32,
+            clip_height.round() as u32,
         );
 
         pass.set_pipeline(&self.pipeline);

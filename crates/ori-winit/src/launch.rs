@@ -320,26 +320,27 @@ impl<T> AppState<T> {
 
         let logical = window.window().size();
         let physical = window.window().physical_size();
+        let scale_factor = window.window().scale_factor();
         let scene = window.scene();
 
         /* glow */
         #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
         if let Some((render, context)) = self.renders.get_mut(&window_id) {
             context.make_current()?;
-            render.render_scene(scene, clear_color, logical, physical)?;
+            render.render_scene(scene, clear_color, logical, physical, scale_factor)?;
             context.swap_buffers()?;
         }
 
         #[cfg(all(feature = "glow", target_arch = "wasm32"))]
         if let Some(render) = self.renders.get_mut(&window_id) {
-            render.render_scene(scene, clear_color, logical, physical)?;
+            render.render_scene(scene, clear_color, logical, physical, scale_factor)?;
         }
 
         /* wgpu */
         #[cfg(feature = "wgpu")]
         if let Some(render) = self.renders.get_mut(&window_id) {
             let cx = self.ui.contexts.get::<ori_wgpu::WgpuContext>().unwrap();
-            render.render_scene(cx, scene, clear_color, logical, physical);
+            render.render_scene(cx, scene, clear_color, logical, physical, scale_factor);
         }
 
         Ok(())

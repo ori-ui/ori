@@ -1,4 +1,4 @@
-use ori_macro::Build;
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::Canvas,
@@ -49,6 +49,7 @@ pub fn vstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
 }
 
 /// A view that stacks it's content in a line.
+#[example(name = "stack", width = 400, height = 600)]
 #[derive(Build, Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.

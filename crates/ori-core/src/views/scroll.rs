@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
     event::{
@@ -21,6 +23,7 @@ pub fn vscroll<V>(content: V) -> Scroll<V> {
 }
 
 /// A scrollable view.
+#[example(name = "scroll", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Scroll<V> {
     /// The content.

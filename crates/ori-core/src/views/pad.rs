@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::Canvas,
     event::Event,
@@ -32,6 +34,7 @@ pub fn pad_left<V>(padding: f32, content: V) -> Pad<V> {
 }
 
 /// A view that adds padding to its content.
+#[example(name = "pad", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Pad<V> {
     /// The content.

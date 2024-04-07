@@ -1,4 +1,4 @@
-use ori_macro::Build;
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
@@ -9,6 +9,11 @@ use crate::{
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
+
+/// Create a new [`Button`].
+pub fn button<V>(content: V) -> Button<V> {
+    Button::new(content)
+}
 
 /// The style of a button.
 #[derive(Clone, Debug)]
@@ -43,12 +48,8 @@ impl Styled for ButtonStyle {
     }
 }
 
-/// Create a new [`Button`].
-pub fn button<V>(content: V) -> Button<V> {
-    Button::new(content)
-}
-
 /// A button.
+#[example(name = "button", width = 400, height = 300)]
 #[derive(Build, Rebuild)]
 pub struct Button<V> {
     /// The content.

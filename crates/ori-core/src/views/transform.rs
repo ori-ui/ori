@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::Canvas,
     event::Event,
@@ -17,8 +19,13 @@ pub fn translate<V>(translation: impl Into<Vector>, content: V) -> Transform<V> 
 }
 
 /// Create a new [`Transform`] view that rotates its content.
-pub fn rotate<V>(rotation: f32, content: V) -> Transform<V> {
-    Transform::new(Affine::rotate(rotation), content)
+pub fn rotate<V>(degrees: f32, content: V) -> Transform<V> {
+    Transform::new(Affine::rotate(degrees), content)
+}
+
+/// Create a new [`Transform`] view that rotates its content in degrees.
+pub fn rotate_degrees<V>(degrees: f32, content: V) -> Transform<V> {
+    rotate(degrees.to_radians(), content)
 }
 
 /// Create a new [`Transform`] view that scales its content.
@@ -27,6 +34,7 @@ pub fn scale<V>(scale: impl Into<Vector>, content: V) -> Transform<V> {
 }
 
 /// A view that transforms its content.
+#[example(name = "transform", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Transform<V> {
     /// The content.

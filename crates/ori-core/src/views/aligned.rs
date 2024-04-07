@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::Canvas,
     event::Event,
@@ -7,6 +9,7 @@ use crate::{
 };
 
 /// A view that aligns its content.
+#[example(name = "align", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Aligned<V> {
     /// The content to align.

@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, BoxShadow, Canvas, Color},
     event::Event,
@@ -6,33 +8,6 @@ use crate::{
     style::{style, Styled, Styles},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
-
-/// The style of a [`Container`].
-#[derive(Clone, Debug)]
-pub struct ContainerStyle {
-    /// The background color.
-    pub background: Background,
-    /// The border radius.
-    pub border_radius: BorderRadius,
-    /// The border width.
-    pub border_width: BorderWidth,
-    /// The border color.
-    pub border_color: Color,
-    /// The shadow.
-    pub shadow: BoxShadow,
-}
-
-impl Styled for ContainerStyle {
-    fn from_style(style: &Styles) -> Self {
-        Self {
-            background: style.palette().secondary().into(),
-            border_radius: BorderRadius::all(0.0),
-            border_width: BorderWidth::all(0.0),
-            border_color: style.palette().secondary_dark(),
-            shadow: BoxShadow::default(),
-        }
-    }
-}
 
 /// Create a new [`Container`].
 pub fn container<V>(content: V) -> Container<V> {
@@ -65,7 +40,35 @@ pub fn shadow<V>(shadow: impl Into<BoxShadow>, content: V) -> Container<V> {
     Container::new(content).shadow(shadow)
 }
 
+/// The style of a [`Container`].
+#[derive(Clone, Debug)]
+pub struct ContainerStyle {
+    /// The background color.
+    pub background: Background,
+    /// The border radius.
+    pub border_radius: BorderRadius,
+    /// The border width.
+    pub border_width: BorderWidth,
+    /// The border color.
+    pub border_color: Color,
+    /// The shadow.
+    pub shadow: BoxShadow,
+}
+
+impl Styled for ContainerStyle {
+    fn from_style(style: &Styles) -> Self {
+        Self {
+            background: style.palette().secondary().into(),
+            border_radius: BorderRadius::all(0.0),
+            border_width: BorderWidth::all(0.0),
+            border_color: style.palette().secondary_dark(),
+            shadow: BoxShadow::default(),
+        }
+    }
+}
+
 /// A container view.
+#[example(name = "container", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Container<V> {
     /// The content.

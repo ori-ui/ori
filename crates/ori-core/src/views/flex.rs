@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::Canvas,
     event::Event,
@@ -17,6 +19,7 @@ pub fn expand<V>(content: V) -> Flex<V> {
 }
 
 /// A flexible view.
+#[example(name = "flex", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Flex<V> {
     /// The content of the view.

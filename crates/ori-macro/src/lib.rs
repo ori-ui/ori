@@ -4,6 +4,7 @@
 
 mod build;
 mod entry;
+mod example;
 mod font;
 mod rebuild;
 
@@ -74,6 +75,18 @@ pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_ma
 #[proc_macro_derive(Build, attributes(build))]
 pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     build::derive_build(input)
+}
+
+/// Embed an example in the documentation.
+///
+/// This is an internal macro used by the `ori` crate.
+#[manyhow::manyhow]
+#[proc_macro_attribute]
+pub fn example(
+    args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    example::example(args, input)
 }
 
 /// A macro to generate boilerplate for the `main` function.

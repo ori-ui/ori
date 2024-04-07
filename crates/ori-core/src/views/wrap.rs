@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use ori_macro::Build;
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::Canvas,
@@ -53,6 +53,7 @@ pub fn vwrap_any<'a, V>() -> Wrap<Vec<Box<dyn AnyView<V> + 'a>>> {
 /// A view that lays out it's content in a line wrapping if it doesn't fit.
 ///
 /// Note that unlike [`Stack`](super::Stack) this view does not care about flex.
+#[example(name = "wrap", width = 400, height = 600)]
 #[derive(Build, Rebuild)]
 pub struct Wrap<V> {
     /// The content.

@@ -1,6 +1,6 @@
 use std::f32::consts::{PI, SQRT_2};
 
-use ori_macro::Build;
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Mesh, Vertex},
@@ -11,6 +11,11 @@ use crate::{
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, Update, View},
 };
+
+/// Create a new [`Collapsing`].
+pub fn collapsing<T, H, V>(header: H, content: V) -> Collapsing<T, H, V> {
+    Collapsing::new(header, content)
+}
 
 /// The style of a collapsing view.
 #[derive(Clone, Debug)]
@@ -45,12 +50,8 @@ impl Styled for CollapsingStyle {
     }
 }
 
-/// Create a new [`Collapsing`].
-pub fn collapsing<T, H, V>(header: H, content: V) -> Collapsing<T, H, V> {
-    Collapsing::new(header, content)
-}
-
 /// A collapsing view.
+#[example(name = "collapsing", width = 400, height = 300)]
 #[derive(Build, Rebuild)]
 pub struct Collapsing<T, H, V> {
     /// The header.

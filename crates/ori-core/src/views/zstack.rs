@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::Canvas,
     event::Event,
@@ -26,6 +28,7 @@ pub fn zstack<V>(content: V) -> ZStack<V> {
 }
 
 /// A view that overlays its content on top of each other.
+#[example(name = "zstack", width = 400, height = 300)]
 pub struct ZStack<V> {
     /// The content to overlay.
     pub content: PodSeq<V>,

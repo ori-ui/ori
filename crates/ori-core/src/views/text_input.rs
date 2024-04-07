@@ -1,7 +1,7 @@
 use cosmic_text::{
     Action, Attrs, AttrsList, Buffer, BufferLine, BufferRef, Edit, Editor, Metrics, Motion, Shaping,
 };
-use ori_macro::Build;
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
@@ -27,6 +27,7 @@ pub fn text_input<T>() -> TextInput<T> {
 }
 
 /// A text input.
+#[example(name = "text_input", width = 400, height = 300)]
 #[derive(Build)]
 pub struct TextInput<T> {
     /// The text.
@@ -431,6 +432,7 @@ impl<T> View<T> for TextInput<T> {
             if e.is(Code::X) && e.modifiers.ctrl {
                 if let Some(selection) = state.editor.copy_selection() {
                     cx.clipboard().set(selection);
+                    cx.request_layout();
                 }
 
                 state.editor.delete_selection();
@@ -440,6 +442,8 @@ impl<T> View<T> for TextInput<T> {
             if e.is(Code::V) && e.modifiers.ctrl {
                 let text = cx.clipboard().get();
                 state.editor.insert_string(&text, None);
+
+                cx.request_layout();
                 changed = true;
             }
 

@@ -1,3 +1,5 @@
+use ori_macro::example;
+
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Curve},
     event::{AnimationFrame, Event},
@@ -8,7 +10,12 @@ use crate::{
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
 
-/// The style of a checkbox.
+/// Create a new [`Checkbox`].
+pub fn checkbox(checked: bool) -> Checkbox {
+    Checkbox::new(checked)
+}
+
+/// The style of a [`Checkbox`].
 #[derive(Clone, Debug)]
 pub struct CheckboxStyle {
     /// The transition of the checkbox.
@@ -44,12 +51,8 @@ impl Styled for CheckboxStyle {
     }
 }
 
-/// Create a new [`Checkbox`].
-pub fn checkbox(checked: bool) -> Checkbox {
-    Checkbox::new(checked)
-}
-
 /// A checkbox.
+#[example(name = "checkbox", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Checkbox {
     /// Whether the checkbox is checked.

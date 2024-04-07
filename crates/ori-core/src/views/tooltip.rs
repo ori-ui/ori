@@ -1,3 +1,4 @@
+use ori_macro::example;
 use smol_str::SmolStr;
 
 use crate::{
@@ -12,6 +13,11 @@ use crate::{
     },
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
+
+/// Create a new [`Tooltip`] view.
+pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
+    Tooltip::new(content, text)
+}
 
 /// The style of a tooltip.
 #[derive(Clone, Debug)]
@@ -70,12 +76,8 @@ impl Styled for TooltipStyle {
     }
 }
 
-/// Create a new [`Tooltip`] view.
-pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
-    Tooltip::new(content, text)
-}
-
 /// A view that displays some text when the content is hovered.
+#[example(name = "tooltip", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Tooltip<V> {
     /// The content to display.

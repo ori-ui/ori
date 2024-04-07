@@ -1,6 +1,6 @@
 use std::fmt::{self, Write};
 
-use ori_macro::Build;
+use ori_macro::{example, Build};
 use smol_str::SmolStr;
 
 use crate::{
@@ -18,6 +18,21 @@ use crate::{
 use smol_str;
 
 pub use crate::format_text as text;
+
+/// Create a formatted [`Text`].
+///
+/// This macro is slightly more efficient than using [`format!`] and [`Text::new`].
+#[macro_export]
+macro_rules! format_text {
+    ($($tt:tt)*) => {
+        $crate::views::Text::from(::std::format_args!($($tt)*))
+    };
+}
+
+/// Create a new [`Text`].
+pub fn text(text: impl Into<SmolStr>) -> Text {
+    Text::new(text)
+}
 
 /// The style of a text.
 #[derive(Clone, Debug)]
@@ -58,22 +73,8 @@ impl Styled for TextStyle {
     }
 }
 
-/// Create a formatted [`Text`].
-///
-/// This macro is slightly more efficient than using [`format!`] and [`Text::new`].
-#[macro_export]
-macro_rules! format_text {
-    ($($tt:tt)*) => {
-        $crate::views::Text::from(::std::format_args!($($tt)*))
-    };
-}
-
-/// Create a new [`Text`].
-pub fn text(text: impl Into<SmolStr>) -> Text {
-    Text::new(text)
-}
-
 /// A view that displays text.
+#[example(name = "text", width = 400, height = 300)]
 #[derive(Build)]
 pub struct Text {
     /// The text.

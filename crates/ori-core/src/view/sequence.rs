@@ -1,8 +1,9 @@
 use std::{
     any::type_name,
     ops::{Deref, DerefMut},
-    time::Instant,
 };
+
+use instant::Instant;
 
 use crate::{
     canvas::Canvas,

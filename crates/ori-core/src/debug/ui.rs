@@ -1,4 +1,4 @@
-use std::time::Duration;
+use instant::Duration;
 
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad},

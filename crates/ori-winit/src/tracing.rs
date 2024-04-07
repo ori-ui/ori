@@ -1,6 +1,6 @@
 use std::{env, error::Error};
 
-use tracing_subscriber::{filter::LevelFilter, fmt, layer::SubscriberExt, EnvFilter, Layer};
+use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, EnvFilter};
 
 pub fn init_tracing() -> Result<(), Box<dyn Error>> {
     let mut filter = EnvFilter::default()
@@ -14,10 +14,19 @@ pub fn init_tracing() -> Result<(), Box<dyn Error>> {
         filter = filter.add_directive(env.parse()?);
     }
 
-    let subscriber = tracing_subscriber::registry();
+    let subscriber = tracing_subscriber::registry().with(filter);
 
-    let fmt_layer = fmt::Layer::default().with_filter(filter);
-    let subscriber = subscriber.with(fmt_layer);
+    #[cfg(not(target_arch = "wasm32"))]
+    let subscriber = {
+        let fmt_layer = tracing_subscriber::fmt::Layer::default();
+        subscriber.with(fmt_layer)
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let subscriber = {
+        let console_layer = tracing_wasm::WASMLayer::new(Default::default());
+        subscriber.with(console_layer)
+    };
 
     tracing::subscriber::set_global_default(subscriber)?;
 

@@ -1,9 +1,7 @@
-use std::{
-    collections::VecDeque,
-    time::{Duration, Instant},
-};
+use std::collections::VecDeque;
 
 use crate::{event::Event, window::WindowId};
+use instant::{Duration, Instant};
 
 /// Emitted when a window builds it's view tree.
 #[derive(Clone, Debug)]

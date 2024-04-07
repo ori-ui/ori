@@ -3,10 +3,10 @@ use std::{
     future::Future,
     mem,
     ops::{Deref, DerefMut},
-    time::Instant,
 };
 
 use cosmic_text::Buffer;
+use instant::Instant;
 
 use crate::{
     canvas::Mesh,

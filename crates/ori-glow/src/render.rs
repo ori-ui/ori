@@ -48,8 +48,8 @@ impl GlowRender {
         use web_sys::wasm_bindgen::JsCast;
 
         let webgl = canvas.get_context("webgl2").unwrap().unwrap();
-        let context = webgl.dyn_into::<web_sys::WebGlRenderingContext>().unwrap();
-        let gl = glow::Context::from_webgl1_context(context);
+        let context = webgl.dyn_into::<web_sys::WebGl2RenderingContext>().unwrap();
+        let gl = glow::Context::from_webgl2_context(context);
 
         let mesh = unsafe { MeshRender::new(&gl)? };
 

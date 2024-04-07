@@ -2,8 +2,9 @@ use std::{
     any::type_name,
     hash::{Hash, Hasher},
     mem,
-    time::Duration,
 };
+
+use instant::Duration;
 
 use crate::layout::{Affine, Rect, Space};
 

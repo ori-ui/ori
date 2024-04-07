@@ -18,6 +18,10 @@ seahash = "4.1"
 smol_str = "0.2.1"
 tracing = "0.1"
 
+[dependencies.instant]
+version = "0.1"
+features = ["wasm-bindgen"]
+
 [dependencies.image]
 version = "0.25"
 default-features = false

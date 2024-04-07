@@ -1,7 +1,6 @@
-use std::{
-    ops::{Deref, DerefMut},
-    time::Instant,
-};
+use std::ops::{Deref, DerefMut};
+
+use instant::Instant;
 
 use crate::{
     canvas::Canvas,

@@ -1,7 +1,19 @@
-use std::io;
+use std::{io, sync::Arc};
 
-use cosmic_text::{Buffer, FontSystem, SwashCache};
-use ori_macro::include_font;
+use cosmic_text::{fontdb::Source, Buffer, FontSystem, SwashCache};
+
+const ROBOTO_BLACK: &[u8] = include_bytes!("../../font/Roboto-Black.ttf");
+const ROBOTO_BLACK_ITALIC: &[u8] = include_bytes!("../../font/Roboto-BlackItalic.ttf");
+const ROBOTO_BOLD: &[u8] = include_bytes!("../../font/Roboto-Bold.ttf");
+const ROBOTO_BOLD_ITALIC: &[u8] = include_bytes!("../../font/Roboto-BoldItalic.ttf");
+const ROBOTO_ITALIC: &[u8] = include_bytes!("../../font/Roboto-Italic.ttf");
+const ROBOTO_LIGHT: &[u8] = include_bytes!("../../font/Roboto-Light.ttf");
+const ROBOTO_LIGHT_ITALIC: &[u8] = include_bytes!("../../font/Roboto-LightItalic.ttf");
+const ROBOTO_MEDIUM: &[u8] = include_bytes!("../../font/Roboto-Medium.ttf");
+const ROBOTO_MEDIUM_ITALIC: &[u8] = include_bytes!("../../font/Roboto-MediumItalic.ttf");
+const ROBOTO_REGULAR: &[u8] = include_bytes!("../../font/Roboto-Regular.ttf");
+const ROBOTO_THIN: &[u8] = include_bytes!("../../font/Roboto-Thin.ttf");
+const ROBOTO_THIN_ITALIC: &[u8] = include_bytes!("../../font/Roboto-ThinItalic.ttf");
 
 use crate::{
     canvas::{Color, Mesh, Vertex},
@@ -35,8 +47,36 @@ impl Fonts {
     /// Creates a new font context.
     pub fn new() -> Self {
         let swash_cache = SwashCache::new();
-        let font_system = FontSystem::new();
         let font_atlas = FontAtlas::new();
+
+        let mut fonts = Vec::new();
+
+        for font in &[
+            ROBOTO_BLACK,
+            ROBOTO_BLACK_ITALIC,
+            ROBOTO_BOLD,
+            ROBOTO_BOLD_ITALIC,
+            ROBOTO_ITALIC,
+            ROBOTO_LIGHT,
+            ROBOTO_LIGHT_ITALIC,
+            ROBOTO_MEDIUM,
+            ROBOTO_MEDIUM_ITALIC,
+            ROBOTO_REGULAR,
+            ROBOTO_THIN,
+            ROBOTO_THIN_ITALIC,
+        ] {
+            fonts.push(Source::Binary(Arc::new(font.to_vec())));
+        }
+
+        let mut font_system = FontSystem::new_with_fonts(fonts);
+
+        let db = font_system.db_mut();
+
+        db.set_serif_family("Roboto");
+        db.set_sans_serif_family("Roboto");
+        db.set_monospace_family("Roboto");
+        db.set_cursive_family("Roboto");
+        db.set_fantasy_family("Roboto");
 
         Self {
             swash_cache,
@@ -72,16 +112,7 @@ impl Fonts {
     /// This is a platform-specific operation, for more information see the
     /// documentation for [`fontdb::Database::load_system_fonts`](cosmic_text::fontdb::Database::load_system_fonts).
     pub fn load_system_fonts(&mut self) {
-        let db = self.font_system.db_mut();
-
-        db.load_system_fonts();
-        db.set_serif_family("Roboto");
-        db.set_sans_serif_family("Roboto");
-        db.set_monospace_family("Roboto");
-        db.set_cursive_family("Roboto");
-        db.set_fantasy_family("Roboto");
-
-        (self.load_font(include_font!("font"))).expect("loading builtin fonts works");
+        self.font_system.db_mut().load_system_fonts();
     }
 
     /// Calculates the size of a text buffer.

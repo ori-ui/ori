@@ -11,6 +11,9 @@ to building user interfaces. It is built on top of *ori_core*, which
 provides the core functionality, and *ori_winit*, which provides
 a winit based shell, and supports both a wgpu, and glow based renderer.
 
+# Documentation
+Auto-generated documentation is available [`here`](https://changecaps.github.io/ori-docs/ori/).
+
 # Examples
 For more examples, see [`ori/examples`](https://github.com/ChangeCaps/ori/tree/main/examples).
 

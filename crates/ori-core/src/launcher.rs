@@ -39,6 +39,12 @@ impl<T, S: Shell> Launcher<T, S> {
         }
     }
 
+    /// Access the shell of the application, by running a closure.
+    pub fn shell(mut self, f: impl FnOnce(&mut S)) -> Self {
+        f(&mut self.shell);
+        self
+    }
+
     /// Set the debug mode of the application.
     ///
     /// This is be default set to `cfg!(debug_assertions)`.

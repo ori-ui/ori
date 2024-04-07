@@ -58,6 +58,11 @@ impl Window {
         }
     }
 
+    /// Try to downcast the window to a specific type.
+    pub fn downcast_ref<T: RawWindow>(&self) -> Option<&T> {
+        self.raw.downcast_ref()
+    }
+
     /// Get the [`WindowId`].
     pub fn id(&self) -> WindowId {
         self.id

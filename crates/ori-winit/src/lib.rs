@@ -15,6 +15,7 @@ mod window;
 
 pub use error::*;
 pub use shell::*;
+pub use window::*;
 
 #[cfg(feature = "wgpu")]
 pub use ori_wgpu::WgpuContext;

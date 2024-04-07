@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use ori_core::{
     canvas::Color,
     image::Image,
@@ -7,10 +9,25 @@ use winit::{dpi::LogicalSize, window::Icon};
 
 use crate::convert::convert_cursor_icon;
 
+/// A wrapper around a winit window.
 pub struct WinitWindow {
     pub(crate) window: winit::window::Window,
     soft_input: bool,
     background_color: Option<Color>,
+}
+
+impl Deref for WinitWindow {
+    type Target = winit::window::Window;
+
+    fn deref(&self) -> &Self::Target {
+        &self.window
+    }
+}
+
+impl DerefMut for WinitWindow {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.window
+    }
 }
 
 impl From<winit::window::Window> for WinitWindow {

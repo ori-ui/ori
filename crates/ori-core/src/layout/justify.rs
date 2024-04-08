@@ -55,19 +55,19 @@ impl Justify {
         let total_gap = gap * (count - 1.0);
         let total_size = sizes.iter().sum::<f32>() + total_gap;
 
+        let gap = match self {
+            Self::Start | Self::End | Self::Center => gap,
+            Self::SpaceBetween => (size - (total_size - total_gap)) / (count - 1.0),
+            Self::SpaceAround => (size - (total_size - total_gap)) / count,
+            Self::SpaceEvenly => (size - (total_size - total_gap)) / (count + 1.0),
+        };
+
         let position = match self {
             Self::Start | Self::SpaceBetween => 0.0,
             Self::Center => (size - total_size) / 2.0,
             Self::End => size - total_size,
             Self::SpaceAround => gap / 2.0,
             Self::SpaceEvenly => gap,
-        };
-
-        let gap = match self {
-            Self::Start | Self::End | Self::Center => gap,
-            Self::SpaceBetween => (size - (total_size - total_gap)) / (count - 1.0),
-            Self::SpaceAround => (size - total_size) / (count - 1.0),
-            Self::SpaceEvenly => (size - total_size) / (count + 1.0),
         };
 
         JustifyIterator {

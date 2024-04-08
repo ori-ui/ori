@@ -24,6 +24,19 @@ pub fn opaque<V: View>(content: V) -> Opaque<V> {
 }
 
 /// A view that bridges the gap between `impl View` and `impl View<T>`.
+///
+/// # Example
+/// ```rust,no_run
+/// # use ori_core::{view::View, views::*};
+///
+/// fn opaque_view() -> impl View {
+///     button(text!("I am a button!"))
+/// }
+///
+/// fn data_view<T>() -> impl View<T> {
+///     opaque(opaque_view())
+/// }
+/// ```
 pub struct Opaque<V> {
     /// The content view.
     pub content: V,

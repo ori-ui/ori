@@ -259,7 +259,7 @@ impl MeshRender {
         );
 
         // winit on wasm32 is just strange, this should be needed
-        // FIMXE: this is a hack, i don't like it
+        // FIXME: this is a hack, i don't like it
         #[cfg(target_arch = "wasm32")]
         let scale_factor = 1.0;
 

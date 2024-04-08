@@ -10,7 +10,6 @@ use crate::{
 /// # Example
 /// ```rust,no_run
 /// # use ori_core::{view::View, views::*};
-///
 /// fn opaque_view() -> impl View {
 ///     button(text!("I am a button!"))
 /// }
@@ -28,7 +27,6 @@ pub fn opaque<V: View>(content: V) -> Opaque<V> {
 /// # Example
 /// ```rust,no_run
 /// # use ori_core::{view::View, views::*};
-///
 /// fn opaque_view() -> impl View {
 ///     button(text!("I am a button!"))
 /// }

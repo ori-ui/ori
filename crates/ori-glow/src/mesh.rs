@@ -258,6 +258,11 @@ impl MeshRender {
             glow::STREAM_DRAW,
         );
 
+        // winit on wasm32 is just strange, this should be needed
+        // FIMXE: this is a hack, i don't like it
+        #[cfg(target_arch = "wasm32")]
+        let scale_factor = 1.0;
+
         // opengl is bad... i don't like having to do this...
         let scissor_y = logical_size.height - batch.clip.max.y;
 

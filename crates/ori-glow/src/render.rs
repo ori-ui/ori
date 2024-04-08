@@ -61,7 +61,8 @@ impl GlowRender {
         })
     }
 
-    unsafe fn resize(&mut self, physical_size: Size) {
+    #[allow(unused_variables)]
+    unsafe fn resize(&mut self, logical_size: Size, physical_size: Size) {
         let width = physical_size.width as u32;
         let height = physical_size.height as u32;
 
@@ -72,7 +73,18 @@ impl GlowRender {
         self.width = width;
         self.height = height;
 
-        self.gl.viewport(0, 0, width as i32, height as i32);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.gl.viewport(
+            0,
+            0,
+            physical_size.width as i32,
+            physical_size.height as i32,
+        );
+
+        // winit on wasm32 is just strange, this should be needed
+        // FIXME: this is a hack, i don't like it
+        #[cfg(target_arch = "wasm32")]
+        (self.gl).viewport(0, 0, logical_size.width as i32, logical_size.height as i32);
     }
 
     unsafe fn render(
@@ -135,7 +147,7 @@ impl GlowRender {
         scale_factor: f32,
     ) -> Result<(), GlowError> {
         unsafe {
-            self.resize(physical_size);
+            self.resize(logical_size, physical_size);
             self.render(scene, clear, logical_size, scale_factor)?;
         };
 

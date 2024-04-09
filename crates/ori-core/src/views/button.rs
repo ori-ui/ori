@@ -5,7 +5,7 @@ use crate::{
     event::{AnimationFrame, Event},
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Styled, Styles},
+    style::{style, Style, Styles},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
@@ -34,8 +34,8 @@ pub struct ButtonStyle {
     pub border_color: Color,
 }
 
-impl Styled for ButtonStyle {
-    fn from_style(style: &Styles) -> Self {
+impl Style for ButtonStyle {
+    fn style(style: &Styles) -> Self {
         Self {
             padding: Padding::all(8.0),
             fancy: 0.0,

@@ -51,7 +51,7 @@ pub mod prelude {
         },
         log::*,
         rebuild::Rebuild,
-        style::{palette, style, style_or, styled, Palette, Styled, Styles},
+        style::{palette, style, style_or, styled, Palette, Style, Styles},
         text,
         text::{
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,

@@ -7,7 +7,7 @@ use crate::{
     canvas::{Canvas, Color, Mesh},
     event::Event,
     layout::{Size, Space},
-    style::{style, Styled, Styles},
+    style::{style, Style, Styles},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -57,8 +57,8 @@ pub struct TextStyle {
     pub wrap: TextWrap,
 }
 
-impl Styled for TextStyle {
-    fn from_style(style: &Styles) -> Self {
+impl Style for TextStyle {
+    fn style(style: &Styles) -> Self {
         Self {
             font_size: 16.0,
             font_family: FontFamily::SansSerif,

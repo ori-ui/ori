@@ -7,7 +7,7 @@ use crate::{
     event::{AnimationFrame, Event, PointerPressed},
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Styled, Styles},
+    style::{style, Style, Styles},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, Update, View},
 };
@@ -36,8 +36,8 @@ pub struct CollapsingStyle {
     pub border_color: Color,
 }
 
-impl Styled for CollapsingStyle {
-    fn from_style(style: &Styles) -> Self {
+impl Style for CollapsingStyle {
+    fn style(style: &Styles) -> Self {
         Self {
             transition: Transition::ease(0.1),
             icon_size: 16.0,

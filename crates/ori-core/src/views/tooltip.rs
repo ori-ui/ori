@@ -6,7 +6,7 @@ use crate::{
     event::{AnimationFrame, Event, PointerMoved},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Styled, Styles},
+    style::{style, Style, Styles},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -54,8 +54,8 @@ pub struct TooltipStyle {
     pub border_color: Color,
 }
 
-impl Styled for TooltipStyle {
-    fn from_style(style: &Styles) -> Self {
+impl Style for TooltipStyle {
+    fn style(style: &Styles) -> Self {
         Self {
             delay: 0.2,
             padding: Padding::from([8.0, 4.0]),

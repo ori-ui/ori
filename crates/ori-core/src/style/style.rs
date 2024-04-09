@@ -10,7 +10,7 @@ use std::{
 use super::Palette;
 
 /// Get a value from the current style.
-pub fn style<T: Clone + Styled + Any>() -> T {
+pub fn style<T: Clone + Style + Any>() -> T {
     Styles::context(|style| style.get())
 }
 
@@ -25,7 +25,7 @@ pub fn try_style<T: Clone + Any>() -> Option<T> {
 }
 
 /// Run a closure with the given style.
-pub fn styled<T>(style: impl Style, f: impl FnOnce() -> T) -> T {
+pub fn styled<T>(style: impl IntoStyles, f: impl FnOnce() -> T) -> T {
     let mut new_style = Styles::snapshot();
     new_style.extend(style.into_styles());
 
@@ -56,7 +56,7 @@ impl Styles {
     }
 
     /// Set a value in a style.
-    pub fn set(&mut self, item: impl Style) {
+    pub fn set(&mut self, item: impl IntoStyles) {
         self.extend(item.into_styles());
     }
 
@@ -69,7 +69,7 @@ impl Styles {
     }
 
     /// Set a value in a style returning the style.
-    pub fn with(mut self, item: impl Style) -> Self {
+    pub fn with(mut self, item: impl IntoStyles) -> Self {
         self.set(item);
         self
     }
@@ -83,10 +83,10 @@ impl Styles {
     }
 
     /// Get a value from the current style.
-    pub fn get<T: Clone + Styled + Any>(&self) -> T {
+    pub fn get<T: Clone + Style + Any>(&self) -> T {
         match self.try_get::<T>() {
             Some(value) => value,
-            None => T::from_style(self),
+            None => T::style(self),
         }
     }
 
@@ -128,13 +128,13 @@ impl Styles {
 /// A trait for styling a value.
 ///
 /// This is implemented for all types that are `Default`.
-pub trait Styled: Sized {
+pub trait Style: Sized {
     /// Style a value.
-    fn from_style(style: &Styles) -> Self;
+    fn style(style: &Styles) -> Self;
 }
 
-impl<T: Default> Styled for T {
-    fn from_style(_: &Styles) -> Self {
+impl<T: Default> Style for T {
+    fn style(_: &Styles) -> Self {
         T::default()
     }
 }
@@ -144,12 +144,12 @@ impl<T: Default> Styled for T {
 /// Turns a value into a style by wrapping it in a `Styles` instance, if it isn't already a `Styles`.
 ///
 /// This trait should not be implemented manually.
-pub trait Style {
+pub trait IntoStyles {
     /// Convert a value into a style.
     fn into_styles(self) -> Styles;
 }
 
-impl<T: Any> Style for T {
+impl<T: Any> IntoStyles for T {
     fn into_styles(self) -> Styles {
         // now this is all sorts of cursed but this is the only way to do this
         if TypeId::of::<Self>() == TypeId::of::<Styles>() {

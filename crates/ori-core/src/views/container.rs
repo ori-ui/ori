@@ -5,7 +5,7 @@ use crate::{
     event::Event,
     layout::{Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Styled, Styles},
+    style::{style, Style, Styles},
     view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
 };
 
@@ -55,8 +55,8 @@ pub struct ContainerStyle {
     pub shadow: BoxShadow,
 }
 
-impl Styled for ContainerStyle {
-    fn from_style(style: &Styles) -> Self {
+impl Style for ContainerStyle {
+    fn style(style: &Styles) -> Self {
         Self {
             background: style.palette().secondary().into(),
             border_radius: BorderRadius::all(0.0),

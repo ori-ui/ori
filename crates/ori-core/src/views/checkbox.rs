@@ -5,7 +5,7 @@ use crate::{
     event::{AnimationFrame, Event},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    style::{style, Styled, Styles},
+    style::{style, Style, Styles},
     transition::Transition,
     view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
@@ -36,8 +36,8 @@ pub struct CheckboxStyle {
     pub border_color: Color,
 }
 
-impl Styled for CheckboxStyle {
-    fn from_style(style: &Styles) -> Self {
+impl Style for CheckboxStyle {
+    fn style(style: &Styles) -> Self {
         Self {
             transition: Transition::ease(0.1),
             size: 24.0,

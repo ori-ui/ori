@@ -169,7 +169,7 @@ fn generate(f: &mut impl Write, icons: &[Icon]) -> io::Result<()> {
     /* generate the Icon::font method */
 
     writeln!(f, "/// The font of the icon.")?;
-    writeln!(f, "pub fn fonts(self) -> &[IconFont] {{")?;
+    writeln!(f, "pub fn fonts(self) -> &'static [IconFont] {{")?;
     writeln!(f, "match self {{")?;
 
     for icon in icons {

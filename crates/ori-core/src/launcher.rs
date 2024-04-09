@@ -5,7 +5,7 @@ use crate::{
     debug::debug_ui,
     delegate::Delegate,
     shell::{Shell, Windows},
-    style::{Palette, IntoStyles, Styles},
+    style::{IntoStyles, Palette, Styles},
     text::FontSource,
     ui::{Ui, UiBuilder},
     view::{any, View},

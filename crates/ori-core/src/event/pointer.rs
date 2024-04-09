@@ -7,6 +7,10 @@ use crate::{
 
 use super::Modifiers;
 
+/// An event that is emitted when the hovered view changes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct HoveredChanged;
+
 /// A unique pointer id.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PointerId {
@@ -26,7 +30,7 @@ impl PointerId {
 }
 
 /// A pointer.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pointer {
     /// The unique id of the pointer.
     pub(crate) id: PointerId,

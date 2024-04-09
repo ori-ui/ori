@@ -91,10 +91,14 @@ impl Window {
         }
     }
 
-    pub(crate) fn pointer_hovered(&mut self, id: PointerId, hovered: Option<ViewId>) {
+    pub(crate) fn pointer_hovered(&mut self, id: PointerId, hovered: Option<ViewId>) -> bool {
         if let Some(pointer) = self.pointer_mut(id) {
+            let changed = pointer.hovered() != hovered;
             pointer.hovered = hovered;
+            return changed;
         }
+
+        false
     }
 
     /// Get the pointer that is currently hovered over the given view.

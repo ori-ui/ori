@@ -5,7 +5,7 @@ use instant::Instant;
 use crate::{
     canvas::Canvas,
     debug::{DebugDraw, DebugLayout, DebugTree},
-    event::{Event, PointerLeft, PointerMoved, SwitchFocus},
+    event::{Event, HoveredChanged, PointerLeft, PointerMoved, SwitchFocus},
     layout::{Size, Space},
 };
 
@@ -127,7 +127,7 @@ impl<V> Pod<V> {
         }
 
         // update the hot state
-        if event.is::<PointerMoved>() || event.is::<PointerLeft>() {
+        if event.is::<PointerMoved>() || event.is::<PointerLeft>() || event.is::<HoveredChanged>() {
             view_state.set_hot(cx.window().is_hovered(view_state.id()));
         }
 

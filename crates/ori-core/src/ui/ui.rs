@@ -8,9 +8,9 @@ use crate::{
     debug::History,
     delegate::Delegate,
     event::{
-        CloseRequested, Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId,
-        PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled, Quit,
-        RequestFocus, SwitchFocus, WindowResized,
+        CloseRequested, Code, Event, HoveredChanged, KeyPressed, KeyReleased, Modifiers,
+        PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
+        PointerScrolled, Quit, RequestFocus, SwitchFocus, WindowResized,
     },
     layout::{Point, Vector},
     style::Styles,
@@ -247,6 +247,23 @@ impl<T> Ui<T> {
         pointer.map_or(Point::ZERO, |p| p.position())
     }
 
+    /// Tell the UI that a pointer has entered the window.
+    pub fn update_hovered(&mut self, window_id: WindowId) -> bool {
+        let mut changed = false;
+
+        if let Some(window) = self.windows.get_mut(&window_id) {
+            for i in 0..window.window().pointers().len() {
+                let pointer = window.window().pointers()[i];
+                let position = pointer.position;
+                let hovered = window.scene().view_at(position);
+
+                changed |= window.window_mut().pointer_hovered(pointer.id, hovered);
+            }
+        }
+
+        changed
+    }
+
     /// Tell the UI that a pointer has moved.
     pub fn pointer_moved(
         &mut self,
@@ -261,14 +278,7 @@ impl<T> Ui<T> {
         let delta = position - prev;
 
         window.pointer_moved(pointer, position);
-
-        let scene = self.window_mut(window_id).scene_mut();
-        let view = scene.view_at(position);
-
-        tracing::trace!("pointer_moved: {} -> {:?}", position, view);
-
-        let window = self.window_mut(window_id).window_mut();
-        window.pointer_hovered(pointer, view);
+        self.update_hovered(window_id);
 
         let event = PointerMoved {
             id: pointer,
@@ -481,14 +491,25 @@ impl<T> Ui<T> {
             &mut needs_rebuild,
         );
 
-        if let Some(window_ui) = self.windows.get_mut(&window_id) {
+        let update_hovered = if let Some(window_ui) = self.windows.get_mut(&window_id) {
+            let needs_draw = window_ui.needs_draw();
+
             (self.requests).extend(window_ui.render(&mut base, data));
-        }
+
+            needs_draw
+        } else {
+            false
+        };
 
         if needs_rebuild {
             self.request_rebuild();
         }
 
         self.handle_commands(data);
+
+        if update_hovered && self.update_hovered(window_id) {
+            let event = Event::new(HoveredChanged);
+            self.event(data, window_id, &event);
+        }
     }
 }

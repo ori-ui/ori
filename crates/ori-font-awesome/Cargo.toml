@@ -12,3 +12,4 @@ json = "0.12"
 
 [dependencies]
 ori-core = { workspace = true }
+ori-macro = { workspace = true }

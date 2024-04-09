@@ -76,20 +76,22 @@ struct Icon {
     name: String,
     label: String,
     unicode: String,
-    font: Font,
+    fonts: Vec<Font>,
 }
 
 impl Icon {
     fn new((name, value): (&str, &JsonValue)) -> Option<Self> {
         let label = String::from(value["label"].as_str()?);
         let unicode = String::from(value["unicode"].as_str()?);
-        let font = Font::from_value(&value["free"][0])?;
+        let fonts = (value["free"].members())
+            .filter_map(Font::from_value)
+            .collect();
 
         Some(Self {
             name: String::from(name),
             label,
             unicode,
-            font,
+            fonts,
         })
     }
 
@@ -167,17 +169,17 @@ fn generate(f: &mut impl Write, icons: &[Icon]) -> io::Result<()> {
     /* generate the Icon::font method */
 
     writeln!(f, "/// The font of the icon.")?;
-    writeln!(f, "pub fn font(self) -> IconFont {{")?;
+    writeln!(f, "pub fn fonts(self) -> &[IconFont] {{")?;
     writeln!(f, "match self {{")?;
 
     for icon in icons {
-        let font = match icon.font {
-            Font::Regular => "Regular",
-            Font::Solid => "Solid",
-            Font::Brand => "Brand",
-        };
+        writeln!(f, "Self::{} => &[", icon.ident())?;
 
-        writeln!(f, "Self::{} => IconFont::{},", icon.ident(), font)?;
+        for font in &icon.fonts {
+            writeln!(f, "IconFont::{:?},", font)?;
+        }
+
+        writeln!(f, "],")?;
     }
 
     writeln!(f, "}}")?;

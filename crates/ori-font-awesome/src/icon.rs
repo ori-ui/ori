@@ -7,8 +7,9 @@ use ori_core::{
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
     view::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
 };
+use ori_macro::Build;
 
-use crate::IconCode;
+use crate::{IconCode, IconFont};
 
 const REGULAR: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Regular-400.otf");
 const SOLID: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Solid-900.otf");
@@ -23,11 +24,16 @@ pub fn icon(icon: impl Into<IconCode>) -> Icon {
 ///
 /// By default, the icon is rendered using the `icon.font` font family.
 /// This uses the [Font Awesome 6 Regular Free](https://fontawesome.com/) font by default.
-#[derive(Rebuild, PartialEq)]
+#[derive(Build, Rebuild, PartialEq)]
 pub struct Icon {
     /// The codepoint of the icon to display.
     #[rebuild(layout)]
     pub icon: IconCode,
+    /// Whether the icon is solid or regular.
+    ///
+    /// This only affects the rendering of the icon if the icon is available in both styles.
+    #[rebuild(layout)]
+    pub solid: bool,
     /// The size of the icon.
     #[rebuild(layout)]
     pub size: f32,
@@ -41,21 +47,25 @@ impl Icon {
     pub fn new(icon: impl Into<IconCode>) -> Self {
         Self {
             icon: icon.into(),
+            solid: false,
             size: 16.0,
             color: palette().text(),
         }
     }
 
-    /// Set the size of the icon.
-    pub fn size(mut self, size: f32) -> Self {
-        self.size = size;
-        self
-    }
+    /// Get the font to use for the icon.
+    pub fn font(&self) -> IconFont {
+        if self.icon.fonts().contains(&IconFont::Solid)
+            && self.icon.fonts().contains(&IconFont::Regular)
+        {
+            if self.solid {
+                return IconFont::Solid;
+            } else {
+                return IconFont::Regular;
+            }
+        }
 
-    /// Set the color of the icon.
-    pub fn color(mut self, color: impl Into<Color>) -> Self {
-        self.color = color.into();
-        self
+        self.icon.fonts()[0]
     }
 
     fn set_attributes(&self, cx: &mut BaseCx, buffer: &mut TextBuffer) {
@@ -70,14 +80,16 @@ impl Icon {
             cx.insert_context(FontsLoaded);
         }
 
+        let font = self.font();
+
         buffer.set_metrics(cx.fonts(), self.size, 1.0);
         buffer.set_text(
             cx.fonts(),
             self.icon.as_str(),
             TextAttributes {
-                family: self.icon.font().family(),
+                family: font.family(),
                 stretch: FontStretch::Normal,
-                weight: self.icon.font().weight(),
+                weight: font.weight(),
                 style: FontStyle::Normal,
                 color: self.color,
             },

@@ -28,7 +28,6 @@ pub fn try_style<T: Clone + Any>() -> Option<T> {
 pub fn styled<T>(style: impl IntoStyles, f: impl FnOnce() -> T) -> T {
     let mut new_style = Styles::snapshot();
     new_style.extend(style.into_styles());
-
     new_style.as_context(f)
 }
 

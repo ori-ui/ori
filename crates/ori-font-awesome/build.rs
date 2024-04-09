@@ -127,6 +127,17 @@ fn generate(f: &mut impl Write, icons: &[Icon]) -> io::Result<()> {
 
     writeln!(f, "impl IconCode {{")?;
 
+    /* generate ALL_ICONS */
+
+    writeln!(f, "/// All the icons.")?;
+    writeln!(f, "pub const ALL_ICONS: &'static [Self] = &[")?;
+
+    for icon in icons {
+        writeln!(f, "Self::{},", icon.ident())?;
+    }
+
+    writeln!(f, "];")?;
+
     /* generate the Icon::code_point method */
 
     writeln!(f, "/// The code point of the icon.")?;

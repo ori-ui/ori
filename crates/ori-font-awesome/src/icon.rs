@@ -1,5 +1,5 @@
 use ori_core::{
-    canvas::{Canvas, Color},
+    canvas::{Canvas, Color, Mesh},
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
@@ -97,22 +97,28 @@ impl Icon {
     }
 }
 
+#[doc(hidden)]
+pub struct IconState {
+    buffer: TextBuffer,
+    mesh: Option<Mesh>,
+}
+
 impl<T> View<T> for Icon {
-    type State = TextBuffer;
+    type State = IconState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         let mut buffer = TextBuffer::new(cx.fonts(), self.size, 1.0);
 
         self.set_attributes(cx, &mut buffer);
 
-        buffer
+        IconState { buffer, mesh: None }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
         if self != old {
-            self.set_attributes(cx, state);
+            self.set_attributes(cx, &mut state.buffer);
         }
     }
 
@@ -132,8 +138,8 @@ impl<T> View<T> for Icon {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        state.set_bounds(cx.fonts(), space.max);
-        cx.prepare_text(state);
+        state.buffer.set_bounds(cx.fonts(), space.max);
+        cx.prepare_text(&state.buffer);
 
         Size::all(self.size)
     }
@@ -145,10 +151,15 @@ impl<T> View<T> for Icon {
         _data: &mut T,
         canvas: &mut Canvas,
     ) {
-        let offset = cx.rect().center() - state.rect().center();
+        let offset = cx.rect().center() - state.buffer.rect().center();
 
-        let mesh = cx.rasterize_text(state);
-        canvas.translate(offset);
-        canvas.draw_pixel_perfect(mesh);
+        if state.mesh.is_none() {
+            state.mesh = Some(cx.rasterize_text(&state.buffer));
+        }
+
+        if let Some(mesh) = state.mesh.clone() {
+            canvas.translate(offset);
+            canvas.draw_pixel_perfect(mesh);
+        }
     }
 }

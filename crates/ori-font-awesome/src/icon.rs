@@ -133,6 +133,8 @@ impl<T> View<T> for Icon {
         space: Space,
     ) -> Size {
         state.set_bounds(cx.fonts(), space.max);
+        cx.prepare_text(state);
+
         Size::all(self.size)
     }
 

@@ -647,6 +647,16 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         self.window
     }
 
+    /// Prepare a text buffer for rasterization.
+    pub fn prepare_text(&mut self, buffer: &TextBuffer) {
+        self.fonts().prepare_text(buffer.raw());
+    }
+
+    /// Prepare a raw cosmic text buffer for rasterization.
+    pub fn prepare_text_raw(&mut self, buffer: &Buffer) {
+        self.fonts().prepare_text(buffer);
+    }
+
     /// Create a mesh for the given text buffer.
     pub fn rasterize_text(&mut self, buffer: &TextBuffer) -> Mesh {
         self.fonts().rasterize_text(buffer.raw())

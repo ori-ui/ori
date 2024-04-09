@@ -132,6 +132,35 @@ impl Fonts {
         Size::new(width, height).ceil()
     }
 
+    /// Prepare a text buffer for rasterization.
+    pub fn prepare_text(&mut self, buffer: &Buffer) {
+        loop {
+            if self.try_prepare_text(buffer) {
+                break;
+            }
+
+            self.font_atlas.grow();
+        }
+    }
+
+    fn try_prepare_text(&mut self, buffer: &Buffer) -> bool {
+        for run in buffer.layout_runs() {
+            for glyph in run.glyphs {
+                let rasterized = self.font_atlas.rasterize_glyph(
+                    &mut self.swash_cache,
+                    &mut self.font_system,
+                    glyph,
+                );
+
+                if rasterized.is_none() {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
     /// Convert a text buffer to a mesh.
     ///
     /// This involves shapind the text, rasterizing the glyphs, laying out the glyphs,

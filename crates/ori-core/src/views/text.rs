@@ -158,14 +158,14 @@ impl<T> View<T> for Text {
         if self.wrap != old.wrap {
             state.buffer.set_wrap(cx.fonts(), self.wrap);
 
-            state.mesh = Some(cx.rasterize_text(&state.buffer));
+            state.mesh.take();
             cx.request_draw();
         }
 
         if self.align != old.align {
             state.buffer.set_align(self.align);
 
-            state.mesh = Some(cx.rasterize_text(&state.buffer));
+            state.mesh.take();
             cx.request_draw();
         }
 
@@ -188,7 +188,7 @@ impl<T> View<T> for Text {
                 },
             );
 
-            state.mesh = Some(cx.rasterize_text(&state.buffer));
+            state.mesh.take();
             cx.request_layout();
         }
     }
@@ -211,7 +211,7 @@ impl<T> View<T> for Text {
     ) -> Size {
         if state.mesh.is_none() || state.buffer.bounds() != space.max {
             state.buffer.set_bounds(cx.fonts(), space.max);
-            state.mesh = Some(cx.rasterize_text(&state.buffer));
+            cx.prepare_text(&state.buffer);
         }
 
         space.fit(state.buffer.size())
@@ -225,6 +225,10 @@ impl<T> View<T> for Text {
         canvas: &mut Canvas,
     ) {
         let offset = cx.rect().center() - state.buffer.rect().center();
+
+        if state.mesh.is_none() {
+            state.mesh = Some(cx.rasterize_text(&state.buffer));
+        }
 
         if let Some(ref mesh) = state.mesh {
             canvas.translate(offset);

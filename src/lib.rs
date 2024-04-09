@@ -49,10 +49,9 @@ pub mod prelude {
             Affine, Align, Alignment, Axis, Justify, Matrix, Padding, Point, Rect, Size, Space,
             Vector, FILL,
         },
-        log::*,
+        log::{debug, error, info, trace, warn},
         rebuild::Rebuild,
         style::{palette, style, style_or, styled, Palette, Style, Styles},
-        text,
         text::{
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
             TextAlign, TextBuffer, TextWrap,

@@ -10,7 +10,7 @@ use crate::{
     event::{
         CloseRequested, Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId,
         PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled, Quit,
-        RequestFocus, SwitchFocus,
+        RequestFocus, SwitchFocus, WindowResized,
     },
     layout::{Point, Vector},
     style::Styles,
@@ -212,18 +212,24 @@ impl<T> Ui<T> {
         }
     }
 
-    /// Tell the UI that the scale factor of a window has changed.
-    pub fn scale_factor_changed(&mut self, window_id: WindowId) {
-        if let Some(window) = self.windows.get_mut(&window_id) {
-            window.request_layout();
-        }
-    }
-
     /// Tell the UI that a window has been resized.
-    pub fn resized(&mut self, window_id: WindowId) {
+    pub fn window_resized(&mut self, data: &mut T, window_id: WindowId) {
         if let Some(window) = self.windows.get_mut(&window_id) {
             window.request_layout();
         }
+
+        let (width, height) = match self.windows.get(&window_id) {
+            Some(window_ui) => (window_ui.window().width(), window_ui.window().height()),
+            None => return,
+        };
+
+        let event = Event::new(WindowResized {
+            window: window_id,
+            width,
+            height,
+        });
+
+        self.event_all(data, &event);
     }
 
     /// Tell the UI that a window wants to close.

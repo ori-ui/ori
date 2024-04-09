@@ -361,11 +361,8 @@ impl<T> AppState<T> {
             WindowEvent::CloseRequested => {
                 self.ui.close_requested(&mut self.data, id);
             }
-            WindowEvent::Resized(_) => {
-                self.ui.resized(id);
-            }
-            WindowEvent::ScaleFactorChanged { .. } => {
-                self.ui.scale_factor_changed(id);
+            WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                self.ui.window_resized(&mut self.data, id);
             }
             WindowEvent::CursorMoved {
                 device_id,

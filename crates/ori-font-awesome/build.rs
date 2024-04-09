@@ -166,6 +166,19 @@ fn generate(f: &mut impl Write, icons: &[Icon]) -> io::Result<()> {
     writeln!(f, "}}")?;
     writeln!(f, "}}")?;
 
+    /* generate the Icon::label method */
+
+    writeln!(f, "/// The label of the icon.")?;
+    writeln!(f, "pub fn label(self) -> &'static str {{")?;
+    writeln!(f, "match self {{")?;
+
+    for icon in icons {
+        writeln!(f, "Self::{} => \"{}\",", icon.ident(), icon.label)?;
+    }
+
+    writeln!(f, "}}")?;
+    writeln!(f, "}}")?;
+
     /* generate the Icon::font method */
 
     writeln!(f, "/// The font of the icon.")?;

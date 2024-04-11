@@ -2,6 +2,7 @@
 
 mod aligned;
 mod animate;
+mod build_handler;
 mod button;
 mod checkbox;
 mod clickable;
@@ -34,6 +35,7 @@ mod zstack;
 
 pub use aligned::*;
 pub use animate::*;
+pub use build_handler::*;
 pub use button::*;
 pub use checkbox::*;
 pub use clickable::*;

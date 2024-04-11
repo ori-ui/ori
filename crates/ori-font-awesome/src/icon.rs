@@ -27,18 +27,18 @@ pub fn icon(icon: impl Into<IconCode>) -> Icon {
 #[derive(Build, Rebuild, PartialEq)]
 pub struct Icon {
     /// The codepoint of the icon to display.
-    #[rebuild(layout)]
+    #[rebuild(draw)]
     pub icon: IconCode,
     /// Whether the icon is solid or regular.
     ///
     /// This only affects the rendering of the icon if the icon is available in both styles.
-    #[rebuild(layout)]
+    #[rebuild(draw)]
     pub solid: bool,
     /// The size of the icon.
     #[rebuild(layout)]
     pub size: f32,
     /// The color of the icon.
-    #[rebuild(layout)]
+    #[rebuild(draw)]
     pub color: Color,
 }
 
@@ -119,6 +119,7 @@ impl<T> View<T> for Icon {
 
         if self != old {
             self.set_attributes(cx, &mut state.buffer);
+            state.mesh = None;
         }
     }
 

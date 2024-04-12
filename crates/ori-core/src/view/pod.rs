@@ -5,7 +5,7 @@ use instant::Instant;
 use crate::{
     canvas::Canvas,
     debug::{DebugDraw, DebugLayout, DebugTree},
-    event::{Event, HoveredChanged, PointerLeft, PointerMoved, SwitchFocus},
+    event::Event,
     layout::{Size, Space},
 };
 
@@ -119,17 +119,7 @@ impl<V> Pod<V> {
         event: &Event,
         mut f: impl FnMut(&mut EventCx, &Event),
     ) {
-        if let Some(SwitchFocus::Next(focused)) | Some(SwitchFocus::Prev(focused)) = event.get() {
-            if view_state.is_focused() {
-                view_state.set_focused(false);
-                focused.set(true);
-            }
-        }
-
-        // update the hot state
-        if event.is::<PointerMoved>() || event.is::<PointerLeft>() || event.is::<HoveredChanged>() {
-            view_state.set_hot(cx.window().is_hovered(view_state.id()));
-        }
+        view_state.set_hot(cx.window().is_hovered(view_state.id()));
 
         view_state.prepare();
 
@@ -178,7 +168,7 @@ impl<V> Pod<V> {
         canvas.view = None;
 
         // create the draw context
-        let mut new_cx = cx.layer();
+        let mut new_cx = cx.child();
         new_cx.view_state = view_state;
 
         // draw the content
@@ -235,7 +225,7 @@ impl<T, V: View<T>> View<T> for Pod<V> {
             let time = start.elapsed();
 
             let mut child_tree = cx.remove_context::<DebugTree>().unwrap();
-            child_tree.set_type::<V>();
+
             child_tree.set_rebuild_time(time);
 
             debug_tree.insert(0, child_tree);

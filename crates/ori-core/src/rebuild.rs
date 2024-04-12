@@ -9,7 +9,7 @@ use crate::view::RebuildCx;
 /// When derived this will detect changes in the fields of the struct and
 /// request a rebuild, layout or draw when necessary. This is done by
 /// specifying the `#[rebuild(...)]` attribute on the fields of the struct.
-/// Valid values are `tree`, `layout` and `draw`.
+/// Valid values are `layout` and `draw`.
 ///
 /// # Example
 /// ``` ignore

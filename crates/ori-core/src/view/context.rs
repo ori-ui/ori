@@ -561,7 +561,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     }
 
     /// Create a child context.
-    pub fn layer(&mut self) -> DrawCx<'_, 'b> {
+    pub fn child(&mut self) -> DrawCx<'_, 'b> {
         DrawCx {
             base: self.base,
             view_state: self.view_state,
@@ -634,7 +634,14 @@ impl_context! {RebuildCx<'_, '_>, EventCx<'_, '_>, DrawCx<'_, '_> {
     }
 }}
 
-impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
+impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_> {
+    /// Request a draw of the view tree.
+    pub fn request_draw(&mut self) {
+        self.view_state.request_draw();
+    }
+}}
+
+impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
     /// Request an animation frame.
     pub fn request_animation_frame(&mut self) {
         if self.animation_frame.is_none() {
@@ -642,6 +649,55 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         }
     }
 
+    /// Request a rebuild of the view tree.
+    pub fn request_rebuild(&mut self) {
+        self.base.request_rebuild();
+    }
+
+    /// Request a layout of the view tree.
+    pub fn request_layout(&mut self) {
+        self.view_state.request_layout();
+    }
+
+    /// Set whether the view is hot.
+    ///
+    /// Returns `true` if the hot state changed.
+    pub fn set_hot(&mut self, hot: bool) -> bool {
+        let updated = self.is_hot() != hot;
+        self.view_state.set_hot(hot);
+        updated
+    }
+
+    /// Set whether the view is focused.
+    ///
+    /// Returns `true` if the focused state changed.
+    pub fn set_focused(&mut self, focused: bool) -> bool {
+        let updated = self.is_focused() != focused;
+        self.view_state.set_focused(focused);
+        updated
+    }
+
+    /// Set whether the view is active.
+    ///
+    /// Returns `true` if the active state changed.
+    pub fn set_active(&mut self, active: bool) -> bool {
+        let updated = self.is_active() != active;
+        self.view_state.set_active(active);
+        updated
+    }
+
+    /// Set the flex of the view.
+    pub fn set_flex(&mut self, flex: f32) {
+        self.view_state.set_flex(flex);
+    }
+
+    /// Set whether the view is tight.
+    pub fn set_tight(&mut self, tight: bool) {
+        self.view_state.set_tight(tight);
+    }
+}}
+
+impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the window.
     pub fn window(&mut self) -> &mut Window {
         self.window
@@ -677,41 +733,14 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         self.view_state.is_hot()
     }
 
-    /// Set whether the view is hot.
-    ///
-    /// Returns `true` if the hot state changed.
-    pub fn set_hot(&mut self, hot: bool) -> bool {
-        let updated = self.is_hot() != hot;
-        self.view_state.set_hot(hot);
-        updated
-    }
-
     /// Get whether the view is focused.
     pub fn is_focused(&self) -> bool {
         self.view_state.is_focused()
     }
 
-    /// Set whether the view is focused.
-    ///
-    /// Returns `true` if the focused state changed.
-    pub fn set_focused(&mut self, focused: bool) -> bool {
-        let updated = self.is_focused() != focused;
-        self.view_state.set_focused(focused);
-        updated
-    }
-
     /// Get whether the view is active.
     pub fn is_active(&self) -> bool {
         self.view_state.is_active()
-    }
-
-    /// Set whether the view is active.
-    ///
-    /// Returns `true` if the active state changed.
-    pub fn set_active(&mut self, active: bool) -> bool {
-        let updated = self.is_active() != active;
-        self.view_state.set_active(active);
-        updated
     }
 
     /// Get whether a child view is hot.
@@ -734,33 +763,8 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         self.view_state.flex()
     }
 
-    /// Set the flex of the view.
-    pub fn set_flex(&mut self, flex: f32) {
-        self.view_state.set_flex(flex);
-    }
-
     /// Get whether the view is tight.
     pub fn is_tight(&self) -> bool {
         self.view_state.is_tight()
-    }
-
-    /// Set whether the view is tight.
-    pub fn set_tight(&mut self, tight: bool) {
-        self.view_state.set_tight(tight);
-    }
-
-    /// Request a rebuild of the view tree.
-    pub fn request_rebuild(&mut self) {
-        self.base.request_rebuild();
-    }
-
-    /// Request a layout of the view tree.
-    pub fn request_layout(&mut self) {
-        self.view_state.request_layout();
-    }
-
-    /// Request a draw of the view tree.
-    pub fn request_draw(&mut self) {
-        self.view_state.request_draw();
     }
 }}

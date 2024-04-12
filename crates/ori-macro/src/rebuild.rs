@@ -4,12 +4,10 @@ use syn::{parse::ParseStream, punctuated::Punctuated};
 
 use crate::find_core;
 
-syn::custom_keyword!(tree);
 syn::custom_keyword!(layout);
 syn::custom_keyword!(draw);
 
 enum Update {
-    Tree,
     Layout,
     Draw,
 }
@@ -18,10 +16,7 @@ impl syn::parse::Parse for Update {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let lookahead = input.lookahead1();
 
-        if lookahead.peek(tree) {
-            input.parse::<tree>()?;
-            Ok(Self::Tree)
-        } else if lookahead.peek(layout) {
+        if lookahead.peek(layout) {
             input.parse::<layout>()?;
             Ok(Self::Layout)
         } else if lookahead.peek(draw) {
@@ -35,7 +30,6 @@ impl syn::parse::Parse for Update {
 
 #[derive(Default)]
 struct FieldAttributes {
-    tree: bool,
     layout: bool,
     draw: bool,
 }
@@ -52,7 +46,6 @@ impl FieldAttributes {
 
                 for update in updates {
                     match update {
-                        Update::Tree => this.tree = true,
                         Update::Layout => this.layout = true,
                         Update::Draw => this.draw = true,
                     }
@@ -64,15 +57,11 @@ impl FieldAttributes {
     }
 
     fn is_empty(&self) -> bool {
-        !self.tree && !self.layout && !self.draw
+        !self.layout && !self.draw
     }
 
     fn updates(&self) -> TokenStream {
         let mut tokens = TokenStream::new();
-
-        if self.tree {
-            tokens.extend(quote!(cx.request_rebuild();));
-        }
 
         if self.layout {
             tokens.extend(quote!(cx.request_layout();));

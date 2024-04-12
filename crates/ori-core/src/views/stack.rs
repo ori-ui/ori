@@ -224,11 +224,6 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
             let size = self.content.layout_nth(i, content, cx, data, space);
             state.majors[i] = self.axis.major(size);
             state.minors[i] = self.axis.minor(size);
-
-            if content[i].is_flex() {
-                state.flex_sum += content[i].flex();
-                cx.request_layout();
-            }
         }
 
         /* measure the expanded content */

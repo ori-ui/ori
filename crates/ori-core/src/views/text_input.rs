@@ -365,7 +365,7 @@ impl<T> View<T> for TextInput<T> {
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         if event.is::<RequestFocus>() {
             cx.set_focused(true);
-            cx.request_animation_frame();
+            cx.animate();
             cx.request_draw();
             event.handle();
         }
@@ -485,7 +485,7 @@ impl<T> View<T> for TextInput<T> {
             }
 
             cx.set_focused(true);
-            cx.request_animation_frame();
+            cx.animate();
 
             state.blink = 0.0;
             state.dragging = true;
@@ -528,7 +528,7 @@ impl<T> View<T> for TextInput<T> {
 
         if let Some(AnimationFrame(dt)) = event.get() {
             if cx.is_focused() {
-                cx.request_animation_frame();
+                cx.animate();
                 cx.request_draw();
 
                 state.blink += *dt * 10.0;

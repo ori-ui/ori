@@ -24,7 +24,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
         .border_radius([16.0, 0.0, 16.0, 0.0])
         .border_width(2.0);
 
-    on_press(content, |cx, _| {
+    on_press(trigger(content), |cx, _| {
         cx.window().drag();
     })
 }
@@ -67,7 +67,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 struct AppDelegate;
 
 impl Delegate<Data> for AppDelegate {
-    fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) {
+    fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
         if let Some(request) = event.get::<CloseRequested>() {
             data.windows.retain(|window| *window != request.window);
             cx.request_rebuild();
@@ -88,19 +88,21 @@ impl Delegate<Data> for AppDelegate {
             info!("Window {} opened", desc.id);
 
             cx.open_window(desc, window);
+            cx.request_rebuild();
         }
 
         if let Some(CloseWindow(window)) = event.get() {
             cx.close_window(*window);
         }
+
+        false
     }
 }
 
 fn main() {
     let window = WindowDescriptor::new().title("Multi Window (examples/multi_window.rs)");
 
-    Launcher::new(Data::default())
-        .window(window, app)
-        .delegate(AppDelegate)
-        .launch();
+    let app = App::build().window(window, app).delegate(AppDelegate);
+
+    ori::launch(app, Data::default()).unwrap();
 }

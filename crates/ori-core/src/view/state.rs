@@ -15,9 +15,11 @@ bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
     pub struct Update: u8 {
         /// The view needs to be laid out.
-        const LAYOUT = 1 << 0;
+        const LAYOUT = 1 << 1;
         /// The view needs to be drawn.
-        const DRAW = 1 << 1;
+        const DRAW = 1 << 2;
+        /// The view needs an animation frame.
+        const ANIMATE = 1 << 3;
     }
 }
 
@@ -143,29 +145,19 @@ impl Default for ViewState {
 }
 
 impl ViewState {
-    pub(crate) fn prepare(&mut self) {
+    /// Prepare the view.
+    pub fn prepare(&mut self) {
         self.flags.remove(ViewFlags::HAS);
         self.inherited_cursor = self.cursor;
     }
 
-    pub(crate) fn prepare_layout(&mut self) {
-        self.prepare();
-        self.mark_layed_out();
-    }
-
-    pub(crate) fn prepare_draw(&mut self) {
-        self.prepare();
-        self.mark_drawn();
-    }
-
-    pub(crate) fn propagate(&mut self, child: &mut Self) {
+    /// Propagate the state of a child view.
+    pub fn propagate(&mut self, child: &mut Self) {
         self.update |= child.update;
         self.flags |= self.flags.has() | child.flags.has();
         self.inherited_cursor = self.cursor().or(child.cursor());
     }
-}
 
-impl ViewState {
     /// Get the id of the view.
     pub fn id(&self) -> ViewId {
         self.id
@@ -251,6 +243,11 @@ impl ViewState {
         self.is_tight = tight;
     }
 
+    /// Set the size of the view.
+    pub fn set_size(&mut self, size: Size) {
+        self.size = size;
+    }
+
     /// Get the size of the view.
     pub fn size(&self) -> Size {
         self.size
@@ -286,6 +283,11 @@ impl ViewState {
         self.update |= Update::DRAW;
     }
 
+    /// Request an animation frame of the view tree.
+    pub fn request_animate(&mut self) {
+        self.update |= Update::ANIMATE;
+    }
+
     /// Get whether the view needs to be laid out.
     pub fn needs_layout(&self) -> bool {
         self.update.contains(Update::LAYOUT)
@@ -294,6 +296,11 @@ impl ViewState {
     /// Get whether the view needs to be drawn.
     pub fn needs_draw(&self) -> bool {
         self.update.contains(Update::DRAW)
+    }
+
+    /// Get whether the view needs an animation frame.
+    pub fn needs_animate(&self) -> bool {
+        self.update.contains(Update::ANIMATE)
     }
 
     /// Mark the view as laid out.
@@ -308,6 +315,13 @@ impl ViewState {
     /// This will remove the [`Update::DRAW`] flag.
     pub fn mark_drawn(&mut self) {
         self.update.remove(Update::DRAW);
+    }
+
+    /// Mark the view as animated.
+    ///
+    /// This will remove the [`Update::ANIMATE`] flag.
+    pub fn mark_animated(&mut self) {
+        self.update.remove(Update::ANIMATE);
     }
 
     /// Get the [`Update`] of the view.

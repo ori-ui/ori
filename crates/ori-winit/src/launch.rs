@@ -1,10 +1,10 @@
-use std::{collections::HashMap, mem};
+use std::collections::HashMap;
 
+use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
+    command::CommandWaker,
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
-    shell::Windows,
-    ui::{Ui, UiBuilder, UiRequest},
     window::{Window, WindowDescriptor},
 };
 use winit::{
@@ -22,19 +22,27 @@ use crate::{
     Error,
 };
 
-pub(crate) fn launch<T>(
-    data: T,
-    event_loop: EventLoop<()>,
-    ui: Ui<T>,
-    windows: Windows<T>,
-) -> Result<(), Error> {
+/// Launch an application.
+pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     /* initialize tracing if enabled */
     if let Err(err) = crate::tracing::init_tracing() {
         eprintln!("Failed to initialize tracing: {}", err);
     }
 
-    let mut state = AppState::new(data, ui, windows);
-    state.ui.set_clipboard(WinitClipboard::new());
+    let event_loop = EventLoop::new()?;
+
+    let waker = CommandWaker::new({
+        let proxy = event_loop.create_proxy();
+
+        move || {
+            let _ = proxy.send_event(());
+        }
+    });
+
+    let mut app = app.build(waker);
+    app.set_clipboard(WinitClipboard::new());
+
+    let mut state = WinitState::new(data, app);
 
     event_loop.run(move |event, target| {
         match event {
@@ -42,7 +50,7 @@ pub(crate) fn launch<T>(
             //
             // this is necessary for android
             Event::Resumed => {
-                state.resume(target);
+                state.resume();
             }
             Event::AboutToWait => {
                 // after all events for a frame have been processed, we need to
@@ -53,7 +61,7 @@ pub(crate) fn launch<T>(
             // this event is sent by [`WinitWaker`] telling us that there are
             // commands that need to be processed
             Event::UserEvent(_) => {
-                state.ui.handle_commands(&mut state.data);
+                state.app.handle_commands(&mut state.data);
             }
             Event::WindowEvent { window_id, event } => {
                 state.window_event(window_id, event);
@@ -62,20 +70,15 @@ pub(crate) fn launch<T>(
         }
 
         state.handle_requests(target);
-
-        if state.ui.should_quit() && state.init {
-            target.exit();
-        }
     })?;
 
     Ok(())
 }
 
-struct AppState<T> {
+struct WinitState<T> {
     init: bool,
-    windows: Windows<T>,
+    app: App<T>,
     data: T,
-    ui: Ui<T>,
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
 
     /* glow */
@@ -91,13 +94,12 @@ struct AppState<T> {
     instance: Option<ori_wgpu::WgpuRenderInstance>,
 }
 
-impl<T> AppState<T> {
-    fn new(data: T, ui: Ui<T>, windows: Windows<T>) -> Self {
+impl<T> WinitState<T> {
+    fn new(data: T, app: App<T>) -> Self {
         Self {
             init: false,
-            windows,
+            app,
             data,
-            ui,
             window_ids: HashMap::new(),
 
             /* glow */
@@ -112,24 +114,17 @@ impl<T> AppState<T> {
         }
     }
 
-    fn resume(&mut self, target: &EventLoopWindowTarget<()>) {
+    fn resume(&mut self) {
         if self.init {
             return;
         }
 
         self.init = true;
-        self.ui.init(&mut self.data);
-
-        for (desc, builder) in mem::take(&mut self.windows) {
-            if let Err(err) = self.create_window(target, desc, builder) {
-                tracing::error!("Failed to create window: {}", err);
-                return;
-            }
-        }
+        //self.app.init(&mut self.data);
     }
 
     fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>) {
-        for request in self.ui.take_requests() {
+        for request in self.app.take_requests() {
             if let Err(err) = self.handle_request(target, request) {
                 tracing::error!("Failed to handle request: {}", err);
             }
@@ -139,12 +134,16 @@ impl<T> AppState<T> {
     fn handle_request(
         &mut self,
         target: &EventLoopWindowTarget<()>,
-        request: UiRequest<T>,
+        request: AppRequest<T>,
     ) -> Result<(), Error> {
         match request {
-            UiRequest::RedrawWindow(window) => self.redraw_window(window),
-            UiRequest::CreateWindow(desc, builder) => self.create_window(target, desc, builder)?,
-            UiRequest::RemoveWindow(window_id) => self.remove_window(window_id),
+            AppRequest::OpenWindow(desc, builder) => {
+                self.create_window(target, desc, builder)?;
+            }
+            AppRequest::CloseWindow(id) => {
+                self.app.remove_window(id);
+            }
+            AppRequest::Quit => target.exit(),
         }
 
         Ok(())
@@ -238,7 +237,7 @@ impl<T> AppState<T> {
     }
 
     fn idle(&mut self) {
-        self.ui.idle(&mut self.data);
+        //self.app.idle(&mut self.data);
 
         #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
         for (render, context) in self.renders.values_mut() {
@@ -291,43 +290,28 @@ impl<T> AppState<T> {
         window.set_color(desc.color);
 
         /* add the window to the ui */
-        self.ui.add_window(&mut self.data, builder, window);
+        self.app.add_window(&mut self.data, builder, window);
 
         Ok(())
     }
 
-    fn remove_window(&mut self, window_id: ori_core::window::WindowId) {
-        self.window_ids.retain(|_, &mut id| id != window_id);
-
-        self.ui.remove_window(window_id);
-
-        #[cfg(feature = "wgpu")]
-        self.renders.remove(&window_id);
-    }
-
-    fn redraw_window(&mut self, window_id: ori_core::window::WindowId) {
-        self.ui.window_mut(window_id).window_mut().request_draw();
-    }
-
     fn render(&mut self, window_id: ori_core::window::WindowId) -> Result<(), Error> {
         // sort the scene
-        self.ui.render(&mut self.data, window_id);
-        self.ui.window_mut(window_id).scene_mut().sort();
-
-        let window = self.ui.window(window_id);
-
-        let clear_color = window.color();
-
-        let logical = window.window().size();
-        let physical = window.window().physical_size();
-        let scale_factor = window.window().scale_factor();
-        let scene = window.scene();
+        let Some(scene) = self.app.draw_window(&mut self.data, window_id) else {
+            return Ok(());
+        };
 
         /* glow */
         #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
         if let Some((render, context)) = self.renders.get_mut(&window_id) {
             context.make_current()?;
-            render.render_scene(scene, clear_color, logical, physical, scale_factor)?;
+            render.render_scene(
+                scene.scene,
+                scene.clear_color,
+                scene.logical_size,
+                scene.physical_size,
+                scene.scale_factor,
+            )?;
             context.swap_buffers()?;
         }
 
@@ -359,19 +343,19 @@ impl<T> AppState<T> {
                 }
             }
             WindowEvent::CloseRequested => {
-                self.ui.close_requested(&mut self.data, id);
+                self.app.close_requested(&mut self.data, id);
             }
-            WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
-                self.ui.window_resized(&mut self.data, id);
+            WindowEvent::Resized(inner_size) => {
+                (self.app).window_resized(&mut self.data, id, inner_size.width, inner_size.height);
             }
             WindowEvent::CursorMoved {
                 device_id,
                 position,
                 ..
             } => {
-                let scale_factor = self.ui.window(id).window().scale_factor();
+                let scale_factor = self.app.get_window(id).map_or(1.0, |w| w.scale_factor());
                 let position = Point::new(position.x as f32, position.y as f32) / scale_factor;
-                self.ui.pointer_moved(
+                self.app.pointer_moved(
                     &mut self.data,
                     id,
                     PointerId::from_hash(&device_id),
@@ -379,7 +363,7 @@ impl<T> AppState<T> {
                 );
             }
             WindowEvent::CursorLeft { device_id } => {
-                (self.ui).pointer_left(&mut self.data, id, PointerId::from_hash(&device_id));
+                (self.app).pointer_left(&mut self.data, id, PointerId::from_hash(&device_id));
             }
             WindowEvent::MouseInput {
                 device_id,
@@ -387,7 +371,7 @@ impl<T> AppState<T> {
                 button,
                 ..
             } => {
-                self.ui.pointer_button(
+                self.app.pointer_button(
                     &mut self.data,
                     id,
                     PointerId::from_hash(&device_id),
@@ -399,7 +383,7 @@ impl<T> AppState<T> {
                 delta: MouseScrollDelta::LineDelta(x, y),
                 device_id,
                 ..
-            } => self.ui.pointer_scroll(
+            } => self.app.pointer_scrolled(
                 &mut self.data,
                 id,
                 PointerId::from_hash(&device_id),
@@ -423,7 +407,7 @@ impl<T> AppState<T> {
                     _ => None,
                 };
 
-                self.ui.keyboard_key(
+                self.app.keyboard_key(
                     &mut self.data,
                     id,
                     code,
@@ -432,7 +416,7 @@ impl<T> AppState<T> {
                 );
             }
             WindowEvent::ModifiersChanged(modifiers) => {
-                self.ui.modifiers_changed(Modifiers {
+                self.app.modifiers_changed(Modifiers {
                     shift: modifiers.state().contains(ModifiersState::SHIFT),
                     ctrl: modifiers.state().contains(ModifiersState::CONTROL),
                     alt: modifiers.state().contains(ModifiersState::ALT),
@@ -444,18 +428,18 @@ impl<T> AppState<T> {
     }
 
     fn touch_event(&mut self, window_id: ori_core::window::WindowId, event: winit::event::Touch) {
-        let scale_factor = self.ui.window(window_id).window().scale_factor();
+        let scale_factor = (self.app.get_window(window_id)).map_or(1.0, |w| w.scale_factor());
         let position = Point::new(event.location.x as f32, event.location.y as f32) / scale_factor;
         let pointer_id = PointerId::from_hash(&event.device_id);
 
         // we always send a pointer moved event first because the ui
         // needs to know where the pointer is. this will also ensure
         // that hot state is updated correctly
-        (self.ui).pointer_moved(&mut self.data, window_id, pointer_id, position);
+        (self.app).pointer_moved(&mut self.data, window_id, pointer_id, position);
 
         match event.phase {
             TouchPhase::Started => {
-                self.ui.pointer_button(
+                self.app.pointer_button(
                     &mut self.data,
                     window_id,
                     pointer_id,
@@ -466,7 +450,7 @@ impl<T> AppState<T> {
             }
             TouchPhase::Moved => {}
             TouchPhase::Ended | TouchPhase::Cancelled => {
-                self.ui.pointer_button(
+                self.app.pointer_button(
                     &mut self.data,
                     window_id,
                     pointer_id,
@@ -477,7 +461,7 @@ impl<T> AppState<T> {
 
                 // we also need to send a pointer left event because
                 // the ui needs to know that the pointer left the window
-                self.ui.pointer_left(&mut self.data, window_id, pointer_id);
+                self.app.pointer_left(&mut self.data, window_id, pointer_id);
             }
         }
     }

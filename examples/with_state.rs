@@ -56,5 +56,8 @@ fn app(data: &mut Data) -> impl View<Data> {
 
 fn main() {
     let window = WindowDescriptor::new().title("With State (examples/with_state.rs)");
-    Launcher::new(Data::default()).window(window, app).launch();
+
+    let app = App::build().window(window, app);
+
+    ori::launch(app, Data::default()).unwrap();
 }

@@ -164,13 +164,13 @@ impl<T> View<T> for Checkbox {
 
     fn event(&mut self, t: &mut Self::State, cx: &mut EventCx, _data: &mut T, event: &Event) {
         if cx.hot_changed() {
-            cx.request_animation_frame();
+            cx.animate();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
             let on = cx.is_hot() && !cx.is_active();
             if self.transition.step(t, on, *dt) {
-                cx.request_animation_frame();
+                cx.animate();
             }
 
             cx.request_draw();

@@ -156,7 +156,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         if let Some(open) = self.open {
             if state.open != open {
                 state.open = open;
-                cx.request_animation_frame();
+                cx.animate();
             }
         }
 
@@ -189,13 +189,13 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
 
         if event.is::<PointerPressed>() && (state.header.is_hot() || state.header.has_hot()) {
             state.open = !state.open;
-            cx.request_animation_frame();
+            cx.animate();
             cx.request_layout();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
             if self.transition.step(&mut state.t, state.open, *dt) {
-                cx.request_animation_frame();
+                cx.animate();
                 cx.request_layout();
             }
         }

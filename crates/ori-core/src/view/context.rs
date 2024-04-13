@@ -6,7 +6,6 @@ use std::{
 };
 
 use cosmic_text::Buffer;
-use instant::Instant;
 
 use crate::{
     canvas::Mesh,
@@ -15,12 +14,11 @@ use crate::{
     event::Quit,
     layout::{Affine, Point, Rect, Size},
     text::{Fonts, TextBuffer},
-    ui::{UiBuilder, UiRequest, UiRequests},
     view::ViewState,
-    window::{Window, WindowDescriptor, WindowId},
+    window::Window,
 };
 
-use super::{any, AnyView, ViewFlags, ViewId};
+use super::{ViewFlags, ViewId};
 
 /// A context for a view.
 #[derive(Debug, Default)]
@@ -103,21 +101,12 @@ impl Contexts {
 pub struct BaseCx<'a> {
     pub(crate) contexts: &'a mut Contexts,
     pub(crate) proxy: &'a mut CommandProxy,
-    pub(crate) needs_rebuild: &'a mut bool,
 }
 
 impl<'a> BaseCx<'a> {
     /// Create a new base context.
-    pub fn new(
-        contexts: &'a mut Contexts,
-        proxy: &'a mut CommandProxy,
-        needs_rebuild: &'a mut bool,
-    ) -> Self {
-        Self {
-            contexts,
-            proxy,
-            needs_rebuild,
-        }
+    pub fn new(contexts: &'a mut Contexts, proxy: &'a mut CommandProxy) -> Self {
+        Self { contexts, proxy }
     }
 
     /// Get the [`Fonts`].
@@ -214,55 +203,9 @@ impl<'a> BaseCx<'a> {
         self.contexts.get_or_default::<T>()
     }
 
-    /// Request a rebuild of the view tree.
-    pub fn request_rebuild(&mut self) {
-        *self.needs_rebuild = true;
-    }
-
     /// Quit the application.
     pub fn quit(&mut self) {
         self.cmd(Quit);
-    }
-}
-
-/// A context for a [`Delegate`](crate::delegate::Delegate).
-pub struct DelegateCx<'a, 'b, T> {
-    pub(crate) base: &'a mut BaseCx<'b>,
-    pub(crate) requests: &'a mut UiRequests<T>,
-}
-
-impl<'a, 'b, T> DelegateCx<'a, 'b, T> {
-    pub(crate) fn new(base: &'a mut BaseCx<'b>, requests: &'a mut UiRequests<T>) -> Self {
-        Self { base, requests }
-    }
-
-    /// Open a new window.
-    pub fn open_window<V: AnyView<T> + 'static>(
-        &mut self,
-        desc: WindowDescriptor,
-        mut ui: impl FnMut(&mut T) -> V + Send + 'static,
-    ) {
-        let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
-        self.requests.push(UiRequest::CreateWindow(desc, builder));
-    }
-
-    /// Close the window.
-    pub fn close_window(&mut self, id: WindowId) {
-        self.requests.push(UiRequest::RemoveWindow(id));
-    }
-}
-
-impl<'a, 'b, T> Deref for DelegateCx<'a, 'b, T> {
-    type Target = BaseCx<'b>;
-
-    fn deref(&self) -> &Self::Target {
-        self.base
-    }
-}
-
-impl<'a, 'b, T> DerefMut for DelegateCx<'a, 'b, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.base
     }
 }
 
@@ -271,21 +214,19 @@ pub struct BuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> BuildCx<'a, 'b> {
-    pub(crate) fn new(
+    /// Create a new build context.
+    pub fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            animation_frame,
         }
     }
 
@@ -295,7 +236,6 @@ impl<'a, 'b> BuildCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            animation_frame: self.animation_frame,
         }
     }
 }
@@ -305,21 +245,19 @@ pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> RebuildCx<'a, 'b> {
-    pub(crate) fn new(
+    /// Create a new rebuild context.
+    pub fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            animation_frame,
         }
     }
 
@@ -329,28 +267,17 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            animation_frame: self.animation_frame,
         }
     }
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(
-            self.base,
-            self.view_state,
-            self.window,
-            self.animation_frame,
-        )
+        BuildCx::new(self.base, self.view_state, self.window)
     }
 
     /// Get a layout context.
     pub fn layout_cx(&mut self) -> LayoutCx<'_, 'b> {
-        LayoutCx::new(
-            self.base,
-            self.view_state,
-            self.window,
-            self.animation_frame,
-        )
+        LayoutCx::new(self.base, self.view_state, self.window)
     }
 }
 
@@ -358,25 +285,26 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
 pub struct EventCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) rebuild: &'a mut bool,
     pub(crate) window: &'a mut Window,
-    pub(crate) animation_frame: &'a mut Option<Instant>,
     pub(crate) transform: Affine,
 }
 
 impl<'a, 'b> EventCx<'a, 'b> {
-    pub(crate) fn new(
+    /// Create a new event context.
+    pub fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
+        rebuild: &'a mut bool,
         window: &'a mut Window,
-        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         let transform = view_state.transform;
 
         Self {
             base,
             view_state,
+            rebuild,
             window,
-            animation_frame,
             transform,
         }
     }
@@ -386,8 +314,8 @@ impl<'a, 'b> EventCx<'a, 'b> {
         EventCx {
             base: self.base,
             view_state: self.view_state,
+            rebuild: self.rebuild,
             window: self.window,
-            animation_frame: self.animation_frame,
             transform: self.transform,
         }
     }
@@ -404,22 +332,17 @@ impl<'a, 'b> EventCx<'a, 'b> {
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(
-            self.base,
-            self.view_state,
-            self.window,
-            self.animation_frame,
-        )
+        BuildCx::new(self.base, self.view_state, self.window)
     }
 
     /// Get a rebuild context.
     pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
-        RebuildCx::new(
-            self.base,
-            self.view_state,
-            self.window,
-            self.animation_frame,
-        )
+        RebuildCx::new(self.base, self.view_state, self.window)
+    }
+
+    /// Request a rebuild of the view tree.
+    pub fn request_rebuild(&mut self) {
+        *self.rebuild = true;
     }
 
     /// Get whether the view was hot last call.
@@ -488,21 +411,19 @@ pub struct LayoutCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> LayoutCx<'a, 'b> {
-    pub(crate) fn new(
+    /// Create a new layout context.
+    pub fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            animation_frame,
         }
     }
 
@@ -512,28 +433,17 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            animation_frame: self.animation_frame,
         }
     }
 
     /// Get a rebuild context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(
-            self.base,
-            self.view_state,
-            self.window,
-            self.animation_frame,
-        )
+        BuildCx::new(self.base, self.view_state, self.window)
     }
 
     /// Get a rebuild context.
     pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
-        RebuildCx::new(
-            self.base,
-            self.view_state,
-            self.window,
-            self.animation_frame,
-        )
+        RebuildCx::new(self.base, self.view_state, self.window)
     }
 }
 
@@ -542,21 +452,19 @@ pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) window: &'a mut Window,
-    pub(crate) animation_frame: &'a mut Option<Instant>,
 }
 
 impl<'a, 'b> DrawCx<'a, 'b> {
-    pub(crate) fn new(
+    /// Create a new draw context.
+    pub fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         window: &'a mut Window,
-        animation_frame: &'a mut Option<Instant>,
     ) -> Self {
         Self {
             base,
             view_state,
             window,
-            animation_frame,
         }
     }
 
@@ -566,18 +474,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             window: self.window,
-            animation_frame: self.animation_frame,
         }
     }
 
     /// Get a rebuild context.
     pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
-        RebuildCx::new(
-            self.base,
-            self.view_state,
-            self.window,
-            self.animation_frame,
-        )
+        RebuildCx::new(self.base, self.view_state, self.window)
     }
 }
 
@@ -643,15 +545,8 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
 
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
     /// Request an animation frame.
-    pub fn request_animation_frame(&mut self) {
-        if self.animation_frame.is_none() {
-            *self.animation_frame = Some(Instant::now());
-        }
-    }
-
-    /// Request a rebuild of the view tree.
-    pub fn request_rebuild(&mut self) {
-        self.base.request_rebuild();
+    pub fn animate(&mut self) {
+        self.view_state.request_animate();
     }
 
     /// Request a layout of the view tree.

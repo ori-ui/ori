@@ -5,7 +5,7 @@ use instant::Instant;
 use crate::{
     canvas::Canvas,
     debug::{DebugDraw, DebugLayout, DebugTree},
-    event::Event,
+    event::{AnimationFrame, Event},
     layout::{Size, Space},
 };
 
@@ -119,8 +119,11 @@ impl<V> Pod<V> {
         event: &Event,
         mut f: impl FnMut(&mut EventCx, &Event),
     ) {
-        view_state.set_hot(cx.window().is_hovered(view_state.id()));
+        if event.is::<AnimationFrame>() {
+            view_state.mark_animated();
+        }
 
+        view_state.set_hot(cx.window().is_hovered(view_state.id()));
         view_state.prepare();
 
         let mut new_cx = cx.child();
@@ -140,7 +143,8 @@ impl<V> Pod<V> {
         cx: &mut LayoutCx,
         f: impl FnOnce(&mut LayoutCx) -> Size,
     ) -> Size {
-        view_state.prepare_layout();
+        view_state.prepare();
+        view_state.mark_layed_out();
 
         let mut new_cx = cx.child();
         new_cx.view_state = view_state;
@@ -160,7 +164,8 @@ impl<V> Pod<V> {
         canvas: &mut Canvas,
         f: impl FnOnce(&mut DrawCx, &mut Canvas),
     ) {
-        view_state.prepare_draw();
+        view_state.prepare();
+        view_state.mark_drawn();
 
         // create the canvas layer
         let mut canvas = canvas.layer();

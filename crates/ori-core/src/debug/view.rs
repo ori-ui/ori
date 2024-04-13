@@ -188,7 +188,7 @@ impl<V: View<T>, D: View<DebugData>, T> View<T> for DebugView<V, D> {
         }
 
         let debug_tree = state.debug_tree.take().unwrap();
-        let tree_hash = debug_tree.fast_hash();
+        let _tree_hash = debug_tree.fast_hash();
         cx.insert_context(debug_tree);
 
         (self.content).draw(&mut state.content, cx, data, canvas);
@@ -198,10 +198,6 @@ impl<V: View<T>, D: View<DebugData>, T> View<T> for DebugView<V, D> {
             tree: cx.remove_context::<DebugTree>().unwrap(),
             is_open: state.is_open,
         };
-
-        if data.tree.fast_hash() != tree_hash {
-            cx.request_rebuild();
-        }
 
         (self.debugger(&mut data)).draw(&mut state.debugger, cx, &mut data, canvas);
 

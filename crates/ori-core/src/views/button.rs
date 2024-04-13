@@ -160,16 +160,16 @@ impl<T, V: View<T>> View<T> for Button<V> {
         self.content.event(content, cx, data, event);
 
         if cx.hot_changed() || cx.active_changed() {
-            cx.request_animation_frame();
+            cx.animate();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
             if self.transition.step(&mut state.hot, cx.is_hot(), *dt) {
-                cx.request_animation_frame();
+                cx.animate();
             }
 
             if self.transition.step(&mut state.active, cx.is_active(), *dt) {
-                cx.request_animation_frame();
+                cx.animate();
             }
 
             cx.request_draw();

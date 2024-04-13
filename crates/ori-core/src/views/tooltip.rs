@@ -278,7 +278,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
             if cx.is_hot() || cx.has_hot() {
                 state.position = moved.position;
-                cx.request_animation_frame();
+                cx.animate();
                 event.handle();
             }
         }
@@ -286,7 +286,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         if let Some(AnimationFrame(dt)) = event.get() {
             if cx.is_hot() || cx.has_hot() && state.timer < 1.0 {
                 state.timer += dt / self.delay;
-                cx.request_animation_frame();
+                cx.animate();
             }
 
             state.timer = f32::clamp(state.timer, 0.0, 1.0);

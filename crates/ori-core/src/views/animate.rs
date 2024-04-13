@@ -23,12 +23,12 @@ pub fn transition_hot<T, V>(
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
         if cx.is_hot() || cx.has_hot_changed() {
-            cx.request_animation_frame();
+            cx.animate();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, cx.is_hot() || cx.has_hot(), *dt) {
-                cx.request_animation_frame();
+                cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
             }
         }
@@ -51,12 +51,12 @@ pub fn transition_active<T, V>(
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
         if cx.active_changed() || cx.has_active_changed() {
-            cx.request_animation_frame();
+            cx.animate();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, cx.is_active() || cx.has_active(), *dt) {
-                cx.request_animation_frame();
+                cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
             }
         }
@@ -79,12 +79,12 @@ pub fn transition_focused<T, V>(
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
         if cx.focused_changed() || cx.has_focused_changed() {
-            cx.request_animation_frame();
+            cx.animate();
         }
 
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, cx.is_focused() || cx.has_focused(), *dt) {
-                cx.request_animation_frame();
+                cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
             }
         }
@@ -109,7 +109,7 @@ pub fn transition<T, V>(
     animate(move |t: &mut f32, cx, data: &mut T, event| {
         if let Some(AnimationFrame(dt)) = event.get() {
             if transition.step(t, active, *dt) {
-                cx.request_animation_frame();
+                cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
             }
         }
@@ -157,7 +157,7 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
     type State = AnimateState<V, S, T>;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        cx.request_animation_frame();
+        cx.animate();
 
         AnimateState {
             animate_state: S::default(),
@@ -172,7 +172,7 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
         _data: &mut T,
         _old: &Self,
     ) {
-        cx.request_animation_frame();
+        cx.animate();
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {

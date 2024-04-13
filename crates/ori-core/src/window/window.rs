@@ -73,11 +73,13 @@ impl Window {
         self.pointers.iter().find(|p| p.id() == id)
     }
 
-    pub(crate) fn pointer_mut(&mut self, id: PointerId) -> Option<&mut Pointer> {
+    /// Get the mutable pointer with `id`.
+    pub fn pointer_mut(&mut self, id: PointerId) -> Option<&mut Pointer> {
         self.pointers.iter_mut().find(|p| p.id() == id)
     }
 
-    pub(crate) fn pointer_moved(&mut self, id: PointerId, position: Point) {
+    /// Move the pointer with `id` to `position`.
+    pub fn pointer_moved(&mut self, id: PointerId, position: Point) {
         if let Some(pointer) = self.pointer_mut(id) {
             pointer.position = position;
         } else {
@@ -85,13 +87,15 @@ impl Window {
         }
     }
 
-    pub(crate) fn pointer_left(&mut self, id: PointerId) {
+    /// Remove the pointer with `id`.
+    pub fn pointer_left(&mut self, id: PointerId) {
         if let Some(index) = self.pointers.iter().position(|p| p.id() == id) {
             self.pointers.swap_remove(index);
         }
     }
 
-    pub(crate) fn pointer_hovered(&mut self, id: PointerId, hovered: Option<ViewId>) -> bool {
+    /// Set the hovered view of the pointer with `id`.
+    pub fn pointer_hovered(&mut self, id: PointerId, hovered: Option<ViewId>) -> bool {
         if let Some(pointer) = self.pointer_mut(id) {
             let changed = pointer.hovered() != hovered;
             pointer.hovered = hovered;

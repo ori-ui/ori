@@ -41,5 +41,7 @@ fn main() {
 
     // We create a new app with our `app` function and initial `Data` struct.
     // Then we set the title of the window and run the app.
-    Launcher::new(Data::default()).window(window, app).launch();
+    let app = App::build().window(window, app);
+
+    ori::launch(app, Data::default()).unwrap();
 }

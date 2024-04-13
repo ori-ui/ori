@@ -31,20 +31,21 @@ fn app(data: &mut Data) -> impl View<Data> {
 struct AppDelegate;
 
 impl Delegate<Data> for AppDelegate {
-    fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) {
+    fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
         if let Some(msg) = event.get::<&str>() {
             info!("Future says: {}", msg);
             data.futures_completed += 1;
             cx.request_rebuild();
         }
+
+        false
     }
 }
 
 fn main() {
     let window = WindowDescriptor::new().title("Futures (examples/futures.rs)");
 
-    Launcher::new(Data::default())
-        .window(window, app)
-        .delegate(AppDelegate)
-        .launch();
+    let app = App::build().window(window, app).delegate(AppDelegate);
+
+    ori::launch(app, Data::default()).unwrap();
 }

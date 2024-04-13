@@ -1,7 +1,7 @@
 use ori::prelude::*;
 
 // the selection of the todos
-#[derive(Clone, Copy, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum Selection {
     // show all todos
     #[default]
@@ -16,6 +16,7 @@ enum Selection {
 struct RemoveTodo(usize);
 
 // a todo
+#[derive(Debug)]
 struct Todo {
     text: String,
     completed: bool,
@@ -35,7 +36,7 @@ impl Todo {
 }
 
 // data for the app
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Data {
     todos: Vec<Todo>,
     selection: Selection,
@@ -229,21 +230,22 @@ fn app(data: &mut Data) -> impl View<Data> {
 struct AppDelegate;
 
 impl Delegate<Data> for AppDelegate {
-    fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) {
-        if let Some(remove) = event.get::<RemoveTodo>() {
-            data.remove_todo(remove.0);
+    fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
+        if let Some(&RemoveTodo(index)) = event.get() {
+            data.remove_todo(index);
 
             cx.request_rebuild();
             event.handle();
         }
+
+        false
     }
 }
 
 fn main() {
     let window = WindowDescriptor::new().title("Todos (examples/todos.rs)");
 
-    Launcher::new(Data::default())
-        .window(window, app)
-        .delegate(AppDelegate)
-        .launch();
+    let app = AppBuilder::new().window(window, app).delegate(AppDelegate);
+
+    ori::launch(app, Data::default()).unwrap();
 }

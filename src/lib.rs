@@ -23,12 +23,13 @@ pub mod winit {
     pub use ori_winit::*;
 }
 
+#[cfg(feature = "winit")]
+pub use ori_winit::launch;
+
 pub mod prelude {
     //! Convenient imports for Ori.
 
-    /// Type alias for [`ori_core::launcher::Launcher`] with [`ori_winit::WinitShell`].
-    #[cfg(feature = "winit")]
-    pub type Launcher<T> = ori_core::launcher::Launcher<T, ori_winit::WinitShell>;
+    pub use ori_app::{App, AppBuilder, Delegate, DelegateCx};
 
     #[allow(unused_imports)]
     pub use ori_core::{
@@ -38,7 +39,6 @@ pub mod prelude {
         },
         clipboard::Clipboard,
         command::CommandProxy,
-        delegate::Delegate,
         event::{
             AnimationFrame, CloseRequested, Code, Event, KeyPressed, Modifiers, Pointer,
             PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
@@ -58,8 +58,8 @@ pub mod prelude {
         },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
-            any, pod, AnyView, BoxedView, BuildCx, DelegateCx, DrawCx, EventCx, LayoutCx, Pod,
-            PodSeq, RebuildCx, SeqState, State, View, ViewSeq, ViewState,
+            any, pod, AnyView, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, PodSeq,
+            RebuildCx, SeqState, State, View, ViewSeq, ViewState,
         },
         views::*,
         window::{Cursor, Window, WindowDescriptor, WindowId},

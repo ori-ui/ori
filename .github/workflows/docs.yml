@@ -44,6 +44,7 @@ jobs:
           args: >-
             --no-deps
             -p ori
+            -p ori-app
             -p ori-core
             -p ori-font-awesome
             -p ori-glow

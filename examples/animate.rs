@@ -19,5 +19,6 @@ fn app(_data: &mut Data) -> impl View<Data> {
 
 fn main() {
     let window = WindowDescriptor::new().title("Animate (examples/animate.rs)");
-    Launcher::new(Data::default()).window(window, app).launch();
+    let app = App::build().window(window, app);
+    ori::launch(app, Data::default()).unwrap();
 }

@@ -188,7 +188,6 @@ impl<T, V: View<T>> View<T> for Container<V> {
     type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.request_rebuild();
         self.content.build(cx, data)
     }
 

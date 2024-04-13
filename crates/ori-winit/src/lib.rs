@@ -9,12 +9,11 @@ mod clipboard;
 mod convert;
 mod error;
 mod launch;
-mod shell;
 mod tracing;
 mod window;
 
 pub use error::*;
-pub use shell::*;
+pub use launch::launch;
 pub use window::*;
 
 #[cfg(feature = "wgpu")]

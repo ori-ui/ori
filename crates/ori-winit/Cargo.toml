@@ -9,6 +9,7 @@ license.workspace = true
 
 [dependencies]
 # ori dependencies
+ori-app = { workspace = true }
 ori-core = { workspace = true }
 ori-glow = { workspace = true, optional = true }
 ori-wgpu = { workspace = true, optional = true }

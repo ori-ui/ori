@@ -70,6 +70,9 @@ impl Fonts {
 
         let mut font_system = FontSystem::new_with_fonts(fonts);
 
+        // load the system fonts, IMPORTANT!
+        font_system.db_mut().load_system_fonts();
+
         let db = font_system.db_mut();
 
         db.set_serif_family("Roboto");

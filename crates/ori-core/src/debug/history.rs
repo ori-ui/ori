@@ -62,12 +62,12 @@ pub struct EventItem {
 
 impl EventItem {
     /// Create a new event item.
-    pub fn new(start: Instant, window: WindowId, event: &Event) -> Self {
+    pub fn new(start: Instant, window: WindowId, _event: &Event) -> Self {
         Self {
             start,
             duration: start.elapsed(),
             window,
-            name: event.name(),
+            name: "event",
         }
     }
 }

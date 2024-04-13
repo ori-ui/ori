@@ -41,9 +41,8 @@ pub mod prelude {
         command::CommandProxy,
         context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
         event::{
-            AnimationFrame, CloseRequested, Code, Event, KeyPressed, Modifiers, Pointer,
-            PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
-            PointerScrolled, Quit, RequestFocus,
+            CloseRequested, Code, Event, KeyPressed, Modifiers, Pointer, PointerButton, PointerId,
+            PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
         },
         image::{gradient, Image, ImageData, ImageId},
         layout::{

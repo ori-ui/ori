@@ -5,7 +5,7 @@ use ori_macro::{example, Build};
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Mesh, Vertex},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{AnimationFrame, Event, PointerPressed},
+    event::Event,
     layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Style, Styles},
@@ -188,13 +188,15 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             cx.view_state.update = update & !Update::DRAW;
         }
 
-        if event.is::<PointerPressed>() && (state.header.is_hot() || state.header.has_hot()) {
+        if matches!(event, Event::PointerPressed(_))
+            && (state.header.is_hot() || state.header.has_hot())
+        {
             state.open = !state.open;
             cx.animate();
             cx.request_layout();
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if self.transition.step(&mut state.t, state.open, *dt) {
                 cx.animate();
                 cx.request_layout();

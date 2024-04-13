@@ -3,9 +3,7 @@ use ori_macro::example;
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{
-        AnimationFrame, Event, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
-    },
+    event::{Event},
     layout::{Axis, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::palette,
@@ -140,8 +138,8 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let overflow = self.overflow(content.size(), cx.size());
 
         // handle ponter event
-        if let Some(pointer) = event.get::<PointerMoved>() {
-            let local = cx.local(pointer.position);
+        if let Event::PointerMoved(e) = event {
+            let local = cx.local(e.position);
 
             let scrollbar_rect = self.scrollbar_rect(cx.rect());
             state.scrollbar_hot = scrollbar_rect.contains(local);
@@ -163,12 +161,12 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             }
         }
 
-        if event.is::<PointerPressed>() && state.scrollbar_hot {
+        if matches!(event, Event::PointerPressed(_)) && state.scrollbar_hot {
             cx.set_active(true);
             cx.request_draw();
         }
 
-        if event.is::<PointerReleased>() && cx.is_active() {
+        if matches!(event, Event::PointerReleased(_)) && cx.is_active() {
             cx.set_active(false);
             cx.request_draw();
         }
@@ -181,7 +179,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             cx.animate();
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             let on = cx.has_hot() || cx.is_active() || state.scrollbar_hot;
 
             if (self.transition).step(&mut state.t, on, *dt) {
@@ -190,13 +188,8 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             }
         }
 
-        // handle scroll
-        if event.is_handled() || !(cx.has_hot() || cx.is_active()) {
-            return;
-        }
-
-        if let Some(pointer) = event.get::<PointerScrolled>() {
-            state.scroll -= pointer.delta.y * 10.0;
+        if let Event::PointerScrolled(e) = event {
+            state.scroll -= e.delta.y * 10.0;
             state.scroll = state.scroll.clamp(0.0, overflow);
 
             content.translate(self.axis.pack(-state.scroll, 0.0));

@@ -6,10 +6,7 @@ use ori_macro::{example, Build};
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{
-        AnimationFrame, Code, Event, KeyPressed, PointerMoved, PointerPressed, PointerReleased,
-        RequestFocus,
-    },
+    event::{Code, Event, KeyPressed},
     layout::{Point, Rect, Size, Space},
     style::style,
     text::{
@@ -364,14 +361,7 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if event.is::<RequestFocus>() {
-            cx.set_focused(true);
-            cx.animate();
-            cx.request_draw();
-            event.handle();
-        }
-
-        if let Some(e) = event.get::<KeyPressed>() {
+        if let Event::KeyPressed(e) = event {
             if !cx.is_focused() {
                 return;
             }
@@ -474,7 +464,7 @@ impl<T> View<T> for TextInput<T> {
             }
         }
 
-        if let Some(e) = event.get::<PointerPressed>() {
+        if let Event::PointerPressed(e) = event {
             if !cx.is_hot() {
                 if cx.is_focused() {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
@@ -501,11 +491,11 @@ impl<T> View<T> for TextInput<T> {
             );
         }
 
-        if event.is::<PointerReleased>() {
+        if let Event::PointerReleased(_) = event {
             state.dragging = false;
         }
 
-        if let Some(e) = event.get::<PointerMoved>() {
+        if let Event::PointerMoved(e) = event {
             let local = cx.local(e.position);
 
             if state.dragging {
@@ -527,7 +517,7 @@ impl<T> View<T> for TextInput<T> {
             }
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if cx.is_focused() {
                 cx.animate();
                 cx.request_draw();

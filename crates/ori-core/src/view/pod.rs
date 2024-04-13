@@ -6,7 +6,7 @@ use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     debug::{DebugDraw, DebugLayout, DebugTree},
-    event::{AnimationFrame, Event},
+    event::Event,
     layout::{Size, Space},
 };
 
@@ -120,7 +120,11 @@ impl<V> Pod<V> {
         event: &Event,
         mut f: impl FnMut(&mut EventCx, &Event),
     ) {
-        if event.is::<AnimationFrame>() {
+        if matches!(event, Event::Animate(_)) {
+            if !view_state.needs_animate() {
+                return;
+            }
+
             view_state.mark_animated();
         }
 

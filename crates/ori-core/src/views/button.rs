@@ -3,7 +3,7 @@ use ori_macro::{example, Build};
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{AnimationFrame, Event},
+    event::Event,
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Style, Styles},
@@ -164,7 +164,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
             cx.animate();
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if self.transition.step(&mut state.hot, cx.is_hot(), *dt) {
                 cx.animate();
             }

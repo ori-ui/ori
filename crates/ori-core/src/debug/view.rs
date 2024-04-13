@@ -1,7 +1,7 @@
 use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Code, Event, KeyPressed},
+    event::{Code, Event},
     layout::{Size, Space, Vector},
     view::{Pod, State, View},
 };
@@ -106,8 +106,8 @@ impl<V: View<T>, D: View<DebugData>, T> View<T> for DebugView<V, D> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if let Some(event) = event.get::<KeyPressed>() {
-            if event.is(Code::I) && event.modifiers.ctrl && event.modifiers.shift {
+        if let Event::KeyPressed(e) = event {
+            if e.is(Code::I) && e.modifiers.ctrl && e.modifiers.shift {
                 state.is_open = !state.is_open;
                 cx.request_rebuild();
                 cx.request_layout();

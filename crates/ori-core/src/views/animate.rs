@@ -1,7 +1,7 @@
 use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{AnimationFrame, Event},
+    event::Event,
     layout::{Size, Space},
     style::Styles,
     transition::Transition,
@@ -27,7 +27,7 @@ pub fn transition_hot<T, V>(
             cx.animate();
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if transition.step(t, cx.is_hot() || cx.has_hot(), *dt) {
                 cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
@@ -55,7 +55,7 @@ pub fn transition_active<T, V>(
             cx.animate();
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if transition.step(t, cx.is_active() || cx.has_active(), *dt) {
                 cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
@@ -83,7 +83,7 @@ pub fn transition_focused<T, V>(
             cx.animate();
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if transition.step(t, cx.is_focused() || cx.has_focused(), *dt) {
                 cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
@@ -108,7 +108,7 @@ pub fn transition<T, V>(
     let mut built = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if transition.step(t, active, *dt) {
                 cx.animate();
                 return Some(view(cx, data, transition.get(*t)));

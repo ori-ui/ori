@@ -32,7 +32,7 @@ struct AppDelegate;
 
 impl Delegate<Data> for AppDelegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
-        if let Some(msg) = event.get::<&str>() {
+        if let Some(msg) = event.cmd::<&str>() {
             info!("Future says: {}", msg);
             data.futures_completed += 1;
             cx.request_rebuild();

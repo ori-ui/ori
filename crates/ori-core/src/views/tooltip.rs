@@ -4,7 +4,7 @@ use smol_str::SmolStr;
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{AnimationFrame, Event, PointerMoved, WindowResized},
+    event::{Event},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Style, Styles},
@@ -269,22 +269,21 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if let Some(resized) = event.get::<WindowResized>() {
-            state.window_size = resized.size();
+        if let Event::WindowResized(e) = event {
+            state.window_size = e.size();
             cx.request_layout();
         }
 
-        if let Some(moved) = event.get::<PointerMoved>() {
+        if let Event::PointerMoved(e) = event {
             state.timer = 0.0;
 
             if cx.is_hot() || cx.has_hot() {
-                state.position = moved.position;
+                state.position = e.position;
                 cx.animate();
-                event.handle();
             }
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             if cx.is_hot() || cx.has_hot() && state.timer < 1.0 {
                 state.timer += dt / self.delay;
                 cx.animate();

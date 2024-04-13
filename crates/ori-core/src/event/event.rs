@@ -1,123 +1,70 @@
-use std::{
-    any::{Any, TypeId},
-    cell::Cell,
-};
+use std::any::Any;
 
 use crate::command::Command;
 
+use super::{
+    KeyPressed, KeyReleased, PointerId, PointerMoved, PointerPressed, PointerReleased,
+    PointerScrolled, WindowResized,
+};
+
 /// An event that can be sent to a view.
 #[derive(Debug)]
-pub struct Event {
-    // SAFETY: This is always the type ID of the type of the `Self::event`.
-    type_id: TypeId,
-    data: Box<dyn Any>,
-    handled: Cell<bool>,
-    propagate: bool,
-    name: &'static str,
+pub enum Event {
+    /// The window was resized.
+    WindowResized(WindowResized),
+
+    /// A pointer moved.
+    PointerMoved(PointerMoved),
+
+    /// A pointer left the window.
+    PointerLeft(PointerId),
+
+    /// A pointer button was pressed.
+    PointerPressed(PointerPressed),
+
+    /// A pointer button was released.
+    PointerReleased(PointerReleased),
+
+    /// A pointer was scrolled.
+    PointerScrolled(PointerScrolled),
+
+    /// A keyboard key was pressed.
+    KeyPressed(KeyPressed),
+
+    /// A keyboard key was released.
+    KeyReleased(KeyReleased),
+
+    /// An animation frame has passed.
+    Animate(f32),
+
+    /// A command was sent.
+    Command(Command),
+
+    /// The hovered views have changed.
+    UpdateHovered,
 }
 
 impl Event {
-    /// Create a new event from a boxed [`Any`] value.
-    pub fn from_any(data: Box<dyn Any>, name: &'static str) -> Self {
-        Self {
-            type_id: data.as_ref().type_id(),
-            data,
-            handled: Cell::new(false),
-            propagate: true,
-            name,
+    /// Create a new command event.
+    pub fn command(command: impl Any + Send) -> Self {
+        Event::Command(Command::new(command))
+    }
+
+    /// Check if the event is a command of a specific type.
+    pub fn is_cmd<T: Any>(&self) -> bool {
+        match self {
+            Event::Command(cmd) => cmd.is::<T>(),
+            _ => false,
         }
     }
 
-    /// Create a new event.
-    pub fn new<T: Any>(event: T) -> Self {
-        Self {
-            type_id: TypeId::of::<T>(),
-            data: Box::new(event),
-            handled: Cell::new(false),
-            propagate: true,
-            name: std::any::type_name::<T>(),
+    /// Try to get the command as a specific type.
+    ///
+    /// Returns `None` if the event is not a command or if the command is not of the specified type.
+    pub fn cmd<T: Any>(&self) -> Option<&T> {
+        match self {
+            Event::Command(cmd) => cmd.get::<T>(),
+            _ => None,
         }
-    }
-
-    /// Create a new event with a name.
-    pub fn new_with_name<T: Any>(event: T, name: &'static str) -> Self {
-        Self {
-            type_id: TypeId::of::<T>(),
-            data: Box::new(event),
-            handled: Cell::new(false),
-            propagate: true,
-            name,
-        }
-    }
-
-    /// Create a new non-propagating event.
-    pub fn new_non_propagating<T: Any>(event: T) -> Self {
-        Self {
-            type_id: TypeId::of::<T>(),
-            data: Box::new(event),
-            handled: Cell::new(false),
-            propagate: false,
-            name: std::any::type_name::<T>(),
-        }
-    }
-
-    /// Get the name of the event.
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    /// Check whether the event is of the given type.
-    pub fn is<T: Any>(&self) -> bool {
-        self.type_id == TypeId::of::<T>()
-    }
-
-    /// Try to downcast the event to the given type.
-    pub fn get<T: Any>(&self) -> Option<&T> {
-        if self.is::<T>() {
-            // SAFETY: We just checked that the type is correct.
-            //
-            // We need unsafe here because <dyn Any>::downcast_ref does a dynamic call to
-            // check the type, which is slow... This function is called a lot, so we want
-            // to avoid that.
-            unsafe { Some(&*(self.data.as_ref() as *const _ as *const T)) }
-        } else {
-            None
-        }
-    }
-
-    /// Try to downcast the event to the given type.
-    pub fn take<T: Any>(self) -> Result<T, Event> {
-        if self.is::<T>() {
-            Ok(*self.data.downcast::<T>().unwrap())
-        } else {
-            Err(self)
-        }
-    }
-
-    /// Returns whether the event has been handled.
-    pub fn is_handled(&self) -> bool {
-        self.handled.get()
-    }
-
-    /// Set whether the event has been handled.
-    pub fn set_handled(&self, handled: bool) {
-        self.handled.set(handled);
-    }
-
-    /// Mark the event as handled.
-    pub fn handle(&self) {
-        self.set_handled(true);
-    }
-
-    /// Returns whether the event should propagate.
-    pub fn should_propagate(&self) -> bool {
-        self.propagate
-    }
-}
-
-impl From<Command> for Event {
-    fn from(command: Command) -> Self {
-        let name = command.name();
-        Self::from_any(command.to_any(), name)
     }
 }

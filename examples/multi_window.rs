@@ -68,14 +68,14 @@ struct AppDelegate;
 
 impl Delegate<Data> for AppDelegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
-        if let Some(request) = event.get::<CloseRequested>() {
+        if let Some(request) = event.cmd::<CloseRequested>() {
             data.windows.retain(|window| *window != request.window);
             cx.request_rebuild();
 
             info!("Window {} closed", request.window);
         }
 
-        if event.is::<OpenWindow>() {
+        if event.is_cmd::<OpenWindow>() {
             let desc = WindowDescriptor::new()
                 .title("Multi Window Popup")
                 .resizable(false)
@@ -91,7 +91,7 @@ impl Delegate<Data> for AppDelegate {
             cx.request_rebuild();
         }
 
-        if let Some(CloseWindow(window)) = event.get() {
+        if let Some(CloseWindow(window)) = event.cmd() {
             cx.close_window(*window);
         }
 

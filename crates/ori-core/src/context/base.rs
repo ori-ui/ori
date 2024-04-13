@@ -6,7 +6,6 @@ use std::{
 use crate::{
     clipboard::{Clipboard, ClipboardContext},
     command::{Command, CommandProxy},
-    event::Quit,
     text::Fonts,
 };
 
@@ -116,10 +115,5 @@ impl<'a> BaseCx<'a> {
     /// Get a context or insert a `default`.
     pub fn context_or_default<T: Any + Default>(&mut self) -> &mut T {
         self.contexts.get_or_default::<T>()
-    }
-
-    /// Quit the application.
-    pub fn quit(&mut self) {
-        self.cmd(Quit);
     }
 }

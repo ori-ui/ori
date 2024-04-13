@@ -3,7 +3,7 @@ use ori_macro::Rebuild;
 use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event, PointerPressed},
+    event::{Event},
     layout::{Size, Space, Vector},
     view::{Pod, State, View},
 };
@@ -78,7 +78,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
             cx.request_draw();
         }
 
-        if event.is::<PointerPressed>() {
+        if matches!(event, Event::PointerPressed(_)) {
             if !self.toggle && cx.is_focused() && !cx.has_hot() {
                 cx.set_focused(false);
                 cx.request_draw();

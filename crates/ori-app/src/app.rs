@@ -7,9 +7,8 @@ use ori_core::{
     command::{CommandProxy, CommandReceiver},
     context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
-        AnimationFrame, Code, Event, HoveredChanged, KeyPressed, KeyReleased, Modifiers,
-        PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
-        PointerScrolled, WindowResized,
+        Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId, PointerMoved,
+        PointerPressed, PointerReleased, PointerScrolled, WindowResized,
     },
     layout::{Point, Size, Space, Vector},
     style::Styles,
@@ -127,7 +126,7 @@ impl<T> App<T> {
             window.view_state.request_layout();
         }
 
-        let event = Event::new(WindowResized {
+        let event = Event::WindowResized(WindowResized {
             window: window_id,
             width,
             height,
@@ -156,14 +155,14 @@ impl<T> App<T> {
         window_state.window.pointer_moved(pointer_id, position);
         self.update_hovered(window_id);
 
-        let event = PointerMoved {
+        let event = Event::PointerMoved(PointerMoved {
             id: pointer_id,
             modifiers: self.modifiers,
             position,
             delta,
-        };
+        });
 
-        self.window_event(data, window_id, &Event::new(event));
+        self.window_event(data, window_id, &event);
     }
 
     /// A pointer left the window.
@@ -174,9 +173,9 @@ impl<T> App<T> {
 
         window_state.window.pointer_left(pointer_id);
 
-        let event = PointerLeft { id: pointer_id };
+        let event = Event::PointerLeft(pointer_id);
 
-        self.window_event(data, window_id, &Event::new(event));
+        self.window_event(data, window_id, &event);
     }
 
     fn pointer_position(&self, window_id: WindowId, pointer_id: PointerId) -> Option<Point> {
@@ -195,14 +194,14 @@ impl<T> App<T> {
             .pointer_position(window_id, pointer_id)
             .unwrap_or(Point::ZERO);
 
-        let event = PointerScrolled {
+        let event = Event::PointerScrolled(PointerScrolled {
             id: pointer_id,
             modifiers: self.modifiers,
             position,
             delta,
-        };
+        });
 
-        self.window_event(data, window_id, &Event::new(event));
+        self.window_event(data, window_id, &event);
     }
 
     /// A pointer button was pressed or released.
@@ -219,23 +218,23 @@ impl<T> App<T> {
             .unwrap_or(Point::ZERO);
 
         if pressed {
-            let event = PointerPressed {
+            let event = Event::PointerPressed(PointerPressed {
                 id: pointer_id,
                 modifiers: self.modifiers,
                 position,
                 button,
-            };
+            });
 
-            self.window_event(data, window_id, &Event::new(event));
+            self.window_event(data, window_id, &event);
         } else {
-            let event = PointerReleased {
+            let event = Event::PointerReleased(PointerReleased {
                 id: pointer_id,
                 modifiers: self.modifiers,
                 position,
                 button,
-            };
+            });
 
-            self.window_event(data, window_id, &Event::new(event));
+            self.window_event(data, window_id, &event);
         }
     }
 
@@ -249,20 +248,20 @@ impl<T> App<T> {
         pressed: bool,
     ) {
         if pressed {
-            let event = KeyPressed {
+            let event = Event::KeyPressed(KeyPressed {
                 code,
                 text,
                 modifiers: self.modifiers,
-            };
+            });
 
-            self.window_event(data, window_id, &Event::new(event));
+            self.window_event(data, window_id, &event);
         } else {
-            let event = KeyReleased {
+            let event = Event::KeyReleased(KeyReleased {
                 code,
                 modifiers: self.modifiers,
-            };
+            });
 
-            self.window_event(data, window_id, &Event::new(event));
+            self.window_event(data, window_id, &event);
         }
     }
 
@@ -325,8 +324,7 @@ impl<T> App<T> {
     /// Handle all pending commands.
     pub fn handle_commands(&mut self, data: &mut T) {
         while let Some(command) = self.receiver.try_recv() {
-            let event = Event::from(command);
-            self.event(data, &event);
+            self.event(data, &Event::Command(command));
         }
     }
 
@@ -377,7 +375,9 @@ impl<T> App<T> {
     }
 
     /// Handle an event for the entire application.
-    pub fn event(&mut self, data: &mut T, event: &Event) {
+    ///
+    /// Returns true if the event was handled by a delegate.
+    pub fn event(&mut self, data: &mut T, event: &Event) -> bool {
         let animate = Instant::now();
 
         let event_handled = self.delegate_event(data, event);
@@ -413,10 +413,14 @@ impl<T> App<T> {
         }
 
         self.handle_commands(data);
+
+        event_handled
     }
 
     /// Handle an event for a single window.
-    pub fn window_event(&mut self, data: &mut T, window_id: WindowId, event: &Event) {
+    ///
+    /// Returns true if the event was handled by a delegate.
+    pub fn window_event(&mut self, data: &mut T, window_id: WindowId, event: &Event) -> bool {
         let animate = Instant::now();
 
         let event_handled = self.delegate_event(data, event);
@@ -452,6 +456,8 @@ impl<T> App<T> {
         }
 
         self.handle_commands(data);
+
+        event_handled
     }
 
     /// Draw a single window, returning the scene if it needs to be rendered.
@@ -464,8 +470,8 @@ impl<T> App<T> {
             if window_state.view_state.needs_animate() {
                 window_state.view_state.mark_animated();
 
-                let event = AnimationFrame(window_state.animate());
-                self.window_event(data, window_id, &Event::new(event));
+                let event = Event::Animate(window_state.animate());
+                self.window_event(data, window_id, &event);
             }
         }
 
@@ -481,7 +487,7 @@ impl<T> App<T> {
             self.style.as_context(|| window.draw(data, &mut base));
 
             if self.update_hovered(window_id) {
-                self.window_event(data, window_id, &Event::new(HoveredChanged));
+                self.window_event(data, window_id, &Event::UpdateHovered);
             }
         }
 

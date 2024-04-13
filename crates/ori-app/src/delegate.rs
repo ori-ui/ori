@@ -48,6 +48,11 @@ impl<'a, 'b, T> DelegateCx<'a, 'b, T> {
         *self.rebuild = true;
     }
 
+    /// Quit the application.
+    pub fn quit(&mut self) {
+        self.requests.push(AppRequest::Quit);
+    }
+
     /// Add a window to the application.
     pub fn open_window<V: AnyView<T> + 'static>(
         &mut self,

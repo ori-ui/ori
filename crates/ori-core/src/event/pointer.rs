@@ -7,10 +7,6 @@ use crate::{
 
 use super::Modifiers;
 
-/// An event that is emitted when the hovered view changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct HoveredChanged;
-
 /// A unique pointer id.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PointerId {
@@ -99,12 +95,6 @@ pub struct PointerMoved {
     pub delta: Vector,
     /// The modifiers of the pointer.
     pub modifiers: Modifiers,
-}
-
-/// A pointer left the window.
-pub struct PointerLeft {
-    /// The unique id of the pointer.
-    pub id: PointerId,
 }
 
 /// A pointer button was pressed.

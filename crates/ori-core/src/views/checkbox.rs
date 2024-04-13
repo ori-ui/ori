@@ -3,7 +3,7 @@ use ori_macro::example;
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Curve},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{AnimationFrame, Event},
+    event::Event,
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     style::{style, Style, Styles},
@@ -168,7 +168,7 @@ impl<T> View<T> for Checkbox {
             cx.animate();
         }
 
-        if let Some(AnimationFrame(dt)) = event.get() {
+        if let Event::Animate(dt) = event {
             let on = cx.is_hot() && !cx.is_active();
             if self.transition.step(t, on, *dt) {
                 cx.animate();

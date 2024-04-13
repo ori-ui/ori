@@ -3,7 +3,7 @@ use ori_macro::Build;
 use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event, PointerPressed, PointerReleased},
+    event::{Event},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     view::View,
@@ -126,8 +126,8 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         data: &mut T,
         event: &Event,
     ) {
-        if let Some(pressed) = event.get::<PointerPressed>() {
-            state.click_start = pressed.position;
+        if let Event::PointerPressed(e) = event {
+            state.click_start = e.position;
 
             if cx.is_hot() || (cx.had_hot() && self.descendants) {
                 if let Some(ref mut on_press) = self.on_press {
@@ -139,7 +139,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
             }
         }
 
-        if let Some(released) = event.get::<PointerReleased>() {
+        if let Event::PointerReleased(e) = event {
             if cx.is_active() {
                 if let Some(ref mut on_release) = self.on_release {
                     on_release(cx, data);
@@ -148,7 +148,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
 
                 cx.set_active(false);
 
-                let click_distance = (released.position - state.click_start).length();
+                let click_distance = (e.position - state.click_start).length();
                 if click_distance <= Self::MAX_CLICK_DISTANCE {
                     if let Some(ref mut on_click) = self.on_click {
                         on_click(cx, data);

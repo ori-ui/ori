@@ -2,12 +2,13 @@ use ori_macro::example;
 
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Curve},
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{AnimationFrame, Event},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     transition::Transition,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
 };
 
 /// Create a new [`Checkbox`].

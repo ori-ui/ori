@@ -1,8 +1,9 @@
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Code, Event, KeyPressed},
     layout::{Size, Space, Vector},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{Pod, State, View},
 };
 
 use super::{DebugTree, History};

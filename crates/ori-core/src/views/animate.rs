@@ -1,10 +1,11 @@
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{AnimationFrame, Event},
     layout::{Size, Space},
     style::Styles,
     transition::Transition,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
 };
 
 /// Create a new [`Animate`].

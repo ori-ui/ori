@@ -2,10 +2,11 @@ use ori_macro::example;
 
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{Pod, State, View},
 };
 
 /// Create a new [`Pad`] view.

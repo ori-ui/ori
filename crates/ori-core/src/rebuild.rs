@@ -2,7 +2,7 @@
 
 pub use ori_macro::Rebuild;
 
-use crate::view::RebuildCx;
+use crate::context::RebuildCx;
 
 /// A convenience trait for rebuilding a [`View`](crate::view::View).
 ///

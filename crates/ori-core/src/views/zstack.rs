@@ -2,9 +2,10 @@ use ori_macro::example;
 
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq},
+    view::{PodSeq, SeqState, View, ViewSeq},
 };
 
 pub use crate::zstack;

@@ -1,10 +1,9 @@
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
 };
-
-use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx};
 
 /// A single UI component.
 ///

@@ -5,6 +5,7 @@ use smol_str::SmolStr;
 
 use crate::{
     canvas::{Canvas, Color, Mesh},
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
     style::{style, Style, Styles},
@@ -12,7 +13,7 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
 };
 
 use smol_str;

@@ -3,6 +3,7 @@ use smol_str::SmolStr;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{AnimationFrame, Event, PointerMoved, WindowResized},
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
@@ -11,7 +12,7 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
 };
 
 /// Create a new [`Tooltip`] view.

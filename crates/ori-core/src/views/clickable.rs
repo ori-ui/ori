@@ -2,10 +2,11 @@ use ori_macro::Build;
 
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Event, PointerPressed, PointerReleased},
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
 };
 
 /// Create a new [`Clickable`].

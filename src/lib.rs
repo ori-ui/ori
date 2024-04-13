@@ -39,6 +39,7 @@ pub mod prelude {
         },
         clipboard::Clipboard,
         command::CommandProxy,
+        context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
         event::{
             AnimationFrame, CloseRequested, Code, Event, KeyPressed, Modifiers, Pointer,
             PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
@@ -58,8 +59,7 @@ pub mod prelude {
         },
         transition::{ease, linear, Transition, TransitionCurve},
         view::{
-            any, pod, AnyView, BoxedView, BuildCx, DrawCx, EventCx, LayoutCx, Pod, PodSeq,
-            RebuildCx, SeqState, State, View, ViewSeq, ViewState,
+            any, pod, AnyView, BoxedView, Pod, PodSeq, SeqState, State, View, ViewSeq, ViewState,
         },
         views::*,
         window::{Cursor, Window, WindowDescriptor, WindowId},

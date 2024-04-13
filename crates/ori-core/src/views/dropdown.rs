@@ -2,9 +2,10 @@ use ori_macro::Rebuild;
 
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Event, PointerPressed},
     layout::{Size, Space, Vector},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{Pod, State, View},
 };
 
 /// Create a new [`Dropdown`] view.

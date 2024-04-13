@@ -2,6 +2,7 @@ use ori_macro::example;
 
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
         AnimationFrame, Event, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
     },
@@ -9,7 +10,7 @@ use crate::{
     rebuild::Rebuild,
     style::palette,
     transition::Transition,
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, Pod, RebuildCx, State, View},
+    view::{Pod, State, View},
 };
 
 /// Create a new horizontal [`Scroll`].

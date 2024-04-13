@@ -5,6 +5,7 @@ use ori_core::{
     canvas::{Canvas, Color, Scene},
     clipboard::{Clipboard, ClipboardContext},
     command::{CommandProxy, CommandReceiver},
+    context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
         AnimationFrame, Code, Event, HoveredChanged, KeyPressed, KeyReleased, Modifiers,
         PointerButton, PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
@@ -12,10 +13,7 @@ use ori_core::{
     },
     layout::{Point, Size, Space, Vector},
     style::Styles,
-    view::{
-        AnyState, BaseCx, BoxedView, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx, View,
-        ViewState,
-    },
+    view::{AnyState, BoxedView, View, ViewState},
     window::{Window, WindowId},
 };
 
@@ -52,6 +50,15 @@ impl<T> WindowState<T> {
         let mut new_view = (self.ui)(data);
         new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
         self.view = new_view;
+    }
+
+    fn event(&mut self, data: &mut T, base: &mut BaseCx, rebuild: &mut bool, event: &Event) {
+        let hot = self.window.is_hovered(self.view_state.id());
+        self.view_state.set_hot(hot);
+
+        let mut cx = EventCx::new(base, &mut self.view_state, rebuild, &mut self.window);
+
+        self.view.event(&mut self.state, &mut cx, data, event);
     }
 
     fn layout(&mut self, data: &mut T, base: &mut BaseCx) {
@@ -380,15 +387,9 @@ impl<T> App<T> {
         if !event_handled {
             for window_state in self.windows.values_mut() {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
-                let mut cx = EventCx::new(
-                    &mut base,
-                    &mut window_state.view_state,
-                    &mut rebuild,
-                    &mut window_state.window,
-                );
 
                 self.style.as_context(|| {
-                    (window_state.view).event(&mut window_state.state, &mut cx, data, event);
+                    window_state.event(data, &mut base, &mut rebuild, event);
                 });
             }
         }
@@ -425,15 +426,9 @@ impl<T> App<T> {
         if !event_handled {
             if let Some(window_state) = self.windows.get_mut(&window_id) {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
-                let mut cx = EventCx::new(
-                    &mut base,
-                    &mut window_state.view_state,
-                    &mut rebuild,
-                    &mut window_state.window,
-                );
 
                 self.style.as_context(|| {
-                    (window_state.view).event(&mut window_state.state, &mut cx, data, event);
+                    window_state.event(data, &mut base, &mut rebuild, event);
                 });
             }
         }

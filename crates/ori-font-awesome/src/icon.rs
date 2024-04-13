@@ -1,11 +1,12 @@
 use ori_core::{
     canvas::{Canvas, Color, Mesh},
+    context::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
     style::palette,
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
-    view::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
 };
 use ori_macro::Build;
 

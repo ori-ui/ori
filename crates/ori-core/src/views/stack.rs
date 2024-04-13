@@ -2,12 +2,11 @@ use ori_macro::{example, Build};
 
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
-    view::{
-        AnyView, BuildCx, DrawCx, EventCx, LayoutCx, PodSeq, RebuildCx, SeqState, View, ViewSeq,
-    },
+    view::{AnyView, PodSeq, SeqState, View, ViewSeq},
 };
 
 pub use crate::{hstack, vstack};

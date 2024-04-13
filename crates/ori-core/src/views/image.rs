@@ -1,9 +1,10 @@
 use crate::{
     canvas::{Canvas, Color, Mesh, Vertex},
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     image::{Image, Texture},
     layout::{Point, Size, Space},
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
 };
 
 impl<T> View<T> for Image {

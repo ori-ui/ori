@@ -2,11 +2,12 @@ use std::any::Any;
 
 use crate::{
     canvas::Canvas,
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
 };
 
-use super::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View};
+use super::View;
 
 /// The state of a [`BoxedView`].
 pub type AnyState = Box<dyn Any>;

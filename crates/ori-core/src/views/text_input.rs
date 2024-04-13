@@ -5,6 +5,7 @@ use ori_macro::{example, Build};
 
 use crate::{
     canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
         AnimationFrame, Code, Event, KeyPressed, PointerMoved, PointerPressed, PointerReleased,
         RequestFocus,
@@ -15,7 +16,7 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    view::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx, View},
+    view::View,
     window::Cursor,
 };
 

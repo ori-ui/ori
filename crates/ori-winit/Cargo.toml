@@ -31,7 +31,7 @@ features = ["android-native-activity", "rwh_05"]
 [features]
 default = []
 x11 = ["winit/x11", "ori-glow?/x11"]
-wayland = ["winit/wayland", "winit/wayland-dlopen", "winit/wayland-csd-adwaita", "ori-glow?/wayland"]
+wayland = ["winit/wayland", "winit/wayland-csd-adwaita", "ori-glow?/wayland"]
 
 glow = ["dep:ori-glow", "ori-glow/glutin"]
 wgpu = ["dep:ori-wgpu"]

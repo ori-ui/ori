@@ -3,7 +3,7 @@ use ori_macro::example;
 use crate::{
     canvas::{BorderRadius, Canvas, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event},
+    event::Event,
     layout::{Axis, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::palette,

@@ -3,7 +3,7 @@ use ori_macro::Rebuild;
 use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event},
+    event::Event,
     layout::{Size, Space, Vector},
     view::{Pod, State, View},
 };

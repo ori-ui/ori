@@ -4,7 +4,7 @@ use smol_str::SmolStr;
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event},
+    event::Event,
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Style, Styles},

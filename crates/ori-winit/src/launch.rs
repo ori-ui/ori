@@ -4,7 +4,7 @@ use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
     command::CommandWaker,
     event::{Modifiers, PointerButton, PointerId},
-    layout::{Point, Vector},
+    layout::{Point, Size, Vector},
     window::{Window, WindowDescriptor},
 };
 use winit::{
@@ -304,6 +304,12 @@ impl<T> WinitState<T> {
         /* glow */
         #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
         if let Some((render, context)) = self.renders.get_mut(&window_id) {
+            // resize the context if necessary
+            context.resize(
+                scene.physical_size.width as u32,
+                scene.physical_size.height as u32,
+            );
+
             context.make_current()?;
             render.render_scene(
                 scene.scene,
@@ -347,6 +353,14 @@ impl<T> WinitState<T> {
             }
             WindowEvent::Resized(inner_size) => {
                 (self.app).window_resized(&mut self.data, id, inner_size.width, inner_size.height);
+            }
+            WindowEvent::ScaleFactorChanged { .. } => {
+                if let Some(window) = self.app.get_window(id) {
+                    let width = window.width();
+                    let height = window.height();
+
+                    self.app.window_resized(&mut self.data, id, width, height);
+                }
             }
             WindowEvent::CursorMoved {
                 device_id,

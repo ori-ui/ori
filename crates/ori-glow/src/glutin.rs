@@ -24,6 +24,8 @@ pub struct GlutinContext {
     display: Display,
     surface: Surface<WindowSurface>,
     context: PossiblyCurrentContext,
+    width: u32,
+    height: u32,
 }
 
 impl GlutinContext {
@@ -98,6 +100,8 @@ impl GlutinContext {
             display,
             surface,
             context,
+            width,
+            height,
         })
     }
 
@@ -118,7 +122,14 @@ impl GlutinContext {
     }
 
     /// Resize the surface.
-    pub fn resize(&self, width: u32, height: u32) {
+    pub fn resize(&mut self, width: u32, height: u32) {
+        if self.width == width && self.height == height {
+            return;
+        }
+
+        self.width = width;
+        self.height = height;
+
         let width = NonZeroU32::new(width).unwrap_or(NonZeroU32::MIN);
         let height = NonZeroU32::new(height).unwrap_or(NonZeroU32::MIN);
 

@@ -50,7 +50,7 @@ version = "0.1.0-alpha.1"
 features = ["full"]
 
 [features]
-default = ["winit", "glow", "x11", "multithread"]
+default = ["winit", "glow", "x11", "wayland", "multithread"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 multithread = ["ori-core/multithread"]

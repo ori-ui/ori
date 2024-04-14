@@ -69,17 +69,16 @@ impl Fonts {
         }
 
         let mut font_system = FontSystem::new_with_fonts(fonts);
-
-        // load the system fonts, IMPORTANT!
-        font_system.db_mut().load_system_fonts();
-
         let db = font_system.db_mut();
 
         db.set_serif_family("Roboto");
         db.set_sans_serif_family("Roboto");
-        db.set_monospace_family("Roboto");
+        db.set_monospace_family("Roboto Mono");
         db.set_cursive_family("Roboto");
         db.set_fantasy_family("Roboto");
+
+        // load the system fonts, IMPORTANT!
+        db.load_system_fonts();
 
         Self {
             swash_cache,

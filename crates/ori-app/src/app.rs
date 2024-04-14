@@ -333,7 +333,7 @@ impl<T> App<T> {
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
         for window in self.windows.values_mut() {
-            window.rebuild(data, &mut base);
+            self.style.as_context(|| window.rebuild(data, &mut base));
         }
     }
 

@@ -378,6 +378,8 @@ impl<T> App<T> {
     ///
     /// Returns true if the event was handled by a delegate.
     pub fn event(&mut self, data: &mut T, event: &Event) -> bool {
+        ori_core::log::trace!(event = ?event, "Event");
+
         let animate = Instant::now();
 
         let event_handled = self.delegate_event(data, event);
@@ -421,6 +423,8 @@ impl<T> App<T> {
     ///
     /// Returns true if the event was handled by a delegate.
     pub fn window_event(&mut self, data: &mut T, window_id: WindowId, event: &Event) -> bool {
+        ori_core::log::trace!(event = ?event, window = ?window_id, "Window event");
+
         let animate = Instant::now();
 
         let event_handled = self.delegate_event(data, event);
@@ -466,6 +470,8 @@ impl<T> App<T> {
         data: &mut T,
         window_id: WindowId,
     ) -> Option<WindowRenderScene<'_>> {
+        ori_core::log::trace!(window = ?window_id, "Draw window");
+
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             if window_state.view_state.needs_animate() {
                 window_state.view_state.mark_animated();

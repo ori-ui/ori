@@ -4,7 +4,7 @@ use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
     command::CommandWaker,
     event::{Modifiers, PointerButton, PointerId},
-    layout::{Point, Size, Vector},
+    layout::{Point, Vector},
     window::{Window, WindowDescriptor},
 };
 use winit::{

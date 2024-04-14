@@ -122,6 +122,8 @@ impl<V> Pod<V> {
     ) {
         if matches!(event, Event::Animate(_)) {
             if !view_state.needs_animate() {
+                cx.view_state.propagate(view_state);
+
                 return;
             }
 

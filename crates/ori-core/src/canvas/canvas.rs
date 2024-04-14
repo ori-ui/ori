@@ -83,12 +83,12 @@ impl<'a> Canvas<'a> {
     /// Set the view that the canvas is being drawn for.
     ///
     /// This will enable hit testing for the view.
-    pub fn set_view(&mut self, view: ViewId) {
+    pub fn set_hoverable(&mut self, view: ViewId) {
         self.view = Some(view);
     }
 
     /// Temporarily set the view, see [`Canvas::set_view`].
-    pub fn with_view<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn with_hoverable<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
         let t = self.view;
         self.view = Some(view);
         let result = f(self);
@@ -100,7 +100,7 @@ impl<'a> Canvas<'a> {
     ///
     /// This will enable hit testing without drawing anything.
     pub fn trigger(&mut self, view: ViewId, rect: Rect) {
-        self.with_view(view, |canvas| {
+        self.with_hoverable(view, |canvas| {
             canvas.draw(Primitive::Trigger(rect));
         });
     }

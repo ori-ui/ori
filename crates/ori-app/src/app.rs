@@ -354,6 +354,38 @@ impl<T> App<T> {
         changed
     }
 
+    /// Initialize the application.
+    pub fn init(&mut self, data: &mut T) {
+        let mut rebuild = false;
+        let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
+
+        for delegate in &mut self.delegates {
+            let mut cx = DelegateCx::new(&mut base, &mut self.requests, &mut rebuild);
+
+            delegate.init(&mut cx, data);
+        }
+
+        if rebuild {
+            self.rebuild(data);
+        }
+    }
+
+    /// The application is idle.
+    pub fn idle(&mut self, data: &mut T) {
+        let mut rebuild = false;
+        let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
+
+        for delegate in &mut self.delegates {
+            let mut cx = DelegateCx::new(&mut base, &mut self.requests, &mut rebuild);
+
+            delegate.idle(&mut cx, data);
+        }
+
+        if rebuild {
+            self.rebuild(data);
+        }
+    }
+
     fn delegate_event(&mut self, data: &mut T, event: &Event) -> bool {
         let mut rebuild = false;
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);

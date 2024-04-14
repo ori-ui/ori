@@ -144,8 +144,6 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             let scrollbar_rect = self.scrollbar_rect(cx.rect());
             state.scrollbar_hot = scrollbar_rect.contains(local);
 
-            cx.animate();
-
             if cx.is_active() {
                 let scroll_start = self.axis.major(scrollbar_rect.min);
                 let scroll_end = self.axis.major(scrollbar_rect.max);
@@ -174,14 +172,13 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         // propagate event
         self.content.event(content, cx, data, event);
 
-        // animate the scrollbar
-        if cx.hot_changed() {
+        let on = cx.has_hot() || cx.is_active() || state.scrollbar_hot;
+
+        if !self.transition.complete(state.t, on) {
             cx.animate();
         }
 
         if let Event::Animate(dt) = event {
-            let on = cx.has_hot() || cx.is_active() || state.scrollbar_hot;
-
             if (self.transition).step(&mut state.t, on, *dt) {
                 cx.animate();
                 cx.request_draw();

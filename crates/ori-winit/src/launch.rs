@@ -120,7 +120,7 @@ impl<T> WinitState<T> {
         }
 
         self.init = true;
-        //self.app.init(&mut self.data);
+        self.app.init(&mut self.data);
     }
 
     fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>) {
@@ -237,7 +237,7 @@ impl<T> WinitState<T> {
     }
 
     fn idle(&mut self) {
-        //self.app.idle(&mut self.data);
+        self.app.idle(&mut self.data);
 
         #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
         for (render, context) in self.renders.values_mut() {
@@ -318,6 +318,7 @@ impl<T> WinitState<T> {
                 scene.physical_size,
                 scene.scale_factor,
             )?;
+
             context.swap_buffers()?;
         }
 

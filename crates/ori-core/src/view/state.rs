@@ -148,13 +148,15 @@ impl ViewState {
     /// Prepare the view.
     pub fn prepare(&mut self) {
         self.flags.remove(ViewFlags::HAS);
+        self.flags |= self.flags.has();
+
         self.inherited_cursor = self.cursor;
     }
 
     /// Propagate the state of a child view.
     pub fn propagate(&mut self, child: &mut Self) {
         self.update |= child.update;
-        self.flags |= self.flags.has() | child.flags.has();
+        self.flags |= child.flags.has();
         self.inherited_cursor = self.cursor().or(child.cursor());
     }
 
@@ -171,6 +173,7 @@ impl ViewState {
     /// Set whether the view is hot.
     pub fn set_hot(&mut self, hot: bool) {
         self.flags.set(ViewFlags::HOT, hot);
+        self.flags.set(ViewFlags::HAS_HOT, hot);
     }
 
     /// Get whether the view is focused.
@@ -181,6 +184,7 @@ impl ViewState {
     /// Set whether the view is focused.
     pub fn set_focused(&mut self, focused: bool) {
         self.flags.set(ViewFlags::FOCUSED, focused);
+        self.flags.set(ViewFlags::HAS_FOCUSED, focused);
     }
 
     /// Get whether the view is active.
@@ -191,6 +195,7 @@ impl ViewState {
     /// Set whether the view is active.
     pub fn set_active(&mut self, active: bool) {
         self.flags.set(ViewFlags::ACTIVE, active);
+        self.flags.set(ViewFlags::HAS_ACTIVE, active);
     }
 
     /// Get whether the view has a hot child.

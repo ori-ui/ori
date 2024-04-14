@@ -78,6 +78,11 @@ impl Transition {
         true
     }
 
+    /// Check if the transition is complete.
+    pub fn complete(&self, t: f32, on: bool) -> bool {
+        (t == 0.0 && !on) || (t == 1.0 && on)
+    }
+
     /// Evaluate the transition curve at `t`.
     ///
     /// The returned value is how _on_ the transition is at `t`.

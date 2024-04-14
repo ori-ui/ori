@@ -199,7 +199,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        canvas.set_view(cx.id());
+        canvas.set_hoverable(cx.id());
 
         let dark = self.color.color.darken(0.05);
         let dim = self.color.color.darken(0.025);

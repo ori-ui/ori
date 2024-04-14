@@ -315,7 +315,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         canvas: &mut Canvas,
     ) {
         // we need to set the view to be enable hit testing
-        canvas.set_view(cx.id());
+        canvas.set_hoverable(cx.id());
         self.content.draw(content, cx, data, canvas);
 
         let alpha = f32::clamp(state.timer * 10.0 - 9.0, 0.0, 1.0);

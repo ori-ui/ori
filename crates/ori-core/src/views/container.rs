@@ -221,7 +221,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
     ) {
         canvas.draw(self.shadow.mesh(cx.rect(), self.border_radius));
 
-        canvas.set_view(cx.id());
+        canvas.set_hoverable(cx.id());
         canvas.draw_quad(
             cx.rect(),
             self.background.clone(),

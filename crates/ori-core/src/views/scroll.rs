@@ -243,7 +243,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         let mut scrollbar_layer = canvas.layer();
         scrollbar_layer.depth += 100.0;
-        scrollbar_layer.set_view(cx.id());
+        scrollbar_layer.set_hoverable(cx.id());
 
         scrollbar_layer.draw_quad(
             self.scrollbar_rect(cx.rect()),

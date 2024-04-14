@@ -178,7 +178,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         data: &mut T,
         canvas: &mut Canvas,
     ) {
-        canvas.set_view(cx.id());
+        canvas.set_hoverable(cx.id());
         self.content.draw(content, cx, data, canvas);
     }
 }

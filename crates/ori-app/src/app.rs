@@ -91,6 +91,20 @@ impl<T> WindowState<T> {
             None => 0.0,
         }
     }
+
+    fn update_and_request_draw(&mut self, animate: Instant) {
+        if self.view_state.needs_draw() {
+            self.window.request_draw();
+        }
+
+        if self.view_state.needs_animate() && self.animate.is_none() {
+            self.window.request_draw();
+            self.animate = Some(animate);
+        }
+
+        let cursor = self.view_state.cursor().unwrap_or_default();
+        self.window.set_cursor(cursor);
+    }
 }
 
 /// The main application state.
@@ -412,12 +426,15 @@ impl<T> App<T> {
     pub fn event(&mut self, data: &mut T, event: &Event) -> bool {
         ori_core::log::trace!(event = ?event, "Event");
 
+        // we need to animate the window before handling the event
         let animate = Instant::now();
 
+        // we first send the event to the delegates
         let event_handled = self.delegate_event(data, event);
 
         let mut rebuild = false;
 
+        // if the event was handled by a delegate we don't send it to the windows
         if !event_handled {
             for window_state in self.windows.values_mut() {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
@@ -428,24 +445,17 @@ impl<T> App<T> {
             }
         }
 
+        // rebuild the view tree if requested
         if rebuild {
             self.rebuild(data);
         }
 
+        // update the window state after handling the event
         for window_state in self.windows.values_mut() {
-            if window_state.view_state.needs_draw() {
-                window_state.window.request_draw();
-            }
-
-            if window_state.view_state.needs_animate() && window_state.animate.is_none() {
-                window_state.window.request_draw();
-                window_state.animate = Some(animate);
-            }
-
-            let cursor = window_state.view_state.cursor().unwrap_or_default();
-            window_state.window.set_cursor(cursor);
+            window_state.update_and_request_draw(animate);
         }
 
+        // handle any pending commands
         self.handle_commands(data);
 
         event_handled
@@ -457,43 +467,56 @@ impl<T> App<T> {
     pub fn window_event(&mut self, data: &mut T, window_id: WindowId, event: &Event) -> bool {
         ori_core::log::trace!(event = ?event, window = ?window_id, "Window event");
 
+        // we need to animate the window before handling the event
         let animate = Instant::now();
 
+        // we first send the event to the delegates
         let event_handled = self.delegate_event(data, event);
 
         let mut rebuild = false;
 
+        // if the event was handled by a delegate we don't send it to the window
         if !event_handled {
             if let Some(window_state) = self.windows.get_mut(&window_id) {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
+                // we send the event to the window, remembering to set the style context
                 self.style.as_context(|| {
                     window_state.event(data, &mut base, &mut rebuild, event);
                 });
             }
         }
 
+        // rebuild the view tree if requested
         if rebuild {
             self.rebuild(data);
         }
 
+        // update the window state after handling the event
         if let Some(window_state) = self.windows.get_mut(&window_id) {
-            if window_state.view_state.needs_draw() {
-                window_state.window.request_draw();
-            }
-
-            if window_state.view_state.needs_animate() && window_state.animate.is_none() {
-                window_state.window.request_draw();
-                window_state.animate = Some(animate);
-            }
-
-            let cursor = window_state.view_state.cursor().unwrap_or_default();
-            window_state.window.set_cursor(cursor);
+            window_state.update_and_request_draw(animate);
         }
 
+        // handle any pending commands
         self.handle_commands(data);
 
         event_handled
+    }
+
+    fn animate_window(&mut self, data: &mut T, window_id: WindowId) {
+        if let Some(window_state) = self.windows.get_mut(&window_id) {
+            // if the window needs to animate, we send an Animate event
+            if window_state.view_state.needs_animate() {
+                // we need to mark the view state of the root as animated manually
+                // because there is no pod around the root
+                window_state.view_state.mark_animated();
+
+                // we send an Animate event to the window, this uses the time since the last frame
+                // set in either the event, window_event, or draw_window functions
+                let event = Event::Animate(window_state.animate());
+                self.window_event(data, window_id, &event);
+            }
+        }
     }
 
     /// Draw a single window, returning the scene if it needs to be rendered.
@@ -504,35 +527,49 @@ impl<T> App<T> {
     ) -> Option<WindowRenderScene<'_>> {
         ori_core::log::trace!(window = ?window_id, "Draw window");
 
-        if let Some(window_state) = self.windows.get_mut(&window_id) {
-            if window_state.view_state.needs_animate() {
-                window_state.view_state.mark_animated();
+        // animate the window before drawing it
+        //
+        // this will send an Animate event if needed
+        self.animate_window(data, window_id);
 
-                let event = Event::Animate(window_state.animate());
-                self.window_event(data, window_id, &event);
-            }
-        }
-
+        // we prepare for layout and draw here
+        //
+        // animate is used to calculate the time since the last frame
+        // and is set here so the time is as accurate as possible
+        let animate = Instant::now();
         let window = self.windows.get_mut(&window_id)?;
 
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
+        // layout if needed
         if window.view_state.needs_layout() {
             self.style.as_context(|| window.layout(data, &mut base));
         }
 
+        // draw if needed
         if window.view_state.needs_draw() {
             self.style.as_context(|| window.draw(data, &mut base));
 
+            // since hover state is determined by the scene, and since draw modifies the scene,
+            // we must update the hover state, and send an UpdateHovered event if needed
             if self.update_hovered(window_id) {
                 self.window_event(data, window_id, &Event::UpdateHovered);
             }
         }
 
+        // we need to update the window state after layout and draw
+        //
+        // if somehow the a layout or draw has been requested we must tell the window to redraw
+        if let Some(window_state) = self.windows.get_mut(&window_id) {
+            window_state.update_and_request_draw(animate);
+        }
+
+        // handle any pending commands
         self.handle_commands(data);
 
         let window = self.windows.get(&window_id)?;
 
+        // the clear color is the palette background color, but can be overridden by the window
         let clear_color = match window.window.color() {
             Some(color) => color,
             None => self.style.palette().background(),

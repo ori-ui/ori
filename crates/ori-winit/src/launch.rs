@@ -141,6 +141,11 @@ impl<T> WinitState<T> {
                 self.create_window(target, desc, builder)?;
             }
             AppRequest::CloseWindow(id) => {
+                #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
+                self.renders.remove(&id);
+
+                println!("Closing window: {:?}", id);
+
                 self.app.remove_window(id);
             }
             AppRequest::Quit => target.exit(),
@@ -350,6 +355,9 @@ impl<T> WinitState<T> {
                 }
             }
             WindowEvent::CloseRequested => {
+                #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
+                self.renders.remove(&id);
+
                 self.app.close_requested(&mut self.data, id);
             }
             WindowEvent::Resized(inner_size) => {

@@ -20,7 +20,6 @@ pub type GlutinError = Error;
 
 /// A context for rendering using [`glutin`].
 pub struct GlutinContext {
-    #[allow(dead_code)]
     display: Display,
     surface: Surface<WindowSurface>,
     context: PossiblyCurrentContext,

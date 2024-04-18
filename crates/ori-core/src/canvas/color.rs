@@ -234,20 +234,14 @@ impl Color {
     ///
     /// See <https://en.wikipedia.org/wiki/HSL_and_HSV>.
     pub fn hsva(h: f32, s: f32, v: f32, a: f32) -> Self {
-        let c = v * s;
-        let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
-        let m = v - c;
-
-        let (r, g, b) = match (h / 60.0) as u8 {
-            0 => (c, x, 0.0),
-            1 => (x, c, 0.0),
-            2 => (0.0, c, x),
-            3 => (0.0, x, c),
-            4 => (x, 0.0, c),
-            _ => (c, 0.0, x),
+        let l = v * (1.0 - s / 2.0);
+        let s = if l == 0.0 || l == 1.0 {
+            0.0
+        } else {
+            (v - l) / (l.min(1.0 - l))
         };
 
-        Self::rgba(r + m, g + m, b + m, a)
+        Self::hsla(h, s, l, a)
     }
 
     /// Returns a new color with the given hue, saturation and value.
@@ -261,25 +255,12 @@ impl Color {
     ///
     /// See <https://en.wikipedia.org/wiki/HSL_and_HSV>.
     pub fn to_hsva(self) -> (f32, f32, f32, f32) {
-        let max = self.r.max(self.g).max(self.b);
-        let min = self.r.min(self.g).min(self.b);
-        let c = max - min;
+        let (h, s, l, a) = self.to_hsla();
 
-        let h = if c == 0.0 {
-            0.0
-        } else if max == self.r {
-            60.0 * ((self.g - self.b) / c).rem_euclid(6.0)
-        } else if max == self.g {
-            60.0 * ((self.b - self.r) / c + 2.0)
-        } else {
-            60.0 * ((self.r - self.g) / c + 4.0)
-        };
+        let v = l + s * l.min(1.0 - l);
+        let s = if v == 0.0 { 0.0 } else { 2.0 * (1.0 - l / v) };
 
-        let v = max;
-
-        let s = if v == 0.0 { 0.0 } else { c / v };
-
-        (h, s, v, self.a)
+        (h, s, v, a)
     }
 
     /// Convert the color to a hue, saturation, value tuple.

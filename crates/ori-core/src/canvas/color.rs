@@ -23,6 +23,16 @@ pub fn hsla(h: f32, s: f32, l: f32, a: f32) -> Color {
     Color::hsla(h, s, l, a)
 }
 
+/// Create a new color, with the given `hue`, `saturation` and `value` components.
+pub fn hsv(h: f32, s: f32, v: f32) -> Color {
+    Color::hsv(h, s, v)
+}
+
+/// Create a new color, with the given `hue`, `saturation`, `value` and alpha components.
+pub fn hsva(h: f32, s: f32, v: f32, a: f32) -> Color {
+    Color::hsva(h, s, v, a)
+}
+
 /// Create a new color, with the given `lightness`, `a` and `b` components.
 pub fn oklab(l: f32, a: f32, b: f32) -> Color {
     Color::oklab(l, a, b)
@@ -218,6 +228,39 @@ impl Color {
     pub fn to_hsl(self) -> (f32, f32, f32) {
         let (h, s, l, _) = self.to_hsla();
         (h, s, l)
+    }
+
+    /// Returns a new color with the given hue, saturation, value and alpha components.
+    ///
+    /// See <https://en.wikipedia.org/wiki/HSL_and_HSV>.
+    pub fn hsva(h: f32, s: f32, v: f32, a: f32) -> Self {
+        Self::hsla(h, s * v, v * (1.0 - s / 2.0), a)
+    }
+
+    /// Returns a new color with the given hue, saturation and value.
+    ///
+    /// See <https://en.wikipedia.org/wiki/HSL_and_HSV>.
+    pub fn hsv(h: f32, s: f32, v: f32) -> Self {
+        Self::hsva(h, s, v, 1.0)
+    }
+
+    /// Convert the color to a hue, saturation, value and alpha tuple.
+    ///
+    /// See <https://en.wikipedia.org/wiki/HSL_and_HSV>.
+    pub fn to_hsva(self) -> (f32, f32, f32, f32) {
+        let (h, s, l, a) = self.to_hsla();
+
+        let v = l + s * l.min(1.0 - l);
+
+        (h, 2.0 * (1.0 - l / v), v, a)
+    }
+
+    /// Convert the color to a hue, saturation, value tuple.
+    ///
+    /// See <https://en.wikipedia.org/wiki/HSL_and_HSV>.
+    pub fn to_hsv(self) -> (f32, f32, f32) {
+        let (h, s, v, _) = self.to_hsva();
+        (h, s, v)
     }
 
     /// Convert a color from oklab to linear sRGB.

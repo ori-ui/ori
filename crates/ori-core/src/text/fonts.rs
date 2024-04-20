@@ -15,6 +15,9 @@ const ROBOTO_REGULAR: &[u8] = include_bytes!("../../font/Roboto-Regular.ttf");
 const ROBOTO_THIN: &[u8] = include_bytes!("../../font/Roboto-Thin.ttf");
 const ROBOTO_THIN_ITALIC: &[u8] = include_bytes!("../../font/Roboto-ThinItalic.ttf");
 
+const ROBOTO_MONO: &[u8] = include_bytes!("../../font/RobotoMono.ttf");
+const ROBOTO_MONO_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-Italic.ttf");
+
 use crate::{
     canvas::{Color, Mesh, Vertex},
     layout::{Point, Rect, Size},
@@ -64,6 +67,8 @@ impl Fonts {
             ROBOTO_REGULAR,
             ROBOTO_THIN,
             ROBOTO_THIN_ITALIC,
+            ROBOTO_MONO,
+            ROBOTO_MONO_ITALIC,
         ] {
             fonts.push(Source::Binary(Arc::new(font.to_vec())));
         }
@@ -76,9 +81,6 @@ impl Fonts {
         db.set_monospace_family("Roboto Mono");
         db.set_cursive_family("Roboto");
         db.set_fantasy_family("Roboto");
-
-        // load the system fonts, IMPORTANT!
-        db.load_system_fonts();
 
         Self {
             swash_cache,

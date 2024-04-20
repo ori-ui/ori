@@ -71,8 +71,8 @@ impl Style for TooltipStyle {
             wrap: TextWrap::Word,
             background: style.palette().overlay,
             border_radius: BorderRadius::all(4.0),
-            border_width: BorderWidth::all(1.0),
-            border_color: style.palette().overlay_tertiary,
+            border_width: BorderWidth::all(0.0),
+            border_color: style.palette().surface_tertiary,
         }
     }
 }

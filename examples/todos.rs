@@ -75,15 +75,15 @@ fn input(border: bool) -> impl View<Data> {
 
 fn theme_button(data: &mut Data) -> impl View<Data> {
     let icon = if data.dark_mode {
-        fa::icon("moon").color(Palette::catppuccin_macchiato().text)
+        fa::icon("moon").color(Palette::light().text)
     } else {
-        fa::icon("sun").color(Palette::catppuccin_macchiato().text)
+        fa::icon("sun").color(Palette::dark().text)
     };
 
     let color = if data.dark_mode {
-        Palette::catppuccin_latte().base
+        Palette::light().background
     } else {
-        Palette::catppuccin_macchiato().base
+        Palette::dark().background
     };
 
     let button = button(icon).fancy(4.0).color(color);
@@ -109,7 +109,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
         .padding(5.0)
-        .color(palette().red);
+        .color(palette().secondary);
 
     let remove = on_click(remove, move |cx, _: &mut Todo| {
         // because we don't have access to the Data struct here
@@ -207,9 +207,9 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
 fn app(data: &mut Data) -> impl View<Data> {
     let style = if data.dark_mode {
-        Palette::catppuccin_mocha()
+        Palette::light()
     } else {
-        Palette::catppuccin_latte()
+        Palette::dark()
     };
 
     styled(style, || {
@@ -223,7 +223,7 @@ fn app(data: &mut Data) -> impl View<Data> {
         let stack = vstack![title(), flex(rows)].gap(16.0);
         let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
 
-        background(palette().base, pad(64.0, content))
+        background(palette().background, pad(64.0, content))
     })
 }
 

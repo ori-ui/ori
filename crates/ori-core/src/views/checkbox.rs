@@ -42,12 +42,12 @@ impl Style for CheckboxStyle {
         Self {
             transition: Transition::ease(0.1),
             size: 24.0,
-            color: style.palette().accent,
+            color: style.palette().primary,
             stroke: 2.0,
             background: Background::color(Color::TRANSPARENT),
             border_radius: BorderRadius::all(6.0),
             border_width: BorderWidth::all(2.0),
-            border_color: style.palette().surface,
+            border_color: style.palette().outline_variant,
         }
     }
 }

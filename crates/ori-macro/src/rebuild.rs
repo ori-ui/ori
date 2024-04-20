@@ -7,12 +7,12 @@ use crate::find_core;
 syn::custom_keyword!(layout);
 syn::custom_keyword!(draw);
 
-enum Update {
+enum FieldAttribute {
     Layout,
     Draw,
 }
 
-impl syn::parse::Parse for Update {
+impl syn::parse::Parse for FieldAttribute {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let lookahead = input.lookahead1();
 
@@ -41,13 +41,13 @@ impl FieldAttributes {
         for attr in attrs {
             if attr.path().is_ident("rebuild") {
                 let updates = attr.parse_args_with(|input: ParseStream| {
-                    Punctuated::<Update, syn::Token![,]>::parse_terminated(input)
+                    Punctuated::<FieldAttribute, syn::Token![,]>::parse_terminated(input)
                 })?;
 
                 for update in updates {
                     match update {
-                        Update::Layout => this.layout = true,
-                        Update::Draw => this.draw = true,
+                        FieldAttribute::Layout => this.layout = true,
+                        FieldAttribute::Draw => this.draw = true,
                     }
                 }
             }

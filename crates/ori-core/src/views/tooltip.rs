@@ -69,10 +69,10 @@ impl Style for TooltipStyle {
             align: TextAlign::Start,
             line_height: 1.3,
             wrap: TextWrap::Word,
-            background: style.palette().overlay,
+            background: style.palette().surface_highest,
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style.palette().surface_tertiary,
+            border_color: style.palette().outline_variant,
         }
     }
 }

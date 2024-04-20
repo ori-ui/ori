@@ -395,7 +395,7 @@ fn debug(_data: &mut DebugData) -> impl View<DebugData> {
             .gap(1.0);
 
             // fill the background with a dark color to have clear sepration between panels
-            let container = container(pad_top(1.0, stack)).background(palette().surface_secondary);
+            let container = container(pad_top(1.0, stack)).background(palette().surface_high);
 
             // fill the bottom third of the window
             size([FILL, space.max.height / 3.0], container)

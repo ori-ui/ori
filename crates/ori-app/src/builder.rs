@@ -1,7 +1,9 @@
+use std::any::Any;
+
 use ori_core::{
     command::{CommandProxy, CommandWaker},
     context::Contexts,
-    style::{IntoStyles, Styles},
+    style::Styles,
     text::{FontSource, Fonts},
     view::{any, AnyView},
     window::WindowDescriptor,
@@ -41,7 +43,7 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a style to the application.
-    pub fn style(mut self, style: impl IntoStyles) -> Self {
+    pub fn style(mut self, style: impl Any) -> Self {
         self.style.set(style);
         self
     }

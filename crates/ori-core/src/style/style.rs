@@ -25,18 +25,34 @@ pub fn try_style<T: Clone + Any>() -> Option<T> {
 }
 
 /// Run a closure with the given style.
-pub fn styled<T>(style: impl IntoStyles, f: impl FnOnce() -> T) -> T {
+pub fn styled<T>(style: impl Any, f: impl FnOnce() -> T) -> T {
     let mut new_style = Styles::snapshot();
-    new_style.extend(style.into_styles());
+    new_style.set(style);
     new_style.as_context(f)
 }
 
 type Builder<T> = Box<dyn Fn(&Styles) -> T + 'static>;
 
+#[derive(Clone)]
+struct Entry {
+    value: Arc<dyn Any>,
+    is_builder: bool,
+}
+
+impl Entry {
+    unsafe fn value<T: Any>(&self) -> &T {
+        unsafe { &*Arc::as_ptr(&self.value).cast::<T>() }
+    }
+
+    unsafe fn builder<T: Any>(&self) -> &Builder<T> {
+        unsafe { &*Arc::as_ptr(&self.value).cast::<Builder<T>>() }
+    }
+}
+
 /// A map of style values.
 #[derive(Clone, Default)]
 pub struct Styles {
-    items: Arc<HashMap<TypeId, Arc<dyn Any>, StyleHasher>>,
+    items: Arc<HashMap<TypeId, Entry, StyleHasher>>,
 }
 
 impl Styles {
@@ -55,8 +71,25 @@ impl Styles {
     }
 
     /// Set a value in a style.
-    pub fn set(&mut self, item: impl IntoStyles) {
-        self.extend(item.into_styles());
+    pub fn set<T: Any>(&mut self, item: T) {
+        // now this is all sorts of cursed but this is the only way to do this
+        if TypeId::of::<T>() == TypeId::of::<Self>() {
+            let styles = ManuallyDrop::new(item);
+
+            unsafe {
+                // SAFETY: we know that the type is Style
+                self.extend(mem::transmute_copy(&styles));
+            }
+
+            return;
+        }
+
+        let entry = Entry {
+            value: Arc::new(item),
+            is_builder: false,
+        };
+
+        Arc::make_mut(&mut self.items).insert(TypeId::of::<T>(), entry);
     }
 
     /// Build a value in a style.
@@ -64,11 +97,17 @@ impl Styles {
     /// This is useful for when the value is dependent on other values in the style, like a [`Palette`].
     pub fn builder<T: Any>(&mut self, builder: impl Fn(&Styles) -> T + 'static) {
         let builder: Builder<T> = Box::new(builder);
-        Arc::make_mut(&mut self.items).insert(TypeId::of::<T>(), Arc::new(builder));
+
+        let entry = Entry {
+            value: Arc::new(builder),
+            is_builder: true,
+        };
+
+        Arc::make_mut(&mut self.items).insert(TypeId::of::<T>(), entry);
     }
 
     /// Set a value in a style returning the style.
-    pub fn with(mut self, item: impl IntoStyles) -> Self {
+    pub fn with(mut self, item: impl Any) -> Self {
         self.set(item);
         self
     }
@@ -93,11 +132,11 @@ impl Styles {
     pub fn try_get<T: Clone + Any>(&self) -> Option<T> {
         let value = self.items.get(&TypeId::of::<T>())?;
 
-        if let Some(builder) = value.downcast_ref::<Builder<T>>() {
-            return Some(builder(self));
+        if value.is_builder {
+            unsafe { Some(value.builder::<T>()(self)) }
+        } else {
+            unsafe { Some(value.value::<T>().clone()) }
         }
-
-        value.downcast_ref::<T>().cloned()
     }
 
     /// Extend the style with another style.
@@ -135,32 +174,6 @@ pub trait Style: Sized {
 impl<T: Default> Style for T {
     fn style(_: &Styles) -> Self {
         T::default()
-    }
-}
-
-/// A trait for converting a value into a style.
-///
-/// Turns a value into a style by wrapping it in a `Styles` instance, if it isn't already a `Styles`.
-///
-/// This trait should not be implemented manually.
-pub trait IntoStyles {
-    /// Convert a value into a style.
-    fn into_styles(self) -> Styles;
-}
-
-impl<T: Any> IntoStyles for T {
-    fn into_styles(self) -> Styles {
-        // now this is all sorts of cursed but this is the only way to do this
-        if TypeId::of::<Self>() == TypeId::of::<Styles>() {
-            let style = ManuallyDrop::new(self);
-
-            // SAFETY: we know that the type is Style
-            return unsafe { mem::transmute_copy(&style) };
-        }
-
-        let mut style = Styles::new();
-        Arc::make_mut(&mut style.items).insert(TypeId::of::<Self>(), Arc::new(self));
-        style
     }
 }
 

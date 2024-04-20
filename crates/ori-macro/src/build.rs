@@ -73,12 +73,11 @@ fn build_impl(input: &syn::DeriveInput) -> manyhow::Result<Vec<TokenStream>> {
                 build_fields(names, fields.named.iter())
             }
             syn::Fields::Unnamed(_) => {
-                manyhow::bail!("`Build` cannot be derived for tuple structs")
+                manyhow::bail!("`Build` can only be derived for named structs")
             }
             syn::Fields::Unit => Ok(Vec::new()),
         },
-        syn::Data::Enum(_) => manyhow::bail!("`Build` cannot be derived for enums"),
-        syn::Data::Union(_) => manyhow::bail!("`Build` cannot be derived for unions"),
+        _ => manyhow::bail!("`Build` can only be derived for structs"),
     }
 }
 

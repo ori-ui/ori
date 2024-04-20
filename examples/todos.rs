@@ -75,15 +75,15 @@ fn input(border: bool) -> impl View<Data> {
 
 fn theme_button(data: &mut Data) -> impl View<Data> {
     let icon = if data.dark_mode {
-        fa::icon("moon").color(Palette::dark().text)
+        fa::icon("moon").color(Palette::catppuccin_macchiato().text)
     } else {
-        fa::icon("sun").color(Palette::dark().text)
+        fa::icon("sun").color(Palette::catppuccin_macchiato().text)
     };
 
     let color = if data.dark_mode {
-        Palette::light().base
+        Palette::catppuccin_latte().base
     } else {
-        Palette::dark().base
+        Palette::catppuccin_macchiato().base
     };
 
     let button = button(icon).fancy(4.0).color(color);
@@ -207,9 +207,9 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
 fn app(data: &mut Data) -> impl View<Data> {
     let style = if data.dark_mode {
-        Palette::dark()
+        Palette::catppuccin_mocha()
     } else {
-        Palette::light()
+        Palette::catppuccin_latte()
     };
 
     styled(style, || {

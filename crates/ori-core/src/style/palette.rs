@@ -59,7 +59,7 @@ pub struct Palette {
     pub blue: Color,
 
     /// The saphire color.
-    pub saphire: Color,
+    pub sapphire: Color,
 
     /// The sky color.
     pub sky: Color,
@@ -97,13 +97,13 @@ pub struct Palette {
 
 impl Default for Palette {
     fn default() -> Self {
-        Self::light()
+        Self::catppuccin_latte()
     }
 }
 
 impl Palette {
     /// Get the light palette.
-    pub fn light() -> Self {
+    pub fn catppuccin_latte() -> Self {
         Self {
             crust: Color::hex("#dce0e8"),
             mantle: Color::hex("#e6e9ef"),
@@ -121,7 +121,7 @@ impl Palette {
             accent: Color::hex("#df8e1d"),
             lavender: Color::hex("#7287fd"),
             blue: Color::hex("#1e66f5"),
-            saphire: Color::hex("#209fb5"),
+            sapphire: Color::hex("#209fb5"),
             sky: Color::hex("#04a5e5"),
             teal: Color::hex("#179299"),
             green: Color::hex("#40a02b"),
@@ -136,8 +136,42 @@ impl Palette {
         }
     }
 
+    /// Get the medium palette.
+    pub fn catppuccin_frappe() -> Self {
+        Self {
+            crust: Color::hex("#232634"),
+            mantle: Color::hex("#292c3c"),
+            base: Color::hex("#303446"),
+            surface: Color::hex("#414559"),
+            surface_secondary: Color::hex("#51576d"),
+            surface_tertiary: Color::hex("#626880"),
+            overlay: Color::hex("#737994"),
+            overlay_secondary: Color::hex("#838ba7"),
+            overlay_tertiary: Color::hex("#949cbb"),
+            subtext: Color::hex("#a5adce"),
+            subtext_secondary: Color::hex("#b5bfe2"),
+            text: Color::hex("#c6d0f5"),
+            primary: Color::hex("#8caaee"),
+            accent: Color::hex("#e5c890"),
+            lavender: Color::hex("#babbf1"),
+            blue: Color::hex("#8caaee"),
+            sapphire: Color::hex("#85c1dc"),
+            sky: Color::hex("#99d1db"),
+            teal: Color::hex("#81c8be"),
+            green: Color::hex("#a6d189"),
+            yellow: Color::hex("#e5c890"),
+            peach: Color::hex("#ef9f76"),
+            maroon: Color::hex("#ea999c"),
+            red: Color::hex("#e78284"),
+            mauve: Color::hex("#ca9ee6"),
+            pink: Color::hex("#f4b8e4"),
+            flamingo: Color::hex("#eebebe"),
+            rosewater: Color::hex("#f2d5cf"),
+        }
+    }
+
     /// Get the dark palette.
-    pub fn dark() -> Self {
+    pub fn catppuccin_macchiato() -> Self {
         Self {
             crust: Color::hex("#181926"),
             mantle: Color::hex("#1e2030"),
@@ -155,7 +189,7 @@ impl Palette {
             accent: Color::hex("#eed49f"),
             lavender: Color::hex("#b7bdf8"),
             blue: Color::hex("#8aadf4"),
-            saphire: Color::hex("#7dc4e4"),
+            sapphire: Color::hex("#7dc4e4"),
             sky: Color::hex("#91d7e3"),
             teal: Color::hex("#8bd5ca"),
             green: Color::hex("#a6da95"),
@@ -167,6 +201,40 @@ impl Palette {
             pink: Color::hex("#f5bde6"),
             flamingo: Color::hex("#f0c6c6"),
             rosewater: Color::hex("#f4dbd6"),
+        }
+    }
+
+    /// Get the darkest palette.
+    pub fn catppuccin_mocha() -> Self {
+        Self {
+            crust: Color::hex("#11111b"),
+            mantle: Color::hex("#181825"),
+            base: Color::hex("#1e1e2e"),
+            surface: Color::hex("#313244"),
+            surface_secondary: Color::hex("#45475a"),
+            surface_tertiary: Color::hex("#585b70"),
+            overlay: Color::hex("#6c7086"),
+            overlay_secondary: Color::hex("#7f849c"),
+            overlay_tertiary: Color::hex("#9399b2"),
+            subtext: Color::hex("#a6adc8"),
+            subtext_secondary: Color::hex("#bac2de"),
+            text: Color::hex("#cdd6f4"),
+            primary: Color::hex("#89b4fa"),
+            accent: Color::hex("#f9e2af"),
+            lavender: Color::hex("#b4befe"),
+            blue: Color::hex("#89b4fa"),
+            sapphire: Color::hex("#74c7ec"),
+            sky: Color::hex("#89dceb"),
+            teal: Color::hex("#94e2d5"),
+            green: Color::hex("#a6e3a1"),
+            yellow: Color::hex("#f9e2af"),
+            peach: Color::hex("#fab387"),
+            maroon: Color::hex("#eba0ac"),
+            red: Color::hex("#f38ba8"),
+            mauve: Color::hex("#cba6f7"),
+            pink: Color::hex("#f5c2e7"),
+            flamingo: Color::hex("#f2cdcd"),
+            rosewater: Color::hex("#f5e0dc"),
         }
     }
 }

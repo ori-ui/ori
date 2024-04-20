@@ -41,10 +41,10 @@ impl Style for ButtonStyle {
             padding: Padding::all(8.0),
             fancy: 0.0,
             transition: Transition::ease(0.1),
-            color: Background::new(style.palette().primary()),
+            color: Background::new(style.palette().accent),
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style.palette().secondary_dark(),
+            border_color: style.palette().surface_tertiary,
         }
     }
 }

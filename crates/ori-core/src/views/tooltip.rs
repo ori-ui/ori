@@ -65,14 +65,14 @@ impl Style for TooltipStyle {
             font_weight: FontWeight::NORMAL,
             font_stretch: FontStretch::Normal,
             font_style: FontStyle::Normal,
-            color: style.palette().text(),
+            color: style.palette().text,
             align: TextAlign::Start,
             line_height: 1.3,
             wrap: TextWrap::Word,
-            background: style.palette().secondary(),
+            background: style.palette().overlay,
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(1.0),
-            border_color: style.palette().secondary_dark(),
+            border_color: style.palette().overlay_tertiary,
         }
     }
 }

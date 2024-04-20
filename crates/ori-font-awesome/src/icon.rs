@@ -50,7 +50,7 @@ impl Icon {
             icon: icon.into(),
             solid: false,
             size: 16.0,
-            color: palette().text(),
+            color: palette().text,
         }
     }
 

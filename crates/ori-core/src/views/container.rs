@@ -59,10 +59,10 @@ pub struct ContainerStyle {
 impl Style for ContainerStyle {
     fn style(style: &Styles) -> Self {
         Self {
-            background: style.palette().secondary().into(),
+            background: style.palette().crust.into(),
             border_radius: BorderRadius::all(0.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style.palette().secondary_dark(),
+            border_color: style.palette().surface,
             shadow: BoxShadow::default(),
         }
     }

@@ -75,15 +75,15 @@ fn input(border: bool) -> impl View<Data> {
 
 fn theme_button(data: &mut Data) -> impl View<Data> {
     let icon = if data.dark_mode {
-        fa::icon("moon").color(Palette::light().text())
+        fa::icon("moon").color(Palette::dark().text)
     } else {
-        fa::icon("sun").color(Palette::dark().text())
+        fa::icon("sun").color(Palette::dark().text)
     };
 
     let color = if data.dark_mode {
-        Palette::light().background()
+        Palette::light().base
     } else {
-        Palette::dark().background()
+        Palette::dark().base
     };
 
     let button = button(icon).fancy(4.0).color(color);
@@ -99,9 +99,9 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = tooltip(completed, "Toggle whether the todo is completed");
 
     let title_color = if todo.completed {
-        palette().text_lighter()
+        palette().subtext
     } else {
-        palette().text()
+        palette().text
     };
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
@@ -109,7 +109,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
         .padding(5.0)
-        .color(hsl(353.0, 0.6, 0.72));
+        .color(palette().red);
 
     let remove = on_click(remove, move |cx, _: &mut Todo| {
         // because we don't have access to the Data struct here
@@ -170,21 +170,21 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
     fn color(a: Selection, b: Selection) -> Color {
         if a == b {
-            palette().accent()
+            palette().accent
         } else {
-            palette().primary()
+            palette().primary
         }
     }
 
-    let all = button(text("All"))
+    let all = button(text("All").color(palette().surface))
         .fancy(4.0)
         .color(color(data.selection, Selection::All))
         .padding([5.0, 3.0]);
-    let active = button(text("Active"))
+    let active = button(text("Active").color(palette().surface))
         .fancy(4.0)
         .color(color(data.selection, Selection::Active))
         .padding([5.0, 3.0]);
-    let completed = button(text("Completed"))
+    let completed = button(text("Completed").color(palette().surface))
         .fancy(4.0)
         .color(color(data.selection, Selection::Completed))
         .padding([5.0, 3.0]);
@@ -223,7 +223,7 @@ fn app(data: &mut Data) -> impl View<Data> {
         let stack = vstack![title(), flex(rows)].gap(16.0);
         let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
 
-        background(palette().background(), pad(64.0, content))
+        background(palette().base, pad(64.0, content))
     })
 }
 

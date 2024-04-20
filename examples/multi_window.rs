@@ -32,7 +32,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
 fn open_window_button() -> impl View<Data> {
     let open_window = button(text("Open window"))
         .fancy(4.0)
-        .color(palette().accent());
+        .color(palette().accent);
 
     on_click(open_window, |cx, _: &mut Data| {
         cx.cmd(OpenWindow);
@@ -41,8 +41,8 @@ fn open_window_button() -> impl View<Data> {
 
 fn close_window_button(data: &mut Data) -> impl View<Data> {
     let close_window = transition(ease(0.5), !data.windows.is_empty(), |_cx, _, t| {
-        let active = palette().primary();
-        let inactive = palette().secondary_darker();
+        let active = palette().primary;
+        let inactive = palette().surface_secondary;
 
         button(text("Close window"))
             .color(inactive.mix(active, t))

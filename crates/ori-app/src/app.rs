@@ -572,7 +572,7 @@ impl<T> App<T> {
         // the clear color is the palette background color, but can be overridden by the window
         let clear_color = match window.window.color() {
             Some(color) => color,
-            None => self.style.palette().background(),
+            None => self.style.palette().base,
         };
 
         Some(WindowRenderScene {

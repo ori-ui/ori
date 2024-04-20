@@ -7,7 +7,7 @@ fn square(index: usize) -> impl View<Data> {
     size(
         100.0,
         on_click(
-            button(text("Click me")).color(palette().secondary()),
+            button(text("Click me")).color(palette().surface),
             move |_, _| {
                 info!("clicked {}", index);
             },

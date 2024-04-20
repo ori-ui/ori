@@ -76,7 +76,7 @@ impl GlutinContext {
         let non_zero_height = NonZeroU32::new(height).unwrap();
 
         let surface_attributes = SurfaceAttributesBuilder::<WindowSurface>::new()
-            .with_srgb(None)
+            .with_srgb(Some(true))
             .build(window_handle, non_zero_width, non_zero_height);
 
         let surface = unsafe { display.create_window_surface(&config, &surface_attributes)? };

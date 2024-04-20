@@ -42,11 +42,11 @@ impl Style for CollapsingStyle {
         Self {
             transition: Transition::ease(0.1),
             icon_size: 16.0,
-            icon_color: style.palette().text_dark(),
+            icon_color: style.palette().surface,
             background: Background::color(Color::TRANSPARENT),
             border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
             border_radius: BorderRadius::all(0.0),
-            border_color: style.palette().secondary_dark(),
+            border_color: style.palette().surface,
         }
     }
 }

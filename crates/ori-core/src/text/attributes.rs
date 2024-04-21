@@ -9,7 +9,7 @@ pub enum FontFamily {
     Name(String),
     /// A serif font family.
     Serif,
-    /// A sans-serif font famil, by default `Noto Sans`.
+    /// A sans-serif font family.
     #[default]
     SansSerif,
     /// A monospace font family.

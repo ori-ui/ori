@@ -4,6 +4,7 @@ use super::{Affine, Point, Size, Vector};
 
 /// A rectangle defined by its minimum and maximum points.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Rect {
     /// The minimum point of the rectangle.
     pub min: Point,

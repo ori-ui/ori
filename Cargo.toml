@@ -54,6 +54,7 @@ default = ["winit", "glow", "x11", "wayland", "multithread"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 multithread = ["ori-core/multithread"]
+serde = ["ori-core/serde"]
 
 # All features
 full = ["font-awesome", "image"]

@@ -10,6 +10,7 @@ use super::{BorderRadius, Color, Curve, Mesh};
 
 /// A box shadow.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BoxShadow {
     /// The color of the shadow.
     pub color: Color,

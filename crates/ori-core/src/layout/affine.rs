@@ -4,6 +4,7 @@ use super::{Matrix, Point, Vector};
 
 /// An affine transformation in 2 dimensional space.
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Affine {
     /// The translation of the affine transformation.
     pub translation: Vector,

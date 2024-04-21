@@ -2,6 +2,7 @@ use core::slice;
 
 /// The alignment of items along the cross axis.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Align {
     /// Items are packed toward the start of the stack.
     Start,
@@ -32,6 +33,7 @@ impl Align {
 
 /// The justify content of a stack container.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Justify {
     /// Items are packed toward the start of the stack.
     Start,

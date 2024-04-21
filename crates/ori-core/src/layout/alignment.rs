@@ -3,6 +3,7 @@ use super::{Size, Vector};
 /// Alignment of content inside a container.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Alignment {
     /// The horizontal alignment.
     pub x: f32,

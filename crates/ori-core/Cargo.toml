@@ -36,7 +36,13 @@ features = [
     "bmp", 
 ]
 
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+optional = true
+
 [features]
 default = []
 image = ["dep:image"]
 multithread = []
+serde = ["dep:serde"]

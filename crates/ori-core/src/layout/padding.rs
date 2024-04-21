@@ -2,6 +2,7 @@ use super::{Size, Vector};
 
 /// A padding of a rectangle.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Padding {
     /// The top padding.
     pub top: f32,

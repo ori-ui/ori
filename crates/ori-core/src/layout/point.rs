@@ -9,6 +9,7 @@ use super::{Size, Vector};
 /// A point in 2D space.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Point {
     /// The x coordinate.
     pub x: f32,

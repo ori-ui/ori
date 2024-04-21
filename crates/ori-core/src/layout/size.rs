@@ -9,6 +9,7 @@ use super::{Point, Vector};
 /// A 2 dimensional size.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Size {
     /// The width.
     pub width: f32,

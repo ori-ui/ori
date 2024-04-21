@@ -1,5 +1,6 @@
 /// An axis is a direction in which a layout is applied.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Axis {
     /// The horizontal axis.
     Horizontal,

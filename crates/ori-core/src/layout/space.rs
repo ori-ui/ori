@@ -7,6 +7,7 @@ use super::Size;
 
 /// Space available to lay out a view.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Space {
     /// Minimum size the view can be.
     pub min: Size,

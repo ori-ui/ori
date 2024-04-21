@@ -12,10 +12,12 @@ pub fn ease(duration: f32) -> Transition {
 
 /// A transition curve.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TransitionCurve {
     /// A linear transition curve.
     #[default]
     Linear,
+
     /// An ease transition curve.
     Ease,
 }
@@ -32,6 +34,7 @@ impl TransitionCurve {
 
 /// A transition.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Transition {
     /// The duration of the transition.
     pub duration: f32,

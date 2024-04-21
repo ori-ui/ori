@@ -3,8 +3,8 @@ use ori_macro::Build;
 use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::Event,
-    layout::{Point, Size, Space},
+    event::{Event, PointerButton},
+    layout::{Size, Space},
     rebuild::Rebuild,
     view::View,
 };
@@ -43,32 +43,40 @@ pub fn on_click<T, V>(
 pub struct Clickable<T, V> {
     /// The content.
     pub content: V,
+
     /// Whether the item should be clickable when it's descendants are clicked.
     ///
     /// Defaults to `true`.
     pub descendants: bool,
+
+    /// The button to listen for.
+    ///
+    /// If `Some` the callbacks will only be called when this button is pressed.
+    pub button: Option<PointerButton>,
+
     /// The callback for when the button is pressed.
-    #[allow(clippy::type_complexity)]
     #[build(ignore)]
+    #[allow(clippy::type_complexity)]
     pub on_press: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
+
     /// The callback for when the button is released.
-    #[allow(clippy::type_complexity)]
     #[build(ignore)]
+    #[allow(clippy::type_complexity)]
     pub on_release: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
+
     /// The callback for when the button is clicked.
-    #[allow(clippy::type_complexity)]
     #[build(ignore)]
+    #[allow(clippy::type_complexity)]
     pub on_click: Option<Box<dyn FnMut(&mut EventCx, &mut T) + 'static>>,
 }
 
 impl<T, V> Clickable<T, V> {
-    const MAX_CLICK_DISTANCE: f32 = 10.0;
-
     /// Create a new [`Clickable`].
     pub fn new(content: V) -> Self {
         Self {
             content,
             descendants: true,
+            button: None,
             on_press: None,
             on_release: None,
             on_click: None,
@@ -94,42 +102,24 @@ impl<T, V> Clickable<T, V> {
     }
 }
 
-#[doc(hidden)]
-#[derive(Default)]
-pub struct ClickableState {
-    click_start: Point,
-}
-
 impl<T, V: View<T>> View<T> for Clickable<T, V> {
-    type State = (ClickableState, V::State);
+    type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        (ClickableState::default(), self.content.build(cx, data))
+        self.content.build(cx, data)
     }
 
-    fn rebuild(
-        &mut self,
-        (_state, content): &mut Self::State,
-        cx: &mut RebuildCx,
-        data: &mut T,
-        old: &Self,
-    ) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
-        self.content.rebuild(content, cx, data, &old.content);
+        self.content.rebuild(state, cx, data, &old.content);
     }
 
-    fn event(
-        &mut self,
-        (state, content): &mut Self::State,
-        cx: &mut EventCx,
-        data: &mut T,
-        event: &Event,
-    ) {
-        if let Event::PointerPressed(e) = event {
-            state.click_start = e.position;
+    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        let is_hot = cx.is_hot() || (cx.had_hot() && self.descendants);
 
-            if cx.is_hot() || (cx.had_hot() && self.descendants) {
+        match event {
+            Event::PointerPressed(_) if is_hot => {
                 if let Some(ref mut on_press) = self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
@@ -137,48 +127,45 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
 
                 cx.set_active(true);
             }
-        }
-
-        if let Event::PointerReleased(e) = event {
-            if cx.is_active() {
+            Event::PointerReleased(e) if cx.is_active() => {
                 if let Some(ref mut on_release) = self.on_release {
                     on_release(cx, data);
                     cx.request_rebuild();
                 }
 
-                cx.set_active(false);
-
-                let click_distance = (e.position - state.click_start).length();
-                if click_distance <= Self::MAX_CLICK_DISTANCE {
+                if e.clicked {
                     if let Some(ref mut on_click) = self.on_click {
                         on_click(cx, data);
                         cx.request_rebuild();
                     }
                 }
+
+                cx.set_active(false);
             }
+            _ => {}
         }
 
-        self.content.event(content, cx, data, event);
+        self.content.event(state, cx, data, event);
     }
 
     fn layout(
         &mut self,
-        (_state, content): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
-        self.content.layout(content, cx, data, space)
+        self.content.layout(state, cx, data, space)
     }
 
     fn draw(
         &mut self,
-        (_state, content): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
     ) {
         canvas.set_hoverable(cx.id());
-        self.content.draw(content, cx, data, canvas);
+        self.content.draw(state, cx, data, canvas);
     }
 }

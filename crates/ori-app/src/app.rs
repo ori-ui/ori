@@ -232,6 +232,10 @@ impl<T> App<T> {
             .unwrap_or(Point::ZERO);
 
         if pressed {
+            if let Some(window_state) = self.windows.get_mut(&window_id) {
+                window_state.window.pointer_pressed(pointer_id, button);
+            }
+
             let event = Event::PointerPressed(PointerPressed {
                 id: pointer_id,
                 modifiers: self.modifiers,
@@ -241,9 +245,14 @@ impl<T> App<T> {
 
             self.window_event(data, window_id, &event);
         } else {
+            let clicked = self.windows.get_mut(&window_id).map_or(false, move |w| {
+                w.window.pointer_released(pointer_id, button)
+            });
+
             let event = Event::PointerReleased(PointerReleased {
                 id: pointer_id,
                 modifiers: self.modifiers,
+                clicked,
                 position,
                 button,
             });
@@ -357,7 +366,7 @@ impl<T> App<T> {
 
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             for i in 0..window_state.window.pointers().len() {
-                let pointer = window_state.window.pointers()[i];
+                let pointer = &window_state.window.pointers()[i];
                 let position = pointer.position();
                 let hovered = window_state.scene.view_at(position);
 

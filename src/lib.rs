@@ -41,7 +41,7 @@ pub mod prelude {
         command::CommandProxy,
         context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
         event::{
-            CloseRequested, Code, Event, KeyPressed, Modifiers, Pointer, PointerButton, PointerId,
+            CloseRequested, Code, Event, KeyPressed, Modifiers, PointerButton, PointerId,
             PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
         },
         image::{gradient, Image, ImageData, ImageId},
@@ -61,7 +61,7 @@ pub mod prelude {
             any, pod, AnyView, BoxedView, Pod, PodSeq, SeqState, State, View, ViewSeq, ViewState,
         },
         views::*,
-        window::{Cursor, Window, WindowDescriptor, WindowId},
+        window::{Cursor, Pointer, Window, WindowDescriptor, WindowId},
     };
 
     pub use ori_macro::Build;

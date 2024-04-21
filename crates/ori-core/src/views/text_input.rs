@@ -8,7 +8,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Code, Event, KeyPressed},
     layout::{Point, Rect, Size, Space},
-    style::style,
+    style::{style, Palette, Style, Styles},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -23,29 +23,9 @@ use super::TextStyle;
 pub fn text_input<T>() -> TextInput<T> {
     TextInput::new()
 }
-
-/// A text input.
-#[example(name = "text_input", width = 400, height = 300)]
-#[derive(Build)]
-pub struct TextInput<T> {
-    /// The text.
-    #[build(ignore)]
-    pub text: Option<String>,
-    /// A function that returns the text to display.
-    #[build(ignore)]
-    #[allow(clippy::type_complexity)]
-    pub on_change: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
-    /// A function that is called when the input is submitted.
-    #[build(ignore)]
-    #[allow(clippy::type_complexity)]
-    pub on_submit: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
-
-    /// Placeholder text to display when the input is empty.
-    pub placeholder: String,
-    /// Whether the input is multi-line.
-    ///
-    /// When disabled (the default), the input will only accept a single line of text.
-    pub multiline: bool,
+/// The style of a text input.
+#[derive(Clone, Debug)]
+pub struct TextInputStyle {
     /// The font size of the text.
     pub font_size: f32,
     /// The font family of the text.
@@ -54,14 +34,93 @@ pub struct TextInput<T> {
     pub font_weight: FontWeight,
     /// The font stretch of the text.
     pub font_stretch: FontStretch,
-    /// The font.into of the text.
+    /// The font style of the text.
     pub font_style: FontStyle,
     /// The color of the text.
     pub color: Color,
-    /// The vertical alignment of the text.
+    /// The color of the placeholder text.
+    pub placeholder_color: Color,
+    /// The horizontal alignment of the text.
     pub align: TextAlign,
     /// The line height of the text.
     pub line_height: f32,
+    /// The text wrap of the text.
+    pub wrap: TextWrap,
+}
+
+impl Style for TextInputStyle {
+    fn style(style: &Styles) -> Self {
+        let text_style = style.get::<TextStyle>();
+        let palette = style.get::<Palette>();
+
+        Self {
+            font_size: text_style.font_size,
+            font_family: text_style.font_family,
+            font_weight: text_style.font_weight,
+            font_stretch: text_style.font_stretch,
+            font_style: text_style.font_style,
+            color: text_style.color,
+            placeholder_color: palette.subtext,
+            align: text_style.align,
+            line_height: text_style.line_height,
+            wrap: text_style.wrap,
+        }
+    }
+}
+
+/// A text input.
+#[example(name = "text_input", width = 400, height = 300)]
+#[derive(Build)]
+pub struct TextInput<T> {
+    /// The text.
+    #[build(ignore)]
+    pub text: Option<String>,
+
+    /// A function that returns the text to display.
+    #[build(ignore)]
+    #[allow(clippy::type_complexity)]
+    pub on_change: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
+
+    /// A function that is called when the input is submitted.
+    #[build(ignore)]
+    #[allow(clippy::type_complexity)]
+    pub on_submit: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
+
+    /// Placeholder text to display when the input is empty.
+    pub placeholder: String,
+
+    /// Whether the input is multi-line.
+    ///
+    /// When disabled (the default), the input will only accept a single line of text.
+    pub multiline: bool,
+
+    /// The font size of the text.
+    pub font_size: f32,
+
+    /// The font family of the text.
+    pub font_family: FontFamily,
+
+    /// The font weight of the text.
+    pub font_weight: FontWeight,
+
+    /// The font stretch of the text.
+    pub font_stretch: FontStretch,
+
+    /// The font.into of the text.
+    pub font_style: FontStyle,
+
+    /// The color of the text.
+    pub color: Color,
+
+    /// The color of the placeholder text.
+    pub placeholder_color: Color,
+
+    /// The vertical alignment of the text.
+    pub align: TextAlign,
+
+    /// The line height of the text.
+    pub line_height: f32,
+
     /// The text wrap of the text.
     pub wrap: TextWrap,
 }
@@ -75,7 +134,7 @@ impl<T> Default for TextInput<T> {
 impl<T> TextInput<T> {
     /// Create a new text input view.
     pub fn new() -> Self {
-        let style = style::<TextStyle>();
+        let style = style::<TextInputStyle>();
 
         Self {
             text: None,
@@ -89,6 +148,7 @@ impl<T> TextInput<T> {
             font_stretch: style.font_stretch,
             font_style: style.font_style,
             color: style.color,
+            placeholder_color: style.placeholder_color,
             align: style.align,
             line_height: style.line_height,
             wrap: style.wrap,
@@ -134,7 +194,7 @@ impl<T> TextInput<T> {
             stretch: self.font_stretch,
             weight: self.font_weight,
             style: self.font_style,
-            color: self.color.lighten(0.3),
+            color: self.placeholder_color,
         };
         let metrics = Metrics {
             font_size: self.font_size,
@@ -352,7 +412,7 @@ impl<T> View<T> for TextInput<T> {
                     stretch: self.font_stretch,
                     weight: self.font_weight,
                     style: self.font_style,
-                    color: self.color.lighten(0.3),
+                    color: self.placeholder_color,
                 },
             );
 

@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     canvas::Color,
-    event::{Pointer, PointerId},
+    event::{PointerButton, PointerId},
     image::Image,
     layout::{Point, Rect, Size},
     view::ViewId,
@@ -108,6 +108,18 @@ impl Window {
     /// Get the pointer that is currently hovered over the given view.
     pub fn is_hovered(&self, view: ViewId) -> bool {
         self.pointers.iter().any(|p| p.hovered() == Some(view))
+    }
+
+    /// Pointer pressed.
+    pub fn pointer_pressed(&mut self, id: PointerId, button: PointerButton) {
+        if let Some(pointer) = self.pointer_mut(id) {
+            pointer.press(button);
+        }
+    }
+
+    /// Pointer released.
+    pub fn pointer_released(&mut self, id: PointerId, button: PointerButton) -> bool {
+        (self.pointer_mut(id)).map_or(false, |pointer| pointer.release(button))
     }
 
     /// Try to downcast the window to a specific type.
@@ -256,5 +268,77 @@ impl Window {
     /// Request a redraw of the window.
     pub fn request_draw(&mut self) {
         self.raw.request_draw();
+    }
+}
+
+/// The state of a pointer.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Pointer {
+    /// The unique id of the pointer.
+    id: PointerId,
+
+    /// The position of the pointer.
+    position: Point,
+
+    /// The buttons that are currently pressed by the pointer.
+    pressed: Vec<(PointerButton, Point)>,
+
+    /// The view that is currently hovered by the pointer.
+    hovered: Option<ViewId>,
+}
+
+impl Pointer {
+    /// Create a new pointer.
+    pub fn new(id: PointerId, position: Point) -> Self {
+        Self {
+            id,
+            position,
+            pressed: Vec::new(),
+            hovered: None,
+        }
+    }
+
+    /// Get the unique id of the pointer.
+    pub fn id(&self) -> PointerId {
+        self.id
+    }
+
+    /// Get the position of the pointer.
+    pub fn position(&self) -> Point {
+        self.position
+    }
+
+    /// Get the view that is currently hovered by the pointer.
+    pub fn hovered(&self) -> Option<ViewId> {
+        self.hovered
+    }
+
+    /// Set the view that is currently hovered by the pointer.
+    pub fn set_hovered(&mut self, hovered: Option<ViewId>) {
+        self.hovered = hovered;
+    }
+
+    /// Check if a button is currently pressed by the pointer.
+    pub fn is_pressed(&self, button: PointerButton) -> bool {
+        self.pressed.iter().any(|(b, _)| *b == button)
+    }
+
+    /// Press a button.
+    pub fn press(&mut self, button: PointerButton) {
+        if !self.is_pressed(button) {
+            self.pressed.push((button, self.position));
+        }
+    }
+
+    /// Release a button.
+    ///
+    /// Returns `true` if the button was clicked.
+    pub fn release(&mut self, button: PointerButton) -> bool {
+        let Some(index) = self.pressed.iter().position(|(b, _)| *b == button) else {
+            return false;
+        };
+
+        let (_, position) = self.pressed.swap_remove(index);
+        self.position.distance(position) < 10.0
     }
 }

@@ -69,4 +69,3 @@ wgpu = ["ori-winit?/wgpu"]
 [profile.dev]
 debug = "limited"
 opt-level = 1
-overflow-checks = false

@@ -50,14 +50,14 @@ version = "0.1.0-alpha.1"
 features = ["full"]
 
 [features]
-default = ["winit", "glow", "x11", "wayland", "multithread"]
+default = ["winit", "glow", "x11", "wayland"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 multithread = ["ori-core/multithread"]
 serde = ["ori-core/serde"]
 
 # All features
-full = ["font-awesome", "image"]
+full = ["font-awesome", "image", "serde"]
 
 # Backend features
 winit = ["dep:ori-winit"]

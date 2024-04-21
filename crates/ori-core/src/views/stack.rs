@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use ori_macro::{example, Build};
 
 use crate::{
@@ -29,22 +31,32 @@ macro_rules! vstack {
 
 /// Create a horizontal [`Stack`].
 pub fn hstack<V>(content: V) -> Stack<V> {
-    Stack::hstack(content)
+    Stack::horizontal(content)
 }
 
 /// Create a vertical [`Stack`].
 pub fn vstack<V>(content: V) -> Stack<V> {
-    Stack::vstack(content)
+    Stack::vertical(content)
+}
+
+/// Create a horizontal [`Stack`], with vector content.
+pub fn hstack_vec<V>() -> Stack<Vec<V>> {
+    Stack::vec_horizontal()
+}
+
+/// Create a vertical [`Stack`], with vector content.
+pub fn vstack_vec<V>() -> Stack<Vec<V>> {
+    Stack::vec_vertical()
 }
 
 /// Create a horizontal [`Stack`], with dynamic content.
 pub fn hstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
-    Stack::hstack_any()
+    Stack::any_horizontal()
 }
 
 /// Create a vertical [`Stack`], with dynamic content.
 pub fn vstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
-    Stack::vstack_any()
+    Stack::any_vertical()
 }
 
 /// A view that stacks it's content in a line.
@@ -54,15 +66,19 @@ pub struct Stack<V> {
     /// The content of the stack.
     #[build(ignore)]
     pub content: PodSeq<V>,
+
     /// The axis of the stack.
     #[rebuild(layout)]
     pub axis: Axis,
+
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
     pub justify: Justify,
+
     /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
     pub align: Align,
+
     /// The gap between children.
     #[rebuild(layout)]
     pub gap: f32,
@@ -81,30 +97,68 @@ impl<V> Stack<V> {
     }
 
     /// Create a new horizontal [`Stack`].
-    pub fn hstack(content: V) -> Self {
+    pub fn horizontal(content: V) -> Self {
         Self::new(Axis::Horizontal, content)
     }
 
     /// Create a new vertical [`Stack`].
-    pub fn vstack(content: V) -> Self {
+    pub fn vertical(content: V) -> Self {
         Self::new(Axis::Vertical, content)
     }
 }
 
-impl<'a, T> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
-    /// Create a new horizontal [`Stack`], with dynamic content.
-    pub fn hstack_any() -> Self {
-        Self::hstack(Vec::new())
+impl<T> Stack<Vec<T>> {
+    /// Create a new [`Stack`], with vector content.
+    pub fn vec(axis: Axis) -> Self {
+        Self::new(axis, Vec::new())
     }
 
-    /// Create a new vertical [`Stack`], with dynamic content.
-    pub fn vstack_any() -> Self {
-        Self::vstack(Vec::new())
+    /// Create a new horizontal [`Stack`], with vector content.
+    pub fn vec_horizontal() -> Self {
+        Self::horizontal(Vec::new())
+    }
+
+    /// Create a new vertical [`Stack`], with vector content.
+    pub fn vec_vertical() -> Self {
+        Self::vertical(Vec::new())
     }
 
     /// Push a view to the stack.
-    pub fn push(&mut self, view: impl AnyView<T> + 'a) {
-        self.content.push(Box::new(view));
+    pub fn push(&mut self, view: T) {
+        self.content.push(view);
+    }
+
+    /// Push a view to the stack.
+    pub fn with(mut self, view: T) -> Self {
+        self.push(view);
+        self
+    }
+
+    /// Get whether the stack is empty.
+    pub fn is_empty(&self) -> bool {
+        self.content.deref().is_empty()
+    }
+
+    /// Get the number of views in the stack.
+    pub fn len(&self) -> usize {
+        self.content.deref().len()
+    }
+}
+
+impl<'a, T> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
+    /// Create a new [`Stack`], with dynamic content.
+    pub fn any(axis: Axis) -> Self {
+        Self::new(axis, Vec::new())
+    }
+
+    /// Create a new horizontal [`Stack`], with dynamic content.
+    pub fn any_horizontal() -> Self {
+        Self::horizontal(Vec::new())
+    }
+
+    /// Create a new vertical [`Stack`], with dynamic content.
+    pub fn any_vertical() -> Self {
+        Self::vertical(Vec::new())
     }
 }
 

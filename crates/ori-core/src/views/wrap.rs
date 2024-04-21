@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::{Deref, Range};
 
 use ori_macro::{example, Build};
 
@@ -39,14 +39,24 @@ pub fn vwrap<V>(content: V) -> Wrap<V> {
     Wrap::new(Axis::Vertical, content)
 }
 
+/// Create a horizontal [`Wrap`], with a vector of content.
+pub fn hwrap_vec<V>() -> Wrap<Vec<V>> {
+    Wrap::horizontal_vec()
+}
+
+/// Create a vertical [`Wrap`], with a vector of content.
+pub fn vwrap_vec<V>() -> Wrap<Vec<V>> {
+    Wrap::vertical_vec()
+}
+
 /// Create a horizontal [`Wrap`], with dynamic content.
 pub fn hwrap_any<'a, V>() -> Wrap<Vec<Box<dyn AnyView<V> + 'a>>> {
-    Wrap::hwrap_any()
+    Wrap::horizontal_any()
 }
 
 /// Create a vertical [`Wrap`], with dynamic content.
 pub fn vwrap_any<'a, V>() -> Wrap<Vec<Box<dyn AnyView<V> + 'a>>> {
-    Wrap::vwrap_any()
+    Wrap::vertical_any()
 }
 
 /// A view that lays out it's content in a line wrapping if it doesn't fit.
@@ -58,21 +68,27 @@ pub struct Wrap<V> {
     /// The content.
     #[build(ignore)]
     pub content: PodSeq<V>,
+
     /// The axis.
     #[rebuild(layout)]
     pub axis: Axis,
+
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
     pub justify: Justify,
+
     /// How to align the content along the cross axis.
     #[rebuild(layout)]
     pub align: Align,
+
     /// How to justify the content along the cross axis.
     #[rebuild(layout)]
     pub justify_cross: Justify,
+
     /// The gap between each row.
     #[rebuild(layout)]
     pub row_gap: f32,
+
     /// The gap between each column.
     #[rebuild(layout)]
     pub column_gap: f32,
@@ -93,12 +109,12 @@ impl<V> Wrap<V> {
     }
 
     /// Create a new horizontal [`Wrap`].
-    pub fn hwrap(content: V) -> Self {
+    pub fn horizontal(content: V) -> Self {
         Self::new(Axis::Horizontal, content)
     }
 
     /// Create a new vertical [`Wrap`].
-    pub fn vwrap(content: V) -> Self {
+    pub fn vertical(content: V) -> Self {
         Self::new(Axis::Vertical, content)
     }
 
@@ -110,20 +126,58 @@ impl<V> Wrap<V> {
     }
 }
 
+impl<T> Wrap<Vec<T>> {
+    /// Create a new [`Wrap`], with a vector of content.
+    pub fn vec(axis: Axis) -> Self {
+        Self::new(axis, Vec::new())
+    }
+
+    /// Create a new horizontal [`Wrap`], with a vector of content.
+    pub fn horizontal_vec() -> Self {
+        Self::horizontal(Vec::new())
+    }
+
+    /// Create a new vertical [`Wrap`], with a vector of content.
+    pub fn vertical_vec() -> Self {
+        Self::vertical(Vec::new())
+    }
+
+    /// Push a view to the wrap.
+    pub fn push(&mut self, view: T) {
+        self.content.push(view);
+    }
+
+    /// Push a view to the wrap.
+    pub fn with(mut self, view: T) -> Self {
+        self.push(view);
+        self
+    }
+
+    /// Get whether the wrap is empty.
+    pub fn is_empty(&self) -> bool {
+        self.content.deref().is_empty()
+    }
+
+    /// Get the number of views in the wrap.
+    pub fn len(&self) -> usize {
+        self.content.deref().len()
+    }
+}
+
 impl<'a, T> Wrap<Vec<Box<dyn AnyView<T> + 'a>>> {
+    /// Create a new [`Wrap`], with dynamic content.
+    pub fn any(axis: Axis) -> Self {
+        Self::new(axis, Vec::new())
+    }
+
     /// Create a new horizontal [`Wrap`], with dynamic content.
-    pub fn hwrap_any() -> Self {
-        Self::hwrap(Vec::new())
+    pub fn horizontal_any() -> Self {
+        Self::horizontal(Vec::new())
     }
 
     /// Create a new vertical [`Wrap`], with dynamic content.
-    pub fn vwrap_any() -> Self {
-        Self::vwrap(Vec::new())
-    }
-
-    /// Push a view to the stack.
-    pub fn push(&mut self, view: impl AnyView<T> + 'a) {
-        self.content.push(Box::new(view));
+    pub fn vertical_any() -> Self {
+        Self::vertical(Vec::new())
     }
 }
 

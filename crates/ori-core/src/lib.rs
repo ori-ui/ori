@@ -7,7 +7,6 @@ pub mod canvas;
 pub mod clipboard;
 pub mod command;
 pub mod context;
-pub mod debug;
 pub mod event;
 pub mod image;
 pub mod layout;

@@ -75,39 +75,50 @@ impl Style for TextStyle {
 }
 
 /// A view that displays text.
+///
+/// Can be styled using the [`TextStyle`].
 #[example(name = "text", width = 400, height = 300)]
 #[derive(Build)]
 pub struct Text {
     /// The text.
     pub text: SmolStr,
+
     /// The font size of the text.
     pub font_size: f32,
+
     /// The font family of the text.
     pub font_family: FontFamily,
+
     /// The font weight of the text.
     pub font_weight: FontWeight,
+
     /// The font stretch of the text.
     pub font_stretch: FontStretch,
+
     /// The font.into of the text.
     pub font_style: FontStyle,
+
     /// The color of the text.
     pub color: Color,
+
     /// The horizontal alignment of the text.
     pub align: TextAlign,
+
     /// The line height of the text.
     pub line_height: f32,
+
     /// The text wrap of the text.
     pub wrap: TextWrap,
 }
 
 impl Text {
     /// Create a new text.
-    pub fn new(text: impl Into<SmolStr>) -> Text {
+    pub fn new(text: impl Into<SmolStr>) -> Self {
         Self::styled(text, style())
     }
 
     /// Create a new text with a style.
-    pub fn styled(text: impl Into<SmolStr>, style: TextStyle) -> Text {
+    pub fn styled(text: impl Into<SmolStr>, style: TextStyle) -> Self {
         Text {
             text: text.into(),
             font_size: style.font_size,

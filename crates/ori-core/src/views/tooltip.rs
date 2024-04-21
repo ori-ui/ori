@@ -25,32 +25,46 @@ pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
 pub struct TooltipStyle {
     /// The delay before the tooltip is displayed.
     pub delay: f32,
+
     /// The padding of the tooltip.
     pub padding: Padding,
+
     /// The font size of the text.
     pub font_size: f32,
+
     /// The font family of the text.
     pub font_family: FontFamily,
+
     /// The font weight of the text.
     pub font_weight: FontWeight,
+
     /// The font stretch of the text.
     pub font_stretch: FontStretch,
+
     /// The font style of the text.
     pub font_style: FontStyle,
+
     /// The color of the text.
     pub color: Color,
+
     /// The horizontal alignment of the text.
     pub align: TextAlign,
+
     /// The line height of the text.
     pub line_height: f32,
+
     /// The text wrap of the text.
     pub wrap: TextWrap,
+
     /// The background color of the text.
     pub background: Color,
+
     /// The border radius of the text.
     pub border_radius: BorderRadius,
+
     /// The border width of the text.
     pub border_width: BorderWidth,
+
     /// The border color of the text.
     pub border_color: Color,
 }
@@ -78,6 +92,8 @@ impl Style for TooltipStyle {
 }
 
 /// A view that displays some text when the content is hovered.
+///
+/// Can be styled using the [`TooltipStyle`].
 #[example(name = "tooltip", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Tooltip<V> {

@@ -19,8 +19,10 @@ pub struct Dropdown<H, V> {
     /// Whether the dropdown is toggled.
     #[rebuild(layout)]
     pub toggle: bool,
+
     /// The header of the dropdown.
     pub header: H,
+
     /// The content of the dropdown.
     pub content: Pod<V>,
 }

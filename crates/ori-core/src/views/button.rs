@@ -21,16 +21,22 @@ pub fn button<V>(content: V) -> Button<V> {
 pub struct ButtonStyle {
     /// The padding of the button.
     pub padding: Padding,
+
     /// The distance of the fancy effect.
     pub fancy: f32,
+
     /// The transition of the button.
     pub transition: Transition,
+
     /// The color of the button.
     pub color: Background,
+
     /// The border radius of the button.
     pub border_radius: BorderRadius,
+
     /// The border width of the button.
     pub border_width: BorderWidth,
+
     /// The border color of the button.
     pub border_color: Color,
 }
@@ -50,30 +56,39 @@ impl Style for ButtonStyle {
 }
 
 /// A button.
+///
+/// Can be styled using the [`ButtonStyle`].
 #[example(name = "button", width = 400, height = 300)]
 #[derive(Build, Rebuild)]
 pub struct Button<V> {
     /// The content.
     #[build(ignore)]
     pub content: Pod<V>,
+
     /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,
+
     /// The distance of the fancy effect.
     #[rebuild(draw)]
     pub fancy: f32,
+
     /// The transition of the button.
     #[rebuild(draw)]
     pub transition: Transition,
+
     /// The color of the button.
     #[rebuild(draw)]
     pub color: Background,
+
     /// The border radius.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
+
     /// The border width.
     #[rebuild(draw)]
     pub border_width: BorderWidth,
+
     /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
@@ -82,8 +97,11 @@ pub struct Button<V> {
 impl<V> Button<V> {
     /// Create a new [`Button`].
     pub fn new(content: V) -> Self {
-        let style = style::<ButtonStyle>();
+        Self::styled(content, style())
+    }
 
+    /// Create a new [`Button`] with a style.
+    pub fn styled(content: V, style: ButtonStyle) -> Self {
         Self {
             content: Pod::new(content),
             padding: style.padding,

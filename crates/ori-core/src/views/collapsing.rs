@@ -52,6 +52,8 @@ impl Style for CollapsingStyle {
 }
 
 /// A collapsing view.
+///
+/// Can be styled using the [`CollapsingStyle`].
 #[example(name = "collapsing", width = 400, height = 300)]
 #[derive(Build, Rebuild)]
 pub struct Collapsing<T, H, V> {
@@ -104,10 +106,13 @@ pub struct Collapsing<T, H, V> {
 }
 
 impl<T, H, V> Collapsing<T, H, V> {
-    /// Create a new collapsing view.
+    /// Create a new [`Collapsing`] view.
     pub fn new(header: H, content: V) -> Self {
-        let style = style::<CollapsingStyle>();
+        Self::styled(header, content, style())
+    }
 
+    /// Create a new [`Collapsing`] view with a style.
+    pub fn styled(header: H, content: V, style: CollapsingStyle) -> Self {
         Self {
             header: Pod::new(header),
             content: Pod::new(content),
@@ -188,9 +193,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             cx.view_state.update = update & !Update::DRAW;
         }
 
-        if matches!(event, Event::PointerPressed(_))
-            && (state.header.is_hot() || state.header.has_hot())
-        {
+        if matches!(event, Event::PointerPressed(_)) && state.header.has_hot() {
             state.open = !state.open;
             cx.animate();
             cx.request_layout();

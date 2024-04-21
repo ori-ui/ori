@@ -21,18 +21,25 @@ pub fn checkbox(checked: bool) -> Checkbox {
 pub struct CheckboxStyle {
     /// The transition of the checkbox.
     pub transition: Transition,
+
     /// The size of the checkbox.
     pub size: f32,
+
     /// The color of the checkbox.
     pub color: Color,
+
     /// The stroke width of the checkbox.
     pub stroke: f32,
+
     /// The background color.
     pub background: Background,
+
     /// The border radius.
     pub border_radius: BorderRadius,
+
     /// The border width.
     pub border_width: BorderWidth,
+
     /// The border color.
     pub border_color: Color,
 }
@@ -53,33 +60,43 @@ impl Style for CheckboxStyle {
 }
 
 /// A checkbox.
+///
+/// Can be styled using the [`CheckboxStyle`].
 #[example(name = "checkbox", width = 400, height = 300)]
 #[derive(Rebuild)]
 pub struct Checkbox {
     /// Whether the checkbox is checked.
     #[rebuild(draw)]
     pub checked: bool,
+
     /// The transition of the checkbox.
     #[rebuild(draw)]
     pub transition: Transition,
+
     /// The size of the checkbox.
     #[rebuild(layout)]
     pub size: f32,
+
     /// The color of the checkbox.
     #[rebuild(draw)]
     pub color: Color,
+
     /// The stroke width of the checkbox.
     #[rebuild(draw)]
     pub stroke: f32,
+
     /// The background color.
     #[rebuild(draw)]
     pub background: Background,
+
     /// The border radius.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
+
     /// The border width.
     #[rebuild(draw)]
     pub border_width: BorderWidth,
+
     /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
@@ -88,8 +105,11 @@ pub struct Checkbox {
 impl Checkbox {
     /// Create a new [`Checkbox`].
     pub fn new(checked: bool) -> Self {
-        let style = style::<CheckboxStyle>();
+        Self::styled(checked, style())
+    }
 
+    /// Create a new [`Checkbox`] with a style.
+    pub fn styled(checked: bool, style: CheckboxStyle) -> Self {
         Self {
             checked,
             transition: style.transition,

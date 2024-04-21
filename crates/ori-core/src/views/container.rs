@@ -46,12 +46,16 @@ pub fn shadow<V>(shadow: impl Into<BoxShadow>, content: V) -> Container<V> {
 pub struct ContainerStyle {
     /// The background color.
     pub background: Background,
+
     /// The border radius.
     pub border_radius: BorderRadius,
+
     /// The border width.
     pub border_width: BorderWidth,
+
     /// The border color.
     pub border_color: Color,
+
     /// The shadow.
     pub shadow: BoxShadow,
 }
@@ -74,18 +78,23 @@ impl Style for ContainerStyle {
 pub struct Container<V> {
     /// The content.
     pub content: Pod<V>,
+
     /// The background color.
     #[rebuild(draw)]
     pub background: Background,
+
     /// The border radius.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
+
     /// The border width.
     #[rebuild(draw)]
     pub border_width: BorderWidth,
+
     /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
+
     /// The shadow.
     #[rebuild(draw)]
     pub shadow: BoxShadow,
@@ -94,8 +103,11 @@ pub struct Container<V> {
 impl<V> Container<V> {
     /// Create a new [`Container`].
     pub fn new(content: V) -> Self {
-        let style = style::<ContainerStyle>();
+        Self::styled(content, style())
+    }
 
+    /// Create a new [`Container`] with a style.
+    pub fn styled(content: V, style: ContainerStyle) -> Self {
         Self {
             content: Pod::new(content),
             background: style.background,

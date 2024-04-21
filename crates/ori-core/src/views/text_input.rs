@@ -23,27 +23,37 @@ use super::TextStyle;
 pub fn text_input<T>() -> TextInput<T> {
     TextInput::new()
 }
+
 /// The style of a text input.
 #[derive(Clone, Debug)]
 pub struct TextInputStyle {
     /// The font size of the text.
     pub font_size: f32,
+
     /// The font family of the text.
     pub font_family: FontFamily,
+
     /// The font weight of the text.
     pub font_weight: FontWeight,
+
     /// The font stretch of the text.
     pub font_stretch: FontStretch,
+
     /// The font style of the text.
     pub font_style: FontStyle,
+
     /// The color of the text.
     pub color: Color,
+
     /// The color of the placeholder text.
     pub placeholder_color: Color,
+
     /// The horizontal alignment of the text.
     pub align: TextAlign,
+
     /// The line height of the text.
     pub line_height: f32,
+
     /// The text wrap of the text.
     pub wrap: TextWrap,
 }
@@ -69,6 +79,8 @@ impl Style for TextInputStyle {
 }
 
 /// A text input.
+///
+/// Can be styled using the [`TextInputStyle`].
 #[example(name = "text_input", width = 400, height = 300)]
 #[derive(Build)]
 pub struct TextInput<T> {
@@ -134,8 +146,11 @@ impl<T> Default for TextInput<T> {
 impl<T> TextInput<T> {
     /// Create a new text input view.
     pub fn new() -> Self {
-        let style = style::<TextInputStyle>();
+        Self::styled(style())
+    }
 
+    /// Create a new text input view with a style.
+    pub fn styled(style: TextInputStyle) -> Self {
         Self {
             text: None,
             on_change: None,

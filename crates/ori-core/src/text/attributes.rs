@@ -27,7 +27,8 @@ impl FontFamily {
             Self::Name(name) => fontdb::Family::Name(name),
             Self::Serif => fontdb::Family::Serif,
             Self::SansSerif => fontdb::Family::SansSerif,
-            Self::Monospace => fontdb::Family::Monospace,
+            // FIXME: this is a hack because performance is in the shitter otherwise.
+            Self::Monospace => fontdb::Family::Name("Roboto Mono"),
             Self::Cursive => fontdb::Family::Cursive,
             Self::Fantasy => fontdb::Family::Fantasy,
         }

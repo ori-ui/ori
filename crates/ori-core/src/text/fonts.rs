@@ -18,6 +18,23 @@ const ROBOTO_THIN_ITALIC: &[u8] = include_bytes!("../../font/Roboto-ThinItalic.t
 const ROBOTO_MONO: &[u8] = include_bytes!("../../font/RobotoMono.ttf");
 const ROBOTO_MONO_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-Italic.ttf");
 
+const EMBEDDED_FONTS: &[&[u8]] = &[
+    ROBOTO_BLACK,
+    ROBOTO_BLACK_ITALIC,
+    ROBOTO_BOLD,
+    ROBOTO_BOLD_ITALIC,
+    ROBOTO_ITALIC,
+    ROBOTO_LIGHT,
+    ROBOTO_LIGHT_ITALIC,
+    ROBOTO_MEDIUM,
+    ROBOTO_MEDIUM_ITALIC,
+    ROBOTO_REGULAR,
+    ROBOTO_THIN,
+    ROBOTO_THIN_ITALIC,
+    ROBOTO_MONO,
+    ROBOTO_MONO_ITALIC,
+];
+
 use crate::{
     canvas::{Color, Mesh, Vertex},
     layout::{Point, Rect, Size},
@@ -54,22 +71,7 @@ impl Fonts {
 
         let mut fonts = Vec::new();
 
-        for font in &[
-            ROBOTO_BLACK,
-            ROBOTO_BLACK_ITALIC,
-            ROBOTO_BOLD,
-            ROBOTO_BOLD_ITALIC,
-            ROBOTO_ITALIC,
-            ROBOTO_LIGHT,
-            ROBOTO_LIGHT_ITALIC,
-            ROBOTO_MEDIUM,
-            ROBOTO_MEDIUM_ITALIC,
-            ROBOTO_REGULAR,
-            ROBOTO_THIN,
-            ROBOTO_THIN_ITALIC,
-            ROBOTO_MONO,
-            ROBOTO_MONO_ITALIC,
-        ] {
+        for font in EMBEDDED_FONTS {
             fonts.push(Source::Binary(Arc::new(font.to_vec())));
         }
 

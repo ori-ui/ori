@@ -7,13 +7,15 @@ use crate::{
     event::Event,
     layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Style, Styles},
+    style::{palette, style, Style, Styles},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
     view::View,
 };
+
+use super::TextStyle;
 
 /// Create a new [`Tooltip`] view.
 pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
@@ -71,22 +73,25 @@ pub struct TooltipStyle {
 
 impl Style for TooltipStyle {
     fn style(style: &Styles) -> Self {
+        let text_style = style.get::<TextStyle>();
+        let palette = style.palette();
+
         Self {
             delay: 0.2,
             padding: Padding::from([8.0, 4.0]),
             font_size: 12.0,
-            font_family: FontFamily::SansSerif,
-            font_weight: FontWeight::NORMAL,
-            font_stretch: FontStretch::Normal,
-            font_style: FontStyle::Normal,
-            color: style.palette().text,
+            font_family: text_style.font_family.clone(),
+            font_weight: text_style.font_weight,
+            font_stretch: text_style.font_stretch,
+            font_style: text_style.font_style,
+            color: text_style.color,
             align: TextAlign::Start,
             line_height: 1.3,
             wrap: TextWrap::Word,
-            background: style.palette().surface_highest,
+            background: palette.surface_highest,
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style.palette().outline_variant,
+            border_color: palette.outline_variant,
         }
     }
 }

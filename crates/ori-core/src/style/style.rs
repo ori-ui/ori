@@ -10,16 +10,19 @@ use std::{
 use super::Palette;
 
 /// Get a value from the current style.
+#[track_caller]
 pub fn style<T: Clone + Style + Any>() -> T {
     Styles::context(|style| style.get())
 }
 
 /// Get a value from the current style or a default value.
+#[track_caller]
 pub fn style_or<T: Clone + Any>(default: T) -> T {
     try_style().unwrap_or(default)
 }
 
 /// Try getting a value from the current style.
+#[track_caller]
 pub fn try_style<T: Clone + Any>() -> Option<T> {
     Styles::context(|style| style.try_get())
 }
@@ -153,11 +156,23 @@ impl Styles {
     }
 
     /// Get the current style.
+    #[track_caller]
     pub fn context<T>(f: impl FnOnce(&mut Self) -> T) -> T {
-        Self::CONTEXT.with_borrow_mut(f)
+        let result = Self::CONTEXT.with(|styles| {
+            // call the function with the current style
+            styles.try_borrow_mut().map(|mut styles| f(&mut styles))
+        });
+
+        match result {
+            Ok(result) => result,
+            Err(_) => panic!(
+                "Styles context not accessable. Are you perhaps calling `style`, `style_or`, `try_style` or `palette` in a `Style` impl?"
+            ),
+        }
     }
 
     /// Get a snapshot of the current style.
+    #[track_caller]
     pub fn snapshot() -> Self {
         Self::context(|style| style.clone())
     }

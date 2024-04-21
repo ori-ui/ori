@@ -43,14 +43,16 @@ pub struct ButtonStyle {
 
 impl Style for ButtonStyle {
     fn style(style: &Styles) -> Self {
+        let palette = style.palette();
+
         Self {
             padding: Padding::all(8.0),
             fancy: 0.0,
             transition: Transition::ease(0.1),
-            color: Background::new(style.palette().primary),
+            color: Background::new(palette.primary),
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style.palette().outline_variant,
+            border_color: palette.outline_variant,
         }
     }
 }

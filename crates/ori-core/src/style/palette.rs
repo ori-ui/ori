@@ -3,6 +3,7 @@ use crate::canvas::Color;
 use super::style;
 
 /// Get the palette of the style.
+#[track_caller]
 pub fn palette() -> Palette {
     style()
 }

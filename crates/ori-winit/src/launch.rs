@@ -191,7 +191,6 @@ impl<T> WinitState<T> {
                         }
                         WindowUpdate::Cursor(cursor) => {
                             state.window.set_cursor_icon(convert_cursor_icon(cursor));
-                            state.window.request_redraw();
                         }
                     }
                 }

@@ -49,7 +49,6 @@ jobs:
             -p ori-font-awesome
             -p ori-glow
             -p ori-macro
-            -p ori-wgpu
             -p ori-winit
       - name: Add a redirect index page
         run: |

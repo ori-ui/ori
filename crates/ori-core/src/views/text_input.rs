@@ -436,169 +436,168 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if let Event::KeyPressed(e) = event {
-            if !cx.is_focused() {
-                return;
-            }
+        if cx.is_hot() {
+            cx.view_state.set_cursor(Some(Cursor::Text));
+        } else {
+            cx.view_state.set_cursor(None);
+        }
 
-            let mut changed = false;
-            let mut submit = false;
+        match event {
+            Event::KeyPressed(e) => {
+                if !cx.is_focused() {
+                    return;
+                }
 
-            if !e.modifiers.ctrl && !e.modifiers.alt && !e.modifiers.meta {
-                if let Some(ref text) = e.text {
-                    for c in text.chars() {
-                        (state.editor).action(&mut cx.fonts().font_system, Action::Insert(c));
+                let mut changed = false;
+                let mut submit = false;
+
+                if !e.modifiers.ctrl && !e.modifiers.alt && !e.modifiers.meta {
+                    if let Some(ref text) = e.text {
+                        for c in text.chars() {
+                            (state.editor).action(&mut cx.fonts().font_system, Action::Insert(c));
+                        }
+
+                        self.set_attrs_list(state.buffer_mut());
+
+                        cx.request_layout();
+                        state.blink = 0.0;
+                        changed = true;
                     }
+                }
 
-                    self.set_attrs_list(state.buffer_mut());
-
+                if let Some(action) = delete_key(e) {
+                    state.editor.action(&mut cx.fonts().font_system, action);
                     cx.request_layout();
                     state.blink = 0.0;
                     changed = true;
                 }
-            }
 
-            if let Some(action) = delete_key(e) {
-                state.editor.action(&mut cx.fonts().font_system, action);
-                cx.request_layout();
-                state.blink = 0.0;
-                changed = true;
-            }
-
-            if e.is(Code::Escape) {
-                (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
-                cx.set_focused(false);
-                cx.request_draw();
-            }
-
-            if e.is(Code::Enter) && self.multiline {
-                (state.editor).action(&mut cx.fonts().font_system, Action::Enter);
-                cx.request_layout();
-                state.blink = 0.0;
-                changed = true;
-            }
-
-            if e.is(Code::Enter) && !self.multiline {
-                cx.set_focused(false);
-                submit = true;
-            }
-
-            if let Some(motion) = move_key(e) {
-                (state.editor).action(&mut cx.fonts().font_system, Action::Motion(motion));
-                cx.request_draw();
-                state.blink = 0.0;
-            }
-
-            if e.is(Code::C) && e.modifiers.ctrl {
-                if let Some(selection) = state.editor.copy_selection() {
-                    cx.clipboard().set(selection);
-                }
-            }
-
-            if e.is(Code::X) && e.modifiers.ctrl {
-                if let Some(selection) = state.editor.copy_selection() {
-                    cx.clipboard().set(selection);
-                    cx.request_layout();
-                }
-
-                state.editor.delete_selection();
-                changed = true;
-            }
-
-            if e.is(Code::V) && e.modifiers.ctrl {
-                let text = cx.clipboard().get();
-                state.editor.insert_string(&text, None);
-
-                cx.request_layout();
-                changed = true;
-            }
-
-            if !(changed || submit) {
-                return;
-            }
-
-            let text = state.text();
-
-            if changed {
-                if let Some(ref mut on_change) = self.on_change {
-                    on_change(cx, data, text.clone());
-                }
-            }
-
-            if submit {
-                if let Some(ref mut on_submit) = self.on_submit {
-                    on_submit(cx, data, text);
-                    cx.request_rebuild();
-
-                    if self.text.is_none() {
-                        state.clear_text();
-                    }
-
-                    state.editor.set_cursor(cosmic_text::Cursor::default());
-                }
-            }
-        }
-
-        if let Event::PointerPressed(e) = event {
-            if !cx.is_hot() {
-                if cx.is_focused() {
+                if e.is(Code::Escape) {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                     cx.set_focused(false);
                     cx.request_draw();
                 }
 
-                return;
+                if e.is(Code::Enter) && self.multiline {
+                    (state.editor).action(&mut cx.fonts().font_system, Action::Enter);
+                    cx.request_layout();
+                    state.blink = 0.0;
+                    changed = true;
+                }
+
+                if e.is(Code::Enter) && !self.multiline {
+                    cx.set_focused(false);
+                    submit = true;
+                }
+
+                if let Some(motion) = move_key(e) {
+                    (state.editor).action(&mut cx.fonts().font_system, Action::Motion(motion));
+                    cx.request_draw();
+                    state.blink = 0.0;
+                }
+
+                if e.is(Code::C) && e.modifiers.ctrl {
+                    if let Some(selection) = state.editor.copy_selection() {
+                        cx.clipboard().set(selection);
+                    }
+                }
+
+                if e.is(Code::X) && e.modifiers.ctrl {
+                    if let Some(selection) = state.editor.copy_selection() {
+                        cx.clipboard().set(selection);
+                        cx.request_layout();
+                    }
+
+                    state.editor.delete_selection();
+                    changed = true;
+                }
+
+                if e.is(Code::V) && e.modifiers.ctrl {
+                    let text = cx.clipboard().get();
+                    state.editor.insert_string(&text, None);
+
+                    cx.request_layout();
+                    changed = true;
+                }
+
+                if !(changed || submit) {
+                    return;
+                }
+
+                let text = state.text();
+
+                if changed {
+                    if let Some(ref mut on_change) = self.on_change {
+                        on_change(cx, data, text.clone());
+                    }
+                }
+
+                if submit {
+                    if let Some(ref mut on_submit) = self.on_submit {
+                        on_submit(cx, data, text);
+                        cx.request_rebuild();
+
+                        if self.text.is_none() {
+                            state.clear_text();
+                        }
+
+                        state.editor.set_cursor(cosmic_text::Cursor::default());
+                    }
+                }
             }
+            Event::PointerPressed(e) => {
+                if !cx.is_hot() {
+                    if cx.is_focused() {
+                        (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
+                        cx.set_focused(false);
+                        cx.request_draw();
+                    }
 
-            cx.set_focused(true);
-            cx.animate();
+                    return;
+                }
 
-            state.blink = 0.0;
-            state.dragging = true;
+                cx.set_focused(true);
+                cx.animate();
 
-            let local = cx.local(e.position);
-            state.editor.action(
-                &mut cx.fonts().font_system,
-                Action::Click {
-                    x: local.x as i32,
-                    y: local.y as i32,
-                },
-            );
-        }
+                state.blink = 0.0;
+                state.dragging = true;
 
-        if let Event::PointerReleased(_) = event {
-            state.dragging = false;
-        }
-
-        if let Event::PointerMoved(e) = event {
-            let local = cx.local(e.position);
-
-            if state.dragging {
+                let local = cx.local(e.position);
                 state.editor.action(
                     &mut cx.fonts().font_system,
-                    Action::Drag {
+                    Action::Click {
                         x: local.x as i32,
                         y: local.y as i32,
                     },
                 );
-
-                cx.request_draw();
             }
-
-            if cx.is_hot() {
-                cx.view_state.set_cursor(Some(Cursor::Text));
-            } else {
-                cx.view_state.set_cursor(None);
+            Event::PointerReleased(_) => {
+                state.dragging = false;
             }
-        }
+            Event::PointerMoved(e) => {
+                let local = cx.local(e.position);
 
-        if let Event::Animate(dt) = event {
-            if cx.is_focused() {
-                cx.animate();
-                cx.request_draw();
+                if state.dragging {
+                    state.editor.action(
+                        &mut cx.fonts().font_system,
+                        Action::Drag {
+                            x: local.x as i32,
+                            y: local.y as i32,
+                        },
+                    );
 
-                state.blink += *dt * 10.0;
+                    cx.request_draw();
+                }
             }
+            Event::Animate(dt) => {
+                if cx.is_focused() {
+                    cx.animate();
+                    cx.request_draw();
+
+                    state.blink += *dt * 10.0;
+                }
+            }
+            _ => {}
         }
     }
 

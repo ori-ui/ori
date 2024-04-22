@@ -78,6 +78,10 @@ impl<T> WindowState<T> {
         // if the window is content sized we set the
         // window size to the content size
         if let WindowSizing::Content = self.window.sizing {
+            if size.is_infinite() {
+                ori_core::log::warn!("Window content size is non-finite.");
+            }
+
             self.window.size = size;
         }
     }
@@ -457,16 +461,15 @@ impl<T> App<T> {
     }
 
     fn request_window_updates(&mut self) {
-        for window_state in self.windows.values() {
-            let updates = window_state
-                .window
-                .snapshot()
-                .difference(&window_state.window);
+        for window_state in self.windows.values_mut() {
+            let updates = window_state.snapshot.difference(&window_state.window);
 
             for update in updates {
                 let request = AppRequest::UpdateWindow(window_state.window.id(), update);
                 self.requests.push(request);
             }
+
+            window_state.snapshot = window_state.window.snapshot();
         }
     }
 

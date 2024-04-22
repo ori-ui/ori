@@ -149,7 +149,7 @@ impl<T> WinitState<T> {
             }
             AppRequest::UpdateWindow(id, update) => {
                 if let Some(state) = self.renders.get_mut(&id) {
-                    match update {
+                    match dbg!(update) {
                         WindowUpdate::Title(title) => state.window.set_title(&title),
                         WindowUpdate::Icon(icon) => match icon {
                             Some(icon) => {
@@ -167,6 +167,7 @@ impl<T> WinitState<T> {
                             }
                         },
                         WindowUpdate::Size(size) => {
+                            let size = size.max(Size::all(10.0));
                             let inner = LogicalSize::new(size.width, size.height);
 
                             state.window.set_min_inner_size(Some(inner));

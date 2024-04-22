@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
+    canvas::Color,
     command::CommandWaker,
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Size, Vector},
@@ -184,7 +185,10 @@ impl<T> WinitState<T> {
                         WindowUpdate::Visible(visible) => {
                             state.window.set_visible(visible);
                         }
-                        WindowUpdate::Color(_) => {}
+                        WindowUpdate::Color(color) => {
+                            let transparent = color.map_or(false, Color::is_translucent);
+                            state.window.set_transparent(transparent);
+                        }
                         WindowUpdate::Cursor(cursor) => {
                             state.window.set_cursor_icon(convert_cursor_icon(cursor));
                             state.window.request_redraw();
@@ -264,7 +268,7 @@ impl<T> WinitState<T> {
             .with_inner_size(LogicalSize::new(ori.width(), ori.height()))
             .with_resizable(ori.resizable)
             .with_decorations(ori.decorated)
-            .with_transparent(true)
+            .with_transparent(ori.color.map_or(false, Color::is_translucent))
             .with_visible(false)
             .build(target)?;
 

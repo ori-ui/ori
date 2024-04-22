@@ -249,12 +249,8 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let (min_major, mut min_minor) = self.axis.unpack(space.min);
+        let (min_major, min_minor) = self.axis.unpack(space.min);
         let (max_major, max_minor) = self.axis.unpack(space.max);
-
-        if self.align == Align::Stretch {
-            min_minor = max_minor;
-        }
 
         let total_gap = self.gap * (self.content.len() as f32 - 1.0);
 
@@ -323,6 +319,25 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
             let size = self.content.layout_nth(i, content, cx, data, space);
             state.majors[i] = self.axis.major(size);
             state.minors[i] = self.axis.minor(size);
+        }
+
+        /* stretch the content */
+
+        if self.align.is_stretch() {
+            let minor = state.minors.iter().fold(0.0, |a, &b| f32::max(a, b));
+
+            for i in 0..self.content.len() {
+                let major = state.majors[i];
+
+                let space = Space::new(self.axis.pack(major, minor), self.axis.pack(major, minor));
+
+                // calling layout_nth again is not ideal, as it can lead to exponential time complexity
+                // but considering how cheap layout generally is, this *should* be fine
+                let size = self.content.layout_nth(i, content, cx, data, space);
+
+                state.majors[i] = self.axis.major(size);
+                state.minors[i] = self.axis.minor(size);
+            }
         }
 
         /* position content */

@@ -149,7 +149,7 @@ impl<T> WinitState<T> {
             }
             AppRequest::UpdateWindow(id, update) => {
                 if let Some(state) = self.renders.get_mut(&id) {
-                    match dbg!(update) {
+                    match update {
                         WindowUpdate::Title(title) => state.window.set_title(&title),
                         WindowUpdate::Icon(icon) => match icon {
                             Some(icon) => {

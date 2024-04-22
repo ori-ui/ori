@@ -74,7 +74,7 @@ impl<T, V> Clickable<T, V> {
     /// Create a new [`Clickable`].
     pub fn new(content: V) -> Self {
         Self {
-            content,
+            content: Pod::new(content),
             descendants: true,
             button: None,
             on_press: None,

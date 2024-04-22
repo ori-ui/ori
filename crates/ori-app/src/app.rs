@@ -13,7 +13,7 @@ use ori_core::{
     layout::{Point, Size, Space, Vector},
     style::Styles,
     view::{AnyState, BoxedView, View, ViewState},
-    window::{Cursor, Window, WindowId, WindowUpdate},
+    window::{Cursor, Window, WindowId, WindowSizing, WindowSnapshot, WindowUpdate},
 };
 
 use crate::{AppBuilder, AppRequest, Delegate, DelegateCx, UiBuilder};
@@ -36,6 +36,7 @@ pub(crate) struct WindowState<T> {
     scene: Scene,
     view_state: ViewState,
     window: Window,
+    snapshot: WindowSnapshot,
     animate: Option<Instant>,
 }
 
@@ -61,11 +62,24 @@ impl<T> WindowState<T> {
         self.view_state.prepare();
         self.view_state.mark_layed_out();
 
-        let space = Space::new(Size::ZERO, self.window.size);
+        // we need to calculate the max size of the window
+        // depending on the sizing of the window
+        let max_size = match self.window.sizing {
+            WindowSizing::Fixed => self.window.size,
+            WindowSizing::Content => Size::INFINITY,
+        };
+
+        let space = Space::new(Size::ZERO, max_size);
         let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window);
 
         let size = self.view.layout(&mut self.state, &mut cx, data, space);
         self.view_state.set_size(size);
+
+        // if the window is content sized we set the
+        // window size to the content size
+        if let WindowSizing::Content = self.window.sizing {
+            self.window.size = size;
+        }
     }
 
     fn draw(&mut self, data: &mut T, base: &mut BaseCx) {
@@ -155,6 +169,7 @@ impl<T> App<T> {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             window_state.view_state.request_layout();
             window_state.window.size = Size::new(width as f32, height as f32);
+            window_state.snapshot.size = Size::new(width as f32, height as f32);
         }
 
         let event = Event::WindowResized(WindowResized {
@@ -316,14 +331,10 @@ impl<T> App<T> {
 
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
-        let window_state = window.state();
+        let snapshot = window.snapshot();
 
         let mut cx = BuildCx::new(&mut base, &mut view_state, &mut window);
         let state = self.style.as_context(|| view.build(&mut cx, data));
-
-        for update in window_state.difference(&window) {
-            (self.requests).push(AppRequest::UpdateWindow(window.id(), update));
-        }
 
         let window_id = window.id();
         let window_state = WindowState {
@@ -334,6 +345,7 @@ impl<T> App<T> {
             scene: Scene::new(),
             view_state,
             window,
+            snapshot,
             animate: None,
         };
 
@@ -370,24 +382,6 @@ impl<T> App<T> {
         while let Some(command) = self.receiver.try_recv() {
             self.event(data, &Event::Command(command));
         }
-    }
-
-    /// Rebuild all windows.
-    pub fn rebuild(&mut self, data: &mut T) {
-        let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
-        let mut requests = Vec::new();
-
-        for window_state in self.windows.values_mut() {
-            let state = window_state.window.state();
-
-            (self.style).as_context(|| window_state.rebuild(data, &mut base));
-
-            for update in state.difference(&window_state.window) {
-                requests.push(AppRequest::UpdateWindow(window_state.window.id(), update));
-            }
-        }
-
-        self.requests.extend(requests);
     }
 
     /// Update the hovered state of a window.
@@ -462,6 +456,29 @@ impl<T> App<T> {
         false
     }
 
+    fn request_window_updates(&mut self) {
+        for window_state in self.windows.values() {
+            let updates = window_state
+                .window
+                .snapshot()
+                .difference(&window_state.window);
+
+            for update in updates {
+                let request = AppRequest::UpdateWindow(window_state.window.id(), update);
+                self.requests.push(request);
+            }
+        }
+    }
+
+    /// Rebuild all windows.
+    pub fn rebuild(&mut self, data: &mut T) {
+        let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
+
+        for window_state in self.windows.values_mut() {
+            (self.style).as_context(|| window_state.rebuild(data, &mut base));
+        }
+    }
+
     /// Handle an event for the entire application.
     ///
     /// Returns true if the event was handled by a delegate.
@@ -481,16 +498,9 @@ impl<T> App<T> {
             for window_state in self.windows.values_mut() {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
-                let state = window_state.window.state();
-
                 self.style.as_context(|| {
                     window_state.event(data, &mut base, &mut rebuild, event);
                 });
-
-                for update in state.difference(&window_state.window) {
-                    let request = AppRequest::UpdateWindow(window_state.window.id(), update);
-                    self.requests.push(request);
-                }
             }
         }
 
@@ -507,6 +517,7 @@ impl<T> App<T> {
 
         // handle any pending commands
         self.handle_commands(data);
+        self.request_window_updates();
 
         event_handled
     }
@@ -530,17 +541,10 @@ impl<T> App<T> {
             if let Some(window_state) = self.windows.get_mut(&window_id) {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
-                let state = window_state.window.state();
-
                 // we send the event to the window, remembering to set the style context
                 self.style.as_context(|| {
                     window_state.event(data, &mut base, &mut rebuild, event);
                 });
-
-                for update in state.difference(&window_state.window) {
-                    let request = AppRequest::UpdateWindow(window_state.window.id(), update);
-                    self.requests.push(request);
-                }
             }
         }
 
@@ -557,10 +561,12 @@ impl<T> App<T> {
 
         // handle any pending commands
         self.handle_commands(data);
+        self.request_window_updates();
 
         event_handled
     }
 
+    // animate the window if needed
     fn animate_window(&mut self, data: &mut T, window_id: WindowId) {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             // if the window needs to animate, we send an Animate event
@@ -596,7 +602,6 @@ impl<T> App<T> {
         // and is set here so the time is as accurate as possible
         let animate = Instant::now();
         let window_state = self.windows.get_mut(&window_id)?;
-        let state = window_state.window.state();
 
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
@@ -616,20 +621,17 @@ impl<T> App<T> {
             }
         }
 
+        let window_state = self.windows.get_mut(&window_id)?;
+
         // we need to update the window state after layout and draw
         //
         // if somehow the a layout or draw has been requested we must tell the window to redraw
-        let window_state = self.windows.get_mut(&window_id)?;
         let requests = window_state.update_and_request_draw(animate);
         self.requests.extend(requests);
 
-        for update in state.difference(&window_state.window) {
-            let request = AppRequest::UpdateWindow(window_state.window.id(), update);
-            self.requests.push(request);
-        }
-
         // handle any pending commands
         self.handle_commands(data);
+        self.request_window_updates();
 
         let window_state = self.windows.get(&window_id)?;
 

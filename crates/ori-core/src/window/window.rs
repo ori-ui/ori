@@ -40,6 +40,23 @@ impl Display for WindowId {
     }
 }
 
+/// The sizing of a window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowSizing {
+    /// The window will have a fixed size equal to [`Window::size`].
+    Fixed,
+
+    /// The root [`View`] will have [`Space::UNBOUNDED`], and the window will
+    /// resize to fit the content.
+    Content,
+}
+
+impl Default for WindowSizing {
+    fn default() -> Self {
+        Self::Fixed
+    }
+}
+
 /// A window.
 #[derive(Debug)]
 pub struct Window {
@@ -54,6 +71,9 @@ pub struct Window {
 
     /// The size of the window.
     pub size: Size,
+
+    /// The sizing of the window.
+    pub sizing: WindowSizing,
 
     /// The scale of the window.
     pub scale: f32,
@@ -89,6 +109,7 @@ impl Window {
             title: String::from("Ori window"),
             icon: None,
             size: Size::new(800.0, 600.0),
+            sizing: WindowSizing::Fixed,
             scale: 1.0,
             resizable: true,
             decorated: true,
@@ -118,6 +139,12 @@ impl Window {
     /// Set the size of the window.
     pub fn size(mut self, width: u32, height: u32) -> Self {
         self.size = Size::new(width as f32, height as f32);
+        self
+    }
+
+    /// Set the sizing of the window.
+    pub fn sizing(mut self, sizing: WindowSizing) -> Self {
+        self.sizing = sizing;
         self
     }
 
@@ -260,9 +287,9 @@ impl Window {
         ]
     }
 
-    /// Get the [`WindowState`] of the window.
-    pub fn state(&self) -> WindowState {
-        WindowState {
+    /// Get the [`WindowSnapshot`] of the window.
+    pub fn snapshot(&self) -> WindowSnapshot {
+        WindowSnapshot {
             title: self.title.clone(),
             icon: self.icon.clone(),
             size: self.size,
@@ -312,19 +339,36 @@ pub enum WindowUpdate {
 
 /// The state of a window.
 #[derive(Clone, Debug)]
-pub struct WindowState {
-    title: String,
-    icon: Option<Image>,
-    size: Size,
-    scale: f32,
-    resizable: bool,
-    decorated: bool,
-    maximized: bool,
-    visible: bool,
-    color: Option<Color>,
+pub struct WindowSnapshot {
+    /// The title of the window.
+    pub title: String,
+
+    /// The icon of the window.
+    pub icon: Option<Image>,
+
+    /// The size of the window.
+    pub size: Size,
+
+    /// The scale of the window.
+    pub scale: f32,
+
+    /// Whether the window is resizable.
+    pub resizable: bool,
+
+    /// Whether the window is decorated.
+    pub decorated: bool,
+
+    /// Whether the window is maximized.
+    pub maximized: bool,
+
+    /// Whether the window is visible.
+    pub visible: bool,
+
+    /// The color of the window.
+    pub color: Option<Color>,
 }
 
-impl WindowState {
+impl WindowSnapshot {
     /// Get the difference between a window and a previous state.
     pub fn difference(&self, window: &Window) -> Vec<WindowUpdate> {
         let mut updates = Vec::new();

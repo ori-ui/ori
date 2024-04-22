@@ -277,7 +277,21 @@ impl<T> WinitState<T> {
         #[cfg(feature = "glow")]
         let (context, render) = self.create_glow_render(&window)?;
 
-        //window.set_icon(ori.icon.as_ref());
+        let icon = match ori.icon {
+            Some(ref icon) => {
+                let icon = winit::window::Icon::from_rgba(
+                    icon.pixels().to_vec(),
+                    icon.width(),
+                    icon.height(),
+                )
+                .expect("Failed to create icon");
+
+                Some(icon)
+            }
+            None => None,
+        };
+
+        window.set_window_icon(icon);
         window.set_visible(ori.visible);
         window.set_maximized(ori.maximized);
 

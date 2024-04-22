@@ -13,7 +13,7 @@ use ori_core::{
     layout::{Point, Size, Space, Vector},
     style::Styles,
     view::{AnyState, BoxedView, View, ViewState},
-    window::{Window, WindowId},
+    window::{Cursor, Window, WindowId, WindowUpdate},
 };
 
 use crate::{AppBuilder, AppRequest, Delegate, DelegateCx, UiBuilder};
@@ -24,10 +24,6 @@ pub struct WindowRenderScene<'a> {
     pub scene: &'a Scene,
     /// The size of the window.
     pub logical_size: Size,
-    /// The physical size of the window.
-    pub physical_size: Size,
-    /// The scale factor of the window.
-    pub scale_factor: f32,
     /// The clear color of the window.
     pub clear_color: Color,
 }
@@ -35,6 +31,7 @@ pub struct WindowRenderScene<'a> {
 pub(crate) struct WindowState<T> {
     ui: UiBuilder<T>,
     view: BoxedView<T>,
+    cursor: Cursor,
     state: AnyState,
     scene: Scene,
     view_state: ViewState,
@@ -64,7 +61,7 @@ impl<T> WindowState<T> {
         self.view_state.prepare();
         self.view_state.mark_layed_out();
 
-        let space = Space::new(Size::ZERO, self.window.size());
+        let space = Space::new(Size::ZERO, self.window.size);
         let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window);
 
         let size = self.view.layout(&mut self.state, &mut cx, data, space);
@@ -77,7 +74,7 @@ impl<T> WindowState<T> {
 
         self.scene.clear();
 
-        let mut canvas = Canvas::new(&mut self.scene, self.window.size());
+        let mut canvas = Canvas::new(&mut self.scene, self.window.size);
         let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window);
 
         self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
@@ -92,18 +89,37 @@ impl<T> WindowState<T> {
         }
     }
 
-    fn update_and_request_draw(&mut self, animate: Instant) {
+    fn update_and_request_draw(&mut self, animate: Instant) -> Vec<AppRequest<T>> {
+        let mut redraw = false;
+
         if self.view_state.needs_draw() {
-            self.window.request_draw();
+            redraw = true;
         }
 
         if self.view_state.needs_animate() && self.animate.is_none() {
-            self.window.request_draw();
             self.animate = Some(animate);
+
+            redraw = true;
         }
 
         let cursor = self.view_state.cursor().unwrap_or_default();
-        self.window.set_cursor(cursor);
+
+        let mut requests = Vec::new();
+
+        if redraw {
+            requests.push(AppRequest::RequestRedraw(self.window.id()));
+        }
+
+        if cursor != self.cursor {
+            requests.push(AppRequest::UpdateWindow(
+                self.window.id(),
+                WindowUpdate::Cursor(cursor),
+            ));
+
+            self.cursor = cursor;
+        }
+
+        requests
     }
 }
 
@@ -136,8 +152,9 @@ impl<T> App<T> {
 
     /// A window was resized.
     pub fn window_resized(&mut self, data: &mut T, window_id: WindowId, width: u32, height: u32) {
-        if let Some(window) = self.windows.get_mut(&window_id) {
-            window.view_state.request_layout();
+        if let Some(window_state) = self.windows.get_mut(&window_id) {
+            window_state.view_state.request_layout();
+            window_state.window.size = Size::new(width as f32, height as f32);
         }
 
         let event = Event::WindowResized(WindowResized {
@@ -161,12 +178,7 @@ impl<T> App<T> {
             return;
         };
 
-        let delta = match window_state.window.pointer(pointer_id) {
-            Some(pointer) => position - pointer.position(),
-            None => Vector::ZERO,
-        };
-
-        window_state.window.pointer_moved(pointer_id, position);
+        let delta = window_state.window.move_pointer(pointer_id, position);
         self.update_hovered(window_id);
 
         let event = Event::PointerMoved(PointerMoved {
@@ -185,7 +197,7 @@ impl<T> App<T> {
             return;
         };
 
-        window_state.window.pointer_left(pointer_id);
+        window_state.window.remove_pointer(pointer_id);
 
         let event = Event::PointerLeft(pointer_id);
 
@@ -193,7 +205,9 @@ impl<T> App<T> {
     }
 
     fn pointer_position(&self, window_id: WindowId, pointer_id: PointerId) -> Option<Point> {
-        Some(self.get_window(window_id)?.pointer(pointer_id)?.position())
+        let window = self.get_window(window_id)?;
+        let pointer = window.get_pointer(pointer_id)?;
+        Some(pointer.position)
     }
 
     /// A pointer scrolled.
@@ -233,7 +247,7 @@ impl<T> App<T> {
 
         if pressed {
             if let Some(window_state) = self.windows.get_mut(&window_id) {
-                window_state.window.pointer_pressed(pointer_id, button);
+                window_state.window.press_pointer(pointer_id, button);
             }
 
             let event = Event::PointerPressed(PointerPressed {
@@ -245,8 +259,8 @@ impl<T> App<T> {
 
             self.window_event(data, window_id, &event);
         } else {
-            let clicked = self.windows.get_mut(&window_id).map_or(false, move |w| {
-                w.window.pointer_released(pointer_id, button)
+            let clicked = (self.windows.get_mut(&window_id)).map_or(false, move |window_state| {
+                window_state.window.release_pointer(pointer_id, button)
             });
 
             let event = Event::PointerReleased(PointerReleased {
@@ -302,13 +316,20 @@ impl<T> App<T> {
 
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
+        let window_state = window.state();
+
         let mut cx = BuildCx::new(&mut base, &mut view_state, &mut window);
         let state = self.style.as_context(|| view.build(&mut cx, data));
+
+        for update in window_state.difference(&window) {
+            (self.requests).push(AppRequest::UpdateWindow(window.id(), update));
+        }
 
         let window_id = window.id();
         let window_state = WindowState {
             ui,
             view,
+            cursor: Cursor::Default,
             state,
             scene: Scene::new(),
             view_state,
@@ -354,10 +375,19 @@ impl<T> App<T> {
     /// Rebuild all windows.
     pub fn rebuild(&mut self, data: &mut T) {
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
+        let mut requests = Vec::new();
 
-        for window in self.windows.values_mut() {
-            self.style.as_context(|| window.rebuild(data, &mut base));
+        for window_state in self.windows.values_mut() {
+            let state = window_state.window.state();
+
+            (self.style).as_context(|| window_state.rebuild(data, &mut base));
+
+            for update in state.difference(&window_state.window) {
+                requests.push(AppRequest::UpdateWindow(window_state.window.id(), update));
+            }
         }
+
+        self.requests.extend(requests);
     }
 
     /// Update the hovered state of a window.
@@ -367,10 +397,13 @@ impl<T> App<T> {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             for i in 0..window_state.window.pointers().len() {
                 let pointer = &window_state.window.pointers()[i];
-                let position = pointer.position();
+                let position = pointer.position;
                 let hovered = window_state.scene.view_at(position);
 
-                changed |= window_state.window.pointer_hovered(pointer.id(), hovered);
+                let pointer = &mut window_state.window.pointers_mut()[i];
+                changed |= pointer.hovering != hovered;
+
+                pointer.hovering = hovered;
             }
         }
 
@@ -448,9 +481,16 @@ impl<T> App<T> {
             for window_state in self.windows.values_mut() {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
+                let state = window_state.window.state();
+
                 self.style.as_context(|| {
                     window_state.event(data, &mut base, &mut rebuild, event);
                 });
+
+                for update in state.difference(&window_state.window) {
+                    let request = AppRequest::UpdateWindow(window_state.window.id(), update);
+                    self.requests.push(request);
+                }
             }
         }
 
@@ -461,7 +501,8 @@ impl<T> App<T> {
 
         // update the window state after handling the event
         for window_state in self.windows.values_mut() {
-            window_state.update_and_request_draw(animate);
+            let requests = window_state.update_and_request_draw(animate);
+            self.requests.extend(requests);
         }
 
         // handle any pending commands
@@ -489,10 +530,17 @@ impl<T> App<T> {
             if let Some(window_state) = self.windows.get_mut(&window_id) {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
+                let state = window_state.window.state();
+
                 // we send the event to the window, remembering to set the style context
                 self.style.as_context(|| {
                     window_state.event(data, &mut base, &mut rebuild, event);
                 });
+
+                for update in state.difference(&window_state.window) {
+                    let request = AppRequest::UpdateWindow(window_state.window.id(), update);
+                    self.requests.push(request);
+                }
             }
         }
 
@@ -503,7 +551,8 @@ impl<T> App<T> {
 
         // update the window state after handling the event
         if let Some(window_state) = self.windows.get_mut(&window_id) {
-            window_state.update_and_request_draw(animate);
+            let requests = window_state.update_and_request_draw(animate);
+            self.requests.extend(requests);
         }
 
         // handle any pending commands
@@ -546,18 +595,19 @@ impl<T> App<T> {
         // animate is used to calculate the time since the last frame
         // and is set here so the time is as accurate as possible
         let animate = Instant::now();
-        let window = self.windows.get_mut(&window_id)?;
+        let window_state = self.windows.get_mut(&window_id)?;
+        let state = window_state.window.state();
 
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
         // layout if needed
-        if window.view_state.needs_layout() {
-            self.style.as_context(|| window.layout(data, &mut base));
+        if window_state.view_state.needs_layout() {
+            (self.style).as_context(|| window_state.layout(data, &mut base));
         }
 
         // draw if needed
-        if window.view_state.needs_draw() {
-            self.style.as_context(|| window.draw(data, &mut base));
+        if window_state.view_state.needs_draw() {
+            self.style.as_context(|| window_state.draw(data, &mut base));
 
             // since hover state is determined by the scene, and since draw modifies the scene,
             // we must update the hover state, and send an UpdateHovered event if needed
@@ -569,26 +619,29 @@ impl<T> App<T> {
         // we need to update the window state after layout and draw
         //
         // if somehow the a layout or draw has been requested we must tell the window to redraw
-        if let Some(window_state) = self.windows.get_mut(&window_id) {
-            window_state.update_and_request_draw(animate);
+        let window_state = self.windows.get_mut(&window_id)?;
+        let requests = window_state.update_and_request_draw(animate);
+        self.requests.extend(requests);
+
+        for update in state.difference(&window_state.window) {
+            let request = AppRequest::UpdateWindow(window_state.window.id(), update);
+            self.requests.push(request);
         }
 
         // handle any pending commands
         self.handle_commands(data);
 
-        let window = self.windows.get(&window_id)?;
+        let window_state = self.windows.get(&window_id)?;
 
         // the clear color is the palette background color, but can be overridden by the window
-        let clear_color = match window.window.color() {
+        let clear_color = match window_state.window.color {
             Some(color) => color,
             None => self.style.palette().background,
         };
 
         Some(WindowRenderScene {
-            scene: &window.scene,
-            logical_size: window.window.size(),
-            physical_size: window.window.physical_size(),
-            scale_factor: window.window.scale_factor(),
+            scene: &window_state.scene,
+            logical_size: window_state.window.size,
             clear_color,
         })
     }

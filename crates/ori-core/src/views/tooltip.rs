@@ -217,7 +217,6 @@ impl<V> Tooltip<V> {
 
 #[doc(hidden)]
 pub struct TooltipState {
-    pub window_size: Size,
     pub buffer: TextBuffer,
     pub timer: f32,
     pub position: Point,
@@ -228,7 +227,6 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut state = TooltipState {
-            window_size: cx.window().size(),
             buffer: TextBuffer::new(cx.fonts(), 12.0, 1.0),
             timer: 0.0,
             position: Point::ZERO,
@@ -290,29 +288,29 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if let Event::WindowResized(e) = event {
-            state.window_size = e.size();
-            cx.request_layout();
-        }
-
-        if let Event::PointerMoved(e) = event {
-            state.timer = 0.0;
-
-            if cx.is_hot() || cx.has_hot() {
-                state.position = e.position;
-                cx.animate();
+        match event {
+            Event::WindowResized(_) => {
+                cx.request_layout();
             }
-        }
+            Event::PointerMoved(e) => {
+                state.timer = 0.0;
 
-        if let Event::Animate(dt) = event {
-            if cx.is_hot() || cx.has_hot() && state.timer < 1.0 {
-                state.timer += dt / self.delay;
-                cx.animate();
+                if cx.is_hot() || cx.has_hot() {
+                    state.position = e.position;
+                    cx.animate();
+                }
             }
+            Event::Animate(dt) => {
+                if cx.is_hot() || cx.has_hot() && state.timer < 1.0 {
+                    state.timer += dt / self.delay;
+                    cx.animate();
+                }
 
-            state.timer = f32::clamp(state.timer, 0.0, 1.0);
+                state.timer = f32::clamp(state.timer, 0.0, 1.0);
 
-            cx.request_draw();
+                cx.request_draw();
+            }
+            _ => {}
         }
     }
 
@@ -323,7 +321,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let window_size = state.window_size - self.padding.size();
+        let window_size = cx.window().size - self.padding.size();
         state.buffer.set_bounds(cx.fonts(), window_size);
         self.content.layout(content, cx, data, space)
     }
@@ -346,7 +344,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         }
 
         // we need to try to move the tooltip so it fits on the screen
-        let window_rect = Rect::min_size(Point::ZERO, state.window_size);
+        let window_rect = Rect::min_size(Point::ZERO, cx.window().size);
 
         let size = state.buffer.size() + self.padding.size();
         let mut offset = Vector::new(-size.width / 2.0, 20.0);
@@ -363,7 +361,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         layer.transform = Affine::IDENTITY;
         layer.translate(Vector::from(state.position + offset));
         layer.depth += 1000.0;
-        layer.clip = Rect::min_size(Point::ZERO, cx.window().size());
+        layer.clip = Rect::min_size(Point::ZERO, cx.window().size);
 
         layer.draw_quad(
             Rect::min_size(Point::ZERO, size),

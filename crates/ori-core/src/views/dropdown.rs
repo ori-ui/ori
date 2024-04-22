@@ -105,7 +105,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
         // make sure the content is at least as wide as the header
         let content_space = Space {
             min: Size::new(header_size.width, 0.0),
-            max: cx.window().size(),
+            max: cx.window().size,
         };
         self.content.layout(content, cx, data, content_space);
 

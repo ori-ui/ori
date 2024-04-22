@@ -4,8 +4,8 @@ use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
     command::CommandWaker,
     event::{Modifiers, PointerButton, PointerId},
-    layout::{Point, Vector},
-    window::{Window, WindowDescriptor},
+    layout::{Point, Size, Vector},
+    window::{Window, WindowUpdate},
 };
 use winit::{
     dpi::LogicalSize,
@@ -17,8 +17,7 @@ use winit::{
 
 use crate::{
     clipboard::WinitClipboard,
-    convert::{convert_key, convert_mouse_button, is_pressed},
-    window::WinitWindow,
+    convert::{convert_cursor_icon, convert_key, convert_mouse_button, is_pressed},
     Error,
 };
 
@@ -75,6 +74,12 @@ pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     Ok(())
 }
 
+struct WindowState {
+    window: winit::window::Window,
+    context: ori_glow::GlutinContext,
+    render: ori_glow::GlowRender,
+}
+
 struct WinitState<T> {
     init: bool,
     app: App<T>,
@@ -83,15 +88,9 @@ struct WinitState<T> {
 
     /* glow */
     #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
-    renders: HashMap<ori_core::window::WindowId, (ori_glow::GlowRender, ori_glow::GlutinContext)>,
+    renders: HashMap<ori_core::window::WindowId, WindowState>,
     #[cfg(all(feature = "glow", target_arch = "wasm32"))]
     renders: HashMap<ori_core::window::WindowId, ori_glow::GlowRender>,
-
-    /* wgpu */
-    #[cfg(feature = "wgpu")]
-    renders: HashMap<ori_core::window::WindowId, ori_wgpu::WgpuRender>,
-    #[cfg(feature = "wgpu")]
-    instance: Option<ori_wgpu::WgpuRenderInstance>,
 }
 
 impl<T> WinitState<T> {
@@ -105,12 +104,6 @@ impl<T> WinitState<T> {
             /* glow */
             #[cfg(feature = "glow")]
             renders: HashMap::new(),
-
-            /* wgpu */
-            #[cfg(feature = "wgpu")]
-            renders: HashMap::new(),
-            #[cfg(feature = "wgpu")]
-            instance: None,
         }
     }
 
@@ -148,76 +141,79 @@ impl<T> WinitState<T> {
 
                 self.app.remove_window(id);
             }
+            AppRequest::RequestRedraw(id) => {
+                if let Some(state) = self.renders.get_mut(&id) {
+                    state.window.request_redraw();
+                }
+            }
+            AppRequest::UpdateWindow(id, update) => {
+                if let Some(state) = self.renders.get_mut(&id) {
+                    match update {
+                        WindowUpdate::Title(title) => state.window.set_title(&title),
+                        WindowUpdate::Icon(icon) => match icon {
+                            Some(icon) => {
+                                let icon = winit::window::Icon::from_rgba(
+                                    icon.pixels().to_vec(),
+                                    icon.width(),
+                                    icon.height(),
+                                )
+                                .expect("Failed to create icon");
+
+                                state.window.set_window_icon(Some(icon));
+                            }
+                            None => {
+                                state.window.set_window_icon(None);
+                            }
+                        },
+                        WindowUpdate::Size(size) => {
+                            let inner = LogicalSize::new(size.width, size.height);
+
+                            state.window.set_min_inner_size(Some(inner));
+                            state.window.set_max_inner_size(Some(inner));
+                        }
+                        WindowUpdate::Scale(_) => {}
+                        WindowUpdate::Resizable(resizable) => {
+                            state.window.set_resizable(resizable);
+                        }
+                        WindowUpdate::Decorated(decorated) => {
+                            state.window.set_decorations(decorated);
+                        }
+                        WindowUpdate::Maximized(maximized) => {
+                            state.window.set_maximized(maximized);
+                        }
+                        WindowUpdate::Visible(visible) => {
+                            state.window.set_visible(visible);
+                        }
+                        WindowUpdate::Color(_) => {}
+                        WindowUpdate::Cursor(cursor) => {
+                            state.window.set_cursor_icon(convert_cursor_icon(cursor));
+                            state.window.request_redraw();
+                        }
+                    }
+                }
+            }
             AppRequest::Quit => target.exit(),
         }
 
         Ok(())
     }
 
-    #[cfg(feature = "wgpu")]
-    fn init_wgpu(
-        &mut self,
-        window: &winit::window::Window,
-    ) -> Result<(ori_wgpu::WgpuRenderInstance, ori_wgpu::Surface), Error> {
-        use ori_wgpu::WgpuContext;
-
-        let (instance, surface) = unsafe { ori_wgpu::WgpuRenderInstance::new(window)? };
-
-        let context = WgpuContext {
-            device: instance.device.clone(),
-            queue: instance.queue.clone(),
-            textures: Default::default(),
-        };
-        self.ui.contexts.insert(context);
-
-        Ok((instance, surface))
-    }
-
-    #[cfg(feature = "wgpu")]
-    fn create_wgpu_render(
-        &mut self,
-        window: &winit::window::Window,
-        desc: &WindowDescriptor,
-    ) -> Result<(), Error> {
-        use ori_wgpu::WgpuRender;
-
-        let (instance, surface) = if let Some(ref instance) = self.instance {
-            let surface = unsafe { instance.create_surface(window)? };
-            (instance, surface)
-        } else {
-            let (instance, surface) = self.init_wgpu(window)?;
-            (self.instance.insert(instance) as _, surface)
-        };
-
-        let samples = if desc.anti_aliasing { 4 } else { 1 };
-        let size = window.inner_size();
-        let render = WgpuRender::new(instance, surface, samples, size.width, size.height)?;
-
-        self.renders.insert(desc.id, render);
-
-        Ok(())
-    }
-
-    #[cfg(feature = "glow")]
     fn create_glow_render(
         &mut self,
         window: &winit::window::Window,
-        desc: &WindowDescriptor,
-    ) -> Result<(), Error> {
+    ) -> Result<(ori_glow::GlutinContext, ori_glow::GlowRender), Error> {
         let size = window.inner_size();
 
         #[cfg(not(target_arch = "wasm32"))]
         {
             use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
-            let samples = if desc.anti_aliasing { 4 } else { 1 };
-
             let context = ori_glow::GlutinContext::new(
                 window.raw_window_handle(),
                 window.raw_display_handle(),
                 size.width,
                 size.height,
-                samples,
+                4,
             )?;
 
             context.make_current()?;
@@ -225,7 +221,7 @@ impl<T> WinitState<T> {
             let proc_addr = |s: &str| context.get_proc_address(s);
             let render = ori_glow::GlowRender::new(proc_addr, size.width, size.height)?;
 
-            self.renders.insert(desc.id, (render, context));
+            Ok((context, render))
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -237,25 +233,18 @@ impl<T> WinitState<T> {
 
             self.renders.insert(desc.id, render);
         }
-
-        Ok(())
     }
 
     fn idle(&mut self) {
         self.app.idle(&mut self.data);
 
         #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
-        for (render, context) in self.renders.values_mut() {
-            let _ = context.make_current().is_ok();
-            render.clean();
+        for state in self.renders.values_mut() {
+            let _ = state.context.make_current().is_ok();
+            state.render.clean();
         }
 
         #[cfg(all(feature = "glow", target_arch = "wasm32"))]
-        for render in self.renders.values_mut() {
-            render.clean();
-        }
-
-        #[cfg(feature = "wgpu")]
         for render in self.renders.values_mut() {
             render.clean();
         }
@@ -264,38 +253,42 @@ impl<T> WinitState<T> {
     fn create_window(
         &mut self,
         target: &EventLoopWindowTarget<()>,
-        desc: WindowDescriptor,
+        ori: Window,
         builder: UiBuilder<T>,
     ) -> Result<(), Error> {
+        let window_id = ori.id();
+
         /* create the window */
         let window = WindowBuilder::new()
-            .with_title(&desc.title)
-            .with_inner_size(LogicalSize::new(desc.width, desc.height))
-            .with_resizable(desc.resizable)
-            .with_decorations(desc.decorated)
-            .with_transparent(desc.transparent)
+            .with_title(&ori.title)
+            .with_inner_size(LogicalSize::new(ori.width(), ori.height()))
+            .with_resizable(ori.resizable)
+            .with_decorations(ori.decorated)
+            .with_transparent(true)
             .with_visible(false)
             .build(target)?;
 
-        self.window_ids.insert(window.id(), desc.id);
+        self.window_ids.insert(window.id(), window_id);
 
         #[cfg(feature = "glow")]
-        self.create_glow_render(&window, &desc)?;
+        let (context, render) = self.create_glow_render(&window)?;
 
-        #[cfg(feature = "wgpu")]
-        self.create_wgpu_render(&window, &desc)?;
+        //window.set_icon(ori.icon.as_ref());
+        window.set_visible(ori.visible);
+        window.set_maximized(ori.maximized);
 
-        /* create the initial window */
-        let raw_window = Box::new(WinitWindow::from(window));
-        let mut window = Window::new(raw_window, desc.id);
-
-        window.set_icon(desc.icon.as_ref());
-        window.set_visible(desc.visible);
-        window.set_maximized(desc.maximized);
-        window.set_color(desc.color);
+        #[cfg(feature = "glow")]
+        self.renders.insert(
+            window_id,
+            WindowState {
+                window,
+                context,
+                render,
+            },
+        );
 
         /* add the window to the ui */
-        self.app.add_window(&mut self.data, builder, window);
+        self.app.add_window(&mut self.data, builder, ori);
 
         Ok(())
     }
@@ -308,35 +301,27 @@ impl<T> WinitState<T> {
 
         /* glow */
         #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
-        if let Some((render, context)) = self.renders.get_mut(&window_id) {
-            // resize the context if necessary
-            context.resize(
-                scene.physical_size.width as u32,
-                scene.physical_size.height as u32,
-            );
+        if let Some(state) = self.renders.get_mut(&window_id) {
+            let size = state.window.inner_size();
 
-            context.make_current()?;
-            render.render_scene(
+            // resize the context if necessary
+            state.context.resize(size.width, size.height);
+
+            state.context.make_current()?;
+            state.render.render_scene(
                 scene.scene,
                 scene.clear_color,
                 scene.logical_size,
-                scene.physical_size,
-                scene.scale_factor,
+                Size::new(size.width as f32, size.height as f32),
+                state.window.scale_factor() as f32,
             )?;
 
-            context.swap_buffers()?;
+            state.context.swap_buffers()?;
         }
 
         #[cfg(all(feature = "glow", target_arch = "wasm32"))]
         if let Some(render) = self.renders.get_mut(&window_id) {
             render.render_scene(scene, clear_color, logical, physical, scale_factor)?;
-        }
-
-        /* wgpu */
-        #[cfg(feature = "wgpu")]
-        if let Some(render) = self.renders.get_mut(&window_id) {
-            let cx = self.ui.contexts.get::<ori_wgpu::WgpuContext>().unwrap();
-            render.render_scene(cx, scene, clear_color, logical, physical, scale_factor);
         }
 
         Ok(())
@@ -355,28 +340,19 @@ impl<T> WinitState<T> {
                 }
             }
             WindowEvent::CloseRequested => {
-                #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
                 self.renders.remove(&id);
-
                 self.app.close_requested(&mut self.data, id);
             }
             WindowEvent::Resized(inner_size) => {
                 (self.app).window_resized(&mut self.data, id, inner_size.width, inner_size.height);
             }
-            WindowEvent::ScaleFactorChanged { .. } => {
-                if let Some(window) = self.app.get_window(id) {
-                    let width = window.width();
-                    let height = window.height();
-
-                    self.app.window_resized(&mut self.data, id, width, height);
-                }
-            }
+            WindowEvent::ScaleFactorChanged { .. } => {}
             WindowEvent::CursorMoved {
                 device_id,
                 position,
                 ..
             } => {
-                let scale_factor = self.app.get_window(id).map_or(1.0, |w| w.scale_factor());
+                let scale_factor = self.app.get_window(id).map_or(1.0, |w| w.scale);
                 let position = Point::new(position.x as f32, position.y as f32) / scale_factor;
                 self.app.pointer_moved(
                     &mut self.data,
@@ -451,7 +427,7 @@ impl<T> WinitState<T> {
     }
 
     fn touch_event(&mut self, window_id: ori_core::window::WindowId, event: winit::event::Touch) {
-        let scale_factor = (self.app.get_window(window_id)).map_or(1.0, |w| w.scale_factor());
+        let scale_factor = (self.app.get_window(window_id)).map_or(1.0, |w| w.scale);
         let position = Point::new(event.location.x as f32, event.location.y as f32) / scale_factor;
         let pointer_id = PointerId::from_hash(&event.device_id);
 

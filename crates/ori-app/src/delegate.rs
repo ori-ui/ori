@@ -4,7 +4,7 @@ use ori_core::{
     context::BaseCx,
     event::Event,
     view::{any, AnyView},
-    window::{WindowDescriptor, WindowId},
+    window::{Window, WindowId},
 };
 
 use crate::{AppRequest, UiBuilder};
@@ -56,11 +56,11 @@ impl<'a, 'b, T> DelegateCx<'a, 'b, T> {
     /// Add a window to the application.
     pub fn open_window<V: AnyView<T> + 'static>(
         &mut self,
-        descriptor: WindowDescriptor,
+        window: Window,
         mut ui: impl FnMut(&mut T) -> V + 'static,
     ) {
         let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
-        (self.requests).push(AppRequest::OpenWindow(descriptor, builder));
+        (self.requests).push(AppRequest::OpenWindow(window, builder));
     }
 
     /// Close a window.

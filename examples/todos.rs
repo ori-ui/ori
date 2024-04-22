@@ -243,7 +243,7 @@ impl Delegate<Data> for AppDelegate {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Todos (examples/todos.rs)");
+    let window = Window::new().title("Todos (examples/todos.rs)");
 
     let app = AppBuilder::new().window(window, app).delegate(AppDelegate);
 

@@ -56,7 +56,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Text Input (examples/text_input.rs)");
+    let window = Window::new().title("Text Input (examples/text_input.rs)");
 
     let app = App::build().window(window, app);
 

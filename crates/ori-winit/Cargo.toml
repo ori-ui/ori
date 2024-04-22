@@ -12,7 +12,6 @@ license.workspace = true
 ori-app = { workspace = true }
 ori-core = { workspace = true }
 ori-glow = { workspace = true, optional = true }
-ori-wgpu = { workspace = true, optional = true }
 
 # other dependencies
 clipboard = "0.5"
@@ -34,4 +33,3 @@ x11 = ["winit/x11", "ori-glow?/x11"]
 wayland = ["winit/wayland", "winit/wayland-dlopen", "winit/wayland-csd-adwaita", "ori-glow?/wayland"]
 
 glow = ["dep:ori-glow", "ori-glow/glutin"]
-wgpu = ["dep:ori-wgpu"]

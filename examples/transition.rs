@@ -17,7 +17,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Transition (examples/transition.rs)");
+    let window = Window::new().title("Transition (examples/transition.rs)");
 
     let app = App::build().window(window, app);
 

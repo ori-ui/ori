@@ -12,7 +12,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Layout builder (examples/layout_builder.rs)");
+    let window = Window::new().title("Layout builder (examples/layout_builder.rs)");
 
     let app = App::build().window(window, app);
 

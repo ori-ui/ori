@@ -57,7 +57,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Counter (examples/counter.rs)");
+    let window = Window::new().title("Counter (examples/counter.rs)");
 
     // We create a new app with our `ui` function.
     // Then we set the title of the window and run the app.

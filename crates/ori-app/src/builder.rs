@@ -6,7 +6,7 @@ use ori_core::{
     style::Styles,
     text::{FontSource, Fonts},
     view::{any, AnyView},
-    window::WindowDescriptor,
+    window::Window,
 };
 
 use crate::{App, AppRequest, Delegate, UiBuilder};
@@ -66,11 +66,11 @@ impl<T> AppBuilder<T> {
     /// Add a window to the application.
     pub fn window<V: AnyView<T> + 'static>(
         mut self,
-        descriptor: WindowDescriptor,
+        window: Window,
         mut ui: impl FnMut(&mut T) -> V + 'static,
     ) -> Self {
         let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
-        (self.requests).push(AppRequest::OpenWindow(descriptor, builder));
+        (self.requests).push(AppRequest::OpenWindow(window, builder));
         self
     }
 

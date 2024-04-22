@@ -14,7 +14,7 @@ impl Data {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Shadow (examples/shadow.rs)");
+    let window = Window::new().title("Shadow (examples/shadow.rs)");
 
     let app = App::build().window(window, Data::ui);
 

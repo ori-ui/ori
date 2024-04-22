@@ -26,7 +26,6 @@ ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
 ori-font-awesome = { path = "crates/ori-font-awesome", version = "0.1.0-alpha.1" }
 ori-glow = { path = "crates/ori-glow", version = "0.1.0-alpha.1" }
 ori-macro = { path = "crates/ori-macro", version = "0.1.0-alpha.1" }
-ori-wgpu = { path = "crates/ori-wgpu", version = "0.1.0-alpha.1" }
 ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1" }
 
 [dependencies]
@@ -47,7 +46,7 @@ async-std = "1"
 [dev-dependencies.ori]
 path = "."
 version = "0.1.0-alpha.1"
-features = ["full"]
+features = ["full", "multithread"]
 
 [features]
 default = ["winit", "glow", "x11", "wayland"]
@@ -64,7 +63,6 @@ winit = ["dep:ori-winit"]
 x11 = ["ori-winit?/x11"]
 wayland = ["ori-winit?/wayland"]
 glow = ["ori-winit?/glow"]
-wgpu = ["ori-winit?/wgpu"]
 
 [profile.dev]
 debug = "limited"

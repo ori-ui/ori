@@ -24,9 +24,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
         .border_radius([16.0, 0.0, 16.0, 0.0])
         .border_width(2.0);
 
-    on_press(trigger(content), |cx, _| {
-        cx.window().drag();
-    })
+    on_press(trigger(content), |_, _| {})
 }
 
 fn open_window_button() -> impl View<Data> {
@@ -42,7 +40,7 @@ fn open_window_button() -> impl View<Data> {
 fn close_window_button(data: &mut Data) -> impl View<Data> {
     let close_window = transition(ease(0.5), !data.windows.is_empty(), |_cx, _, t| {
         let active = palette().primary;
-        let inactive = palette().surface_secondary;
+        let inactive = palette().surface;
 
         button(text("Close window"))
             .color(inactive.mix(active, t))
@@ -76,16 +74,16 @@ impl Delegate<Data> for AppDelegate {
         }
 
         if event.is_cmd::<OpenWindow>() {
-            let desc = WindowDescriptor::new()
+            let desc = Window::new()
                 .title("Multi Window Popup")
                 .resizable(false)
                 .decorated(false)
-                .color(Color::TRANSPARENT)
+                .color(Some(Color::TRANSPARENT))
                 .size(300, 300);
 
-            data.windows.push(desc.id);
+            data.windows.push(desc.id());
 
-            info!("Window {} opened", desc.id);
+            info!("Window {} opened", desc.id());
 
             cx.open_window(desc, window);
             cx.request_rebuild();
@@ -100,7 +98,7 @@ impl Delegate<Data> for AppDelegate {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Multi Window (examples/multi_window.rs)");
+    let window = Window::new().title("Multi Window (examples/multi_window.rs)");
 
     let app = App::build().window(window, app).delegate(AppDelegate);
 

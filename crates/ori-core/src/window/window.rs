@@ -7,11 +7,11 @@ use crate::{
     canvas::Color,
     event::{PointerButton, PointerId},
     image::Image,
-    layout::{Point, Rect, Size},
+    layout::{Point, Size, Vector},
     view::ViewId,
 };
 
-use super::{Cursor, RawWindow};
+use super::{Cursor, Pointer};
 
 /// A unique identifier for a window.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -40,305 +40,331 @@ impl Display for WindowId {
     }
 }
 
-/// A handle to a window.
+/// A window.
 #[derive(Debug)]
 pub struct Window {
     id: WindowId,
-    raw: Box<dyn RawWindow>,
     pointers: Vec<Pointer>,
+
+    /// The title of the window.
+    pub title: String,
+
+    /// The icon of the window.
+    pub icon: Option<Image>,
+
+    /// The size of the window.
+    pub size: Size,
+
+    /// The scale of the window.
+    pub scale: f32,
+
+    /// Whether the window is resizable.
+    pub resizable: bool,
+
+    /// Whether the window is decorated.
+    pub decorated: bool,
+
+    /// Whether the window is maximized.
+    pub maximized: bool,
+
+    /// Whether the window is visible.
+    pub visible: bool,
+
+    /// The color of the window.
+    pub color: Option<Color>,
+}
+
+impl Default for Window {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Window {
-    /// Create a new window with the given raw window implementation.
-    pub fn new(raw: Box<dyn RawWindow>, id: WindowId) -> Self {
+    /// Create a new [`Window`].
+    pub fn new() -> Self {
         Self {
-            id,
-            raw,
+            id: WindowId::new(),
             pointers: Vec::new(),
+            title: String::from("Ori window"),
+            icon: None,
+            size: Size::new(800.0, 600.0),
+            scale: 1.0,
+            resizable: true,
+            decorated: true,
+            maximized: false,
+            visible: true,
+            color: None,
         }
     }
 
-    /// Get the [`WindowId`].
+    /// Get the unique identifier of the window.
     pub fn id(&self) -> WindowId {
         self.id
     }
 
-    /// Get the pointers.
-    pub fn pointers(&self) -> &[Pointer] {
-        &self.pointers
-    }
-
-    /// Get the pointer with `id`.
-    pub fn pointer(&self, id: PointerId) -> Option<&Pointer> {
-        self.pointers.iter().find(|p| p.id() == id)
-    }
-
-    /// Get the mutable pointer with `id`.
-    pub fn pointer_mut(&mut self, id: PointerId) -> Option<&mut Pointer> {
-        self.pointers.iter_mut().find(|p| p.id() == id)
-    }
-
-    /// Move the pointer with `id` to `position`.
-    pub fn pointer_moved(&mut self, id: PointerId, position: Point) {
-        if let Some(pointer) = self.pointer_mut(id) {
-            pointer.position = position;
-        } else {
-            self.pointers.push(Pointer::new(id, position));
-        }
-    }
-
-    /// Remove the pointer with `id`.
-    pub fn pointer_left(&mut self, id: PointerId) {
-        if let Some(index) = self.pointers.iter().position(|p| p.id() == id) {
-            self.pointers.swap_remove(index);
-        }
-    }
-
-    /// Set the hovered view of the pointer with `id`.
-    pub fn pointer_hovered(&mut self, id: PointerId, hovered: Option<ViewId>) -> bool {
-        if let Some(pointer) = self.pointer_mut(id) {
-            let changed = pointer.hovered() != hovered;
-            pointer.hovered = hovered;
-            return changed;
-        }
-
-        false
-    }
-
-    /// Get the pointer that is currently hovered over the given view.
-    pub fn is_hovered(&self, view: ViewId) -> bool {
-        self.pointers.iter().any(|p| p.hovered() == Some(view))
-    }
-
-    /// Pointer pressed.
-    pub fn pointer_pressed(&mut self, id: PointerId, button: PointerButton) {
-        if let Some(pointer) = self.pointer_mut(id) {
-            pointer.press(button);
-        }
-    }
-
-    /// Pointer released.
-    pub fn pointer_released(&mut self, id: PointerId, button: PointerButton) -> bool {
-        (self.pointer_mut(id)).map_or(false, |pointer| pointer.release(button))
-    }
-
-    /// Try to downcast the window to a specific type.
-    pub fn downcast_raw<T: RawWindow>(&self) -> Option<&T> {
-        self.raw.downcast_ref()
-    }
-
-    /// Get the title of the window.
-    pub fn title(&self) -> String {
-        self.raw.title()
-    }
-
     /// Set the title of the window.
-    pub fn set_title(&mut self, title: &str) {
-        self.raw.set_title(title);
+    pub fn title(mut self, title: impl ToString) -> Self {
+        self.title = title.to_string();
+        self
     }
 
     /// Set the icon of the window.
-    pub fn set_icon(&mut self, icon: Option<&Image>) {
-        self.raw.set_icon(icon);
+    pub fn icon(mut self, icon: Option<Image>) -> Self {
+        self.icon = icon;
+        self
     }
 
-    /// Get the size of the window.
-    pub fn size(&self) -> Size {
-        let (width, height) = self.raw.size();
-        Size::new(width as f32, height as f32)
+    /// Set the size of the window.
+    pub fn size(mut self, width: u32, height: u32) -> Self {
+        self.size = Size::new(width as f32, height as f32);
+        self
     }
 
-    /// Get the rect of the window.
-    pub fn rect(&self) -> Rect {
-        Rect::min_size(Point::ZERO, self.size())
+    /// Set the scale of the window.
+    pub fn scale(mut self, scale: f32) -> Self {
+        self.scale = scale;
+        self
     }
 
-    /// Get the physical size of the window.
+    /// Set whether the window is resizable.
+    pub fn resizable(mut self, resizable: bool) -> Self {
+        self.resizable = resizable;
+        self
+    }
+
+    /// Set whether the window is decorated.
+    pub fn decorated(mut self, decorated: bool) -> Self {
+        self.decorated = decorated;
+        self
+    }
+
+    /// Set whether the window is maximized.
+    pub fn maximized(mut self, maximized: bool) -> Self {
+        self.maximized = maximized;
+        self
+    }
+
+    /// Set whether the window is visible.
+    pub fn visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
+        self
+    }
+
+    /// Set the color of the window.
+    pub fn color(mut self, color: Option<Color>) -> Self {
+        self.color = color;
+        self
+    }
+
+    /// Get the size of the window in physical pixels.
+    ///
+    /// This is a shorthand for `self.size * self.scale`.
     pub fn physical_size(&self) -> Size {
-        self.size() * self.scale_factor()
+        self.size * self.scale
     }
 
     /// Get the width of the window.
     pub fn width(&self) -> u32 {
-        self.raw.size().0
+        self.size.width as u32
     }
 
     /// Get the height of the window.
     pub fn height(&self) -> u32 {
-        self.raw.size().1
+        self.size.height as u32
     }
 
-    /// Get the physical width of the window.
-    pub fn physical_width(&self) -> u32 {
-        let width = self.width() as f32 * self.scale_factor();
-        width as u32
+    /// Get the pointers in the window.
+    pub fn pointers(&self) -> &[Pointer] {
+        &self.pointers
     }
 
-    /// Get the physical height of the window.
-    pub fn physical_height(&self) -> u32 {
-        let height = self.height() as f32 * self.scale_factor();
-        height as u32
+    /// Get the pointers in the window mutably.
+    pub fn pointers_mut(&mut self) -> &mut Vec<Pointer> {
+        &mut self.pointers
     }
+
+    /// Get whether a specific view is hovered.
+    pub fn is_hovered(&self, view_id: ViewId) -> bool {
+        (self.pointers.iter()).any(|pointer| pointer.hovering == Some(view_id))
+    }
+
+    /// Get the pointer with [`pointer_id`].
+    pub fn get_pointer(&self, pointer_id: PointerId) -> Option<&Pointer> {
+        (self.pointers.iter()).find(|pointer| pointer.id() == pointer_id)
+    }
+
+    /// Get the pointer with [`pointer_id`] mutably.
+    pub fn get_pointer_mut(&mut self, pointer_id: PointerId) -> Option<&mut Pointer> {
+        (self.pointers.iter_mut()).find(|pointer| pointer.id() == pointer_id)
+    }
+
+    /// Press a button on a pointer.
+    ///
+    /// This is rarely what you want to do, do not use this unless you
+    /// really know what you are doing.
+    pub fn press_pointer(&mut self, pointer_id: PointerId, button: PointerButton) {
+        if let Some(pointer) = self.get_pointer_mut(pointer_id) {
+            pointer.press(button);
+        }
+    }
+
+    /// Release a button on a pointer.
+    ///
+    /// This is rarely what you want to do, do not use this unless you
+    /// really know what you are doing.
+    pub fn release_pointer(&mut self, pointer_id: PointerId, button: PointerButton) -> bool {
+        match self.get_pointer_mut(pointer_id) {
+            Some(pointer) => pointer.release(button),
+            None => false,
+        }
+    }
+
+    /// Move a pointer, returning the movement.
+    pub fn move_pointer(&mut self, pointer_id: PointerId, position: Point) -> Vector {
+        match self.get_pointer_mut(pointer_id) {
+            Some(pointer) => {
+                let delta = position - pointer.position;
+                pointer.position = position;
+
+                delta
+            }
+            None => {
+                self.pointers.push(Pointer::new(pointer_id, position));
+
+                Vector::ZERO
+            }
+        }
+    }
+
+    /// Remove a pointer.
+    ///
+    /// This is rarely what you want to do, do not use this unless you
+    /// really know what you are doing.
+    pub fn remove_pointer(&mut self, pointer_id: PointerId) {
+        self.pointers.retain(|pointer| pointer.id() != pointer_id);
+    }
+
+    /// Update the window.
+    pub fn updates(&mut self) -> Vec<WindowUpdate> {
+        vec![
+            WindowUpdate::Title(self.title.clone()),
+            WindowUpdate::Icon(self.icon.clone()),
+            WindowUpdate::Size(self.size),
+            WindowUpdate::Scale(self.scale),
+            WindowUpdate::Resizable(self.resizable),
+            WindowUpdate::Decorated(self.decorated),
+            WindowUpdate::Maximized(self.maximized),
+            WindowUpdate::Visible(self.visible),
+            WindowUpdate::Color(self.color),
+        ]
+    }
+
+    /// Get the [`WindowState`] of the window.
+    pub fn state(&self) -> WindowState {
+        WindowState {
+            title: self.title.clone(),
+            icon: self.icon.clone(),
+            size: self.size,
+            scale: self.scale,
+            resizable: self.resizable,
+            decorated: self.decorated,
+            maximized: self.maximized,
+            visible: self.visible,
+            color: self.color,
+        }
+    }
+}
+
+/// An update to a window.
+#[derive(Clone, Debug)]
+pub enum WindowUpdate {
+    /// Set the title of the window.
+    Title(String),
+
+    /// Set the icon of the window.
+    Icon(Option<Image>),
 
     /// Set the size of the window.
-    pub fn set_size(&mut self, width: u32, height: u32) {
-        self.raw.set_size(width, height);
-    }
+    Size(Size),
 
-    /// Get whether the window is resizable.
-    pub fn resizable(&self) -> bool {
-        self.raw.resizable()
-    }
+    /// Set the scale of the window.
+    Scale(f32),
 
     /// Set whether the window is resizable.
-    pub fn set_resizable(&mut self, resizable: bool) {
-        self.raw.set_resizable(resizable);
-    }
-
-    /// Get whether the window is decorated.
-    pub fn decorated(&self) -> bool {
-        self.raw.decorated()
-    }
+    Resizable(bool),
 
     /// Set whether the window is decorated.
-    pub fn set_decorated(&mut self, decorated: bool) {
-        self.raw.set_decorated(decorated);
-    }
-
-    /// Get the scale factor of the window.
-    pub fn scale_factor(&self) -> f32 {
-        self.raw.scale_factor()
-    }
-
-    /// Get whether the window is minimized.
-    pub fn minimized(&self) -> bool {
-        self.raw.minimized()
-    }
-
-    /// Set whether the window is minimized.
-    pub fn set_minimized(&mut self, minimized: bool) {
-        self.raw.set_minimized(minimized);
-    }
-
-    /// Get whether the window is maximized.
-    pub fn maximized(&self) -> bool {
-        self.raw.maximized()
-    }
+    Decorated(bool),
 
     /// Set whether the window is maximized.
-    pub fn set_maximized(&mut self, maximized: bool) {
-        self.raw.set_maximized(maximized);
-    }
-
-    /// Get whether the window is visible.
-    pub fn visible(&self) -> bool {
-        self.raw.visible()
-    }
+    Maximized(bool),
 
     /// Set whether the window is visible.
-    pub fn set_visible(&mut self, visible: bool) {
-        self.raw.set_visible(visible);
-    }
+    Visible(bool),
+
+    /// Set the color of the window.
+    Color(Option<Color>),
 
     /// Set the cursor of the window.
-    pub fn set_cursor(&mut self, cursor: Cursor) {
-        self.raw.set_cursor(cursor);
-    }
-
-    /// Get the background of the window.
-    pub fn color(&self) -> Option<Color> {
-        self.raw.color()
-    }
-
-    /// Set the background of the window.
-    pub fn set_color(&mut self, color: Option<Color>) {
-        self.raw.set_color(color);
-    }
-
-    /// Get whether the soft input is enabled.
-    pub fn set_soft_input(&mut self, enabled: bool) {
-        self.raw.set_soft_input(enabled);
-    }
-
-    /// Drag the window.
-    pub fn drag(&mut self) {
-        self.raw.drag();
-    }
-
-    /// Request a redraw of the window.
-    pub fn request_draw(&mut self) {
-        self.raw.request_draw();
-    }
+    Cursor(Cursor),
 }
 
-/// The state of a pointer.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Pointer {
-    /// The unique id of the pointer.
-    id: PointerId,
-
-    /// The position of the pointer.
-    position: Point,
-
-    /// The buttons that are currently pressed by the pointer.
-    pressed: Vec<(PointerButton, Point)>,
-
-    /// The view that is currently hovered by the pointer.
-    hovered: Option<ViewId>,
+/// The state of a window.
+#[derive(Clone, Debug)]
+pub struct WindowState {
+    title: String,
+    icon: Option<Image>,
+    size: Size,
+    scale: f32,
+    resizable: bool,
+    decorated: bool,
+    maximized: bool,
+    visible: bool,
+    color: Option<Color>,
 }
 
-impl Pointer {
-    /// Create a new pointer.
-    pub fn new(id: PointerId, position: Point) -> Self {
-        Self {
-            id,
-            position,
-            pressed: Vec::new(),
-            hovered: None,
+impl WindowState {
+    /// Get the difference between a window and a previous state.
+    pub fn difference(&self, window: &Window) -> Vec<WindowUpdate> {
+        let mut updates = Vec::new();
+
+        if self.title != window.title {
+            updates.push(WindowUpdate::Title(window.title.clone()));
         }
-    }
 
-    /// Get the unique id of the pointer.
-    pub fn id(&self) -> PointerId {
-        self.id
-    }
-
-    /// Get the position of the pointer.
-    pub fn position(&self) -> Point {
-        self.position
-    }
-
-    /// Get the view that is currently hovered by the pointer.
-    pub fn hovered(&self) -> Option<ViewId> {
-        self.hovered
-    }
-
-    /// Set the view that is currently hovered by the pointer.
-    pub fn set_hovered(&mut self, hovered: Option<ViewId>) {
-        self.hovered = hovered;
-    }
-
-    /// Check if a button is currently pressed by the pointer.
-    pub fn is_pressed(&self, button: PointerButton) -> bool {
-        self.pressed.iter().any(|(b, _)| *b == button)
-    }
-
-    /// Press a button.
-    pub fn press(&mut self, button: PointerButton) {
-        if !self.is_pressed(button) {
-            self.pressed.push((button, self.position));
+        if self.icon != window.icon {
+            updates.push(WindowUpdate::Icon(window.icon.clone()));
         }
-    }
 
-    /// Release a button.
-    ///
-    /// Returns `true` if the button was clicked.
-    pub fn release(&mut self, button: PointerButton) -> bool {
-        let Some(index) = self.pressed.iter().position(|(b, _)| *b == button) else {
-            return false;
-        };
+        if self.size != window.size {
+            updates.push(WindowUpdate::Size(window.size));
+        }
 
-        let (_, position) = self.pressed.swap_remove(index);
-        self.position.distance(position) < 10.0
+        if self.scale != window.scale {
+            updates.push(WindowUpdate::Scale(window.scale));
+        }
+
+        if self.resizable != window.resizable {
+            updates.push(WindowUpdate::Resizable(window.resizable));
+        }
+
+        if self.decorated != window.decorated {
+            updates.push(WindowUpdate::Decorated(window.decorated));
+        }
+
+        if self.maximized != window.maximized {
+            updates.push(WindowUpdate::Maximized(window.maximized));
+        }
+
+        if self.visible != window.visible {
+            updates.push(WindowUpdate::Visible(window.visible));
+        }
+
+        if self.color != window.color {
+            updates.push(WindowUpdate::Color(window.color));
+        }
+
+        updates
     }
 }

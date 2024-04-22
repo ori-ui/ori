@@ -16,7 +16,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Dropdown (examples/dropdown.rs)");
+    let window = Window::new().title("Dropdown (examples/dropdown.rs)");
 
     let app = App::build().window(window, app);
 

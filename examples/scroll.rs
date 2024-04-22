@@ -36,7 +36,7 @@ fn app(_data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Scroll (examples/scroll.rs)");
+    let window = Window::new().title("Scroll (examples/scroll.rs)");
 
     let app = App::build().window(window, app);
 

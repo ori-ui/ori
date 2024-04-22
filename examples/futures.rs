@@ -43,7 +43,7 @@ impl Delegate<Data> for AppDelegate {
 }
 
 fn main() {
-    let window = WindowDescriptor::new().title("Futures (examples/futures.rs)");
+    let window = Window::new().title("Futures (examples/futures.rs)");
 
     let app = App::build().window(window, app).delegate(AppDelegate);
 

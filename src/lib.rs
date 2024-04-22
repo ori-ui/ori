@@ -61,7 +61,7 @@ pub mod prelude {
             any, pod, AnyView, BoxedView, Pod, PodSeq, SeqState, State, View, ViewSeq, ViewState,
         },
         views::*,
-        window::{Cursor, Pointer, Window, WindowId},
+        window::{Cursor, Pointer, Window, WindowId, WindowSizing},
     };
 
     pub use ori_macro::Build;

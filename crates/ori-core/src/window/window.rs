@@ -148,6 +148,12 @@ impl Window {
         self
     }
 
+    /// Set the sizing to [`WindowSizing::Content`].
+    pub fn fit_content(mut self) -> Self {
+        self.sizing = WindowSizing::Content;
+        self
+    }
+
     /// Set the scale of the window.
     pub fn scale(mut self, scale: f32) -> Self {
         self.scale = scale;

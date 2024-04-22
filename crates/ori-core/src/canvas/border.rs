@@ -35,6 +35,22 @@ impl BorderRadius {
             bottom_left: radius,
         }
     }
+
+    /// Get the maximum radius of the corners.
+    pub fn max_element(&self) -> f32 {
+        self.top_left
+            .max(self.top_right)
+            .max(self.bottom_right)
+            .max(self.bottom_left)
+    }
+
+    /// Get the minimum radius of the corners.
+    pub fn min_element(&self) -> f32 {
+        self.top_left
+            .min(self.top_right)
+            .min(self.bottom_right)
+            .min(self.bottom_left)
+    }
 }
 
 impl From<(f32, f32, f32, f32)> for BorderRadius {

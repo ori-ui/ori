@@ -329,6 +329,11 @@ impl ViewState {
         self.update.remove(Update::ANIMATE);
     }
 
+    /// Get the flags of the view.
+    pub fn flags(&self) -> ViewFlags {
+        self.flags
+    }
+
     /// Get the [`Update`] of the view.
     pub fn update(&self) -> Update {
         self.update

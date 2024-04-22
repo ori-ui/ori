@@ -6,7 +6,7 @@ use crate::{
     event::{Event, PointerButton},
     layout::{Size, Space},
     rebuild::Rebuild,
-    view::View,
+    view::{Pod, State, View},
 };
 
 /// Create a new [`Clickable`].
@@ -42,7 +42,7 @@ pub fn on_click<T, V>(
 #[derive(Build, Rebuild)]
 pub struct Clickable<T, V> {
     /// The content.
-    pub content: V,
+    pub content: Pod<V>,
 
     /// Whether the item should be clickable when it's descendants are clicked.
     ///
@@ -100,34 +100,38 @@ impl<T, V> Clickable<T, V> {
         self.on_click = Some(Box::new(on_click));
         self
     }
+
+    fn is_button(&self, button: PointerButton) -> bool {
+        self.button.map_or(true, |b| b == button)
+    }
 }
 
 impl<T, V: View<T>> View<T> for Clickable<T, V> {
-    type State = V::State;
+    type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         self.content.build(cx, data)
     }
 
-    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+    fn rebuild(&mut self, content: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
-        self.content.rebuild(state, cx, data, &old.content);
+        self.content.rebuild(content, cx, data, &old.content);
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        let is_hot = cx.is_hot() || (cx.had_hot() && self.descendants);
+    fn event(&mut self, content: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        let is_hot = content.is_hot() || (content.has_hot() && self.descendants);
 
         match event {
-            Event::PointerPressed(_) if is_hot => {
+            Event::PointerPressed(e) if is_hot && self.is_button(e.button) => {
                 if let Some(ref mut on_press) = self.on_press {
                     on_press(cx, data);
                     cx.request_rebuild();
                 }
 
-                cx.set_active(true);
+                content.set_active(true);
             }
-            Event::PointerReleased(e) if cx.is_active() => {
+            Event::PointerReleased(e) if content.is_active() && self.is_button(e.button) => {
                 if let Some(ref mut on_release) = self.on_release {
                     on_release(cx, data);
                     cx.request_rebuild();
@@ -140,32 +144,32 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
                     }
                 }
 
-                cx.set_active(false);
+                content.set_active(false);
             }
             _ => {}
         }
 
-        self.content.event(state, cx, data, event);
+        self.content.event(content, cx, data, event);
     }
 
     fn layout(
         &mut self,
-        state: &mut Self::State,
+        content: &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
-        self.content.layout(state, cx, data, space)
+        self.content.layout(content, cx, data, space)
     }
 
     fn draw(
         &mut self,
-        state: &mut Self::State,
+        content: &mut Self::State,
         cx: &mut DrawCx,
         data: &mut T,
         canvas: &mut Canvas,
     ) {
         canvas.set_hoverable(cx.id());
-        self.content.draw(state, cx, data, canvas);
+        self.content.draw(content, cx, data, canvas);
     }
 }

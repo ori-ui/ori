@@ -10,7 +10,7 @@ use crate::{
     rebuild::Rebuild,
     style::{style, Style, Styles},
     transition::Transition,
-    view::{Pod, State, Update, View},
+    view::{Pod, State, View},
 };
 
 /// Create a new [`Collapsing`].
@@ -169,41 +169,30 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         Rebuild::rebuild(self, cx, old);
 
         (self.header).rebuild(&mut state.header, cx, data, &old.header);
-
-        // if we can't see the content, we still need to rebuild it
-        // but we don't need to request either a layout or a draw
-        //
-        // FIXME: this is a bit of a hack, we should have a better way to do this
-        let update = cx.view_state.update;
         (self.content).rebuild(&mut state.content, cx, data, &old.content);
-
-        if self.transition.get(state.t) == 0.0 {
-            cx.view_state.update = update & !Update::DRAW;
-        }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         self.header.event(&mut state.header, cx, data, event);
-
-        // same deal as in rebuild
-        let update = cx.view_state.update;
         self.content.event(&mut state.content, cx, data, event);
 
-        if self.transition.get(state.t) != 0.0 {
-            cx.view_state.update = update & !Update::DRAW;
-        }
-
-        if matches!(event, Event::PointerPressed(_)) && state.header.has_hot() {
-            state.open = !state.open;
-            cx.animate();
-            cx.request_layout();
-        }
-
-        if let Event::Animate(dt) = event {
-            if self.transition.step(&mut state.t, state.open, *dt) {
+        match event {
+            Event::PointerPressed(_) if state.header.has_hot() => {
+                state.open = !state.open;
                 cx.animate();
                 cx.request_layout();
+
+                if let Some(ref mut on_open) = self.on_open {
+                    on_open(cx, data, state.open);
+                }
             }
+            Event::Animate(dt) => {
+                if self.transition.step(&mut state.t, state.open, *dt) {
+                    cx.animate();
+                    cx.request_layout();
+                }
+            }
+            _ => {}
         }
     }
 
@@ -273,10 +262,6 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         let content_offset = Vector::new(0.0, state.header.size().height);
         let content_height = Vector::new(0.0, state.content.size().height) * (1.0 - t);
         state.content.translate(content_offset - content_height);
-
-        if t == 0.0 {
-            return;
-        }
 
         let content_min = cx.rect().top_left() + content_offset;
         let content_rect = Rect::min_size(content_min, state.content.size());

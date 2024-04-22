@@ -110,8 +110,8 @@ impl Window {
     }
 
     /// Set the icon of the window.
-    pub fn icon(mut self, icon: Option<Image>) -> Self {
-        self.icon = icon;
+    pub fn icon(mut self, icon: impl Into<Option<Image>>) -> Self {
+        self.icon = icon.into();
         self
     }
 
@@ -152,8 +152,8 @@ impl Window {
     }
 
     /// Set the color of the window.
-    pub fn color(mut self, color: Option<Color>) -> Self {
-        self.color = color;
+    pub fn color(mut self, color: impl Into<Option<Color>>) -> Self {
+        self.color = color.into();
         self
     }
 

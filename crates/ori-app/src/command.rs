@@ -49,11 +49,12 @@ impl AppCommand {
     ///             cx.cmd(AppCommand::open_window(window, popup));
     ///         },
     ///     )
-    /// )
+    /// }
     ///
     /// fn popup() -> impl View {
     ///     text("Hello, world!")
     /// }
+    /// ```
     pub fn open_window<V: View + 'static>(
         window: Window,
         mut view: impl FnMut() -> V + Send + 'static,

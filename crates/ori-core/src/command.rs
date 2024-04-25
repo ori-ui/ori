@@ -18,10 +18,7 @@ type CommandWakerInner = std::sync::Arc<dyn Fn() + Send + Sync>;
 #[cfg(not(feature = "multithread"))]
 type CommandWakerInner = std::rc::Rc<dyn Fn()>;
 
-/// A waker for the event loop.
-///
-/// When called, the event loop should wake up and process any pending commands,
-/// by calling [`Ui::handle_commands()`](crate::ui::Ui::handle_commands).
+/// A waker for the event loop, triggered when a command is sent.
 #[derive(Clone)]
 pub struct CommandWaker(CommandWakerInner);
 

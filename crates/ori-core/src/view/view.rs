@@ -38,7 +38,7 @@ use crate::{
 ///
 /// For examples see the implementation of views like [`Button`] or [`Checkbox`].
 ///
-/// [`BaseCx::cmd`]: super::BaseCx::cmd
+/// [`BaseCx::cmd`]: crate::context::BaseCx::cmd
 /// [`State`]: super::State
 /// [`SeqState`]: super::SeqState
 /// [`ViewState`]: super::ViewState

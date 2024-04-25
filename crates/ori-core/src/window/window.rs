@@ -46,7 +46,7 @@ pub enum WindowSizing {
     /// The window will have a fixed size equal to [`Window::size`].
     Fixed,
 
-    /// The root [`View`] will have [`Space::UNBOUNDED`], and the window will
+    /// The root [`View`](crate::view::View) will have [`Space::UNBOUNDED`](crate::layout::Space), and the window will
     /// resize to fit the content.
     Content,
 }
@@ -225,12 +225,12 @@ impl Window {
         (self.pointers.iter()).any(|pointer| pointer.hovering == Some(view_id))
     }
 
-    /// Get the pointer with [`pointer_id`].
+    /// Get the pointer with `pointer_id`.
     pub fn get_pointer(&self, pointer_id: PointerId) -> Option<&Pointer> {
         (self.pointers.iter()).find(|pointer| pointer.id() == pointer_id)
     }
 
-    /// Get the pointer with [`pointer_id`] mutably.
+    /// Get the pointer with `pointer_id` mutably.
     pub fn get_pointer_mut(&mut self, pointer_id: PointerId) -> Option<&mut Pointer> {
         (self.pointers.iter_mut()).find(|pointer| pointer.id() == pointer_id)
     }

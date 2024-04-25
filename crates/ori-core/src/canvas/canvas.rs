@@ -87,7 +87,7 @@ impl<'a> Canvas<'a> {
         self.view = Some(view);
     }
 
-    /// Temporarily set the view, see [`Canvas::set_view`].
+    /// Temporarily set the view, see [`Canvas::set_hoverable`].
     pub fn with_hoverable<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
         let t = self.view;
         self.view = Some(view);

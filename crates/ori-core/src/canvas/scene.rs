@@ -139,14 +139,16 @@ impl Scene {
 pub struct Fragment {
     /// The primitive to be rendered.
     pub primitive: Primitive,
+
     /// The transform to apply to the primitive.
     pub transform: Affine,
+
     /// The depth of the primitive.
     pub depth: f32,
+
     /// The clip rectangle of the primitive.
     pub clip: Rect,
+
     /// The view that the primitive is being drawn for.
     pub view: Option<ViewId>,
-    /// Whether the fragment should be drawn pixel perfect.
-    pub pixel_perfect: bool,
 }

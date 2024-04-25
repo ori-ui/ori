@@ -94,7 +94,7 @@ impl<T> WindowState<T> {
 
         self.scene.clear();
 
-        let mut canvas = Canvas::new(&mut self.scene, self.window.size);
+        let mut canvas = Canvas::new(&mut self.scene, self.window.size, self.window.scale);
         let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window);
 
         self.view.draw(&mut self.state, &mut cx, data, &mut canvas);

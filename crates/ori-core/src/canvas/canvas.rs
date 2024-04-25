@@ -8,21 +8,27 @@ use super::{Background, BorderRadius, BorderWidth, Color, Fragment, Primitive, Q
 /// A canvas used for drawing a [`Scene`].
 pub struct Canvas<'a> {
     scene: &'a mut Scene,
+    scale_factor: f32,
+
     /// The transform to apply to the canvas.
     pub transform: Affine,
+
     /// The depth of the canvas.
     pub depth: f32,
+
     /// The clip rectangle of the canvas.
     pub clip: Rect,
+
     /// The view that the canvas is being drawn for.
     pub view: Option<ViewId>,
 }
 
 impl<'a> Canvas<'a> {
     /// Create a new [`Canvas`].
-    pub fn new(scene: &'a mut Scene, window_size: Size) -> Self {
+    pub fn new(scene: &'a mut Scene, window_size: Size, scale_factor: f32) -> Self {
         Self {
             scene,
+            scale_factor,
             transform: Affine::IDENTITY,
             depth: 0.0,
             clip: Rect::min_size(Point::ZERO, window_size),
@@ -36,6 +42,7 @@ impl<'a> Canvas<'a> {
     pub fn fork(&mut self) -> Canvas<'_> {
         Canvas {
             scene: self.scene,
+            scale_factor: self.scale_factor,
             transform: self.transform,
             depth: self.depth,
             clip: self.clip,
@@ -128,19 +135,25 @@ impl<'a> Canvas<'a> {
             depth: self.depth,
             clip: self.clip,
             view: self.view,
-            pixel_perfect: false,
         });
     }
 
     /// Draw a [`Primitive`] with pixel-perfect coordinates.
     pub fn draw_pixel_perfect(&mut self, primitive: impl Into<Primitive>) {
+        let translation = self.transform.translation * self.scale_factor;
+        let translation = translation.round() / self.scale_factor;
+
+        let transform = Affine {
+            translation,
+            matrix: self.transform.matrix,
+        };
+
         self.draw_fragment(Fragment {
             primitive: primitive.into(),
-            transform: self.transform.round(),
+            transform,
             depth: self.depth,
             clip: self.clip,
             view: self.view,
-            pixel_perfect: true,
         });
     }
 

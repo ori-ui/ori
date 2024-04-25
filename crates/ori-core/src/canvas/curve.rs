@@ -131,7 +131,7 @@ impl Curve {
         }
 
         if self.len() == 1 {
-            return Mesh::circle(self.points[0], thickness, color);
+            return Mesh::circle(self.points[0], thickness / 2.0, color);
         }
 
         let mut mesh = Mesh::new();

@@ -9,13 +9,6 @@ pub struct CloseRequested {
     pub window: WindowId,
 }
 
-impl CloseRequested {
-    /// Create a new close requested event.
-    pub fn new(window: WindowId) -> Self {
-        Self { window }
-    }
-}
-
 /// Event emitted when a window is resized.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct WindowResized {

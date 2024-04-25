@@ -76,6 +76,9 @@ pub struct Window {
     pub sizing: WindowSizing,
 
     /// The scale of the window.
+    ///
+    /// Modifying this is not recommended, and will probably not do what you expect,
+    /// as a rule of thumb, don't do it.
     pub scale: f32,
 
     /// Whether the window is resizable.

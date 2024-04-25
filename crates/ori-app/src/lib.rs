@@ -5,11 +5,13 @@
 
 mod app;
 mod builder;
+mod command;
 mod delegate;
 mod request;
 
 pub use app::*;
 pub use builder::*;
+pub use command::*;
 pub use delegate::*;
 pub use request::*;
 

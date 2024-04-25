@@ -7,16 +7,17 @@ use ori_core::{
     command::{CommandProxy, CommandReceiver},
     context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
-        Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId, PointerMoved,
-        PointerPressed, PointerReleased, PointerScrolled, WindowResized,
+        CloseRequested, Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId,
+        PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled, WindowResized,
     },
     layout::{Point, Size, Space, Vector},
     style::Styles,
-    view::{AnyState, BoxedView, View, ViewState},
+    view::{any, AnyState, BoxedView, View, ViewState},
+    views::opaque,
     window::{Cursor, Window, WindowId, WindowSizing, WindowSnapshot, WindowUpdate},
 };
 
-use crate::{AppBuilder, AppRequest, Delegate, DelegateCx, UiBuilder};
+use crate::{AppBuilder, AppCommand, AppRequest, Delegate, DelegateCx, UiBuilder};
 
 /// Information needed to render a window.
 pub struct WindowRenderScene<'a> {
@@ -160,12 +161,22 @@ impl<T> App<T> {
     }
 
     /// A window was requested to be closed.
-    pub fn close_requested(&mut self, _data: &mut T, window_id: WindowId) {
-        self.remove_window(window_id);
+    ///
+    /// Returns `true` if the window was closed, i.e. the event was not handled.
+    pub fn close_requested(&mut self, data: &mut T, window_id: WindowId) -> bool {
+        let event = Event::CloseRequested(CloseRequested { window: window_id });
 
-        if self.windows.is_empty() {
-            self.requests.push(AppRequest::Quit);
+        let handled = self.window_event(data, window_id, &event);
+
+        if !handled {
+            self.remove_window(window_id);
+
+            if self.windows.is_empty() {
+                self.requests.push(AppRequest::Quit);
+            }
         }
+
+        !handled
     }
 
     /// A window was resized.
@@ -183,6 +194,16 @@ impl<T> App<T> {
         });
 
         self.window_event(data, window_id, &event);
+    }
+
+    /// A window was scaled.
+    pub fn window_scaled(&mut self, _data: &mut T, window_id: WindowId, scale: f32) {
+        if let Some(window_state) = self.windows.get_mut(&window_id) {
+            window_state.view_state.request_layout();
+            window_state.window.scale = scale;
+
+            self.requests.push(AppRequest::RequestRedraw(window_id));
+        }
     }
 
     /// A pointer moved.
@@ -218,7 +239,7 @@ impl<T> App<T> {
 
         window_state.window.remove_pointer(pointer_id);
 
-        let event = Event::PointerLeft(pointer_id);
+        let event = Event::PointerLeft(PointerLeft { id: pointer_id });
 
         self.window_event(data, window_id, &event);
     }
@@ -359,6 +380,7 @@ impl<T> App<T> {
     /// Remove a window from the application.
     pub fn remove_window(&mut self, window_id: WindowId) {
         self.windows.remove(&window_id);
+        self.requests.push(AppRequest::CloseWindow(window_id));
     }
 
     /// Get a window by id.
@@ -381,9 +403,28 @@ impl<T> App<T> {
         std::mem::take(&mut self.requests).into_iter()
     }
 
+    fn handle_app_command(&mut self, data: &mut T, command: AppCommand) {
+        match command {
+            AppCommand::OpenWindow(window, mut ui) => {
+                let builder: UiBuilder<T> = Box::new(move |_| any(opaque(ui())));
+                self.add_window(data, builder, window);
+            }
+            AppCommand::CloseWindow(window_id) => self.remove_window(window_id),
+            AppCommand::Quit => self.requests.push(AppRequest::Quit),
+        }
+    }
+
     /// Handle all pending commands.
     pub fn handle_commands(&mut self, data: &mut T) {
         while let Some(command) = self.receiver.try_recv() {
+            // if the command is an AppCommand we handle it here
+            if command.is::<AppCommand>() {
+                let app_command = command.to_any().downcast().unwrap();
+                self.handle_app_command(data, *app_command);
+
+                continue;
+            }
+
             self.event(data, &Event::Command(command));
         }
     }

@@ -11,6 +11,11 @@ pub struct PointerId {
 }
 
 impl PointerId {
+    /// Create a new pointer id from a [`u64`].
+    pub const fn from_u64(id: u64) -> Self {
+        Self { id }
+    }
+
     /// Create a new pointer id from a hashable value.
     pub fn from_hash(hash: &impl Hash) -> Self {
         let mut hasher = seahash::SeaHasher::new();
@@ -19,6 +24,11 @@ impl PointerId {
         Self {
             id: hasher.finish(),
         }
+    }
+
+    /// Get the unique id as a [`u64`].
+    pub const fn as_u64(&self) -> u64 {
+        self.id
     }
 }
 
@@ -45,7 +55,7 @@ pub enum PointerButton {
 }
 
 /// A pointer was moved.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct PointerMoved {
     /// The unique id of the pointer.
     pub id: PointerId,
@@ -60,8 +70,15 @@ pub struct PointerMoved {
     pub modifiers: Modifiers,
 }
 
+/// A pointer left the window.
+#[derive(Clone, Debug, PartialEq, Hash)]
+pub struct PointerLeft {
+    /// The unique id of the pointer.
+    pub id: PointerId,
+}
+
 /// A pointer button was pressed.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct PointerPressed {
     /// The unique id of the pointer.
     pub id: PointerId,
@@ -77,7 +94,7 @@ pub struct PointerPressed {
 }
 
 /// A pointer button was released.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct PointerReleased {
     /// The unique id of the pointer.
     pub id: PointerId,
@@ -96,7 +113,7 @@ pub struct PointerReleased {
 }
 
 /// A pointer wheel was scrolled.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct PointerScrolled {
     /// The unique id of the pointer.
     pub id: PointerId,

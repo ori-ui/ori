@@ -29,7 +29,7 @@ pub use ori_winit::launch;
 pub mod prelude {
     //! Convenient imports for Ori.
 
-    pub use ori_app::{App, AppBuilder, Delegate, DelegateCx};
+    pub use ori_app::{App, AppBuilder, AppCommand, Delegate, DelegateCx};
 
     #[allow(unused_imports)]
     pub use ori_core::{

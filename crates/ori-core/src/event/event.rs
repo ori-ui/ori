@@ -3,8 +3,8 @@ use std::any::Any;
 use crate::command::Command;
 
 use super::{
-    KeyPressed, KeyReleased, PointerId, PointerMoved, PointerPressed, PointerReleased,
-    PointerScrolled, WindowResized,
+    CloseRequested, KeyPressed, KeyReleased, PointerLeft, PointerMoved, PointerPressed,
+    PointerReleased, PointerScrolled, WindowResized,
 };
 
 /// An event that can be sent to a view.
@@ -13,11 +13,14 @@ pub enum Event {
     /// The window was resized.
     WindowResized(WindowResized),
 
+    /// The window requested to be close.
+    CloseRequested(CloseRequested),
+
     /// A pointer moved.
     PointerMoved(PointerMoved),
 
     /// A pointer left the window.
-    PointerLeft(PointerId),
+    PointerLeft(PointerLeft),
 
     /// A pointer button was pressed.
     PointerPressed(PointerPressed),
@@ -45,11 +48,6 @@ pub enum Event {
 }
 
 impl Event {
-    /// Create a new command event.
-    pub fn command(command: impl Any + Send) -> Self {
-        Event::Command(Command::new(command))
-    }
-
     /// Check if the event is a command of a specific type.
     pub fn is_cmd<T: Any>(&self) -> bool {
         match self {

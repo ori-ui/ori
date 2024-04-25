@@ -40,22 +40,26 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
 
     /// Prepare a text buffer for rasterization.
     pub fn prepare_text(&mut self, buffer: &TextBuffer) {
-        self.fonts().prepare_text(buffer.raw());
+        let scale = self.window().scale;
+        self.fonts().prepare_text(buffer.raw(), scale);
     }
 
     /// Prepare a raw cosmic text buffer for rasterization.
     pub fn prepare_text_raw(&mut self, buffer: &Buffer) {
-        self.fonts().prepare_text(buffer);
+        let scale = self.window().scale;
+        self.fonts().prepare_text(buffer, scale);
     }
 
     /// Create a mesh for the given text buffer.
     pub fn rasterize_text(&mut self, buffer: &TextBuffer) -> Mesh {
-        self.fonts().rasterize_text(buffer.raw())
+        let scale = self.window().scale;
+        self.fonts().rasterize_text(buffer.raw(), scale)
     }
 
     /// Create a mesh for the given raw cosmic text buffer.
     pub fn rasterize_text_raw(&mut self, buffer: &Buffer) -> Mesh {
-        self.fonts().rasterize_text(buffer)
+        let scale = self.window().scale;
+        self.fonts().rasterize_text(buffer, scale)
     }
 
     /// Get the id of the view.

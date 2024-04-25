@@ -9,6 +9,7 @@ use ori_core::{
     event::{
         CloseRequested, Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId,
         PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled, WindowResized,
+        WindowScaled,
     },
     layout::{Point, Size, Space, Vector},
     style::Styles,
@@ -197,13 +198,18 @@ impl<T> App<T> {
     }
 
     /// A window was scaled.
-    pub fn window_scaled(&mut self, _data: &mut T, window_id: WindowId, scale: f32) {
+    pub fn window_scaled(&mut self, data: &mut T, window_id: WindowId, scale: f32) {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             window_state.view_state.request_layout();
             window_state.window.scale = scale;
-
-            self.requests.push(AppRequest::RequestRedraw(window_id));
         }
+
+        let event = Event::WindowScaled(WindowScaled {
+            window: window_id,
+            scale_factor: scale,
+        });
+
+        self.window_event(data, window_id, &event);
     }
 
     /// A pointer moved.

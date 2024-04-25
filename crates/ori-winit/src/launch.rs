@@ -367,7 +367,9 @@ impl<T> WinitState<T> {
             WindowEvent::Resized(inner_size) => {
                 (self.app).window_resized(&mut self.data, id, inner_size.width, inner_size.height);
             }
-            WindowEvent::ScaleFactorChanged { .. } => {}
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                (self.app).window_scaled(&mut self.data, id, scale_factor as f32);
+            }
             WindowEvent::CursorMoved {
                 device_id,
                 position,

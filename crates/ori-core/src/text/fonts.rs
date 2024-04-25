@@ -139,9 +139,9 @@ impl Fonts {
     }
 
     /// Prepare a text buffer for rasterization.
-    pub fn prepare_text(&mut self, buffer: &Buffer) {
+    pub fn prepare_text(&mut self, buffer: &Buffer, scale: f32) {
         loop {
-            if self.try_prepare_text(buffer) {
+            if self.try_prepare_text(buffer, scale) {
                 break;
             }
 
@@ -149,13 +149,14 @@ impl Fonts {
         }
     }
 
-    fn try_prepare_text(&mut self, buffer: &Buffer) -> bool {
+    fn try_prepare_text(&mut self, buffer: &Buffer, scale: f32) -> bool {
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
                 let rasterized = self.font_atlas.rasterize_glyph(
                     &mut self.swash_cache,
                     &mut self.font_system,
                     glyph,
+                    scale,
                 );
 
                 if rasterized.is_none() {
@@ -171,13 +172,13 @@ impl Fonts {
     ///
     /// This involves shapind the text, rasterizing the glyphs, laying out the glyphs,
     /// and creating the mesh itself, and should ideally be done as little as possible.
-    pub fn rasterize_text(&mut self, buffer: &Buffer) -> Mesh {
+    pub fn rasterize_text(&mut self, buffer: &Buffer, scale: f32) -> Mesh {
         // if rasterizing returns None, it means the font atlas is full
         // so we need to grow it and try again
         //
         // TODO: handle the case where the font atlas is full and we can't grow it
         loop {
-            if let Some(mesh) = self.try_rasterize_text(buffer) {
+            if let Some(mesh) = self.try_rasterize_text(buffer, scale) {
                 break mesh;
             }
 
@@ -185,7 +186,7 @@ impl Fonts {
         }
     }
 
-    fn try_rasterize_text(&mut self, buffer: &Buffer) -> Option<Mesh> {
+    fn try_rasterize_text(&mut self, buffer: &Buffer, scale: f32) -> Option<Mesh> {
         let mut mesh = Mesh::new();
         let mut glyphs = Vec::<(Rect, Rect, Color)>::new();
 
@@ -195,6 +196,7 @@ impl Fonts {
                     &mut self.swash_cache,
                     &mut self.font_system,
                     glyph,
+                    scale,
                 )?;
 
                 let physical = glyph.physical((0.0, 0.0), 1.0);

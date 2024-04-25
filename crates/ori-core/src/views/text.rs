@@ -167,6 +167,13 @@ impl<T> View<T> for Text {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+        if self.font_size != old.font_size || self.line_height != old.line_height {
+            (state.buffer).set_metrics(cx.fonts(), self.font_size, self.line_height);
+
+            state.mesh.take();
+            cx.request_layout();
+        }
+
         if self.wrap != old.wrap {
             state.buffer.set_wrap(cx.fonts(), self.wrap);
 

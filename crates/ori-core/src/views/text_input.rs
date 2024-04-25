@@ -366,6 +366,20 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+        if self.font_size != old.font_size || self.line_height != old.line_height {
+            state.buffer_mut().set_metrics(
+                &mut cx.fonts().font_system,
+                Metrics {
+                    font_size: self.font_size,
+                    line_height: self.line_height * self.font_size,
+                },
+            );
+
+            (state.placeholder).set_metrics(cx.fonts(), self.font_size, self.line_height);
+
+            cx.request_layout();
+        }
+
         if self.wrap != old.wrap {
             (state.buffer_mut()).set_wrap(&mut cx.fonts().font_system, self.wrap.to_cosmic_text());
             state.placeholder.set_wrap(cx.fonts(), self.wrap);

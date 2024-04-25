@@ -14,8 +14,10 @@ pub struct CloseRequested {
 pub struct WindowResized {
     /// The window that was resized.
     pub window: WindowId,
+
     /// The new width of the window.
     pub width: u32,
+
     /// The new height of the window.
     pub height: u32,
 }
@@ -25,4 +27,14 @@ impl WindowResized {
     pub fn size(&self) -> Size {
         Size::new(self.width as f32, self.height as f32)
     }
+}
+
+/// Event emitted when a window is scaled.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WindowScaled {
+    /// The window that was scaled.
+    pub window: WindowId,
+
+    /// The new scale factor of the window.
+    pub scale_factor: f32,
 }

@@ -4,17 +4,21 @@ use crate::command::Command;
 
 use super::{
     CloseRequested, KeyPressed, KeyReleased, PointerLeft, PointerMoved, PointerPressed,
-    PointerReleased, PointerScrolled, WindowResized,
+    PointerReleased, PointerScrolled, WindowResized, WindowScaled,
 };
 
 /// An event that can be sent to a view.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Event {
     /// The window was resized.
     WindowResized(WindowResized),
 
     /// The window requested to be close.
     CloseRequested(CloseRequested),
+
+    /// The window was scaled.
+    WindowScaled(WindowScaled),
 
     /// A pointer moved.
     PointerMoved(PointerMoved),

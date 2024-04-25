@@ -246,6 +246,10 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     ) {
         Rebuild::rebuild(self, cx, old);
 
+        if self.font_size != old.font_size || self.line_height != old.line_height {
+            (state.buffer).set_metrics(cx.fonts(), self.font_size, self.line_height);
+        }
+
         if self.wrap != old.wrap {
             state.buffer.set_wrap(cx.fonts(), self.wrap);
         }

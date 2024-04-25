@@ -94,13 +94,17 @@ impl FontAtlas {
     /// Rasterizes a glyph and returns its [`Rect`] in the atlas.
     ///
     /// Returns `None` if the atlas is full, in which case [`FontAtlas::grow`], should be called.
+    ///
+    /// Note that `scale` will scale the size of the rendered glyph, but will not affect the layout.
+    /// `scale` should be set to the `scale_factor` of the window.
     pub fn rasterize_glyph(
         &mut self,
         cache: &mut SwashCache,
         font_system: &mut FontSystem,
         glyph: &LayoutGlyph,
+        scale: f32,
     ) -> Option<RasterizedGlyph> {
-        let physical = glyph.physical((0.0, 0.0), 1.0);
+        let physical = glyph.physical((0.0, 0.0), scale);
 
         // check the cache
         if let Some(&glyph) = self.glyphs.get(&physical.cache_key) {
@@ -164,7 +168,12 @@ impl FontAtlas {
 
         let min = Point::new(min_x as f32, min_y as f32) + Self::PADDING as f32;
         let uv = Rect::min_size(min / self.size() as f32, size / self.size() as f32);
-        let glyph = RasterizedGlyph { uv, offset, size };
+
+        let glyph = RasterizedGlyph {
+            uv,
+            offset: offset / scale,
+            size: size / scale,
+        };
 
         // cache the glyph, this is very important!
         self.glyphs.insert(physical.cache_key, glyph);

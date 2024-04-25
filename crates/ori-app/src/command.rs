@@ -8,7 +8,7 @@ use ori_core::{
 /// # Example
 /// ```no_run
 /// # use ori_core::{view::View, views::*, context::*};
-/// # use crate::AppCommand;
+/// # use ori_app::AppCommand;
 /// fn ui() -> impl View {
 ///     // Here we create a button that quits the application when clicked.
 ///     on_click(
@@ -39,8 +39,8 @@ impl AppCommand {
     ///
     /// # Example
     /// ```no_run
-    /// # use ori_core::{view::View, views::*, context::*};
-    /// # use crate::AppCommand;
+    /// # use ori_core::{view::View, views::*, context::*, window::Window};
+    /// # use ori_app::AppCommand;
     /// fn ui() -> impl View {
     ///     // Here we create a button that opens a new window when clicked.
     ///     on_click(

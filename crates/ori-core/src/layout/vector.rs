@@ -47,9 +47,18 @@ impl Vector {
     }
 
     /// Create a new vector from an angle.
+    ///
+    /// ```
+    /// # use ori_core::layout::Vector;
+    /// let x = std::f32::consts::FRAC_PI_3;
+    /// let v = Vector::from_angle(x);
+    ///
+    /// assert_eq!(v.x, x.cos());
+    /// assert_eq!(v.y, x.sin());
+    /// ```
     pub fn from_angle(angle: f32) -> Self {
         let (sin, cos) = angle.sin_cos();
-        Self::new(sin, cos)
+        Self::new(cos, sin)
     }
 
     /// Get the min of self and other by element.

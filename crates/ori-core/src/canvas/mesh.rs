@@ -77,10 +77,18 @@ impl Mesh {
 
     /// Extend the mesh with the vertices and indices of `other` transformed by `transform`,
     /// rounding every position.
-    pub fn extend_transformed_pixel_perfect(&mut self, other: &Self, transform: Affine) {
+    pub fn extend_transformed_pixel_perfect(
+        &mut self,
+        other: &Self,
+        transform: Affine,
+        scale: f32,
+    ) {
         self.extend_with(other, |mut vertex| {
             vertex = vertex.transform(transform);
-            vertex.position = vertex.position.round();
+
+            let position = vertex.position * scale;
+            vertex.position = position.round() / scale;
+
             vertex
         })
     }

@@ -62,7 +62,7 @@ impl Curve {
             let da = Vector::normalize(curr - prev);
             let db = Vector::normalize(next - curr);
 
-            let miter = da.hat() + db.hat();
+            let miter = (da.hat() + db.hat()) / 2.0;
 
             if miter.length() < MITER_LIMIT {
                 let offset = miter * radius;

@@ -6,12 +6,19 @@ use crate::UiBuilder;
 pub enum AppRequest<T> {
     /// Open a new window.
     OpenWindow(Window, UiBuilder<T>),
+
     /// Close a window.
     CloseWindow(WindowId),
+
+    /// Drag a window.
+    DragWindow(WindowId),
+
     /// Redraw a window.
     RequestRedraw(WindowId),
+
     /// Update a window.
     UpdateWindow(WindowId, WindowUpdate),
+
     /// Quit the application.
     Quit,
 }

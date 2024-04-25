@@ -411,6 +411,9 @@ impl<T> App<T> {
             AppCommand::CloseWindow(window_id) => {
                 self.requests.push(AppRequest::CloseWindow(window_id));
             }
+            AppCommand::DragWindow(window_id) => {
+                self.requests.push(AppRequest::DragWindow(window_id));
+            }
             AppCommand::Quit => {
                 self.requests.push(AppRequest::Quit);
             }

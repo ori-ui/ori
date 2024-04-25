@@ -24,6 +24,9 @@ pub enum AppCommand {
     /// Close a window.
     CloseWindow(WindowId),
 
+    /// Drag a window.
+    DragWindow(WindowId),
+
     /// Quit the application.
     Quit,
 }

@@ -137,6 +137,13 @@ impl<T> WinitState<T> {
                 self.renders.remove(&id);
                 self.app.remove_window(id);
             }
+            AppRequest::DragWindow(id) => {
+                if let Some(state) = self.renders.get_mut(&id) {
+                    if let Err(err) = state.window.drag_window() {
+                        tracing::warn!("Failed to drag window: {}", err);
+                    }
+                }
+            }
             AppRequest::RequestRedraw(id) => {
                 if let Some(state) = self.renders.get_mut(&id) {
                     state.window.request_redraw();

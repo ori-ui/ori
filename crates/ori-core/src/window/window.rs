@@ -226,7 +226,7 @@ impl Window {
     }
 
     /// Get whether `button` is held down on pointer with `pointer_id`.
-    pub fn pointer_held(&self, pointer_id: PointerId, button: PointerButton) -> bool {
+    pub fn is_pointer_held(&self, pointer_id: PointerId, button: PointerButton) -> bool {
         match self.get_pointer(pointer_id) {
             Some(pointer) => pointer.is_pressed(button),
             None => false,

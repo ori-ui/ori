@@ -342,6 +342,13 @@ impl<T> WinitState<T> {
         Ok(())
     }
 
+    fn scale_factor(&self, window_id: ori_core::window::WindowId) -> f32 {
+        match self.renders.get(&window_id) {
+            Some(state) => state.window.scale_factor() as f32,
+            None => 1.0,
+        }
+    }
+
     fn window_event(&mut self, winit_id: winit::window::WindowId, event: WindowEvent) {
         // if the window id is not in the map, we ignore the event
         let Some(&id) = self.window_ids.get(&winit_id) else {
@@ -366,7 +373,7 @@ impl<T> WinitState<T> {
                 position,
                 ..
             } => {
-                let scale_factor = self.app.get_window(id).map_or(1.0, |w| w.scale);
+                let scale_factor = self.scale_factor(id);
                 let position = Point::new(position.x as f32, position.y as f32) / scale_factor;
                 self.app.pointer_moved(
                     &mut self.data,
@@ -441,7 +448,7 @@ impl<T> WinitState<T> {
     }
 
     fn touch_event(&mut self, window_id: ori_core::window::WindowId, event: winit::event::Touch) {
-        let scale_factor = (self.app.get_window(window_id)).map_or(1.0, |w| w.scale);
+        let scale_factor = self.scale_factor(window_id);
         let position = Point::new(event.location.x as f32, event.location.y as f32) / scale_factor;
         let pointer_id = PointerId::from_hash(&event.device_id);
 

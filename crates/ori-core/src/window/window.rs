@@ -225,6 +225,14 @@ impl Window {
         (self.pointers.iter()).any(|pointer| pointer.hovering == Some(view_id))
     }
 
+    /// Get whether `button` is held down on pointer with `pointer_id`.
+    pub fn pointer_held(&self, pointer_id: PointerId, button: PointerButton) -> bool {
+        match self.get_pointer(pointer_id) {
+            Some(pointer) => pointer.is_pressed(button),
+            None => false,
+        }
+    }
+
     /// Get the pointer with `pointer_id`.
     pub fn get_pointer(&self, pointer_id: PointerId) -> Option<&Pointer> {
         (self.pointers.iter()).find(|pointer| pointer.id() == pointer_id)

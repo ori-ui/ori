@@ -63,14 +63,7 @@ impl Pointer {
                 let distance = position.distance(self.position);
                 distance < 10.0
             }
-            None => {
-                tracing::warn!(
-                    button = ?button,
-                    "A pointer button was released without being pressed.",
-                );
-
-                false
-            }
+            None => false,
         }
     }
 }

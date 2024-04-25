@@ -187,6 +187,10 @@ impl Fonts {
     }
 
     fn try_rasterize_text(&mut self, buffer: &Buffer, scale: f32) -> Option<Mesh> {
+        fn round_point(point: Point, scale: f32) -> Point {
+            Point::round(point * scale) / scale
+        }
+
         let mut mesh = Mesh::new();
         let mut glyphs = Vec::<(Rect, Rect, Color)>::new();
 
@@ -222,22 +226,22 @@ impl Fonts {
             let index = mesh.vertices.len() as u32;
 
             mesh.vertices.push(Vertex {
-                position: rect.top_left(),
+                position: round_point(rect.top_left(), scale),
                 tex_coords: uv.top_left(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.top_right(),
+                position: round_point(rect.top_right(), scale),
                 tex_coords: uv.top_right(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.bottom_right(),
+                position: round_point(rect.bottom_right(), scale),
                 tex_coords: uv.bottom_right(),
                 color,
             });
             mesh.vertices.push(Vertex {
-                position: rect.bottom_left(),
+                position: round_point(rect.bottom_left(), scale),
                 tex_coords: uv.bottom_left(),
                 color,
             });

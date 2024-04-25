@@ -91,7 +91,7 @@ impl Scene {
 
     /// Get the batches in the scene.
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
-    pub fn batches(&self, scale: f32) -> Vec<Batch> {
+    pub fn batches(&self) -> Vec<Batch> {
         let mut batches = Vec::new();
 
         let mut mesh = Mesh::new();
@@ -115,11 +115,7 @@ impl Scene {
                 });
             }
 
-            if fragment.pixel_perfect && fragment.primitive.is_mesh() {
-                mesh.extend_transformed_pixel_perfect(&fragment_mesh, fragment.transform, scale);
-            } else {
-                mesh.extend_transformed(&fragment_mesh, fragment.transform);
-            }
+            mesh.extend_transformed(&fragment_mesh, fragment.transform);
 
             mesh.texture = fragment_mesh.texture;
 

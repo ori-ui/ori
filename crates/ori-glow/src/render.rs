@@ -94,7 +94,7 @@ impl GlowRender {
         logical_size: Size,
         scale_factor: f32,
     ) -> Result<(), GlowError> {
-        let batches = scene.batches(scale_factor);
+        let batches = scene.batches();
 
         self.gl.clear_color(clear.r, clear.g, clear.b, clear.a);
         self.gl.clear(glow::COLOR_BUFFER_BIT);

@@ -228,7 +228,7 @@ impl BoxShadow {
 
         let tr_start_inner = mesh.vertices.len();
         let tr_start_outer = tr_start_inner + 1;
-        self.add_corner(&mut mesh, tr, 1, tr_radius, PI / 2.0);
+        self.add_corner(&mut mesh, tr, 1, tr_radius, -PI / 2.0);
         let tr_end_outer = mesh.vertices.len() - 1;
         let tr_end_inner = tr_end_outer - 1;
 
@@ -240,48 +240,48 @@ impl BoxShadow {
 
         let bl_start_inner = mesh.vertices.len();
         let bl_start_outer = bl_start_inner + 1;
-        self.add_corner(&mut mesh, bl, 2, bl_radius, -PI / 2.0);
+        self.add_corner(&mut mesh, bl, 2, bl_radius, PI / 2.0);
         let bl_end_outer = mesh.vertices.len() - 1;
         let bl_end_inner = bl_end_outer - 1;
 
         Self::connect_corners(
             &mut mesh,
             0,
-            tr_end_inner as u32,
-            tr_end_outer as u32,
+            tl_end_inner as u32,
+            tl_end_outer as u32,
             1,
-            tl_start_inner as u32,
-            tl_start_outer as u32,
-        );
-
-        Self::connect_corners(
-            &mut mesh,
-            1,
-            br_end_inner as u32,
-            br_end_outer as u32,
-            3,
             tr_start_inner as u32,
             tr_start_outer as u32,
         );
 
         Self::connect_corners(
             &mut mesh,
+            1,
+            tr_end_inner as u32,
+            tr_end_outer as u32,
             3,
-            bl_end_inner as u32,
-            bl_end_outer as u32,
-            2,
             br_start_inner as u32,
             br_start_outer as u32,
         );
 
         Self::connect_corners(
             &mut mesh,
+            3,
+            br_end_inner as u32,
+            br_end_outer as u32,
             2,
-            tl_end_inner as u32,
-            tl_end_outer as u32,
-            0,
             bl_start_inner as u32,
             bl_start_outer as u32,
+        );
+
+        Self::connect_corners(
+            &mut mesh,
+            2,
+            bl_end_inner as u32,
+            bl_end_outer as u32,
+            0,
+            tl_start_inner as u32,
+            tl_start_outer as u32,
         );
 
         mesh

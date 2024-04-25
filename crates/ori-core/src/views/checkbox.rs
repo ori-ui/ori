@@ -211,6 +211,8 @@ impl<T> View<T> for Checkbox {
     fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T, canvas: &mut Canvas) {
         let bright = self.border_color.lighten(0.2);
 
+        canvas.set_hoverable(cx.id());
+
         canvas.draw_quad(
             cx.rect(),
             self.background.clone(),

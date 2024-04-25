@@ -54,8 +54,8 @@ impl Quad {
         let widths: [f32; 4] = self.border_width.into();
 
         let radius = radi[index];
-        let start_width = widths[index];
-        let end_width = widths[(index + 3) % 4];
+        let start_width = widths[(index + 3) % 4];
+        let end_width = widths[index];
 
         (radius, start_width, end_width)
     }
@@ -192,36 +192,36 @@ impl Quad {
         // add the corner vertices
         let tl_index = mesh.vertices.len() as u32;
         self.add_corner(&mut mesh, center_index, tl, PI, 0);
-        let bl_index = mesh.vertices.len() as u32;
-        self.add_corner(&mut mesh, center_index, bl, -FRAC_PI_2, 3);
+        let tr_index = mesh.vertices.len() as u32;
+        self.add_corner(&mut mesh, center_index, tr, -FRAC_PI_2, 1);
         let br_index = mesh.vertices.len() as u32;
         self.add_corner(&mut mesh, center_index, br, 0.0, 2);
-        let tr_index = mesh.vertices.len() as u32;
-        self.add_corner(&mut mesh, center_index, tr, FRAC_PI_2, 1);
+        let bl_index = mesh.vertices.len() as u32;
+        self.add_corner(&mut mesh, center_index, bl, FRAC_PI_2, 3);
         let end_index = mesh.vertices.len() as u32 - 1;
 
         // connect the corner vertices
         Self::connect_corners(&mut mesh, center_index, end_index, tl_index);
-        Self::connect_corners(&mut mesh, center_index, bl_index - 1, bl_index);
-        Self::connect_corners(&mut mesh, center_index, br_index - 1, br_index);
         Self::connect_corners(&mut mesh, center_index, tr_index - 1, tr_index);
+        Self::connect_corners(&mut mesh, center_index, br_index - 1, br_index);
+        Self::connect_corners(&mut mesh, center_index, bl_index - 1, bl_index);
 
         // add the border vertices
         let tl_index = mesh.vertices.len() as u32;
         let tl_border = self.add_border_corner(&mut mesh, tl, PI, 0);
-        let bl_index = mesh.vertices.len() as u32;
-        let bl_border = self.add_border_corner(&mut mesh, bl, -FRAC_PI_2, 3);
+        let tr_index = mesh.vertices.len() as u32;
+        let tr_border = self.add_border_corner(&mut mesh, tr, -FRAC_PI_2, 1);
         let br_index = mesh.vertices.len() as u32;
         let br_border = self.add_border_corner(&mut mesh, br, 0.0, 2);
-        let tr_index = mesh.vertices.len() as u32;
-        let tr_border = self.add_border_corner(&mut mesh, tr, FRAC_PI_2, 1);
+        let bl_index = mesh.vertices.len() as u32;
+        let bl_border = self.add_border_corner(&mut mesh, bl, FRAC_PI_2, 3);
         let end_index = mesh.vertices.len() as u32 - 2;
 
         // connect the border vertices
-        Self::connect_border(&mut mesh, tr_border && tl_border, end_index, tl_index);
-        Self::connect_border(&mut mesh, tl_border && bl_border, bl_index - 2, bl_index);
-        Self::connect_border(&mut mesh, bl_border && br_border, br_index - 2, br_index);
-        Self::connect_border(&mut mesh, br_border && tr_border, tr_index - 2, tr_index);
+        Self::connect_border(&mut mesh, bl_border && tl_border, end_index, tl_index);
+        Self::connect_border(&mut mesh, tl_border && tr_border, tr_index - 2, tr_index);
+        Self::connect_border(&mut mesh, tr_border && br_border, br_index - 2, br_index);
+        Self::connect_border(&mut mesh, br_border && bl_border, bl_index - 2, bl_index);
 
         mesh
     }

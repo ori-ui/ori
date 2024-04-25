@@ -63,9 +63,10 @@ impl Curve {
             let db = Vector::normalize(next - curr);
 
             let miter = (da.hat() + db.hat()) / 2.0;
+            let miter_length = 1.0 / miter.length();
 
-            if miter.length() < MITER_LIMIT {
-                let offset = miter * radius;
+            if miter_length < MITER_LIMIT {
+                let offset = miter.normalize() * radius * miter_length;
 
                 // miter is within the limit, so we can use a miter join
                 let c = mesh.vertices.len();

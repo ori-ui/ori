@@ -12,7 +12,7 @@ use crate::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
     },
-    view::View,
+    view::{Pod, State, View},
 };
 
 use super::TextStyle;
@@ -103,7 +103,7 @@ impl Style for TooltipStyle {
 #[derive(Rebuild)]
 pub struct Tooltip<V> {
     /// The content to display.
-    pub content: V,
+    pub content: Pod<V>,
 
     /// The text to display.
     #[rebuild(layout)]
@@ -178,7 +178,7 @@ impl<V> Tooltip<V> {
     /// Create a new tooltip view with a style.
     pub fn styled(content: V, text: impl Into<SmolStr>, style: TooltipStyle) -> Self {
         Self {
-            content,
+            content: Pod::new(content),
             text: text.into(),
             delay: style.delay,
             padding: style.padding,
@@ -223,7 +223,7 @@ pub struct TooltipState {
 }
 
 impl<T, V: View<T>> View<T> for Tooltip<V> {
-    type State = (TooltipState, V::State);
+    type State = (TooltipState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut state = TooltipState {
@@ -299,13 +299,13 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
             Event::PointerMoved(e) => {
                 state.timer = 0.0;
 
-                if cx.is_hot() || cx.has_hot() {
+                if content.has_hot() {
                     state.position = e.position;
                     cx.animate();
                 }
             }
             Event::Animate(dt) => {
-                if cx.is_hot() || cx.has_hot() && state.timer < 1.0 {
+                if content.has_hot() && state.timer < 1.0 {
                     state.timer += dt / self.delay;
                     cx.animate();
                 }

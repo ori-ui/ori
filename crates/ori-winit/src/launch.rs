@@ -77,6 +77,7 @@ pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
 
 struct WindowState {
     window: winit::window::Window,
+    #[cfg(not(target_arch = "wasm32"))]
     context: ori_glow::GlutinContext,
     render: ori_glow::GlowRender,
 }
@@ -88,10 +89,8 @@ struct WinitState<T> {
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
 
     /* glow */
-    #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
+    #[cfg(feature = "glow")]
     renders: HashMap<ori_core::window::WindowId, WindowState>,
-    #[cfg(all(feature = "glow", target_arch = "wasm32"))]
-    renders: HashMap<ori_core::window::WindowId, ori_glow::GlowRender>,
 }
 
 impl<T> WinitState<T> {
@@ -238,15 +237,12 @@ impl<T> WinitState<T> {
     fn idle(&mut self) {
         self.app.idle(&mut self.data);
 
-        #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
+        #[cfg(feature = "glow")]
         for state in self.renders.values_mut() {
+            #[cfg(not(target_arch = "wasm32"))]
             let _ = state.context.make_current().is_ok();
-            state.render.clean();
-        }
 
-        #[cfg(all(feature = "glow", target_arch = "wasm32"))]
-        for render in self.renders.values_mut() {
-            render.clean();
+            state.render.clean();
         }
     }
 
@@ -314,14 +310,16 @@ impl<T> WinitState<T> {
         };
 
         /* glow */
-        #[cfg(all(feature = "glow", not(target_arch = "wasm32")))]
+        #[cfg(feature = "glow")]
         if let Some(state) = self.renders.get_mut(&window_id) {
             let size = state.window.inner_size();
 
             // resize the context if necessary
             state.context.resize(size.width, size.height);
 
+            #[cfg(not(target_arch = "wasm32"))]
             state.context.make_current()?;
+
             state.render.render_scene(
                 scene.scene,
                 scene.clear_color,
@@ -330,12 +328,8 @@ impl<T> WinitState<T> {
                 state.window.scale_factor() as f32,
             )?;
 
+            #[cfg(not(target_arch = "wasm32"))]
             state.context.swap_buffers()?;
-        }
-
-        #[cfg(all(feature = "glow", target_arch = "wasm32"))]
-        if let Some(render) = self.renders.get_mut(&window_id) {
-            render.render_scene(scene, clear_color, logical, physical, scale_factor)?;
         }
 
         Ok(())

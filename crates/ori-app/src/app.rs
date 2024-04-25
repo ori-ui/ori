@@ -380,7 +380,6 @@ impl<T> App<T> {
     /// Remove a window from the application.
     pub fn remove_window(&mut self, window_id: WindowId) {
         self.windows.remove(&window_id);
-        self.requests.push(AppRequest::CloseWindow(window_id));
     }
 
     /// Get a window by id.
@@ -409,8 +408,12 @@ impl<T> App<T> {
                 let builder: UiBuilder<T> = Box::new(move |_| any(opaque(ui())));
                 self.add_window(data, builder, window);
             }
-            AppCommand::CloseWindow(window_id) => self.remove_window(window_id),
-            AppCommand::Quit => self.requests.push(AppRequest::Quit),
+            AppCommand::CloseWindow(window_id) => {
+                self.requests.push(AppRequest::CloseWindow(window_id));
+            }
+            AppCommand::Quit => {
+                self.requests.push(AppRequest::Quit);
+            }
         }
     }
 

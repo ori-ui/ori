@@ -56,7 +56,7 @@ pub mod prelude {
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
             TextAlign, TextBuffer, TextWrap,
         },
-        transition::{ease, linear, Transition, TransitionCurve},
+        transition::{ease, linear, Easing, Transition},
         view::{
             any, pod, AnyView, BoxedView, Pod, PodSeq, SeqState, State, View, ViewSeq, ViewState,
         },

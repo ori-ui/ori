@@ -10,10 +10,10 @@ pub fn ease(duration: f32) -> Transition {
     Transition::ease(duration)
 }
 
-/// A transition curve.
+/// A transition easing curve.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum TransitionCurve {
+pub enum Easing {
     /// A linear transition curve.
     #[default]
     Linear,
@@ -22,12 +22,12 @@ pub enum TransitionCurve {
     Ease,
 }
 
-impl TransitionCurve {
-    /// Evaluate the transition curve at `t`.
-    pub fn eval(self, t: f32) -> f32 {
+impl Easing {
+    /// Evaluate the easing at `t` where `0 <= t <= 1`.
+    pub fn evaluate(self, t: f32) -> f32 {
         match self {
-            TransitionCurve::Linear => t,
-            TransitionCurve::Ease => t * t * (3.0 - 2.0 * t),
+            Easing::Linear => t,
+            Easing::Ease => t * t * (3.0 - 2.0 * t),
         }
     }
 }
@@ -38,8 +38,8 @@ impl TransitionCurve {
 pub struct Transition {
     /// The duration of the transition.
     pub duration: f32,
-    /// The transition curve.
-    pub curve: TransitionCurve,
+    /// The easing curve.
+    pub easing: Easing,
 }
 
 impl Default for Transition {
@@ -53,7 +53,7 @@ impl Transition {
     pub fn linear(duration: f32) -> Self {
         Self {
             duration,
-            curve: TransitionCurve::Linear,
+            easing: Easing::Linear,
         }
     }
 
@@ -61,7 +61,7 @@ impl Transition {
     pub fn ease(duration: f32) -> Self {
         Self {
             duration,
-            curve: TransitionCurve::Ease,
+            easing: Easing::Ease,
         }
     }
 
@@ -91,6 +91,6 @@ impl Transition {
     /// The returned value is how _on_ the transition is at `t`.
     /// This is a range from 0.0 to 1.0.
     pub fn get(&self, t: f32) -> f32 {
-        self.curve.eval(t)
+        self.easing.evaluate(t)
     }
 }

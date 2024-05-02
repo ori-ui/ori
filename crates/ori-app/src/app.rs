@@ -102,44 +102,13 @@ impl<T> WindowState<T> {
         self.scene.sort();
     }
 
-    fn animate(&mut self) -> f32 {
-        match self.animate.take() {
-            Some(animate) => animate.elapsed().as_secs_f32(),
-            None => 0.0,
-        }
-    }
-
-    fn update_and_request_draw(&mut self, animate: Instant) -> Vec<AppRequest<T>> {
-        let mut redraw = false;
-
-        if self.view_state.needs_draw() {
-            redraw = true;
-        }
-
+    fn animate(&mut self, animate: Instant) -> Vec<AppRequest<T>> {
         if self.view_state.needs_animate() && self.animate.is_none() {
             self.animate = Some(animate);
-
-            redraw = true;
+            return vec![AppRequest::RequestRedraw(self.window.id())];
         }
 
-        let cursor = self.view_state.cursor().unwrap_or_default();
-
-        let mut requests = Vec::new();
-
-        if redraw {
-            requests.push(AppRequest::RequestRedraw(self.window.id()));
-        }
-
-        if cursor != self.cursor {
-            requests.push(AppRequest::UpdateWindow(
-                self.window.id(),
-                WindowUpdate::Cursor(cursor),
-            ));
-
-            self.cursor = cursor;
-        }
-
-        requests
+        Vec::new()
     }
 }
 
@@ -514,16 +483,31 @@ impl<T> App<T> {
         false
     }
 
-    fn request_window_updates(&mut self) {
+    fn handle_window_requests(&mut self) {
         for window_state in self.windows.values_mut() {
+            let id = window_state.window.id();
+
             let updates = window_state.snapshot.difference(&window_state.window);
+            window_state.snapshot = window_state.window.snapshot();
 
             for update in updates {
-                let request = AppRequest::UpdateWindow(window_state.window.id(), update);
-                self.requests.push(request);
+                self.requests.push(AppRequest::UpdateWindow(id, update));
             }
 
-            window_state.snapshot = window_state.window.snapshot();
+            if window_state.view_state.needs_draw()
+                || window_state.view_state.needs_layout()
+                || window_state.view_state.needs_animate()
+            {
+                self.requests.push(AppRequest::RequestRedraw(id));
+            }
+
+            let cursor = window_state.view_state.cursor().unwrap_or_default();
+            if window_state.cursor != cursor {
+                let update = WindowUpdate::Cursor(cursor);
+                self.requests.push(AppRequest::UpdateWindow(id, update));
+
+                window_state.cursor = cursor;
+            }
         }
     }
 
@@ -568,13 +552,13 @@ impl<T> App<T> {
 
         // update the window state after handling the event
         for window_state in self.windows.values_mut() {
-            let requests = window_state.update_and_request_draw(animate);
+            let requests = window_state.animate(animate);
             self.requests.extend(requests);
         }
 
         // handle any pending commands
         self.handle_commands(data);
-        self.request_window_updates();
+        self.handle_window_requests();
 
         event_handled
     }
@@ -612,13 +596,13 @@ impl<T> App<T> {
 
         // update the window state after handling the event
         if let Some(window_state) = self.windows.get_mut(&window_id) {
-            let requests = window_state.update_and_request_draw(animate);
+            let requests = window_state.animate(animate);
             self.requests.extend(requests);
         }
 
         // handle any pending commands
         self.handle_commands(data);
-        self.request_window_updates();
+        self.handle_window_requests();
 
         event_handled
     }
@@ -632,9 +616,14 @@ impl<T> App<T> {
                 // because there is no pod around the root
                 window_state.view_state.mark_animated();
 
+                let delta_time = match window_state.animate.take() {
+                    Some(t) => t.elapsed().as_secs_f32(),
+                    None => 0.0,
+                };
+
                 // we send an Animate event to the window, this uses the time since the last frame
                 // set in either the event, window_event, or draw_window functions
-                let event = Event::Animate(window_state.animate());
+                let event = Event::Animate(delta_time);
                 self.window_event(data, window_id, &event);
             }
         }
@@ -683,12 +672,12 @@ impl<T> App<T> {
         // we need to update the window state after layout and draw
         //
         // if somehow the a layout or draw has been requested we must tell the window to redraw
-        let requests = window_state.update_and_request_draw(animate);
+        let requests = window_state.animate(animate);
         self.requests.extend(requests);
 
         // handle any pending commands
         self.handle_commands(data);
-        self.request_window_updates();
+        self.handle_window_requests();
 
         let window_state = self.windows.get(&window_id)?;
 

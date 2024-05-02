@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use ori_macro::Build;
 
 use crate::{
@@ -69,6 +71,10 @@ pub struct Slider<T> {
     #[rebuild(draw)]
     pub value: f32,
 
+    /// The range of the slider.
+    #[rebuild(draw)]
+    pub range: RangeInclusive<f32>,
+
     /// The callback for when the value changes.
     #[build(ignore)]
     #[allow(clippy::type_complexity)]
@@ -117,6 +123,7 @@ impl<T> Slider<T> {
     pub fn styled(value: f32, style: SliderStyle) -> Self {
         Self {
             value,
+            range: 0.0..=1.0,
             on_input: None,
             axis: style.axis,
             width: style.width,
@@ -136,6 +143,16 @@ impl<T> Slider<T> {
     }
 }
 
+fn normalize(value: f32, range: &RangeInclusive<f32>) -> f32 {
+    let value = value.clamp(*range.start(), *range.end());
+    (value - range.start()) / (range.end() - range.start())
+}
+
+fn denormalize(value: f32, range: &RangeInclusive<f32>) -> f32 {
+    let value = value.clamp(0.0, 1.0);
+    value * (range.end() - range.start()) + range.start()
+}
+
 impl<T> View<T> for Slider<T> {
     type State = ();
 
@@ -152,7 +169,7 @@ impl<T> View<T> for Slider<T> {
 
                 if cx.is_hot() {
                     let value = self.axis.unpack(local).0 / self.length;
-                    let value = value.clamp(0.0, 1.0);
+                    let value = denormalize(value, &self.range);
 
                     if let Some(on_input) = &mut self.on_input {
                         on_input(cx, data, value);
@@ -163,10 +180,11 @@ impl<T> View<T> for Slider<T> {
                 }
             }
             Event::PointerMoved(e) => {
+                let local = cx.local(e.position);
+
                 if cx.is_active() {
-                    let local = cx.local(e.position);
                     let value = self.axis.unpack(local).0 / self.length;
-                    let value = value.clamp(0.0, 1.0);
+                    let value = denormalize(value, &self.range);
 
                     if let Some(on_input) = &mut self.on_input {
                         on_input(cx, data, value);
@@ -212,7 +230,7 @@ impl<T> View<T> for Slider<T> {
         );
 
         let (length, width) = self.axis.unpack(cx.size());
-        let value = self.value.clamp(0.0, 1.0);
+        let value = normalize(self.value, &self.range);
 
         let min_length = self.border_radius.max_element() * 2.0;
         let length = f32::max(length * value, min_length);

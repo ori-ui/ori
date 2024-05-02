@@ -321,7 +321,7 @@ impl Window {
 }
 
 /// An update to a window.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum WindowUpdate {
     /// Set the title of the window.
     Title(String),

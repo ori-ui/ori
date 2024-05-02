@@ -57,7 +57,7 @@ impl Style for SliderStyle {
             background: palette.surface_high,
             border_radius: BorderRadius::all(5.0),
             border_width: BorderWidth::all(0.0),
-            border_color: palette.outline_variant,
+            border_color: palette.surface_higher,
         }
     }
 }

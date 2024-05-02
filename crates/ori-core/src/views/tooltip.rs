@@ -88,10 +88,10 @@ impl Style for TooltipStyle {
             align: text_style.align,
             line_height: text_style.line_height,
             wrap: text_style.wrap,
-            background: palette.surface_highest,
+            background: palette.surface_higher,
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
-            border_color: palette.outline_variant,
+            border_color: palette.surface_highest,
         }
     }
 }

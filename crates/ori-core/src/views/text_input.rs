@@ -70,7 +70,7 @@ impl Style for TextInputStyle {
             font_stretch: text_style.font_stretch,
             font_style: text_style.font_style,
             color: text_style.color,
-            placeholder_color: palette.subtext,
+            placeholder_color: palette.surface_highest,
             align: text_style.align,
             line_height: text_style.line_height,
             wrap: text_style.wrap,

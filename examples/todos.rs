@@ -75,9 +75,9 @@ fn input(border: bool) -> impl View<Data> {
 
 fn theme_button(data: &mut Data) -> impl View<Data> {
     let icon = if data.dark_mode {
-        fa::icon("moon").color(Palette::light().text)
+        fa::icon("moon").color(Palette::light().contrast)
     } else {
-        fa::icon("sun").color(Palette::dark().text)
+        fa::icon("sun").color(Palette::dark().contrast)
     };
 
     let color = if data.dark_mode {
@@ -99,9 +99,9 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = tooltip(completed, "Toggle whether the todo is completed");
 
     let title_color = if todo.completed {
-        palette().subtext
+        palette().surface_highest
     } else {
-        palette().text
+        palette().contrast
     };
 
     let title = text(&todo.text).font_size(20.0).color(title_color);

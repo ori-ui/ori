@@ -52,7 +52,7 @@ impl Style for ButtonStyle {
             color: Background::new(palette.primary),
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
-            border_color: palette.outline_variant,
+            border_color: palette.surface_higher,
         }
     }
 }

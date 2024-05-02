@@ -59,8 +59,8 @@ impl<V> Scroll<V> {
             width: 6.0,
             inset: 8.0,
             border_radius: BorderRadius::all(3.0),
-            color: palette().surface,
-            knob_color: palette().surface_high,
+            color: palette().surface_high,
+            knob_color: palette().surface_higher,
         }
     }
 

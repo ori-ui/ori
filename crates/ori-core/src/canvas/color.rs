@@ -272,51 +272,304 @@ impl Color {
         (h, s, v)
     }
 
-    /// Convert a color from oklab to linear sRGB.
+    fn linear_srgb_to_oklab(r: f32, g: f32, b: f32) -> (f32, f32, f32) {
+        let l = 0.412_221_46 * r + 0.536_332_55 * g + 0.051_445_995 * b;
+        let m = 0.211_903_5 * r + 0.680_699_5 * g + 0.107_396_96 * b;
+        let s = 0.088_302_46 * r + 0.281_718_85 * g + 0.629_978_7 * b;
+
+        let l = l.cbrt();
+        let m = m.cbrt();
+        let s = s.cbrt();
+
+        (
+            0.210_454_26 * l + 0.793_617_8 * m - 0.004_072_047 * s,
+            1.977_998_5 * l - 2.428_592_2 * m + 0.450_593_7 * s,
+            0.025_904_037 * l + 0.782_771_77 * m - 0.808_675_77 * s,
+        )
+    }
+
+    fn oklab_to_linear_srgb(l: f32, a: f32, b: f32) -> (f32, f32, f32) {
+        let s = l - 0.089_484_18 * a - 1.291_485_5 * b;
+        let m = l - 0.105_561_346 * a - 0.063_854_17 * b;
+        let l = l + 0.396_337_78 * a + 0.215_803_76 * b;
+
+        let l = l * l * l;
+        let m = m * m * m;
+        let s = s * s * s;
+
+        (
+            4.076_741_7 * l - 3.307_711_6 * m + 0.230_969_94 * s,
+            -1.268_438 * l + 2.609_757_4 * m - 0.341_319_38 * s,
+            -0.0041960863 * l - 0.703_418_6 * m + 1.707_614_7 * s,
+        )
+    }
+
+    fn to_linear(x: f32) -> f32 {
+        if x < 0.04045 {
+            x * 12.92
+        } else {
+            f32::powf((x + 0.055) / 1.055, 2.4)
+        }
+    }
+
+    fn from_linear(x: f32) -> f32 {
+        if x <= 0.0031308 {
+            x / 12.92
+        } else {
+            1.055 * f32::powf(x, 0.416_666_66) - 0.055
+        }
+    }
+
+    /// Convert a color from oklab to sRGB.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
     pub fn oklaba(l: f32, a: f32, b: f32, alpha: f32) -> Self {
-        let l_ = l + 0.396_337_78 * a + 0.215_803_76 * b;
-        let m_ = l - 0.105_561_346 * a - 0.063_854_17 * b;
-        let s_ = l - 0.089_484_18 * a - 1.291_485_5 * b;
+        let (r, g, b) = Self::oklab_to_linear_srgb(l, a, b);
+
+        Self::rgba(
+            Self::from_linear(r),
+            Self::from_linear(g),
+            Self::from_linear(b),
+            alpha,
+        )
+    }
+
+    /// Convert a color from oklab to sRGB.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
+    pub fn oklab(l: f32, a: f32, b: f32) -> Self {
+        Self::oklaba(l, a, b, 1.0)
+    }
+
+    /// Convert a color from sRGB to oklab.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
+    pub fn to_oklaba(self) -> (f32, f32, f32, f32) {
+        let (l, a, b) = Self::linear_srgb_to_oklab(
+            Self::to_linear(self.r),
+            Self::to_linear(self.g),
+            Self::to_linear(self.b),
+        );
+
+        (l, a, b, self.a)
+    }
+
+    /// Convert a color from sRGB to oklab.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
+    pub fn to_oklab(self) -> (f32, f32, f32) {
+        let (l, a, b, _) = self.to_oklaba();
+        (l, a, b)
+    }
+
+    /// Convert a color from oklch to sRGB.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
+    pub fn oklcha(l: f32, c: f32, h: f32, alpha: f32) -> Self {
+        let (b, a) = h.to_radians().sin_cos();
+
+        Self::oklaba(l, a * c, b * c, alpha)
+    }
+
+    /// Convert a color from oklch to sRGB.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
+    pub fn oklch(l: f32, c: f32, h: f32) -> Self {
+        Self::oklcha(l, c, h, 1.0)
+    }
+
+    /// Convert a color from sRGB to oklch.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
+    pub fn to_oklcha(self) -> (f32, f32, f32, f32) {
+        let (l, a, b, alpha) = self.to_oklaba();
+        let c = (a * a + b * b).sqrt();
+        let h = (b.atan2(a).to_degrees() + 360.0).rem_euclid(360.0);
+
+        (l, c, h, alpha)
+    }
+
+    /// Convert a color from sRGB to oklch.
+    ///
+    /// See <https://bottosson.github.io/posts/oklab/>.
+    pub fn to_oklch(self) -> (f32, f32, f32) {
+        let (l, c, h, _) = self.to_oklcha();
+        (l, c, h)
+    }
+
+    fn toe(x: f32) -> f32 {
+        let k1 = 0.206;
+        let k2 = 0.03;
+        let k3 = (1.0 + k1) / (1.0 + k2);
+
+        0.5 * (k3 * x - k1 + f32::sqrt((k3 * x - k1) * (k3 * x - k1) + 4.0 * k2 * k3 * x))
+    }
+
+    fn toe_inv(x: f32) -> f32 {
+        let k1 = 0.206;
+        let k2 = 0.03;
+        let k3 = (1.0 + k1) / (1.0 + k2);
+
+        (x * x + k1 * x) / (k3 * (x + k2))
+    }
+
+    fn compute_max_saturation(a: f32, b: f32) -> f32 {
+        let (k0, k1, k2, k3, k4, wl, wm, ws) = match () {
+            _ if -1.881_703_3 * a - 0.809_364_9 * b > 1.0 => (
+                1.190_862_8,
+                1.765_767_3,
+                0.596_626_4,
+                0.755_152,
+                0.567_712_4,
+                4.076_741_7,
+                -3.307_711_6,
+                0.230_969_94,
+            ),
+            _ if 1.814_441_1 * a - 1.194_452_8 * b > 1.0 => (
+                0.739_565_2,
+                -0.459_544,
+                0.082_854_27,
+                0.125_410_7,
+                0.145_032_2,
+                -1.268_438,
+                2.609_757_4,
+                -0.341_319_38,
+            ),
+            _ => (
+                1.357_336_5,
+                -0.00915799,
+                -1.151_302_1,
+                -0.50559606,
+                0.00692167,
+                -0.0041960863,
+                -0.703_418_6,
+                1.707_614_7,
+            ),
+        };
+
+        let s_prime = k0 + k1 * a + k2 * b + k3 * a * a + k4 * a * b;
+
+        let kl = 0.396_337_78 * a + 0.215_803_76 * b;
+        let km = -0.105_561_346 * a - 0.063_854_17 * b;
+        let ks = -0.089_484_18 * a - 1.291_485_5 * b;
+
+        let l_ = 1.0 + s_prime * kl;
+        let m_ = 1.0 + s_prime * km;
+        let s_ = 1.0 + s_prime * ks;
 
         let l = l_ * l_ * l_;
         let m = m_ * m_ * m_;
         let s = s_ * s_ * s_;
 
-        Self {
-            r: 4.076_741_7 * l - 3.307_711_6 * m + 0.230_969_94 * s,
-            g: -1.268_438 * l + 2.609_757_4 * m - 0.341_319_38 * s,
-            b: -0.004_196_086_3 * l - 0.703_418_6 * m + 1.707_614_7 * s,
-            a: alpha,
-        }
+        let lds = 3.0 * kl * l_ * l_;
+        let mds = 3.0 * km * m_ * m_;
+        let sds = 3.0 * ks * s_ * s_;
+
+        let lds2 = 6.0 * kl * kl * l_;
+        let mds2 = 6.0 * km * km * m_;
+        let sds2 = 6.0 * ks * ks * s_;
+
+        let f = wl * l + wm * m + ws * s;
+        let f1 = wl * lds + wm * mds + ws * sds;
+        let f2 = wl * lds2 + wm * mds2 + ws * sds2;
+
+        s_prime - f * f1 / (f1 * f1 - 0.5 * f * f2)
     }
 
-    /// Convert a color from oklab to linear sRGB.
-    pub fn oklab(l: f32, a: f32, b: f32) -> Self {
-        Self::oklaba(l, a, b, 1.0)
+    fn find_cusp(a: f32, b: f32) -> (f32, f32) {
+        let s_cusp = Self::compute_max_saturation(a, b);
+
+        let (r_max, g_max, b_max) = Self::oklab_to_linear_srgb(1.0, s_cusp * a, s_cusp * b);
+        let max = f32::max(f32::max(r_max, g_max), b_max);
+        let l_cusp = f32::cbrt(1.0 / max);
+        let c_cusp = s_cusp * l_cusp;
+
+        (l_cusp, c_cusp)
     }
 
-    /// Convert a color from linear sRGB to oklab.
-    pub fn to_oklaba(self) -> (f32, f32, f32, f32) {
-        let l = 0.412_165_1 * self.r + 0.536_275_2 * self.g + 0.051_457_5 * self.b;
-        let m = 0.211_859_1 * self.r + 0.680_718_9 * self.g + 0.107_406_6 * self.b;
-        let s = 0.088_309_3 * self.r + 0.281_847_4 * self.g + 0.630_261_7 * self.b;
-
-        let l_ = l.cbrt();
-        let m_ = m.cbrt();
-        let s_ = s.cbrt();
-
-        (
-            0.210_454_26 * l_ + 0.793_617_8 * m_ - 0.004_072_047 * s_,
-            1.977_998_5 * l_ - 2.428_592_ * m_ + 0.450_593_7 * s_,
-            0.025_904_037 * l_ + 0.782_771_8 * m_ - 0.808_675_66 * s_,
-            self.a,
-        )
+    fn cusp_to_st(l_cusp: f32, c_cusp: f32) -> (f32, f32) {
+        (c_cusp / l_cusp, c_cusp / (1.0 - l_cusp))
     }
 
-    /// Convert a color from linear sRGB to oklab.
-    pub fn to_oklab(self) -> (f32, f32, f32) {
-        let (l, a, b, _) = self.to_oklaba();
-        (l, a, b)
+    /// Convert a color from okhsv to sRGB.
+    pub fn okhsva(h: f32, s: f32, v: f32, alpha: f32) -> Self {
+        let (b, a) = h.to_radians().sin_cos();
+
+        let (l_cusp, c_cusp) = Self::find_cusp(a, b);
+        let (s_max, t_max) = Self::cusp_to_st(l_cusp, c_cusp);
+        let s0 = 0.5;
+        let k = 1.0 - s0 / s_max;
+
+        let lv = 1.0 - s * s0 / (s0 + t_max - t_max * k * s);
+        let cv = s * t_max * s0 / (s0 + t_max - t_max * k * s);
+
+        let l = v * lv;
+        let c = v * cv;
+
+        let lvt = Self::toe_inv(lv);
+        let cvt = cv * lvt / lv;
+
+        let l_new = Self::toe_inv(l);
+        let c = c * l_new / l;
+        let l = l_new;
+
+        let (r_max, g_max, b_max) = Self::oklab_to_linear_srgb(lvt, a * cvt, b * cvt);
+        let max = f32::max(f32::max(r_max, g_max), f32::max(b_max, 0.0));
+        let scale_l = f32::cbrt(1.0 / max);
+
+        let l = l * scale_l;
+        let c = c * scale_l;
+
+        Self::oklaba(l, c * a, c * b, alpha)
+    }
+
+    /// Convert a color from okhsv to sRGB.
+    pub fn okhsv(h: f32, s: f32, v: f32) -> Self {
+        Self::okhsva(h, s, v, 1.0)
+    }
+
+    /// Convert a color from sRGB to okhsv.
+    pub fn to_okhsva(self) -> (f32, f32, f32, f32) {
+        let (l, a, b) = self.to_oklab();
+
+        let c = f32::sqrt(a * a + b * b);
+        let a = a / c;
+        let b = b / c;
+
+        let h = 180.0 + f32::atan2(-b, -a).to_degrees();
+
+        let (l_cusp, c_cusp) = Self::find_cusp(a, b);
+        let (s_max, t_max) = Self::cusp_to_st(l_cusp, c_cusp);
+        let s0 = 0.5;
+        let k = 1.0 - s0 / s_max;
+
+        let t = t_max / (c + l * t_max);
+        let lv = t * l;
+        let cv = t * c;
+
+        let lvt = Self::toe_inv(lv);
+        let cvt = cv * lvt / lv;
+
+        let (r, g, b) = Self::oklab_to_linear_srgb(lvt, a * cvt, b * cvt);
+        let max = f32::max(f32::max(r, g), f32::max(b, 0.0));
+        let scale_l = f32::cbrt(1.0 / max);
+
+        let v = Self::toe(l / scale_l) / lv;
+        let s = (s0 + t_max) * cv / ((t_max * s0) + t_max * k * cv);
+
+        (h, s, v, self.a)
+    }
+
+    /// Convert a color from sRGB to okhsv.
+    pub fn to_okhsv(self) -> (f32, f32, f32) {
+        let (h, s, v, _) = self.to_okhsva();
+        (h, s, v)
+    }
+
+    /// Get the luminocity.
+    pub fn luminocity(self) -> f32 {
+        let (_, _, l, _) = self.to_hsla();
+        l
     }
 
     /// Linearly interpolate between two colors.
@@ -352,14 +605,24 @@ impl Color {
 
     /// Saturates the color by given `amount`.
     pub fn saturate(self, amount: f32) -> Self {
-        let (h, s, l, a) = self.to_hsla();
-        Self::hsla(h, s + amount, l, a)
+        let (l, c, h, alpha) = self.to_oklcha();
+
+        if c.abs() < 0.0001 {
+            return self;
+        }
+
+        Self::oklcha(l, c + amount * 0.2, h, alpha)
     }
 
     /// Desaturates the color by given `amount`.
     pub fn desaturate(self, amount: f32) -> Self {
-        let (h, s, l, a) = self.to_hsla();
-        Self::hsla(h, s - amount, l, a)
+        let (l, c, h, alpha) = self.to_oklcha();
+
+        if c.abs() < 0.0001 {
+            return self;
+        }
+
+        Self::oklcha(l, c - amount * 0.2, h, alpha)
     }
 
     /// Brighten the color by the given `amount`.
@@ -389,11 +652,16 @@ impl Color {
         self.a == 0.0
     }
 
-    /// Convert the color to sRGB.
+    /// Convert the color to linear sRGB.
     ///
     /// See <https://en.wikipedia.org/wiki/SRGB>.
     pub fn to_srgb(self) -> [f32; 4] {
-        [self.r.powf(2.2), self.g.powf(2.2), self.b.powf(2.2), self.a]
+        [
+            Self::to_linear(self.r),
+            Self::to_linear(self.g),
+            Self::to_linear(self.b),
+            self.a,
+        ]
     }
 
     /// Convert the color to linear sRGB.
@@ -562,5 +830,23 @@ mod tests {
     fn test_hex_display() {
         let display = DisplayHex::new(0xa0, 0xb2, 0xcb, 0xd6);
         assert_eq!(display.as_ref(), "#a0b2cbd6");
+    }
+
+    #[test]
+    fn okhsv() {
+        let color = Color::okhsv(231.0, 0.7, 0.2);
+        assert!(f32::abs(color.r - 0.05) < 0.001);
+        assert!(f32::abs(color.g - 0.15) < 0.001);
+        assert!(f32::abs(color.b - 0.20) < 0.001);
+    }
+
+    #[test]
+    fn okhsv_inverse() {
+        let color = Color::rgb(0.05, 0.15, 0.20);
+        let (h, s, v) = color.to_okhsv();
+        let color2 = Color::okhsv(h, s, v);
+        assert!(f32::abs(color.r - color2.r) < 0.0001);
+        assert!(f32::abs(color.g - color2.g) < 0.0001);
+        assert!(f32::abs(color.b - color2.b) < 0.0001);
     }
 }

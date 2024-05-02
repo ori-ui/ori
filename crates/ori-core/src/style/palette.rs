@@ -15,8 +15,8 @@ pub struct Palette {
     /// The background color.
     pub background: Color,
 
-    /// The lowest emphasis surface color.
-    pub surface_lowest: Color,
+    /// The lower emphasis surface color.
+    pub surface_lower: Color,
 
     /// The low emphasis surface color.
     pub surface_low: Color,
@@ -27,108 +27,156 @@ pub struct Palette {
     /// The high emphasis surface color.
     pub surface_high: Color,
 
+    /// The higher emphasis surface color.
+    pub surface_higher: Color,
+
     /// The highest emphasis surface color.
     pub surface_highest: Color,
 
-    /// The outline color.
-    pub outline: Color,
-
-    /// The outline variant color.
-    pub outline_variant: Color,
-
-    /// The text color.
-    pub text: Color,
-
-    /// The subtle text color.
-    pub subtext: Color,
-
-    /// The text contrast color.
-    pub text_contrast: Color,
-
-    /// The subtle text contrast color.
-    pub subtext_contrast: Color,
+    /// The contrast color.
+    ///
+    /// Used for text and icons.
+    pub contrast: Color,
 
     /// The primary color.
     pub primary: Color,
 
-    /// The primary variant color.
-    pub primary_variant: Color,
+    /// The low emphasis primary color.
+    pub primary_low: Color,
 
     /// The secondary color.
     pub secondary: Color,
 
-    /// The secondary variant color.
-    pub secondary_variant: Color,
+    /// The low emphasis secondary color.
+    pub secondary_low: Color,
 
     /// The accent color.
     pub accent: Color,
 
-    /// The accent variant color.
-    pub accent_variant: Color,
+    /// The low emphasis accent color.
+    pub accent_low: Color,
 
-    /// The error color.
-    pub error: Color,
+    /// The danger color.
+    ///
+    /// Used for errors and destructive actions.
+    pub danger: Color,
 
-    /// The error variant color.
-    pub error_variant: Color,
+    /// The low emphasis danger color.
+    pub danger_low: Color,
+
+    /// The success color.
+    pub success: Color,
+
+    /// The low emphasis success color.
+    pub success_low: Color,
+
+    /// The warning color.
+    pub warning: Color,
+
+    /// The low emphasis warning color.
+    pub warning_low: Color,
+
+    /// The info color.
+    pub info: Color,
+
+    /// The low emphasis info color.
+    pub info_low: Color,
 }
 
 impl Default for Palette {
     fn default() -> Self {
-        Palette::light()
+        Palette::dark()
     }
 }
 
 impl Palette {
+    /// Create a new palette, derived from the given colors.
+    #[allow(clippy::too_many_arguments)]
+    pub fn derived(
+        background: Color,
+        surface: Color,
+        contrast: Color,
+        primary: Color,
+        secondary: Color,
+        accent: Color,
+        danger: Color,
+        success: Color,
+        warning: Color,
+        info: Color,
+    ) -> Self {
+        fn emphasize(color: Color, is_light: bool, amount: f32) -> Color {
+            if is_light {
+                color.darken(amount).saturate(amount * 0.3)
+            } else {
+                color.lighten(amount).saturate(amount * 0.3)
+            }
+        }
+
+        fn low(color: Color, is_light: bool) -> Color {
+            if is_light {
+                color.lighten(0.3).desaturate(0.2)
+            } else {
+                color.darken(0.3).desaturate(0.2)
+            }
+        }
+
+        let is_light = background.luminocity() > 0.5;
+
+        Self {
+            background,
+            surface_lower: emphasize(surface, is_light, -0.2),
+            surface_low: emphasize(surface, is_light, -0.1),
+            surface,
+            surface_high: emphasize(surface, is_light, 0.1),
+            surface_higher: emphasize(surface, is_light, 0.2),
+            surface_highest: emphasize(surface, is_light, 0.3),
+            contrast,
+            primary,
+            primary_low: low(primary, is_light),
+            secondary,
+            secondary_low: low(secondary, is_light),
+            accent,
+            accent_low: low(accent, is_light),
+            danger,
+            danger_low: low(danger, is_light),
+            success,
+            success_low: low(success, is_light),
+            warning,
+            warning_low: low(warning, is_light),
+            info,
+            info_low: low(info, is_light),
+        }
+    }
+
     /// The default light palette.
     pub fn light() -> Self {
-        Self {
-            background: Color::hex("#eff1f5"),
-            surface_lowest: Color::hex("#dce0e8"),
-            surface_low: Color::hex("#e6e9ef"),
-            surface: Color::hex("#ccd0da"),
-            surface_high: Color::hex("#bcc0cc"),
-            surface_highest: Color::hex("#acb0be"),
-            outline: Color::hex("#6c6f85"),
-            outline_variant: Color::hex("#8c8fa1"),
-            text: Color::hex("#4c4f69"),
-            subtext: Color::hex("#5c5f77"),
-            text_contrast: Color::hex("#dce0e8"),
-            subtext_contrast: Color::hex("#cfd3db"),
-            primary: Color::hex("#04a5e5"),
-            primary_variant: Color::hex("#2196f3"),
-            secondary: Color::hex("#8839ef"),
-            secondary_variant: Color::hex("#9c27b0"),
-            accent: Color::hex("#40a02b"),
-            accent_variant: Color::hex("#4caf50"),
-            error: Color::hex("#d20f39"),
-            error_variant: Color::hex("#f44336"),
-        }
+        Self::derived(
+            Color::hex("#f5f5f5"),
+            Color::hex("#e4e4e4"),
+            Color::hex("#212121"),
+            Color::hex("#1c71d8"),
+            Color::hex("#f6d32d"),
+            Color::hex("#0077c2"),
+            Color::hex("#e01b24"),
+            Color::hex("#33d17a"),
+            Color::hex("#f6d32d"),
+            Color::hex("#0077c2"),
+        )
     }
 
     /// The default dark palette.
     pub fn dark() -> Self {
-        Self {
-            background: Color::hex("#1e1e2e"),
-            surface_lowest: Color::hex("#11111b"),
-            surface_low: Color::hex("#181825"),
-            surface: Color::hex("#313244"),
-            surface_high: Color::hex("#45475a"),
-            surface_highest: Color::hex("#585b70"),
-            outline: Color::hex("#6c6f85"),
-            outline_variant: Color::hex("#484c63"),
-            text: Color::hex("#cdd6f4"),
-            subtext: Color::hex("#bac2de"),
-            text_contrast: Color::hex("#1e1e2e"),
-            subtext_contrast: Color::hex("#2e2e3e"),
-            primary: Color::hex("#74c7ec"),
-            primary_variant: Color::hex("#2196f3"),
-            secondary: Color::hex("#f38ba8"),
-            secondary_variant: Color::hex("#e91e63"),
-            accent: Color::hex("#99d196"),
-            accent_variant: Color::hex("#4caf50"),
-            error: Color::hex("#e64553"),
-            error_variant: Color::hex("#f44336"),
-        }
+        Self::derived(
+            Color::hex("#1e1e1e"),
+            Color::hex("#242424"),
+            Color::hex("#deddda"),
+            Color::hex("#62a0ea"),
+            Color::hex("#4dd0e1"),
+            Color::hex("#f8e45c"),
+            Color::hex("#ff7b63"),
+            Color::hex("#8ff0a4"),
+            Color::hex("#f8e45c"),
+            Color::hex("#4dd0e1"),
+        )
     }
 }

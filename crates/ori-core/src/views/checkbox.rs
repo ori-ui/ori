@@ -54,7 +54,7 @@ impl Style for CheckboxStyle {
             background: Background::color(Color::TRANSPARENT),
             border_radius: BorderRadius::all(6.0),
             border_width: BorderWidth::all(2.0),
-            border_color: style.palette().outline_variant,
+            border_color: style.palette().surface_higher,
         }
     }
 }

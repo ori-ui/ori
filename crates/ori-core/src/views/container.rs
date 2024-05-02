@@ -66,7 +66,7 @@ impl Style for ContainerStyle {
             background: style.palette().surface.into(),
             border_radius: BorderRadius::all(0.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style.palette().outline_variant,
+            border_color: style.palette().surface_higher,
             shadow: BoxShadow::default(),
         }
     }

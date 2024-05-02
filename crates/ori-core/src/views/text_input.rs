@@ -88,12 +88,12 @@ pub struct TextInput<T> {
     #[build(ignore)]
     pub text: Option<String>,
 
-    /// A function that returns the text to display.
+    /// A callback that is called when an input is received.
     #[build(ignore)]
     #[allow(clippy::type_complexity)]
-    pub on_change: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
+    pub on_input: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
 
-    /// A function that is called when the input is submitted.
+    /// A callback that is called when the input is submitted.
     #[build(ignore)]
     #[allow(clippy::type_complexity)]
     pub on_submit: Option<Box<dyn FnMut(&mut EventCx, &mut T, String)>>,
@@ -153,7 +153,7 @@ impl<T> TextInput<T> {
     pub fn styled(style: TextInputStyle) -> Self {
         Self {
             text: None,
-            on_change: None,
+            on_input: None,
             on_submit: None,
             placeholder: String::from("..."),
             multiline: false,
@@ -176,14 +176,14 @@ impl<T> TextInput<T> {
         self
     }
 
-    /// Set the callback that is called when the input changes.
+    /// Set the callback that is called when an input is received.
     ///
     /// Note that this doesn't trigger a rebuild automatically.
-    pub fn on_change(
+    pub fn on_input(
         mut self,
         on_change: impl FnMut(&mut EventCx, &mut T, String) + 'static,
     ) -> Self {
-        self.on_change = Some(Box::new(on_change));
+        self.on_input = Some(Box::new(on_change));
         self
     }
 
@@ -541,7 +541,7 @@ impl<T> View<T> for TextInput<T> {
                 let text = state.text();
 
                 if changed {
-                    if let Some(ref mut on_change) = self.on_change {
+                    if let Some(ref mut on_change) = self.on_input {
                         on_change(cx, data, text.clone());
                     }
                 }

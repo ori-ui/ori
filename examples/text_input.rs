@@ -21,7 +21,7 @@ fn input(data: &mut Data) -> impl View<Data> {
 
     let input = text_input()
         .text(&data.text)
-        .on_change(|_, data: &mut Data, text| data.text = text)
+        .on_input(|_, data: &mut Data, text| data.text = text)
         .font_family(font)
         .multiline(data.multiline);
 

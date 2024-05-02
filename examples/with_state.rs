@@ -16,7 +16,7 @@ fn form() -> impl View<Data> {
     with_state(User::default, |_data, user| {
         let name = text_input()
             .text(&user.name)
-            .on_change(|_, (_, user): &mut (_, User), text| user.name = text);
+            .on_input(|_, (_, user): &mut (_, User), text| user.name = text);
 
         let age = hstack![
             text!("Age: {}", user.age),

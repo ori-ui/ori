@@ -171,6 +171,7 @@ impl<T> App<T> {
 
         if !handled {
             self.remove_window(window_id);
+            self.requests.push(AppRequest::CloseWindow(window_id));
 
             if self.windows.is_empty() {
                 self.requests.push(AppRequest::Quit);

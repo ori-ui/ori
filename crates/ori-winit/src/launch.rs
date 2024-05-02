@@ -135,7 +135,6 @@ impl<T> WinitState<T> {
             }
             AppRequest::CloseWindow(id) => {
                 self.renders.remove(&id);
-                self.app.remove_window(id);
             }
             AppRequest::DragWindow(id) => {
                 if let Some(state) = self.renders.get_mut(&id) {

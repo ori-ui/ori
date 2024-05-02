@@ -9,6 +9,56 @@ use crate::{
     view::{Pod, State, View},
 };
 
+/// Create a new [`Aligned`] view.
+pub fn align<V>(alignment: impl Into<Alignment>, content: V) -> Aligned<V> {
+    Aligned::new(alignment.into(), content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the center.
+pub fn center<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::CENTER, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the top left.
+pub fn top_left<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::TOP_LEFT, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the top.
+pub fn top<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::TOP, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the top right.
+pub fn top_right<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::TOP_RIGHT, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the left.
+pub fn left<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::LEFT, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the right.
+pub fn right<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::RIGHT, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the bottom left.
+pub fn bottom_left<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::BOTTOM_LEFT, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the bottom.
+pub fn bottom<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::BOTTOM, content)
+}
+
+/// Create a new [`Aligned`] view that aligns its content to the bottom right.
+pub fn bottom_right<V>(content: V) -> Aligned<V> {
+    Aligned::new(Alignment::BOTTOM_RIGHT, content)
+}
+
 /// A view that aligns its content.
 #[example(name = "align", width = 400, height = 300)]
 #[derive(Rebuild)]
@@ -76,54 +126,4 @@ impl<T, V: View<T>> View<T> for Aligned<V> {
     ) {
         self.content.draw(state, cx, data, canvas);
     }
-}
-
-/// Create a new [`Aligned`] view.
-pub fn align<V>(alignment: impl Into<Alignment>, content: V) -> Aligned<V> {
-    Aligned::new(alignment.into(), content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the center.
-pub fn center<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::CENTER, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the top left.
-pub fn top_left<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::TOP_LEFT, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the top.
-pub fn top<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::TOP, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the top right.
-pub fn top_right<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::TOP_RIGHT, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the left.
-pub fn left<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::LEFT, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the right.
-pub fn right<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::RIGHT, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the bottom left.
-pub fn bottom_left<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::BOTTOM_LEFT, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the bottom.
-pub fn bottom<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::BOTTOM, content)
-}
-
-/// Create a new [`Aligned`] view that aligns its content to the bottom right.
-pub fn bottom_right<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::BOTTOM_RIGHT, content)
 }

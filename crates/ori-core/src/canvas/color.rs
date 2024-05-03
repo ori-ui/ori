@@ -8,7 +8,7 @@ pub fn rgb(r: f32, g: f32, b: f32) -> Color {
     Color::rgb(r, g, b)
 }
 
-/// Create a new color, with the given `red`, `green`, `blue` and alpha components.
+/// Create a new color, with the given `red`, `green`, `blue` and `alpha` components.
 pub fn rgba(r: f32, g: f32, b: f32, a: f32) -> Color {
     Color::rgba(r, g, b, a)
 }
@@ -18,7 +18,7 @@ pub fn hsl(h: f32, s: f32, l: f32) -> Color {
     Color::hsl(h, s, l)
 }
 
-/// Create a new color, with the given `hue`, `saturation`, `lightness` and alpha components.
+/// Create a new color, with the given `hue`, `saturation`, `lightness` and `alpha` components.
 pub fn hsla(h: f32, s: f32, l: f32, a: f32) -> Color {
     Color::hsla(h, s, l, a)
 }
@@ -28,7 +28,7 @@ pub fn hsv(h: f32, s: f32, v: f32) -> Color {
     Color::hsv(h, s, v)
 }
 
-/// Create a new color, with the given `hue`, `saturation`, `value` and alpha components.
+/// Create a new color, with the given `hue`, `saturation`, `value` and `alpha` components.
 pub fn hsva(h: f32, s: f32, v: f32, a: f32) -> Color {
     Color::hsva(h, s, v, a)
 }
@@ -38,9 +38,39 @@ pub fn oklab(l: f32, a: f32, b: f32) -> Color {
     Color::oklab(l, a, b)
 }
 
-/// Create a new color, with the given `lightness`, `a`, `b` and alpha components.
+/// Create a new color, with the given `lightness`, `a`, `b` and `alpha` components.
 pub fn oklaba(l: f32, a: f32, b: f32, alpha: f32) -> Color {
     Color::oklaba(l, a, b, alpha)
+}
+
+/// Create a new color, with the given `lightness`, `chroma` and `hue` components.
+pub fn oklch(l: f32, c: f32, h: f32) -> Color {
+    Color::oklch(l, c, h)
+}
+
+/// Create a new color, with the given `lightness`, `chroma`, `hue` and `alpha` components.
+pub fn oklcha(l: f32, c: f32, h: f32, alpha: f32) -> Color {
+    Color::oklcha(l, c, h, alpha)
+}
+
+/// Create a new color, with the given `hue`, `saturation` and `lightness` components.
+pub fn okhsl(h: f32, s: f32, l: f32) -> Color {
+    Color::okhsl(h, s, l)
+}
+
+/// Create a new color, with the given `hue`, `saturation`, `lightness` and `alpha` components.
+pub fn okhsla(h: f32, s: f32, l: f32, a: f32) -> Color {
+    Color::okhsla(h, s, l, a)
+}
+
+/// Create a new color, with the given `hue`, `saturation` and `value` components.
+pub fn okhsv(h: f32, s: f32, v: f32) -> Color {
+    Color::okhsv(h, s, v)
+}
+
+/// Create a new color, with the given `hue`, `saturation`, `value` and `alpha` components.
+pub fn okhsva(h: f32, s: f32, v: f32, a: f32) -> Color {
+    Color::okhsva(h, s, v, a)
 }
 
 /// Create a new color, with the given hex string.
@@ -630,7 +660,7 @@ impl Color {
         let mid = 0.8;
         let mid_inv = 1.25;
 
-        let c = if true {
+        let c = if s < mid {
             let t = mid_inv * s;
 
             let k_1 = mid * c_0;

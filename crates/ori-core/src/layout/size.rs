@@ -45,9 +45,19 @@ impl Size {
         Self::new(self.width.min(other.width), self.height.min(other.height))
     }
 
+    /// Get the smallest element of self.
+    pub fn min_element(self) -> f32 {
+        self.width.min(self.height)
+    }
+
     /// Get the max of self and other by element.
     pub fn max(self, other: Self) -> Self {
         Self::new(self.width.max(other.width), self.height.max(other.height))
+    }
+
+    /// Get the largest element of self.
+    pub fn max_element(self) -> f32 {
+        self.width.max(self.height)
     }
 
     /// Clamp self to the range [min, max] by element.

@@ -140,6 +140,11 @@ impl Vector {
         dot.acos()
     }
 
+    /// Get the angle of the vector.
+    pub fn angle(self) -> f32 {
+        self.y.atan2(self.x)
+    }
+
     /// Convert the vector to a vector.
     pub const fn to_point(self) -> Point {
         Point::new(self.x, self.y)

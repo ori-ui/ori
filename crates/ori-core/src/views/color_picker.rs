@@ -236,10 +236,7 @@ impl<T> ColorPicker<T> {
             slider_height.acos()
         };
 
-        if state.can_edit(
-            ColorPickerPart::Alpha,
-            (-FRAC_PI_2..=FRAC_PI_2).contains(&angle) && is_slider,
-        ) {
+        if state.can_edit(ColorPickerPart::Alpha, local.x > 0.0 && is_slider) {
             state.edit = Some(ColorPickerPart::Alpha);
 
             let alpha = (slider_angle - Self::SLIDER_SHIM) / Self::SLIDER_ARC;

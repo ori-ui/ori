@@ -313,7 +313,7 @@ impl<T> WinitState<T> {
                     let len = diff.rects().len();
                     diff.simplify();
 
-                    tracing::debug!("Diff rects: {} -> {}", len, diff.rects().len());
+                    tracing::trace!("Diff rects: {} -> {}", len, diff.rects().len());
 
                     for rect in diff.rects() {
                         if rect.size().min_element() < 1.0 {

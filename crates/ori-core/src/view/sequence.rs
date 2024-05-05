@@ -1,7 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -55,14 +54,7 @@ pub trait ViewSeq<T> {
     ) -> Size;
 
     /// Draw the nth view.
-    fn draw_nth(
-        &mut self,
-        n: usize,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        scene: &mut Canvas,
-    );
+    fn draw_nth(&mut self, n: usize, state: &mut Self::State, cx: &mut DrawCx, data: &mut T);
 }
 
 impl<T, V: View<T>> ViewSeq<T> for Vec<V> {
@@ -130,15 +122,8 @@ impl<T, V: View<T>> ViewSeq<T> for Vec<V> {
         self[n].layout(&mut state[n], cx, data, space)
     }
 
-    fn draw_nth(
-        &mut self,
-        n: usize,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        self[n].draw(&mut state[n], cx, data, canvas);
+    fn draw_nth(&mut self, n: usize, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        self[n].draw(&mut state[n], cx, data);
     }
 }
 
@@ -187,15 +172,7 @@ impl<T> ViewSeq<T> for () {
         space.min
     }
 
-    fn draw_nth(
-        &mut self,
-        _n: usize,
-        _state: &mut Self::State,
-        _cx: &mut DrawCx,
-        _data: &mut T,
-        _canvas: &mut Canvas,
-    ) {
-    }
+    fn draw_nth(&mut self, _n: usize, _state: &mut Self::State, _cx: &mut DrawCx, _data: &mut T) {}
 }
 
 macro_rules! impl_tuple {
@@ -276,10 +253,9 @@ macro_rules! impl_tuple {
                 state: &mut Self::State,
                 cx: &mut DrawCx,
                 data: &mut T,
-                canvas: &mut Canvas,
             ) {
                 match n {
-                    $($index => self.$index.draw(&mut state.$index, cx, data, canvas),)*
+                    $($index => self.$index.draw(&mut state.$index, cx, data),)*
                     _ => {},
                 }
             }
@@ -480,12 +456,11 @@ impl<V> PodSeq<V> {
         state: &mut SeqState<T, V>,
         cx: &mut DrawCx,
         data: &mut T,
-        canvas: &mut Canvas,
     ) where
         V: ViewSeq<T>,
     {
-        Pod::<V>::draw(&mut state.view_state[n], cx, canvas, |cx, canvas| {
-            (self.views).draw_nth(n, &mut state.content, cx, data, canvas)
+        Pod::<V>::draw(&mut state.view_state[n], cx, |cx| {
+            (self.views).draw_nth(n, &mut state.content, cx, data)
         });
     }
 }

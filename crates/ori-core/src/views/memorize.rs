@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -89,13 +88,7 @@ impl<T, V: View<T>, D: PartialEq> View<T> for Memo<T, V, D> {
         state.view.layout(&mut state.state, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        state.view.draw(&mut state.state, cx, data, canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        state.view.draw(&mut state.state, cx, data);
     }
 }

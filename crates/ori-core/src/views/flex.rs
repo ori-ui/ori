@@ -1,7 +1,6 @@
 use ori_macro::example;
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -81,13 +80,7 @@ impl<T, V: View<T>> View<T> for Flex<V> {
         self.content.layout(state, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        self.content.draw(state, cx, data, canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        self.content.draw(state, cx, data);
     }
 }

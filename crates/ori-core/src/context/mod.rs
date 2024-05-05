@@ -16,9 +16,7 @@ pub use event::*;
 pub use layout::*;
 pub use rebuild::*;
 
-use cosmic_text::Buffer;
-
-use crate::{canvas::Mesh, text::TextBuffer, view::ViewId, window::Window};
+use crate::{view::ViewId, window::Window};
 
 macro_rules! impl_context {
     ($ty:ty { $($impl:item)* }) => {
@@ -36,30 +34,6 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// Get the window.
     pub fn window(&mut self) -> &mut Window {
         self.window
-    }
-
-    /// Prepare a text buffer for rasterization.
-    pub fn prepare_text(&mut self, buffer: &TextBuffer) {
-        let scale = self.window().scale;
-        self.fonts().prepare_text(buffer.raw(), scale);
-    }
-
-    /// Prepare a raw cosmic text buffer for rasterization.
-    pub fn prepare_text_raw(&mut self, buffer: &Buffer) {
-        let scale = self.window().scale;
-        self.fonts().prepare_text(buffer, scale);
-    }
-
-    /// Create a mesh for the given text buffer.
-    pub fn rasterize_text(&mut self, buffer: &TextBuffer) -> Mesh {
-        let scale = self.window().scale;
-        self.fonts().rasterize_text(buffer.raw(), scale)
-    }
-
-    /// Create a mesh for the given raw cosmic text buffer.
-    pub fn rasterize_text_raw(&mut self, buffer: &Buffer) -> Mesh {
-        let scale = self.window().scale;
-        self.fonts().rasterize_text(buffer, scale)
     }
 
     /// Get the id of the view.

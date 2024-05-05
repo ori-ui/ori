@@ -26,8 +26,8 @@ pub mod prelude {
 
     pub use crate::{
         canvas::{
-            hex, hsl, hsla, oklab, oklaba, rgb, rgba, Background, BorderRadius, BorderWidth,
-            BoxShadow, Canvas, Color, Curve, Fragment, Mesh, Primitive, Vertex,
+            hex, hsl, hsla, oklab, oklaba, rgb, rgba, BlendMode, BorderRadius, BorderWidth, Canvas,
+            Color, Curve, FillRule, LineCap, LineJoin, Paint, Shader, Stroke,
         },
         clipboard::Clipboard,
         command::CommandProxy,
@@ -36,7 +36,7 @@ pub mod prelude {
             CloseRequested, Code, Event, KeyPressed, Modifiers, PointerButton, PointerId,
             PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
         },
-        image::{gradient, Image, ImageData, ImageId},
+        image::{Image, ImageData, ImageId},
         layout::{
             Affine, Align, Alignment, Axis, Justify, Matrix, Padding, Point, Rect, Size, Space,
             Vector, FILL,

@@ -2,10 +2,10 @@ use ori_macro::example;
 use smol_str::SmolStr;
 
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Canvas, Color},
+    canvas::{BorderRadius, BorderWidth, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Affine, Padding, Point, Rect, Size, Space, Vector},
+    layout::{Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     text::{
@@ -330,16 +330,9 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         self.content.layout(content, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        (state, content): &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, (state, content): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         // we need to set the view to be enable hit testing
-        canvas.set_hoverable(cx.id());
-        self.content.draw(content, cx, data, canvas);
+        self.content.draw(content, cx, data);
 
         let alpha = f32::clamp(state.timer * 10.0 - 9.0, 0.0, 1.0);
 
@@ -361,23 +354,16 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         offset += Vector::max(tl_delta, Vector::ZERO);
         offset -= Vector::max(br_delta, Vector::ZERO);
 
-        let mut layer = canvas.layer();
-        layer.transform = Affine::IDENTITY;
-        layer.translate(Vector::from(state.position + offset));
-        layer.depth += 1000.0;
-        layer.clip = Rect::min_size(Point::ZERO, cx.window().size);
+        cx.translate(Vector::from(state.position + offset), |cx| {
+            cx.quad(
+                Rect::min_size(Point::ZERO, size),
+                self.background.fade(alpha),
+                self.border_radius,
+                self.border_width,
+                self.border_color.fade(alpha),
+            );
 
-        layer.draw_quad(
-            Rect::min_size(Point::ZERO, size),
-            self.background.fade(alpha),
-            self.border_radius,
-            self.border_width,
-            self.border_color.fade(alpha),
-        );
-
-        layer.translate(self.padding.offset());
-
-        let mesh = cx.rasterize_text(&state.buffer);
-        layer.draw_pixel_perfect(mesh);
+            cx.text(self.padding.offset(), &state.buffer);
+        });
     }
 }

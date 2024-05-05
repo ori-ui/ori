@@ -1,7 +1,6 @@
 use ori_macro::example;
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Alignment, Size, Space},
@@ -117,13 +116,7 @@ impl<T, V: View<T>> View<T> for Aligned<V> {
         size
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        self.content.draw(state, cx, data, canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        self.content.draw(state, cx, data);
     }
 }

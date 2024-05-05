@@ -155,6 +155,19 @@ impl Rect {
         Point::new(x, y)
     }
 
+    /// Expand the rectangle to contain the given point.
+    pub fn include(self, point: Point) -> Self {
+        let min_x = f32::min(self.min.x, point.x);
+        let min_y = f32::min(self.min.y, point.y);
+        let max_x = f32::max(self.max.x, point.x);
+        let max_y = f32::max(self.max.y, point.y);
+
+        Self {
+            min: Point::new(min_x, min_y),
+            max: Point::new(max_x, max_y),
+        }
+    }
+
     /// Compute the intersection of the rectangle with the given rectangle.
     pub fn try_intersect(self, other: Self) -> Option<Self> {
         let min_x = f32::max(self.min.x, other.min.x);

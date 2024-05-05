@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -99,15 +98,9 @@ impl<T, V: View<T>> View<T> for LayoutBuilder<T, V> {
         state.view.layout(&mut state.state, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         if let Some(ref mut state) = state {
-            state.view.draw(&mut state.state, cx, data, canvas);
+            state.view.draw(&mut state.state, cx, data);
         }
     }
 }

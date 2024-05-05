@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -212,15 +211,9 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
         }
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         if let Some((ref mut view_state, ref mut view)) = state.view {
-            view.draw(view_state, cx, data, canvas);
+            view.draw(view_state, cx, data);
         }
     }
 }

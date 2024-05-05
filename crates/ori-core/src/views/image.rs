@@ -1,8 +1,7 @@
 use crate::{
-    canvas::{Canvas, Color, Mesh, Vertex},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    image::{Image, Texture},
+    image::Image,
     layout::{Point, Size, Space},
     view::View,
 };
@@ -38,46 +37,7 @@ impl<T> View<T> for Image {
         space.fit(self.size())
     }
 
-    fn draw(
-        &mut self,
-        _state: &mut Self::State,
-        cx: &mut DrawCx,
-        _data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        let mut mesh = Mesh::new();
-
-        mesh.vertices.push(Vertex {
-            position: cx.rect().top_left(),
-            tex_coords: Point::new(0.0, 0.0),
-            color: Color::WHITE,
-        });
-        mesh.vertices.push(Vertex {
-            position: cx.rect().top_right(),
-            tex_coords: Point::new(1.0, 0.0),
-            color: Color::WHITE,
-        });
-        mesh.vertices.push(Vertex {
-            position: cx.rect().bottom_right(),
-            tex_coords: Point::new(1.0, 1.0),
-            color: Color::WHITE,
-        });
-        mesh.vertices.push(Vertex {
-            position: cx.rect().bottom_left(),
-            tex_coords: Point::new(0.0, 1.0),
-            color: Color::WHITE,
-        });
-
-        mesh.indices.push(0);
-        mesh.indices.push(1);
-        mesh.indices.push(2);
-        mesh.indices.push(0);
-        mesh.indices.push(2);
-        mesh.indices.push(3);
-
-        mesh.texture = Some(Texture::Image(self.clone()));
-
-        canvas.trigger(cx.id(), cx.rect());
-        canvas.draw(mesh);
+    fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+        cx.image(Point::ZERO, self.clone());
     }
 }

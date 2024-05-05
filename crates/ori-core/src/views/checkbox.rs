@@ -1,7 +1,8 @@
-use ori_macro::example;
+use ori_macro::{example, Build};
 
 use crate::{
-    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Curve},
+    canvas::Curve,
+    canvas::{BorderRadius, BorderWidth, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Point, Size, Space},
@@ -32,7 +33,7 @@ pub struct CheckboxStyle {
     pub stroke: f32,
 
     /// The background color.
-    pub background: Background,
+    pub background: Color,
 
     /// The border radius.
     pub border_radius: BorderRadius,
@@ -51,7 +52,7 @@ impl Style for CheckboxStyle {
             size: 24.0,
             color: style.palette().primary,
             stroke: 2.0,
-            background: Background::color(Color::TRANSPARENT),
+            background: Color::TRANSPARENT,
             border_radius: BorderRadius::all(6.0),
             border_width: BorderWidth::all(2.0),
             border_color: style.palette().surface_higher,
@@ -63,7 +64,7 @@ impl Style for CheckboxStyle {
 ///
 /// Can be styled using the [`CheckboxStyle`].
 #[example(name = "checkbox", width = 400, height = 300)]
-#[derive(Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Checkbox {
     /// Whether the checkbox is checked.
     #[rebuild(draw)]
@@ -87,7 +88,7 @@ pub struct Checkbox {
 
     /// The background color.
     #[rebuild(draw)]
-    pub background: Background,
+    pub background: Color,
 
     /// The border radius.
     #[rebuild(draw)]
@@ -121,54 +122,6 @@ impl Checkbox {
             border_width: style.border_width,
             border_color: style.border_color,
         }
-    }
-
-    /// Set the transition of the checkbox.
-    pub fn transition(mut self, transition: Transition) -> Self {
-        self.transition = transition;
-        self
-    }
-
-    /// Set the size of the checkbox.
-    pub fn size(mut self, size: f32) -> Self {
-        self.size = size;
-        self
-    }
-
-    /// Set the color of the checkbox.
-    pub fn color(mut self, color: impl Into<Color>) -> Self {
-        self.color = color.into();
-        self
-    }
-
-    /// Set the stroke width of the checkbox.
-    pub fn stroke(mut self, stroke: f32) -> Self {
-        self.stroke = stroke;
-        self
-    }
-
-    /// Set the background color of the checkbox.
-    pub fn background(mut self, background: impl Into<Background>) -> Self {
-        self.background = background.into();
-        self
-    }
-
-    /// Set the border radius of the checkbox.
-    pub fn border_radius(mut self, border_radius: impl Into<BorderRadius>) -> Self {
-        self.border_radius = border_radius.into();
-        self
-    }
-
-    /// Set the border width of the checkbox.
-    pub fn border_width(mut self, border_width: impl Into<BorderWidth>) -> Self {
-        self.border_width = border_width.into();
-        self
-    }
-
-    /// Set the border color of the checkbox.
-    pub fn border_color(mut self, border_color: impl Into<Color>) -> Self {
-        self.border_color = border_color.into();
-        self
     }
 }
 
@@ -208,14 +161,12 @@ impl<T> View<T> for Checkbox {
         space.fit(Size::all(self.size))
     }
 
-    fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T, canvas: &mut Canvas) {
+    fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let bright = self.border_color.lighten(0.2);
 
-        canvas.set_hoverable(cx.id());
-
-        canvas.draw_quad(
+        cx.quad(
             cx.rect(),
-            self.background.clone(),
+            self.background,
             self.border_radius,
             self.border_width,
             self.border_color.mix(bright, self.transition.get(*t)),
@@ -223,11 +174,11 @@ impl<T> View<T> for Checkbox {
 
         if self.checked {
             let mut curve = Curve::new();
-            curve.push(Point::new(0.2, 0.5) * cx.size());
-            curve.push(Point::new(0.4, 0.7) * cx.size());
-            curve.push(Point::new(0.8, 0.3) * cx.size());
+            curve.move_to(Point::new(0.2, 0.5) * cx.size());
+            curve.line_to(Point::new(0.4, 0.7) * cx.size());
+            curve.line_to(Point::new(0.8, 0.3) * cx.size());
 
-            canvas.draw(curve.stroke(self.stroke, self.color));
+            cx.stroke(curve, self.stroke, self.color);
         }
     }
 }

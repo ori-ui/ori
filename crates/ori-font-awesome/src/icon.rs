@@ -1,5 +1,5 @@
 use ori_core::{
-    canvas::{Canvas, Color, Mesh},
+    canvas::Color,
     context::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -101,7 +101,6 @@ impl Icon {
 #[doc(hidden)]
 pub struct IconState {
     buffer: TextBuffer,
-    mesh: Option<Mesh>,
 }
 
 impl<T> View<T> for Icon {
@@ -112,7 +111,7 @@ impl<T> View<T> for Icon {
 
         self.set_attributes(cx, &mut buffer);
 
-        IconState { buffer, mesh: None }
+        IconState { buffer }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
@@ -120,7 +119,6 @@ impl<T> View<T> for Icon {
 
         if self != old {
             self.set_attributes(cx, &mut state.buffer);
-            state.mesh = None;
         }
     }
 
@@ -141,27 +139,12 @@ impl<T> View<T> for Icon {
         space: Space,
     ) -> Size {
         state.buffer.set_bounds(cx.fonts(), space.max);
-        cx.prepare_text(&state.buffer);
 
         Size::all(self.size)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        _data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let offset = cx.rect().center() - state.buffer.rect().center();
-
-        if state.mesh.is_none() {
-            state.mesh = Some(cx.rasterize_text(&state.buffer));
-        }
-
-        if let Some(mesh) = state.mesh.clone() {
-            canvas.translate(offset);
-            canvas.draw_pixel_perfect(mesh);
-        }
+        cx.text(offset, &state.buffer);
     }
 }

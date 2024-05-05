@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use crate::canvas::Color;
+use crate::prelude::Color;
 
 use super::ImageData;
 
@@ -33,13 +33,6 @@ macro_rules! include_image {
         })
         .clone()
     }};
-}
-
-/// Create a new gradient image.
-///
-/// Note that `angle` is in degrees.
-pub fn gradient(angle: f32, colors: &[Color]) -> Image {
-    Image::gradient(angle, colors)
 }
 
 /// A unique identifier for an [`Image`].
@@ -70,11 +63,6 @@ impl Image {
     /// - If `pixels.len()` is not equal to `width * height * 4`.
     pub fn new(pixels: Vec<u8>, width: u32, height: u32) -> Self {
         Self::from(ImageData::new(pixels, width, height))
-    }
-
-    /// Create a new gradient image.
-    pub fn gradient(angle: f32, colors: &[Color]) -> Self {
-        Self::from(ImageData::gradient(angle, colors))
     }
 
     /// Try to load an image from a file.
@@ -110,6 +98,20 @@ impl Image {
     pub fn modify(&mut self, f: impl FnOnce(&mut ImageData)) {
         f(Arc::make_mut(&mut self.data));
         self.id = self.data.compute_id();
+    }
+
+    /// Multiply the image with a color.
+    pub fn multiply(&mut self, color: Color) {
+        let [r, g, b, a] = color.to_rgba8();
+
+        self.modify(|data| {
+            for pixel in data.chunks_exact_mut(4) {
+                pixel[0] = (pixel[0] as u16 * r as u16 / 255) as u8;
+                pixel[1] = (pixel[1] as u16 * g as u16 / 255) as u8;
+                pixel[2] = (pixel[2] as u16 * b as u16 / 255) as u8;
+                pixel[3] = (pixel[3] as u16 * a as u16 / 255) as u8;
+            }
+        });
     }
 
     /// Downgrade the image to a weak reference.

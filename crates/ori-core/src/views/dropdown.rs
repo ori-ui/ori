@@ -1,7 +1,6 @@
 use ori_macro::Rebuild;
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space, Vector},
@@ -115,23 +114,13 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
         header_size
     }
 
-    fn draw(
-        &mut self,
-        (header, content): &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.trigger(cx.id(), cx.rect());
-
-        self.header.draw(header, cx, data, canvas);
+    fn draw(&mut self, (header, content): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        self.header.draw(header, cx, data);
 
         if !cx.is_focused() {
             return;
         }
 
-        let mut layer = canvas.layer();
-        layer.depth += 10000.0;
-        self.content.draw(content, cx, data, &mut layer);
+        self.content.draw(content, cx, data);
     }
 }

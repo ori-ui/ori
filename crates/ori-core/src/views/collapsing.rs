@@ -3,10 +3,11 @@ use std::f32::consts::{PI, SQRT_2};
 use ori_macro::{example, Build};
 
 use crate::{
-    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Mesh, Vertex},
+    canvas::{BorderRadius, BorderWidth, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Point, Rect, Size, Space, Vector},
+    layout::{Affine, Point, Rect, Size, Space, Vector},
+    prelude::{Curve, FillRule},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     transition::Transition,
@@ -28,7 +29,7 @@ pub struct CollapsingStyle {
     /// The color of the icon.
     pub icon_color: Color,
     /// The background color of the header.
-    pub background: Background,
+    pub background: Color,
     /// The border width of the header.
     pub border_width: BorderWidth,
     /// The border radius of the header.
@@ -43,7 +44,7 @@ impl Style for CollapsingStyle {
             transition: Transition::ease(0.1),
             icon_size: 16.0,
             icon_color: style.palette().primary,
-            background: Background::color(Color::TRANSPARENT),
+            background: Color::TRANSPARENT,
             border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
             border_radius: BorderRadius::all(0.0),
             border_color: style.palette().surface_higher,
@@ -90,7 +91,7 @@ pub struct Collapsing<T, H, V> {
 
     /// The background color of the header.
     #[rebuild(draw)]
-    pub background: Background,
+    pub background: Color,
 
     /// The border width of the header.
     #[rebuild(draw)]
@@ -225,39 +226,30 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         Size::new(width, height)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         let t = self.transition.get(state.t);
 
         let header_height = self.icon_size.max(state.header.size().height);
         let header_size = Size::new(cx.rect().width(), header_height);
         let header_rect = Rect::min_size(cx.rect().top_left(), header_size);
 
-        canvas.trigger(state.header.id(), header_rect);
-
-        canvas.draw_quad(
+        cx.quad(
             header_rect,
-            self.background.clone(),
+            self.background,
             self.border_radius,
             self.border_width,
             self.border_color,
         );
 
-        canvas.forked(|canvas| {
-            canvas.translate(Vector::new(self.icon_size / 2.0, header_height / 2.0));
-            canvas.scale(Vector::all(self.icon_size));
+        let transform = Affine::translate(Vector::new(self.icon_size / 2.0, header_height / 2.0))
+            * Affine::scale(Vector::all(self.icon_size))
+            * Affine::rotate(PI / 2.0 * t);
 
-            canvas.rotate(PI / 2.0 * t);
-
-            canvas.draw(icon(self.icon_color));
+        cx.transform(transform, |cx| {
+            cx.fill_curve(icon(), FillRule::NonZero, self.icon_color);
         });
 
-        self.header.draw(&mut state.header, cx, data, canvas);
+        self.header.draw(&mut state.header, cx, data);
 
         let content_offset = Vector::new(0.0, state.header.size().height);
         let content_height = Vector::new(0.0, state.content.size().height) * (1.0 - t);
@@ -266,23 +258,19 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         let content_min = cx.rect().top_left() + content_offset;
         let content_rect = Rect::min_size(content_min, state.content.size());
 
-        canvas.clip(content_rect.transform(canvas.transform));
-        self.content.draw(&mut state.content, cx, data, canvas);
+        cx.mask(content_rect, |cx| {
+            self.content.draw(&mut state.content, cx, data);
+        });
     }
 }
 
-fn icon(color: Color) -> Mesh {
-    let mut mesh = Mesh::new();
+fn icon() -> Curve {
+    let mut curve = Curve::new();
 
     let d = 0.25;
+    curve.move_to(Point::new(-d, -d * SQRT_2));
+    curve.line_to(Point::new(d * SQRT_2, 0.0));
+    curve.line_to(Point::new(-d, d * SQRT_2));
 
-    mesh.vertices.extend([
-        Vertex::new_color(Point::new(-d, -d * SQRT_2), color),
-        Vertex::new_color(Point::new(d * SQRT_2, 0.0), color),
-        Vertex::new_color(Point::new(-d, d * SQRT_2), color),
-    ]);
-
-    mesh.indices.extend([0, 1, 2]);
-
-    mesh
+    curve
 }

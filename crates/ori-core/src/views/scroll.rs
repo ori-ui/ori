@@ -1,7 +1,7 @@
 use ori_macro::example;
 
 use crate::{
-    canvas::{BorderRadius, Canvas, Color},
+    canvas::{BorderRadius, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Axis, Rect, Size, Space, Vector},
@@ -217,23 +217,14 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         size
     }
 
-    fn draw(
-        &mut self,
-        (state, content): &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.trigger(cx.id(), cx.rect());
-
+    fn draw(&mut self, (state, content): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         let overflow = self.overflow(content.size(), cx.size());
         state.scroll = state.scroll.clamp(0.0, overflow);
         content.translate(self.axis.pack(-state.scroll, 0.0));
 
-        let mut content_layer = canvas.layer();
-        content_layer.clip &= cx.rect().transform(content_layer.transform);
-
-        self.content.draw(content, cx, data, &mut content_layer);
+        cx.mask(cx.rect(), |cx| {
+            self.content.draw(content, cx, data);
+        });
 
         let overflow = self.overflow(content.size(), cx.size());
 
@@ -241,11 +232,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             return;
         }
 
-        let mut scrollbar_layer = canvas.layer();
-        scrollbar_layer.depth += 100.0;
-        scrollbar_layer.set_hoverable(cx.id());
-
-        scrollbar_layer.draw_quad(
+        cx.quad(
             self.scrollbar_rect(cx.rect()),
             self.color.fade(0.7).fade(self.transition.get(state.t)),
             self.border_radius,
@@ -253,7 +240,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             Color::TRANSPARENT,
         );
 
-        scrollbar_layer.draw_quad(
+        cx.quad(
             self.scrollbar_knob_rect(cx.rect(), overflow, state.scroll),
             self.knob_color.fade(0.9).fade(self.transition.get(state.t)),
             self.border_radius,

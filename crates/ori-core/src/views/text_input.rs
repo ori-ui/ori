@@ -4,10 +4,10 @@ use cosmic_text::{
 use ori_macro::{example, Build};
 
 use crate::{
-    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color, Quad},
+    canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Code, Event, KeyPressed},
-    layout::{Point, Rect, Size, Space},
+    layout::{Point, Rect, Size, Space, Vector},
     style::{style, Palette, Style, Styles},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
@@ -643,14 +643,8 @@ impl<T> View<T> for TextInput<T> {
         space.fit(size)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        _data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.trigger(cx.id(), cx.rect());
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+        cx.trigger(cx.rect());
 
         // FIXME: this is bad
         (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
@@ -671,13 +665,7 @@ impl<T> View<T> for TextInput<T> {
 
                     let highlight = Rect::min_size(min, size);
 
-                    canvas.draw_pixel_perfect(Quad {
-                        rect: highlight,
-                        background: Background::new(Color::hex("#25d0ea80")),
-                        border_radius: BorderRadius::ZERO,
-                        border_width: BorderWidth::ZERO,
-                        border_color: Color::TRANSPARENT,
-                    });
+                    cx.fill_rect(highlight, self.color.fade(0.2));
                 }
             }
 
@@ -700,23 +688,15 @@ impl<T> View<T> for TextInput<T> {
                 let cursor = Rect::min_size(min.round(), size);
 
                 let blink = state.blink.cos() * 0.5 + 0.5;
-                canvas.draw_pixel_perfect(Quad {
-                    rect: cursor,
-                    background: Background::new(self.color.fade(blink)),
-                    border_radius: BorderRadius::ZERO,
-                    border_width: BorderWidth::ZERO,
-                    border_color: Color::TRANSPARENT,
-                });
+                cx.fill_rect(cursor, self.color.fade(blink));
             }
         }
 
         /* draw the text */
-        let mesh = if !self.get_text(state).is_empty() {
-            cx.rasterize_text_raw(state.buffer())
+        if !self.get_text(state).is_empty() {
+            cx.text_raw(Vector::ZERO, state.buffer())
         } else {
-            cx.rasterize_text(&state.placeholder)
+            cx.text(Vector::ZERO, &state.placeholder)
         };
-
-        canvas.draw_pixel_perfect(mesh);
     }
 }

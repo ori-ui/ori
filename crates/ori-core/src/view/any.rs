@@ -1,7 +1,6 @@
 use std::any::Any;
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -76,13 +75,7 @@ pub trait AnyView<T> {
     ) -> Size;
 
     /// Draw the view.
-    fn dyn_draw(
-        &mut self,
-        state: &mut AnyState,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    );
+    fn dyn_draw(&mut self, state: &mut AnyState, cx: &mut DrawCx, data: &mut T);
 }
 
 impl<T, V> AnyView<T> for V
@@ -140,15 +133,9 @@ where
         }
     }
 
-    fn dyn_draw(
-        &mut self,
-        state: &mut AnyState,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn dyn_draw(&mut self, state: &mut AnyState, cx: &mut DrawCx, data: &mut T) {
         if let Some(state) = state.downcast_mut::<V::State>() {
-            self.draw(state, cx, data, canvas);
+            self.draw(state, cx, data);
         } else {
             eprintln!("Failed to downcast state");
         }
@@ -180,13 +167,7 @@ impl<T> View<T> for BoxedView<T> {
         self.as_mut().dyn_layout(state, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        self.as_mut().dyn_draw(state, cx, data, canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        self.as_mut().dyn_draw(state, cx, data);
     }
 }

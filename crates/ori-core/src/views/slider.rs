@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use ori_macro::Build;
 
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Canvas, Color},
+    canvas::{BorderRadius, BorderWidth, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Axis, Rect, Size, Space},
@@ -212,16 +212,8 @@ impl<T> View<T> for Slider<T> {
         space.fit(size)
     }
 
-    fn draw(
-        &mut self,
-        _state: &mut Self::State,
-        cx: &mut DrawCx,
-        _data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.set_hoverable(cx.id());
-
-        canvas.draw_quad(
+    fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+        cx.quad(
             cx.rect(),
             self.background,
             self.border_radius,
@@ -236,7 +228,7 @@ impl<T> View<T> for Slider<T> {
         let length = f32::max(length * value, min_length);
         let size = self.axis.pack(length, width);
 
-        canvas.draw_quad(
+        cx.quad(
             Rect::min_size(cx.rect().min, size),
             self.color,
             self.border_radius,

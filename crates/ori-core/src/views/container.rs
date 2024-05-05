@@ -1,10 +1,10 @@
-use ori_macro::example;
+use ori_macro::{example, Build};
 
 use crate::{
-    canvas::{Background, BorderRadius, BorderWidth, BoxShadow, Canvas, Color},
+    canvas::{BorderRadius, BorderWidth, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Size, Space, Vector},
+    layout::{Size, Space},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     view::{Pod, State, View},
@@ -24,28 +24,15 @@ pub fn container<V>(content: V) -> Container<V> {
 ///     background(Color::RED, text("Hello, World!"))
 /// }
 /// ````
-pub fn background<V>(background: impl Into<Background>, content: V) -> Container<V> {
+pub fn background<V>(background: Color, content: V) -> Container<V> {
     Container::new(content).background(background)
-}
-
-/// Create a new [`Container`] with shadow.
-///
-/// # Examples
-/// ```
-/// # use ori_core::{canvas::Color, view::*, views::*};
-/// pub fn ui<T>(_data: T) -> impl View<T> {
-///    shadow(10.0, text("Hello, World!"))
-/// }
-/// ```
-pub fn shadow<V>(shadow: impl Into<BoxShadow>, content: V) -> Container<V> {
-    Container::new(content).shadow(shadow)
 }
 
 /// The style of a [`Container`].
 #[derive(Clone, Debug)]
 pub struct ContainerStyle {
     /// The background color.
-    pub background: Background,
+    pub background: Color,
 
     /// The border radius.
     pub border_radius: BorderRadius,
@@ -55,33 +42,30 @@ pub struct ContainerStyle {
 
     /// The border color.
     pub border_color: Color,
-
-    /// The shadow.
-    pub shadow: BoxShadow,
 }
 
 impl Style for ContainerStyle {
     fn style(style: &Styles) -> Self {
         Self {
-            background: style.palette().surface.into(),
+            background: style.palette().surface,
             border_radius: BorderRadius::all(0.0),
             border_width: BorderWidth::all(0.0),
             border_color: style.palette().surface_higher,
-            shadow: BoxShadow::default(),
         }
     }
 }
 
 /// A container view.
 #[example(name = "container", width = 400, height = 300)]
-#[derive(Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Container<V> {
     /// The content.
+    #[build(ignore)]
     pub content: Pod<V>,
 
     /// The background color.
     #[rebuild(draw)]
-    pub background: Background,
+    pub background: Color,
 
     /// The border radius.
     #[rebuild(draw)]
@@ -94,10 +78,6 @@ pub struct Container<V> {
     /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
-
-    /// The shadow.
-    #[rebuild(draw)]
-    pub shadow: BoxShadow,
 }
 
 impl<V> Container<V> {
@@ -114,26 +94,7 @@ impl<V> Container<V> {
             border_radius: style.border_radius,
             border_width: style.border_width,
             border_color: style.border_color,
-            shadow: style.shadow,
         }
-    }
-
-    /// Set the background color.
-    pub fn background(mut self, background: impl Into<Background>) -> Self {
-        self.background = background.into();
-        self
-    }
-
-    /// Set the border radius.
-    pub fn border_radius(mut self, border_radius: impl Into<BorderRadius>) -> Self {
-        self.border_radius = border_radius.into();
-        self
-    }
-
-    /// Set the border width.
-    pub fn border_width(mut self, border_width: impl Into<BorderWidth>) -> Self {
-        self.border_width = border_width.into();
-        self
     }
 
     /// Set the border width of the top edge.
@@ -157,42 +118,6 @@ impl<V> Container<V> {
     /// Set the border width of the left edge.
     pub fn border_left(mut self, width: f32) -> Self {
         self.border_width.left = width;
-        self
-    }
-
-    /// Set the border color.
-    pub fn border_color(mut self, border_color: impl Into<Color>) -> Self {
-        self.border_color = border_color.into();
-        self
-    }
-
-    /// Set the shadow.
-    pub fn shadow(mut self, shadow: impl Into<BoxShadow>) -> Self {
-        self.shadow = shadow.into();
-        self
-    }
-
-    /// Set the shadow color.
-    pub fn shadow_color(mut self, color: impl Into<Color>) -> Self {
-        self.shadow.color = color.into();
-        self
-    }
-
-    /// Set the shadow blur.
-    pub fn shadow_blur(mut self, blur: f32) -> Self {
-        self.shadow.blur = blur;
-        self
-    }
-
-    /// Set the shadow spread.
-    pub fn shadow_spread(mut self, spread: f32) -> Self {
-        self.shadow.spread = spread;
-        self
-    }
-
-    /// Set the shadow offset.
-    pub fn shadow_offset(mut self, offset: impl Into<Vector>) -> Self {
-        self.shadow.offset = offset.into();
         self
     }
 }
@@ -224,24 +149,15 @@ impl<T, V: View<T>> View<T> for Container<V> {
         self.content.layout(state, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.draw(self.shadow.mesh(cx.rect(), self.border_radius));
-
-        canvas.set_hoverable(cx.id());
-        canvas.draw_quad(
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        cx.quad(
             cx.rect(),
-            self.background.clone(),
+            self.background,
             self.border_radius,
             self.border_width,
             self.border_color,
         );
 
-        self.content.draw(state, cx, data, canvas);
+        self.content.draw(state, cx, data);
     }
 }

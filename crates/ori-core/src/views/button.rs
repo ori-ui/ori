@@ -1,7 +1,7 @@
 use ori_macro::{example, Build};
 
 use crate::{
-    canvas::{Background, BorderRadius, BorderWidth, Canvas, Color},
+    canvas::{BorderRadius, BorderWidth, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Padding, Size, Space, Vector},
@@ -29,7 +29,7 @@ pub struct ButtonStyle {
     pub transition: Transition,
 
     /// The color of the button.
-    pub color: Background,
+    pub color: Color,
 
     /// The border radius of the button.
     pub border_radius: BorderRadius,
@@ -49,7 +49,7 @@ impl Style for ButtonStyle {
             padding: Padding::all(8.0),
             fancy: 0.0,
             transition: Transition::ease(0.1),
-            color: Background::new(palette.primary),
+            color: palette.primary,
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
             border_color: palette.surface_higher,
@@ -81,7 +81,7 @@ pub struct Button<V> {
 
     /// The color of the button.
     #[rebuild(draw)]
-    pub color: Background,
+    pub color: Color,
 
     /// The border radius.
     #[rebuild(draw)]
@@ -212,31 +212,18 @@ impl<T, V: View<T>> View<T> for Button<V> {
         space.fit(content_size + self.padding.size())
     }
 
-    fn draw(
-        &mut self,
-        (state, content): &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.set_hoverable(cx.id());
-
-        let dark = self.color.color.darken(0.05);
-        let dim = self.color.color.darken(0.025);
-        let bright = self.color.color.lighten(0.05);
+    fn draw(&mut self, (state, content): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        let dark = self.color.darken(0.05);
+        let dim = self.color.darken(0.025);
+        let bright = self.color.lighten(0.05);
 
         let hot = self.transition.get(state.hot);
         let active = self.transition.get(state.active);
 
-        let face = self.color.color.mix(bright, hot).mix(dim, active);
-
-        let face = Background {
-            texture: self.color.texture.clone(),
-            color: face,
-        };
+        let face = self.color.mix(bright, hot).mix(dim, active);
 
         if self.fancy == 0.0 {
-            canvas.draw_quad(
+            cx.quad(
                 cx.rect(),
                 face,
                 self.border_radius,
@@ -244,18 +231,15 @@ impl<T, V: View<T>> View<T> for Button<V> {
                 self.border_color,
             );
 
-            self.content.draw(content, cx, data, canvas);
+            self.content.draw(content, cx, data);
             return;
         }
 
         let base = dim.mix(dark, 1.0 - active);
 
-        canvas.draw_quad(
+        cx.quad(
             cx.rect(),
-            Background {
-                texture: self.color.texture.clone(),
-                color: base,
-            },
+            base,
             self.border_radius,
             BorderWidth::ZERO,
             Color::TRANSPARENT,
@@ -263,17 +247,16 @@ impl<T, V: View<T>> View<T> for Button<V> {
 
         let float = Vector::NEG_Y * (1.0 - active) * self.fancy;
 
-        let mut layer = canvas.layer();
-        layer.translate(float);
+        cx.translate(float, |cx| {
+            cx.quad(
+                cx.rect(),
+                face,
+                self.border_radius,
+                self.border_width,
+                self.border_color,
+            );
 
-        layer.draw_quad(
-            cx.rect(),
-            face,
-            self.border_radius,
-            self.border_width,
-            self.border_color,
-        );
-
-        self.content.draw(content, cx, data, &mut layer);
+            self.content.draw(content, cx, data);
+        });
     }
 }

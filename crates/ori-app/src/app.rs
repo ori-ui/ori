@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use instant::Instant;
 use ori_core::{
-    canvas::{Canvas, Color, Scene},
+    canvas::{Canvas, Color},
     clipboard::{Clipboard, ClipboardContext},
     command::{CommandProxy, CommandReceiver},
     context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
@@ -22,8 +22,8 @@ use crate::{AppBuilder, AppCommand, AppRequest, Delegate, DelegateCx, UiBuilder}
 
 /// Information needed to render a window.
 pub struct WindowRenderScene<'a> {
-    /// The scene to render.
-    pub scene: &'a Scene,
+    /// The canvas to render.
+    pub canvas: &'a Canvas,
     /// The size of the window.
     pub logical_size: Size,
     /// The clear color of the window.
@@ -35,7 +35,7 @@ pub(crate) struct WindowState<T> {
     view: BoxedView<T>,
     cursor: Cursor,
     state: AnyState,
-    scene: Scene,
+    canvas: Canvas,
     view_state: ViewState,
     window: Window,
     snapshot: WindowSnapshot,
@@ -92,14 +92,16 @@ impl<T> WindowState<T> {
         self.view_state.prepare();
         self.view_state.mark_drawn();
 
-        self.scene.clear();
+        self.canvas.clear();
 
-        let mut canvas = Canvas::new(&mut self.scene, self.window.size, self.window.scale);
-        let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.window);
+        let mut cx = DrawCx::new(
+            base,
+            &mut self.view_state,
+            &mut self.window,
+            &mut self.canvas,
+        );
 
-        self.view.draw(&mut self.state, &mut cx, data, &mut canvas);
-
-        self.scene.sort();
+        self.view.draw(&mut self.state, &mut cx, data);
     }
 
     fn animate(&mut self, animate: Instant) -> Vec<AppRequest<T>> {
@@ -343,7 +345,7 @@ impl<T> App<T> {
             view,
             cursor: Cursor::Default,
             state,
-            scene: Scene::new(),
+            canvas: Canvas::new(),
             view_state,
             window,
             snapshot,
@@ -419,7 +421,7 @@ impl<T> App<T> {
             for i in 0..window_state.window.pointers().len() {
                 let pointer = &window_state.window.pointers()[i];
                 let position = pointer.position;
-                let hovered = window_state.scene.view_at(position);
+                let hovered = window_state.canvas.view_at(position);
 
                 let pointer = &mut window_state.window.pointers_mut()[i];
                 changed |= pointer.hovering != hovered;
@@ -688,7 +690,7 @@ impl<T> App<T> {
         };
 
         Some(WindowRenderScene {
-            scene: &window_state.scene,
+            canvas: &window_state.canvas,
             logical_size: window_state.window.size,
             clear_color,
         })

@@ -1,7 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -162,26 +161,16 @@ impl<V> Pod<V> {
     }
 
     /// Draw a pod view.
-    pub fn draw(
-        view_state: &mut ViewState,
-        cx: &mut DrawCx,
-        canvas: &mut Canvas,
-        f: impl FnOnce(&mut DrawCx, &mut Canvas),
-    ) {
+    pub fn draw(view_state: &mut ViewState, cx: &mut DrawCx, f: impl FnOnce(&mut DrawCx)) {
         view_state.prepare();
         view_state.mark_drawn();
-
-        // create the canvas layer
-        let mut canvas = canvas.layer();
-        canvas.transform *= view_state.transform;
-        canvas.view = None;
 
         // create the draw context
         let mut new_cx = cx.child();
         new_cx.view_state = view_state;
 
         // draw the content
-        f(&mut new_cx, &mut canvas);
+        new_cx.transform(new_cx.view_state.transform, f);
 
         // propagate the view state
         cx.view_state.propagate(view_state);
@@ -244,15 +233,9 @@ impl<T, V: View<T>> View<T> for Pod<V> {
         })
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        Self::draw(&mut state.view_state, cx, canvas, |cx, canvas| {
-            (self.view).draw(&mut state.content, cx, data, canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        Self::draw(&mut state.view_state, cx, |cx| {
+            (self.view).draw(&mut state.content, cx, data);
         });
     }
 }

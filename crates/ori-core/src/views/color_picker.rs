@@ -1,12 +1,12 @@
-use std::f32::consts::{FRAC_PI_2, PI, TAU};
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use ori_macro::Build;
 
 use crate::{
-    canvas::{Canvas, Color, Curve, Mesh, Vertex},
+    canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Point, Rect, Size, Space, Vector},
+    layout::{Point, Size, Space},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     view::View,
@@ -145,6 +145,7 @@ impl<T> ColorPicker<T> {
         self
     }
 
+    /*
     fn wheel_mesh(lightness: f32, alpha: f32, radial: u32, angular: u32) -> Mesh {
         let mut mesh = Mesh::new();
 
@@ -193,6 +194,7 @@ impl<T> ColorPicker<T> {
 
         mesh
     }
+    */
 
     fn input(
         &mut self,
@@ -273,7 +275,6 @@ enum ColorPickerPart {
 
 #[doc(hidden)]
 pub struct ColorPickerState {
-    mesh: Mesh,
     edit: Option<ColorPickerPart>,
 }
 
@@ -287,23 +288,18 @@ impl<T> View<T> for ColorPicker<T> {
     type State = ColorPickerState;
 
     fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        let (_, _, l, a) = self.color.to_okhsla();
+        let (_, _, _l, _a) = self.color.to_okhsla();
 
-        ColorPickerState {
-            mesh: Self::wheel_mesh(l, a, 180, 50),
-            edit: None,
-        }
+        ColorPickerState { edit: None }
     }
 
-    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+    fn rebuild(&mut self, _state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
         let (_, _, l, a) = self.color.to_okhsla();
         let (_, _, old_l, old_a) = old.color.to_okhsla();
 
-        if (l - old_l).abs() < 0.01 || (a - old_a).abs() < 0.01 {
-            state.mesh = Self::wheel_mesh(l, a, 180, 50);
-        }
+        if (l - old_l).abs() < 0.01 || (a - old_a).abs() < 0.01 {}
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
@@ -333,15 +329,8 @@ impl<T> View<T> for ColorPicker<T> {
         space.fit(Size::all(self.size))
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        _data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.set_hoverable(cx.id());
-
+    fn draw(&mut self, _state: &mut Self::State, _cx: &mut DrawCx, _data: &mut T) {
+        /*
         let radius = cx.size().min_element() / 2.0;
         let wheel_radius = radius - self.slider_width - self.slider_padding;
 
@@ -426,5 +415,6 @@ impl<T> View<T> for ColorPicker<T> {
         );
 
         canvas.draw(slider.stroke(self.slider_width, self.alpha_color));
+        */
     }
 }

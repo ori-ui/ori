@@ -1,6 +1,8 @@
-use std::{io, sync::Arc};
+use std::{collections::HashMap, io, sync::Arc};
 
-use cosmic_text::{fontdb::Source, Buffer, FontSystem, SwashCache};
+use cosmic_text::{
+    fontdb::Source, Buffer, CacheKey, FontSystem, LayoutGlyph, SwashCache, SwashContent,
+};
 
 const ROBOTO_BLACK: &[u8] = include_bytes!("../../font/Roboto-Black.ttf");
 const ROBOTO_BLACK_ITALIC: &[u8] = include_bytes!("../../font/Roboto-BlackItalic.ttf");
@@ -36,11 +38,24 @@ const EMBEDDED_FONTS: &[&[u8]] = &[
 ];
 
 use crate::{
-    canvas::{Color, Mesh, Vertex},
-    layout::{Point, Rect, Size},
+    layout::{Point, Size, Vector},
+    prelude::{Canvas, Color, Image},
 };
 
-use super::{FontAtlas, FontSource};
+use super::FontSource;
+
+/// A cached glyph.
+#[derive(Clone, Debug)]
+pub struct CachedGlyph {
+    /// The image of the glyph.
+    pub image: Image,
+
+    /// The offset of the glyph.
+    pub offset: Vector,
+
+    /// The size of the glyph.
+    pub size: Size,
+}
 
 /// A context for loading and rasterizing fonts.
 ///
@@ -53,8 +68,8 @@ pub struct Fonts {
     pub swash_cache: SwashCache,
     /// The font system.
     pub font_system: FontSystem,
-    /// The font atlas.
-    pub font_atlas: FontAtlas,
+    /// The glyph cache.
+    pub glyph_cache: HashMap<CacheKey, CachedGlyph>,
 }
 
 impl Default for Fonts {
@@ -67,7 +82,6 @@ impl Fonts {
     /// Creates a new font context.
     pub fn new() -> Self {
         let swash_cache = SwashCache::new();
-        let font_atlas = FontAtlas::new();
 
         let mut fonts = Vec::new();
 
@@ -87,7 +101,7 @@ impl Fonts {
         Self {
             swash_cache,
             font_system,
-            font_atlas,
+            glyph_cache: HashMap::new(),
         }
     }
 
@@ -138,125 +152,66 @@ impl Fonts {
         Size::new(width, height).ceil()
     }
 
-    /// Prepare a text buffer for rasterization.
-    pub fn prepare_text(&mut self, buffer: &Buffer, scale: f32) {
-        loop {
-            if self.try_prepare_text(buffer, scale) {
-                break;
-            }
+    /// Rasterize a glyph.
+    pub fn rasterize_glyph(&mut self, glyph: &LayoutGlyph, scale: f32) -> &CachedGlyph {
+        let physical = glyph.physical((0.0, 0.0), scale);
 
-            self.font_atlas.grow();
+        if self.glyph_cache.contains_key(&physical.cache_key) {
+            return self.glyph_cache.get(&physical.cache_key).unwrap();
         }
+
+        let image = match self
+            .swash_cache
+            .get_image_uncached(&mut self.font_system, physical.cache_key)
+        {
+            Some(image) => image,
+            None => panic!("failed to rasterize glyph"),
+        };
+
+        let data = match image.content {
+            SwashContent::Mask => image.data.into_iter().flat_map(|a| [a, a, a, a]).collect(),
+            SwashContent::SubpixelMask => todo!(),
+            SwashContent::Color => image.data,
+        };
+
+        let size = Size::new(image.placement.width as f32, image.placement.height as f32) / scale;
+        let offset = Vector::new(image.placement.left as f32, -image.placement.top as f32) / scale;
+
+        let image = Image::new(data, image.placement.width, image.placement.height);
+
+        let glyph = CachedGlyph {
+            image,
+            offset,
+            size,
+        };
+
+        self.glyph_cache.insert(physical.cache_key, glyph);
+        self.glyph_cache.get(&physical.cache_key).unwrap()
     }
 
-    fn try_prepare_text(&mut self, buffer: &Buffer, scale: f32) -> bool {
+    /// Rasterize a buffer.
+    pub fn draw_buffer(
+        &mut self,
+        canvas: &mut Canvas,
+        buffer: &Buffer,
+        offset: Vector,
+        scale: f32,
+    ) {
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
-                let rasterized = self.font_atlas.rasterize_glyph(
-                    &mut self.swash_cache,
-                    &mut self.font_system,
-                    glyph,
-                    scale,
-                );
-
-                if rasterized.is_none() {
-                    return false;
-                }
-            }
-        }
-
-        true
-    }
-
-    /// Convert a text buffer to a mesh.
-    ///
-    /// This involves shapind the text, rasterizing the glyphs, laying out the glyphs,
-    /// and creating the mesh itself, and should ideally be done as little as possible.
-    pub fn rasterize_text(&mut self, buffer: &Buffer, scale: f32) -> Mesh {
-        // if rasterizing returns None, it means the font atlas is full
-        // so we need to grow it and try again
-        //
-        // TODO: handle the case where the font atlas is full and we can't grow it
-        loop {
-            if let Some(mesh) = self.try_rasterize_text(buffer, scale) {
-                break mesh;
-            }
-
-            self.font_atlas.grow();
-        }
-    }
-
-    fn try_rasterize_text(&mut self, buffer: &Buffer, scale: f32) -> Option<Mesh> {
-        fn round_point(point: Point, scale: f32) -> Point {
-            Point::round(point * scale) / scale
-        }
-
-        let mut mesh = Mesh::new();
-        let mut glyphs = Vec::<(Rect, Rect, Color)>::new();
-
-        for run in buffer.layout_runs() {
-            for glyph in run.glyphs {
-                let rasterized = self.font_atlas.rasterize_glyph(
-                    &mut self.swash_cache,
-                    &mut self.font_system,
-                    glyph,
-                    scale,
-                )?;
-
+                let cached = self.rasterize_glyph(glyph, scale);
                 let physical = glyph.physical((0.0, 0.0), 1.0);
 
-                let min = Point::new(physical.x as f32, run.line_y + physical.y as f32);
-                let rect = Rect::min_size(min + rasterized.offset, rasterized.size);
+                let point = Point::new(physical.x as f32, run.line_y + physical.y as f32);
 
-                let color = match glyph.color_opt {
-                    Some(color) => Color::rgba(
-                        color.r() as f32 / 255.0,
-                        color.g() as f32 / 255.0,
-                        color.b() as f32 / 255.0,
-                        color.a() as f32 / 255.0,
-                    ),
-                    None => Color::BLACK,
-                };
+                let mut image = cached.image.clone();
 
-                glyphs.push((rasterized.uv, rect, color));
+                if let Some(color) = glyph.color_opt {
+                    image.multiply(Color::rgba8(color.r(), color.g(), color.b(), color.a()));
+                }
+
+                canvas.image(point + cached.offset + offset, image);
             }
         }
-
-        for (uv, rect, color) in glyphs {
-            let index = mesh.vertices.len() as u32;
-
-            mesh.vertices.push(Vertex {
-                position: round_point(rect.top_left(), scale),
-                tex_coords: uv.top_left(),
-                color,
-            });
-            mesh.vertices.push(Vertex {
-                position: round_point(rect.top_right(), scale),
-                tex_coords: uv.top_right(),
-                color,
-            });
-            mesh.vertices.push(Vertex {
-                position: round_point(rect.bottom_right(), scale),
-                tex_coords: uv.bottom_right(),
-                color,
-            });
-            mesh.vertices.push(Vertex {
-                position: round_point(rect.bottom_left(), scale),
-                tex_coords: uv.bottom_left(),
-                color,
-            });
-
-            mesh.indices.push(index);
-            mesh.indices.push(index + 1);
-            mesh.indices.push(index + 2);
-
-            mesh.indices.push(index);
-            mesh.indices.push(index + 2);
-            mesh.indices.push(index + 3);
-        }
-
-        mesh.set_texture(self.font_atlas.image().clone());
-
-        Some(mesh)
     }
 }

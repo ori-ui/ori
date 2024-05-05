@@ -3,7 +3,6 @@ use std::ops::{Deref, Range};
 use ori_macro::{example, Build};
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
@@ -325,15 +324,9 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
         self.axis.pack(major, minor)
     }
 
-    fn draw(
-        &mut self,
-        (_, content): &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, (_, content): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         for i in 0..self.content.len() {
-            self.content.draw_nth(i, content, cx, data, canvas);
+            self.content.draw_nth(i, content, cx, data);
         }
     }
 }

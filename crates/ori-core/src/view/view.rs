@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -68,7 +67,7 @@ pub trait View<T: ?Sized = ()> {
     ) -> Size;
 
     /// Draw the view, see top-level documentation for more information.
-    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T, canvas: &mut Canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T);
 }
 
 impl<T> View<T> for () {
@@ -104,14 +103,7 @@ impl<T> View<T> for () {
         space.min
     }
 
-    fn draw(
-        &mut self,
-        _state: &mut Self::State,
-        _cx: &mut DrawCx,
-        _data: &mut T,
-        _canvas: &mut Canvas,
-    ) {
-    }
+    fn draw(&mut self, _state: &mut Self::State, _cx: &mut DrawCx, _data: &mut T) {}
 }
 
 impl<T, V: View<T>> View<T> for Option<V> {
@@ -155,15 +147,9 @@ impl<T, V: View<T>> View<T> for Option<V> {
         }
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         if let Some(view) = self {
-            view.draw(state.as_mut().unwrap(), cx, data, canvas);
+            view.draw(state.as_mut().unwrap(), cx, data);
         }
     }
 }
@@ -213,16 +199,10 @@ impl<T, V: View<T>, E: View<T>> View<T> for Result<V, E> {
         }
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         match (self, state) {
-            (Ok(view), Ok(state)) => view.draw(state, cx, data, canvas),
-            (Err(view), Err(state)) => view.draw(state, cx, data, canvas),
+            (Ok(view), Ok(state)) => view.draw(state, cx, data),
+            (Err(view), Err(state)) => view.draw(state, cx, data),
             _ => {}
         }
     }

@@ -124,6 +124,16 @@ impl Color {
         Self::rgb(g, g, g)
     }
 
+    /// Create a new color with the given red, green, blue and alpha components.
+    pub fn rgba8(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self::rgba(
+            r as f32 / 255.0,
+            g as f32 / 255.0,
+            b as f32 / 255.0,
+            a as f32 / 255.0,
+        )
+    }
+
     /// Get the red component as an 8 bit integer.
     pub fn r8(&self) -> u8 {
         (self.r * 255.0) as u8

@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -8,7 +7,7 @@ use crate::{
 };
 
 /// Create a new [`Painter`] view.
-pub fn painter<T>(draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static) -> Painter<T> {
+pub fn painter<T>(draw: impl FnMut(&mut DrawCx, &mut T) + 'static) -> Painter<T> {
     Painter::new(draw)
 }
 
@@ -18,16 +17,16 @@ pub fn painter<T>(draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static) 
 pub struct Painter<T> {
     /// The draw function.
     #[allow(clippy::type_complexity)]
-    pub draw: Box<dyn FnMut(&mut DrawCx, &mut T, &mut Canvas)>,
+    pub draw: Box<dyn FnMut(&mut DrawCx, &mut T)>,
 }
 
 impl<T> Painter<T> {
     /// Create a new [`Painter`] view.
-    pub fn new(mut draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static) -> Self {
+    pub fn new(mut draw: impl FnMut(&mut DrawCx, &mut T) + 'static) -> Self {
         let mut snapshot = Styles::snapshot();
 
         Self {
-            draw: Box::new(move |cx, data, canvas| snapshot.as_context(|| draw(cx, data, canvas))),
+            draw: Box::new(move |cx, data| snapshot.as_context(|| draw(cx, data))),
         }
     }
 }
@@ -65,13 +64,7 @@ impl<T> View<T> for Painter<T> {
         space.min
     }
 
-    fn draw(
-        &mut self,
-        _state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        (self.draw)(cx, data, canvas);
+    fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        (self.draw)(cx, data);
     }
 }

@@ -1,7 +1,6 @@
 use ori_macro::example;
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -82,18 +81,9 @@ impl<T, V: ViewSeq<T>> View<T> for ZStack<V> {
         size
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         for i in 0..self.content.len() {
-            let mut layer = canvas.layer();
-            layer.depth += i as f32 * 1000.0;
-
-            self.content.draw_nth(i, state, cx, data, &mut layer);
+            self.content.draw_nth(i, state, cx, data);
         }
     }
 }

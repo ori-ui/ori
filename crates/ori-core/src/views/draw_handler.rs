@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -9,7 +8,7 @@ use crate::{
 /// Create a new [`DrawHandler`].
 pub fn on_draw<T, V>(
     content: V,
-    on_draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static,
+    on_draw: impl FnMut(&mut DrawCx, &mut T) + 'static,
 ) -> DrawHandler<T, V> {
     DrawHandler::new(content).on_draw(on_draw)
 }
@@ -20,7 +19,7 @@ pub struct DrawHandler<T, V> {
     pub content: V,
     /// The draw callback.
     #[allow(clippy::type_complexity)]
-    pub on_draw: Option<Box<dyn FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static>>,
+    pub on_draw: Option<Box<dyn FnMut(&mut DrawCx, &mut T) + 'static>>,
 }
 
 impl<T, V> DrawHandler<T, V> {
@@ -33,10 +32,7 @@ impl<T, V> DrawHandler<T, V> {
     }
 
     /// Set the draw callback.
-    pub fn on_draw(
-        mut self,
-        on_draw: impl FnMut(&mut DrawCx, &mut T, &mut Canvas) + 'static,
-    ) -> Self {
+    pub fn on_draw(mut self, on_draw: impl FnMut(&mut DrawCx, &mut T) + 'static) -> Self {
         self.on_draw = Some(Box::new(on_draw));
         self
     }
@@ -67,17 +63,11 @@ impl<T, V: View<T>> View<T> for DrawHandler<T, V> {
         self.content.layout(state, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        self.content.draw(state, cx, data, canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        self.content.draw(state, cx, data);
 
         if let Some(ref mut on_draw) = self.on_draw {
-            on_draw(cx, data, canvas);
+            on_draw(cx, data);
         }
     }
 }

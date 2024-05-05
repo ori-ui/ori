@@ -1,182 +1,375 @@
 use crate::{
-    layout::{Affine, Point, Rect, Size, Vector},
+    layout::{Affine, Point, Rect},
+    prelude::Image,
     view::ViewId,
 };
 
-use super::{Background, BorderRadius, BorderWidth, Color, Fragment, Primitive, Quad, Scene};
+use super::{Color, Curve};
 
-/// A canvas used for drawing a [`Scene`].
-pub struct Canvas<'a> {
-    scene: &'a mut Scene,
-    scale_factor: f32,
+/// Ways to draw the end of a line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum LineCap {
+    /// The end of the line is squared off.
+    Butt,
 
-    /// The transform to apply to the canvas.
-    pub transform: Affine,
+    /// The end of the line is rounded.
+    Round,
 
-    /// The depth of the canvas.
-    pub depth: f32,
-
-    /// The clip rectangle of the canvas.
-    pub clip: Rect,
-
-    /// The view that the canvas is being drawn for.
-    pub view: Option<ViewId>,
+    /// The end of the line is squared off and extends past the end of the line.
+    Square,
 }
 
-impl<'a> Canvas<'a> {
-    /// Create a new [`Canvas`].
-    pub fn new(scene: &'a mut Scene, window_size: Size, scale_factor: f32) -> Self {
+/// Ways to join two lines.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum LineJoin {
+    /// The lines are joined with a sharp corner.
+    Miter,
+
+    /// The lines are joined with a rounded corner.
+    Round,
+
+    /// The lines are joined with a beveled corner.
+    Bevel,
+}
+
+/// Properties of a stroke.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Stroke {
+    /// The width of the stroke.
+    pub width: f32,
+
+    /// The miter limit of the stroke.
+    pub miter: f32,
+
+    /// The cap of the stroke.
+    pub cap: LineCap,
+
+    /// The join of the stroke.
+    pub join: LineJoin,
+}
+
+impl Default for Stroke {
+    fn default() -> Self {
         Self {
-            scene,
-            scale_factor,
-            transform: Affine::IDENTITY,
-            depth: 0.0,
-            clip: Rect::min_size(Point::ZERO, window_size),
-            view: None,
+            width: 1.0,
+            miter: 4.0,
+            cap: LineCap::Butt,
+            join: LineJoin::Miter,
         }
     }
+}
 
-    /// Fork the canvas.
-    ///
-    /// Setting parameters on the forked canvas will not affect the original canvas.
-    pub fn fork(&mut self) -> Canvas<'_> {
-        Canvas {
-            scene: self.scene,
-            scale_factor: self.scale_factor,
-            transform: self.transform,
-            depth: self.depth,
-            clip: self.clip,
-            view: self.view,
+impl From<f32> for Stroke {
+    fn from(value: f32) -> Self {
+        Self {
+            width: value,
+            ..Default::default()
         }
     }
+}
 
-    /// Create a new layer.
-    pub fn layer(&mut self) -> Canvas<'_> {
-        let mut canvas = self.fork();
-        canvas.depth += 1.0;
-        canvas
-    }
+/// Ways to fill a shape.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Shader {
+    /// A solid color.
+    Solid(Color),
+}
 
-    /// Translate the canvas.
-    pub fn transform(&mut self, transform: Affine) {
-        self.transform *= transform;
-    }
+/// Ways to blend two colors.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum BlendMode {
+    /// Replaces the destination with zero.
+    Clear,
 
-    /// Translate the canvas.
-    pub fn translate(&mut self, translation: Vector) {
-        self.transform *= Affine::translate(translation);
-    }
+    /// Replaces the destination with the source.
+    Source,
 
-    /// Rotate the canvas.
-    pub fn rotate(&mut self, angle: f32) {
-        self.transform *= Affine::rotate(angle);
-    }
+    /// Preserves the destination.
+    Destination,
 
-    /// Scale the canvas.
-    pub fn scale(&mut self, scale: Vector) {
-        self.transform *= Affine::scale(scale);
-    }
+    /// Source over destination.
+    SourceOver,
 
-    /// Set the clip rectangle of the canvas.
-    pub fn clip(&mut self, clip: Rect) {
-        self.clip = self.clip.intersect(clip);
-    }
+    /// Destination over source.
+    DestinationOver,
+}
 
-    /// Run a function with a forked canvas.
-    pub fn forked(&mut self, f: impl FnOnce(&mut Canvas<'_>)) {
-        f(&mut self.fork());
-    }
+/// A paint that can be used to fill or stroke a shape.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Paint {
+    /// The shader of the paint.
+    pub shader: Shader,
 
-    /// Set the view that the canvas is being drawn for.
-    ///
-    /// This will enable hit testing for the view.
-    pub fn set_hoverable(&mut self, view: ViewId) {
-        self.view = Some(view);
-    }
+    /// The blend mode of the paint.
+    pub blend: BlendMode,
 
-    /// Temporarily set the view, see [`Canvas::set_hoverable`].
-    pub fn with_hoverable<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let t = self.view;
-        self.view = Some(view);
-        let result = f(self);
-        self.view = t;
-        result
-    }
+    /// Whether the paint should be anti-aliased.
+    pub anti_alias: bool,
+}
 
-    /// Draw a trigger to the canvas.
-    ///
-    /// This will enable hit testing without drawing anything.
-    pub fn trigger(&mut self, view: ViewId, rect: Rect) {
-        self.with_hoverable(view, |canvas| {
-            canvas.draw(Primitive::Trigger(rect));
-        });
-    }
-
-    /// Draw a fragment to the canvas.
-    ///
-    /// This is the lowest-level drawing method, and will not apply any
-    /// of `transform`, `depth`, or `clip`. These must be set manually.
-    pub fn draw_fragment(&mut self, fragment: Fragment) {
-        self.scene.push(fragment);
-    }
-
-    /// Draw a primitive to the canvas.
-    pub fn draw(&mut self, primitive: impl Into<Primitive>) {
-        let primitive = primitive.into();
-
-        // only draw primitives that actually do something
-        if primitive.is_ineffective() {
-            return;
+impl Default for Paint {
+    fn default() -> Self {
+        Self {
+            shader: Shader::Solid(Color::BLACK),
+            blend: BlendMode::SourceOver,
+            anti_alias: true,
         }
-
-        self.draw_fragment(Fragment {
-            primitive,
-            transform: self.transform,
-            depth: self.depth,
-            clip: self.clip,
-            view: self.view,
-        });
     }
+}
 
-    /// Draw a [`Primitive`] with pixel-perfect coordinates.
-    pub fn draw_pixel_perfect(&mut self, primitive: impl Into<Primitive>) {
-        let translation = self.transform.translation * self.scale_factor;
-        let translation = translation.round() / self.scale_factor;
-
-        let transform = Affine {
-            translation,
-            matrix: self.transform.matrix,
-        };
-
-        self.draw_fragment(Fragment {
-            primitive: primitive.into(),
-            transform,
-            depth: self.depth,
-            clip: self.clip,
-            view: self.view,
-        });
+impl From<Color> for Paint {
+    fn from(value: Color) -> Self {
+        Self {
+            shader: Shader::Solid(value),
+            ..Default::default()
+        }
     }
+}
 
-    /// Draw a quad to the canvas.
-    pub fn draw_quad(
-        &mut self,
+/// Rule determining if a point is inside a shape.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FillRule {
+    /// A point is inside the shape if a ray from the point crosses a non-zero sum of signed edge
+    /// crossings.
+    NonZero,
+
+    /// A point is inside the shape if a ray from the point crosses an odd number of edges.
+    EvenOdd,
+}
+
+/// A mask that can be used to clip a layer.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Mask {
+    /// The curve of the mask.
+    pub curve: Curve,
+
+    /// The fill rule of the mask.
+    pub fill: FillRule,
+}
+
+impl From<Rect> for Mask {
+    fn from(value: Rect) -> Self {
+        Self {
+            curve: Curve::from(value),
+            fill: FillRule::NonZero,
+        }
+    }
+}
+
+/// A primitive that can be drawn on a canvas.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Primitive {
+    /// A rectangle.
+    Rect {
+        /// The rectangle to draw.
         rect: Rect,
-        background: impl Into<Background>,
-        border_radius: impl Into<BorderRadius>,
-        border_width: impl Into<BorderWidth>,
-        border_color: impl Into<Color>,
-    ) {
-        let background = background.into();
-        let border_radius = border_radius.into();
-        let border_width = border_width.into();
-        let border_color = border_color.into();
 
-        self.draw_pixel_perfect(Quad {
+        /// The paint to fill the rectangle with.
+        paint: Paint,
+    },
+
+    /// A filled curve.
+    Fill {
+        /// The curve to draw.
+        curve: Curve,
+
+        /// The fill rule of the curve.
+        fill: FillRule,
+
+        /// The paint to fill the curve with.
+        paint: Paint,
+    },
+
+    /// A stroked curve.
+    Stroke {
+        /// The curve to draw.
+        curve: Curve,
+
+        /// The stroke properties of the curve.
+        stroke: Stroke,
+
+        /// The paint to stroke the curve with.
+        paint: Paint,
+    },
+
+    /// An image.
+    Image {
+        /// The top-left corner of the image.
+        point: Point,
+
+        /// The image to draw.
+        image: Image,
+    },
+
+    /// A layer that can be transformed and masked.
+    Layer {
+        /// The primitives of the layer.
+        primitives: Vec<Primitive>,
+
+        /// The transformation of the layer.
+        transform: Affine,
+
+        /// The mask of the layer.
+        mask: Option<Mask>,
+
+        /// The view of the layer.
+        view: Option<ViewId>,
+    },
+}
+
+/// A canvas that can be drawn on.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Canvas {
+    primitives: Vec<Primitive>,
+}
+
+impl Default for Canvas {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Canvas {
+    /// Create a new canvas.
+    pub fn new() -> Self {
+        Self {
+            primitives: Vec::new(),
+        }
+    }
+
+    /// Get the primitives of the canvas.
+    pub fn primitives(&self) -> &[Primitive] {
+        &self.primitives
+    }
+
+    /// Clear the canvas.
+    pub fn clear(&mut self) {
+        self.primitives.clear();
+    }
+
+    /// Draw a rectangle.
+    pub fn rect(&mut self, rect: Rect, paint: Paint) {
+        self.primitives.push(Primitive::Rect { rect, paint });
+    }
+
+    /// Draw a trigger rectangle.
+    pub fn trigger(&mut self, rect: Rect) {
+        self.primitives.push(Primitive::Rect {
             rect,
-            background,
-            border_radius,
-            border_width,
-            border_color,
+            paint: Paint {
+                shader: Shader::Solid(Color::TRANSPARENT),
+                blend: BlendMode::Destination,
+                anti_alias: false,
+            },
         });
+    }
+
+    /// Fill a curve.
+    pub fn fill(&mut self, curve: Curve, fill: FillRule, paint: Paint) {
+        self.primitives.push(Primitive::Fill { curve, fill, paint });
+    }
+
+    /// Stroke a curve.
+    pub fn stroke(&mut self, curve: Curve, stroke: Stroke, paint: Paint) {
+        self.primitives.push(Primitive::Stroke {
+            curve,
+            stroke,
+            paint,
+        });
+    }
+
+    /// Draw an image.
+    pub fn image(&mut self, point: Point, image: Image) {
+        self.primitives.push(Primitive::Image { point, image });
+    }
+
+    /// Draw a layer.
+    pub fn layer(
+        &mut self,
+        transform: Affine,
+        mask: Option<Mask>,
+        view: Option<ViewId>,
+        f: impl FnOnce(&mut Self),
+    ) {
+        let mut layer = Canvas::new();
+
+        f(&mut layer);
+
+        self.primitives.push(Primitive::Layer {
+            primitives: layer.primitives,
+            transform,
+            mask,
+            view,
+        });
+    }
+
+    /// Draw a layer with a transformation.
+    pub fn transform(&mut self, transform: Affine, f: impl FnOnce(&mut Self)) {
+        self.layer(transform, None, None, f);
+    }
+
+    /// Draw a layer with a mask.
+    pub fn mask(&mut self, mask: Mask, f: impl FnOnce(&mut Self)) {
+        self.layer(Affine::IDENTITY, Some(mask), None, f);
+    }
+
+    /// Draw a layer with a view.
+    pub fn view(&mut self, view: ViewId, f: impl FnOnce(&mut Self)) {
+        self.layer(Affine::IDENTITY, None, Some(view), f);
+    }
+
+    /// Get the view at a point.
+    pub fn view_at(&self, point: Point) -> Option<ViewId> {
+        fn recurse(primitives: &[Primitive], view: Option<ViewId>, point: Point) -> Option<ViewId> {
+            for primitive in primitives.iter().rev() {
+                match primitive {
+                    Primitive::Rect { rect, .. } => {
+                        if rect.contains(point) {
+                            return view;
+                        }
+                    }
+                    Primitive::Fill { curve, fill, .. } => {
+                        if curve.contains(point, *fill) {
+                            return view;
+                        }
+                    }
+                    Primitive::Stroke { .. } => {}
+                    Primitive::Image {
+                        point: image_point,
+                        image,
+                    } => {
+                        let rect = Rect::min_size(*image_point, image.size());
+
+                        if rect.contains(point) {
+                            return view;
+                        }
+                    }
+                    Primitive::Layer {
+                        primitives,
+                        transform,
+                        mask,
+                        view,
+                    } => {
+                        let point = transform.inverse() * point;
+
+                        if let Some(mask) = mask {
+                            if !mask.curve.contains(point, mask.fill) {
+                                continue;
+                            }
+                        }
+
+                        let view = recurse(primitives, *view, point);
+
+                        if view.is_some() {
+                            return view;
+                        }
+                    }
+                }
+            }
+
+            None
+        }
+
+        recurse(&self.primitives, None, point)
     }
 }

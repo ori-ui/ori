@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -73,13 +72,7 @@ impl<T, V: View> View<T> for Opaque<V> {
         self.content.layout(state, cx, &mut (), space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        _data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        self.content.draw(state, cx, &mut (), canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+        self.content.draw(state, cx, &mut ());
     }
 }

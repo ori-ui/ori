@@ -4,17 +4,14 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::{
-    canvas::Color,
-    layout::{Size, Vector},
-};
+use crate::layout::Size;
 
 use super::ImageId;
 
 /// Image data.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ImageData {
-    pixels: Vec<u8>,
+    data: Vec<u8>,
     width: u32,
     height: u32,
     filter: bool,
@@ -31,55 +28,15 @@ impl ImageData {
     ///
     /// # Panics
     /// - If `pixels.len()` is not equal to `width * height * 4`.
-    pub fn new(pixels: Vec<u8>, width: u32, height: u32) -> Self {
-        assert_eq!(pixels.len() as u32, width * height * 4);
+    pub fn new(data: Vec<u8>, width: u32, height: u32) -> Self {
+        assert_eq!(data.len() as u32, width * height * 4);
 
         Self {
-            pixels,
+            data,
             width,
             height,
             filter: true,
         }
-    }
-
-    /// Create a new gradient image data.
-    ///
-    /// Note that `angle` is in degrees.
-    pub fn gradient(angle: f32, colors: &[Color]) -> Self {
-        let mut pixels = Vec::new();
-
-        let angle = angle.to_radians();
-        let (sin, cos) = angle.sin_cos();
-        let direction = Vector::new(cos, sin);
-        let length = sin.abs() + cos.abs();
-
-        let size = colors.len() as u32 * 16;
-        let max = size as f32 - 1.0;
-
-        for y in 0..size {
-            for x in 0..size {
-                let x = x as f32;
-                let y = y as f32;
-
-                let position = Vector::new(x, y) / max * 2.0 - 1.0;
-                let dist = position.dot(direction) / length / 2.0 + 0.5;
-                let position = dist.clamp(0.0, 1.0) * (colors.len() - 1) as f32;
-
-                let prev_index = position.floor() as usize;
-                let next_index = usize::min(prev_index + 1, colors.len() - 1);
-                let prev = colors[prev_index];
-                let next = colors[next_index];
-
-                let color = prev.mix(next, position.fract());
-
-                pixels.push(color.r8());
-                pixels.push(color.g8());
-                pixels.push(color.b8());
-                pixels.push(color.a8());
-            }
-        }
-
-        Self::new(pixels, size, size)
     }
 
     /// Try to load image data from a file.
@@ -88,7 +45,7 @@ impl ImageData {
         let data = image::load_from_memory(&data)?;
 
         Ok(Self {
-            pixels: data.to_rgba8().into_raw(),
+            data: data.to_rgba8().into_raw(),
             width: data.width(),
             height: data.height(),
             filter: true,
@@ -113,7 +70,7 @@ impl ImageData {
         let data = image::open(path)?;
 
         Ok(Self {
-            pixels: data.to_rgba8().into_raw(),
+            data: data.to_rgba8().into_raw(),
             width: data.width(),
             height: data.height(),
             filter: true,
@@ -150,30 +107,30 @@ impl ImageData {
     /// Get a pixel.
     pub fn get_pixel(&self, x: u32, y: u32) -> [u8; 4] {
         let i = (y * self.width + x) as usize * 4;
-        let r = self.pixels[i];
-        let g = self.pixels[i + 1];
-        let b = self.pixels[i + 2];
-        let a = self.pixels[i + 3];
+        let r = self.data[i];
+        let g = self.data[i + 1];
+        let b = self.data[i + 2];
+        let a = self.data[i + 3];
         [r, g, b, a]
     }
 
     /// Set a pixel.
     pub fn set_pixel(&mut self, x: u32, y: u32, pixel: [u8; 4]) {
         let i = (y * self.width + x) as usize * 4;
-        self.pixels[i] = pixel[0];
-        self.pixels[i + 1] = pixel[1];
-        self.pixels[i + 2] = pixel[2];
-        self.pixels[i + 3] = pixel[3];
+        self.data[i] = pixel[0];
+        self.data[i + 1] = pixel[1];
+        self.data[i + 2] = pixel[2];
+        self.data[i + 3] = pixel[3];
     }
 
     /// Get the pixels.
-    pub fn pixels(&self) -> &[u8] {
-        &self.pixels
+    pub fn data(&self) -> &[u8] {
+        &self.data
     }
 
     /// Get the pixels mutably.
-    pub fn pixels_mut(&mut self) -> &mut [u8] {
-        &mut self.pixels
+    pub fn data_mut(&mut self) -> &mut [u8] {
+        &mut self.data
     }
 
     /// Get the filter mode.
@@ -217,12 +174,12 @@ impl Deref for ImageData {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        &self.pixels
+        &self.data
     }
 }
 
 impl DerefMut for ImageData {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.pixels
+        &mut self.data
     }
 }

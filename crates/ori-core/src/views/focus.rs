@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -77,9 +76,9 @@ impl<T, U, V: View<U>> View<T> for Focus<T, U, V> {
         size
     }
 
-    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T, scene: &mut Canvas) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         (self.focus)(data, &mut |data| {
-            self.content.draw(state, cx, data, scene);
+            self.content.draw(state, cx, data);
         });
     }
 }

@@ -4,7 +4,7 @@ use ori_macro::{example, Build};
 use smol_str::SmolStr;
 
 use crate::{
-    canvas::{Canvas, Color, Mesh},
+    canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -153,7 +153,6 @@ impl Text {
 #[doc(hidden)]
 pub struct TextState {
     buffer: TextBuffer,
-    mesh: Option<Mesh>,
 }
 
 impl<T> View<T> for Text {
@@ -163,28 +162,25 @@ impl<T> View<T> for Text {
         let mut buffer = TextBuffer::new(cx.fonts(), self.font_size, self.line_height);
         self.set_attributes(cx.fonts(), &mut buffer);
 
-        TextState { buffer, mesh: None }
+        TextState { buffer }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         if self.font_size != old.font_size || self.line_height != old.line_height {
             (state.buffer).set_metrics(cx.fonts(), self.font_size, self.line_height);
 
-            state.mesh.take();
             cx.request_layout();
         }
 
         if self.wrap != old.wrap {
             state.buffer.set_wrap(cx.fonts(), self.wrap);
 
-            state.mesh.take();
             cx.request_draw();
         }
 
         if self.align != old.align {
             state.buffer.set_align(self.align);
 
-            state.mesh.take();
             cx.request_draw();
         }
 
@@ -207,7 +203,6 @@ impl<T> View<T> for Text {
                 },
             );
 
-            state.mesh.take();
             cx.request_layout();
         }
     }
@@ -228,31 +223,16 @@ impl<T> View<T> for Text {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        if state.mesh.is_none() || state.buffer.bounds() != space.max {
+        if state.buffer.bounds() != space.max {
             state.buffer.set_bounds(cx.fonts(), space.max);
-            cx.prepare_text(&state.buffer);
         }
 
         space.fit(state.buffer.size())
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        _data: &mut T,
-        canvas: &mut Canvas,
-    ) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let offset = cx.rect().center() - state.buffer.rect().center();
-
-        if state.mesh.is_none() {
-            state.mesh = Some(cx.rasterize_text(&state.buffer));
-        }
-
-        if let Some(ref mesh) = state.mesh {
-            canvas.translate(offset);
-            canvas.draw_pixel_perfect(mesh.clone());
-        }
+        cx.text(offset, &state.buffer);
     }
 }
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, num::NonZeroU32, rc::Rc};
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
@@ -19,7 +19,7 @@ use winit::{
 use crate::{
     clipboard::WinitClipboard,
     convert::{convert_cursor_icon, convert_key, convert_mouse_button, is_pressed},
-    Error,
+    render, Error,
 };
 
 /// Launch an application.
@@ -75,11 +75,14 @@ pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     Ok(())
 }
 
+type RcWindow = Rc<winit::window::Window>;
+
 struct WindowState {
-    window: winit::window::Window,
-    #[cfg(not(target_arch = "wasm32"))]
-    context: ori_glow::GlutinContext,
-    render: ori_glow::GlowRender,
+    window: RcWindow,
+    #[allow(unused)]
+    context: softbuffer::Context<RcWindow>,
+    surface: softbuffer::Surface<RcWindow, RcWindow>,
+    pixmap: tiny_skia::Pixmap,
 }
 
 struct WinitState<T> {
@@ -87,10 +90,7 @@ struct WinitState<T> {
     app: App<T>,
     data: T,
     window_ids: HashMap<winit::window::WindowId, ori_core::window::WindowId>,
-
-    /* glow */
-    #[cfg(feature = "glow")]
-    renders: HashMap<ori_core::window::WindowId, WindowState>,
+    windows: HashMap<ori_core::window::WindowId, WindowState>,
 }
 
 impl<T> WinitState<T> {
@@ -100,10 +100,7 @@ impl<T> WinitState<T> {
             app,
             data,
             window_ids: HashMap::new(),
-
-            /* glow */
-            #[cfg(feature = "glow")]
-            renders: HashMap::new(),
+            windows: HashMap::new(),
         }
     }
 
@@ -134,28 +131,28 @@ impl<T> WinitState<T> {
                 self.create_window(target, desc, builder)?;
             }
             AppRequest::CloseWindow(id) => {
-                self.renders.remove(&id);
+                self.windows.remove(&id);
             }
             AppRequest::DragWindow(id) => {
-                if let Some(state) = self.renders.get_mut(&id) {
+                if let Some(state) = self.windows.get_mut(&id) {
                     if let Err(err) = state.window.drag_window() {
                         tracing::warn!("Failed to drag window: {}", err);
                     }
                 }
             }
             AppRequest::RequestRedraw(id) => {
-                if let Some(state) = self.renders.get_mut(&id) {
+                if let Some(state) = self.windows.get_mut(&id) {
                     state.window.request_redraw();
                 }
             }
             AppRequest::UpdateWindow(id, update) => {
-                if let Some(state) = self.renders.get_mut(&id) {
+                if let Some(state) = self.windows.get_mut(&id) {
                     match update {
                         WindowUpdate::Title(title) => state.window.set_title(&title),
                         WindowUpdate::Icon(icon) => match icon {
                             Some(icon) => {
                                 let icon = winit::window::Icon::from_rgba(
-                                    icon.pixels().to_vec(),
+                                    icon.data().to_vec(),
                                     icon.width(),
                                     icon.height(),
                                 )
@@ -203,53 +200,8 @@ impl<T> WinitState<T> {
         Ok(())
     }
 
-    fn create_glow_render(
-        &mut self,
-        window: &winit::window::Window,
-    ) -> Result<(ori_glow::GlutinContext, ori_glow::GlowRender), Error> {
-        let size = window.inner_size();
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-
-            let context = ori_glow::GlutinContext::new(
-                window.raw_window_handle(),
-                window.raw_display_handle(),
-                size.width,
-                size.height,
-                4,
-            )?;
-
-            context.make_current()?;
-
-            let proc_addr = |s: &str| context.get_proc_address(s);
-            let render = ori_glow::GlowRender::new(proc_addr, size.width, size.height)?;
-
-            Ok((context, render))
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            use winit::platform::web::WindowExtWebSys;
-
-            let canvas = window.canvas().unwrap();
-            let render = ori_glow::GlowRender::new_webgl(canvas, size.width, size.height)?;
-
-            self.renders.insert(desc.id, render);
-        }
-    }
-
     fn idle(&mut self) {
         self.app.idle(&mut self.data);
-
-        #[cfg(feature = "glow")]
-        for state in self.renders.values_mut() {
-            #[cfg(not(target_arch = "wasm32"))]
-            let _ = state.context.make_current().is_ok();
-
-            state.render.clean();
-        }
     }
 
     fn create_window(
@@ -270,15 +222,14 @@ impl<T> WinitState<T> {
             .with_visible(false)
             .build(target)?;
 
-        self.window_ids.insert(window.id(), window_id);
+        let window = Rc::new(window);
 
-        #[cfg(feature = "glow")]
-        let (context, render) = self.create_glow_render(&window)?;
+        self.window_ids.insert(window.id(), window_id);
 
         let icon = match ori.icon {
             Some(ref icon) => {
                 let icon = winit::window::Icon::from_rgba(
-                    icon.pixels().to_vec(),
+                    icon.data().to_vec(),
                     icon.width(),
                     icon.height(),
                 )
@@ -293,13 +244,16 @@ impl<T> WinitState<T> {
         window.set_visible(ori.visible);
         window.set_maximized(ori.maximized);
 
-        #[cfg(feature = "glow")]
-        self.renders.insert(
+        let context = softbuffer::Context::new(window.clone()).unwrap();
+        let surface = softbuffer::Surface::new(&context, window.clone()).unwrap();
+
+        self.windows.insert(
             window_id,
             WindowState {
                 window,
                 context,
-                render,
+                surface,
+                pixmap: tiny_skia::Pixmap::new(ori.width(), ori.height()).unwrap(),
             },
         );
 
@@ -310,39 +264,54 @@ impl<T> WinitState<T> {
     }
 
     fn render(&mut self, window_id: ori_core::window::WindowId) -> Result<(), Error> {
-        // sort the scene
-        let Some(scene) = self.app.draw_window(&mut self.data, window_id) else {
-            return Ok(());
-        };
+        fn pack_argb([r, g, b, a]: [u8; 4]) -> u32 {
+            (a as u32) << 24 | (r as u32) << 16 | (g as u32) << 8 | b as u32
+        }
 
-        /* glow */
-        #[cfg(feature = "glow")]
-        if let Some(state) = self.renders.get_mut(&window_id) {
+        if let Some(state) = self.windows.get_mut(&window_id) {
             let size = state.window.inner_size();
-
-            // resize the context if necessary
-            state.context.resize(size.width, size.height);
-
-            #[cfg(not(target_arch = "wasm32"))]
-            state.context.make_current()?;
-
-            state.render.render_scene(
-                scene.scene,
-                scene.clear_color,
-                scene.logical_size,
-                Size::new(size.width as f32, size.height as f32),
-                state.window.scale_factor() as f32,
+            state.surface.resize(
+                NonZeroU32::new(size.width).unwrap(),
+                NonZeroU32::new(size.height).unwrap(),
             )?;
 
-            #[cfg(not(target_arch = "wasm32"))]
-            state.context.swap_buffers()?;
+            if state.pixmap.width() != size.width || state.pixmap.height() != size.height {
+                state.pixmap = tiny_skia::Pixmap::new(size.width, size.height).unwrap();
+            }
+
+            let mut buffer = state.surface.buffer_mut()?;
+
+            if let Some(draw) = self.app.draw_window(&mut self.data, window_id) {
+                state.pixmap.fill(
+                    tiny_skia::Color::from_rgba(
+                        draw.clear_color.r,
+                        draw.clear_color.g,
+                        draw.clear_color.b,
+                        draw.clear_color.a,
+                    )
+                    .unwrap(),
+                );
+
+                render::render_canvas(&mut state.pixmap.as_mut(), draw.canvas);
+            }
+
+            for (src, dst) in state.pixmap.pixels().iter().zip(buffer.iter_mut()) {
+                let r = src.red();
+                let g = src.green();
+                let b = src.blue();
+                let a = src.alpha();
+
+                *dst = pack_argb([r, g, b, a]);
+            }
+
+            buffer.present()?;
         }
 
         Ok(())
     }
 
     fn scale_factor(&self, window_id: ori_core::window::WindowId) -> f32 {
-        match self.renders.get(&window_id) {
+        match self.windows.get(&window_id) {
             Some(state) => state.window.scale_factor() as f32,
             None => 1.0,
         }

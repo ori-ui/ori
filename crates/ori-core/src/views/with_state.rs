@@ -1,7 +1,6 @@
 use std::{mem::ManuallyDrop, ptr};
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -134,13 +133,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         Self::data(data_state, data, |data| view.layout(state, cx, data, space))
     }
 
-    fn draw(
-        &mut self,
-        (view, data_state, state): &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        Self::data(data_state, data, |data| view.draw(state, cx, data, canvas));
+    fn draw(&mut self, (view, data_state, state): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        Self::data(data_state, data, |data| view.draw(state, cx, data));
     }
 }

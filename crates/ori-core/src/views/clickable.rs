@@ -1,7 +1,6 @@
 use ori_macro::Build;
 
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Event, PointerButton},
     layout::{Size, Space},
@@ -162,14 +161,7 @@ impl<T, V: View<T>> View<T> for Clickable<T, V> {
         self.content.layout(content, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        content: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.set_hoverable(cx.id());
-        self.content.draw(content, cx, data, canvas);
+    fn draw(&mut self, content: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        self.content.draw(content, cx, data);
     }
 }

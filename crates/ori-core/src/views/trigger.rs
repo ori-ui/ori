@@ -1,5 +1,4 @@
 use crate::{
-    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -49,14 +48,9 @@ impl<T, V: View<T>> View<T> for Trigger<V> {
         self.content.layout(state, cx, data, space)
     }
 
-    fn draw(
-        &mut self,
-        state: &mut Self::State,
-        cx: &mut DrawCx,
-        data: &mut T,
-        canvas: &mut Canvas,
-    ) {
-        canvas.trigger(cx.id(), cx.rect());
-        self.content.draw(state, cx, data, canvas);
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+        cx.trigger(cx.rect());
+
+        self.content.draw(state, cx, data);
     }
 }

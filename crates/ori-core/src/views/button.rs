@@ -213,50 +213,52 @@ impl<T, V: View<T>> View<T> for Button<V> {
     }
 
     fn draw(&mut self, (state, content): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        let dark = self.color.darken(0.05);
-        let dim = self.color.darken(0.025);
-        let bright = self.color.lighten(0.05);
+        cx.hoverable(|cx| {
+            let dark = self.color.darken(0.05);
+            let dim = self.color.darken(0.025);
+            let bright = self.color.lighten(0.05);
 
-        let hot = self.transition.get(state.hot);
-        let active = self.transition.get(state.active);
+            let hot = self.transition.get(state.hot);
+            let active = self.transition.get(state.active);
 
-        let face = self.color.mix(bright, hot).mix(dim, active);
+            let face = self.color.mix(bright, hot).mix(dim, active);
 
-        if self.fancy == 0.0 {
+            if self.fancy == 0.0 {
+                cx.quad(
+                    cx.rect(),
+                    face,
+                    self.border_radius,
+                    self.border_width,
+                    self.border_color,
+                );
+
+                self.content.draw(content, cx, data);
+                return;
+            }
+
+            let base = dim.mix(dark, 1.0 - active);
+
             cx.quad(
                 cx.rect(),
-                face,
+                base,
                 self.border_radius,
-                self.border_width,
-                self.border_color,
+                BorderWidth::ZERO,
+                Color::TRANSPARENT,
             );
 
-            self.content.draw(content, cx, data);
-            return;
-        }
+            let float = Vector::NEG_Y * (1.0 - active) * self.fancy;
 
-        let base = dim.mix(dark, 1.0 - active);
+            cx.translate(float, |cx| {
+                cx.quad(
+                    cx.rect(),
+                    face,
+                    self.border_radius,
+                    self.border_width,
+                    self.border_color,
+                );
 
-        cx.quad(
-            cx.rect(),
-            base,
-            self.border_radius,
-            BorderWidth::ZERO,
-            Color::TRANSPARENT,
-        );
-
-        let float = Vector::NEG_Y * (1.0 - active) * self.fancy;
-
-        cx.translate(float, |cx| {
-            cx.quad(
-                cx.rect(),
-                face,
-                self.border_radius,
-                self.border_width,
-                self.border_color,
-            );
-
-            self.content.draw(content, cx, data);
+                self.content.draw(content, cx, data);
+            });
         });
     }
 }

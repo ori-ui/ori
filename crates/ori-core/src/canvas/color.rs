@@ -1,5 +1,6 @@
 use std::{
     fmt::{Debug, Display},
+    hash::{Hash, Hasher},
     ops::{Add, AddAssign, Deref, Mul},
 };
 
@@ -991,6 +992,15 @@ impl AddAssign for Color {
 impl Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "rgba({}, {}, {}, {})", self.r, self.g, self.b, self.a)
+    }
+}
+
+impl Hash for Color {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.r.to_bits().hash(state);
+        self.g.to_bits().hash(state);
+        self.b.to_bits().hash(state);
+        self.a.to_bits().hash(state);
     }
 }
 

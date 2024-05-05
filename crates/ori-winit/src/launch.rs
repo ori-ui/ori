@@ -2,7 +2,7 @@ use std::{collections::HashMap, num::NonZeroU32, rc::Rc};
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
-    canvas::Color,
+    canvas::{Canvas, Color},
     command::CommandWaker,
     event::{Modifiers, PointerButton, PointerId},
     layout::{Point, Size, Vector},
@@ -83,6 +83,8 @@ struct WindowState {
     context: softbuffer::Context<RcWindow>,
     surface: softbuffer::Surface<RcWindow, RcWindow>,
     pixmap: tiny_skia::Pixmap,
+    old_canvas: Canvas,
+    clear_color: Color,
 }
 
 struct WinitState<T> {
@@ -254,6 +256,8 @@ impl<T> WinitState<T> {
                 context,
                 surface,
                 pixmap: tiny_skia::Pixmap::new(ori.width(), ori.height()).unwrap(),
+                old_canvas: Canvas::new(),
+                clear_color: Color::TRANSPARENT,
             },
         );
 
@@ -270,29 +274,95 @@ impl<T> WinitState<T> {
 
         if let Some(state) = self.windows.get_mut(&window_id) {
             let size = state.window.inner_size();
-            state.surface.resize(
-                NonZeroU32::new(size.width).unwrap(),
-                NonZeroU32::new(size.height).unwrap(),
-            )?;
+            let old_width = state.pixmap.width();
+            let old_height = state.pixmap.height();
 
-            if state.pixmap.width() != size.width || state.pixmap.height() != size.height {
+            let resized = old_width != size.width || old_height != size.height;
+
+            if resized {
+                state.surface.resize(
+                    NonZeroU32::new(size.width).unwrap(),
+                    NonZeroU32::new(size.height).unwrap(),
+                )?;
+
                 state.pixmap = tiny_skia::Pixmap::new(size.width, size.height).unwrap();
             }
 
             let mut buffer = state.surface.buffer_mut()?;
 
             if let Some(draw) = self.app.draw_window(&mut self.data, window_id) {
-                state.pixmap.fill(
-                    tiny_skia::Color::from_rgba(
-                        draw.clear_color.r,
-                        draw.clear_color.g,
-                        draw.clear_color.b,
-                        draw.clear_color.a,
-                    )
-                    .unwrap(),
-                );
+                if state.clear_color != draw.clear_color || resized {
+                    state.clear_color = draw.clear_color;
 
-                render::render_canvas(&mut state.pixmap.as_mut(), draw.canvas);
+                    state.pixmap.fill(
+                        tiny_skia::Color::from_rgba(
+                            draw.clear_color.r,
+                            draw.clear_color.g,
+                            draw.clear_color.b,
+                            draw.clear_color.a,
+                        )
+                        .unwrap(),
+                    );
+                }
+
+                if resized {
+                    render::render_canvas(&mut state.pixmap.as_mut(), draw.canvas, Vector::ZERO);
+                } else {
+                    let mut diff = draw.canvas.diff(&state.old_canvas);
+
+                    let len = diff.rects().len();
+                    diff.simplify();
+
+                    tracing::debug!("Diff rects: {} -> {}", len, diff.rects().len());
+
+                    for rect in diff.rects() {
+                        if rect.size().min_element() < 1.0 {
+                            continue;
+                        }
+
+                        // floor the points of the rect and add a 1 pixel border
+                        let min = rect.min.floor() - 1.0;
+                        let max = rect.max.ceil() + 1.0;
+
+                        // convert the rect to integers
+                        let x = min.x as i32;
+                        let y = min.y as i32;
+                        let w = (max.x - min.x).ceil() as u32;
+                        let h = (max.y - min.y).ceil() as u32;
+
+                        let mut pixmap = tiny_skia::Pixmap::new(w, h).unwrap();
+
+                        pixmap.fill(
+                            tiny_skia::Color::from_rgba(
+                                draw.clear_color.r,
+                                draw.clear_color.g,
+                                draw.clear_color.b,
+                                draw.clear_color.a,
+                            )
+                            .unwrap(),
+                        );
+
+                        render::render_canvas(
+                            &mut pixmap.as_mut(),
+                            draw.canvas,
+                            Vector::new(x as f32, y as f32),
+                        );
+
+                        state.pixmap.draw_pixmap(
+                            x,
+                            y,
+                            pixmap.as_ref(),
+                            &tiny_skia::PixmapPaint {
+                                blend_mode: tiny_skia::BlendMode::Source,
+                                ..Default::default()
+                            },
+                            tiny_skia::Transform::identity(),
+                            None,
+                        );
+                    }
+                }
+
+                state.old_canvas = draw.canvas.clone();
             }
 
             for (src, dst) in state.pixmap.pixels().iter().zip(buffer.iter_mut()) {

@@ -49,8 +49,10 @@ impl<T, V: View<T>> View<T> for Trigger<V> {
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        cx.trigger(cx.rect());
+        cx.hoverable(|cx| {
+            cx.trigger(cx.rect());
 
-        self.content.draw(state, cx, data);
+            self.content.draw(state, cx, data);
+        });
     }
 }

@@ -3,17 +3,14 @@ use ori_core::{
         BlendMode, Canvas, Curve, CurveSegment, FillRule, LineCap, LineJoin, Paint, Primitive,
         Shader, Stroke,
     },
-    layout::{Affine, Rect},
+    layout::{Affine, Rect, Vector},
 };
 use tiny_skia::PixmapMut;
 
-pub fn render_canvas(pixmap: &mut PixmapMut<'_>, canvas: &Canvas) {
-    render_primitives(
-        pixmap,
-        canvas.primitives(),
-        tiny_skia::Transform::identity(),
-        None,
-    );
+pub fn render_canvas(pixmap: &mut PixmapMut<'_>, canvas: &Canvas, offset: Vector) {
+    let transform = tiny_skia::Transform::from_translate(-offset.x, -offset.y);
+
+    render_primitives(pixmap, canvas.primitives(), transform, None);
 }
 
 fn render_primitives(

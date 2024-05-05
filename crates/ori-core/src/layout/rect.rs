@@ -192,6 +192,24 @@ impl Rect {
         self.try_intersect(other).unwrap_or(Self::ZERO)
     }
 
+    /// Check if the rectangle intersects the given rectangle.
+    pub fn intersects(self, other: Self) -> bool {
+        self.try_intersect(other).is_some()
+    }
+
+    /// Compute the union of the rectangle with the given rectangle.
+    pub fn union(self, other: Self) -> Self {
+        let min_x = f32::min(self.min.x, other.min.x);
+        let min_y = f32::min(self.min.y, other.min.y);
+        let max_x = f32::max(self.max.x, other.max.x);
+        let max_y = f32::max(self.max.y, other.max.y);
+
+        Self {
+            min: Point::new(min_x, min_y),
+            max: Point::new(max_x, max_y),
+        }
+    }
+
     /// Transform the rectangle by the given affine transform.
     pub fn transform(self, transform: Affine) -> Self {
         let tl = transform * self.top_left();

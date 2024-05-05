@@ -47,7 +47,6 @@ jobs:
             -p ori-app
             -p ori-core
             -p ori-font-awesome
-            -p ori-glow
             -p ori-macro
             -p ori-winit
       - name: Add a redirect index page

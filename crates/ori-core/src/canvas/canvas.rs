@@ -1,3 +1,10 @@
+use std::{
+    collections::HashMap,
+    hash::{Hash, Hasher},
+};
+
+use seahash::SeaHasher;
+
 use crate::{
     layout::{Affine, Point, Rect},
     prelude::Image,
@@ -68,8 +75,17 @@ impl From<f32> for Stroke {
     }
 }
 
+impl Hash for Stroke {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.width.to_bits().hash(state);
+        self.miter.to_bits().hash(state);
+        self.cap.hash(state);
+        self.join.hash(state);
+    }
+}
+
 /// Ways to fill a shape.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub enum Shader {
     /// A solid color.
     Solid(Color),
@@ -95,7 +111,7 @@ pub enum BlendMode {
 }
 
 /// A paint that can be used to fill or stroke a shape.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Paint {
     /// The shader of the paint.
     pub shader: Shader,
@@ -371,5 +387,144 @@ impl Canvas {
         }
 
         recurse(&self.primitives, None, point)
+    }
+
+    /// Get the difference between two canvases.
+    pub fn diff(&self, old: &Self) -> CanvasDiff {
+        let mut rects = HashMap::new();
+        let mut old_rects = HashMap::new();
+
+        // collect new rects
+        for primitive in &self.primitives {
+            Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut rects);
+        }
+
+        // collect old rects
+        for primitive in &old.primitives {
+            Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut old_rects);
+        }
+
+        // remove rects that are the same
+        rects.retain(|hash, _| old_rects.remove(hash).is_none());
+
+        let rects: Vec<_> = rects.into_values().chain(old_rects.into_values()).collect();
+
+        CanvasDiff { rects }
+    }
+
+    fn add_primitive_rects(
+        primitive: &Primitive,
+        transform: Affine,
+        rects: &mut HashMap<u64, Rect>,
+    ) {
+        match primitive {
+            Primitive::Rect { rect, paint } => {
+                let mut hasher = SeaHasher::new();
+
+                hasher.write_u64(0);
+                rect.hash(&mut hasher);
+                paint.hash(&mut hasher);
+                transform.hash(&mut hasher);
+
+                let hash = hasher.finish();
+
+                rects.insert(hash, rect.transform(transform));
+            }
+            Primitive::Fill { curve, fill, paint } => {
+                let mut hasher = SeaHasher::new();
+
+                hasher.write_u64(1);
+                curve.hash(&mut hasher);
+                fill.hash(&mut hasher);
+                paint.hash(&mut hasher);
+                transform.hash(&mut hasher);
+
+                let hash = hasher.finish();
+
+                rects.insert(hash, curve.bounds().transform(transform));
+            }
+            Primitive::Stroke {
+                curve,
+                stroke,
+                paint,
+            } => {
+                let mut hasher = SeaHasher::new();
+
+                hasher.write_u64(2);
+                curve.hash(&mut hasher);
+                stroke.hash(&mut hasher);
+                paint.hash(&mut hasher);
+                transform.hash(&mut hasher);
+
+                let hash = hasher.finish();
+
+                let rect = curve.bounds().expand(stroke.width / 2.0);
+                rects.insert(hash, rect.transform(transform));
+            }
+            Primitive::Image { point, image } => {
+                let mut hasher = SeaHasher::new();
+
+                hasher.write_u64(3);
+                point.hash(&mut hasher);
+                image.hash(&mut hasher);
+                transform.hash(&mut hasher);
+
+                let hash = hasher.finish();
+
+                let rect = Rect::min_size(*point, image.size());
+                rects.insert(hash, rect.transform(transform));
+            }
+            Primitive::Layer {
+                primitives,
+                transform: layer_transform,
+                ..
+            } => {
+                let transform = transform * *layer_transform;
+
+                for primitive in primitives {
+                    Self::add_primitive_rects(primitive, transform, rects);
+                }
+            }
+        }
+    }
+}
+
+/// A canvas that can be drawn on.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CanvasDiff {
+    rects: Vec<Rect>,
+}
+
+impl CanvasDiff {
+    /// Get the rects of the diff.
+    pub fn rects(&self) -> &[Rect] {
+        &self.rects
+    }
+
+    /// Simplify the diff by merging rects when it makes sense.
+    pub fn simplify(&mut self) {
+        const UNION_BIAS: f32 = 1.5;
+
+        let mut i = 0;
+
+        while i < self.rects.len() {
+            let mut j = i + 1;
+
+            while j < self.rects.len() {
+                let a = self.rects[i];
+                let b = self.rects[j];
+
+                let union = a.union(b);
+
+                if union.area() / UNION_BIAS < a.area() + b.area() {
+                    self.rects[i] = union;
+                    self.rects.remove(j);
+                } else {
+                    j += 1;
+                }
+            }
+
+            i += 1;
+        }
     }
 }

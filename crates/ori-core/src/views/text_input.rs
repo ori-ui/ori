@@ -644,59 +644,62 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
-        cx.trigger(cx.rect());
+        cx.hoverable(|cx| {
+            cx.trigger(cx.rect());
 
-        // FIXME: this is bad
-        (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
+            // FIXME: this is bad
+            (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
 
-        let cursor = state.editor.cursor();
+            let cursor = state.editor.cursor();
 
-        /* draw the highlights and the cursor */
-        // FIXME: this is bad
-        for (i, run) in state.buffer().layout_runs().enumerate() {
-            if !cx.is_focused() {
-                break;
-            }
+            /* draw the highlights and the cursor */
+            // FIXME: this is bad
+            for (i, run) in state.buffer().layout_runs().enumerate() {
+                if !cx.is_focused() {
+                    break;
+                }
 
-            if let Some((start, end)) = state.editor.selection_bounds() {
-                if let Some((start, width)) = run.highlight(start, end) {
-                    let min = Point::new(cx.rect().min.x + start, cx.rect().min.y + run.line_top);
-                    let size = Size::new(width, self.font_size * self.line_height);
+                if let Some((start, end)) = state.editor.selection_bounds() {
+                    if let Some((start, width)) = run.highlight(start, end) {
+                        let min =
+                            Point::new(cx.rect().min.x + start, cx.rect().min.y + run.line_top);
+                        let size = Size::new(width, self.font_size * self.line_height);
 
-                    let highlight = Rect::min_size(min, size);
+                        let highlight = Rect::min_size(min, size);
 
-                    cx.fill_rect(highlight, self.color.fade(0.2));
+                        cx.fill_rect(highlight, self.color.fade(0.2));
+                    }
+                }
+
+                if i == cursor.line {
+                    let size = Size::new(1.0, self.font_size * self.line_height);
+
+                    let min = match run.glyphs.get(cursor.index) {
+                        Some(glyph) => {
+                            let physical = glyph.physical((cx.rect().min.x, cx.rect().min.y), 1.0);
+                            Point::new(physical.x as f32, run.line_top + physical.y as f32)
+                        }
+                        None if cursor.index == 0 => {
+                            Point::new(cx.rect().min.x, cx.rect().min.y + run.line_top)
+                        }
+                        None => {
+                            Point::new(cx.rect().min.x + run.line_w, cx.rect().min.y + run.line_top)
+                        }
+                    };
+
+                    let cursor = Rect::min_size(min.round(), size);
+
+                    let blink = state.blink.cos() * 0.5 + 0.5;
+                    cx.fill_rect(cursor, self.color.fade(blink));
                 }
             }
 
-            if i == cursor.line {
-                let size = Size::new(1.0, self.font_size * self.line_height);
-
-                let min = match run.glyphs.get(cursor.index) {
-                    Some(glyph) => {
-                        let physical = glyph.physical((cx.rect().min.x, cx.rect().min.y), 1.0);
-                        Point::new(physical.x as f32, run.line_top + physical.y as f32)
-                    }
-                    None if cursor.index == 0 => {
-                        Point::new(cx.rect().min.x, cx.rect().min.y + run.line_top)
-                    }
-                    None => {
-                        Point::new(cx.rect().min.x + run.line_w, cx.rect().min.y + run.line_top)
-                    }
-                };
-
-                let cursor = Rect::min_size(min.round(), size);
-
-                let blink = state.blink.cos() * 0.5 + 0.5;
-                cx.fill_rect(cursor, self.color.fade(blink));
-            }
-        }
-
-        /* draw the text */
-        if !self.get_text(state).is_empty() {
-            cx.text_raw(Vector::ZERO, state.buffer())
-        } else {
-            cx.text(Vector::ZERO, &state.placeholder)
-        };
+            /* draw the text */
+            if !self.get_text(state).is_empty() {
+                cx.text_raw(Vector::ZERO, state.buffer())
+            } else {
+                cx.text(Vector::ZERO, &state.placeholder)
+            };
+        });
     }
 }

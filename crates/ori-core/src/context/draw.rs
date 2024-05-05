@@ -86,7 +86,9 @@ impl<'a, 'b> DrawCx<'a, 'b> {
 
     /// Draw a trigger rectangle.
     pub fn trigger(&mut self, rect: Rect) {
-        self.canvas.trigger(rect);
+        self.canvas.view(self.id(), |canvas| {
+            canvas.trigger(rect);
+        });
     }
 
     /// Fill a curve.
@@ -142,8 +144,21 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         mask: Option<Mask>,
         f: impl FnOnce(&mut DrawCx<'_, 'b>),
     ) {
-        let view = Some(self.id());
-        self.canvas.layer(transform, mask, view, |canvas| {
+        self.canvas.layer(transform, mask, None, |canvas| {
+            let mut cx = DrawCx {
+                base: self.base,
+                view_state: self.view_state,
+                window: self.window,
+                canvas,
+            };
+
+            f(&mut cx);
+        });
+    }
+
+    /// Draw a hoverable layer.
+    pub fn hoverable(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+        self.canvas.view(self.id(), |canvas| {
             let mut cx = DrawCx {
                 base: self.base,
                 view_state: self.view_state,

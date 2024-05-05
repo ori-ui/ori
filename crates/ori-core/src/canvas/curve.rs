@@ -56,7 +56,7 @@ pub enum CurveSegment {
 }
 
 /// A bezier curve.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Curve {
     verbs: Vec<CurveVerb>,
     points: Vec<Point>,

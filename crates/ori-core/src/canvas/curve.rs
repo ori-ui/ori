@@ -485,9 +485,11 @@ impl Curve {
                 }
                 CurveSegment::Quad(c0, e) => {
                     crossings += Self::quad_intersections(s, c0, e, p);
+                    s = e;
                 }
                 CurveSegment::Cubic(c0, c1, e) => {
                     crossings += Self::cubic_intersections(s, c0, c1, e, p);
+                    s = e;
                 }
                 CurveSegment::Close => {}
             }
@@ -502,7 +504,7 @@ impl Curve {
 
         let t = -b / a;
 
-        let is_on_curve = (0.0..1.0).contains(&t);
+        let is_on_curve = (0.0..=1.0).contains(&t);
         let is_right = Self::lerps(s.x, e.x, t) >= p.x;
 
         (is_on_curve && is_right) as usize
@@ -516,6 +518,7 @@ impl Curve {
         let is_valid = |t: f32| {
             let is_on_curve = (0.0..1.0).contains(&t);
             let is_right = Self::quadratic_bezier(s.x, c0.x, e.x, t) >= p.x;
+
             is_on_curve && is_right
         };
 
@@ -531,7 +534,7 @@ impl Curve {
         let d = s.y - p.y;
 
         let is_valid = |t: f32| {
-            let is_on_curve = (0.0..1.0).contains(&t);
+            let is_on_curve = (0.0..=1.0).contains(&t);
             let is_right = Self::cubic_bezier(s.x, c0.x, c1.x, e.x, t) >= p.x;
             is_on_curve && is_right
         };

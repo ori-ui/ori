@@ -354,16 +354,18 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         offset += Vector::max(tl_delta, Vector::ZERO);
         offset -= Vector::max(br_delta, Vector::ZERO);
 
-        cx.translate(Vector::from(state.position + offset), |cx| {
-            cx.quad(
-                Rect::min_size(Point::ZERO, size),
-                self.background.fade(alpha),
-                self.border_radius,
-                self.border_width,
-                self.border_color.fade(alpha),
-            );
+        cx.overlay(0, |cx| {
+            cx.translate(Vector::from(state.position + offset), |cx| {
+                cx.quad(
+                    Rect::min_size(Point::ZERO, size),
+                    self.background.fade(alpha),
+                    self.border_radius,
+                    self.border_width,
+                    self.border_color.fade(alpha),
+                );
 
-            cx.text(self.padding.offset(), &state.buffer);
+                cx.text(self.padding.offset(), &state.buffer);
+            });
         });
     }
 }

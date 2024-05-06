@@ -13,9 +13,9 @@ pub fn render_canvas(pixmap: &mut PixmapMut<'_>, canvas: &Canvas, offset: Vector
     render_primitives(pixmap, canvas.primitives(), transform, None);
 }
 
-fn render_primitives(
+fn render_primitives<'a>(
     pixmap: &mut PixmapMut<'_>,
-    primitives: &[Primitive],
+    primitives: impl IntoIterator<Item = &'a Primitive>,
     transform: tiny_skia::Transform,
     mask: Option<&tiny_skia::Mask>,
 ) {

@@ -245,7 +245,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             * Affine::scale(Vector::all(self.icon_size))
             * Affine::rotate(PI / 2.0 * t);
 
-        cx.transform(transform, |cx| {
+        cx.layer(transform, |cx| {
             cx.fill_curve(icon(), FillRule::NonZero, self.icon_color);
         });
 

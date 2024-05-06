@@ -15,6 +15,7 @@ use super::{BaseCx, RebuildCx};
 pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
+    pub(crate) transform: Affine,
     pub(crate) window: &'a mut Window,
     pub(crate) canvas: &'a mut Canvas,
 }
@@ -44,6 +45,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         Self {
             base,
             view_state,
+            transform: Affine::IDENTITY,
             window,
             canvas,
         }
@@ -54,6 +56,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         DrawCx {
             base: self.base,
             view_state: self.view_state,
+            transform: self.transform,
             window: self.window,
             canvas: self.canvas,
         }
@@ -62,6 +65,11 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     /// Get a rebuild context.
     pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
         RebuildCx::new(self.base, self.view_state, self.window)
+    }
+
+    /// Get the transform of the view.
+    pub fn transform(&self) -> Affine {
+        self.transform
     }
 
     /// Get the size of the view.
@@ -143,23 +151,19 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         self.fill_curve(curve, FillRule::NonZero, border_paint);
     }
 
-    /// Draw a layer.
-    pub fn layer(
-        &mut self,
-        transform: Affine,
-        mask: Option<Mask>,
-        f: impl FnOnce(&mut DrawCx<'_, 'b>),
-    ) {
-        self.canvas.layer(transform, mask, None, |canvas| {
+    /// Draw an overlay, at `index`.
+    pub fn overlay<T>(&mut self, index: i32, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
+        self.canvas.overlay(index, |canvas| {
             let mut cx = DrawCx {
                 base: self.base,
                 view_state: self.view_state,
+                transform: Affine::IDENTITY,
                 window: self.window,
                 canvas,
             };
 
-            f(&mut cx);
-        });
+            f(&mut cx)
+        })
     }
 
     /// Draw a hoverable layer.
@@ -168,6 +172,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             let mut cx = DrawCx {
                 base: self.base,
                 view_state: self.view_state,
+                transform: self.transform,
                 window: self.window,
                 canvas,
             };
@@ -176,23 +181,43 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         });
     }
 
-    /// Draw a layer with a transform.
-    pub fn transform(&mut self, transform: Affine, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
-        self.layer(transform, None, f);
+    /// Draw a layer.
+    pub fn layer(&mut self, transform: Affine, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+        self.canvas.layer(transform, None, None, |canvas| {
+            let mut cx = DrawCx {
+                base: self.base,
+                view_state: self.view_state,
+                transform: self.transform * transform,
+                window: self.window,
+                canvas,
+            };
+
+            f(&mut cx);
+        });
     }
 
     /// Draw a layer with a translation.
     pub fn translate(&mut self, translation: Vector, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
-        self.transform(Affine::translate(translation), f);
+        self.layer(Affine::translate(translation), f);
     }
 
     /// Draw a layer with a rotation.
     pub fn rotate(&mut self, angle: f32, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
-        self.transform(Affine::rotate(angle), f);
+        self.layer(Affine::rotate(angle), f);
     }
 
     /// Draw a layer with a mask.
     pub fn mask(&mut self, mask: impl Into<Mask>, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
-        self.layer(Affine::IDENTITY, Some(mask.into()), f);
+        (self.canvas).layer(Affine::IDENTITY, Some(mask.into()), None, |canvas| {
+            let mut cx = DrawCx {
+                base: self.base,
+                view_state: self.view_state,
+                transform: self.transform,
+                window: self.window,
+                canvas,
+            };
+
+            f(&mut cx);
+        });
     }
 }

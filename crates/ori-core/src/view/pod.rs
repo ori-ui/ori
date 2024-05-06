@@ -170,7 +170,7 @@ impl<V> Pod<V> {
         new_cx.view_state = view_state;
 
         // draw the content
-        new_cx.transform(new_cx.view_state.transform, f);
+        new_cx.layer(new_cx.view_state.transform, f);
 
         // propagate the view state
         cx.view_state.propagate(view_state);

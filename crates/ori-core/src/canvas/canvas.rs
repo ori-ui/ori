@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     hash::{Hash, Hasher},
 };
 
@@ -288,6 +288,7 @@ pub enum Primitive {
 /// A canvas that can be drawn on.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Canvas {
+    overlays: BTreeMap<i32, Vec<Primitive>>,
     primitives: Vec<Primitive>,
 }
 
@@ -301,17 +302,20 @@ impl Canvas {
     /// Create a new canvas.
     pub fn new() -> Self {
         Self {
+            overlays: BTreeMap::new(),
             primitives: Vec::new(),
         }
     }
 
     /// Get the primitives of the canvas.
-    pub fn primitives(&self) -> &[Primitive] {
-        &self.primitives
+    pub fn primitives(&self) -> impl Iterator<Item = &Primitive> + '_ {
+        let overlays = self.overlays.values().flat_map(|p| p.iter());
+        self.primitives.iter().chain(overlays)
     }
 
     /// Clear the canvas.
     pub fn clear(&mut self) {
+        self.overlays.clear();
         self.primitives.clear();
     }
 
@@ -351,17 +355,42 @@ impl Canvas {
         self.primitives.push(Primitive::Image { point, image });
     }
 
+    /// Draw an overlay.
+    pub fn overlay<T>(&mut self, index: i32, f: impl FnOnce(&mut Self) -> T) -> T {
+        let mut overlay = Canvas::new();
+
+        let result = f(&mut overlay);
+
+        for (i, primitives) in overlay.overlays {
+            self.overlays
+                .entry(i + index)
+                .or_default()
+                .extend(primitives);
+        }
+
+        self.overlays
+            .entry(index)
+            .or_default()
+            .extend(overlay.primitives);
+
+        result
+    }
+
     /// Draw a layer.
-    pub fn layer(
+    pub fn layer<T>(
         &mut self,
         transform: Affine,
         mask: Option<Mask>,
         view: Option<ViewId>,
-        f: impl FnOnce(&mut Self),
-    ) {
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let mut layer = Canvas::new();
 
-        f(&mut layer);
+        let result = f(&mut layer);
+
+        for (i, overlay) in layer.overlays {
+            self.overlays.entry(i).or_default().extend(overlay);
+        }
 
         self.primitives.push(Primitive::Layer {
             primitives: layer.primitives,
@@ -369,21 +398,23 @@ impl Canvas {
             mask,
             view,
         });
+
+        result
     }
 
     /// Draw a layer with a transformation.
-    pub fn transform(&mut self, transform: Affine, f: impl FnOnce(&mut Self)) {
-        self.layer(transform, None, None, f);
+    pub fn transform<T>(&mut self, transform: Affine, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.layer(transform, None, None, f)
     }
 
     /// Draw a layer with a mask.
-    pub fn mask(&mut self, mask: Mask, f: impl FnOnce(&mut Self)) {
-        self.layer(Affine::IDENTITY, Some(mask), None, f);
+    pub fn mask<T>(&mut self, mask: Mask, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.layer(Affine::IDENTITY, Some(mask), None, f)
     }
 
     /// Draw a layer with a view.
-    pub fn view(&mut self, view: ViewId, f: impl FnOnce(&mut Self)) {
-        self.layer(Affine::IDENTITY, None, Some(view), f);
+    pub fn view<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.layer(Affine::IDENTITY, None, Some(view), f)
     }
 
     /// Get the view at a point.
@@ -441,6 +472,12 @@ impl Canvas {
             None
         }
 
+        for primitives in self.overlays.values().rev() {
+            if let Some(view) = recurse(primitives, None, point) {
+                return Some(view);
+            }
+        }
+
         recurse(&self.primitives, None, point)
     }
 
@@ -450,11 +487,23 @@ impl Canvas {
         let mut old_rects = HashMap::new();
 
         // collect new rects
+        for primitives in self.overlays.values() {
+            for primitive in primitives {
+                Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut rects);
+            }
+        }
+
         for primitive in &self.primitives {
             Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut rects);
         }
 
         // collect old rects
+        for primitives in old.overlays.values() {
+            for primitive in primitives {
+                Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut old_rects);
+            }
+        }
+
         for primitive in &old.primitives {
             Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut old_rects);
         }

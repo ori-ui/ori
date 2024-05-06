@@ -129,19 +129,19 @@ impl<T> ColorPicker<T> {
     }
 
     fn wheel_image(lightness: f32, alpha: f32) -> Image {
-        let mut pixels = vec![0u8; 4 * 256 * 256];
+        let mut pixels = vec![0u8; 4 * 128 * 128];
 
-        for y in 0..256 {
-            for x in 0..256 {
-                let angle = f32::atan2(y as f32 - 128.0, x as f32 - 128.0);
-                let radius = f32::hypot(y as f32 - 128.0, x as f32 - 128.0);
+        for y in 0..128 {
+            for x in 0..128 {
+                let angle = f32::atan2(y as f32 - 64.0, x as f32 - 64.0);
+                let radius = f32::hypot(y as f32 - 64.0, x as f32 - 64.0);
 
                 let hue = angle.to_degrees();
-                let saturation = radius / 128.0;
+                let saturation = radius / 64.0;
 
                 let color = Color::okhsla(hue, saturation, lightness, alpha);
 
-                let i = (y * 256 + x) * 4;
+                let i = (y * 128 + x) * 4;
                 let [r, g, b, a] = color.to_rgba8();
 
                 pixels[i] = (r as u16 * a as u16 / 255) as u8;
@@ -151,7 +151,7 @@ impl<T> ColorPicker<T> {
             }
         }
 
-        Image::new(pixels, 256, 256)
+        Image::new(pixels, 128, 128)
     }
 
     fn input(
@@ -249,7 +249,7 @@ impl<T> View<T> for ColorPicker<T> {
         let (_, _, l, a) = self.color.to_okhsla();
         let (_, _, old_l, old_a) = old.color.to_okhsla();
 
-        if (l - old_l).abs() < 0.01 || (a - old_a).abs() < 0.01 {
+        if (l - old_l).abs() > 1e-6 || (a - old_a).abs() > 1e-6 {
             state.image = None;
             cx.request_draw();
         }

@@ -27,7 +27,7 @@ pub mod prelude {
     pub use crate::{
         canvas::{
             hex, hsl, hsla, oklab, oklaba, rgb, rgba, BlendMode, BorderRadius, BorderWidth, Canvas,
-            Color, Curve, FillRule, LineCap, LineJoin, Paint, Shader, Stroke,
+            Color, Curve, FillRule, LineCap, LineJoin, Paint, Pattern, Shader, Stroke,
         },
         clipboard::Clipboard,
         command::CommandProxy,

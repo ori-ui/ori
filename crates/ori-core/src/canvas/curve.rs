@@ -1,8 +1,8 @@
-use std::f32::consts::PI;
+use std::f32::consts::{PI, SQRT_2};
 
-use crate::layout::{Affine, Point, Rect, Vector};
+use crate::layout::{Affine, Point, Rect, Size, Vector};
 
-use super::{BorderRadius, FillRule};
+use super::{BorderRadius, BorderWidth, FillRule};
 
 /// A verb that describes the type of curve.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -86,6 +86,18 @@ impl Curve {
         curve
     }
 
+    /// Create a curve from an oval.
+    pub fn oval(oval: Rect) -> Self {
+        let mut curve = Self::new();
+        curve.push_oval(oval);
+        curve
+    }
+
+    /// Create a curve from a cicrle.
+    pub fn circle(center: Point, radius: f32) -> Self {
+        Self::oval(Rect::center_size(center, Size::all(radius * 2.0)))
+    }
+
     /// Get the number of verbs in the curve.
     pub fn len(&self) -> usize {
         self.verbs.len()
@@ -154,51 +166,38 @@ impl Curve {
         self.push_point(point);
     }
 
+    /// Draw a conic curve to a `point`, with a control point `control` and a `weight`.
+    ///
+    /// Conic curves are approximated by quadratic bezier curves.
+    pub fn conic_to(&mut self, control: Point, point: Point, weight: f32) {
+        let last_point = self.points.last().copied().unwrap_or(Point::ZERO);
+
+        let conic = Conic {
+            start: last_point,
+            control,
+            end: point,
+            weight,
+        };
+
+        if let Some(pow2) = conic.compute_quad_pow2(0.25) {
+            let mut points = [Point::ZERO; 64];
+            let len = conic.chop_into_quads_pow2(pow2, &mut points);
+
+            let mut offset = 1;
+            for _ in 0..len {
+                let control = points[offset];
+                let end = points[offset + 1];
+                self.quad_to(control, end);
+                offset += 2;
+            }
+        }
+    }
+
     /// Close the contour.
     pub fn close(&mut self) {
         if !self.is_closed() && !self.is_empty() {
             self.verbs.push(CurveVerb::Close);
         }
-    }
-
-    /// Push a rectangle to the curve.
-    pub fn push_rect(&mut self, rect: Rect) {
-        self.move_to(rect.top_left());
-        self.line_to(rect.top_right());
-        self.line_to(rect.bottom_right());
-        self.line_to(rect.bottom_left());
-        self.close();
-    }
-
-    /// Push a rectangle with rounded corners to the curve.
-    pub fn push_rect_with_radius(&mut self, rect: Rect, radius: BorderRadius) {
-        self.move_to(rect.top_left() + Vector::new(radius.top_left, 0.0));
-
-        self.line_to(rect.top_right() + Vector::new(-radius.top_right, 0.0));
-        self.quad_to(
-            rect.top_right(),
-            rect.top_right() + Vector::new(0.0, radius.top_right),
-        );
-
-        self.line_to(rect.bottom_right() + Vector::new(0.0, -radius.bottom_right));
-        self.quad_to(
-            rect.bottom_right(),
-            rect.bottom_right() + Vector::new(-radius.bottom_right, 0.0),
-        );
-
-        self.line_to(rect.bottom_left() + Vector::new(radius.bottom_left, 0.0));
-        self.quad_to(
-            rect.bottom_left(),
-            rect.bottom_left() + Vector::new(0.0, -radius.bottom_left),
-        );
-
-        self.line_to(rect.top_left() + Vector::new(0.0, radius.top_left));
-        self.quad_to(
-            rect.top_left(),
-            rect.top_left() + Vector::new(radius.top_left, 0.0),
-        );
-
-        self.close();
     }
 
     /// Transform the curve by the given affine transform.
@@ -217,6 +216,175 @@ impl Curve {
             verb: 0,
             point: 0,
         }
+    }
+
+    /// Check if the curve contains a `point` using the given `rule`.
+    pub fn contains(&self, point: Point, rule: FillRule) -> bool {
+        if !self.bounds.contains(point) || self.is_empty() {
+            return false;
+        }
+
+        match rule {
+            FillRule::NonZero => self.contains_even_odd(point),
+            FillRule::EvenOdd => self.contains_even_odd(point),
+        }
+    }
+
+    /// Push a rectangle to the curve.
+    pub fn push_rect(&mut self, rect: Rect) {
+        self.move_to(rect.top_left());
+        self.line_to(rect.top_right());
+        self.line_to(rect.bottom_right());
+        self.line_to(rect.bottom_left());
+        self.close();
+    }
+
+    /// Push an oval to the curve.
+    pub fn push_oval(&mut self, oval: Rect) {
+        let weight = SQRT_2 / 2.0;
+
+        self.move_to(oval.top());
+        self.conic_to(oval.top_right(), oval.right(), weight);
+        self.conic_to(oval.bottom_right(), oval.bottom(), weight);
+        self.conic_to(oval.bottom_left(), oval.left(), weight);
+        self.conic_to(oval.top_left(), oval.top(), weight);
+        self.close();
+    }
+
+    /// Push a rectangle with rounded corners to the curve.
+    pub fn push_rect_with_radius(&mut self, rect: Rect, radius: BorderRadius) {
+        self.move_to(rect.top_left() + Vector::new(radius.top_left, 0.0));
+
+        self.line_to(rect.top_right() + Vector::new(-radius.top_right, 0.0));
+        self.cubic_to(
+            rect.top_right() + Vector::new(-radius.top_right * 0.45, 0.0),
+            rect.top_right() + Vector::new(0.0, radius.top_right * 0.45),
+            rect.top_right() + Vector::new(0.0, radius.top_right),
+        );
+
+        self.line_to(rect.bottom_right() + Vector::new(0.0, -radius.bottom_right));
+        self.cubic_to(
+            rect.bottom_right() + Vector::new(0.0, -radius.bottom_right * 0.45),
+            rect.bottom_right() + Vector::new(-radius.bottom_right * 0.45, 0.0),
+            rect.bottom_right() + Vector::new(-radius.bottom_right, 0.0),
+        );
+
+        self.line_to(rect.bottom_left() + Vector::new(radius.bottom_left, 0.0));
+        self.cubic_to(
+            rect.bottom_left() + Vector::new(radius.bottom_left * 0.45, 0.0),
+            rect.bottom_left() + Vector::new(0.0, -radius.bottom_left * 0.45),
+            rect.bottom_left() + Vector::new(0.0, -radius.bottom_left),
+        );
+
+        self.line_to(rect.top_left() + Vector::new(0.0, radius.top_left));
+        self.cubic_to(
+            rect.top_left() + Vector::new(0.0, radius.top_left * 0.45),
+            rect.top_left() + Vector::new(radius.top_left * 0.45, 0.0),
+            rect.top_left() + Vector::new(radius.top_left, 0.0),
+        );
+
+        self.close();
+    }
+
+    fn border_data(radius: BorderRadius, width: BorderWidth, index: usize) -> [f32; 3] {
+        let radius: [f32; 4] = radius.into();
+        let width: [f32; 4] = width.into();
+
+        let radius = radius[index];
+        let start = width[(index + 3) % 4];
+        let end = width[index];
+
+        [radius, start, end]
+    }
+
+    /// Push the border of a rectangle with rounded corners to the curve.
+    pub fn push_rect_with_borders(&mut self, rect: Rect, radius: BorderRadius, width: BorderWidth) {
+        let tl = rect.top_left();
+        let tr = rect.top_right();
+        let br = rect.bottom_right();
+        let bl = rect.bottom_left();
+
+        let [r, s, e] = Self::border_data(radius, width, 0);
+
+        if s > 0.0 || e > 0.0 {
+            self.move_to(tl + Vector::new(0.0, r));
+            self.cubic_to(
+                tl + Vector::new(0.0, r * 0.45),
+                tl + Vector::new(r * 0.45, 0.0),
+                tl + Vector::new(r, 0.0),
+            );
+            self.line_to(tr + Vector::new(-r, 0.0));
+
+            self.line_to(tr + Vector::new(-r, e));
+            self.line_to(tl + Vector::new(r, e));
+            self.cubic_to(
+                tl + Vector::new((r + s) * 0.45, e),
+                tl + Vector::new(s, (r + e) * 0.45),
+                tl + Vector::new(s, r),
+            );
+        }
+
+        let [r, s, e] = Self::border_data(radius, width, 1);
+
+        if s > 0.0 || e > 0.0 {
+            self.move_to(tr + Vector::new(-r, 0.0));
+            self.cubic_to(
+                tr + Vector::new(-r * 0.45, 0.0),
+                tr + Vector::new(0.0, r * 0.45),
+                tr + Vector::new(0.0, r),
+            );
+            self.line_to(br + Vector::new(0.0, -r));
+
+            self.line_to(br + Vector::new(-e, -r));
+            self.line_to(tr + Vector::new(-e, r));
+            self.cubic_to(
+                tr + Vector::new(-e, (r + s) * 0.45),
+                tr + Vector::new(-(r + e) * 0.45, s),
+                tr + Vector::new(-r, s),
+            );
+        }
+
+        let [r, s, e] = Self::border_data(radius, width, 2);
+
+        if s > 0.0 || e > 0.0 {
+            self.move_to(br + Vector::new(0.0, -r));
+            self.cubic_to(
+                br + Vector::new(0.0, -r * 0.45),
+                br + Vector::new(-r * 0.45, 0.0),
+                br + Vector::new(-r, 0.0),
+            );
+            self.line_to(bl + Vector::new(r, 0.0));
+
+            self.line_to(bl + Vector::new(r, -e));
+            self.line_to(br + Vector::new(-r, -e));
+            self.cubic_to(
+                br + Vector::new(-(r + s) * 0.45, -e),
+                br + Vector::new(-s, -(r + e) * 0.45),
+                br + Vector::new(-s, -r),
+            );
+        }
+
+        let [r, s, e] = Self::border_data(radius, width, 3);
+
+        if s > 0.0 || e > 0.0 {
+            self.move_to(bl + Vector::new(r, 0.0));
+            self.cubic_to(
+                bl + Vector::new(r * 0.45, 0.0),
+                bl + Vector::new(0.0, -r * 0.45),
+                bl + Vector::new(0.0, -r),
+            );
+            self.line_to(tl + Vector::new(0.0, r));
+
+            self.line_to(tl + Vector::new(e, r));
+            self.line_to(bl + Vector::new(e, -r));
+            self.cubic_to(
+                bl + Vector::new(e, -(r + s) * 0.45),
+                bl + Vector::new((r + e) * 0.45, -s),
+                bl + Vector::new(r, -s),
+            );
+        }
+
+        self.close();
     }
 
     fn quadratic_roots(a: f32, b: f32, c: f32) -> [f32; 2] {
@@ -244,36 +412,41 @@ impl Curve {
             return [x1, x2, f32::NAN];
         }
 
-        let b = b / a;
-        let c = c / a;
-        let d = d / a;
+        let a_inv = 1.0 / a;
+        let a = b * a_inv;
+        let b = c * a_inv;
+        let c = d * a_inv;
 
-        let q = (3.0 * c - b * b) / 9.0;
-        let r = (9.0 * b * c - 27.0 * d - 2.0 * b * b * b) / 54.0;
+        let q = (a * a - b * 3.0) / 9.0;
+        let r = (2.0 * a * a * a - 9.0 * a * b + 27.0 * c) / 54.0;
 
-        let discriminant = q * q * q + r * r;
+        let q3 = q * q * q;
+        let r2_minus_q3 = r * r - q3;
+        let adiv3 = a / 3.0;
 
-        if discriminant >= 0.0 {
-            let s = r + discriminant.sqrt();
-            let t = r - discriminant.sqrt();
+        if r2_minus_q3 < 0.0 {
+            // we have 3 real roots
+            let theta = (r / q3.sqrt()).acos();
+            let neg2_root_q = -2.0 * q.sqrt();
 
-            let s = s.abs().powf(1.0 / 3.0) * s.signum();
-            let t = t.abs().powf(1.0 / 3.0) * t.signum();
-
-            let x1 = -b / 3.0 + (s + t);
-            let x2 = -b / 3.0 - (s + t) / 2.0;
-            let x3 = -b / 3.0 - (s + t) / 2.0;
+            let x1 = neg2_root_q * (theta / 3.0).cos() - adiv3;
+            let x2 = neg2_root_q * ((theta + 2.0 * PI) / 3.0).cos() - adiv3;
+            let x3 = neg2_root_q * ((theta - 2.0 * PI) / 3.0).cos() - adiv3;
 
             [x1, x2, x3]
         } else {
-            let theta = (-r / (q * q * q)).acos().abs();
-            let sqrt_q = q.abs().sqrt();
+            // we have 1 real root
+            let mut a = (r.abs() + r2_minus_q3.sqrt()).cbrt();
 
-            let x1 = -2.0 * sqrt_q * (theta / 3.0).cos() - b / 3.0;
-            let x2 = 2.0 * sqrt_q * ((theta + 2.0 * PI) / 3.0).cos() - b / 3.0;
-            let x3 = 2.0 * sqrt_q * ((theta + 4.0 * PI) / 3.0).cos() - b / 3.0;
+            if r < 0.0 {
+                a = -a;
+            }
 
-            [x1, x2, x3]
+            if a != 0.0 {
+                a += q / a;
+            }
+
+            [a - adiv3, f32::NAN, f32::NAN]
         }
     }
 
@@ -291,18 +464,6 @@ impl Curve {
             Self::quadratic_bezier(c0, c1, e, t),
             t,
         )
-    }
-
-    /// Check if the curve contains a `point` using the given `rule`.
-    pub fn contains(&self, point: Point, rule: FillRule) -> bool {
-        if !self.bounds.contains(point) || self.is_empty() {
-            return false;
-        }
-
-        match rule {
-            FillRule::NonZero => self.contains_even_odd(point),
-            FillRule::EvenOdd => self.contains_even_odd(point),
-        }
     }
 
     // check if the curve contains a point using the even-odd rule
@@ -378,6 +539,145 @@ impl Curve {
         let [t1, t2, t3] = Self::cubic_roots(a, b, c, d);
 
         is_valid(t1) as usize + is_valid(t2) as usize + is_valid(t3) as usize
+    }
+}
+
+fn between(a: f32, b: f32, c: f32) -> bool {
+    (a - b) * (c - b) <= 0.0
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Conic {
+    start: Point,
+    control: Point,
+    end: Point,
+    weight: f32,
+}
+
+impl Conic {
+    fn compute_quad_pow2(&self, tolerance: f32) -> Option<u8> {
+        if tolerance < 0.0 || tolerance.is_infinite() {
+            return None;
+        }
+
+        if self.start.is_infinite() || self.control.is_infinite() || self.end.is_infinite() {
+            return None;
+        }
+
+        const MAX_CONIC_TO_QUAD_POW2: usize = 4;
+
+        let a = self.weight - 1.0;
+        let k = a / (4.0 * (2.0 + a));
+        let x = k * (self.start.x - 2.0 * self.control.x + self.end.x);
+        let y = k * (self.start.y - 2.0 * self.control.y + self.end.y);
+
+        let mut error = f32::sqrt(x * x + y * y);
+        let mut pow2 = 0;
+
+        for _ in 0..MAX_CONIC_TO_QUAD_POW2 {
+            if error < tolerance {
+                break;
+            }
+
+            error *= 0.25;
+            pow2 += 1;
+        }
+
+        Some(pow2.max(1))
+    }
+
+    fn chop_into_quads_pow2(&self, pow2: u8, points: &mut [Point]) -> u8 {
+        points[0] = self.start;
+        self.subdivide(&mut points[1..], pow2);
+
+        let quad_count = 1 << pow2;
+        let point_count = 2 * quad_count + 1;
+
+        if points.iter().take(point_count).any(|n| n.is_infinite()) {
+            for p in points.iter_mut().take(point_count - 1).skip(1) {
+                *p = self.control;
+            }
+        }
+
+        quad_count as u8
+    }
+
+    fn subdivide<'a>(&self, points: &'a mut [Point], level: u8) -> &'a mut [Point] {
+        if level == 0 {
+            points[0] = self.control;
+            points[1] = self.end;
+            &mut points[2..]
+        } else {
+            let (mut dst_a, mut dst_b) = self.chop();
+
+            let start_y = self.start.y;
+            let end_y = self.end.y;
+
+            if between(start_y, self.control.y, end_y) {
+                let mid_y = dst_a.end.y;
+
+                if !between(start_y, mid_y, end_y) {
+                    let closer = if (mid_y - start_y).abs() < (mid_y - end_y).abs() {
+                        start_y
+                    } else {
+                        end_y
+                    };
+
+                    dst_a.end.y = closer;
+                    dst_b.start.y = closer;
+                }
+
+                if !between(start_y, dst_a.control.y, dst_a.end.y) {
+                    dst_a.control.y = start_y;
+                }
+
+                if !between(dst_b.start.y, dst_b.control.y, end_y) {
+                    dst_b.control.y = end_y;
+                }
+
+                debug_assert!(between(start_y, dst_a.control.y, dst_a.end.y));
+                debug_assert!(between(dst_a.control.y, dst_a.end.y, dst_b.control.y));
+                debug_assert!(between(dst_a.end.y, dst_b.control.y, end_y));
+            }
+
+            let points = dst_a.subdivide(points, level - 1);
+            dst_b.subdivide(points, level - 1)
+        }
+    }
+
+    fn chop(&self) -> (Conic, Conic) {
+        let scale = Vector::all(1.0 / (1.0 + self.weight));
+        let new_weight = f32::sqrt(0.5 + self.weight * 0.5);
+        let ww = Vector::all(self.weight);
+
+        let wc = self.control * ww;
+        let mut m = (self.start + wc.to_vector() * 2.0 + self.end.to_vector()) * scale * 0.5;
+
+        if m.is_infinite() {
+            let wd = self.weight as f64;
+            let w2 = wd * 2.0;
+            let scale_half = 1.0 / (1.0 + wd) * 0.5;
+            m.x = ((self.start.x as f64 + w2 * self.control.x as f64 + self.end.x as f64)
+                * scale_half) as f32;
+
+            m.y = ((self.start.y as f64 + w2 * self.control.y as f64 + self.end.y as f64)
+                * scale_half) as f32;
+        }
+
+        (
+            Conic {
+                start: self.start,
+                control: (self.start + wc.to_vector()) * scale,
+                end: m,
+                weight: new_weight,
+            },
+            Conic {
+                start: m,
+                control: (self.end + wc.to_vector()) * scale,
+                end: self.end,
+                weight: new_weight,
+            },
+        )
     }
 }
 

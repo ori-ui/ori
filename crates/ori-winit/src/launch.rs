@@ -247,7 +247,12 @@ impl<T> WinitState<T> {
         window.set_maximized(ori.maximized);
 
         let context = softbuffer::Context::new(window.clone()).unwrap();
-        let surface = softbuffer::Surface::new(&context, window.clone()).unwrap();
+        let mut surface = softbuffer::Surface::new(&context, window.clone()).unwrap();
+
+        surface.resize(
+            NonZeroU32::new(ori.width()).unwrap(),
+            NonZeroU32::new(ori.height()).unwrap(),
+        )?;
 
         self.windows.insert(
             window_id,

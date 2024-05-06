@@ -207,7 +207,7 @@ impl Fonts {
                 let mut image = cached.image.clone();
 
                 if let Some(color) = glyph.color_opt {
-                    image.multiply(Color::rgba8(color.r(), color.g(), color.b(), color.a()));
+                    image.color(Color::rgba8(color.r(), color.g(), color.b(), color.a()));
                 }
 
                 canvas.image(point + cached.offset + offset, image);

@@ -1,4 +1,4 @@
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 use ori_macro::Build;
 
@@ -6,7 +6,8 @@ use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Point, Size, Space},
+    layout::{Affine, Point, Rect, Size, Space, Vector},
+    prelude::{Curve, FillRule, Image, Pattern},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     view::View,
@@ -32,12 +33,6 @@ pub struct ColorPickerStyle {
     /// The width of the sliders.
     pub slider_width: f32,
 
-    /// The padding of the sliders.
-    pub slider_padding: f32,
-
-    /// The color of the slider tracks.
-    pub track_color: Color,
-
     /// The color of the lightness slider.
     pub lightness_color: Color,
 
@@ -53,9 +48,7 @@ impl Style for ColorPickerStyle {
             size: 140.0,
             border_width: 2.0,
             border_color: palette.surface_higher,
-            slider_width: 8.0,
-            slider_padding: 8.0,
-            track_color: palette.surface_higher,
+            slider_width: 12.0,
             lightness_color: palette.primary,
             alpha_color: palette.secondary,
         }
@@ -90,14 +83,6 @@ pub struct ColorPicker<T> {
     #[rebuild(draw)]
     pub slider_width: f32,
 
-    /// The padding of the sliders.
-    #[rebuild(draw)]
-    pub slider_padding: f32,
-
-    /// The color of the slider tracks.
-    #[rebuild(draw)]
-    pub track_color: Color,
-
     /// The color of the lightness slider.
     #[rebuild(draw)]
     pub lightness_color: Color,
@@ -114,7 +99,7 @@ impl<T> Default for ColorPicker<T> {
 }
 
 impl<T> ColorPicker<T> {
-    const SLIDER_HALF: f32 = FRAC_PI_2 * 0.95;
+    const SLIDER_HALF: f32 = FRAC_PI_2 * 0.9;
     const SLIDER_ARC: f32 = Self::SLIDER_HALF * 2.0;
     const SLIDER_SHIM: f32 = FRAC_PI_2 - Self::SLIDER_HALF;
 
@@ -132,8 +117,6 @@ impl<T> ColorPicker<T> {
             border_width: style.border_width,
             border_color: style.border_color,
             slider_width: style.slider_width,
-            slider_padding: style.slider_padding,
-            track_color: style.track_color,
             lightness_color: style.lightness_color,
             alpha_color: style.alpha_color,
         }
@@ -145,56 +128,31 @@ impl<T> ColorPicker<T> {
         self
     }
 
-    /*
-    fn wheel_mesh(lightness: f32, alpha: f32, radial: u32, angular: u32) -> Mesh {
-        let mut mesh = Mesh::new();
+    fn wheel_image(lightness: f32, alpha: f32) -> Image {
+        let mut pixels = vec![0u8; 4 * 256 * 256];
 
-        mesh.vertices.push(Vertex {
-            position: Point::ZERO,
-            tex_coords: Point::ZERO,
-            color: Color::okhsla(0.0, 0.0, lightness, alpha),
-        });
+        for y in 0..256 {
+            for x in 0..256 {
+                let angle = f32::atan2(y as f32 - 128.0, x as f32 - 128.0);
+                let radius = f32::hypot(y as f32 - 128.0, x as f32 - 128.0);
 
-        for i in 1..=radial {
-            let r = i as f32 / radial as f32;
+                let hue = angle.to_degrees();
+                let saturation = radius / 128.0;
 
-            for j in 0..angular {
-                let a = j as f32 / angular as f32 * TAU;
+                let color = Color::okhsla(hue, saturation, lightness, alpha);
 
-                mesh.vertices.push(Vertex {
-                    position: Point::new(r * a.cos(), r * a.sin()),
-                    tex_coords: Point::ZERO,
-                    color: Color::okhsla(a.to_degrees(), r, lightness, alpha),
-                });
+                let i = (y * 256 + x) * 4;
+                let [r, g, b, a] = color.to_rgba8();
 
-                let di0 = j;
-                let di1 = (j + 1) % angular;
-
-                let i2 = (i - 1) * angular + di0;
-                let i3 = (i - 1) * angular + di1;
-
-                if i == 1 {
-                    mesh.indices.push(0);
-                    mesh.indices.push(i3);
-                    mesh.indices.push(i2);
-                } else {
-                    let i0 = (i - 2) * angular + di0;
-                    let i1 = (i - 2) * angular + di1;
-
-                    mesh.indices.push(i0);
-                    mesh.indices.push(i1);
-                    mesh.indices.push(i2);
-
-                    mesh.indices.push(i1);
-                    mesh.indices.push(i3);
-                    mesh.indices.push(i2);
-                }
+                pixels[i] = (r as u16 * a as u16 / 255) as u8;
+                pixels[i + 1] = (g as u16 * a as u16 / 255) as u8;
+                pixels[i + 2] = (b as u16 * a as u16 / 255) as u8;
+                pixels[i + 3] = a;
             }
         }
 
-        mesh
+        Image::new(pixels, 256, 256)
     }
-    */
 
     fn input(
         &mut self,
@@ -206,9 +164,7 @@ impl<T> ColorPicker<T> {
         let local = cx.local(position) - cx.rect().center();
         let angle = local.angle();
         let radius = cx.size().min_element() / 2.0;
-        let wheel_radius = radius - self.slider_width - self.slider_padding;
-        let slider_start = radius - self.slider_width;
-        let slider_radius = radius - self.slider_width / 2.0;
+        let wheel_radius = radius - self.slider_width;
 
         let (h, s, l, a) = self.color.to_okhsla();
 
@@ -228,20 +184,12 @@ impl<T> ColorPicker<T> {
             return;
         }
 
-        let is_slider = (slider_start..=radius).contains(&local.length());
-        let slider_height = f32::clamp(local.y / slider_radius, -1.0, 1.0);
-        let slider_angle = if slider_height == -1.0 {
-            PI
-        } else if slider_height == 1.0 {
-            0.0
-        } else {
-            slider_height.acos()
-        };
+        let slider_angle = (angle + TAU + FRAC_PI_2) % TAU;
 
-        if state.can_edit(ColorPickerPart::Alpha, local.x > 0.0 && is_slider) {
+        if state.can_edit(ColorPickerPart::Alpha, local.x > 2.0) && local.x > 2.0 {
             state.edit = Some(ColorPickerPart::Alpha);
 
-            let alpha = (slider_angle - Self::SLIDER_SHIM) / Self::SLIDER_ARC;
+            let alpha = (PI - Self::SLIDER_SHIM - slider_angle) / Self::SLIDER_ARC;
             let alpha = alpha.clamp(0.0, 1.0);
 
             let color = Color::okhsla(h, s, l, alpha);
@@ -250,10 +198,10 @@ impl<T> ColorPicker<T> {
                 on_input(cx, data, color);
                 cx.request_rebuild();
             }
-        } else if state.can_edit(ColorPickerPart::Lightness, is_slider) {
+        } else if state.can_edit(ColorPickerPart::Lightness, local.x < -2.0) && local.x < -2.0 {
             state.edit = Some(ColorPickerPart::Lightness);
 
-            let lightness = (slider_angle - Self::SLIDER_SHIM) / Self::SLIDER_ARC;
+            let lightness = (slider_angle - PI - Self::SLIDER_SHIM) / Self::SLIDER_ARC;
             let lightness = lightness.clamp(0.001, 0.999);
 
             let color = Color::okhsla(h, s, lightness, a);
@@ -275,6 +223,7 @@ enum ColorPickerPart {
 
 #[doc(hidden)]
 pub struct ColorPickerState {
+    image: Option<Image>,
     edit: Option<ColorPickerPart>,
 }
 
@@ -288,18 +237,22 @@ impl<T> View<T> for ColorPicker<T> {
     type State = ColorPickerState;
 
     fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        let (_, _, _l, _a) = self.color.to_okhsla();
-
-        ColorPickerState { edit: None }
+        ColorPickerState {
+            image: None,
+            edit: None,
+        }
     }
 
-    fn rebuild(&mut self, _state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
         let (_, _, l, a) = self.color.to_okhsla();
         let (_, _, old_l, old_a) = old.color.to_okhsla();
 
-        if (l - old_l).abs() < 0.01 || (a - old_a).abs() < 0.01 {}
+        if (l - old_l).abs() < 0.01 || (a - old_a).abs() < 0.01 {
+            state.image = None;
+            cx.request_draw();
+        }
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
@@ -329,92 +282,84 @@ impl<T> View<T> for ColorPicker<T> {
         space.fit(Size::all(self.size))
     }
 
-    fn draw(&mut self, _state: &mut Self::State, _cx: &mut DrawCx, _data: &mut T) {
-        /*
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let radius = cx.size().min_element() / 2.0;
-        let wheel_radius = radius - self.slider_width - self.slider_padding;
+        let wheel_radius = radius - self.slider_width;
 
-        canvas.translate(cx.rect().center().to_vector());
-
-        canvas.draw_quad(
-            Rect::center_size(
-                Point::ZERO,
-                Size::all(wheel_radius * 2.0 + self.border_width * 2.0),
-            ),
-            Color::TRANSPARENT,
-            wheel_radius + self.border_width,
-            self.border_width,
-            self.border_color,
-        );
-
-        {
-            let mut canvas = canvas.layer();
-            canvas.scale(Vector::all(wheel_radius));
-            canvas.draw(state.mesh.clone());
-        }
-
-        let mut canvas = canvas.layer();
         let (h, s, l, a) = self.color.to_okhsla();
 
-        let offset = Vector::from_angle(h.to_radians()) * s * wheel_radius;
+        let image = state.image.get_or_insert_with(|| Self::wheel_image(l, a));
 
-        canvas.draw_quad(
-            Rect::center_size(Point::ZERO + offset, Size::all(8.0)),
-            Color::TRANSPARENT,
-            4.0,
-            1.0,
-            Color::WHITE,
-        );
+        cx.translate(cx.rect().center() - cx.rect().top_left(), |cx| {
+            cx.hoverable(|cx| {
+                // draw the sliders
+                let lightness_angle = -Self::SLIDER_HALF + l * Self::SLIDER_ARC;
+                let alpha_angle = Self::SLIDER_HALF - a * Self::SLIDER_ARC;
 
-        canvas.draw_quad(
-            Rect::center_size(Point::ZERO + offset, Size::all(12.0)),
-            Color::TRANSPARENT,
-            6.0,
-            2.0,
-            Color::BLACK,
-        );
+                cx.rotate(lightness_angle, |cx| {
+                    cx.quad(
+                        Rect::center_size(
+                            Point::new(-wheel_radius, 0.0),
+                            Size::new(self.slider_width * 2.0, self.slider_width * 1.5),
+                        ),
+                        self.lightness_color,
+                        self.slider_width / 2.0,
+                        self.border_width / 2.0,
+                        self.border_color,
+                    );
+                });
 
-        // draw the lightness slider from bottom to top along the left edge
+                cx.rotate(alpha_angle, |cx| {
+                    cx.quad(
+                        Rect::center_size(
+                            Point::new(wheel_radius, 0.0),
+                            Size::new(self.slider_width * 2.0, self.slider_width * 1.5),
+                        ),
+                        self.alpha_color,
+                        self.slider_width / 2.0,
+                        self.border_width / 2.0,
+                        self.border_color,
+                    );
+                });
 
-        let slider_radius = radius - self.slider_width / 2.0;
+                // draw the wheel
+                cx.fill_curve(
+                    Curve::circle(Point::ZERO, wheel_radius + self.border_width),
+                    FillRule::NonZero,
+                    self.border_color,
+                );
 
-        let track = Curve::arc_center_angle(
-            Point::ZERO,
-            slider_radius,
-            PI - Self::SLIDER_HALF,
-            PI + Self::SLIDER_HALF,
-        );
+                let pattern = Pattern {
+                    image: image.clone(),
+                    transform: Affine::translate(cx.rect().top_left() - cx.rect().center())
+                        * Affine::scale(Vector::from(cx.size() / image.size())),
+                    opacity: 1.0,
+                };
 
-        canvas.draw(track.stroke(self.slider_width, self.track_color));
+                cx.fill_curve(
+                    Curve::circle(Point::ZERO, wheel_radius),
+                    FillRule::NonZero,
+                    pattern,
+                );
 
-        let slider = Curve::arc_center_angle(
-            Point::ZERO,
-            slider_radius,
-            PI - Self::SLIDER_HALF,
-            PI - Self::SLIDER_HALF + Self::SLIDER_ARC * l,
-        );
+                let offset = Vector::from_angle(h.to_radians()) * s * wheel_radius;
 
-        canvas.draw(slider.stroke(self.slider_width, self.lightness_color));
+                cx.quad(
+                    Rect::center_size(Point::ZERO + offset, Size::all(8.0)),
+                    Color::TRANSPARENT,
+                    4.0,
+                    1.0,
+                    Color::WHITE,
+                );
 
-        // draw the alpha slider from left to right along the bottom edge
-
-        let track = Curve::arc_center_angle(
-            Point::ZERO,
-            slider_radius,
-            -Self::SLIDER_HALF,
-            Self::SLIDER_HALF,
-        );
-
-        canvas.draw(track.stroke(self.slider_width, self.track_color));
-
-        let slider = Curve::arc_center_angle(
-            Point::ZERO,
-            slider_radius,
-            Self::SLIDER_HALF - Self::SLIDER_ARC * a,
-            Self::SLIDER_HALF,
-        );
-
-        canvas.draw(slider.stroke(self.slider_width, self.alpha_color));
-        */
+                cx.quad(
+                    Rect::center_size(Point::ZERO + offset, Size::all(10.0)),
+                    Color::TRANSPARENT,
+                    5.0,
+                    1.0,
+                    Color::BLACK,
+                );
+            });
+        });
     }
 }

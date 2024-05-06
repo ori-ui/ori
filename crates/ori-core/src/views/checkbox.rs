@@ -162,23 +162,25 @@ impl<T> View<T> for Checkbox {
     }
 
     fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
-        let bright = self.border_color.lighten(0.2);
+        cx.hoverable(|cx| {
+            let bright = self.border_color.lighten(0.2);
 
-        cx.quad(
-            cx.rect(),
-            self.background,
-            self.border_radius,
-            self.border_width,
-            self.border_color.mix(bright, self.transition.get(*t)),
-        );
+            cx.quad(
+                cx.rect(),
+                self.background,
+                self.border_radius,
+                self.border_width,
+                self.border_color.mix(bright, self.transition.get(*t)),
+            );
 
-        if self.checked {
-            let mut curve = Curve::new();
-            curve.move_to(Point::new(0.2, 0.5) * cx.size());
-            curve.line_to(Point::new(0.4, 0.7) * cx.size());
-            curve.line_to(Point::new(0.8, 0.3) * cx.size());
+            if self.checked {
+                let mut curve = Curve::new();
+                curve.move_to(Point::new(0.2, 0.5) * cx.size());
+                curve.line_to(Point::new(0.4, 0.7) * cx.size());
+                curve.line_to(Point::new(0.8, 0.3) * cx.size());
 
-            cx.stroke(curve, self.stroke, self.color);
-        }
+                cx.stroke(curve, self.stroke, self.color);
+            }
+        });
     }
 }

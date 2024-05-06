@@ -84,11 +84,45 @@ impl Hash for Stroke {
     }
 }
 
+/// A pattern that can be used to fill a shape.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Pattern {
+    /// The image of the pattern.
+    pub image: Image,
+
+    /// The transformation of the pattern.
+    pub transform: Affine,
+
+    /// The opacity of the pattern.
+    pub opacity: f32,
+}
+
+impl Hash for Pattern {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.image.hash(state);
+        self.transform.hash(state);
+        self.opacity.to_bits().hash(state);
+    }
+}
+
+impl From<Image> for Pattern {
+    fn from(value: Image) -> Self {
+        Self {
+            image: value,
+            transform: Affine::IDENTITY,
+            opacity: 1.0,
+        }
+    }
+}
+
 /// Ways to fill a shape.
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub enum Shader {
     /// A solid color.
     Solid(Color),
+
+    /// A pattern.
+    Pattern(Pattern),
 }
 
 /// Ways to blend two colors.
@@ -137,6 +171,24 @@ impl From<Color> for Paint {
     fn from(value: Color) -> Self {
         Self {
             shader: Shader::Solid(value),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<Image> for Paint {
+    fn from(value: Image) -> Self {
+        Self {
+            shader: Shader::Pattern(Pattern::from(value)),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<Pattern> for Paint {
+    fn from(value: Pattern) -> Self {
+        Self {
+            shader: Shader::Pattern(value),
             ..Default::default()
         }
     }
@@ -364,7 +416,7 @@ impl Canvas {
                         primitives,
                         transform,
                         mask,
-                        view,
+                        view: layer_view,
                     } => {
                         let point = transform.inverse() * point;
 
@@ -374,7 +426,10 @@ impl Canvas {
                             }
                         }
 
-                        let view = recurse(primitives, *view, point);
+                        let view = match layer_view {
+                            Some(view) => recurse(primitives, Some(*view), point),
+                            None => recurse(primitives, view, point),
+                        };
 
                         if view.is_some() {
                             return view;

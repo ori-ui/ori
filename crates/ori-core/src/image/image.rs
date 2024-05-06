@@ -89,6 +89,12 @@ impl Image {
         Self::from(ImageData::load(path))
     }
 
+    /// Premultiply the image alpha, returning a new image.
+    pub fn premultiplied(mut self) -> Self {
+        self.multiply_alpha();
+        self
+    }
+
     /// Get the [`ImageId`].
     pub fn id(&self) -> ImageId {
         self.id
@@ -101,7 +107,7 @@ impl Image {
     }
 
     /// Multiply the image with a color.
-    pub fn multiply(&mut self, color: Color) {
+    pub fn color(&mut self, color: Color) {
         let [r, g, b, a] = color.to_rgba8();
 
         self.modify(|data| {
@@ -110,6 +116,19 @@ impl Image {
                 pixel[1] = (pixel[1] as u16 * g as u16 / 255) as u8;
                 pixel[2] = (pixel[2] as u16 * b as u16 / 255) as u8;
                 pixel[3] = (pixel[3] as u16 * a as u16 / 255) as u8;
+            }
+        });
+    }
+
+    /// Premultiply the image alpha.
+    pub fn multiply_alpha(&mut self) {
+        self.modify(|data| {
+            for pixel in data.chunks_exact_mut(4) {
+                let alpha = pixel[3] as u16;
+
+                pixel[0] = (pixel[0] as u16 * alpha / 255) as u8;
+                pixel[1] = (pixel[1] as u16 * alpha / 255) as u8;
+                pixel[2] = (pixel[2] as u16 * alpha / 255) as u8;
             }
         });
     }

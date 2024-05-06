@@ -34,24 +34,38 @@ fn render_primitive(
         Primitive::Rect { rect, paint } => {
             pixmap.fill_rect(map_rect(rect), &map_paint(paint), transform, mask)
         }
-        Primitive::Fill { curve, fill, paint } => pixmap.fill_path(
-            &map_curve(curve),
-            &map_paint(paint),
-            map_fill_rule(fill),
-            transform,
-            mask,
-        ),
+        Primitive::Fill { curve, fill, paint } => {
+            let curve = match map_curve(curve) {
+                Some(curve) => curve,
+                None => return,
+            };
+
+            pixmap.fill_path(
+                &curve,
+                &map_paint(paint),
+                map_fill_rule(fill),
+                transform,
+                mask,
+            )
+        }
         Primitive::Stroke {
             curve,
             stroke,
             paint,
-        } => pixmap.stroke_path(
-            &map_curve(curve),
-            &map_paint(paint),
-            &map_stroke(stroke),
-            transform,
-            mask,
-        ),
+        } => {
+            let curve = match map_curve(curve) {
+                Some(curve) => curve,
+                None => return,
+            };
+
+            pixmap.stroke_path(
+                &curve,
+                &map_paint(paint),
+                &map_stroke(stroke),
+                transform,
+                mask,
+            )
+        }
         Primitive::Image { point, image } => {
             if !image.is_empty() {
                 let x = point.x.round() as i32;
@@ -70,7 +84,7 @@ fn render_primitive(
             mask: layer_mask,
             ..
         } => {
-            let transform = transform.post_concat(map_transform(layer_transform));
+            let transform = transform.pre_concat(map_transform(layer_transform));
 
             match layer_mask {
                 Some(layer_mask) => {
@@ -79,12 +93,12 @@ fn render_primitive(
                         None => tiny_skia::Mask::new(pixmap.width(), pixmap.height()).unwrap(),
                     };
 
-                    mask.fill_path(
-                        &map_curve(&layer_mask.curve),
-                        map_fill_rule(&layer_mask.fill),
-                        true,
-                        transform,
-                    );
+                    let curve = match map_curve(&layer_mask.curve) {
+                        Some(curve) => curve,
+                        None => return,
+                    };
+
+                    mask.fill_path(&curve, map_fill_rule(&layer_mask.fill), true, transform);
 
                     render_primitives(pixmap, primitives, transform, Some(&mask));
                 }
@@ -117,6 +131,22 @@ fn map_shader(shader: &Shader) -> tiny_skia::Shader<'_> {
             .unwrap();
 
             tiny_skia::Shader::SolidColor(color)
+        }
+        Shader::Pattern(pattern) => {
+            let pixmap = tiny_skia::PixmapRef::from_bytes(
+                pattern.image.data(),
+                pattern.image.width(),
+                pattern.image.height(),
+            )
+            .unwrap();
+
+            tiny_skia::Pattern::new(
+                pixmap,
+                tiny_skia::SpreadMode::Pad,
+                tiny_skia::FilterQuality::Bilinear,
+                pattern.opacity,
+                map_transform(&pattern.transform),
+            )
         }
     }
 }
@@ -159,7 +189,7 @@ fn map_fill_rule(fill: &FillRule) -> tiny_skia::FillRule {
     }
 }
 
-fn map_curve(curve: &Curve) -> tiny_skia::Path {
+fn map_curve(curve: &Curve) -> Option<tiny_skia::Path> {
     let mut path = tiny_skia::PathBuilder::new();
 
     for segment in curve {
@@ -172,7 +202,7 @@ fn map_curve(curve: &Curve) -> tiny_skia::Path {
         }
     }
 
-    path.finish().unwrap()
+    path.finish()
 }
 
 fn map_stroke(stroke: &Stroke) -> tiny_skia::Stroke {

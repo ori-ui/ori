@@ -86,9 +86,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
 
     /// Draw a trigger rectangle.
     pub fn trigger(&mut self, rect: Rect) {
-        self.canvas.view(self.id(), |canvas| {
-            canvas.trigger(rect);
-        });
+        self.canvas.trigger(rect);
     }
 
     /// Fill a curve.
@@ -128,13 +126,21 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         rect: Rect,
         paint: impl Into<Paint>,
         border_radius: impl Into<BorderRadius>,
-        _border_width: impl Into<BorderWidth>,
-        _border_paint: impl Into<Paint>,
+        border_width: impl Into<BorderWidth>,
+        border_paint: impl Into<Paint>,
     ) {
+        let radius = border_radius.into();
+        let width = border_width.into();
+
         let mut curve = Curve::new();
-        curve.push_rect_with_radius(rect, border_radius.into());
+        curve.push_rect_with_radius(rect, radius);
 
         self.fill_curve(curve, FillRule::NonZero, paint);
+
+        let mut curve = Curve::new();
+        curve.push_rect_with_borders(rect, radius, width);
+
+        self.fill_curve(curve, FillRule::NonZero, border_paint);
     }
 
     /// Draw a layer.
@@ -178,6 +184,11 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     /// Draw a layer with a translation.
     pub fn translate(&mut self, translation: Vector, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
         self.transform(Affine::translate(translation), f);
+    }
+
+    /// Draw a layer with a rotation.
+    pub fn rotate(&mut self, angle: f32, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+        self.transform(Affine::rotate(angle), f);
     }
 
     /// Draw a layer with a mask.

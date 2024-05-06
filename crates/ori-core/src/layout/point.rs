@@ -81,6 +81,16 @@ impl Point {
         Self::new(self.x.fract(), self.y.fract())
     }
 
+    /// Check if the point is finite.
+    pub fn is_finite(self) -> bool {
+        self.x.is_finite() && self.y.is_finite()
+    }
+
+    /// Check if the point is infinite.
+    pub fn is_infinite(self) -> bool {
+        self.x.is_infinite() || self.y.is_infinite()
+    }
+
     /// Compute the dot distance between two points.
     pub fn distance(self, other: Self) -> f32 {
         Vector::length(other - self)

@@ -61,7 +61,7 @@ impl<T> View<T> for Painter<T> {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        space.min
+        space.max
     }
 
     fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {

@@ -13,11 +13,13 @@ impl Data {
 }
 
 fn ui(data: &mut Data) -> impl View<Data> {
-    center(
-        color_picker()
-            .color(data.color)
-            .on_input(|_, data: &mut Data, color| data.color = color),
-    )
+    let picker = color_picker()
+        .color(data.color)
+        .on_input(|_, data: &mut Data, color| data.color = color);
+
+    let color = background(data.color, height(30.0, ())).border_radius(8.0);
+
+    center(vstack![picker, color].align(Align::Stretch).gap(10.0))
 }
 
 fn main() {

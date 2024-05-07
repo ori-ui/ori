@@ -9,11 +9,11 @@ use ori_core::{
     window::{Window, WindowUpdate},
 };
 use winit::{
+    application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{Event, KeyEvent, MouseScrollDelta, TouchPhase, WindowEvent},
-    event_loop::{EventLoop, EventLoopWindowTarget},
+    event::{KeyEvent, MouseScrollDelta, TouchPhase, WindowEvent},
+    event_loop::{ActiveEventLoop, EventLoop},
     keyboard::{ModifiersState, PhysicalKey},
-    window::WindowBuilder,
 };
 
 use crate::{
@@ -42,37 +42,8 @@ pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     let mut app = app.build(waker);
     app.set_clipboard(WinitClipboard::new());
 
-    let mut state = WinitState::new(data, app);
-
-    event_loop.run(move |event, target| {
-        match event {
-            // we need to recreate the surfaces when the event loop is resumed
-            //
-            // this is necessary for android
-            Event::Resumed => {
-                state.resume();
-            }
-            Event::AboutToWait => {
-                // after all events for a frame have been processed, we need to
-                // run the idle function
-                state.idle();
-            }
-
-            // this event is sent by [`WinitWaker`] telling us that there are
-            // commands that need to be processed
-            Event::UserEvent(_) => {
-                state.app.handle_commands(&mut state.data);
-            }
-            Event::WindowEvent { window_id, event } => {
-                state.window_event(window_id, event);
-            }
-            _ => {}
-        }
-
-        state.handle_requests(target);
-    })?;
-
-    Ok(())
+    let mut winit_app = WinitApp::new(data, app);
+    Ok(event_loop.run_app(&mut winit_app)?)
 }
 
 type RcWindow = Rc<winit::window::Window>;
@@ -87,7 +58,7 @@ struct WindowState {
     clear_color: Color,
 }
 
-struct WinitState<T> {
+struct WinitApp<T> {
     init: bool,
     app: App<T>,
     data: T,
@@ -95,7 +66,139 @@ struct WinitState<T> {
     windows: HashMap<ori_core::window::WindowId, WindowState>,
 }
 
-impl<T> WinitState<T> {
+impl<T> ApplicationHandler<()> for WinitApp<T> {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.init {
+            return;
+        }
+
+        self.init = true;
+        self.app.init(&mut self.data);
+
+        self.handle_requests(event_loop);
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        winit_id: winit::window::WindowId,
+        event: WindowEvent,
+    ) {
+        // if the window id is not in the map, we ignore the event
+        let Some(&id) = self.window_ids.get(&winit_id) else {
+            return;
+        };
+
+        match event {
+            WindowEvent::RedrawRequested => {
+                if let Err(err) = self.render(id) {
+                    tracing::error!("Failed to render: {}", err);
+                }
+            }
+            WindowEvent::CloseRequested => {
+                self.app.close_requested(&mut self.data, id);
+            }
+            WindowEvent::Resized(inner_size) => {
+                (self.app).window_resized(&mut self.data, id, inner_size.width, inner_size.height);
+            }
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                (self.app).window_scaled(&mut self.data, id, scale_factor as f32);
+            }
+            WindowEvent::CursorMoved {
+                device_id,
+                position,
+                ..
+            } => {
+                let scale_factor = self.scale_factor(id);
+                let position = Point::new(position.x as f32, position.y as f32) / scale_factor;
+                self.app.pointer_moved(
+                    &mut self.data,
+                    id,
+                    PointerId::from_hash(&device_id),
+                    position,
+                );
+            }
+            WindowEvent::CursorLeft { device_id } => {
+                (self.app).pointer_left(&mut self.data, id, PointerId::from_hash(&device_id));
+            }
+            WindowEvent::MouseInput {
+                device_id,
+                state,
+                button,
+                ..
+            } => {
+                self.app.pointer_button(
+                    &mut self.data,
+                    id,
+                    PointerId::from_hash(&device_id),
+                    convert_mouse_button(button),
+                    is_pressed(state),
+                );
+            }
+            WindowEvent::MouseWheel {
+                delta: MouseScrollDelta::LineDelta(x, y),
+                device_id,
+                ..
+            } => self.app.pointer_scrolled(
+                &mut self.data,
+                id,
+                PointerId::from_hash(&device_id),
+                Vector::new(x, y),
+            ),
+            // since we're using a pointer model we need to handle touch
+            // by emulating pointer events
+            WindowEvent::Touch(event) => self.touch_event(id, event),
+            WindowEvent::KeyboardInput {
+                event:
+                    KeyEvent {
+                        physical_key,
+                        text,
+                        state,
+                        ..
+                    },
+                ..
+            } => {
+                let code = match physical_key {
+                    PhysicalKey::Code(code) => convert_key(code),
+                    _ => None,
+                };
+
+                self.app.keyboard_key(
+                    &mut self.data,
+                    id,
+                    code,
+                    text.map(Into::into),
+                    is_pressed(state),
+                );
+            }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                self.app.modifiers_changed(Modifiers {
+                    shift: modifiers.state().contains(ModifiersState::SHIFT),
+                    ctrl: modifiers.state().contains(ModifiersState::CONTROL),
+                    alt: modifiers.state().contains(ModifiersState::ALT),
+                    meta: modifiers.state().contains(ModifiersState::SUPER),
+                });
+            }
+            _ => {}
+        }
+
+        self.handle_requests(event_loop);
+    }
+
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: ()) {
+        self.app.handle_commands(&mut self.data);
+
+        self.handle_requests(event_loop);
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        self.app.idle(&mut self.data);
+
+        self.handle_requests(event_loop);
+    }
+}
+
+impl<T> WinitApp<T> {
     fn new(data: T, app: App<T>) -> Self {
         Self {
             init: false,
@@ -106,16 +209,7 @@ impl<T> WinitState<T> {
         }
     }
 
-    fn resume(&mut self) {
-        if self.init {
-            return;
-        }
-
-        self.init = true;
-        self.app.init(&mut self.data);
-    }
-
-    fn handle_requests(&mut self, target: &EventLoopWindowTarget<()>) {
+    fn handle_requests(&mut self, target: &ActiveEventLoop) {
         for request in self.app.take_requests() {
             if let Err(err) = self.handle_request(target, request) {
                 tracing::error!("Failed to handle request: {}", err);
@@ -125,7 +219,7 @@ impl<T> WinitState<T> {
 
     fn handle_request(
         &mut self,
-        target: &EventLoopWindowTarget<()>,
+        target: &ActiveEventLoop,
         request: AppRequest<T>,
     ) -> Result<(), Error> {
         match request {
@@ -191,7 +285,7 @@ impl<T> WinitState<T> {
                             state.window.set_transparent(transparent);
                         }
                         WindowUpdate::Cursor(cursor) => {
-                            state.window.set_cursor_icon(convert_cursor_icon(cursor));
+                            state.window.set_cursor(convert_cursor_icon(cursor));
                         }
                     }
                 }
@@ -202,31 +296,23 @@ impl<T> WinitState<T> {
         Ok(())
     }
 
-    fn idle(&mut self) {
-        self.app.idle(&mut self.data);
-    }
-
     fn create_window(
         &mut self,
-        target: &EventLoopWindowTarget<()>,
+        target: &ActiveEventLoop,
         ori: Window,
         builder: UiBuilder<T>,
     ) -> Result<(), Error> {
-        let window_id = ori.id();
-
-        /* create the window */
-        let window = WindowBuilder::new()
+        let attributes = winit::window::WindowAttributes::default()
             .with_title(&ori.title)
             .with_inner_size(LogicalSize::new(ori.width(), ori.height()))
             .with_resizable(ori.resizable)
             .with_decorations(ori.decorated)
             .with_transparent(ori.color.map_or(false, Color::is_translucent))
-            .with_visible(false)
-            .build(target)?;
+            .with_visible(false);
 
-        let window = Rc::new(window);
-
-        self.window_ids.insert(window.id(), window_id);
+        /* create the window */
+        let window = Rc::new(target.create_window(attributes)?);
+        self.window_ids.insert(window.id(), ori.id());
 
         let icon = match ori.icon {
             Some(ref icon) => {
@@ -255,7 +341,7 @@ impl<T> WinitState<T> {
         )?;
 
         self.windows.insert(
-            window_id,
+            ori.id(),
             WindowState {
                 window,
                 context,
@@ -389,106 +475,6 @@ impl<T> WinitState<T> {
         match self.windows.get(&window_id) {
             Some(state) => state.window.scale_factor() as f32,
             None => 1.0,
-        }
-    }
-
-    fn window_event(&mut self, winit_id: winit::window::WindowId, event: WindowEvent) {
-        // if the window id is not in the map, we ignore the event
-        let Some(&id) = self.window_ids.get(&winit_id) else {
-            return;
-        };
-
-        match event {
-            WindowEvent::RedrawRequested => {
-                if let Err(err) = self.render(id) {
-                    tracing::error!("Failed to render: {}", err);
-                }
-            }
-            WindowEvent::CloseRequested => {
-                self.app.close_requested(&mut self.data, id);
-            }
-            WindowEvent::Resized(inner_size) => {
-                (self.app).window_resized(&mut self.data, id, inner_size.width, inner_size.height);
-            }
-            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                (self.app).window_scaled(&mut self.data, id, scale_factor as f32);
-            }
-            WindowEvent::CursorMoved {
-                device_id,
-                position,
-                ..
-            } => {
-                let scale_factor = self.scale_factor(id);
-                let position = Point::new(position.x as f32, position.y as f32) / scale_factor;
-                self.app.pointer_moved(
-                    &mut self.data,
-                    id,
-                    PointerId::from_hash(&device_id),
-                    position,
-                );
-            }
-            WindowEvent::CursorLeft { device_id } => {
-                (self.app).pointer_left(&mut self.data, id, PointerId::from_hash(&device_id));
-            }
-            WindowEvent::MouseInput {
-                device_id,
-                state,
-                button,
-                ..
-            } => {
-                self.app.pointer_button(
-                    &mut self.data,
-                    id,
-                    PointerId::from_hash(&device_id),
-                    convert_mouse_button(button),
-                    is_pressed(state),
-                );
-            }
-            WindowEvent::MouseWheel {
-                delta: MouseScrollDelta::LineDelta(x, y),
-                device_id,
-                ..
-            } => self.app.pointer_scrolled(
-                &mut self.data,
-                id,
-                PointerId::from_hash(&device_id),
-                Vector::new(x, y),
-            ),
-            // since we're using a pointer model we need to handle touch
-            // by emulating pointer events
-            WindowEvent::Touch(event) => self.touch_event(id, event),
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        physical_key,
-                        text,
-                        state,
-                        ..
-                    },
-                ..
-            } => {
-                let code = match physical_key {
-                    PhysicalKey::Code(code) => convert_key(code),
-                    _ => None,
-                };
-
-                self.app.keyboard_key(
-                    &mut self.data,
-                    id,
-                    code,
-                    text.map(Into::into),
-                    is_pressed(state),
-                );
-            }
-            WindowEvent::ModifiersChanged(modifiers) => {
-                self.app.modifiers_changed(Modifiers {
-                    shift: modifiers.state().contains(ModifiersState::SHIFT),
-                    ctrl: modifiers.state().contains(ModifiersState::CONTROL),
-                    alt: modifiers.state().contains(ModifiersState::ALT),
-                    meta: modifiers.state().contains(ModifiersState::SUPER),
-                });
-            }
-            _ => {}
         }
     }
 

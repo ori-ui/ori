@@ -121,6 +121,12 @@ impl<T, H: View<T>, V: View<T>> View<T> for Dropdown<H, V> {
             return;
         }
 
-        self.content.draw(content, cx, data);
+        let transform = cx.transform();
+
+        cx.overlay(0, |cx| {
+            cx.layer(transform, |cx| {
+                self.content.draw(content, cx, data);
+            });
+        });
     }
 }

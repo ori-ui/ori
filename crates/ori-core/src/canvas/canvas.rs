@@ -376,6 +376,17 @@ impl Canvas {
         result
     }
 
+    /// Draw a layer that does not affect the canvas.
+    pub fn void(&mut self, f: impl FnOnce(&mut Self)) {
+        let mut canvas = Canvas::new();
+
+        f(&mut canvas);
+
+        for (i, primitives) in canvas.overlays {
+            self.overlays.entry(i).or_default().extend(primitives);
+        }
+    }
+
     /// Draw a layer.
     pub fn layer<T>(
         &mut self,

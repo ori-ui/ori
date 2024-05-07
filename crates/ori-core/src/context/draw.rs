@@ -181,6 +181,21 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         });
     }
 
+    /// Draw a layer that does not affect the canvas.
+    pub fn void(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+        self.canvas.void(|canvas| {
+            let mut cx = DrawCx {
+                base: self.base,
+                view_state: self.view_state,
+                transform: self.transform,
+                window: self.window,
+                canvas,
+            };
+
+            f(&mut cx);
+        });
+    }
+
     /// Draw a layer.
     pub fn layer(&mut self, transform: Affine, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
         self.canvas.layer(transform, None, None, |canvas| {

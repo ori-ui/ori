@@ -88,6 +88,10 @@ fn render_primitive(
 
             match layer_mask {
                 Some(layer_mask) => {
+                    if layer_mask.curve.bounds().area().abs() < 1e-6 {
+                        return;
+                    }
+
                     let mut mask = match mask {
                         Some(mask) => mask.clone(),
                         None => tiny_skia::Mask::new(pixmap.width(), pixmap.height()).unwrap(),

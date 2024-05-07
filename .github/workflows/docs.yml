@@ -48,6 +48,7 @@ jobs:
             -p ori-core
             -p ori-font-awesome
             -p ori-macro
+            -p ori-tiny-skia
             -p ori-winit
       - name: Add a redirect index page
         run: |

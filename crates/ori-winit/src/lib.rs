@@ -9,7 +9,6 @@ mod clipboard;
 mod convert;
 mod error;
 mod launch;
-mod render;
 mod tracing;
 
 pub use error::*;

@@ -1,20 +1,172 @@
+//! A tiny-skia renderer for Ori.
+
+#![deny(missing_docs)]
+
 use ori_core::{
     canvas::{
-        BlendMode, Canvas, Curve, CurveSegment, FillRule, LineCap, LineJoin, Paint, Primitive,
-        Shader, Stroke,
+        BlendMode, Canvas, Color, Curve, CurveSegment, FillRule, LineCap, LineJoin, Paint,
+        Primitive, Shader, Stroke,
     },
     layout::{Affine, Rect, Vector},
 };
-use tiny_skia::PixmapMut;
 
-pub fn render_canvas(pixmap: &mut PixmapMut<'_>, canvas: &Canvas, offset: Vector) {
+/// A buffer that can be used to render a canvas.
+pub enum Buffer<'a> {
+    /// A buffer with RGBA8 pixel format.
+    Rgba8(&'a mut [u8]),
+
+    /// A buffer with ARGB8 pixel format.
+    Argb8(&'a mut [u8]),
+}
+
+impl Buffer<'_> {
+    /// Get the number of bytes in the buffer.
+    pub fn len(&self) -> usize {
+        match self {
+            Buffer::Rgba8(data) => data.len(),
+            Buffer::Argb8(data) => data.len(),
+        }
+    }
+
+    /// Check if the buffer is empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+/// A renderer that uses TinySkia to render a canvas.
+pub struct TinySkiaRenderer {
+    width: u32,
+    height: u32,
+    data: Vec<u8>,
+    scratch: Vec<u8>,
+    previous_canvas: Option<Canvas>,
+    clear_color: Option<Color>,
+}
+
+impl TinySkiaRenderer {
+    const fn data_len(width: u32, height: u32) -> usize {
+        (width * height * 4) as usize
+    }
+
+    /// Create a new renderer.
+    pub fn new(width: u32, height: u32) -> Self {
+        Self {
+            width,
+            height,
+            data: vec![0; Self::data_len(width, height)],
+            scratch: Vec::new(),
+            previous_canvas: None,
+            clear_color: None,
+        }
+    }
+
+    /// Resize the renderer.
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.width = width;
+        self.height = height;
+
+        self.data.resize(Self::data_len(width, height), 0);
+        self.previous_canvas = None;
+    }
+
+    /// Render the canvas to the buffer.
+    pub fn render(&mut self, buffer: &mut Buffer<'_>, canvas: &Canvas, clear_color: Color) {
+        match self.previous_canvas {
+            Some(ref mut previous_canvas) if self.clear_color == Some(clear_color) => {
+                let mut diff = canvas.diff(previous_canvas);
+                diff.simplify();
+
+                let mut pixmap = as_pixmap_mut(&mut self.data, self.width, self.height);
+
+                for rect in diff.rects() {
+                    if rect.area() < 1e-6 {
+                        continue;
+                    }
+
+                    let min = rect.min.floor() - 1.0;
+                    let max = rect.max.ceil() + 1.0;
+
+                    let mut x = min.x as i32;
+                    let mut y = min.y as i32;
+                    let mut w = (max.x - min.x) as u32;
+                    let mut h = (max.y - min.y) as u32;
+
+                    x = x.clamp(0, self.width as i32);
+                    y = y.clamp(0, self.height as i32);
+                    w = w.clamp(0, self.width - x as u32);
+                    h = h.clamp(0, self.height - y as u32);
+
+                    if self.scratch.len() < Self::data_len(w, h) {
+                        self.scratch.resize(Self::data_len(w, h), 0);
+                    }
+
+                    let mut scratch = as_pixmap_mut(&mut self.scratch, w, h);
+
+                    scratch.fill(map_color(clear_color));
+
+                    render_canvas(&mut scratch, canvas, Vector::new(x as f32, y as f32));
+
+                    pixmap.draw_pixmap(
+                        x,
+                        y,
+                        scratch.as_ref(),
+                        &tiny_skia::PixmapPaint {
+                            blend_mode: tiny_skia::BlendMode::Source,
+                            quality: tiny_skia::FilterQuality::Nearest,
+                            ..Default::default()
+                        },
+                        Default::default(),
+                        None,
+                    );
+                }
+
+                write_buffer(buffer, &self.data);
+
+                self.previous_canvas = Some(canvas.clone());
+            }
+            _ => {
+                let mut pixmap = as_pixmap_mut(&mut self.data, self.width, self.height);
+                pixmap.fill(map_color(clear_color));
+                render_canvas(&mut pixmap, canvas, Vector::ZERO);
+                write_buffer(buffer, &self.data);
+
+                self.previous_canvas = Some(canvas.clone());
+                self.clear_color = Some(clear_color);
+            }
+        }
+    }
+}
+
+fn write_buffer(buffer: &mut Buffer<'_>, data: &[u8]) {
+    assert_eq!(buffer.len(), data.len());
+
+    match buffer {
+        Buffer::Rgba8(dst) => dst.copy_from_slice(data),
+        Buffer::Argb8(dst) => {
+            for (src, dst) in data.chunks(4).zip(dst.chunks_mut(4)) {
+                #[cfg(target_endian = "big")]
+                dst.copy_from_slice(&[src[3], src[0], src[1], src[2]]);
+
+                #[cfg(target_endian = "little")]
+                dst.copy_from_slice(&[src[2], src[1], src[0], src[3]]);
+            }
+        }
+    }
+}
+
+fn as_pixmap_mut(data: &mut [u8], width: u32, height: u32) -> tiny_skia::PixmapMut<'_> {
+    tiny_skia::PixmapMut::from_bytes(data, width, height).unwrap()
+}
+
+fn render_canvas(pixmap: &mut tiny_skia::PixmapMut<'_>, canvas: &Canvas, offset: Vector) {
     let transform = tiny_skia::Transform::from_translate(-offset.x, -offset.y);
 
     render_primitives(pixmap, canvas.primitives(), transform, None);
 }
 
 fn render_primitives<'a>(
-    pixmap: &mut PixmapMut<'_>,
+    pixmap: &mut tiny_skia::PixmapMut<'_>,
     primitives: impl IntoIterator<Item = &'a Primitive>,
     transform: tiny_skia::Transform,
     mask: Option<&tiny_skia::Mask>,
@@ -25,7 +177,7 @@ fn render_primitives<'a>(
 }
 
 fn render_primitive(
-    pixmap: &mut PixmapMut<'_>,
+    pixmap: &mut tiny_skia::PixmapMut<'_>,
     primitive: &Primitive,
     transform: tiny_skia::Transform,
     mask: Option<&tiny_skia::Mask>,
@@ -123,19 +275,19 @@ fn map_paint(paint: &Paint) -> tiny_skia::Paint<'_> {
     }
 }
 
+fn map_color(color: Color) -> tiny_skia::Color {
+    tiny_skia::Color::from_rgba(
+        color.r.clamp(0.0, 1.0),
+        color.g.clamp(0.0, 1.0),
+        color.b.clamp(0.0, 1.0),
+        color.a.clamp(0.0, 1.0),
+    )
+    .unwrap()
+}
+
 fn map_shader(shader: &Shader) -> tiny_skia::Shader<'_> {
     match shader {
-        Shader::Solid(color) => {
-            let color = tiny_skia::Color::from_rgba(
-                color.r.clamp(0.0, 1.0),
-                color.g.clamp(0.0, 1.0),
-                color.b.clamp(0.0, 1.0),
-                color.a.clamp(0.0, 1.0),
-            )
-            .unwrap();
-
-            tiny_skia::Shader::SolidColor(color)
-        }
+        Shader::Solid(color) => tiny_skia::Shader::SolidColor(map_color(*color)),
         Shader::Pattern(pattern) => {
             let pixmap = tiny_skia::PixmapRef::from_bytes(
                 pattern.image.data(),

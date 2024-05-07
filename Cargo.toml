@@ -25,6 +25,7 @@ ori-app = { path = "crates/ori-app", version = "0.1.0-alpha.1" }
 ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
 ori-font-awesome = { path = "crates/ori-font-awesome", version = "0.1.0-alpha.1" }
 ori-macro = { path = "crates/ori-macro", version = "0.1.0-alpha.1" }
+ori-tiny-skia = { path = "crates/ori-tiny-skia", version = "0.1.0-alpha.1" }
 ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1" }
 
 [dependencies]

@@ -107,18 +107,14 @@ impl TinySkiaRenderer {
 
                     render_canvas(&mut scratch, canvas, Vector::new(x as f32, y as f32));
 
-                    pixmap.draw_pixmap(
-                        x,
-                        y,
-                        scratch.as_ref(),
-                        &tiny_skia::PixmapPaint {
-                            blend_mode: tiny_skia::BlendMode::Source,
-                            quality: tiny_skia::FilterQuality::Nearest,
-                            ..Default::default()
-                        },
-                        Default::default(),
-                        None,
-                    );
+                    for j in 0..h as usize {
+                        for i in 0..w as usize {
+                            let src = j * w as usize + i;
+                            let dst = ((y + j as i32) * self.width as i32 + x + i as i32) as usize;
+
+                            pixmap.pixels_mut()[dst] = scratch.pixels_mut()[src];
+                        }
+                    }
                 }
 
                 write_buffer(buffer, &self.data);

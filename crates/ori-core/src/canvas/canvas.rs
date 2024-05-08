@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    hash::{Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
 };
 
 use seahash::SeaHasher;
@@ -285,6 +285,19 @@ pub enum Primitive {
     },
 }
 
+impl Primitive {
+    /// Count the number of primitives.
+    pub fn count(&self) -> usize {
+        match self {
+            Primitive::Rect { .. } => 1,
+            Primitive::Fill { .. } => 1,
+            Primitive::Stroke { .. } => 1,
+            Primitive::Image { .. } => 1,
+            Primitive::Layer { primitives, .. } => primitives.iter().map(Self::count).sum(),
+        }
+    }
+}
+
 /// A canvas that can be drawn on.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Canvas {
@@ -305,6 +318,16 @@ impl Canvas {
             overlays: BTreeMap::new(),
             primitives: Vec::new(),
         }
+    }
+
+    /// Count the number of primitives.
+    pub fn count(&self) -> usize {
+        self.primitives.iter().map(Primitive::count).sum::<usize>()
+            + self
+                .overlays
+                .values()
+                .map(|p| p.iter().map(Primitive::count).sum::<usize>())
+                .sum::<usize>()
     }
 
     /// Get the primitives of the canvas.
@@ -493,44 +516,18 @@ impl Canvas {
     }
 
     /// Get the difference between two canvases.
+    ///
+    /// For better performance, use [`CanvasDiff::update`] instead.
     pub fn diff(&self, old: &Self) -> CanvasDiff {
-        let mut rects = HashMap::new();
-        let mut old_rects = HashMap::new();
-
-        // collect new rects
-        for primitives in self.overlays.values() {
-            for primitive in primitives {
-                Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut rects);
-            }
-        }
-
-        for primitive in &self.primitives {
-            Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut rects);
-        }
-
-        // collect old rects
-        for primitives in old.overlays.values() {
-            for primitive in primitives {
-                Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut old_rects);
-            }
-        }
-
-        for primitive in &old.primitives {
-            Self::add_primitive_rects(primitive, Affine::IDENTITY, &mut old_rects);
-        }
-
-        // remove rects that are the same
-        rects.retain(|hash, _| old_rects.remove(hash).is_none());
-
-        let rects: Vec<_> = rects.into_values().chain(old_rects.into_values()).collect();
-
-        CanvasDiff { rects }
+        let mut diff = CanvasDiff::new();
+        diff.update(self, old);
+        diff
     }
 
     fn add_primitive_rects(
         primitive: &Primitive,
         transform: Affine,
-        rects: &mut HashMap<u64, Rect>,
+        rects: &mut HashMap<u64, Rect, DiffHasher>,
     ) {
         match primitive {
             Primitive::Rect { rect, paint } => {
@@ -607,13 +604,66 @@ impl Canvas {
 /// A canvas that can be drawn on.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CanvasDiff {
+    new_rects: HashMap<u64, Rect, DiffHasher>,
+    old_rects: HashMap<u64, Rect, DiffHasher>,
     rects: Vec<Rect>,
 }
 
+impl Default for CanvasDiff {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CanvasDiff {
+    /// Create a new canvas diff.
+    pub fn new() -> Self {
+        Self {
+            new_rects: HashMap::default(),
+            old_rects: HashMap::default(),
+            rects: Vec::new(),
+        }
+    }
+
     /// Get the rects of the diff.
     pub fn rects(&self) -> &[Rect] {
         &self.rects
+    }
+
+    /// Update the diff with new and old canvases.
+    pub fn update(&mut self, new: &Canvas, old: &Canvas) {
+        self.new_rects.clear();
+        self.old_rects.clear();
+
+        // collect new rects
+        for primitives in new.overlays.values() {
+            for primitive in primitives {
+                Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
+            }
+        }
+
+        for primitive in &new.primitives {
+            Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
+        }
+
+        // collect old rects
+        for primitives in old.overlays.values() {
+            for primitive in primitives {
+                Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
+            }
+        }
+
+        for primitive in &old.primitives {
+            Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
+        }
+
+        // remove rects that are the same
+        (self.new_rects).retain(|hash, _| self.old_rects.remove(hash).is_none());
+
+        self.rects.clear();
+
+        self.rects.extend(self.new_rects.values().cloned());
+        self.rects.extend(self.old_rects.values().cloned());
     }
 
     /// Simplify the diff by merging rects when it makes sense.
@@ -641,5 +691,16 @@ impl CanvasDiff {
 
             i += 1;
         }
+    }
+}
+
+#[derive(Clone, Default)]
+struct DiffHasher;
+
+impl BuildHasher for DiffHasher {
+    type Hasher = seahash::SeaHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        seahash::SeaHasher::new()
     }
 }

@@ -131,8 +131,13 @@ impl Curve {
     }
 
     fn push_point(&mut self, point: Point) {
+        if self.points.is_empty() {
+            self.bounds = Rect::new(point, point);
+        } else {
+            self.bounds = self.bounds.include(point);
+        }
+
         self.points.push(point);
-        self.bounds = self.bounds.include(point);
     }
 
     fn push_verb(&mut self, verb: CurveVerb) {

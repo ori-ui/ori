@@ -369,9 +369,9 @@ impl<T> WinitApp<T> {
 
     fn render(&mut self, window_id: ori_core::window::WindowId) -> Result<(), Error> {
         if let Some(state) = self.windows.get_mut(&window_id) {
-            let mut buffer = state.surface.buffer_mut()?;
-
             if let Some(draw) = self.app.draw_window(&mut self.data, window_id) {
+                let mut buffer = state.surface.buffer_mut()?;
+
                 let data = unsafe {
                     slice::from_raw_parts_mut(
                         buffer.as_mut_ptr().cast::<u8>(),
@@ -379,11 +379,11 @@ impl<T> WinitApp<T> {
                     )
                 };
 
-                let mut buffer = ori_tiny_skia::Buffer::Argb8(data);
-                (state.renderer).render(&mut buffer, draw.canvas, draw.clear_color);
-            }
+                let mut data = ori_tiny_skia::Buffer::Argb8(data);
+                (state.renderer).render(&mut data, draw.canvas, draw.clear_color);
 
-            buffer.present()?;
+                buffer.present()?;
+            }
         }
 
         Ok(())

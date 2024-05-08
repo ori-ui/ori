@@ -4,8 +4,8 @@
 
 use ori_core::{
     canvas::{
-        BlendMode, Canvas, Color, Curve, CurveSegment, FillRule, LineCap, LineJoin, Paint,
-        Primitive, Shader, Stroke,
+        BlendMode, Canvas, CanvasDiff, Color, Curve, CurveSegment, FillRule, LineCap, LineJoin,
+        Paint, Primitive, Shader, Stroke,
     },
     layout::{Affine, Rect, Vector},
 };
@@ -42,6 +42,7 @@ pub struct TinySkiaRenderer {
     scratch: Vec<u8>,
     previous_canvas: Option<Canvas>,
     clear_color: Option<Color>,
+    diff: CanvasDiff,
 }
 
 impl TinySkiaRenderer {
@@ -58,6 +59,7 @@ impl TinySkiaRenderer {
             scratch: Vec::new(),
             previous_canvas: None,
             clear_color: None,
+            diff: CanvasDiff::new(),
         }
     }
 
@@ -74,12 +76,12 @@ impl TinySkiaRenderer {
     pub fn render(&mut self, buffer: &mut Buffer<'_>, canvas: &Canvas, clear_color: Color) {
         match self.previous_canvas {
             Some(ref mut previous_canvas) if self.clear_color == Some(clear_color) => {
-                let mut diff = canvas.diff(previous_canvas);
-                diff.simplify();
+                self.diff.update(canvas, previous_canvas);
+                self.diff.simplify();
 
                 let mut pixmap = as_pixmap_mut(&mut self.data, self.width, self.height);
 
-                for rect in diff.rects() {
+                for rect in self.diff.rects() {
                     if rect.area() < 1e-6 {
                         continue;
                     }
@@ -108,11 +110,14 @@ impl TinySkiaRenderer {
                     render_canvas(&mut scratch, canvas, Vector::new(x as f32, y as f32));
 
                     for j in 0..h as usize {
-                        for i in 0..w as usize {
-                            let src = j * w as usize + i;
-                            let dst = ((y + j as i32) * self.width as i32 + x + i as i32) as usize;
+                        let src = j * w as usize;
+                        let dst = (y as usize + j) * self.width as usize + x as usize;
 
-                            pixmap.pixels_mut()[dst] = scratch.pixels_mut()[src];
+                        for i in 0..w as usize {
+                            unsafe {
+                                *pixmap.pixels_mut().get_unchecked_mut(dst + i) =
+                                    *scratch.pixels_mut().get_unchecked(src + i);
+                            }
                         }
                     }
                 }
@@ -140,12 +145,16 @@ fn write_buffer(buffer: &mut Buffer<'_>, data: &[u8]) {
     match buffer {
         Buffer::Rgba8(dst) => dst.copy_from_slice(data),
         Buffer::Argb8(dst) => {
-            for (src, dst) in data.chunks(4).zip(dst.chunks_mut(4)) {
-                #[cfg(target_endian = "big")]
-                dst.copy_from_slice(&[src[3], src[0], src[1], src[2]]);
+            for i in 0..dst.len() / 4 {
+                let idx = i * 4;
 
-                #[cfg(target_endian = "little")]
-                dst.copy_from_slice(&[src[2], src[1], src[0], src[3]]);
+                // SAFETY: the assertion above
+                unsafe {
+                    *dst.get_unchecked_mut(idx) = *data.get_unchecked(idx + 2);
+                    *dst.get_unchecked_mut(idx + 1) = *data.get_unchecked(idx + 1);
+                    *dst.get_unchecked_mut(idx + 2) = *data.get_unchecked(idx);
+                    *dst.get_unchecked_mut(idx + 3) = *data.get_unchecked(idx + 3);
+                }
             }
         }
     }

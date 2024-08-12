@@ -96,6 +96,11 @@ impl Point {
         Vector::length(other - self)
     }
 
+    /// Linearly interpolate between two points.
+    pub fn lerp(self, other: Self, t: f32) -> Self {
+        self + (other - self) * t
+    }
+
     /// Convert the point to a vector.
     pub const fn to_vector(self) -> Vector {
         Vector::new(self.x, self.y)

@@ -36,25 +36,6 @@ impl CurveVerb {
     }
 }
 
-/// A segment of a curve.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum CurveSegment {
-    /// Move to a point.
-    Move(Point),
-
-    /// Line to a point.
-    Line(Point),
-
-    /// Quadratic bezier curve to a point.
-    Quad(Point, Point),
-
-    /// Cubic bezier curve to a point.
-    Cubic(Point, Point, Point),
-
-    /// Close the curve.
-    Close,
-}
-
 /// A bezier curve.
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Curve {
@@ -702,6 +683,25 @@ impl From<Rect> for Curve {
     fn from(rect: Rect) -> Self {
         Self::rect(rect)
     }
+}
+
+/// A segment of a curve.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CurveSegment {
+    /// Move to a point.
+    Move(Point),
+
+    /// Line to a point.
+    Line(Point),
+
+    /// Quadratic bezier curve to a point.
+    Quad(Point, Point),
+
+    /// Cubic bezier curve to a point.
+    Cubic(Point, Point, Point),
+
+    /// Close the curve.
+    Close,
 }
 
 /// An iterator over the segments of a curve.

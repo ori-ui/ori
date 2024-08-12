@@ -128,7 +128,7 @@ impl From<Pattern> for Paint {
 pub enum FillRule {
     /// A point is inside the shape if a ray from the point crosses a non-zero sum of signed edge
     /// crossings.
-    NonZero,
+    Winding,
 
     /// A point is inside the shape if a ray from the point crosses an odd number of edges.
     EvenOdd,
@@ -148,7 +148,7 @@ impl From<Rect> for Mask {
     fn from(value: Rect) -> Self {
         Self {
             curve: Curve::from(value),
-            fill: FillRule::NonZero,
+            fill: FillRule::Winding,
         }
     }
 }

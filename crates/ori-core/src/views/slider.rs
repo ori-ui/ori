@@ -213,27 +213,29 @@ impl<T> View<T> for Slider<T> {
     }
 
     fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
-        cx.quad(
-            cx.rect(),
-            self.background,
-            self.border_radius,
-            self.border_width,
-            self.border_color,
-        );
+        cx.hoverable(|cx| {
+            cx.quad(
+                cx.rect(),
+                self.background,
+                self.border_radius,
+                self.border_width,
+                self.border_color,
+            );
 
-        let (length, width) = self.axis.unpack(cx.size());
-        let value = normalize(self.value, &self.range);
+            let (length, width) = self.axis.unpack(cx.size());
+            let value = normalize(self.value, &self.range);
 
-        let min_length = self.border_radius.max_element() * 2.0;
-        let length = f32::max(length * value, min_length);
-        let size = self.axis.pack(length, width);
+            let min_length = self.border_radius.max_element() * 2.0;
+            let length = f32::max(length * value, min_length);
+            let size = self.axis.pack(length, width);
 
-        cx.quad(
-            Rect::min_size(cx.rect().min, size),
-            self.color,
-            self.border_radius,
-            self.border_width,
-            self.border_color,
-        );
+            cx.quad(
+                Rect::min_size(cx.rect().min, size),
+                self.color,
+                self.border_radius,
+                self.border_width,
+                self.border_color,
+            );
+        });
     }
 }

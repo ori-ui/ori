@@ -99,6 +99,11 @@ impl TinySkiaRenderer {
                     w = w.clamp(0, self.width - x as u32);
                     h = h.clamp(0, self.height - y as u32);
 
+                    // really make sure the rect is not empty
+                    if w == 0 || h == 0 {
+                        continue;
+                    }
+
                     if self.scratch.len() < Self::data_len(w, h) {
                         self.scratch.resize(Self::data_len(w, h), 0);
                     }
@@ -161,6 +166,7 @@ fn write_buffer(buffer: &mut Buffer<'_>, data: &[u8]) {
 }
 
 fn as_pixmap_mut(data: &mut [u8], width: u32, height: u32) -> tiny_skia::PixmapMut<'_> {
+    debug_assert!(width > 0 && height > 0);
     tiny_skia::PixmapMut::from_bytes(data, width, height).unwrap()
 }
 
@@ -345,7 +351,7 @@ fn map_transform(transform: &Affine) -> tiny_skia::Transform {
 
 fn map_fill_rule(fill: &FillRule) -> tiny_skia::FillRule {
     match fill {
-        FillRule::NonZero => tiny_skia::FillRule::Winding,
+        FillRule::Winding => tiny_skia::FillRule::Winding,
         FillRule::EvenOdd => tiny_skia::FillRule::EvenOdd,
     }
 }

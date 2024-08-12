@@ -98,7 +98,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     }
 
     /// Fill a curve.
-    pub fn fill_curve(&mut self, curve: Curve, fill: FillRule, paint: impl Into<Paint>) {
+    pub fn fill(&mut self, curve: Curve, fill: FillRule, paint: impl Into<Paint>) {
         self.canvas.fill(curve, fill, paint.into());
     }
 
@@ -148,12 +148,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         let mut curve = Curve::new();
         curve.push_rect_with_radius(rect, radius);
 
-        self.fill_curve(curve, FillRule::NonZero, paint);
+        self.fill(curve, FillRule::Winding, paint);
 
         let mut curve = Curve::new();
         curve.push_rect_with_borders(rect, radius, width);
 
-        self.fill_curve(curve, FillRule::NonZero, border_paint);
+        self.fill(curve, FillRule::Winding, border_paint);
     }
 
     /// Draw an overlay, at `index`.

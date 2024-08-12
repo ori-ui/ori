@@ -246,7 +246,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             * Affine::rotate(PI / 2.0 * t);
 
         cx.layer(transform, |cx| {
-            cx.fill_curve(icon(), FillRule::NonZero, self.icon_color);
+            cx.fill(icon(), FillRule::Winding, self.icon_color);
         });
 
         self.header.draw(&mut state.header, cx, data);

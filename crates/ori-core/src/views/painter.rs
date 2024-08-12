@@ -21,9 +21,9 @@ pub fn circle<T>(radius: f32, paint: impl Into<Paint>) -> Painter<T> {
         let paint = paint.into();
 
         move |cx, _| {
-            cx.fill_curve(
+            cx.fill(
                 Curve::circle(cx.rect().center(), radius),
-                FillRule::NonZero,
+                FillRule::Winding,
                 paint.clone(),
             );
         }
@@ -37,7 +37,7 @@ pub fn ellipse<T>(size: Size, paint: impl Into<Paint>) -> Painter<T> {
         let paint = paint.into();
 
         move |cx, _| {
-            cx.fill_curve(Curve::oval(cx.rect()), FillRule::NonZero, paint.clone());
+            cx.fill(Curve::oval(cx.rect()), FillRule::Winding, paint.clone());
         }
     })
     .size(size)
@@ -49,7 +49,7 @@ pub fn rect<T>(size: Size, paint: impl Into<Paint>) -> Painter<T> {
         let paint = paint.into();
 
         move |cx, _| {
-            cx.fill_curve(Curve::rect(cx.rect()), FillRule::NonZero, paint.clone());
+            cx.fill(Curve::rect(cx.rect()), FillRule::Winding, paint.clone());
         }
     })
     .size(size)

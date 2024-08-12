@@ -208,6 +208,6 @@ impl Fonts {
             }
         }
 
-        canvas.fill(curve, FillRule::NonZero, paint.clone());
+        canvas.fill(curve, FillRule::Winding, paint.clone());
     }
 }

@@ -2,7 +2,7 @@ use std::f32::consts::{PI, SQRT_2};
 
 use crate::layout::{Affine, Point, Rect, Size, Vector};
 
-use super::{BorderRadius, BorderWidth, FillRule};
+use super::{BorderRadius, BorderWidth, FillRule, Stroke};
 
 /// A verb that describes the type of curve.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -111,6 +111,11 @@ impl Curve {
         self.bounds = Rect::ZERO;
     }
 
+    /// Get the last point in the curve.
+    pub fn last_point(&self) -> Option<Point> {
+        self.points.last().copied()
+    }
+
     fn push_point(&mut self, point: Point) {
         if self.points.is_empty() {
             self.bounds = Rect::new(point, point);
@@ -126,26 +131,40 @@ impl Curve {
     }
 
     /// Move to a `point`.
+    #[track_caller]
     pub fn move_to(&mut self, point: Point) {
+        debug_assert!(!point.is_nan());
+
         self.push_verb(CurveVerb::Move);
         self.push_point(point);
     }
 
     /// Draw a line to a `point`.
+    #[track_caller]
     pub fn line_to(&mut self, point: Point) {
+        debug_assert!(!point.is_nan());
+
         self.push_verb(CurveVerb::Line);
         self.push_point(point);
     }
 
     /// Draw a quadratic bezier curve to a `point`, with a control point `control`.
+    #[track_caller]
     pub fn quad_to(&mut self, control: Point, point: Point) {
+        debug_assert!(!control.is_nan());
+        debug_assert!(!point.is_nan());
+
         self.push_verb(CurveVerb::Quad);
         self.push_point(control);
         self.push_point(point);
     }
 
     /// Draw a cubic bezier curve to a `point`, with control points `a` and `b`.
+    #[track_caller]
     pub fn cubic_to(&mut self, a: Point, b: Point, point: Point) {
+        debug_assert!(!a.is_nan());
+        debug_assert!(!b.is_nan());
+
         self.push_verb(CurveVerb::Cubic);
         self.push_point(a);
         self.push_point(b);
@@ -211,8 +230,44 @@ impl Curve {
         }
 
         match rule {
-            FillRule::NonZero => self.contains_even_odd(point),
+            FillRule::Winding => self.contains_even_odd(point),
             FillRule::EvenOdd => self.contains_even_odd(point),
+        }
+    }
+
+    /// Stroke the `curve` with the given `stroke`.
+    pub fn stroke_curve(&mut self, curve: &Curve, stroke: Stroke) {
+        self.stroke_impl(curve, stroke);
+    }
+
+    pub(crate) fn append_reverse(&mut self, curve: &Curve) {
+        let mut offset = curve.points.len() - 1;
+        for verb in curve.verbs.iter().rev() {
+            match verb {
+                CurveVerb::Move => break,
+                CurveVerb::Line => {
+                    let p = curve.points[offset - 1];
+                    offset -= 1;
+
+                    self.line_to(p);
+                }
+                CurveVerb::Quad => {
+                    let c = curve.points[offset - 1];
+                    let p = curve.points[offset - 2];
+                    offset -= 2;
+
+                    self.quad_to(c, p);
+                }
+                CurveVerb::Cubic => {
+                    let c1 = curve.points[offset - 1];
+                    let c2 = curve.points[offset - 2];
+                    let p = curve.points[offset - 3];
+                    offset -= 3;
+
+                    self.cubic_to(c1, c2, p);
+                }
+                CurveVerb::Close => todo!(),
+            }
         }
     }
 
@@ -230,10 +285,10 @@ impl Curve {
         let weight = SQRT_2 / 2.0;
 
         self.move_to(oval.top());
-        self.conic_to(oval.top_right(), oval.right(), weight);
-        self.conic_to(oval.bottom_right(), oval.bottom(), weight);
-        self.conic_to(oval.bottom_left(), oval.left(), weight);
-        self.conic_to(oval.top_left(), oval.top(), weight);
+        self.conic_to(oval.top_left(), oval.left(), weight);
+        self.conic_to(oval.bottom_left(), oval.bottom(), weight);
+        self.conic_to(oval.bottom_right(), oval.right(), weight);
+        self.conic_to(oval.top_right(), oval.top(), weight);
         self.close();
     }
 

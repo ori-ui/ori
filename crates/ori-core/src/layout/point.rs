@@ -91,6 +91,11 @@ impl Point {
         self.x.is_infinite() || self.y.is_infinite()
     }
 
+    /// Check if the point is NaN.
+    pub fn is_nan(self) -> bool {
+        self.x.is_nan() || self.y.is_nan()
+    }
+
     /// Compute the dot distance between two points.
     pub fn distance(self, other: Self) -> f32 {
         Vector::length(other - self)

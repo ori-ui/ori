@@ -92,7 +92,6 @@ impl Icon {
                 stretch: FontStretch::Normal,
                 weight: font.weight(),
                 style: FontStyle::Normal,
-                color: self.color,
             },
         );
     }
@@ -145,6 +144,6 @@ impl<T> View<T> for Icon {
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let offset = cx.rect().center() - state.buffer.rect().center();
-        cx.text(offset, &state.buffer);
+        cx.text(&state.buffer, self.color, offset);
     }
 }

@@ -202,14 +202,12 @@ impl<T> TextInput<T> {
             stretch: self.font_stretch,
             weight: self.font_weight,
             style: self.font_style,
-            color: self.color,
         };
         let placeholder_attrs = TextAttributes {
             family: self.font_family.clone(),
             stretch: self.font_stretch,
             weight: self.font_weight,
             style: self.font_style,
-            color: self.placeholder_color,
         };
         let metrics = Metrics {
             font_size: self.font_size,
@@ -246,7 +244,6 @@ impl<T> TextInput<T> {
             stretch: self.font_stretch,
             weight: self.font_weight,
             style: self.font_style,
-            color: self.color,
         };
 
         let attrs_list = AttrsList::new(attrs.to_cosmic_text());
@@ -400,8 +397,7 @@ impl<T> View<T> for TextInput<T> {
         let attrs_changed = self.font_family != old.font_family
             || self.font_weight != old.font_weight
             || self.font_stretch != old.font_stretch
-            || self.font_style != old.font_style
-            || self.color != old.color;
+            || self.font_style != old.font_style;
 
         if self.text != old.text && attrs_changed {
             if let Some(mut text) = self.text.clone() {
@@ -410,7 +406,6 @@ impl<T> View<T> for TextInput<T> {
                     stretch: self.font_stretch,
                     weight: self.font_weight,
                     style: self.font_style,
-                    color: self.color,
                 };
 
                 if text.ends_with('\n') {
@@ -441,7 +436,6 @@ impl<T> View<T> for TextInput<T> {
                     stretch: self.font_stretch,
                     weight: self.font_weight,
                     style: self.font_style,
-                    color: self.placeholder_color,
                 },
             );
 
@@ -696,9 +690,9 @@ impl<T> View<T> for TextInput<T> {
 
             /* draw the text */
             if !self.get_text(state).is_empty() {
-                cx.text_raw(Vector::ZERO, state.buffer())
+                cx.text_raw(state.buffer(), self.color, Vector::ZERO)
             } else {
-                cx.text(Vector::ZERO, &state.placeholder)
+                cx.text(&state.placeholder, self.placeholder_color, Vector::ZERO)
             };
         });
     }

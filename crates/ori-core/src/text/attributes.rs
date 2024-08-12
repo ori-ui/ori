@@ -1,21 +1,24 @@
 use cosmic_text::fontdb;
 
-use crate::canvas::Color;
-
 /// A font family, by default [`FontFamily::SansSerif`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FontFamily {
     /// A font family by name, e.g. "Arial".
     Name(String),
+
     /// A serif font family.
     Serif,
+
     /// A sans-serif font family.
     #[default]
     SansSerif,
+
     /// A monospace font family.
     Monospace,
+
     /// A cursive font family.
     Cursive,
+
     /// A fantasy font family.
     Fantasy,
 }
@@ -88,21 +91,29 @@ impl Default for FontWeight {
 pub enum FontStretch {
     /// Ultra-condensed font stretch.
     UltraCondensed,
+
     /// Extra-condensed font stretch.
     ExtraCondensed,
+
     /// Condensed font stretch.
     Condensed,
+
     /// Semi-condensed font stretch.
     SemiCondensed,
+
     /// Normal font stretch, the default.
     #[default]
     Normal,
+
     /// Semi-expanded font stretch.
     SemiExpanded,
+
     /// Expanded font stretch.
     Expanded,
+
     /// Extra-expanded font stretch.
     ExtraExpanded,
+
     /// Ultra-expanded font stretch.
     UltraExpanded,
 }
@@ -130,8 +141,10 @@ pub enum FontStyle {
     /// Normal font style, the default.
     #[default]
     Normal,
+
     /// Italic font style.
     Italic,
+
     /// Oblique font style.
     Oblique,
 }
@@ -154,8 +167,10 @@ pub enum TextAlign {
     /// Align text at the start.
     #[default]
     Start,
+
     /// Align text in the center.
     Center,
+
     /// Align text at the end.
     End,
 }
@@ -184,6 +199,7 @@ impl TextAlign {
 pub enum TextWrap {
     /// Do not wrap text.
     None,
+
     /// Wrap text at the word boundary.
     #[default]
     Word,
@@ -204,24 +220,23 @@ impl TextWrap {
 pub struct TextAttributes {
     /// The font family of the text.
     pub family: FontFamily,
+
     /// The font size of the text.
     pub stretch: FontStretch,
+
     /// The font weight of the text.
     pub weight: FontWeight,
+
     /// The font style of the text.
     pub style: FontStyle,
-    /// The color of the text.
-    pub color: Color,
 }
 
 impl TextAttributes {
     /// Convert the text attributes to a [`cosmic_text::Attrs`].
     pub fn to_cosmic_text(&self) -> cosmic_text::Attrs<'_> {
-        let [r, g, b, a] = self.color.to_rgba8();
-
         cosmic_text::Attrs {
             cache_key_flags: cosmic_text::CacheKeyFlags::empty(),
-            color_opt: Some(cosmic_text::Color::rgba(r, g, b, a)),
+            color_opt: None,
             family: self.family.as_fontdb(),
             stretch: self.stretch.to_fontdb(),
             style: self.style.to_fontdb(),

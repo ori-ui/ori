@@ -79,7 +79,7 @@ impl Style for TooltipStyle {
         Self {
             delay: 0.2,
             padding: Padding::from([8.0, 4.0]),
-            font_size: 12.0,
+            font_size: 14.0,
             font_family: text_style.font_family.clone(),
             font_weight: text_style.font_weight,
             font_stretch: text_style.font_stretch,
@@ -209,7 +209,6 @@ impl<V> Tooltip<V> {
                 weight: self.font_weight,
                 stretch: self.font_stretch,
                 style: self.font_style,
-                color: self.color,
             },
         );
     }
@@ -227,7 +226,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut state = TooltipState {
-            buffer: TextBuffer::new(cx.fonts(), 12.0, 1.0),
+            buffer: TextBuffer::new(cx.fonts(), self.font_size, 1.0),
             timer: 0.0,
             position: Point::ZERO,
         };
@@ -263,7 +262,6 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
             || self.font_weight != old.font_weight
             || self.font_stretch != old.font_stretch
             || self.font_style != old.font_style
-            || self.color != old.color
         {
             state.buffer.set_text(
                 cx.fonts(),
@@ -273,7 +271,6 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                     stretch: self.font_stretch,
                     weight: self.font_weight,
                     style: self.font_style,
-                    color: self.color,
                 },
             );
 
@@ -364,7 +361,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                     self.border_color.fade(alpha),
                 );
 
-                cx.text(self.padding.offset(), &state.buffer);
+                cx.text(&state.buffer, self.color, self.padding.offset());
             });
         });
     }

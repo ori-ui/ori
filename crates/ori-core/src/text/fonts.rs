@@ -1,8 +1,6 @@
 use std::{collections::HashMap, io, sync::Arc};
 
-use cosmic_text::{
-    fontdb::Source, Buffer, CacheKey, FontSystem, LayoutGlyph, SwashCache, SwashContent,
-};
+use cosmic_text::{fontdb::Source, Buffer, CacheKey, Command, FontSystem, SwashCache};
 
 const ROBOTO_BLACK: &[u8] = include_bytes!("../../font/Roboto-Black.ttf");
 const ROBOTO_BLACK_ITALIC: &[u8] = include_bytes!("../../font/Roboto-BlackItalic.ttf");
@@ -38,8 +36,9 @@ const EMBEDDED_FONTS: &[&[u8]] = &[
 ];
 
 use crate::{
+    canvas::{Canvas, Curve, FillRule, Paint},
+    image::Image,
     layout::{Point, Size, Vector},
-    prelude::{Canvas, Color, Image},
 };
 
 use super::FontSource;
@@ -152,66 +151,63 @@ impl Fonts {
         Size::new(width, height).ceil()
     }
 
-    /// Rasterize a glyph.
-    pub fn rasterize_glyph(&mut self, glyph: &LayoutGlyph, scale: f32) -> &CachedGlyph {
-        let physical = glyph.physical((0.0, 0.0), scale);
-
-        if self.glyph_cache.contains_key(&physical.cache_key) {
-            return self.glyph_cache.get(&physical.cache_key).unwrap();
-        }
-
-        let image = match self
-            .swash_cache
-            .get_image_uncached(&mut self.font_system, physical.cache_key)
-        {
-            Some(image) => image,
-            None => panic!("failed to rasterize glyph"),
-        };
-
-        let data = match image.content {
-            SwashContent::Mask => image.data.into_iter().flat_map(|a| [a, a, a, a]).collect(),
-            SwashContent::SubpixelMask => todo!(),
-            SwashContent::Color => image.data,
-        };
-
-        let size = Size::new(image.placement.width as f32, image.placement.height as f32) / scale;
-        let offset = Vector::new(image.placement.left as f32, -image.placement.top as f32) / scale;
-
-        let image = Image::new(data, image.placement.width, image.placement.height);
-
-        let glyph = CachedGlyph {
-            image,
-            offset,
-            size,
-        };
-
-        self.glyph_cache.insert(physical.cache_key, glyph);
-        self.glyph_cache.get(&physical.cache_key).unwrap()
-    }
-
     /// Rasterize a buffer.
     pub fn draw_buffer(
         &mut self,
         canvas: &mut Canvas,
         buffer: &Buffer,
+        paint: Paint,
         offset: Vector,
         scale: f32,
     ) {
+        let mut curve = Curve::new();
+
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
-                let cached = self.rasterize_glyph(glyph, scale);
-                let physical = glyph.physical((0.0, 0.0), 1.0);
+                let physical = glyph.physical((0.0, 0.0), scale);
 
-                let point = Point::new(physical.x as f32, run.line_y + physical.y as f32);
+                let commands = self
+                    .swash_cache
+                    .get_outline_commands(&mut self.font_system, physical.cache_key);
 
-                let mut image = cached.image.clone();
+                let offset = Vector::new(
+                    physical.x as f32 + offset.x,
+                    run.line_y + physical.y as f32 + offset.y,
+                );
 
-                if let Some(color) = glyph.color_opt {
-                    image.color(Color::rgba8(color.r(), color.g(), color.b(), color.a()));
+                for command in commands.into_iter().flatten() {
+                    match command {
+                        Command::MoveTo(v) => {
+                            let p = Point::new(v.x, -v.y);
+
+                            curve.move_to(p + offset);
+                        }
+                        Command::LineTo(v) => {
+                            let p = Point::new(v.x, -v.y);
+
+                            curve.line_to(p + offset);
+                        }
+                        Command::QuadTo(v1, v2) => {
+                            let p1 = Point::new(v1.x, -v1.y);
+                            let p2 = Point::new(v2.x, -v2.y);
+
+                            curve.quad_to(p1 + offset, p2 + offset);
+                        }
+                        Command::CurveTo(v1, v2, v3) => {
+                            let p1 = Point::new(v1.x, -v1.y);
+                            let p2 = Point::new(v2.x, -v2.y);
+                            let p3 = Point::new(v3.x, -v3.y);
+
+                            curve.cubic_to(p1 + offset, p2 + offset, p3 + offset);
+                        }
+                        Command::Close => {
+                            curve.close();
+                        }
+                    }
                 }
-
-                canvas.image(point + cached.offset + offset, image);
             }
         }
+
+        canvas.fill(curve, FillRule::NonZero, paint.clone());
     }
 }

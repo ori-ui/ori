@@ -113,19 +113,24 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     }
 
     /// Draw a text buffer.
-    pub fn text(&mut self, offset: Vector, buffer: &TextBuffer) {
-        self.text_raw(offset, buffer.raw());
+    pub fn text(&mut self, buffer: &TextBuffer, paint: impl Into<Paint>, offset: Vector) {
+        self.text_raw(buffer.raw(), paint, offset);
     }
 
     /// Draw a raw text buffer.
-    pub fn text_raw(&mut self, offset: Vector, buffer: &cosmic_text::Buffer) {
+    pub fn text_raw(
+        &mut self,
+        buffer: &cosmic_text::Buffer,
+        paint: impl Into<Paint>,
+        offset: Vector,
+    ) {
         let contexts = &mut *self.base.contexts;
         let canvas = &mut *self.canvas;
         let scale = self.window.scale;
 
         contexts
             .get_or_default::<Fonts>()
-            .draw_buffer(canvas, buffer, offset, scale);
+            .draw_buffer(canvas, buffer, paint.into(), offset, scale);
     }
 
     /// Draw a rectangle with rounded corners and a border.

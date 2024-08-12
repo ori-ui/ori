@@ -144,7 +144,6 @@ impl Text {
                 stretch: self.font_stretch,
                 weight: self.font_weight,
                 style: self.font_style,
-                color: self.color,
             },
         );
     }
@@ -189,7 +188,6 @@ impl<T> View<T> for Text {
             || self.font_weight != old.font_weight
             || self.font_stretch != old.font_stretch
             || self.font_style != old.font_style
-            || self.color != old.color
         {
             state.buffer.set_text(
                 cx.fonts(),
@@ -199,7 +197,6 @@ impl<T> View<T> for Text {
                     stretch: self.font_stretch,
                     weight: self.font_weight,
                     style: self.font_style,
-                    color: self.color,
                 },
             );
 
@@ -232,7 +229,7 @@ impl<T> View<T> for Text {
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let offset = cx.rect().center() - state.buffer.rect().center();
-        cx.text(offset, &state.buffer);
+        cx.text(&state.buffer, self.color, offset);
     }
 }
 

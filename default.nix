@@ -6,6 +6,7 @@ pkgs.stdenv.mkDerivation rec {
   buildInputs = [
     pkgs.libGL
 
+    pkgs.wayland
     pkgs.libxkbcommon
 
     pkgs.xorg.libXcursor

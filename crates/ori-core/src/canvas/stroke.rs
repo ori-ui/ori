@@ -79,8 +79,11 @@ impl Hash for Stroke {
 }
 
 impl Curve {
-    const MAX_ERROR: f32 = 1.0;
+    const MAX_ERROR: f32 = 0.5;
     const MAX_DEPTH: u8 = 6;
+
+    const QUAD_SAMPLES: usize = 5;
+    const CUBIC_SAMPLES: usize = 7;
 
     fn offset_line(&mut self, p0: Point, p1: Point, offset: f32) {
         let normal = line_normal(p0, p1);
@@ -99,20 +102,49 @@ impl Curve {
         let op1 = p1 + n1 * offset;
         let op2 = p2 + n2 * offset;
 
-        let real_center = quad_bezier(p0, p1, p2, 0.5) + n0 * offset;
-        let center = quad_bezier(op0, op1, op2, 0.5);
-
-        let error = (center - real_center).length();
-
+        let error = Self::offset_quad_error(p0, p1, p2, op0, op1, op2, offset);
         if error < Self::MAX_ERROR || depth >= Self::MAX_DEPTH {
             self.quad_to(op1, op2);
             return;
         }
 
-        let [p01, center, p12] = Self::divide_quad_bezier(p0, p1, p2, 0.5);
+        let max_curvature = quad_bezier_max_curvature(p0, p1, p2);
+
+        let split = if !max_curvature.is_nan() {
+            max_curvature.clamp(0.1, 0.9)
+        } else {
+            0.5
+        };
+
+        let [p01, center, p12] = Self::divide_quad_bezier(p0, p1, p2, split);
 
         self.offset_quad_bezier(p0, p01, center, offset, depth + 1);
         self.offset_quad_bezier(center, p12, p2, offset, depth + 1);
+    }
+
+    fn offset_quad_error(
+        p0: Point,
+        p1: Point,
+        p2: Point,
+        o0: Point,
+        o1: Point,
+        o2: Point,
+        offset: f32,
+    ) -> f32 {
+        let mut error = 0.0;
+
+        for i in 1..Self::QUAD_SAMPLES {
+            let t = i as f32 / Self::QUAD_SAMPLES as f32;
+
+            let p = quad_bezier(p0, p1, p2, t);
+            let real = p + quad_bezier_normal(p0, p1, p2, t) * offset;
+
+            let o = quad_bezier(o0, o1, o2, t);
+
+            error = f32::max(error, (o - real).length());
+        }
+
+        error
     }
 
     /// Divide a quadratic Bézier curve at a given point.
@@ -144,25 +176,49 @@ impl Curve {
         let n2 = cubic_bezier_normal(p0, p1, p2, p3, 2.0 / 3.0);
         let n3 = cubic_bezier_normal(p0, p1, p2, p3, 1.0);
 
-        let op0 = p0 + n0 * offset;
-        let op1 = p1 + n1 * offset;
-        let op2 = p2 + n2 * offset;
-        let op3 = p3 + n3 * offset;
+        let o0 = p0 + n0 * offset;
+        let o1 = p1 + n1 * offset;
+        let o2 = p2 + n2 * offset;
+        let o3 = p3 + n3 * offset;
 
-        let real_center = cubic_bezier(p0, p1, p2, p3, 1.0 / 3.0) + n0 * offset;
-        let center = cubic_bezier(op0, op1, op2, op3, 1.0 / 3.0);
-
-        let error = (center - real_center).length();
-
-        if error < offset * Self::MAX_ERROR || depth >= Self::MAX_DEPTH {
-            self.cubic_to(op1, op2, op3);
+        let error = Self::offset_cubic_error(p0, p1, p2, p3, o0, o1, o2, o3, offset);
+        if error < Self::MAX_ERROR || depth >= Self::MAX_DEPTH {
+            self.cubic_to(o1, o2, o3);
             return;
         }
 
-        let [p01, p012, center, p123, p23] = Self::divide_cubic_bezier(p0, p1, p2, p3, 1.0 / 3.0);
+        let [p01, p012, center, p123, p23] = Self::divide_cubic_bezier(p0, p1, p2, p3, 0.5);
 
         self.offset_cubic_bezier(p0, p01, p012, center, offset, depth + 1);
         self.offset_cubic_bezier(center, p123, p23, p3, offset, depth + 1);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn offset_cubic_error(
+        p0: Point,
+        p1: Point,
+        p2: Point,
+        p3: Point,
+        o0: Point,
+        o1: Point,
+        o2: Point,
+        o3: Point,
+        offset: f32,
+    ) -> f32 {
+        let mut error = 0.0;
+
+        for i in 1..Self::CUBIC_SAMPLES {
+            let t = i as f32 / Self::CUBIC_SAMPLES as f32;
+
+            let p = cubic_bezier(p0, p1, p2, p3, t);
+            let real = p + cubic_bezier_normal(p0, p1, p2, p3, t) * offset;
+
+            let o = cubic_bezier(o0, o1, o2, o3, t);
+
+            error = f32::max(error, (o - real).length());
+        }
+
+        error
     }
 
     /// Divide a cubic Bézier curve at a given point.
@@ -248,6 +304,9 @@ impl Curve {
         if 1.0 / amount >= limit {
             self.stroke_bevel(pivot, n1, r);
             return;
+        } else if amount <= 0.0 {
+            self.line_to(pivot + n1 * r);
+            return;
         }
 
         let miter = miter * r / amount;
@@ -285,6 +344,10 @@ impl Curve {
     }
 
     pub(super) fn stroke_impl(&mut self, curve: &Curve, stroke: Stroke) {
+        if stroke.width <= 0.0 {
+            return;
+        }
+
         let mut p0 = Point::ZERO;
         let mut n0 = None;
 
@@ -413,6 +476,38 @@ fn quad_bezier_tangent(p0: Point, p1: Point, p2: Point, t: f32) -> Vector {
 
 fn quad_bezier_normal(p0: Point, p1: Point, p2: Point, t: f32) -> Vector {
     quad_bezier_tangent(p0, p1, p2, t).hat().normalize()
+}
+
+fn quad_bezier_max_curvature(p0: Point, p1: Point, p2: Point) -> f32 {
+    let p0x2 = p0.x * p0.x;
+    let p0y2 = p0.y * p0.y;
+    let p1x2 = p1.x * p1.x;
+    let p1y2 = p1.y * p1.y;
+    let p2x2 = p2.x * p2.x;
+    let p2y2 = p2.y * p2.y;
+
+    let p0x_p1x = p0.x * p1.x;
+    let p0x_p2x = p0.x * p2.x;
+    let p0y_p1y = p0.y * p1.y;
+    let p0y_p2y = p0.y * p2.y;
+
+    let p1x_p2x = p1.x * p2.x;
+    let p1y_p2y = p1.y * p2.y;
+
+    let numerator = p0x2 - 3.0 * p0x_p1x + p0x_p2x + p0y2 - 3.0 * p0y_p1y + p0y_p2y + 2.0 * p1x2
+        - p1x_p2x
+        + 2.0 * p1y2
+        - p1y_p2y;
+
+    let denominator =
+        p0x2 - 4.0 * p0x_p1x + 2.0 * p0x_p2x + p0y2 - 4.0 * p0y_p1y + 2.0 * p0y_p2y + 4.0 * p1x2
+            - 4.0 * p1x_p2x
+            + 4.0 * p1y2
+            - 4.0 * p1y_p2y
+            + p2x2
+            + p2y2;
+
+    numerator / denominator
 }
 
 fn cubic_bezier(p0: Point, p1: Point, p2: Point, p3: Point, t: f32) -> Point {

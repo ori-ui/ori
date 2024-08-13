@@ -428,7 +428,7 @@ impl Curve {
         self.close();
     }
 
-    fn quadratic_roots(a: f32, b: f32, c: f32) -> [f32; 2] {
+    pub(crate) fn square_roots(a: f32, b: f32, c: f32) -> [f32; 2] {
         if a.abs() < 1e-6 {
             return [-c / b, f32::NAN];
         }
@@ -447,9 +447,9 @@ impl Curve {
         [x1, x2]
     }
 
-    fn cubic_roots(a: f32, b: f32, c: f32, d: f32) -> [f32; 3] {
+    pub(crate) fn cube_roots(a: f32, b: f32, c: f32, d: f32) -> [f32; 3] {
         if a.abs() < 1e-6 {
-            let [x1, x2] = Self::quadratic_roots(b, c, d);
+            let [x1, x2] = Self::square_roots(b, c, d);
             return [x1, x2, f32::NAN];
         }
 
@@ -521,15 +521,15 @@ impl Curve {
                     s = e;
                 }
                 CurveSegment::Line(e) => {
-                    crossings += Self::line_intersections(s, e, p);
+                    crossings += Self::line_intersection_count(s, e, p);
                     s = e;
                 }
                 CurveSegment::Quad(c0, e) => {
-                    crossings += Self::quad_intersections(s, c0, e, p);
+                    crossings += Self::quad_intersection_count(s, c0, e, p);
                     s = e;
                 }
                 CurveSegment::Cubic(c0, c1, e) => {
-                    crossings += Self::cubic_intersections(s, c0, c1, e, p);
+                    crossings += Self::cubic_intersection_count(s, c0, c1, e, p);
                     s = e;
                 }
                 CurveSegment::Close => {}
@@ -539,7 +539,7 @@ impl Curve {
         crossings % 2 == 1
     }
 
-    fn line_intersections(s: Point, e: Point, p: Point) -> usize {
+    fn line_intersection_count(s: Point, e: Point, p: Point) -> usize {
         let a = e.y - s.y;
         let b = s.y - p.y;
 
@@ -551,36 +551,50 @@ impl Curve {
         (is_on_curve && is_right) as usize
     }
 
-    fn quad_intersections(s: Point, c0: Point, e: Point, p: Point) -> usize {
+    pub(crate) fn quad_intersections(s: Point, c0: Point, e: Point, p: Point) -> [f32; 2] {
         let a = s.y - 2.0 * c0.y + e.y;
         let b = 2.0 * (c0.y - s.y);
         let c = s.y - p.y;
 
+        Self::square_roots(a, b, c)
+    }
+
+    fn quad_intersection_count(s: Point, c0: Point, e: Point, p: Point) -> usize {
+        let [t1, t2] = Self::quad_intersections(s, c0, e, p);
+
         let is_valid = |t: f32| {
-            let is_on_curve = (0.0..1.0).contains(&t);
+            let is_on_curve = (0.0..=1.0).contains(&t);
             let is_right = Self::quadratic_bezier(s.x, c0.x, e.x, t) >= p.x;
 
             is_on_curve && is_right
         };
 
-        let [t1, t2] = Self::quadratic_roots(a, b, c);
-
         is_valid(t1) as usize + is_valid(t2) as usize
     }
 
-    fn cubic_intersections(s: Point, c0: Point, c1: Point, e: Point, p: Point) -> usize {
+    pub(crate) fn cubic_intersections(
+        s: Point,
+        c0: Point,
+        c1: Point,
+        e: Point,
+        p: Point,
+    ) -> [f32; 3] {
         let a = -s.y + 3.0 * c0.y - 3.0 * c1.y + e.y;
         let b = 3.0 * (s.y - 2.0 * c0.y + c1.y);
         let c = 3.0 * (c0.y - s.y);
         let d = s.y - p.y;
 
+        Self::cube_roots(a, b, c, d)
+    }
+
+    fn cubic_intersection_count(s: Point, c0: Point, c1: Point, e: Point, p: Point) -> usize {
         let is_valid = |t: f32| {
             let is_on_curve = (0.0..=1.0).contains(&t);
             let is_right = Self::cubic_bezier(s.x, c0.x, c1.x, e.x, t) >= p.x;
             is_on_curve && is_right
         };
 
-        let [t1, t2, t3] = Self::cubic_roots(a, b, c, d);
+        let [t1, t2, t3] = Self::cubic_intersections(s, c0, c1, e, p);
 
         is_valid(t1) as usize + is_valid(t2) as usize + is_valid(t3) as usize
     }

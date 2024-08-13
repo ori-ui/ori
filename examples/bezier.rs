@@ -3,8 +3,10 @@ use ori::prelude::*;
 struct Data {
     points: Vec<Point>,
     selected: Option<usize>,
+    line_cap: LineCap,
+    line_join: LineJoin,
+    cubic: bool,
     offset: f32,
-    t: f32,
 }
 
 impl Data {
@@ -20,23 +22,31 @@ impl Data {
                 Point::new(400.0, 200.0),
             ],
             selected: None,
-            offset: 10.0,
-            t: 0.0,
+            line_cap: LineCap::Round,
+            line_join: LineJoin::Round,
+            cubic: false,
+            offset: 50.0,
         }
     }
 }
 
 fn ui(data: &mut Data) -> impl View<Data> {
     let curve = painter(|cx, data: &mut Data| {
+        let palette = palette();
+
         let mut curve = Curve::new();
 
         curve.move_to(data.points[0]);
 
-        for p in data.points[1..].chunks(2) {
-            curve.quad_to(p[0], p[1]);
+        if data.cubic {
+            for p in data.points[1..].chunks(3) {
+                curve.cubic_to(p[0], p[1], p[2]);
+            }
+        } else {
+            for p in data.points[1..].chunks(2) {
+                curve.quad_to(p[0], p[1]);
+            }
         }
-
-        let palette = palette();
 
         cx.stroke(curve.clone(), Stroke::from(2.0), palette.primary);
 
@@ -46,20 +56,8 @@ fn ui(data: &mut Data) -> impl View<Data> {
             &curve,
             Stroke {
                 width: data.offset,
-                cap: LineCap::Round,
-                join: LineJoin::Round,
-                miter: 4.0,
-            },
-        );
-
-        let mut stroked = Curve::new();
-
-        stroked.stroke_curve(
-            &stroke,
-            Stroke {
-                width: 10.0,
-                cap: LineCap::Round,
-                join: LineJoin::Miter,
+                cap: data.line_cap,
+                join: data.line_join,
                 miter: 4.0,
             },
         );
@@ -101,23 +99,59 @@ fn ui(data: &mut Data) -> impl View<Data> {
         _ => {}
     });
 
-    let t_slider = hstack![
-        text("T"),
-        slider(data.t).on_input(|_, data: &mut Data, t| data.t = t),
-    ];
-
     let offset_slider = hstack![
         text("Offset"),
         slider(data.offset)
-            .range(0.0..=50.0)
+            .range(0.0..=100.0)
             .on_input(|_, data: &mut Data, offset| data.offset = offset),
     ];
 
-    center(vstack![size(400.0, curve), t_slider, offset_slider])
+    let line_cap = on_click(
+        button(text!("{:?}", data.line_cap)),
+        |_, data: &mut Data| {
+            data.line_cap = match data.line_cap {
+                LineCap::Butt => LineCap::Round,
+                LineCap::Round => LineCap::Square,
+                LineCap::Square => LineCap::Butt,
+            };
+        },
+    );
+
+    let line_join = on_click(
+        button(text!("{:?}", data.line_join)),
+        |_, data: &mut Data| {
+            data.line_join = match data.line_join {
+                LineJoin::Miter => LineJoin::Round,
+                LineJoin::Round => LineJoin::Bevel,
+                LineJoin::Bevel => LineJoin::Miter,
+            };
+        },
+    );
+
+    let cubic = hstack![
+        text("Cubic"),
+        on_click(checkbox(data.cubic), |_, data: &mut Data| {
+            data.cubic = !data.cubic;
+        }),
+    ]
+    .gap(10.0);
+
+    center(
+        vstack![
+            size(400.0, curve),
+            offset_slider,
+            line_cap,
+            line_join,
+            cubic
+        ]
+        .gap(10.0),
+    )
 }
 
 fn main() {
-    let window = Window::new().title("Bezier Test (examples/bezier_test.rs)");
+    let window = Window::new()
+        .title("Bezier (examples/bezier.rs)")
+        .resizable(false);
 
     let app = App::build().window(window, ui).style(Palette::light());
 

@@ -21,7 +21,7 @@ use ori_core::{
 use crate::{AppBuilder, AppCommand, AppRequest, Delegate, DelegateCx, UiBuilder};
 
 /// Information needed to render a window.
-pub struct WindowRenderScene<'a> {
+pub struct WindowRenderState<'a> {
     /// The canvas to render.
     pub canvas: &'a Canvas,
     /// The size of the window.
@@ -636,7 +636,7 @@ impl<T> App<T> {
         &mut self,
         data: &mut T,
         window_id: WindowId,
-    ) -> Option<WindowRenderScene<'_>> {
+    ) -> Option<WindowRenderState<'_>> {
         ori_core::log::trace!(window = ?window_id, "Draw window");
 
         // animate the window before drawing it
@@ -689,7 +689,7 @@ impl<T> App<T> {
             None => self.style.palette().background,
         };
 
-        Some(WindowRenderScene {
+        Some(WindowRenderState {
             canvas: &window_state.canvas,
             logical_size: window_state.window.size,
             clear_color,

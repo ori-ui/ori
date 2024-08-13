@@ -250,7 +250,7 @@ impl Canvas {
     }
 
     /// Count the number of primitives.
-    pub fn count(&self) -> usize {
+    pub fn primitive_count(&self) -> usize {
         self.primitives.iter().map(Primitive::count).sum::<usize>()
             + self
                 .overlays

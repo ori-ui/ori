@@ -35,7 +35,7 @@ impl AppCommand {
     /// Convenience method to open a window with a view.
     ///
     /// Note that `V` must implement `View<()>`, and therefore cannot access the data of the
-    /// application.
+    /// application. If you need to access the data, you can implement a [`Delegate`](crate::Delegate) instead.
     ///
     /// # Example
     /// ```no_run

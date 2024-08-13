@@ -77,6 +77,49 @@ pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macr
     build::derive_build(input)
 }
 
+/// Only include the annotated item on desktop platforms.
+#[proc_macro_attribute]
+pub fn desktop(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    let expanded = quote::quote! {
+        #[cfg(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_os = "freebsd",
+            target_os = "dragonfly",
+            target_os = "openbsd",
+            target_os = "netbsd",
+        ))]
+        #input
+    };
+
+    expanded.into()
+}
+
+/// Only include the annotated item on mobile platforms.
+#[proc_macro_attribute]
+pub fn mobile(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    let expanded = quote::quote! {
+        #[cfg(any(
+            target_os = "android",
+            target_os = "ios",
+        ))]
+        #input
+    };
+
+    expanded.into()
+}
+
 /// Embed an example in the documentation.
 ///
 /// This is an internal macro used by the `ori` crate.

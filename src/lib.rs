@@ -33,7 +33,7 @@ pub mod prelude {
 
     pub use ori_core::prelude::*;
 
-    pub use ori_macro::Build;
+    pub use ori_macro::{desktop, mobile, Build};
 
     #[cfg(feature = "font-awesome")]
     pub use ori_font_awesome as fa;

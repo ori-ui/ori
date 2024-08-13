@@ -2,7 +2,7 @@ use std::{
     any::{Any, TypeId},
     cell::RefCell,
     collections::HashMap,
-    hash::BuildHasher,
+    hash::BuildHasherDefault,
     mem::{self, ManuallyDrop},
     sync::Arc,
 };
@@ -55,7 +55,7 @@ impl Entry {
 /// A map of style values.
 #[derive(Clone, Default)]
 pub struct Styles {
-    items: Arc<HashMap<TypeId, Entry, StyleHasher>>,
+    items: Arc<HashMap<TypeId, Entry, BuildHasherDefault<seahash::SeaHasher>>>,
 }
 
 impl Styles {
@@ -189,16 +189,5 @@ pub trait Style: Sized {
 impl<T: Default> Style for T {
     fn style(_: &Styles) -> Self {
         T::default()
-    }
-}
-
-#[derive(Clone, Default)]
-struct StyleHasher;
-
-impl BuildHasher for StyleHasher {
-    type Hasher = seahash::SeaHasher;
-
-    fn build_hasher(&self) -> Self::Hasher {
-        seahash::SeaHasher::new()
     }
 }

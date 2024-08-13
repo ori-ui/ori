@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    hash::{BuildHasher, Hash, Hasher},
+    hash::{BuildHasherDefault, Hash, Hasher},
 };
 
 use seahash::SeaHasher;
@@ -453,11 +453,7 @@ impl Canvas {
         diff
     }
 
-    fn add_primitive_rects(
-        primitive: &Primitive,
-        transform: Affine,
-        rects: &mut HashMap<u64, Rect, DiffHasher>,
-    ) {
+    fn extract_primitive_rects(primitive: &Primitive, transform: Affine, rects: &mut Rects) {
         match primitive {
             Primitive::Rect { rect, paint } => {
                 let mut hasher = SeaHasher::new();
@@ -523,18 +519,20 @@ impl Canvas {
                 let transform = transform * *layer_transform;
 
                 for primitive in primitives {
-                    Self::add_primitive_rects(primitive, transform, rects);
+                    Self::extract_primitive_rects(primitive, transform, rects);
                 }
             }
         }
     }
 }
 
+type Rects = HashMap<u64, Rect, BuildHasherDefault<seahash::SeaHasher>>;
+
 /// A canvas that can be drawn on.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CanvasDiff {
-    new_rects: HashMap<u64, Rect, DiffHasher>,
-    old_rects: HashMap<u64, Rect, DiffHasher>,
+    new_rects: Rects,
+    old_rects: Rects,
     rects: Vec<Rect>,
 }
 
@@ -567,23 +565,23 @@ impl CanvasDiff {
         // collect new rects
         for primitives in new.overlays.values() {
             for primitive in primitives {
-                Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
+                Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
             }
         }
 
         for primitive in &new.primitives {
-            Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
+            Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
         }
 
         // collect old rects
         for primitives in old.overlays.values() {
             for primitive in primitives {
-                Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
+                Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
             }
         }
 
         for primitive in &old.primitives {
-            Canvas::add_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
+            Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
         }
 
         // remove rects that are the same
@@ -620,16 +618,5 @@ impl CanvasDiff {
 
             i += 1;
         }
-    }
-}
-
-#[derive(Clone, Default)]
-struct DiffHasher;
-
-impl BuildHasher for DiffHasher {
-    type Hasher = seahash::SeaHasher;
-
-    fn build_hasher(&self) -> Self::Hasher {
-        seahash::SeaHasher::new()
     }
 }

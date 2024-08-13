@@ -140,9 +140,9 @@ fn ui(data: &mut Data) -> impl View<Data> {
         vstack![
             size(400.0, curve),
             offset_slider,
-            line_cap,
-            line_join,
-            cubic
+            vstack![line_cap, line_join, cubic]
+                .gap(10.0)
+                .align(Align::Stretch),
         ]
         .gap(10.0),
     )

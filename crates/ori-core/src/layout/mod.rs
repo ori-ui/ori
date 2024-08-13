@@ -24,4 +24,5 @@ pub use size::*;
 pub use space::*;
 pub use vector::*;
 
-pub use std::f32::INFINITY as FILL;
+/// A constant used to indicate that a dimension should fill the available space.
+pub const FILL: f32 = f32::INFINITY;

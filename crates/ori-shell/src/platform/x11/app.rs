@@ -28,7 +28,7 @@ use x11rb::{
         },
         xproto::{
             AtomEnum, ColormapAlloc, ConfigureWindowAux, ConnectionExt as _, CreateWindowAux,
-            EventMask, ModMask, PropMode, Visualid, WindowClass,
+            EventMask, ModMask, PropMode, VisualClass, Visualid, WindowClass,
         },
         Event as XEvent,
     },
@@ -602,7 +602,11 @@ impl<T> X11App<T> {
         let formats = self.conn.render_query_pict_formats()?.reply()?;
 
         for format in formats.formats {
-            if format.type_ == PictType::DIRECT {
+            if format.type_ != PictType::DIRECT {
+                continue;
+            }
+
+            if format.depth != 32 {
                 continue;
             }
 
@@ -624,8 +628,26 @@ impl<T> X11App<T> {
 
             for depth in &formats.screens[self.screen].depths {
                 for visual in &depth.visuals {
-                    if visual.format == format.id {
-                        return Ok((depth.depth, visual.visual));
+                    if visual.format != format.id {
+                        continue;
+                    }
+
+                    for allowed in &screen.allowed_depths {
+                        if allowed.depth != depth.depth {
+                            continue;
+                        }
+
+                        for allowed_visual in &allowed.visuals {
+                            if allowed_visual.visual_id != visual.visual {
+                                continue;
+                            }
+
+                            if allowed_visual.class != VisualClass::TRUE_COLOR {
+                                continue;
+                            }
+
+                            return Ok((depth.depth, visual.visual));
+                        }
                     }
                 }
             }

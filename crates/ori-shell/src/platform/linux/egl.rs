@@ -62,6 +62,8 @@ impl EglContext {
             8,
             EGL_BLUE_SIZE,
             8,
+            EGL_ALPHA_SIZE,
+            8,
             EGL_STENCIL_SIZE,
             8,
             EGL_NONE,
@@ -202,6 +204,7 @@ const EGL_OPENGL_BIT: i32 = 0x0008;
 const EGL_RED_SIZE: i32 = 0x3024;
 const EGL_GREEN_SIZE: i32 = 0x3023;
 const EGL_BLUE_SIZE: i32 = 0x3022;
+const EGL_ALPHA_SIZE: i32 = 0x3021;
 const EGL_STENCIL_SIZE: i32 = 0x3026;
 
 const EGL_CONTEXT_MAJOR_VERSION: i32 = 0x3098;

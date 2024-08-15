@@ -66,6 +66,34 @@ struct X11Window {
     needs_redraw: bool,
 }
 
+impl X11Window {
+    fn set_size_hints(
+        &self,
+        conn: &XCBConnection,
+        width: i32,
+        height: i32,
+        resizable: bool,
+    ) -> Result<(), X11Error> {
+        use WmSizeHintsSpecification::*;
+
+        let spec = match resizable {
+            true => UserSpecified,
+            false => ProgramSpecified,
+        };
+
+        let size_hints = WmSizeHints {
+            size: Some((spec, width, height)),
+            min_size: (!resizable).then_some((width, height)),
+            max_size: (!resizable).then_some((width, height)),
+            ..Default::default()
+        };
+
+        size_hints.set(conn, self.x11_id, AtomEnum::WM_NORMAL_HINTS)?;
+
+        Ok(())
+    }
+}
+
 /// An X11 application.
 #[allow(unused)]
 pub struct X11App<T> {
@@ -171,24 +199,12 @@ impl<T> X11App<T> {
 }
 
 impl<T> X11App<T> {
-    fn window_id(&self, id: u32) -> WindowId {
-        for window in &self.windows {
-            if window.x11_id == id {
-                return window.ori_id;
-            }
-        }
-
-        panic!("window not found: {}", id);
+    fn get_window_ori(&self, id: WindowId) -> Option<usize> {
+        self.windows.iter().position(|w| w.ori_id == id)
     }
 
-    fn window_index(&self, id: WindowId) -> usize {
-        for (index, window) in self.windows.iter().enumerate() {
-            if window.ori_id == id {
-                return index;
-            }
-        }
-
-        panic!("window not found: {}", id);
+    fn get_window_x11(&self, id: u32) -> Option<usize> {
+        self.windows.iter().position(|w| w.x11_id == id)
     }
 
     fn needs_redraw(&self) -> bool {
@@ -320,18 +336,20 @@ impl<T> X11App<T> {
     }
 
     fn close_window(&mut self, id: WindowId) -> Result<(), X11Error> {
-        let index = self.window_index(id);
-        let window = self.windows.remove(index);
+        if let Some(index) = self.windows.iter().position(|w| w.ori_id == id) {
+            let window = self.windows.remove(index);
 
-        self.conn.destroy_window(window.x11_id)?;
-        self.app.remove_window(id);
+            self.conn.destroy_window(window.x11_id)?;
+            self.app.remove_window(id);
+        }
 
         Ok(())
     }
 
     fn request_redraw(&mut self, id: WindowId) {
-        let index = self.window_index(id);
-        self.windows[index].needs_redraw = true;
+        if let Some(window) = self.get_window_ori(id) {
+            self.windows[window].needs_redraw = true;
+        }
     }
 
     fn render_windows(&mut self) -> Result<(), X11Error> {
@@ -376,7 +394,9 @@ impl<T> X11App<T> {
             AppRequest::DragWindow(_) => {}
             AppRequest::RequestRedraw(id) => self.request_redraw(id),
             AppRequest::UpdateWindow(id, update) => {
-                let index = self.window_index(id);
+                let Some(index) = self.windows.iter().position(|w| w.ori_id == id) else {
+                    return Ok(());
+                };
                 let window = &mut self.windows[index];
 
                 match update {
@@ -408,41 +428,23 @@ impl<T> X11App<T> {
                         window.physical_height = height;
 
                         self.conn.configure_window(window.x11_id, &aux)?;
+
+                        let resizable = self.app.get_window(id).map_or(false, |w| w.resizable);
+                        window.set_size_hints(
+                            &self.conn,
+                            width as i32,
+                            height as i32,
+                            resizable,
+                        )?;
                     }
                     WindowUpdate::Scale(_) => {}
-                    WindowUpdate::Resizable(true) => {
-                        let size_hints = WmSizeHints {
-                            size: Some((
-                                WmSizeHintsSpecification::UserSpecified,
-                                window.physical_width as i32,
-                                window.physical_height as i32,
-                            )),
-                            min_size: None,
-                            max_size: None,
-                            ..Default::default()
-                        };
-
-                        size_hints.set(&self.conn, window.x11_id, AtomEnum::WM_NORMAL_HINTS)?;
-                    }
-                    WindowUpdate::Resizable(false) => {
-                        let size_hints = WmSizeHints {
-                            size: Some((
-                                WmSizeHintsSpecification::ProgramSpecified,
-                                window.physical_width as i32,
-                                window.physical_height as i32,
-                            )),
-                            min_size: Some((
-                                window.physical_width as i32,
-                                window.physical_height as i32,
-                            )),
-                            max_size: Some((
-                                window.physical_width as i32,
-                                window.physical_height as i32,
-                            )),
-                            ..Default::default()
-                        };
-
-                        size_hints.set(&self.conn, window.x11_id, AtomEnum::WM_NORMAL_HINTS)?;
+                    WindowUpdate::Resizable(resizable) => {
+                        window.set_size_hints(
+                            &self.conn,
+                            window.physical_width as i32,
+                            window.physical_height as i32,
+                            resizable,
+                        )?;
                     }
                     WindowUpdate::Decorated(_) => {}
                     WindowUpdate::Maximized(_) => {}
@@ -466,51 +468,63 @@ impl<T> X11App<T> {
     fn handle_event(&mut self, event: XEvent) -> Result<(), X11Error> {
         match event {
             XEvent::Expose(event) => {
-                let id = self.window_id(event.window);
-                self.request_redraw(id);
+                if let Some(index) = self.get_window_x11(event.window) {
+                    self.windows[index].needs_redraw = true;
+                }
             }
             XEvent::ConfigureNotify(event) => {
                 let width = event.width as u32;
                 let height = event.height as u32;
 
-                let index = self.window_index(self.window_id(event.window));
-                self.windows[index].physical_width = width;
-                self.windows[index].physical_height = height;
+                if let Some(index) = self.get_window_x11(event.window) {
+                    let window = &mut self.windows[index];
 
-                let id = self.window_id(event.window);
-                let window = self.app.get_window(id).unwrap();
+                    if window.physical_width != width || window.physical_height != height {
+                        window.physical_width = width;
+                        window.physical_height = height;
 
-                if window.width() != width || window.height() != height {
-                    self.request_redraw(id);
-                    self.app.window_resized(&mut self.data, id, width, height);
+                        let id = window.ori_id;
+                        self.app.window_resized(&mut self.data, id, width, height);
+                        self.request_redraw(id);
+                    }
                 }
             }
             XEvent::ClientMessage(event) => {
-                let id = self.window_id(event.window);
-                self.app.close_requested(&mut self.data, id);
+                if let Some(index) = self.get_window_x11(event.window) {
+                    let window = &self.windows[index];
+                    self.app.close_requested(&mut self.data, window.ori_id);
+                }
             }
             XEvent::MotionNotify(event) => {
-                let pointer_id = PointerId::from_hash(&event.child);
+                if let Some(index) = self.get_window_x11(event.event) {
+                    let pointer_id = PointerId::from_hash(&event.child);
 
-                let id = self.window_id(event.event);
-                self.app.pointer_moved(
-                    &mut self.data,
-                    id,
-                    pointer_id,
-                    Point::new(event.event_x as f32, event.event_y as f32),
-                );
+                    let id = self.windows[index].ori_id;
+                    self.app.pointer_moved(
+                        &mut self.data,
+                        id,
+                        pointer_id,
+                        Point::new(event.event_x as f32, event.event_y as f32),
+                    );
+                }
             }
             XEvent::LeaveNotify(event) => {
-                let pointer_id = PointerId::from_hash(&event.child);
+                if let Some(index) = self.get_window_x11(event.event) {
+                    let pointer_id = PointerId::from_hash(&event.child);
 
-                let id = self.window_id(event.event);
-                self.app.pointer_left(&mut self.data, id, pointer_id);
+                    let id = self.windows[index].ori_id;
+                    self.app.pointer_left(&mut self.data, id, pointer_id);
+                }
             }
             XEvent::ButtonPress(event) => {
-                self.pointer_button(self.window_id(event.event), event.detail, true);
+                if let Some(index) = self.get_window_x11(event.event) {
+                    self.pointer_button(self.windows[index].ori_id, event.detail, true);
+                }
             }
             XEvent::ButtonRelease(event) => {
-                self.pointer_button(self.window_id(event.event), event.detail, false);
+                if let Some(index) = self.get_window_x11(event.event) {
+                    self.pointer_button(self.windows[index].ori_id, event.detail, false);
+                }
             }
             XEvent::XkbStateNotify(event) => {
                 if event.device_id as i32 != self.core_keyboard.device_id() {
@@ -536,18 +550,22 @@ impl<T> X11App<T> {
                 self.app.modifiers_changed(modifiers);
             }
             XEvent::KeyPress(event) => {
-                let utf8 = self.core_keyboard.key_get_utf8(event.detail.into());
-                let code = Code::from_linux_scancode(event.detail - 8);
-                let text = (!utf8.is_empty()).then_some(utf8);
+                if let Some(index) = self.get_window_x11(event.event) {
+                    let utf8 = self.core_keyboard.key_get_utf8(event.detail.into());
+                    let code = Code::from_linux_scancode(event.detail - 8);
+                    let text = (!utf8.is_empty()).then_some(utf8);
 
-                let id = self.window_id(event.event);
-                self.app.keyboard_key(&mut self.data, id, code, text, true);
+                    let id = self.windows[index].ori_id;
+                    self.app.keyboard_key(&mut self.data, id, code, text, true);
+                }
             }
             XEvent::KeyRelease(event) => {
-                let code = Code::from_linux_scancode(event.detail - 8);
+                if let Some(index) = self.get_window_x11(event.event) {
+                    let code = Code::from_linux_scancode(event.detail - 8);
 
-                let id = self.window_id(event.event);
-                self.app.keyboard_key(&mut self.data, id, code, None, false);
+                    let id = self.windows[index].ori_id;
+                    self.app.keyboard_key(&mut self.data, id, code, None, false);
+                }
             }
             _ => {}
         }

@@ -1,8 +1,6 @@
 use ori::prelude::*;
 
-struct Data;
-
-fn app(_data: &mut Data) -> impl View<Data> {
+fn ui() -> impl View {
     let content = container(pad(8.0, text("content")))
         .border_width(2.0)
         .border_radius(6.0);
@@ -17,8 +15,5 @@ fn app(_data: &mut Data) -> impl View<Data> {
 
 fn main() {
     let window = Window::new().title("Dropdown (examples/dropdown.rs)");
-
-    let app = App::build().window(window, app);
-
-    ori::launch(app, Data).unwrap();
+    ori::launch_simple(window, ui).unwrap();
 }

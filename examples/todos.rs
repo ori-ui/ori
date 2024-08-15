@@ -205,7 +205,7 @@ fn selection(data: &mut Data) -> impl View<Data> {
     Some(width(26.0 * 16.0, container))
 }
 
-fn app(data: &mut Data) -> impl View<Data> {
+fn ui(data: &mut Data) -> impl View<Data> {
     let style = if data.dark_mode {
         Palette::light()
     } else {
@@ -245,7 +245,7 @@ impl Delegate<Data> for AppDelegate {
 fn main() {
     let window = Window::new().title("Todos (examples/todos.rs)");
 
-    let app = AppBuilder::new().window(window, app).delegate(AppDelegate);
+    let app = AppBuilder::new().window(window, ui).delegate(AppDelegate);
 
     ori::launch(app, Data::default()).unwrap();
 }

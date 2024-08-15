@@ -56,7 +56,7 @@ fn close_window_button(data: &mut Data) -> impl View<Data> {
     })
 }
 
-fn app(data: &mut Data) -> impl View<Data> {
+fn ui(data: &mut Data) -> impl View<Data> {
     let stack = vstack![open_window_button(), close_window_button(data)].gap(8.0);
 
     center(stack)
@@ -100,7 +100,7 @@ impl Delegate<Data> for AppDelegate {
 fn main() {
     let window = Window::new().title("Multi Window (examples/multi_window.rs)");
 
-    let app = App::build().window(window, app).delegate(AppDelegate);
+    let app = App::build().window(window, ui).delegate(AppDelegate);
 
     ori::launch(app, Data::default()).unwrap();
 }

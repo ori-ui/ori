@@ -24,11 +24,11 @@ fn counter_button() -> impl View<Data> {
     tooltip(counter, "Click to increment the counter!")
 }
 
-// We create our app function that creates the UI of our app.
+// We create our `ui` function that creates the UI of our app.
 //
 // This will be called every time the UI needs to be rebuilt,
 // eg. when the a button is clicked.
-fn app(data: &mut Data) -> impl View<Data> {
+fn ui(data: &mut Data) -> impl View<Data> {
     // We use the `vstack!` macro to create a vertical stack of views.
     let content = vstack![counter_button(), text!("Clicked {} time(s)", data.counter)];
 
@@ -39,9 +39,9 @@ fn app(data: &mut Data) -> impl View<Data> {
 fn main() {
     let window = Window::new().title("Counter (examples/counter.rs)");
 
-    // We create a new app with our `app` function and initial `Data` struct.
+    // We create a new app with our `ui` function and initial `Data` struct.
     // Then we set the title of the window and run the app.
-    let app = App::build().window(window, app);
+    let app = App::build().window(window, ui);
 
     ori::launch(app, Data::default()).unwrap();
 }

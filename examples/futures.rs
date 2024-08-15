@@ -7,7 +7,7 @@ struct Data {
     futures_completed: u32,
 }
 
-fn app(data: &mut Data) -> impl View<Data> {
+fn ui(data: &mut Data) -> impl View<Data> {
     let button = button(text("Click me!")).fancy(4.0);
 
     let button = on_click(button, |cx, _| {
@@ -45,7 +45,7 @@ impl Delegate<Data> for AppDelegate {
 fn main() {
     let window = Window::new().title("Futures (examples/futures.rs)");
 
-    let app = App::build().window(window, app).delegate(AppDelegate);
+    let app = App::build().window(window, ui).delegate(AppDelegate);
 
     ori::launch(app, Data::default()).unwrap();
 }

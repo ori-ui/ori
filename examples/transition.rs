@@ -5,7 +5,7 @@ struct Data {
     on: bool,
 }
 
-fn app(data: &mut Data) -> impl View<Data> {
+fn ui(data: &mut Data) -> impl View<Data> {
     let button = transition(ease(1.0), data.on, |_, _, t| {
         let text_color = Color::RED.mix(Color::GREEN, t);
 
@@ -19,7 +19,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 fn main() {
     let window = Window::new().title("Transition (examples/transition.rs)");
 
-    let app = App::build().window(window, app);
+    let app = App::build().window(window, ui);
 
     ori::launch(app, Data::default()).unwrap();
 }

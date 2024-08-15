@@ -3,6 +3,9 @@
 
 //! X11 backend for Ori.
 
+use ori_app::{AppBuilder, IntoUiBuilder};
+use ori_core::window::Window;
+
 pub mod platform;
 
 /// Errors that can occur when using ori-shell.
@@ -40,7 +43,7 @@ impl std::error::Error for Error {}
 
 /// Launch an Ori application.
 #[allow(unused_variables)]
-pub fn launch<T>(app: ori_app::AppBuilder<T>, data: T) -> Result<(), Error> {
+pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     #[cfg(x11_platform)]
     {
         let app = platform::x11::X11App::new(app, data)?;
@@ -49,4 +52,13 @@ pub fn launch<T>(app: ori_app::AppBuilder<T>, data: T) -> Result<(), Error> {
 
     #[allow(unreachable_code)]
     Err(Error::NoPlatform)
+}
+
+/// Launch an Ori simple application.
+pub fn launch_simple<V, P>(
+    window: Window,
+    ui: impl IntoUiBuilder<V, P, Data = ()>,
+) -> Result<(), Error> {
+    let app = AppBuilder::new().window(window, ui);
+    launch(app, ())
 }

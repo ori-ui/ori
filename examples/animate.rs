@@ -1,6 +1,6 @@
 use ori::prelude::*;
 
-fn app() -> impl View {
+fn ui() -> impl View {
     let click_me = transition_hot(ease(0.2), |_, _, t| {
         let border = Color::RED.mix(Color::GREEN, t);
 
@@ -15,6 +15,5 @@ fn app() -> impl View {
 
 fn main() {
     let window = Window::new().title("Animate (examples/animate.rs)");
-    let app = App::build().window(window, app);
-    ori::launch(app, ()).unwrap();
+    ori::launch_simple(window, ui).unwrap();
 }

@@ -1,9 +1,6 @@
 use ori::prelude::*;
 
-#[derive(Default)]
-struct Data {}
-
-fn square(index: usize) -> impl View<Data> {
+fn square(index: usize) -> impl View {
     size(
         100.0,
         on_click(
@@ -15,7 +12,7 @@ fn square(index: usize) -> impl View<Data> {
     )
 }
 
-fn app(_data: &mut Data) -> impl View<Data> {
+fn ui() -> impl View {
     let scroll = height(
         400.0,
         vscroll(vstack![
@@ -37,8 +34,5 @@ fn app(_data: &mut Data) -> impl View<Data> {
 
 fn main() {
     let window = Window::new().title("Scroll (examples/scroll.rs)");
-
-    let app = App::build().window(window, app);
-
-    ori::launch(app, Data::default()).unwrap();
+    ori::launch_simple(window, ui).unwrap();
 }

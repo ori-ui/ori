@@ -36,7 +36,7 @@ fn form() -> impl View<Data> {
     })
 }
 
-fn app(data: &mut Data) -> impl View<Data> {
+fn ui(data: &mut Data) -> impl View<Data> {
     let mut users = Vec::new();
 
     for user in data.users.iter_mut() {
@@ -57,7 +57,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 fn main() {
     let window = Window::new().title("With State (examples/with_state.rs)");
 
-    let app = App::build().window(window, app);
+    let app = App::build().window(window, ui);
 
     ori::launch(app, Data::default()).unwrap();
 }

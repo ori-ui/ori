@@ -45,7 +45,7 @@ fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
     ]
 }
 
-fn app(data: &mut Data) -> impl View<Data> {
+fn ui(data: &mut Data) -> impl View<Data> {
     center(
         vstack![
             multiline_checkbox(data),
@@ -58,7 +58,7 @@ fn app(data: &mut Data) -> impl View<Data> {
 fn main() {
     let window = Window::new().title("Text Input (examples/text_input.rs)");
 
-    let app = App::build().window(window, app);
+    let app = App::build().window(window, ui);
 
     ori::launch(app, Data::default()).unwrap();
 }

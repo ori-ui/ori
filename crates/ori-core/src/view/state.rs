@@ -110,15 +110,18 @@ impl Display for ViewId {
 #[derive(Clone, Debug)]
 pub struct ViewState {
     pub(crate) id: ViewId,
+
     /* flags */
     pub(crate) prev_flags: ViewFlags,
     pub(crate) flags: ViewFlags,
     pub(crate) update: Update,
+
     /* layout */
     pub(crate) flex: f32,
     pub(crate) is_tight: bool,
     pub(crate) size: Size,
     pub(crate) transform: Affine,
+
     /* cursor */
     pub(crate) cursor: Option<Cursor>,
     pub(crate) inherited_cursor: Option<Cursor>,
@@ -128,15 +131,18 @@ impl Default for ViewState {
     fn default() -> Self {
         Self {
             id: ViewId::new(),
+
             /* flags */
             prev_flags: ViewFlags::default(),
             flags: ViewFlags::default(),
             update: Update::LAYOUT | Update::DRAW,
+
             /* layout */
             flex: 0.0,
             is_tight: false,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
+
             /* cursor */
             cursor: None,
             inherited_cursor: None,

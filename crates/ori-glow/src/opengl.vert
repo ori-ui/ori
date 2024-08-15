@@ -6,6 +6,8 @@ layout(location = 2) in vec4 bounds;
 layout(location = 3) in vec4 color;
 layout(location = 4) in uint flags;
 layout(location = 5) in uint band_index;
+layout(location = 6) in vec4 image_transform;
+layout(location = 7) in vec3 image_offset_opacity;
 
 flat out uint v_flags;
 flat out uint v_band_index;
@@ -13,6 +15,8 @@ out vec2 v_vertex;
 out vec4 v_bounds;
 out vec4 v_color;
 out mat2 v_transform_inv;
+out mat2 v_image_transform;
+out vec3 v_image_offset_opacity;
 
 const vec2 rect[6] = vec2[6](
     vec2(0.0, 0.0),
@@ -24,17 +28,17 @@ const vec2 rect[6] = vec2[6](
 );
 
 void main() {
-    mat2 transform = mat2(
-        vec2(transform.x, transform.y),
-        vec2(transform.z, transform.w)
-    );
+    mat2 transform = mat2(transform.xy, transform.zw);
 
-    v_vertex = bounds.xy + rect[gl_VertexID] * bounds.zw;
+    v_vertex = bounds.xy - 8.0 + rect[gl_VertexID] * (bounds.zw + 16.0);
     v_bounds = bounds;
     v_color = color;
     v_flags = flags;
     v_transform_inv = inverse(transform);
     v_band_index = band_index;
+    // i have no idea why this is necessary, but taking the inverse works
+    v_image_transform = inverse(mat2(image_transform.xy, image_transform.zw));
+    v_image_offset_opacity = image_offset_opacity;
 
     gl_Position = vec4(
         transform * v_vertex + translation,

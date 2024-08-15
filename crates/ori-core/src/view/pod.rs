@@ -85,7 +85,6 @@ impl<V> Pod<V> {
     /// Build a pod view.
     pub fn build<T>(cx: &mut BuildCx, f: impl FnOnce(&mut BuildCx) -> T) -> (T, ViewState) {
         let mut view_state = ViewState::default();
-        view_state.prepare();
 
         let mut new_cx = cx.child();
         new_cx.view_state = &mut view_state;
@@ -146,23 +145,17 @@ impl<V> Pod<V> {
         cx: &mut LayoutCx,
         f: impl FnOnce(&mut LayoutCx) -> Size,
     ) -> Size {
-        view_state.prepare();
         view_state.mark_layed_out();
 
         let mut new_cx = cx.child();
         new_cx.view_state = view_state;
 
-        let size = f(&mut new_cx);
-
-        view_state.size = size;
-        cx.view_state.propagate(view_state);
-
-        size
+        view_state.size = f(&mut new_cx);
+        view_state.size
     }
 
     /// Draw a pod view.
     pub fn draw(view_state: &mut ViewState, cx: &mut DrawCx, f: impl FnOnce(&mut DrawCx)) {
-        view_state.prepare();
         view_state.mark_drawn();
 
         // create the draw context
@@ -171,9 +164,6 @@ impl<V> Pod<V> {
 
         // draw the content
         new_cx.layer(new_cx.view_state.transform, f);
-
-        // propagate the view state
-        cx.view_state.propagate(view_state);
     }
 }
 

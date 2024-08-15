@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use ori_macro::example;
 
 use crate::{
@@ -51,6 +53,20 @@ impl<V> Pad<V> {
             content: Pod::new(content),
             padding: padding.into(),
         }
+    }
+}
+
+impl<V> Deref for Pad<V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.content
+    }
+}
+
+impl<V> DerefMut for Pad<V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.content
     }
 }
 

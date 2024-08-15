@@ -80,9 +80,7 @@ pub(crate) fn convert_key(key: KeyCode) -> Option<Code> {
         KeyCode::F11 => Code::F11,
         KeyCode::F12 => Code::F12,
         // Symbol keys
-        KeyCode::Equal | KeyCode::NumpadAdd => Code::Plus,
         KeyCode::Minus | KeyCode::NumpadSubtract => Code::Minus,
-        KeyCode::NumpadStar | KeyCode::NumpadMultiply => Code::Asterisk,
         KeyCode::Slash | KeyCode::NumpadDivide => Code::Slash,
         KeyCode::Backslash => Code::Backslash,
         KeyCode::Period | KeyCode::NumpadDecimal => Code::Period,
@@ -104,11 +102,6 @@ pub(crate) fn convert_key(key: KeyCode) -> Option<Code> {
         KeyCode::Tab => Code::Tab,
         KeyCode::Enter | KeyCode::NumpadEnter => Code::Enter,
         KeyCode::Space => Code::Space,
-        // Modifier keys
-        KeyCode::ShiftLeft | KeyCode::ShiftRight => Code::Shift,
-        KeyCode::ControlLeft | KeyCode::ControlRight => Code::Ctrl,
-        KeyCode::AltLeft | KeyCode::AltRight => Code::Alt,
-        KeyCode::Meta => Code::Meta,
         _ => return None,
     })
 }

@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{view::ViewState, window::Window};
 
-use super::{BaseCx, BuildCx, RebuildCx};
+use super::BaseCx;
 
 /// A context for laying out the view tree.
 pub struct LayoutCx<'a, 'b> {
@@ -46,20 +46,5 @@ impl<'a, 'b> LayoutCx<'a, 'b> {
             view_state: self.view_state,
             window: self.window,
         }
-    }
-
-    /// Get a rebuild context.
-    pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base, self.view_state, self.window)
-    }
-
-    /// Get a rebuild context.
-    pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
-        RebuildCx::new(self.base, self.view_state, self.window)
-    }
-
-    /// Request a draw of the view tree.
-    pub fn request_draw(&mut self) {
-        self.view_state.request_draw();
     }
 }

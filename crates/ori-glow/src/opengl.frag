@@ -6,6 +6,8 @@ in vec2 v_vertex;
 in vec4 v_bounds;
 in vec4 v_color;
 in mat2 v_transform_inv;
+in mat2 v_image_transform;
+in vec3 v_image_offset_opacity;
 
 out vec4 f_color;
 
@@ -27,6 +29,8 @@ uniform CurveBands {
 uniform Uniforms {
     vec2 resolution;
 };
+
+uniform sampler2D image;
 
 const vec2[32] POISSON_DISK = vec2[32](
     vec2(-0.613392, 0.617481),
@@ -440,9 +444,14 @@ void main() {
         if (is_inside(v)) alpha += 1.0;
     }
 
+    vec2 image_size = vec2(textureSize(image, 0));
+    vec2 image_uv = v_image_transform * v_vertex + v_image_offset_opacity.xy;
+    vec4 color = texture(image, image_uv / image_size);
+    color.a *= v_image_offset_opacity.z;
+
     alpha /= samples;
     if (alpha < 0.01) discard;
 
-    f_color = v_color;
+    f_color = v_color * color;
     f_color.a *= alpha;
 }

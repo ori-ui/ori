@@ -39,3 +39,46 @@ pub enum Cursor {
     ColResize,
     RowResize,
 }
+
+impl Cursor {
+    /// Returns the name of the cursor.
+    pub fn name(self) -> &'static str {
+        match self {
+            Cursor::Default => "default",
+            Cursor::Crosshair => "crosshair",
+            Cursor::Pointer => "pointer",
+            Cursor::Arrow => "arrow",
+            Cursor::Move => "move",
+            Cursor::Text => "text",
+            Cursor::Wait => "wait",
+            Cursor::Help => "help",
+            Cursor::Progress => "progress",
+            Cursor::NotAllowed => "not-allowed",
+            Cursor::ContextMenu => "context-menu",
+            Cursor::Cell => "cell",
+            Cursor::VerticalText => "vertical-text",
+            Cursor::Alias => "alias",
+            Cursor::Copy => "copy",
+            Cursor::NoDrop => "no-drop",
+            Cursor::Grab => "grab",
+            Cursor::Grabbing => "grabbing",
+            Cursor::AllScroll => "all-scroll",
+            Cursor::ZoomIn => "zoom-in",
+            Cursor::ZoomOut => "zoom-out",
+            Cursor::EResize => "e-resize",
+            Cursor::NResize => "n-resize",
+            Cursor::NeResize => "ne-resize",
+            Cursor::NwResize => "nw-resize",
+            Cursor::SResize => "s-resize",
+            Cursor::SeResize => "se-resize",
+            Cursor::SwResize => "sw-resize",
+            Cursor::WResize => "w-resize",
+            Cursor::EwResize => "ew-resize",
+            Cursor::NsResize => "ns-resize",
+            Cursor::NeswResize => "nesw-resize",
+            Cursor::NwseResize => "nwse-resize",
+            Cursor::ColResize => "col-resize",
+            Cursor::RowResize => "row-resize",
+        }
+    }
+}

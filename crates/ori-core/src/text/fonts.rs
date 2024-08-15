@@ -160,8 +160,6 @@ impl Fonts {
         offset: Vector,
         scale: f32,
     ) {
-        let mut curve = Curve::new();
-
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
                 let physical = glyph.physical((0.0, 0.0), scale);
@@ -174,6 +172,8 @@ impl Fonts {
                     physical.x as f32 + offset.x,
                     run.line_y + physical.y as f32 + offset.y,
                 );
+
+                let mut curve = Curve::new();
 
                 for command in commands.into_iter().flatten() {
                     match command {
@@ -205,9 +205,9 @@ impl Fonts {
                         }
                     }
                 }
+
+                canvas.fill(curve, FillRule::NonZero, paint.clone());
             }
         }
-
-        canvas.fill(curve, FillRule::NonZero, paint.clone());
     }
 }

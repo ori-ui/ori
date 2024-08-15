@@ -44,6 +44,8 @@ pub(crate) struct WindowState<T> {
 
 impl<T> WindowState<T> {
     fn rebuild(&mut self, data: &mut T, base: &mut BaseCx) {
+        self.view_state.prepare();
+
         let mut cx = RebuildCx::new(base, &mut self.view_state, &mut self.window);
 
         let mut new_view = (self.ui)(data);
@@ -54,6 +56,7 @@ impl<T> WindowState<T> {
     fn event(&mut self, data: &mut T, base: &mut BaseCx, rebuild: &mut bool, event: &Event) {
         let hot = self.window.is_hovered(self.view_state.id());
         self.view_state.set_hot(hot);
+        self.view_state.prepare();
 
         let mut cx = EventCx::new(base, &mut self.view_state, rebuild, &mut self.window);
 
@@ -61,7 +64,6 @@ impl<T> WindowState<T> {
     }
 
     fn layout(&mut self, data: &mut T, base: &mut BaseCx) {
-        self.view_state.prepare();
         self.view_state.mark_layed_out();
 
         // we need to calculate the max size of the window
@@ -89,7 +91,6 @@ impl<T> WindowState<T> {
     }
 
     fn draw(&mut self, data: &mut T, base: &mut BaseCx) {
-        self.view_state.prepare();
         self.view_state.mark_drawn();
 
         self.canvas.clear();
@@ -446,6 +447,7 @@ impl<T> App<T> {
 
         if rebuild {
             self.rebuild(data);
+            self.handle_window_requests();
         }
     }
 
@@ -462,6 +464,7 @@ impl<T> App<T> {
 
         if rebuild {
             self.rebuild(data);
+            self.handle_window_requests();
         }
     }
 
@@ -665,7 +668,7 @@ impl<T> App<T> {
             // since hover state is determined by the scene, and since draw modifies the scene,
             // we must update the hover state, and send an UpdateHovered event if needed
             if self.update_hovered(window_id) {
-                self.window_event(data, window_id, &Event::UpdateHovered);
+                self.window_event(data, window_id, &Event::Update);
             }
         }
 

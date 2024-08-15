@@ -445,9 +445,9 @@ impl<T> View<T> for TextInput<T> {
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         if cx.is_hot() {
-            cx.view_state.set_cursor(Some(Cursor::Text));
+            cx.set_cursor(Some(Cursor::Text));
         } else {
-            cx.view_state.set_cursor(None);
+            cx.set_cursor(None);
         }
 
         match event {

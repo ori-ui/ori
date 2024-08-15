@@ -9,7 +9,7 @@ use crate::{
     window::Window,
 };
 
-use super::{BaseCx, RebuildCx};
+use super::BaseCx;
 
 /// A context for drawing the view tree.
 pub struct DrawCx<'a, 'b> {
@@ -60,11 +60,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             window: self.window,
             canvas: self.canvas,
         }
-    }
-
-    /// Get a rebuild context.
-    pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
-        RebuildCx::new(self.base, self.view_state, self.window)
     }
 
     /// Get the transform of the view.

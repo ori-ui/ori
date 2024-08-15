@@ -166,6 +166,7 @@ impl Debug for ImageData {
         f.debug_struct("ImageData")
             .field("width", &self.width)
             .field("height", &self.height)
+            .field("filter", &self.filter)
             .finish()
     }
 }

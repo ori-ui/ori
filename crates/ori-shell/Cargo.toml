@@ -20,6 +20,13 @@ libloading  = { version = "0.8",    optional = true }
 xkbcommon   = { version = "0.8",    optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies.x11rb]
-version     = "0.13"
+git         = "https://github.com/ChangeCaps/x11rb"
+rev         = "070e2bb"
 optional    = true
-features    = ["render", "allow-unsafe-code", "xkb"]
+features    = [
+    "render", 
+    "allow-unsafe-code", 
+    "resource_manager",
+    "cursor",
+    "xkb", 
+]

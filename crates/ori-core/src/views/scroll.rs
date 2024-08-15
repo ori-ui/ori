@@ -186,12 +186,14 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         }
 
         if let Event::PointerScrolled(e) = event {
-            state.scroll -= e.delta.y * 10.0;
-            state.scroll = state.scroll.clamp(0.0, overflow);
+            if cx.has_hot() {
+                state.scroll -= e.delta.y * 10.0;
+                state.scroll = state.scroll.clamp(0.0, overflow);
 
-            content.translate(self.axis.pack(-state.scroll, 0.0));
+                content.translate(self.axis.pack(-state.scroll, 0.0));
 
-            cx.request_draw();
+                cx.request_draw();
+            }
         }
     }
 

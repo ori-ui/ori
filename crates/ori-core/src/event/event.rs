@@ -47,8 +47,8 @@ pub enum Event {
     /// A command was sent.
     Command(Command),
 
-    /// The hovered views have changed.
-    UpdateHovered,
+    /// View state needs to be updated.
+    Update,
 }
 
 impl Event {

@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{
     layout::{Point, Rect, Size},
     view::ViewState,
-    window::Window,
+    window::{Cursor, Window},
 };
 
 use super::{BaseCx, BuildCx, LayoutCx};
@@ -85,6 +85,11 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
     /// Request an animation frame.
     pub fn animate(&mut self) {
         self.view_state.request_animate();
+    }
+
+    /// Set the cursor of the view.
+    pub fn set_cursor(&mut self, cursor: Option<Cursor>) {
+        self.view_state.set_cursor(cursor);
     }
 
     /// Set whether the view is hot.

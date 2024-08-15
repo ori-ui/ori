@@ -1,9 +1,12 @@
 use std::{
+    collections::{hash_map::Entry, HashMap},
+    ffi::OsString,
     sync::{
-        mpsc::{Receiver, Sender},
+        mpsc::{Receiver, RecvTimeoutError, Sender},
         Arc, LazyLock,
     },
     thread::{self, JoinHandle},
+    time::Duration,
 };
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
@@ -11,7 +14,7 @@ use ori_core::{
     command::CommandWaker,
     event::{Code, Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
-    window::{Window, WindowId, WindowUpdate},
+    window::{Cursor, Window, WindowId, WindowUpdate},
 };
 use ori_glow::GlowRenderer;
 
@@ -19,6 +22,7 @@ use libloading::Library;
 use x11rb::{
     atom_manager,
     connection::Connection,
+    cursor::Handle as CursorHandle,
     properties::{WmSizeHints, WmSizeHintsSpecification},
     protocol::{
         render::{ConnectionExt as _, PictType},
@@ -27,11 +31,13 @@ use x11rb::{
             SelectEventsAux as XkbSelectEventsAux, ID as XkbID,
         },
         xproto::{
-            AtomEnum, ColormapAlloc, ConfigureWindowAux, ConnectionExt as _, CreateWindowAux,
-            EventMask, ModMask, PropMode, VisualClass, Visualid, WindowClass,
+            AtomEnum, ChangeWindowAttributesAux, ColormapAlloc, ConfigureWindowAux,
+            ConnectionExt as _, CreateWindowAux, Cursor as XCursor, EventMask, ModMask, PropMode,
+            VisualClass, Visualid, WindowClass,
         },
         Event as XEvent,
     },
+    resource_manager::Database,
     wrapper::ConnectionExt as _,
     xcb_ffi::XCBConnection,
 };
@@ -53,6 +59,7 @@ atom_manager! {
         WM_DELETE_WINDOW,
         _NET_WM_NAME,
         _NET_WM_ICON,
+        _MOTIF_WM_HINTS,
     }
 }
 
@@ -67,6 +74,26 @@ struct X11Window {
 }
 
 impl X11Window {
+    fn set_title(&self, conn: &XCBConnection, atoms: &Atoms, title: &str) -> Result<(), X11Error> {
+        conn.change_property8(
+            PropMode::REPLACE,
+            self.x11_id,
+            AtomEnum::WM_NAME,
+            AtomEnum::STRING,
+            title.as_bytes(),
+        )?;
+
+        conn.change_property8(
+            PropMode::REPLACE,
+            self.x11_id,
+            atoms._NET_WM_NAME,
+            atoms.UTF8_STRING,
+            title.as_bytes(),
+        )?;
+
+        Ok(())
+    }
+
     fn set_size_hints(
         &self,
         conn: &XCBConnection,
@@ -92,6 +119,57 @@ impl X11Window {
 
         Ok(())
     }
+
+    fn get_motif_hints(&self, conn: &XCBConnection, atoms: &Atoms) -> Result<Vec<u32>, X11Error> {
+        let hints = conn
+            .get_property(
+                false,
+                self.x11_id,
+                atoms._MOTIF_WM_HINTS,
+                AtomEnum::ATOM,
+                0,
+                0,
+            )?
+            .reply()?;
+
+        let mut hints: Vec<_> = hints.value32().into_iter().flatten().collect();
+        hints.resize(5, 0);
+
+        Ok(hints)
+    }
+
+    fn set_motif_hints(
+        &self,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        hints: &[u32],
+    ) -> Result<(), X11Error> {
+        conn.change_property32(
+            PropMode::REPLACE,
+            self.x11_id,
+            atoms._MOTIF_WM_HINTS,
+            AtomEnum::ATOM,
+            hints,
+        )?;
+
+        Ok(())
+    }
+
+    fn set_decorated(
+        &self,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        decorated: bool,
+    ) -> Result<(), X11Error> {
+        let mut hints = self.get_motif_hints(conn, atoms)?;
+
+        hints[0] |= 1 << 1; // set the decorated flag
+        hints[2] = decorated as u32; // set the decorated flag
+
+        self.set_motif_hints(conn, atoms, &hints)?;
+
+        Ok(())
+    }
 }
 
 /// An X11 application.
@@ -107,6 +185,9 @@ pub struct X11App<T> {
     event_tx: Sender<Option<XEvent>>,
     thread: JoinHandle<()>,
     windows: Vec<X11Window>,
+    database: Database,
+    cursor_handle: CursorHandle,
+    cursors: HashMap<Cursor, XCursor>,
 
     egl_context: EglContext,
     xkb_context: xkb::Context,
@@ -145,6 +226,20 @@ impl<T> X11App<T> {
             }
         });
 
+        let reply = conn
+            .get_property(
+                Database::GET_RESOURCE_DATABASE.delete,
+                conn.setup().roots[screen_num].root,
+                Database::GET_RESOURCE_DATABASE.property,
+                Database::GET_RESOURCE_DATABASE.type_,
+                Database::GET_RESOURCE_DATABASE.long_offset,
+                Database::GET_RESOURCE_DATABASE.long_length,
+            )?
+            .reply()?;
+
+        let database = Database::new_from_default(&reply, OsString::from("anon"));
+        let cursor_handle = CursorHandle::new(&conn, screen_num, &database)?.reply()?;
+
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let core_keyboard = XkbKeyboard::x11_new_core(&conn, &xkb_context);
 
@@ -159,6 +254,9 @@ impl<T> X11App<T> {
             event_tx,
             thread,
             windows: Vec::new(),
+            database,
+            cursor_handle,
+            cursors: HashMap::new(),
 
             egl_context,
             xkb_context,
@@ -175,10 +273,17 @@ impl<T> X11App<T> {
 
         while self.running {
             self.conn.flush()?;
+
             let mut event_option = if self.needs_redraw() {
                 self.event_rx.try_recv().ok()
             } else {
-                Some(self.event_rx.recv().unwrap())
+                match self.event_rx.recv_timeout(Duration::from_millis(10)) {
+                    Ok(event) => Some(event),
+                    Err(err) => match err {
+                        RecvTimeoutError::Timeout => None,
+                        RecvTimeoutError::Disconnected => break,
+                    },
+                }
             };
 
             while let Some(event) = event_option {
@@ -187,10 +292,14 @@ impl<T> X11App<T> {
                     None => self.handle_commands()?,
                 }
 
+                self.handle_app_requests()?;
                 event_option = self.event_rx.try_recv().ok();
             }
 
             self.render_windows()?;
+            self.handle_app_requests()?;
+
+            self.app.idle(&mut self.data);
             self.handle_app_requests()?;
         }
 
@@ -208,7 +317,7 @@ impl<T> X11App<T> {
     }
 
     fn needs_redraw(&self) -> bool {
-        self.windows.iter().any(|window| window.needs_redraw)
+        self.windows.iter().any(|w| w.needs_redraw)
     }
 
     fn handle_commands(&mut self) -> Result<(), X11Error> {
@@ -257,37 +366,6 @@ impl<T> X11App<T> {
             &aux,
         )?;
 
-        if !window.resizable {
-            let size_hints = WmSizeHints {
-                size: Some((
-                    WmSizeHintsSpecification::ProgramSpecified,
-                    window.width() as i32,
-                    window.height() as i32,
-                )),
-                min_size: Some((window.width() as i32, window.height() as i32)),
-                max_size: Some((window.width() as i32, window.height() as i32)),
-                ..Default::default()
-            };
-
-            size_hints.set(&self.conn, win_id, AtomEnum::WM_NORMAL_HINTS)?;
-        }
-
-        self.conn.change_property8(
-            PropMode::REPLACE,
-            win_id,
-            AtomEnum::WM_NAME,
-            AtomEnum::STRING,
-            window.title.as_bytes(),
-        )?;
-
-        self.conn.change_property8(
-            PropMode::REPLACE,
-            win_id,
-            self.atoms._NET_WM_NAME,
-            self.atoms.UTF8_STRING,
-            window.title.as_bytes(),
-        )?;
-
         self.conn.change_property32(
             PropMode::REPLACE,
             win_id,
@@ -317,8 +395,6 @@ impl<T> X11App<T> {
             })
         };
 
-        self.conn.map_window(win_id)?;
-
         let x11_window = X11Window {
             x11_id: win_id,
             ori_id: window.id(),
@@ -328,8 +404,24 @@ impl<T> X11App<T> {
             renderer,
             needs_redraw: true,
         };
-        self.windows.push(x11_window);
 
+        x11_window.set_title(&self.conn, &self.atoms, &window.title)?;
+        x11_window.set_decorated(&self.conn, &self.atoms, window.decorated)?;
+
+        if !window.resizable {
+            x11_window.set_size_hints(
+                &self.conn,
+                window.width() as i32,
+                window.height() as i32,
+                window.resizable,
+            )?;
+        }
+
+        if window.visible {
+            self.conn.map_window(win_id)?;
+        }
+
+        self.windows.push(x11_window);
         self.app.add_window(&mut self.data, ui, window);
 
         Ok(())
@@ -387,6 +479,21 @@ impl<T> X11App<T> {
         Ok(())
     }
 
+    fn set_cursor(&mut self, x_window: u32, cursor: Cursor) -> Result<(), X11Error> {
+        let cursor = match self.cursors.entry(cursor) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                let cursor = self.cursor_handle.load_cursor(&self.conn, cursor.name())?;
+                *entry.insert(cursor)
+            }
+        };
+
+        let aux = ChangeWindowAttributesAux::new().cursor(cursor);
+        self.conn.change_window_attributes(x_window, &aux)?;
+
+        Ok(())
+    }
+
     fn handle_app_request(&mut self, request: AppRequest<T>) -> Result<(), X11Error> {
         match request {
             AppRequest::OpenWindow(window, ui) => self.open_window(window, ui)?,
@@ -401,21 +508,7 @@ impl<T> X11App<T> {
 
                 match update {
                     WindowUpdate::Title(title) => {
-                        self.conn.change_property8(
-                            PropMode::REPLACE,
-                            window.x11_id,
-                            AtomEnum::WM_NAME,
-                            AtomEnum::STRING,
-                            title.as_bytes(),
-                        )?;
-
-                        self.conn.change_property8(
-                            PropMode::REPLACE,
-                            window.x11_id,
-                            self.atoms._NET_WM_NAME,
-                            self.atoms.UTF8_STRING,
-                            title.as_bytes(),
-                        )?;
+                        window.set_title(&self.conn, &self.atoms, &title)?;
                     }
                     WindowUpdate::Icon(_) => {}
                     WindowUpdate::Size(size) => {
@@ -446,7 +539,9 @@ impl<T> X11App<T> {
                             resizable,
                         )?;
                     }
-                    WindowUpdate::Decorated(_) => {}
+                    WindowUpdate::Decorated(decorated) => {
+                        window.set_decorated(&self.conn, &self.atoms, decorated)?;
+                    }
                     WindowUpdate::Maximized(_) => {}
                     WindowUpdate::Visible(visible) => {
                         if visible {
@@ -456,7 +551,10 @@ impl<T> X11App<T> {
                         }
                     }
                     WindowUpdate::Color(_) => {}
-                    WindowUpdate::Cursor(_) => {}
+                    WindowUpdate::Cursor(cursor) => {
+                        let x_window = window.x11_id;
+                        self.set_cursor(x_window, cursor)?;
+                    }
                 }
             }
             AppRequest::Quit => self.running = false,

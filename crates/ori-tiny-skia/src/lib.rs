@@ -194,9 +194,6 @@ fn render_primitive(
     mask: Option<&tiny_skia::Mask>,
 ) {
     match primitive {
-        Primitive::Rect { rect, paint } => {
-            pixmap.fill_rect(map_rect(rect), &map_paint(paint), transform, mask)
-        }
         Primitive::Fill { curve, fill, paint } => {
             let curve = match map_curve(curve) {
                 Some(curve) => curve,
@@ -228,18 +225,6 @@ fn render_primitive(
                 transform,
                 mask,
             )
-        }
-        Primitive::Image { point, image } => {
-            if !image.is_empty() {
-                let x = point.x.round() as i32;
-                let y = point.y.round() as i32;
-
-                let src =
-                    tiny_skia::PixmapRef::from_bytes(image.data(), image.width(), image.height())
-                        .unwrap();
-
-                pixmap.draw_pixmap(x, y, src, &Default::default(), transform, mask);
-            }
         }
         Primitive::Layer {
             primitives,

@@ -78,6 +78,18 @@ pub enum Code {
     Key8,
     Key9,
 
+    // Numpad keys
+    Numpad0,
+    Numpad1,
+    Numpad2,
+    Numpad3,
+    Numpad4,
+    Numpad5,
+    Numpad6,
+    Numpad7,
+    Numpad8,
+    Numpad9,
+
     // Function keys
     F1,
     F2,
@@ -125,6 +137,8 @@ pub enum Code {
     PageUp,
     PageDown,
     CapsLock,
+    NumLock,
+    ScrollLock,
 
     // Modifier keys
     LShift,
@@ -209,6 +223,14 @@ impl Code {
             0x42 => Self::F8,
             0x43 => Self::F9,
             0x44 => Self::F10,
+            0x45 => Self::NumLock,
+            0x46 => Self::ScrollLock,
+            0x47 => Self::Home,
+
+            0x67 => Self::Up,
+            0x69 => Self::Left,
+            0x6a => Self::Right,
+            0x6c => Self::Down,
 
             _ => return None,
         })

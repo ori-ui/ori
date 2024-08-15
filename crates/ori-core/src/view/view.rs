@@ -32,8 +32,7 @@ use crate::{
 ///     should compute it's own size in accordance with the given [`Space`], and
 ///     return it. A container view should pass an appropriate [`Space`] to it's
 ///     contents and the compute it's own size based on the contents' size(s).
-/// - [`View::draw`] is called when the view needs to be drawn. See [`Canvas`]
-///     for more information on drawing.
+/// - [`View::draw`] is called when the view needs to be drawn.
 ///
 /// For examples see the implementation of views like [`Button`] or [`Checkbox`].
 ///

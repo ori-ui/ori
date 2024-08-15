@@ -1,4 +1,4 @@
-/// Radi of the corners on a [`Quad`](super::Quad).
+/// Radi of the corners on a rounded rectangle.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BorderRadius {
@@ -82,7 +82,7 @@ impl From<BorderRadius> for [f32; 4] {
     }
 }
 
-/// The border width of a [`Quad`](super::Quad).
+/// The border width of a rounded rectangle.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BorderWidth {

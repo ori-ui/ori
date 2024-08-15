@@ -8,10 +8,6 @@ pkgs.stdenv.mkDerivation rec {
 
     pkgs.wayland
     pkgs.libxkbcommon
-
-    pkgs.xorg.libXcursor
-    pkgs.xorg.libXrandr
-    pkgs.xorg.libXi
     pkgs.xorg.libX11
   ];
 

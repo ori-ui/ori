@@ -1,8 +1,9 @@
 use crate::{
+    canvas::Pattern,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     image::Image,
-    layout::{Point, Size, Space},
+    layout::{Affine, Size, Space},
     view::View,
 };
 
@@ -38,6 +39,13 @@ impl<T> View<T> for Image {
     }
 
     fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
-        cx.image(Point::ZERO, self.clone());
+        cx.fill_rect(
+            cx.rect(),
+            Pattern {
+                image: self.clone(),
+                transform: Affine::IDENTITY,
+                opacity: 1.0,
+            },
+        );
     }
 }

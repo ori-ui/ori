@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{
     canvas::{FillRule, Mask, Paint, Stroke},
     layout::{Affine, Point, Rect, Size, Vector},
-    prelude::{BorderRadius, BorderWidth, Canvas, Curve, Image},
+    prelude::{BorderRadius, BorderWidth, Canvas, Curve},
     text::{Fonts, TextBuffer},
     view::ViewState,
     window::Window,
@@ -107,11 +107,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         self.canvas.stroke(curve, stroke.into(), paint.into());
     }
 
-    /// Draw an image.
-    pub fn image(&mut self, point: Point, image: Image) {
-        self.canvas.image(point, image);
-    }
-
     /// Draw a text buffer.
     pub fn text(&mut self, buffer: &TextBuffer, paint: impl Into<Paint>, offset: Vector) {
         self.text_raw(buffer.raw(), paint, offset);
@@ -148,12 +143,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         let mut curve = Curve::new();
         curve.push_rect_with_radius(rect, radius);
 
-        self.fill(curve, FillRule::Winding, paint);
+        self.fill(curve, FillRule::NonZero, paint);
 
         let mut curve = Curve::new();
         curve.push_rect_with_borders(rect, radius, width);
 
-        self.fill(curve, FillRule::Winding, border_paint);
+        self.fill(curve, FillRule::NonZero, border_paint);
     }
 
     /// Draw an overlay, at `index`.

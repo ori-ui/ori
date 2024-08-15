@@ -128,7 +128,7 @@ impl From<Pattern> for Paint {
 pub enum FillRule {
     /// A point is inside the shape if a ray from the point crosses a non-zero sum of signed edge
     /// crossings.
-    Winding,
+    NonZero,
 
     /// A point is inside the shape if a ray from the point crosses an odd number of edges.
     EvenOdd,
@@ -148,7 +148,7 @@ impl From<Rect> for Mask {
     fn from(value: Rect) -> Self {
         Self {
             curve: Curve::from(value),
-            fill: FillRule::Winding,
+            fill: FillRule::NonZero,
         }
     }
 }
@@ -156,15 +156,6 @@ impl From<Rect> for Mask {
 /// A primitive that can be drawn on a canvas.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Primitive {
-    /// A rectangle.
-    Rect {
-        /// The rectangle to draw.
-        rect: Rect,
-
-        /// The paint to fill the rectangle with.
-        paint: Paint,
-    },
-
     /// A filled curve.
     Fill {
         /// The curve to draw.
@@ -189,15 +180,6 @@ pub enum Primitive {
         paint: Paint,
     },
 
-    /// An image.
-    Image {
-        /// The top-left corner of the image.
-        point: Point,
-
-        /// The image to draw.
-        image: Image,
-    },
-
     /// A layer that can be transformed and masked.
     Layer {
         /// The primitives of the layer.
@@ -218,10 +200,8 @@ impl Primitive {
     /// Count the number of primitives.
     pub fn count(&self) -> usize {
         match self {
-            Primitive::Rect { .. } => 1,
             Primitive::Fill { .. } => 1,
             Primitive::Stroke { .. } => 1,
-            Primitive::Image { .. } => 1,
             Primitive::Layer { primitives, .. } => primitives.iter().map(Self::count).sum(),
         }
     }
@@ -273,19 +253,22 @@ impl Canvas {
 
     /// Draw a rectangle.
     pub fn rect(&mut self, rect: Rect, paint: Paint) {
-        self.primitives.push(Primitive::Rect { rect, paint });
+        let curve = Curve::rect(rect);
+        self.fill(curve.clone(), FillRule::NonZero, paint);
     }
 
     /// Draw a trigger rectangle.
     pub fn trigger(&mut self, rect: Rect) {
-        self.primitives.push(Primitive::Rect {
-            rect,
-            paint: Paint {
+        let curve = Curve::rect(rect);
+        self.fill(
+            curve,
+            FillRule::NonZero,
+            Paint {
                 shader: Shader::Solid(Color::TRANSPARENT),
                 blend: BlendMode::Destination,
                 anti_alias: false,
             },
-        });
+        );
     }
 
     /// Fill a curve.
@@ -300,11 +283,6 @@ impl Canvas {
             stroke,
             paint,
         });
-    }
-
-    /// Draw an image.
-    pub fn image(&mut self, point: Point, image: Image) {
-        self.primitives.push(Primitive::Image { point, image });
     }
 
     /// Draw an overlay.
@@ -385,27 +363,12 @@ impl Canvas {
         fn recurse(primitives: &[Primitive], view: Option<ViewId>, point: Point) -> Option<ViewId> {
             for primitive in primitives.iter().rev() {
                 match primitive {
-                    Primitive::Rect { rect, .. } => {
-                        if rect.contains(point) {
-                            return view;
-                        }
-                    }
                     Primitive::Fill { curve, fill, .. } => {
                         if curve.contains(point, *fill) {
                             return view;
                         }
                     }
                     Primitive::Stroke { .. } => {}
-                    Primitive::Image {
-                        point: image_point,
-                        image,
-                    } => {
-                        let rect = Rect::min_size(*image_point, image.size());
-
-                        if rect.contains(point) {
-                            return view;
-                        }
-                    }
                     Primitive::Layer {
                         primitives,
                         transform,
@@ -455,18 +418,6 @@ impl Canvas {
 
     fn extract_primitive_rects(primitive: &Primitive, transform: Affine, rects: &mut Rects) {
         match primitive {
-            Primitive::Rect { rect, paint } => {
-                let mut hasher = SeaHasher::new();
-
-                hasher.write_u64(0);
-                rect.hash(&mut hasher);
-                paint.hash(&mut hasher);
-                transform.hash(&mut hasher);
-
-                let hash = hasher.finish();
-
-                rects.insert(hash, rect.transform(transform));
-            }
             Primitive::Fill { curve, fill, paint } => {
                 let mut hasher = SeaHasher::new();
 
@@ -496,19 +447,6 @@ impl Canvas {
                 let hash = hasher.finish();
 
                 let rect = curve.bounds().expand(stroke.width / 2.0);
-                rects.insert(hash, rect.transform(transform));
-            }
-            Primitive::Image { point, image } => {
-                let mut hasher = SeaHasher::new();
-
-                hasher.write_u64(3);
-                point.hash(&mut hasher);
-                image.hash(&mut hasher);
-                transform.hash(&mut hasher);
-
-                let hash = hasher.finish();
-
-                let rect = Rect::min_size(*point, image.size());
                 rects.insert(hash, rect.transform(transform));
             }
             Primitive::Layer {

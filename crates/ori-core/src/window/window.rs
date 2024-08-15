@@ -154,6 +154,7 @@ impl Window {
     /// Set the sizing to [`WindowSizing::Content`].
     pub fn fit_content(mut self) -> Self {
         self.sizing = WindowSizing::Content;
+        self.resizable = false;
         self
     }
 

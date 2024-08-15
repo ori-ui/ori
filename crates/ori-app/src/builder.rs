@@ -5,11 +5,10 @@ use ori_core::{
     context::Contexts,
     style::Styles,
     text::{FontSource, Fonts},
-    view::{any, AnyView},
     window::Window,
 };
 
-use crate::{App, AppRequest, Delegate, UiBuilder};
+use crate::{App, AppRequest, Delegate, IntoUiBuilder};
 
 /// A builder for an [`App`].
 pub struct AppBuilder<T> {
@@ -64,12 +63,12 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a window to the application.
-    pub fn window<V: AnyView<T> + 'static>(
+    pub fn window<V, P>(
         mut self,
         window: Window,
-        mut ui: impl FnMut(&mut T) -> V + 'static,
+        builder: impl IntoUiBuilder<V, P, Data = T>,
     ) -> Self {
-        let builder: UiBuilder<T> = Box::new(move |data| any(ui(data)));
+        let builder = builder.into_ui_builder();
         (self.requests).push(AppRequest::OpenWindow(window, builder));
         self
     }

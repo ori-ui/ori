@@ -18,24 +18,27 @@ authors = ["Ori Contributors"]
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-ori-app = { path = "crates/ori-app", version = "0.1.0-alpha.1" }
-ori-core = { path = "crates/ori-core", version = "0.1.0-alpha.1" }
-ori-font-awesome = { path = "crates/ori-font-awesome", version = "0.1.0-alpha.1" }
-ori-macro = { path = "crates/ori-macro", version = "0.1.0-alpha.1" }
-ori-tiny-skia = { path = "crates/ori-tiny-skia", version = "0.1.0-alpha.1" }
-ori-winit = { path = "crates/ori-winit", version = "0.1.0-alpha.1" }
+ori-app             = { path = "crates/ori-app",            version = "0.1.0-alpha.1" }
+ori-core            = { path = "crates/ori-core",           version = "0.1.0-alpha.1" }
+ori-font-awesome    = { path = "crates/ori-font-awesome",   version = "0.1.0-alpha.1" }
+ori-glow            = { path = "crates/ori-glow",           version = "0.1.0-alpha.1" }
+ori-macro           = { path = "crates/ori-macro",          version = "0.1.0-alpha.1" }
+ori-tiny-skia       = { path = "crates/ori-tiny-skia",      version = "0.1.0-alpha.1" }
+ori-winit           = { path = "crates/ori-winit",          version = "0.1.0-alpha.1" }
+ori-shell           = { path = "crates/ori-shell",          version = "0.1.0-alpha.1" }
 
 [dependencies]
 # Internal dependencies
-ori-app = { workspace = true }
-ori-core = { workspace = true }
-ori-macro = { workspace = true }
+ori-app     = { workspace = true }
+ori-core    = { workspace = true }
+ori-macro   = { workspace = true }
 
 # Optional dependencies
 ori-font-awesome = { workspace = true, optional = true }
 
 # Backend dependencies
-ori-winit = { workspace = true, optional = true }
+ori-winit   = { workspace = true, optional = true }
+ori-shell   = { workspace = true, optional = true }
 
 [dev-dependencies]
 async-std = "1"
@@ -46,7 +49,7 @@ version = "0.1.0-alpha.1"
 features = ["full", "multithread"]
 
 [features]
-default = ["winit", "x11"]
+default = ["shell", "x11"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 multithread = ["ori-core/multithread"]
@@ -56,9 +59,10 @@ serde = ["ori-core/serde"]
 full = ["font-awesome", "image", "serde"]
 
 # Backend features
+shell = ["dep:ori-shell"]
 winit = ["dep:ori-winit"]
-x11 = ["ori-winit?/x11"]
-wayland = ["ori-winit?/wayland"]
+x11 = ["ori-winit?/x11", "ori-shell?/x11"]
+wayland = ["ori-winit?/wayland", "ori-shell?/wayland"]
 
 [profile.dev]
 debug = "limited"

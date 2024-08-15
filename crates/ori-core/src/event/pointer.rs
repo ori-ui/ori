@@ -54,6 +54,20 @@ pub enum PointerButton {
     Other(u16),
 }
 
+impl PointerButton {
+    /// Create a new pointer button from a [`u16`].
+    pub const fn from_u16(button: u16) -> Self {
+        match button {
+            1 => Self::Primary,
+            2 => Self::Tertiary,
+            3 => Self::Secondary,
+            8 => Self::Back,
+            9 => Self::Forward,
+            button => Self::Other(button),
+        }
+    }
+}
+
 /// A pointer was moved.
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct PointerMoved {

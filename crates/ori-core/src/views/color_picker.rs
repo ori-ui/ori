@@ -325,7 +325,7 @@ impl<T> View<T> for ColorPicker<T> {
                 // draw the wheel
                 cx.fill(
                     Curve::circle(Point::ZERO, wheel_radius + self.border_width),
-                    FillRule::Winding,
+                    FillRule::NonZero,
                     self.border_color,
                 );
 
@@ -338,7 +338,7 @@ impl<T> View<T> for ColorPicker<T> {
 
                 cx.fill(
                     Curve::circle(Point::ZERO, wheel_radius),
-                    FillRule::Winding,
+                    FillRule::NonZero,
                     pattern,
                 );
 

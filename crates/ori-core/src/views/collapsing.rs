@@ -246,7 +246,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             * Affine::rotate(PI / 2.0 * t);
 
         cx.layer(transform, |cx| {
-            cx.fill(icon(), FillRule::Winding, self.icon_color);
+            cx.fill(icon(), FillRule::EvenOdd, self.icon_color);
         });
 
         self.header.draw(&mut state.header, cx, data);
@@ -271,6 +271,7 @@ fn icon() -> Curve {
     curve.move_to(Point::new(-d, -d * SQRT_2));
     curve.line_to(Point::new(d * SQRT_2, 0.0));
     curve.line_to(Point::new(-d, d * SQRT_2));
+    curve.close();
 
     curve
 }

@@ -111,6 +111,16 @@ impl Curve {
         self.bounds = Rect::ZERO;
     }
 
+    /// Get the points in the curve.
+    pub fn points(&self) -> &[Point] {
+        &self.points
+    }
+
+    /// Get the verbs in the curve.
+    pub fn verbs(&self) -> &[CurveVerb] {
+        &self.verbs
+    }
+
     /// Get the last point in the curve.
     pub fn last_point(&self) -> Option<Point> {
         self.points.last().copied()
@@ -230,7 +240,7 @@ impl Curve {
         }
 
         match rule {
-            FillRule::Winding => self.contains_even_odd(point),
+            FillRule::NonZero => self.contains_even_odd(point),
             FillRule::EvenOdd => self.contains_even_odd(point),
         }
     }
@@ -363,6 +373,8 @@ impl Curve {
                 tl + Vector::new(s, (r + e) * 0.45),
                 tl + Vector::new(s, r),
             );
+
+            self.close();
         }
 
         let [r, s, e] = Self::border_data(radius, width, 1);
@@ -383,6 +395,8 @@ impl Curve {
                 tr + Vector::new(-(r + e) * 0.45, s),
                 tr + Vector::new(-r, s),
             );
+
+            self.close();
         }
 
         let [r, s, e] = Self::border_data(radius, width, 2);
@@ -403,6 +417,8 @@ impl Curve {
                 br + Vector::new(-s, -(r + e) * 0.45),
                 br + Vector::new(-s, -r),
             );
+
+            self.close();
         }
 
         let [r, s, e] = Self::border_data(radius, width, 3);
@@ -423,9 +439,9 @@ impl Curve {
                 bl + Vector::new((r + e) * 0.45, -s),
                 bl + Vector::new(r, -s),
             );
-        }
 
-        self.close();
+            self.close();
+        }
     }
 
     pub(crate) fn square_roots(a: f32, b: f32, c: f32) -> [f32; 2] {

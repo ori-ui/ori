@@ -1,0 +1,43 @@
+#version 330 core
+
+layout(location = 0) in vec4 transform;
+layout(location = 1) in vec2 translation;
+layout(location = 2) in vec4 bounds;
+layout(location = 3) in vec4 color;
+layout(location = 4) in uint flags;
+layout(location = 5) in uint band_index;
+
+flat out uint v_flags;
+flat out uint v_band_index;
+out vec2 v_vertex;
+out vec4 v_bounds;
+out vec4 v_color;
+out mat2 v_transform_inv;
+
+const vec2 rect[6] = vec2[6](
+    vec2(0.0, 0.0),
+    vec2(1.0, 0.0),
+    vec2(1.0, 1.0),
+    vec2(1.0, 1.0),
+    vec2(0.0, 1.0),
+    vec2(0.0, 0.0)
+);
+
+void main() {
+    mat2 transform = mat2(
+        vec2(transform.x, transform.y),
+        vec2(transform.z, transform.w)
+    );
+
+    v_vertex = bounds.xy + rect[gl_VertexID] * bounds.zw;
+    v_bounds = bounds;
+    v_color = color;
+    v_flags = flags;
+    v_transform_inv = inverse(transform);
+    v_band_index = band_index;
+
+    gl_Position = vec4(
+        transform * v_vertex + translation,
+        0.0, 1.0
+    );
+}

@@ -79,7 +79,7 @@ impl Hash for Stroke {
 }
 
 impl Curve {
-    const MAX_ERROR: f32 = 0.5;
+    const MAX_ERROR: f32 = 0.1;
     const MAX_DEPTH: u8 = 6;
 
     const QUAD_SAMPLES: usize = 5;

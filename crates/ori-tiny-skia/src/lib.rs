@@ -351,7 +351,7 @@ fn map_transform(transform: &Affine) -> tiny_skia::Transform {
 
 fn map_fill_rule(fill: &FillRule) -> tiny_skia::FillRule {
     match fill {
-        FillRule::Winding => tiny_skia::FillRule::Winding,
+        FillRule::NonZero => tiny_skia::FillRule::Winding,
         FillRule::EvenOdd => tiny_skia::FillRule::EvenOdd,
     }
 }

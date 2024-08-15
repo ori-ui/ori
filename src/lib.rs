@@ -26,6 +26,9 @@ pub mod winit {
 #[cfg(feature = "winit")]
 pub use ori_winit::launch;
 
+#[cfg(feature = "shell")]
+pub use ori_shell::launch;
+
 pub mod prelude {
     //! Convenient imports for Ori.
 

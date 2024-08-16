@@ -2,7 +2,9 @@ use std::{collections::HashMap, ffi, mem, slice};
 
 use glow::HasContext;
 use ori_core::{
-    canvas::{Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive, Shader, Stroke},
+    canvas::{
+        BlendMode, Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive, Shader, Stroke,
+    },
     image::{ImageData, WeakImage},
     layout::{Affine, Matrix, Point, Vector},
 };
@@ -360,7 +362,11 @@ impl GlowRenderer {
                     self.fill_curve(
                         &mask.curve,
                         &mask.fill,
-                        &Paint::from(Color::TRANSPARENT),
+                        &Paint {
+                            shader: Shader::Solid(Color::TRANSPARENT),
+                            blend: BlendMode::Destination,
+                            anti_alias: false,
+                        },
                         transform,
                     )?;
 
@@ -375,7 +381,6 @@ impl GlowRenderer {
 
                 if mask.is_some() {
                     self.dispatch();
-
                     self.stencil -= 1;
                     self.gl.stencil_func(glow::LEQUAL, self.stencil, 0xFF);
                 }

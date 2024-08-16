@@ -277,6 +277,7 @@ impl<T> WinitApp<T> {
 
                             state.window.set_min_inner_size(Some(inner));
                             state.window.set_max_inner_size(Some(inner));
+                            let _ = state.window.request_inner_size(inner);
                         }
                         WindowUpdate::Scale(_) => {}
                         WindowUpdate::Resizable(resizable) => {

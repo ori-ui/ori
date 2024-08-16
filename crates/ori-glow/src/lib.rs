@@ -72,6 +72,7 @@ impl GlowRenderer {
     const MAX_CURVE_POINTS: usize = 4096;
     const MAX_BAND_DATA: usize = 4096;
     const MAX_INSTANCES: usize = 256;
+    const MAX_BANDS: usize = 256;
 
     /// # Safety
     /// - This can never truly be safe, this is loading opengl functions, here be dragons.
@@ -128,9 +129,9 @@ impl GlowRenderer {
             height: 0,
             stencil: 0,
             points: Vec::with_capacity(Self::MAX_CURVE_POINTS),
-            bands: Vec::with_capacity(16),
+            bands: Vec::with_capacity(Self::MAX_BANDS),
             band_data: Vec::with_capacity(Self::MAX_BAND_DATA),
-            instances: Vec::with_capacity(16),
+            instances: Vec::with_capacity(Self::MAX_INSTANCES),
             point_buffer,
             band_buffer,
             uniform_buffer,
@@ -145,7 +146,14 @@ impl GlowRenderer {
 
     /// # Safety
     /// - This can never truly be safe, this is calling opengl functions, here be dragons.
-    pub unsafe fn render(&mut self, canvas: &Canvas, color: Color, width: u32, height: u32) {
+    pub unsafe fn render(
+        &mut self,
+        canvas: &Canvas,
+        color: Color,
+        width: u32,
+        height: u32,
+        scale_factor: f32,
+    ) {
         self.idle();
 
         self.width = width;
@@ -180,9 +188,10 @@ impl GlowRenderer {
 
         let x_scale = 2.0 / width as f32;
         let y_scale = 2.0 / height as f32;
+        let scale = Vector::new(x_scale, -y_scale);
 
         let transform = Affine {
-            matrix: Matrix::from_scale(Vector::new(x_scale, -y_scale)),
+            matrix: Matrix::from_scale(scale * scale_factor),
             translation: Vector::new(-1.0, 1.0),
         };
 
@@ -503,7 +512,7 @@ impl GlowRenderer {
         }
 
         if paint.anti_alias {
-            flags |= 16 << 8;
+            flags |= 8 << 8;
         } else {
             flags |= 1 << 8;
         }
@@ -529,7 +538,7 @@ impl GlowRenderer {
 
     unsafe fn push_bands(&mut self, curve: &Curve) -> (u32, u32) {
         let count = curve.bounds().height() / 10.0;
-        let count = usize::clamp(count.ceil() as usize, 1, 255);
+        let count = usize::clamp(count.ceil() as usize, 1, Self::MAX_BANDS - 1);
 
         self.bands.clear();
         self.bands.resize(count, Vec::new());

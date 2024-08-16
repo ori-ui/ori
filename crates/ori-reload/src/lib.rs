@@ -1,7 +1,15 @@
+#![deny(missing_docs)]
+#![allow(clippy::module_inception)]
+
+//! Ori [`reload`](ori_reload) module.
+
 use std::{
     env, fs,
     hash::{DefaultHasher, Hash, Hasher},
-    thread::JoinHandle,
+    path::Path,
+    process::Command,
+    sync::Once,
+    thread::{self, JoinHandle},
     time::SystemTime,
 };
 
@@ -11,6 +19,66 @@ use ori_core::{
     prelude::{BuildCx, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space},
     view::View,
 };
+
+fn modified(path: impl AsRef<Path>) -> Option<SystemTime> {
+    fs::metadata(path).ok()?.modified().ok()
+}
+
+fn modified_hasher(hasher: &mut DefaultHasher, path: impl AsRef<Path>) {
+    match fs::read_dir(&path) {
+        Ok(dir) => {
+            for entry in dir.flatten() {
+                modified_hasher(hasher, entry.path());
+            }
+        }
+        Err(_) => modified(path).hash(hasher),
+    }
+}
+
+fn modified_hash(path: impl AsRef<Path>) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    modified_hasher(&mut hasher, path);
+    hasher.finish()
+}
+
+/// Start a cargo build watcher.
+pub fn start_cargo_build_watcher(manifest_dir: &str, reload_feature: &str, is_release: bool) {
+    static WATCHER: Once = Once::new();
+
+    WATCHER.call_once(|| {
+        let dir = Path::new(manifest_dir).join("src");
+        let feature = reload_feature.to_string();
+
+        thread::spawn(move || {
+            let mut last_update = modified_hash(&dir);
+
+            loop {
+                let new_modified = modified_hash(&dir);
+
+                if last_update != new_modified {
+                    last_update = new_modified;
+
+                    let mut command = Command::new("cargo");
+
+                    command
+                        .current_dir(&dir)
+                        .arg("build")
+                        .arg("--lib")
+                        .arg("--features")
+                        .arg(&feature);
+
+                    if is_release {
+                        command.arg("--release");
+                    }
+
+                    command.status().unwrap();
+                }
+
+                thread::sleep(std::time::Duration::from_secs(1));
+            }
+        });
+    });
+}
 
 /// A reloader for shared libraries.
 pub struct Reloader {
@@ -77,19 +145,18 @@ impl<V> Watcher<V> {
 
     fn spawn(&self, proxy: CommandProxy) -> JoinHandle<()> {
         let file = self.file.clone();
-        std::thread::spawn(move || {
-            let modified = fs::metadata(&file).ok().and_then(|m| m.modified().ok());
+        thread::spawn(move || {
+            let last_modified = modified(&file);
 
-            if modified.is_none() {
+            if last_modified.is_none() {
                 return;
             }
 
             loop {
-                std::thread::sleep(std::time::Duration::from_secs(1));
+                thread::sleep(std::time::Duration::from_secs(1));
 
-                let new_modified = fs::metadata(&file).ok().and_then(|m| m.modified().ok());
-
-                if new_modified != modified {
+                let new_modified = modified(&file);
+                if new_modified != last_modified {
                     proxy.cmd(Modified);
                     break;
                 }

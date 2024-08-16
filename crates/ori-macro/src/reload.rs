@@ -87,18 +87,25 @@ pub fn reloadable(
     let ori_core = find_core();
     let ori_reload = find_reload();
 
+    let is_release = cfg!(release_profile);
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    let target_dir = match cfg!(debug_assertions) {
-        true => "debug",
-        false => "release",
+    let profile = match is_release {
+        true => "release",
+        false => "debug",
     };
-    let name = std::env::var("CARGO_PKG_NAME").unwrap();
+    let name = std::env::var("CARGO_PKG_NAME").unwrap().replace("-", "_");
+
+    let reload_feature = match proc_macro_crate::crate_name("ori") {
+        Ok(proc_macro_crate::FoundCrate::Name(name)) => format!("{}/reload", name),
+        Ok(proc_macro_crate::FoundCrate::Itself) => String::from("reload"),
+        Err(_) => String::from("ori/reload"),
+    };
 
     #[cfg(target_os = "windows")]
     let path = format!("{}/target/{}/{}.dll", manifest_dir, target_dir, name);
 
     #[cfg(target_family = "unix")]
-    let path = format!("{}/target/{}/lib{}.so", manifest_dir, target_dir, name);
+    let path = format!("{}/target/{}/lib{}.so", manifest_dir, profile, name);
 
     if cfg!(not(feature = "reload")) {
         let expanded = quote! {
@@ -124,6 +131,12 @@ pub fn reloadable(
 
             static RELOADER: ::std::sync::Mutex<#ori_reload::Reloader> =
                 ::std::sync::Mutex::new(#ori_reload::Reloader::new(#path));
+
+            #ori_reload::start_cargo_build_watcher(
+                #manifest_dir,
+                #reload_feature,
+                #is_release,
+            );
 
             let mut __reloader = RELOADER.lock().unwrap();
             let mut __styles = #ori_core::style::Styles::snapshot();

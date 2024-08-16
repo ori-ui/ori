@@ -23,7 +23,7 @@ use x11rb::{
     atom_manager,
     connection::Connection,
     cursor::Handle as CursorHandle,
-    properties::{WmSizeHints, WmSizeHintsSpecification},
+    properties::WmSizeHints,
     protocol::{
         render::{ConnectionExt as _, PictType},
         xkb::{
@@ -68,6 +68,7 @@ struct X11Window {
     ori_id: WindowId,
     physical_width: u32,
     physical_height: u32,
+    scale_factor: f32,
     egl_surface: EglSurface,
     renderer: GlowRenderer,
     needs_redraw: bool,
@@ -101,15 +102,8 @@ impl X11Window {
         height: i32,
         resizable: bool,
     ) -> Result<(), X11Error> {
-        use WmSizeHintsSpecification::*;
-
-        let spec = match resizable {
-            true => UserSpecified,
-            false => ProgramSpecified,
-        };
-
         let size_hints = WmSizeHints {
-            size: Some((spec, width, height)),
+            size: None,
             min_size: (!resizable).then_some((width, height)),
             max_size: (!resizable).then_some((width, height)),
             ..Default::default()
@@ -352,14 +346,18 @@ impl<T> X11App<T> {
             .border_pixel(screen.black_pixel)
             .colormap(colormap_id);
 
+        let scale_factor = 1.0;
+        let physical_width = (window.size.width * scale_factor) as u32;
+        let physical_height = (window.size.height * scale_factor) as u32;
+
         self.conn.create_window(
             depth,
             win_id,
             screen.root,
             0,
             0,
-            window.width() as u16,
-            window.height() as u16,
+            physical_width as u16,
+            physical_height as u16,
             0,
             WindowClass::INPUT_OUTPUT,
             visual,
@@ -398,8 +396,9 @@ impl<T> X11App<T> {
         let x11_window = X11Window {
             x11_id: win_id,
             ori_id: window.id(),
-            physical_width: window.width(),
-            physical_height: window.height(),
+            physical_width,
+            physical_height,
+            scale_factor,
             egl_surface,
             renderer,
             needs_redraw: true,
@@ -411,8 +410,8 @@ impl<T> X11App<T> {
         if !window.resizable {
             x11_window.set_size_hints(
                 &self.conn,
-                window.width() as i32,
-                window.height() as i32,
+                physical_width as i32,
+                physical_height as i32,
                 window.resizable,
             )?;
         }
@@ -461,6 +460,7 @@ impl<T> X11App<T> {
                         state.clear_color,
                         window.physical_width,
                         window.physical_height,
+                        window.scale_factor,
                     );
 
                     window.egl_surface.swap_buffers();
@@ -512,23 +512,25 @@ impl<T> X11App<T> {
                     }
                     WindowUpdate::Icon(_) => {}
                     WindowUpdate::Size(size) => {
-                        let width = size.width as u32;
-                        let height = size.height as u32;
+                        let physical_width = (size.width * window.scale_factor) as u32;
+                        let physical_height = (size.height * window.scale_factor) as u32;
 
-                        let aux = ConfigureWindowAux::new().width(width).height(height);
-
-                        window.physical_width = width;
-                        window.physical_height = height;
-
-                        self.conn.configure_window(window.x11_id, &aux)?;
-
-                        let resizable = self.app.get_window(id).map_or(false, |w| w.resizable);
+                        let resizable = self.app.get_window(id).map_or(true, |w| w.resizable);
                         window.set_size_hints(
                             &self.conn,
-                            width as i32,
-                            height as i32,
+                            physical_width as i32,
+                            physical_height as i32,
                             resizable,
                         )?;
+
+                        let aux = ConfigureWindowAux::new()
+                            .width(physical_width)
+                            .height(physical_height);
+
+                        window.physical_width = physical_width;
+                        window.physical_height = physical_height;
+
+                        self.conn.configure_window(window.x11_id, &aux)?;
                     }
                     WindowUpdate::Scale(_) => {}
                     WindowUpdate::Resizable(resizable) => {
@@ -571,18 +573,28 @@ impl<T> X11App<T> {
                 }
             }
             XEvent::ConfigureNotify(event) => {
-                let width = event.width as u32;
-                let height = event.height as u32;
+                let physical_width = event.width as u32;
+                let physical_height = event.height as u32;
 
                 if let Some(index) = self.get_window_x11(event.window) {
                     let window = &mut self.windows[index];
 
-                    if window.physical_width != width || window.physical_height != height {
-                        window.physical_width = width;
-                        window.physical_height = height;
+                    let logical_width = (physical_width as f32 / window.scale_factor) as u32;
+                    let logical_height = (physical_height as f32 / window.scale_factor) as u32;
+
+                    if window.physical_width != physical_width
+                        || window.physical_height != physical_height
+                    {
+                        window.physical_width = physical_width;
+                        window.physical_height = physical_height;
 
                         let id = window.ori_id;
-                        self.app.window_resized(&mut self.data, id, width, height);
+                        (self.app).window_resized(
+                            &mut self.data,
+                            id,
+                            logical_width,
+                            logical_height,
+                        );
                         self.request_redraw(id);
                     }
                 }
@@ -594,15 +606,18 @@ impl<T> X11App<T> {
                 }
             }
             XEvent::MotionNotify(event) => {
+                let position = Point::new(event.event_x as f32, event.event_y as f32);
+
                 if let Some(index) = self.get_window_x11(event.event) {
                     let pointer_id = PointerId::from_hash(&event.child);
 
-                    let id = self.windows[index].ori_id;
+                    let window = &self.windows[index];
+                    let id = window.ori_id;
                     self.app.pointer_moved(
                         &mut self.data,
                         id,
                         pointer_id,
-                        Point::new(event.event_x as f32, event.event_y as f32),
+                        position / window.scale_factor,
                     );
                 }
             }

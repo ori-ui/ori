@@ -445,7 +445,7 @@ void main() {
     }
 
     vec2 image_size = vec2(textureSize(image, 0));
-    vec2 image_uv = v_image_transform * v_vertex + v_image_offset_opacity.xy;
+    vec2 image_uv = v_image_transform * (v_vertex + v_image_offset_opacity.xy);
     vec4 color = texture(image, image_uv / image_size);
     color.a *= v_image_offset_opacity.z;
 

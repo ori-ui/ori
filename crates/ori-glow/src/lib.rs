@@ -512,7 +512,7 @@ impl GlowRenderer {
         }
 
         if paint.anti_alias {
-            flags |= 8 << 8;
+            flags |= 16 << 8;
         } else {
             flags |= 1 << 8;
         }

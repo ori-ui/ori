@@ -1,0 +1,11 @@
+[package]
+name = "ori-reload"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ori-core = { workspace = true, features = ["multithread"] }
+
+libloading = "0.8"

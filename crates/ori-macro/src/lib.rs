@@ -7,6 +7,7 @@ mod entry;
 mod example;
 mod font;
 mod rebuild;
+mod reload;
 
 fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
     match krate {
@@ -27,6 +28,19 @@ fn find_core() -> syn::Path {
                 syn::parse_quote!(#ori::core)
             }
             Err(_) => syn::parse_quote!(ori::core),
+        },
+    }
+}
+
+fn find_reload() -> syn::Path {
+    match proc_macro_crate::crate_name("ori-reload") {
+        Ok(krate) => found_crate(krate),
+        Err(_) => match proc_macro_crate::crate_name("ori") {
+            Ok(krate) => {
+                let ori = found_crate(krate);
+                syn::parse_quote!(#ori::reload)
+            }
+            Err(_) => syn::parse_quote!(ori::reload),
         },
     }
 }
@@ -77,6 +91,16 @@ pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macr
     build::derive_build(input)
 }
 
+/// A macro to generate boilerplate for a hot-reloadable function.
+#[manyhow::manyhow]
+#[proc_macro_attribute]
+pub fn reloadable(
+    args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> manyhow::Result<proc_macro::TokenStream> {
+    reload::reloadable(args, input)
+}
+
 /// Only include the annotated item on desktop platforms.
 #[proc_macro_attribute]
 pub fn desktop(
@@ -114,6 +138,22 @@ pub fn mobile(
             target_os = "android",
             target_os = "ios",
         ))]
+        #input
+    };
+
+    expanded.into()
+}
+
+/// Only include the annotated item on web platforms.
+#[proc_macro_attribute]
+pub fn web(
+    _args: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let input = proc_macro2::TokenStream::from(input);
+
+    let expanded = quote::quote! {
+        #[cfg(target_arch = "wasm32")]
         #input
     };
 

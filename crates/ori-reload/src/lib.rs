@@ -10,7 +10,7 @@ use std::{
     process::Command,
     sync::Once,
     thread::{self, JoinHandle},
-    time::SystemTime,
+    time::{Duration, SystemTime},
 };
 
 use libloading::{Library, Symbol};
@@ -74,7 +74,7 @@ pub fn start_cargo_build_watcher(manifest_dir: &str, reload_feature: &str, is_re
                     command.status().unwrap();
                 }
 
-                thread::sleep(std::time::Duration::from_secs(1));
+                thread::sleep(Duration::from_secs(1));
             }
         });
     });
@@ -153,7 +153,7 @@ impl<V> Watcher<V> {
             }
 
             loop {
-                thread::sleep(std::time::Duration::from_secs(1));
+                thread::sleep(Duration::from_secs(1));
 
                 let new_modified = modified(&file);
                 if new_modified != last_modified {

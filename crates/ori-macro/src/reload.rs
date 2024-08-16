@@ -61,9 +61,13 @@ pub fn reloadable(
     let data = match signature.output {
         syn::ReturnType::Type(_, ref ty) => get_view_data(ty),
         _ => {
-            manyhow::bail!("expected a return type");
+            manyhow::bail!("reloadable functions must return `impl View`");
         }
     };
+
+    if data.is_none() {
+        manyhow::bail!("reloadable functions must return `impl View`");
+    }
 
     let args = inputs
         .iter()

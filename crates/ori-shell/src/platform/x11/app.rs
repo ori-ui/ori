@@ -22,11 +22,12 @@ use ori_glow::GlowRenderer;
 use libloading::Library;
 use x11rb::{
     atom_manager,
-    connection::Connection,
+    connection::{Connection, RequestConnection},
     cursor::Handle as CursorHandle,
     properties::WmSizeHints,
     protocol::{
         render::{ConnectionExt as _, PictType},
+        sync::{ConnectionExt as _, Int64},
         xkb::{
             ConnectionExt as _, EventType as XkbEventType, MapPart as XkbMapPart,
             SelectEventsAux as XkbSelectEventsAux, ID as XkbID,
@@ -63,6 +64,8 @@ atom_manager! {
         WM_DELETE_WINDOW,
         _NET_WM_NAME,
         _NET_WM_ICON,
+        _NET_WM_SYNC_REQUEST,
+        _NET_WM_SYNC_REQUEST_COUNTER,
         _MOTIF_WM_HINTS,
     }
 }
@@ -76,6 +79,7 @@ struct X11Window {
     egl_surface: EglSurface,
     renderer: GlowRenderer,
     needs_redraw: bool,
+    sync_counter: Option<u32>,
 }
 
 impl X11Window {
@@ -381,7 +385,7 @@ impl<T> X11App<T> {
             win_id,
             self.atoms.WM_PROTOCOLS,
             AtomEnum::ATOM,
-            &[self.atoms.WM_DELETE_WINDOW],
+            &[self.atoms.WM_DELETE_WINDOW, self.atoms._NET_WM_SYNC_REQUEST],
         )?;
 
         self.conn.change_property8(
@@ -392,11 +396,33 @@ impl<T> X11App<T> {
             b"ori\0",
         )?;
 
+        let sync_counter = if self
+            .conn
+            .extension_information(x11rb::protocol::sync::X11_EXTENSION_NAME)
+            .is_ok()
+        {
+            let counter = self.conn.generate_id()?;
+
+            self.conn.sync_create_counter(counter, Int64::default())?;
+
+            self.conn.change_property32(
+                PropMode::REPLACE,
+                win_id,
+                self.atoms._NET_WM_SYNC_REQUEST_COUNTER,
+                AtomEnum::CARDINAL,
+                &[counter],
+            )?;
+
+            Some(counter)
+        } else {
+            None
+        };
+
         self.conn.flush()?;
 
         let egl_surface = EglSurface::new(&self.egl_context, win_id as _);
         egl_surface.make_current();
-        egl_surface.swap_interval(1);
+        egl_surface.swap_interval(0);
 
         let renderer = unsafe {
             GlowRenderer::new(|name| {
@@ -414,6 +440,7 @@ impl<T> X11App<T> {
             egl_surface,
             renderer,
             needs_redraw: true,
+            sync_counter,
         };
 
         x11_window.set_title(&self.conn, &self.atoms, &window.title)?;
@@ -607,14 +634,36 @@ impl<T> X11App<T> {
                             logical_width,
                             logical_height,
                         );
-                        self.request_redraw(id);
+                        window.needs_redraw = true;
                     }
                 }
             }
             XEvent::ClientMessage(event) => {
-                if let Some(index) = self.get_window_x11(event.window) {
+                if event.data.as_data32()[0] == self.atoms.WM_DELETE_WINDOW {
+                    let Some(index) = self.get_window_x11(event.window) else {
+                        return Ok(());
+                    };
+
                     let window = &self.windows[index];
                     self.app.close_requested(&mut self.data, window.ori_id);
+                }
+
+                if event.data.as_data32()[0] == self.atoms._NET_WM_SYNC_REQUEST {
+                    let Some(index) = self.get_window_x11(event.window) else {
+                        return Ok(());
+                    };
+
+                    let window = &mut self.windows[index];
+
+                    let Some(counter) = window.sync_counter else {
+                        return Ok(());
+                    };
+
+                    let lo = event.data.as_data32()[1];
+                    let hi = i32::from_ne_bytes(event.data.as_data32()[2].to_ne_bytes());
+
+                    self.conn.sync_set_counter(counter, Int64 { hi, lo })?;
+                    window.needs_redraw = true;
                 }
             }
             XEvent::MotionNotify(event) => {

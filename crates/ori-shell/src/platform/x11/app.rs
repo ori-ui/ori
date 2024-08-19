@@ -207,7 +207,7 @@ impl<T> X11App<T> {
         let atoms = Atoms::new(&conn)?.reply()?;
         let (clipboard_server, clipboard) = X11ClipboardServer::new(&conn, atoms)?;
 
-        let egl_context = EglContext::new();
+        let egl_context = EglContext::new()?;
 
         let (event_tx, event_rx) = std::sync::mpsc::channel();
 
@@ -420,9 +420,9 @@ impl<T> X11App<T> {
 
         self.conn.flush()?;
 
-        let egl_surface = EglSurface::new(&self.egl_context, win_id as _);
-        egl_surface.make_current();
-        egl_surface.swap_interval(0);
+        let egl_surface = EglSurface::new(&self.egl_context, win_id as _)?;
+        egl_surface.make_current()?;
+        egl_surface.swap_interval(0)?;
 
         let renderer = unsafe {
             GlowRenderer::new(|name| {
@@ -492,7 +492,7 @@ impl<T> X11App<T> {
 
             if let Some(state) = self.app.draw_window(&mut self.data, window.ori_id) {
                 unsafe {
-                    window.egl_surface.make_current();
+                    window.egl_surface.make_current()?;
 
                     window.renderer.render(
                         state.canvas,
@@ -502,7 +502,7 @@ impl<T> X11App<T> {
                         window.scale_factor,
                     );
 
-                    window.egl_surface.swap_buffers();
+                    window.egl_surface.swap_buffers()?;
                 }
             }
         }

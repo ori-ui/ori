@@ -33,7 +33,7 @@ pub struct EglContext {
 }
 
 impl EglContext {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, EglError> {
         #[cfg(x11_platform)]
         let xdisplay = unsafe { x_open_display(std::ptr::null()) };
         let display = unsafe { egl_get_display(xdisplay) };
@@ -43,12 +43,12 @@ impl EglContext {
 
         unsafe {
             egl_initialize(display, &mut major, &mut minor);
-            check_egl_error();
+            check_egl_error()?;
         };
 
         unsafe {
             egl_bind_api(EGL_OPENGL_API);
-            check_egl_error();
+            check_egl_error()?;
         }
 
         let config_attribs = [
@@ -79,7 +79,7 @@ impl EglContext {
                 &mut config,
                 &mut num_config,
             );
-            check_egl_error();
+            check_egl_error()?;
         }
 
         if num_config != 1 {
@@ -104,7 +104,7 @@ impl EglContext {
                 context_attribs.as_ptr(),
             )
         };
-        check_egl_error();
+        check_egl_error()?;
 
         let inner = Arc::new(EglContextInner {
             xdisplay,
@@ -113,7 +113,7 @@ impl EglContext {
             context,
         });
 
-        Self { inner }
+        Ok(Self { inner })
     }
 }
 
@@ -126,13 +126,9 @@ impl Drop for EglContextInner {
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
             );
-            check_egl_error();
-
             egl_destroy_context(self.display, self.context);
-            check_egl_error();
-
             egl_terminate(self.display);
-            check_egl_error();
+            x_close_display(self.xdisplay);
         }
     }
 }
@@ -143,7 +139,7 @@ pub struct EglSurface {
 }
 
 impl EglSurface {
-    pub fn new(context: &EglContext, window: *mut ffi::c_void) -> Self {
+    pub fn new(context: &EglContext, window: *mut ffi::c_void) -> Result<Self, EglError> {
         let surface_attribs = [EGL_NONE];
 
         let surface = unsafe {
@@ -154,33 +150,39 @@ impl EglSurface {
                 surface_attribs.as_ptr(),
             )
         };
-        check_egl_error();
+        check_egl_error()?;
 
-        Self {
+        Ok(Self {
             cx: context.inner.clone(),
             surface,
-        }
+        })
     }
 
-    pub fn swap_interval(&self, interval: i32) {
+    pub fn swap_interval(&self, interval: i32) -> Result<(), EglError> {
         unsafe {
             egl_swap_interval(self.cx.display, interval);
-            check_egl_error();
+            check_egl_error()?;
         }
+
+        Ok(())
     }
 
-    pub fn make_current(&self) {
+    pub fn make_current(&self) -> Result<(), EglError> {
         unsafe {
             egl_make_current(self.cx.display, self.surface, self.surface, self.cx.context);
-            check_egl_error();
+            check_egl_error()?;
         }
+
+        Ok(())
     }
 
-    pub fn swap_buffers(&self) {
+    pub fn swap_buffers(&self) -> Result<(), EglError> {
         unsafe {
             egl_swap_buffers(self.cx.display, self.surface);
-            check_egl_error();
+            check_egl_error()?;
         }
+
+        Ok(())
     }
 }
 
@@ -188,7 +190,6 @@ impl Drop for EglSurface {
     fn drop(&mut self) {
         unsafe {
             egl_destroy_surface(self.cx.display, self.surface);
-            check_egl_error();
         }
     }
 }
@@ -228,11 +229,57 @@ const EGL_BAD_NATIVE_PIXMAP: i32 = 0x300C;
 const EGL_BAD_NATIVE_WINDOW: i32 = 0x300D;
 const EGL_CONTEXT_LOST: i32 = 0x300E;
 
+#[repr(i32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EglError {
+    NotInitialized = EGL_NOT_INITIALIZED,
+    BadAccess = EGL_BAD_ACCESS,
+    BadAlloc = EGL_BAD_ALLOC,
+    BadAttribute = EGL_BAD_ATTRIBUTE,
+    BadContext = EGL_BAD_CONTEXT,
+    BadConfig = EGL_BAD_CONFIG,
+    BadCurrentSurface = EGL_BAD_CURRENT_SURFACE,
+    BadDisplay = EGL_BAD_DISPLAY,
+    BadSurface = EGL_BAD_SURFACE,
+    BadMatch = EGL_BAD_MATCH,
+    BadParameter = EGL_BAD_PARAMETER,
+    BadNativePixmap = EGL_BAD_NATIVE_PIXMAP,
+    BadNativeWindow = EGL_BAD_NATIVE_WINDOW,
+    ContextLost = EGL_CONTEXT_LOST,
+}
+
+impl std::fmt::Display for EglError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EglError::NotInitialized => write!(f, "EGL is not initialized"),
+            EglError::BadAccess => write!(f, "EGL bad access"),
+            EglError::BadAlloc => write!(f, "EGL bad alloc"),
+            EglError::BadAttribute => write!(f, "EGL bad attribute"),
+            EglError::BadContext => write!(f, "EGL bad context"),
+            EglError::BadConfig => write!(f, "EGL bad config"),
+            EglError::BadCurrentSurface => write!(f, "EGL bad current surface"),
+            EglError::BadDisplay => write!(f, "EGL bad display"),
+            EglError::BadSurface => write!(f, "EGL bad surface"),
+            EglError::BadMatch => write!(f, "EGL bad match"),
+            EglError::BadParameter => write!(f, "EGL bad parameter"),
+            EglError::BadNativePixmap => write!(f, "EGL bad native pixmap"),
+            EglError::BadNativeWindow => write!(f, "EGL bad native window"),
+            EglError::ContextLost => write!(f, "EGL context lost"),
+        }
+    }
+}
+
 unsafe fn x_open_display(name: *const ffi::c_char) -> *mut ffi::c_void {
     let x_open_display: libloading::Symbol<
         unsafe extern "C" fn(*const ffi::c_char) -> *mut ffi::c_void,
     > = LIB_X11.get(b"XOpenDisplay").unwrap();
     x_open_display(name)
+}
+
+unsafe fn x_close_display(display: *mut ffi::c_void) {
+    let x_close_display: libloading::Symbol<unsafe extern "C" fn(*mut ffi::c_void)> =
+        LIB_X11.get(b"XCloseDisplay").unwrap();
+    x_close_display(display);
 }
 
 unsafe fn egl_get_error() -> i32 {
@@ -242,26 +289,26 @@ unsafe fn egl_get_error() -> i32 {
 }
 
 #[track_caller]
-fn check_egl_error() {
+fn check_egl_error() -> Result<(), EglError> {
     let error = unsafe { egl_get_error() };
 
     match error {
-        EGL_SUCCESS => {}
-        EGL_NOT_INITIALIZED => panic!("EGL_NOT_INITIALIZED"),
-        EGL_BAD_ACCESS => panic!("EGL_BAD_ACCESS"),
-        EGL_BAD_ALLOC => panic!("EGL_BAD_ALLOC"),
-        EGL_BAD_ATTRIBUTE => panic!("EGL_BAD_ATTRIBUTE"),
-        EGL_BAD_CONTEXT => panic!("EGL_BAD_CONTEXT"),
-        EGL_BAD_CONFIG => panic!("EGL_BAD_CONFIG"),
-        EGL_BAD_CURRENT_SURFACE => panic!("EGL_BAD_CURRENT_SURFACE"),
-        EGL_BAD_DISPLAY => panic!("EGL_BAD_DISPLAY"),
-        EGL_BAD_SURFACE => panic!("EGL_BAD_SURFACE"),
-        EGL_BAD_MATCH => panic!("EGL_BAD_MATCH"),
-        EGL_BAD_PARAMETER => panic!("EGL_BAD_PARAMETER"),
-        EGL_BAD_NATIVE_PIXMAP => panic!("EGL_BAD_NATIVE_PIXMAP"),
-        EGL_BAD_NATIVE_WINDOW => panic!("EGL_BAD_NATIVE_WINDOW"),
-        EGL_CONTEXT_LOST => panic!("EGL_CONTEXT_LOST"),
-        _ => panic!("unknown EGL error: {}", error),
+        EGL_SUCCESS => Ok(()),
+        EGL_NOT_INITIALIZED => Err(EglError::NotInitialized),
+        EGL_BAD_ACCESS => Err(EglError::BadAccess),
+        EGL_BAD_ALLOC => Err(EglError::BadAlloc),
+        EGL_BAD_ATTRIBUTE => Err(EglError::BadAttribute),
+        EGL_BAD_CONTEXT => Err(EglError::BadContext),
+        EGL_BAD_CONFIG => Err(EglError::BadConfig),
+        EGL_BAD_CURRENT_SURFACE => Err(EglError::BadCurrentSurface),
+        EGL_BAD_DISPLAY => Err(EglError::BadDisplay),
+        EGL_BAD_SURFACE => Err(EglError::BadSurface),
+        EGL_BAD_MATCH => Err(EglError::BadMatch),
+        EGL_BAD_PARAMETER => Err(EglError::BadParameter),
+        EGL_BAD_NATIVE_PIXMAP => Err(EglError::BadNativePixmap),
+        EGL_BAD_NATIVE_WINDOW => Err(EglError::BadNativeWindow),
+        EGL_CONTEXT_LOST => Err(EglError::ContextLost),
+        _ => unreachable!(),
     }
 }
 

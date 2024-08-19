@@ -264,10 +264,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
                 continue;
             }
 
-            let space = Space::new(
-                self.axis.pack(0.0, min_minor),
-                self.axis.pack(f32::INFINITY, max_minor),
-            );
+            let space = Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor));
 
             let size = self.content.layout_nth(i, content, cx, data, space);
             state.majors[i] = self.axis.major(size);

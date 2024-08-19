@@ -214,7 +214,10 @@ impl<T> X11App<T> {
             move || loop {
                 let event = conn.wait_for_event().unwrap();
                 clipboard_server.handle_event(&conn, &event).unwrap();
-                tx.send(Some(event)).unwrap();
+
+                if tx.send(Some(event)).is_err() {
+                    break;
+                }
             }
         });
 

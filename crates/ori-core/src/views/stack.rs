@@ -287,10 +287,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
             let flex = content[i].flex();
             let major = per_flex * flex;
 
-            let space = Space::new(
-                self.axis.pack(0.0, min_minor),
-                self.axis.pack(major, max_minor),
-            );
+            let space = Space::new(Size::ZERO, self.axis.pack(major, max_minor));
 
             let size = self.content.layout_nth(i, content, cx, data, space);
             state.majors[i] = self.axis.major(size);
@@ -310,10 +307,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
             let flex = content[i].flex();
             let major = per_flex * flex;
 
-            let space = Space::new(
-                self.axis.pack(major, min_minor),
-                self.axis.pack(major, max_minor),
-            );
+            let space = Space::new(self.axis.pack(major, 0.0), self.axis.pack(major, max_minor));
 
             let size = self.content.layout_nth(i, content, cx, data, space);
             state.majors[i] = self.axis.major(size);

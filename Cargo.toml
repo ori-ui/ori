@@ -9,7 +9,7 @@ authors.workspace = true
 license.workspace = true
 
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "examples/*"]
 
 [workspace.package]
 version = "0.1.0-alpha.1"
@@ -39,8 +39,6 @@ ori-reload          = { workspace = true, optional = true }
 # Backend dependencies
 ori-shell           = { workspace = true, optional = true }
 
-[dev-dependencies]
-async-std = "1"
 
 [dev-dependencies.ori]
 path = "."

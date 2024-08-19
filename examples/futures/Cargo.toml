@@ -1,0 +1,11 @@
+[package]
+name = "futures"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ori = { path = "../.." }
+
+async-std = "1"

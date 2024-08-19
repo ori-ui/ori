@@ -242,6 +242,7 @@ impl TextAttributes {
             style: self.style.to_fontdb(),
             weight: self.weight.to_fontdb(),
             metadata: 0,
+            metrics_opt: None,
         }
     }
 }

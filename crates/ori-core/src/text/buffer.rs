@@ -70,15 +70,22 @@ impl TextBuffer {
     /// Get the bounds of the text buffer.
     pub fn bounds(&self) -> Size {
         let (width, height) = self.buffer.size();
-        Size::new(width, height)
+        Size::new(
+            width.unwrap_or(f32::INFINITY),
+            height.unwrap_or(f32::INFINITY),
+        )
     }
 
     /// Set the bounds of the text buffer.
     pub fn set_bounds(&mut self, fonts: &mut Fonts, bounds: Size) {
         let (width, height) = self.buffer.size();
 
-        if width != bounds.width || height != bounds.height {
-            (self.buffer).set_size(&mut fonts.font_system, bounds.width, bounds.height);
+        if width != Some(bounds.width) || height != Some(bounds.height) {
+            (self.buffer).set_size(
+                &mut fonts.font_system,
+                Some(bounds.width),
+                Some(bounds.height),
+            );
         }
     }
 

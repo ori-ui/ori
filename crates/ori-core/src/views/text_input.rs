@@ -1,5 +1,6 @@
 use cosmic_text::{
-    Action, Attrs, AttrsList, Buffer, BufferLine, BufferRef, Edit, Editor, Metrics, Motion, Shaping,
+    Action, Attrs, AttrsList, Buffer, BufferLine, BufferRef, Edit, Editor, LineEnding, Metrics,
+    Motion, Shaping,
 };
 use ori_macro::{example, Build};
 
@@ -302,6 +303,7 @@ impl TextInputState {
     fn clear_text(&mut self) {
         self.buffer_mut().lines = vec![BufferLine::new(
             "",
+            LineEnding::None,
             AttrsList::new(Attrs {
                 cache_key_flags: cosmic_text::CacheKeyFlags::empty(),
                 color_opt: None,
@@ -310,6 +312,7 @@ impl TextInputState {
                 style: cosmic_text::Style::Normal,
                 weight: cosmic_text::Weight::NORMAL,
                 metadata: 0,
+                metrics_opt: None,
             }),
             Shaping::Advanced,
         )];
@@ -618,8 +621,8 @@ impl<T> View<T> for TextInput<T> {
     ) -> Size {
         state.buffer_mut().set_size(
             &mut cx.fonts().font_system,
-            space.max.width,
-            space.max.height,
+            Some(space.max.width),
+            Some(space.max.height),
         );
         state.placeholder.set_bounds(cx.fonts(), space.max);
 

@@ -1,9 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
+    canvas::{BorderRadius, BorderWidth, Canvas, Curve},
     canvas::{FillRule, Mask, Paint, Stroke},
     layout::{Affine, Point, Rect, Size, Vector},
-    prelude::{BorderRadius, BorderWidth, Canvas, Curve},
     text::{Fonts, TextBuffer},
     view::ViewState,
     window::Window,

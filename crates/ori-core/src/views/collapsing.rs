@@ -3,11 +3,10 @@ use std::f32::consts::{PI, SQRT_2};
 use ori_macro::{example, Build};
 
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Color},
+    canvas::{BorderRadius, BorderWidth, Color, Curve, FillRule},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Affine, Point, Rect, Size, Space, Vector},
-    prelude::{Curve, FillRule},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     transition::Transition,

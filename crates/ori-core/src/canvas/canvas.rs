@@ -6,8 +6,8 @@ use std::{
 use seahash::SeaHasher;
 
 use crate::{
+    image::Image,
     layout::{Affine, Point, Rect},
-    prelude::Image,
     view::ViewId,
 };
 

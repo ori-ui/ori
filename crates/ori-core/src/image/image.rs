@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Weak},
 };
 
-use crate::prelude::Color;
+use crate::canvas::Color;
 
 use super::ImageData;
 

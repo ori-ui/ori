@@ -1,10 +1,10 @@
 use ori_macro::Build;
 
 use crate::{
+    canvas::{Curve, FillRule, Paint},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    prelude::{Curve, FillRule, Paint},
     rebuild::Rebuild,
     style::Styles,
     view::View,

@@ -3,11 +3,11 @@ use std::f32::consts::{FRAC_PI_2, PI, TAU};
 use ori_macro::Build;
 
 use crate::{
-    canvas::Color,
+    canvas::{Color, Curve, FillRule, Pattern},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
+    image::Image,
     layout::{Affine, Point, Rect, Size, Space, Vector},
-    prelude::{Curve, FillRule, Image, Pattern},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     view::View,

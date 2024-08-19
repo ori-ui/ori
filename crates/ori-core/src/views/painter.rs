@@ -37,7 +37,7 @@ pub fn ellipse<T>(size: Size, paint: impl Into<Paint>) -> Painter<T> {
         let paint = paint.into();
 
         move |cx, _| {
-            cx.fill(Curve::oval(cx.rect()), FillRule::NonZero, paint.clone());
+            cx.fill(Curve::ellipse(cx.rect()), FillRule::NonZero, paint.clone());
         }
     })
     .size(size)

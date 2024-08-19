@@ -68,7 +68,7 @@ impl Curve {
     }
 
     /// Create a curve from an oval.
-    pub fn oval(oval: Rect) -> Self {
+    pub fn ellipse(oval: Rect) -> Self {
         let mut curve = Self::new();
         curve.push_oval(oval);
         curve
@@ -76,7 +76,7 @@ impl Curve {
 
     /// Create a curve from a cicrle.
     pub fn circle(center: Point, radius: f32) -> Self {
-        Self::oval(Rect::center_size(center, Size::all(radius * 2.0)))
+        Self::ellipse(Rect::center_size(center, Size::all(radius * 2.0)))
     }
 
     /// Get the number of verbs in the curve.

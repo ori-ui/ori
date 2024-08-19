@@ -16,7 +16,9 @@ use std::{
 use libloading::{Library, Symbol};
 use ori_core::{
     command::CommandProxy,
-    prelude::{BuildCx, DrawCx, Event, EventCx, LayoutCx, RebuildCx, Size, Space},
+    context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
+    event::Event,
+    layout::{Size, Space},
     view::View,
 };
 

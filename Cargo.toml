@@ -24,23 +24,20 @@ ori-font-awesome    = { path = "crates/ori-font-awesome",   version = "0.1.0-alp
 ori-glow            = { path = "crates/ori-glow",           version = "0.1.0-alpha.1" }
 ori-macro           = { path = "crates/ori-macro",          version = "0.1.0-alpha.1" }
 ori-reload          = { path = "crates/ori-reload",         version = "0.1.0-alpha.1" }
-ori-tiny-skia       = { path = "crates/ori-tiny-skia",      version = "0.1.0-alpha.1" }
-ori-winit           = { path = "crates/ori-winit",          version = "0.1.0-alpha.1" }
 ori-shell           = { path = "crates/ori-shell",          version = "0.1.0-alpha.1" }
 
 [dependencies]
 # Internal dependencies
-ori-app     = { workspace = true }
-ori-core    = { workspace = true }
-ori-macro   = { workspace = true }
+ori-app             = { workspace = true }
+ori-core            = { workspace = true }
+ori-macro           = { workspace = true }
 
 # Optional dependencies
 ori-font-awesome    = { workspace = true, optional = true }
 ori-reload          = { workspace = true, optional = true }
 
 # Backend dependencies
-ori-winit   = { workspace = true, optional = true }
-ori-shell   = { workspace = true, optional = true }
+ori-shell           = { workspace = true, optional = true }
 
 [dev-dependencies]
 async-std = "1"
@@ -48,13 +45,12 @@ async-std = "1"
 [dev-dependencies.ori]
 path = "."
 version = "0.1.0-alpha.1"
-features = ["full", "multithread"]
+features = ["full"]
 
 [features]
 default = ["shell", "x11"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
-multithread = ["ori-core/multithread"]
 serde = ["ori-core/serde"]
 
 # All features
@@ -65,9 +61,8 @@ reload = ["dep:ori-reload", "ori-macro/reload"]
 
 # Backend features
 shell = ["dep:ori-shell"]
-winit = ["dep:ori-winit"]
-x11 = ["ori-winit?/x11", "ori-shell?/x11"]
-wayland = ["ori-winit?/wayland", "ori-shell?/wayland"]
+x11 = ["ori-shell?/x11"]
+wayland = ["ori-shell?/wayland"]
 
 [profile.dev]
 debug = "limited"

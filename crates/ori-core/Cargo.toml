@@ -41,5 +41,4 @@ optional = true
 [features]
 default = []
 image = ["dep:image"]
-multithread = []
 serde = ["dep:serde"]

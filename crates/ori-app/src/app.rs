@@ -1,9 +1,8 @@
-use std::collections::HashMap;
+use std::{any::Any, collections::HashMap};
 
 use instant::Instant;
 use ori_core::{
     canvas::{Canvas, Color},
-    clipboard::{Clipboard, ClipboardContext},
     command::{CommandProxy, CommandReceiver},
     context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
@@ -371,9 +370,9 @@ impl<T> App<T> {
         self.windows.get_mut(&window_id).map(|w| &mut w.window)
     }
 
-    /// Set the clipboard.
-    pub fn set_clipboard(&mut self, clipboard: impl Clipboard + 'static) {
-        self.contexts.insert(ClipboardContext::new(clipboard));
+    /// Add a context.
+    pub fn add_context(&mut self, context: impl Any) {
+        self.contexts.insert(context);
     }
 
     /// Take all pending requests.

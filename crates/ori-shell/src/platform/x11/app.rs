@@ -11,6 +11,7 @@ use std::{
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
+    clipboard::Clipboard,
     command::CommandWaker,
     event::{Code, Modifiers, PointerButton, PointerId},
     layout::{Point, Vector},
@@ -45,7 +46,7 @@ use xkbcommon::xkb;
 
 use crate::platform::linux::{EglContext, EglSurface, XkbKeyboard};
 
-use super::X11Error;
+use super::{clipboard::X11ClipboardServer, X11Error};
 
 static LIB_GL: LazyLock<Library> = LazyLock::new(|| {
     // load libGL.so
@@ -53,7 +54,10 @@ static LIB_GL: LazyLock<Library> = LazyLock::new(|| {
 });
 
 atom_manager! {
-    Atoms: AtomsCookie {
+    pub Atoms: AtomsCookie {
+        TARGETS,
+        XSEL_DATA,
+        CLIPBOARD,
         UTF8_STRING,
         WM_PROTOCOLS,
         WM_DELETE_WINDOW,
@@ -197,6 +201,7 @@ impl<T> X11App<T> {
         Self::init_xkb(&conn)?;
 
         let atoms = Atoms::new(&conn)?.reply()?;
+        let (clipboard_server, clipboard) = X11ClipboardServer::new(&conn, atoms)?;
 
         let egl_context = EglContext::new();
 
@@ -208,6 +213,7 @@ impl<T> X11App<T> {
 
             move || loop {
                 let event = conn.wait_for_event().unwrap();
+                clipboard_server.handle_event(&conn, &event).unwrap();
                 tx.send(Some(event)).unwrap();
             }
         });
@@ -237,9 +243,12 @@ impl<T> X11App<T> {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let core_keyboard = XkbKeyboard::x11_new_core(&conn, &xkb_context);
 
+        let mut app = app.build(waker);
+        app.add_context(Clipboard::new(Box::new(clipboard)));
+
         Ok(Self {
             data,
-            app: app.build(waker),
+            app,
             conn,
             atoms,
             running: true,
@@ -709,6 +718,7 @@ impl<T> X11App<T> {
         }
     }
 
+    /// Choose a direct bgra8888 visual with 32-bit depth.
     fn choose_visual(&self) -> Result<(u8, Visualid), X11Error> {
         let screen = &self.conn.setup().roots[self.screen];
 

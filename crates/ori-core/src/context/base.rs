@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    clipboard::{Clipboard, ClipboardContext},
+    clipboard::Clipboard,
     command::{Command, CommandProxy},
     text::Fonts,
 };
@@ -29,8 +29,8 @@ impl<'a> BaseCx<'a> {
     }
 
     /// Get the [`Clipboard`].
-    pub fn clipboard(&mut self) -> &mut dyn Clipboard {
-        self.context_or_default::<ClipboardContext>()
+    pub fn clipboard(&mut self) -> &mut Clipboard {
+        self.context_or_default::<Clipboard>()
     }
 
     /// Get the [`CommandProxy`].

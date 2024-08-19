@@ -13,10 +13,7 @@ use std::{
 
 use crossbeam_channel::{Receiver, Sender};
 
-#[cfg(feature = "multithread")]
-type CommandWakerInner = std::sync::Arc<dyn Fn() + Send + Sync>;
-#[cfg(not(feature = "multithread"))]
-type CommandWakerInner = std::rc::Rc<dyn Fn()>;
+type CommandWakerInner = Arc<dyn Fn() + Send + Sync>;
 
 /// A waker for the event loop, triggered when a command is sent.
 #[derive(Clone)]
@@ -24,15 +21,8 @@ pub struct CommandWaker(CommandWakerInner);
 
 impl CommandWaker {
     /// Create a new [`CommandWaker`].
-    #[cfg(feature = "multithread")]
     pub fn new(waker: impl Fn() + Send + Sync + 'static) -> Self {
-        Self(std::sync::Arc::new(waker))
-    }
-
-    /// Create a new [`CommandWaker`].
-    #[cfg(not(feature = "multithread"))]
-    pub fn new(waker: impl Fn() + 'static) -> Self {
-        Self(std::rc::Rc::new(waker))
+        Self(Arc::new(waker))
     }
 
     /// Wake the event loop.
@@ -53,10 +43,7 @@ impl Debug for CommandWaker {
     }
 }
 
-#[cfg(feature = "multithread")]
 type CommandData = Box<dyn Any + Send>;
-#[cfg(not(feature = "multithread"))]
-type CommandData = Box<dyn Any>;
 
 /// A command.
 #[derive(Debug)]
@@ -68,18 +55,7 @@ pub struct Command {
 
 impl Command {
     /// Create a new command.
-    #[cfg(feature = "multithread")]
     pub fn new<T: Any + Send>(command: T) -> Self {
-        Self {
-            type_id: TypeId::of::<T>(),
-            data: Box::new(command),
-            name: std::any::type_name::<T>(),
-        }
-    }
-
-    /// Create a new command.
-    #[cfg(not(feature = "multithread"))]
-    pub fn new<T: Any>(command: T) -> Self {
         Self {
             type_id: TypeId::of::<T>(),
             data: Box::new(command),
@@ -112,14 +88,7 @@ impl Command {
     }
 
     /// Convert the command into a boxed [`Any`] value.
-    #[cfg(feature = "multithread")]
     pub fn to_any(self) -> Box<dyn Any + Send> {
-        self.data
-    }
-
-    /// Convert the command into a boxed [`Any`] value.
-    #[cfg(not(feature = "multithread"))]
-    pub fn to_any(self) -> Box<dyn Any> {
         self.data
     }
 }
@@ -153,33 +122,14 @@ impl CommandProxy {
     }
 
     /// Send a command.
-    #[cfg(feature = "multithread")]
     pub fn cmd(&self, command: impl Any + Send) {
         self.cmd_silent(Command::new(command));
         self.wake();
     }
 
-    /// Send a command.
-    #[cfg(not(feature = "multithread"))]
-    pub fn cmd(&self, command: impl Any) {
-        self.cmd_silent(Command::new(command));
-        self.wake();
-    }
-
     /// Spawn a future that is polled when commands are handled.
-    #[cfg(feature = "multithread")]
     pub fn spawn_async(&self, future: impl Future<Output = ()> + Send + 'static) {
-        let task = std::sync::Arc::new(CommandTask::new(self, future));
-
-        // SAFETY: the task was just created, so it's impossible for there to be any clones of the
-        // Arc, which means we have unique access to the task.
-        unsafe { task.poll() };
-    }
-
-    /// Spawn a future that is polled when commands are handled.
-    #[cfg(not(feature = "multithread"))]
-    pub fn spawn_async(&self, future: impl Future<Output = ()> + 'static) {
-        let task = std::rc::Rc::new(CommandTask::new(self, future));
+        let task = Arc::new(CommandTask::new(self, future));
 
         // SAFETY: the task was just created, so it's impossible for there to be any clones of the
         // Arc, which means we have unique access to the task.
@@ -232,36 +182,20 @@ impl CommandReceiver {
     }
 }
 
-#[cfg(feature = "multithread")]
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
-#[cfg(not(feature = "multithread"))]
-type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 struct CommandTask {
     proxy: CommandProxy,
     future: UnsafeCell<Option<BoxFuture<'static, ()>>>,
 }
 
-#[cfg(feature = "multithread")]
-type CommandTaskShared = std::sync::Arc<CommandTask>;
-#[cfg(not(feature = "multithread"))]
-type CommandTaskShared = std::rc::Rc<CommandTask>;
+type CommandTaskShared = Arc<CommandTask>;
 
 // SAFETY: CommandTask::future is only ever accessed from one thread at a time.
-#[cfg(feature = "multithread")]
 unsafe impl Sync for CommandTask {}
 
 impl CommandTask {
-    #[cfg(feature = "multithread")]
     fn new(proxy: &CommandProxy, future: impl Future<Output = ()> + Send + 'static) -> Self {
-        Self {
-            proxy: proxy.clone(),
-            future: UnsafeCell::new(Some(Box::pin(future))),
-        }
-    }
-
-    #[cfg(not(feature = "multithread"))]
-    fn new(proxy: &CommandProxy, future: impl Future<Output = ()> + 'static) -> Self {
         Self {
             proxy: proxy.clone(),
             future: UnsafeCell::new(Some(Box::pin(future))),

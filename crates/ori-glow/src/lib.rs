@@ -1,3 +1,7 @@
+#![deny(missing_docs)]
+
+//! Glow renderer for Ori.
+
 use std::{collections::HashMap, ffi, mem, slice};
 
 use glow::HasContext;
@@ -9,8 +13,10 @@ use ori_core::{
     layout::{Affine, Matrix, Point, Vector},
 };
 
+/// OpenGL error.
 #[derive(Debug)]
 pub struct GlError {
+    /// Error message.
     pub message: String,
 }
 
@@ -49,6 +55,7 @@ unsafe fn slice_as_bytes<T>(slice: &[T]) -> &[u8] {
     slice::from_raw_parts(slice.as_ptr() as *const u8, mem::size_of_val(slice))
 }
 
+/// A glow renderer.
 pub struct GlowRenderer {
     gl: glow::Context,
     program: glow::Program,

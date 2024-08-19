@@ -1,70 +1,56 @@
-//! Types pertaining to the clipboard.
+//! Clipboard.
+
+use std::fmt::Debug;
 
 /// A clipboard.
-pub trait Clipboard {
-    /// Returns the contents of the clipboard.
-    fn get(&mut self) -> String;
-
-    /// Sets the contents of the clipboard.
-    fn set(&mut self, contents: String);
+pub struct Clipboard {
+    backend: Box<dyn ClipboardBackend>,
 }
 
-struct DummyClipboard;
+impl Clipboard {
+    /// Create a new clipboard from a backend.
+    pub fn new(backend: Box<dyn ClipboardBackend>) -> Self {
+        Self { backend }
+    }
 
-impl Clipboard for DummyClipboard {
-    fn get(&mut self) -> String {
-        tracing::warn!("Clipboard context not set!");
+    /// Get the clipboard text.
+    pub fn get(&mut self) -> String {
+        self.backend.get_text()
+    }
+
+    /// Set the clipboard text.
+    pub fn set(&mut self, text: impl AsRef<str>) {
+        self.backend.set_text(text.as_ref());
+    }
+}
+
+impl Default for Clipboard {
+    fn default() -> Self {
+        Self::new(Box::new(NoopClipboard))
+    }
+}
+
+impl Debug for Clipboard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Clipboard").finish()
+    }
+}
+
+/// A clipboard backend.
+pub trait ClipboardBackend {
+    /// Get the clipboard text.
+    fn get_text(&mut self) -> String;
+
+    /// Set the clipboard text.
+    fn set_text(&mut self, text: &str);
+}
+
+struct NoopClipboard;
+
+impl ClipboardBackend for NoopClipboard {
+    fn get_text(&mut self) -> String {
         String::new()
     }
 
-    fn set(&mut self, _contents: String) {
-        tracing::warn!("Clipboard context not set!");
-    }
-}
-
-/// The clipboard context.
-pub struct ClipboardContext {
-    provider: Box<dyn Clipboard>,
-}
-
-impl Default for ClipboardContext {
-    fn default() -> Self {
-        Self::dummy()
-    }
-}
-
-impl ClipboardContext {
-    /// Creates a dummy clipboard, that does nothing.
-    pub fn dummy() -> Self {
-        Self {
-            provider: Box::new(DummyClipboard),
-        }
-    }
-
-    /// Creates a new clipboard.
-    pub fn new(provider: impl Clipboard + 'static) -> Self {
-        Self {
-            provider: Box::new(provider),
-        }
-    }
-
-    /// Returns the contents of the clipboard.
-    pub fn get(&mut self) -> String {
-        self.provider.get()
-    }
-
-    /// Sets the contents of the clipboard.
-    pub fn set(&mut self, contents: String) {
-        self.provider.set(contents);
-    }
-}
-
-impl Clipboard for ClipboardContext {
-    fn get(&mut self) -> String {
-        self.get()
-    }
-
-    fn set(&mut self, contents: String) {
-        self.set(contents);
-    }
+    fn set_text(&mut self, _text: &str) {}
 }

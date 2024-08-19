@@ -20,16 +20,6 @@ pub mod font_awesome {
     pub use ori_font_awesome::*;
 }
 
-#[cfg(feature = "winit")]
-pub mod winit {
-    //! Ori [`winit`](ori_winit) integration.
-
-    pub use ori_winit::*;
-}
-
-#[cfg(feature = "winit")]
-pub use ori_winit::launch;
-
 #[cfg(feature = "shell")]
 pub use ori_shell::{launch, launch_simple};
 

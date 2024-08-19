@@ -6,6 +6,6 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
-ori-core = { workspace = true, features = ["multithread"] }
+ori-core = { workspace = true }
 
 libloading = "0.8"

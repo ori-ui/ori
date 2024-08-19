@@ -46,7 +46,7 @@ pub struct SliderStyle {
 }
 
 impl Style for SliderStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         let palette = style.palette();
 
         Self {

@@ -59,7 +59,7 @@ pub struct TextStyle {
 }
 
 impl Style for TextStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         Self {
             font_size: 16.0,
             font_family: FontFamily::SansSerif,

@@ -60,7 +60,7 @@ pub struct TextInputStyle {
 }
 
 impl Style for TextInputStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         let text_style = style.get::<TextStyle>();
         let palette = style.get::<Palette>();
 

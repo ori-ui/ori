@@ -39,7 +39,7 @@ pub struct CollapsingStyle {
 }
 
 impl Style for CollapsingStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         Self {
             transition: Transition::ease(0.1),
             icon_size: 16.0,

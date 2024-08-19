@@ -46,7 +46,7 @@ pub struct CheckboxStyle {
 }
 
 impl Style for CheckboxStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         Self {
             transition: Transition::ease(0.1),
             size: 24.0,

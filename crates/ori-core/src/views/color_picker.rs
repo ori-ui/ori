@@ -41,7 +41,7 @@ pub struct ColorPickerStyle {
 }
 
 impl Style for ColorPickerStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         let palette = style.palette();
 
         Self {

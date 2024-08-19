@@ -72,7 +72,7 @@ pub struct TooltipStyle {
 }
 
 impl Style for TooltipStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         let text_style = style.get::<TextStyle>();
         let palette = style.palette();
 

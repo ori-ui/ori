@@ -42,7 +42,7 @@ pub struct ButtonStyle {
 }
 
 impl Style for ButtonStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         let palette = style.palette();
 
         Self {

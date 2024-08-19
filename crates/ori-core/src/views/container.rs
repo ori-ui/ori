@@ -45,7 +45,7 @@ pub struct ContainerStyle {
 }
 
 impl Style for ContainerStyle {
-    fn style(style: &Styles) -> Self {
+    fn styled(style: &Styles) -> Self {
         Self {
             background: style.palette().surface,
             border_radius: BorderRadius::all(0.0),

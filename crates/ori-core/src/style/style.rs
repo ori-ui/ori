@@ -127,7 +127,7 @@ impl Styles {
     pub fn get<T: Clone + Style + Any>(&self) -> T {
         match self.try_get::<T>() {
             Some(value) => value,
-            None => T::style(self),
+            None => T::styled(self),
         }
     }
 
@@ -183,11 +183,11 @@ impl Styles {
 /// This is implemented for all types that are `Default`.
 pub trait Style: Sized {
     /// Style a value.
-    fn style(style: &Styles) -> Self;
+    fn styled(style: &Styles) -> Self;
 }
 
 impl<T: Default> Style for T {
-    fn style(_: &Styles) -> Self {
+    fn styled(_: &Styles) -> Self {
         T::default()
     }
 }

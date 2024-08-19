@@ -129,8 +129,15 @@ pub struct ViewState {
 
 impl Default for ViewState {
     fn default() -> Self {
+        Self::new(ViewId::new())
+    }
+}
+
+impl ViewState {
+    /// Create a new [`ViewState`] with the given [`ViewId`].
+    pub fn new(id: ViewId) -> Self {
         Self {
-            id: ViewId::new(),
+            id,
 
             /* flags */
             prev_flags: ViewFlags::default(),
@@ -148,9 +155,7 @@ impl Default for ViewState {
             inherited_cursor: None,
         }
     }
-}
 
-impl ViewState {
     /// Prepare the view.
     pub fn prepare(&mut self) {
         self.flags.remove(ViewFlags::HAS);

@@ -707,6 +707,10 @@ impl Color {
             return (0.0, 0.0, 0.0, self.a);
         };
 
+        if a == 0.0 && b == 0.0 {
+            return (0.0, 0.0, l, self.a);
+        };
+
         let c = f32::sqrt(a * a + b * b);
         let a = a / c;
         let b = b / c;
@@ -743,12 +747,12 @@ impl Color {
 
     /// Convert a color from okhsv to sRGB.
     pub fn okhsva(h: f32, s: f32, v: f32, alpha: f32) -> Self {
-        if v == 0.0 {
-            return Self::rgba(0.0, 0.0, 0.0, alpha);
-        };
-
         if v == 1.0 {
             return Self::rgba(1.0, 1.0, 1.0, alpha);
+        };
+
+        if v == 0.0 {
+            return Self::rgba(0.0, 0.0, 0.0, alpha);
         };
 
         let (b, a) = h.to_radians().sin_cos();

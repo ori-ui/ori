@@ -79,6 +79,8 @@ impl EglContext {
             EGL_WINDOW_BIT,
             EGL_CONFORMANT,
             EGL_OPENGL_BIT,
+            EGL_RENDERABLE_TYPE,
+            EGL_OPENGL_BIT,
             EGL_RED_SIZE,
             8,
             EGL_GREEN_SIZE,
@@ -175,7 +177,6 @@ impl EglSurface {
     pub fn swap_interval(&self, interval: i32) -> Result<(), EglError> {
         unsafe {
             egl_swap_interval(self.cx.display, interval);
-            check_egl_error()?;
         }
 
         Ok(())
@@ -213,6 +214,7 @@ const EGL_OPENGL_API: i32 = 0x30A2;
 const EGL_SURFACE_TYPE: i32 = 0x3033;
 const EGL_WINDOW_BIT: i32 = 0x0004;
 const EGL_CONFORMANT: i32 = 0x3042;
+const EGL_RENDERABLE_TYPE: i32 = 0x3040;
 const EGL_OPENGL_BIT: i32 = 0x0008;
 const EGL_RED_SIZE: i32 = 0x3024;
 const EGL_GREEN_SIZE: i32 = 0x3023;

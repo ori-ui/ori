@@ -66,7 +66,10 @@ atom_manager! {
         _NET_WM_ICON,
         _NET_WM_SYNC_REQUEST,
         _NET_WM_SYNC_REQUEST_COUNTER,
-        _MOTIF_WM_HINTS,
+        _NET_WM_ALLOWED_ACTIONS,
+        _NET_WM_ACTION_MOVE,
+        _NET_WM_ACTION_RESIZE,
+        _NET_WM_STATE,
     }
 }
 
@@ -83,10 +86,15 @@ struct X11Window {
 }
 
 impl X11Window {
-    fn set_title(&self, conn: &XCBConnection, atoms: &Atoms, title: &str) -> Result<(), X11Error> {
+    fn set_title(
+        window: u32,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        title: &str,
+    ) -> Result<(), X11Error> {
         conn.change_property8(
             PropMode::REPLACE,
-            self.x11_id,
+            window,
             AtomEnum::WM_NAME,
             AtomEnum::STRING,
             title.as_bytes(),
@@ -94,7 +102,7 @@ impl X11Window {
 
         conn.change_property8(
             PropMode::REPLACE,
-            self.x11_id,
+            window,
             atoms._NET_WM_NAME,
             atoms.UTF8_STRING,
             title.as_bytes(),
@@ -104,72 +112,85 @@ impl X11Window {
     }
 
     fn set_size_hints(
-        &self,
+        window: u32,
         conn: &XCBConnection,
         width: i32,
         height: i32,
         resizable: bool,
     ) -> Result<(), X11Error> {
         let size_hints = WmSizeHints {
-            size: None,
             min_size: (!resizable).then_some((width, height)),
             max_size: (!resizable).then_some((width, height)),
             ..Default::default()
         };
 
-        size_hints.set(conn, self.x11_id, AtomEnum::WM_NORMAL_HINTS)?;
+        size_hints.set_normal_hints(conn, window)?;
 
         Ok(())
     }
 
-    fn get_motif_hints(&self, conn: &XCBConnection, atoms: &Atoms) -> Result<Vec<u32>, X11Error> {
-        let hints = conn
-            .get_property(
-                false,
-                self.x11_id,
-                atoms._MOTIF_WM_HINTS,
-                AtomEnum::ATOM,
-                0,
-                0,
-            )?
-            .reply()?;
-
-        let mut hints: Vec<_> = hints.value32().into_iter().flatten().collect();
-        hints.resize(5, 0);
-
-        Ok(hints)
-    }
-
-    fn set_motif_hints(
-        &self,
+    fn get_allowed_actions(
+        window: u32,
         conn: &XCBConnection,
         atoms: &Atoms,
-        hints: &[u32],
+    ) -> Result<Vec<u32>, X11Error> {
+        let reply = conn.get_property(
+            false,
+            window,
+            atoms._NET_WM_ALLOWED_ACTIONS,
+            AtomEnum::ATOM,
+            0,
+            u32::MAX,
+        )?;
+
+        Ok(reply.reply()?.value32().into_iter().flatten().collect())
+    }
+
+    fn set_allowed_actions(
+        window: u32,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        actions: &[u32],
     ) -> Result<(), X11Error> {
         conn.change_property32(
             PropMode::REPLACE,
-            self.x11_id,
-            atoms._MOTIF_WM_HINTS,
+            window,
+            atoms._NET_WM_ALLOWED_ACTIONS,
             AtomEnum::ATOM,
-            hints,
+            actions,
         )?;
 
         Ok(())
     }
 
-    fn set_decorated(
-        &self,
+    fn set_resizable(
+        window: u32,
         conn: &XCBConnection,
         atoms: &Atoms,
-        decorated: bool,
+        resizable: bool,
     ) -> Result<(), X11Error> {
-        let mut hints = self.get_motif_hints(conn, atoms)?;
+        let mut actions = Self::get_allowed_actions(window, conn, atoms)?;
 
-        hints[0] |= 1 << 1; // set the decorated flag
-        hints[2] = decorated as u32; // set the decorated flag
+        if resizable {
+            actions.push(atoms._NET_WM_ACTION_MOVE);
+            actions.push(atoms._NET_WM_ACTION_RESIZE);
+        } else {
+            actions.retain(|&action| {
+                action != atoms._NET_WM_ACTION_MOVE && action != atoms._NET_WM_ACTION_RESIZE
+            });
+        }
 
-        self.set_motif_hints(conn, atoms, &hints)?;
+        Self::set_allowed_actions(window, conn, atoms, &actions)?;
 
+        Ok(())
+    }
+
+    fn set_decorated(
+        _window: u32,
+        _conn: &XCBConnection,
+        _atoms: &Atoms,
+        _decorated: bool,
+    ) -> Result<(), X11Error> {
         Ok(())
     }
 }
@@ -418,6 +439,16 @@ impl<T> X11App<T> {
             None
         };
 
+        X11Window::set_title(win_id, &self.conn, &self.atoms, &window.title)?;
+        X11Window::set_decorated(win_id, &self.conn, &self.atoms, window.decorated)?;
+        X11Window::set_resizable(win_id, &self.conn, &self.atoms, window.resizable)?;
+        //X11Window::set_motif_hints(
+        //    win_id,
+        //    &self.conn,
+        //    &self.atoms,
+        //    &[0, 0, window.decorated as u32, 0, 0],
+        //)?;
+
         self.conn.flush()?;
 
         let egl_surface = EglSurface::new(&self.egl_context, win_id as _)?;
@@ -443,21 +474,11 @@ impl<T> X11App<T> {
             sync_counter,
         };
 
-        x11_window.set_title(&self.conn, &self.atoms, &window.title)?;
-        x11_window.set_decorated(&self.conn, &self.atoms, window.decorated)?;
-
-        if !window.resizable {
-            x11_window.set_size_hints(
-                &self.conn,
-                physical_width as i32,
-                physical_height as i32,
-                window.resizable,
-            )?;
-        }
-
         if window.visible {
             self.conn.map_window(win_id)?;
         }
+
+        self.conn.flush()?;
 
         self.windows.push(x11_window);
         self.app.add_window(&mut self.data, ui, window);
@@ -547,7 +568,7 @@ impl<T> X11App<T> {
 
                 match update {
                     WindowUpdate::Title(title) => {
-                        window.set_title(&self.conn, &self.atoms, &title)?;
+                        X11Window::set_title(window.x11_id, &self.conn, &self.atoms, &title)?;
                     }
                     WindowUpdate::Icon(_) => {}
                     WindowUpdate::Size(size) => {
@@ -555,7 +576,8 @@ impl<T> X11App<T> {
                         let physical_height = (size.height * window.scale_factor) as u32;
 
                         let resizable = self.app.get_window(id).map_or(true, |w| w.resizable);
-                        window.set_size_hints(
+                        X11Window::set_size_hints(
+                            window.x11_id,
                             &self.conn,
                             physical_width as i32,
                             physical_height as i32,
@@ -573,7 +595,8 @@ impl<T> X11App<T> {
                     }
                     WindowUpdate::Scale(_) => {}
                     WindowUpdate::Resizable(resizable) => {
-                        window.set_size_hints(
+                        X11Window::set_size_hints(
+                            window.x11_id,
                             &self.conn,
                             window.physical_width as i32,
                             window.physical_height as i32,
@@ -581,7 +604,12 @@ impl<T> X11App<T> {
                         )?;
                     }
                     WindowUpdate::Decorated(decorated) => {
-                        window.set_decorated(&self.conn, &self.atoms, decorated)?;
+                        X11Window::set_decorated(
+                            window.x11_id,
+                            &self.conn,
+                            &self.atoms,
+                            decorated,
+                        )?;
                     }
                     WindowUpdate::Maximized(_) => {}
                     WindowUpdate::Visible(visible) => {

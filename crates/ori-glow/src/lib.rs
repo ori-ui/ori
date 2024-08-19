@@ -386,9 +386,26 @@ impl GlowRenderer {
                     self.draw_primitive(primitive, transform * *layer_transform)?;
                 }
 
-                if mask.is_some() {
+                if let Some(mask) = mask {
+                    self.dispatch();
+                    self.gl.stencil_op(glow::KEEP, glow::KEEP, glow::DECR);
+                    self.gl.stencil_mask(0xFF);
+
+                    self.fill_curve(
+                        &mask.curve,
+                        &mask.fill,
+                        &Paint {
+                            shader: Shader::Solid(Color::TRANSPARENT),
+                            blend: BlendMode::Destination,
+                            anti_alias: false,
+                        },
+                        transform,
+                    )?;
+
                     self.dispatch();
                     self.stencil -= 1;
+                    self.gl.stencil_mask(0x00);
+                    self.gl.stencil_op(glow::KEEP, glow::KEEP, glow::INCR);
                     self.gl.stencil_func(glow::LEQUAL, self.stencil, 0xFF);
                 }
             }

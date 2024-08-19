@@ -1,54 +1,77 @@
 use std::{
-    ffi,
+    ffi, ptr,
+    rc::Rc,
     sync::{Arc, LazyLock},
 };
 
 use libloading::Library;
 
-static LIB_EGL: LazyLock<Library> = LazyLock::new(|| {
+static LIB_EGL: LazyLock<Result<Library, Arc<libloading::Error>>> = LazyLock::new(|| {
     // load libEGL.so
-    unsafe { Library::new("libEGL.so").unwrap() }
+    unsafe { Library::new("libEGL.so").map_err(Arc::new) }
 });
 
 #[cfg(x11_platform)]
-static LIB_X11: LazyLock<Library> = LazyLock::new(|| {
+static LIB_X11: LazyLock<Result<Library, Arc<libloading::Error>>> = LazyLock::new(|| {
     // load libX11.so
-    unsafe { Library::new("libX11.so").unwrap() }
+    unsafe { Library::new("libX11.so").map_err(Arc::new) }
 });
+
+#[derive(Debug)]
+pub enum EglNativeDisplay {
+    #[cfg(x11_platform)]
+    X11(*mut ffi::c_void),
+}
+
+impl EglNativeDisplay {
+    fn egl_platform(&self) -> i32 {
+        match self {
+            #[cfg(x11_platform)]
+            Self::X11(_) => EGL_PLATFORM_X11,
+        }
+    }
+
+    fn as_ptr(&self) -> *mut ffi::c_void {
+        match self {
+            #[cfg(x11_platform)]
+            Self::X11(ptr) => *ptr,
+        }
+    }
+}
 
 #[allow(unused)]
 struct EglContextInner {
-    #[cfg(x11_platform)]
-    xdisplay: *mut ffi::c_void,
+    native: EglNativeDisplay,
     display: *mut ffi::c_void,
     config: *mut ffi::c_void,
     context: *mut ffi::c_void,
 }
 
-unsafe impl Send for EglContextInner {}
-unsafe impl Sync for EglContextInner {}
-
 pub struct EglContext {
-    inner: Arc<EglContextInner>,
+    inner: Rc<EglContextInner>,
 }
 
 impl EglContext {
-    pub fn new() -> Result<Self, EglError> {
-        #[cfg(x11_platform)]
-        let xdisplay = unsafe { x_open_display(std::ptr::null()) };
-        let display = unsafe { egl_get_display(xdisplay) };
+    #[cfg(x11_platform)]
+    pub fn new_x11() -> Result<Self, EglError> {
+        let xdisplay = unsafe { x_open_display(ptr::null())? };
+        Self::new(EglNativeDisplay::X11(xdisplay))
+    }
+
+    pub fn new(native_display: EglNativeDisplay) -> Result<Self, EglError> {
+        let display = unsafe {
+            egl_get_platform_display(native_display.egl_platform(), native_display.as_ptr())?
+        };
 
         let mut major = 0;
         let mut minor = 0;
 
         unsafe {
-            egl_initialize(display, &mut major, &mut minor);
-            check_egl_error()?;
+            egl_initialize(display, &mut major, &mut minor)?;
         };
 
         unsafe {
-            egl_bind_api(EGL_OPENGL_API);
-            check_egl_error()?;
+            egl_bind_api(EGL_OPENGL_API)?;
         }
 
         let config_attribs = [
@@ -69,7 +92,7 @@ impl EglContext {
             EGL_NONE,
         ];
 
-        let mut config = std::ptr::null_mut();
+        let mut config = ptr::null_mut();
         let mut num_config = 0;
 
         unsafe {
@@ -78,8 +101,7 @@ impl EglContext {
                 config_attribs.as_ptr(),
                 &mut config,
                 &mut num_config,
-            );
-            check_egl_error()?;
+            )?;
         }
 
         if num_config != 1 {
@@ -97,17 +119,11 @@ impl EglContext {
         ];
 
         let context = unsafe {
-            egl_create_context(
-                display,
-                config,
-                std::ptr::null_mut(),
-                context_attribs.as_ptr(),
-            )
+            egl_create_context(display, config, ptr::null_mut(), context_attribs.as_ptr())?
         };
-        check_egl_error()?;
 
-        let inner = Arc::new(EglContextInner {
-            xdisplay,
+        let inner = Rc::new(EglContextInner {
+            native: native_display,
             display,
             config,
             context,
@@ -120,21 +136,20 @@ impl EglContext {
 impl Drop for EglContextInner {
     fn drop(&mut self) {
         unsafe {
-            egl_make_current(
+            let _ = egl_make_current(
                 self.display,
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
             );
             egl_destroy_context(self.display, self.context);
             egl_terminate(self.display);
-            x_close_display(self.xdisplay);
         }
     }
 }
 
 pub struct EglSurface {
-    cx: Arc<EglContextInner>,
+    cx: Rc<EglContextInner>,
     surface: *mut ffi::c_void,
 }
 
@@ -148,9 +163,8 @@ impl EglSurface {
                 context.inner.config,
                 window,
                 surface_attribs.as_ptr(),
-            )
+            )?
         };
-        check_egl_error()?;
 
         Ok(Self {
             cx: context.inner.clone(),
@@ -169,8 +183,7 @@ impl EglSurface {
 
     pub fn make_current(&self) -> Result<(), EglError> {
         unsafe {
-            egl_make_current(self.cx.display, self.surface, self.surface, self.cx.context);
-            check_egl_error()?;
+            egl_make_current(self.cx.display, self.surface, self.surface, self.cx.context)?;
         }
 
         Ok(())
@@ -178,8 +191,7 @@ impl EglSurface {
 
     pub fn swap_buffers(&self) -> Result<(), EglError> {
         unsafe {
-            egl_swap_buffers(self.cx.display, self.surface);
-            check_egl_error()?;
+            egl_swap_buffers(self.cx.display, self.surface)?;
         }
 
         Ok(())
@@ -213,6 +225,9 @@ const EGL_CONTEXT_MINOR_VERSION: i32 = 0x30FB;
 const EGL_CONTEXT_OPENGL_PROFILE_MASK: i32 = 0x30FD;
 const EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT: i32 = 0x00000001;
 
+#[cfg(x11_platform)]
+const EGL_PLATFORM_X11: i32 = 0x31D5;
+
 const EGL_SUCCESS: i32 = 0x3000;
 const EGL_NOT_INITIALIZED: i32 = 0x3001;
 const EGL_BAD_ACCESS: i32 = 0x3002;
@@ -229,28 +244,41 @@ const EGL_BAD_NATIVE_PIXMAP: i32 = 0x300C;
 const EGL_BAD_NATIVE_WINDOW: i32 = 0x300D;
 const EGL_CONTEXT_LOST: i32 = 0x300E;
 
-#[repr(i32)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug)]
 pub enum EglError {
-    NotInitialized = EGL_NOT_INITIALIZED,
-    BadAccess = EGL_BAD_ACCESS,
-    BadAlloc = EGL_BAD_ALLOC,
-    BadAttribute = EGL_BAD_ATTRIBUTE,
-    BadContext = EGL_BAD_CONTEXT,
-    BadConfig = EGL_BAD_CONFIG,
-    BadCurrentSurface = EGL_BAD_CURRENT_SURFACE,
-    BadDisplay = EGL_BAD_DISPLAY,
-    BadSurface = EGL_BAD_SURFACE,
-    BadMatch = EGL_BAD_MATCH,
-    BadParameter = EGL_BAD_PARAMETER,
-    BadNativePixmap = EGL_BAD_NATIVE_PIXMAP,
-    BadNativeWindow = EGL_BAD_NATIVE_WINDOW,
-    ContextLost = EGL_CONTEXT_LOST,
+    Library(Arc<libloading::Error>),
+    NotInitialized,
+    BadAccess,
+    BadAlloc,
+    BadAttribute,
+    BadContext,
+    BadConfig,
+    BadCurrentSurface,
+    BadDisplay,
+    BadSurface,
+    BadMatch,
+    BadParameter,
+    BadNativePixmap,
+    BadNativeWindow,
+    ContextLost,
+}
+
+impl From<libloading::Error> for EglError {
+    fn from(err: libloading::Error) -> Self {
+        Self::Library(Arc::new(err))
+    }
+}
+
+impl From<&Arc<libloading::Error>> for EglError {
+    fn from(err: &Arc<libloading::Error>) -> Self {
+        Self::Library(err.clone())
+    }
 }
 
 impl std::fmt::Display for EglError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            EglError::Library(err) => write!(f, "EGL library error: {}", err),
             EglError::NotInitialized => write!(f, "EGL is not initialized"),
             EglError::BadAccess => write!(f, "EGL bad access"),
             EglError::BadAlloc => write!(f, "EGL bad alloc"),
@@ -269,28 +297,37 @@ impl std::fmt::Display for EglError {
     }
 }
 
-unsafe fn x_open_display(name: *const ffi::c_char) -> *mut ffi::c_void {
+#[cfg(x11_platform)]
+fn lib_x11() -> Result<&'static Library, EglError> {
+    Ok(LIB_X11.as_ref()?)
+}
+
+fn lib_egl() -> Result<&'static Library, EglError> {
+    Ok(LIB_EGL.as_ref()?)
+}
+
+unsafe fn lib_egl_symbol<T>(name: &[u8]) -> Result<libloading::Symbol<T>, EglError> {
+    Ok(lib_egl()?.get(name)?)
+}
+
+#[cfg(x11_platform)]
+unsafe fn x_open_display(name: *const ffi::c_char) -> Result<*mut ffi::c_void, EglError> {
     let x_open_display: libloading::Symbol<
         unsafe extern "C" fn(*const ffi::c_char) -> *mut ffi::c_void,
-    > = LIB_X11.get(b"XOpenDisplay").unwrap();
-    x_open_display(name)
+    > = lib_x11()?.get(b"XOpenDisplay").unwrap();
+    Ok(x_open_display(name))
 }
 
-unsafe fn x_close_display(display: *mut ffi::c_void) {
-    let x_close_display: libloading::Symbol<unsafe extern "C" fn(*mut ffi::c_void)> =
-        LIB_X11.get(b"XCloseDisplay").unwrap();
-    x_close_display(display);
-}
-
-unsafe fn egl_get_error() -> i32 {
+unsafe fn egl_get_error() -> Result<i32, EglError> {
     let egl_get_error: libloading::Symbol<unsafe extern "C" fn() -> i32> =
-        LIB_EGL.get(b"eglGetError").unwrap();
-    egl_get_error()
+        lib_egl_symbol(b"eglGetError")?;
+
+    Ok(egl_get_error())
 }
 
 #[track_caller]
 fn check_egl_error() -> Result<(), EglError> {
-    let error = unsafe { egl_get_error() };
+    let error = unsafe { egl_get_error()? };
 
     match error {
         EGL_SUCCESS => Ok(()),
@@ -312,44 +349,62 @@ fn check_egl_error() -> Result<(), EglError> {
     }
 }
 
-unsafe fn egl_get_display(xdisplay: *mut ffi::c_void) -> *mut ffi::c_void {
-    let egl_get_display: libloading::Symbol<
-        unsafe extern "C" fn(*mut ffi::c_void) -> *mut ffi::c_void,
-    > = LIB_EGL.get(b"eglGetDisplay").unwrap();
-    egl_get_display(xdisplay)
+unsafe fn egl_get_platform_display(
+    platform: i32,
+    native_display: *mut ffi::c_void,
+) -> Result<*mut ffi::c_void, EglError> {
+    let egl_get_platform_display: libloading::Symbol<
+        unsafe extern "C" fn(i32, *mut ffi::c_void, *const i32) -> *mut ffi::c_void,
+    > = lib_egl_symbol(b"eglGetPlatformDisplay")?;
+
+    Ok(egl_get_platform_display(
+        platform,
+        native_display,
+        ptr::null(),
+    ))
 }
 
-unsafe fn egl_initialize(display: *mut ffi::c_void, major: *mut i32, minor: *mut i32) -> i32 {
+unsafe fn egl_initialize(
+    display: *mut ffi::c_void,
+    major: *mut i32,
+    minor: *mut i32,
+) -> Result<(), EglError> {
     let egl_initialize: libloading::Symbol<
         unsafe extern "C" fn(*mut ffi::c_void, *mut i32, *mut i32) -> i32,
-    > = LIB_EGL.get(b"eglInitialize").unwrap();
-    egl_initialize(display, major, minor)
+    > = lib_egl_symbol(b"eglInitialize")?;
+
+    let result = egl_initialize(display, major, minor);
+
+    if result == 0 {
+        check_egl_error()?;
+    }
+
+    Ok(())
 }
 
-unsafe fn egl_terminate(display: *mut ffi::c_void) -> i32 {
-    let egl_terminate: libloading::Symbol<unsafe extern "C" fn(*mut ffi::c_void) -> i32> =
-        LIB_EGL.get(b"eglTerminate").unwrap();
-    egl_terminate(display)
+unsafe fn egl_terminate(display: *mut ffi::c_void) {
+    let egl_terminate =
+        lib_egl_symbol::<unsafe extern "C" fn(*mut ffi::c_void) -> i32>(b"eglTerminate");
+
+    if let Ok(egl_terminate) = egl_terminate {
+        egl_terminate(display);
+    }
 }
 
-unsafe fn egl_bind_api(api: i32) -> i32 {
-    let egl_bind_api: libloading::Symbol<unsafe extern "C" fn(i32) -> i32> =
-        LIB_EGL.get(b"eglBindAPI").unwrap();
-    egl_bind_api(api)
-}
+unsafe fn egl_bind_api(api: i32) -> Result<(), EglError> {
+    let egl_bind_api = lib_egl_symbol::<unsafe extern "C" fn(i32) -> i32>(b"eglBindAPI")?;
 
-unsafe fn egl_swap_interval(display: *mut ffi::c_void, interval: i32) -> i32 {
-    let egl_swap_interval: libloading::Symbol<unsafe extern "C" fn(*mut ffi::c_void, i32) -> i32> =
-        LIB_EGL.get(b"eglSwapInterval").unwrap();
-    egl_swap_interval(display, interval)
+    egl_bind_api(api);
+
+    Ok(())
 }
 
 unsafe fn egl_choose_config(
     display: *mut ffi::c_void,
-    attribs: *const i32,
+    attrib_list: *const i32,
     config: *mut *mut ffi::c_void,
     num_config: *mut i32,
-) -> i32 {
+) -> Result<(), EglError> {
     let egl_choose_config: libloading::Symbol<
         unsafe extern "C" fn(
             *mut ffi::c_void,
@@ -358,16 +413,23 @@ unsafe fn egl_choose_config(
             i32,
             *mut i32,
         ) -> i32,
-    > = LIB_EGL.get(b"eglChooseConfig").unwrap();
-    egl_choose_config(display, attribs, config, 1, num_config)
+    > = lib_egl_symbol(b"eglChooseConfig")?;
+
+    let result = egl_choose_config(display, attrib_list, config, 1, num_config);
+
+    if result == 0 {
+        check_egl_error()?;
+    }
+
+    Ok(())
 }
 
 unsafe fn egl_create_context(
     display: *mut ffi::c_void,
     config: *mut ffi::c_void,
-    share: *mut ffi::c_void,
-    attribs: *const i32,
-) -> *mut ffi::c_void {
+    share_context: *mut ffi::c_void,
+    attrib_list: *const i32,
+) -> Result<*mut ffi::c_void, EglError> {
     let egl_create_context: libloading::Symbol<
         unsafe extern "C" fn(
             *mut ffi::c_void,
@@ -375,23 +437,33 @@ unsafe fn egl_create_context(
             *mut ffi::c_void,
             *const i32,
         ) -> *mut ffi::c_void,
-    > = LIB_EGL.get(b"eglCreateContext").unwrap();
-    egl_create_context(display, config, share, attribs)
+    > = lib_egl_symbol(b"eglCreateContext")?;
+
+    let context = egl_create_context(display, config, share_context, attrib_list);
+
+    if context.is_null() {
+        check_egl_error()?;
+    }
+
+    Ok(context)
 }
 
-unsafe fn egl_destroy_context(display: *mut ffi::c_void, context: *mut ffi::c_void) -> i32 {
-    let egl_destroy_context: libloading::Symbol<
-        unsafe extern "C" fn(*mut ffi::c_void, *mut ffi::c_void) -> i32,
-    > = LIB_EGL.get(b"eglDestroyContext").unwrap();
-    egl_destroy_context(display, context)
+unsafe fn egl_destroy_context(display: *mut ffi::c_void, context: *mut ffi::c_void) {
+    let egl_destroy_context = lib_egl_symbol::<
+        unsafe extern "C" fn(*mut ffi::c_void, *mut ffi::c_void),
+    >(b"eglDestroyContext");
+
+    if let Ok(egl_destroy_context) = egl_destroy_context {
+        egl_destroy_context(display, context);
+    }
 }
 
 unsafe fn egl_create_window_surface(
     display: *mut ffi::c_void,
     config: *mut ffi::c_void,
-    window: *mut ffi::c_void,
-    attribs: *const i32,
-) -> *mut ffi::c_void {
+    native_window: *mut ffi::c_void,
+    attrib_list: *const i32,
+) -> Result<*mut ffi::c_void, EglError> {
     let egl_create_window_surface: libloading::Symbol<
         unsafe extern "C" fn(
             *mut ffi::c_void,
@@ -399,15 +471,25 @@ unsafe fn egl_create_window_surface(
             *mut ffi::c_void,
             *const i32,
         ) -> *mut ffi::c_void,
-    > = LIB_EGL.get(b"eglCreateWindowSurface").unwrap();
-    egl_create_window_surface(display, config, window, attribs)
+    > = lib_egl_symbol(b"eglCreateWindowSurface")?;
+
+    let surface = egl_create_window_surface(display, config, native_window, attrib_list);
+
+    if surface.is_null() {
+        check_egl_error()?;
+    }
+
+    Ok(surface)
 }
 
-unsafe fn egl_destroy_surface(display: *mut ffi::c_void, surface: *mut ffi::c_void) -> i32 {
-    let egl_destroy_surface: libloading::Symbol<
-        unsafe extern "C" fn(*mut ffi::c_void, *mut ffi::c_void) -> i32,
-    > = LIB_EGL.get(b"eglDestroySurface").unwrap();
-    egl_destroy_surface(display, surface)
+unsafe fn egl_destroy_surface(display: *mut ffi::c_void, surface: *mut ffi::c_void) {
+    let egl_destroy_surface = lib_egl_symbol::<
+        unsafe extern "C" fn(*mut ffi::c_void, *mut ffi::c_void),
+    >(b"eglDestroySurface");
+
+    if let Ok(egl_destroy_surface) = egl_destroy_surface {
+        egl_destroy_surface(display, surface);
+    }
 }
 
 unsafe fn egl_make_current(
@@ -415,7 +497,7 @@ unsafe fn egl_make_current(
     draw: *mut ffi::c_void,
     read: *mut ffi::c_void,
     context: *mut ffi::c_void,
-) -> i32 {
+) -> Result<(), EglError> {
     let egl_make_current: libloading::Symbol<
         unsafe extern "C" fn(
             *mut ffi::c_void,
@@ -423,13 +505,39 @@ unsafe fn egl_make_current(
             *mut ffi::c_void,
             *mut ffi::c_void,
         ) -> i32,
-    > = LIB_EGL.get(b"eglMakeCurrent").unwrap();
-    egl_make_current(display, draw, read, context)
+    > = lib_egl_symbol(b"eglMakeCurrent")?;
+
+    let result = egl_make_current(display, draw, read, context);
+
+    if result == 0 {
+        check_egl_error()?;
+    }
+
+    Ok(())
 }
 
-unsafe fn egl_swap_buffers(display: *mut ffi::c_void, surface: *mut ffi::c_void) -> i32 {
+unsafe fn egl_swap_interval(display: *mut ffi::c_void, interval: i32) {
+    let egl_swap_interval =
+        lib_egl_symbol::<unsafe extern "C" fn(*mut ffi::c_void, i32)>(b"eglSwapInterval");
+
+    if let Ok(egl_swap_interval) = egl_swap_interval {
+        egl_swap_interval(display, interval);
+    }
+}
+
+unsafe fn egl_swap_buffers(
+    display: *mut ffi::c_void,
+    surface: *mut ffi::c_void,
+) -> Result<(), EglError> {
     let egl_swap_buffers: libloading::Symbol<
         unsafe extern "C" fn(*mut ffi::c_void, *mut ffi::c_void) -> i32,
-    > = LIB_EGL.get(b"eglSwapBuffers").unwrap();
-    egl_swap_buffers(display, surface)
+    > = lib_egl_symbol(b"eglSwapBuffers")?;
+
+    let result = egl_swap_buffers(display, surface);
+
+    if result == 0 {
+        check_egl_error()?;
+    }
+
+    Ok(())
 }

@@ -207,7 +207,7 @@ impl<T> X11App<T> {
         let atoms = Atoms::new(&conn)?.reply()?;
         let (clipboard_server, clipboard) = X11ClipboardServer::new(&conn, atoms)?;
 
-        let egl_context = EglContext::new()?;
+        let egl_context = EglContext::new_x11()?;
 
         let (event_tx, event_rx) = std::sync::mpsc::channel();
 

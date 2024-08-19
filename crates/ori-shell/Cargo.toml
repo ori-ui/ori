@@ -10,16 +10,16 @@ ori-app.workspace = true
 ori-core.workspace = true
 ori-glow.workspace = true
 
-tracing = "0.1"
+tracing     = "0.1"
 
 [dependencies.tracing-subscriber]
-version = "0.3"
-features = ["env-filter"]
+version     = "0.3"
+features    = ["env-filter"]
 
 [features]
-default = []
-x11 = ["libloading", "x11rb", "xkbcommon", "xkbcommon/x11"]
-wayland = ["xkbcommon", "xkbcommon/wayland"]
+default     = []
+x11         = ["libloading", "x11rb", "xkbcommon", "xkbcommon/x11"]
+wayland     = ["xkbcommon", "xkbcommon/wayland"]
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libloading  = { version = "0.8",    optional = true }

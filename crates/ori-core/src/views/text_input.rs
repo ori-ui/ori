@@ -220,7 +220,7 @@ impl<T> TextInput<T> {
         buffer.set_wrap(&mut fonts.font_system, self.wrap.to_cosmic_text());
         buffer.set_metrics(&mut fonts.font_system, metrics);
 
-        let mut text = self.get_text(state);
+        let mut text = state.text();
 
         if text.ends_with('\n') {
             text.push('\n');
@@ -251,14 +251,6 @@ impl<T> TextInput<T> {
 
         for line in buffer.lines.iter_mut() {
             line.set_attrs_list(attrs_list.clone());
-        }
-    }
-
-    fn get_text(&self, state: &TextInputState) -> String {
-        if let Some(ref text) = self.text {
-            text.clone()
-        } else {
-            state.text()
         }
     }
 }
@@ -402,7 +394,7 @@ impl<T> View<T> for TextInput<T> {
             || self.font_stretch != old.font_stretch
             || self.font_style != old.font_style;
 
-        if self.text != old.text && attrs_changed {
+        if self.text != Some(state.text()) && self.text.is_some() {
             if let Some(mut text) = self.text.clone() {
                 let attrs = TextAttributes {
                     family: self.font_family.clone(),
@@ -630,7 +622,7 @@ impl<T> View<T> for TextInput<T> {
         (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
 
         // if the text is empty, we need to layout the placeholder
-        let mut size = if !self.get_text(state).is_empty() {
+        let mut size = if !state.text().is_empty() {
             Fonts::buffer_size(state.buffer())
         } else {
             state.placeholder.size()
@@ -692,7 +684,7 @@ impl<T> View<T> for TextInput<T> {
             }
 
             /* draw the text */
-            if !self.get_text(state).is_empty() {
+            if !state.text().is_empty() {
                 cx.text_raw(state.buffer(), self.color, Vector::ZERO)
             } else {
                 cx.text(&state.placeholder, self.placeholder_color, Vector::ZERO)

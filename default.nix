@@ -7,11 +7,12 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.libGL
 
     pkgs.libxkbcommon
-    pkgs.xorg.libX11
-    pkgs.xorg.libXcursor
-    pkgs.xorg.libXi
-    pkgs.xorg.libXrandr
-    pkgs.xorg.libXinerama
+    pkgs.xorg.libxcb
+    pkgs.wayland
+  ];
+
+  nativeBuildInputs = [
+    pkgs.pkg-config
   ];
 
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";

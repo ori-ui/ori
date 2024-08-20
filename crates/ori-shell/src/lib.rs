@@ -17,6 +17,10 @@ pub enum Error {
     #[cfg(x11_platform)]
     X11(platform::x11::X11Error),
 
+    /// Wayland error.
+    #[cfg(wayland_platform)]
+    Wayland(platform::wayland::WaylandError),
+
     /// No platform feature enabled.
     NoPlatform,
 }
@@ -28,13 +32,25 @@ impl From<platform::x11::X11Error> for Error {
     }
 }
 
+#[cfg(wayland_platform)]
+impl From<platform::wayland::WaylandError> for Error {
+    fn from(err: platform::wayland::WaylandError) -> Self {
+        Self::Wayland(err)
+    }
+}
+
 impl std::fmt::Display for Error {
     #[allow(unused_variables, unreachable_patterns)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             #[cfg(x11_platform)]
             Error::X11(err) => write!(f, "{}", err),
+
+            #[cfg(wayland_platform)]
+            Error::Wayland(err) => write!(f, "{}", err),
+
             Error::NoPlatform => write!(f, "no platform feature enabled"),
+
             _ => unreachable!(),
         }
     }
@@ -44,7 +60,7 @@ impl std::error::Error for Error {}
 
 /// Launch an Ori application.
 #[allow(unused_variables)]
-pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
+pub fn launch<T: 'static>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     let mut filter = EnvFilter::default().add_directive(tracing::Level::DEBUG.into());
 
     if let Ok(env) = std::env::var("RUST_LOG") {
@@ -72,6 +88,12 @@ pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     #[cfg(x11_platform)]
     {
         let app = platform::x11::X11App::new(app, data)?;
+        return Ok(app.run()?);
+    }
+
+    #[cfg(wayland_platform)]
+    {
+        let app = platform::wayland::WaylandApp::new(app, data)?;
         return Ok(app.run()?);
     }
 

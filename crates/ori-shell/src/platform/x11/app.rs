@@ -45,14 +45,9 @@ use x11rb::{
 };
 use xkbcommon::xkb;
 
-use crate::platform::linux::{EglContext, EglSurface, XkbKeyboard};
+use crate::platform::linux::{EglContext, EglNativeDisplay, EglSurface, XkbKeyboard, LIB_GL};
 
 use super::{clipboard::X11ClipboardServer, X11Error};
-
-static LIB_GL: LazyLock<Library> = LazyLock::new(|| {
-    // load libGL.so
-    unsafe { Library::new("libGL.so").unwrap() }
-});
 
 atom_manager! {
     pub Atoms: AtomsCookie {
@@ -228,7 +223,7 @@ impl<T> X11App<T> {
         let atoms = Atoms::new(&conn)?.reply()?;
         let (clipboard_server, clipboard) = X11ClipboardServer::new(&conn, atoms)?;
 
-        let egl_context = EglContext::new_x11()?;
+        let egl_context = EglContext::new(EglNativeDisplay::X11)?;
 
         let (event_tx, event_rx) = std::sync::mpsc::channel();
 
@@ -442,12 +437,6 @@ impl<T> X11App<T> {
         X11Window::set_title(win_id, &self.conn, &self.atoms, &window.title)?;
         X11Window::set_decorated(win_id, &self.conn, &self.atoms, window.decorated)?;
         X11Window::set_resizable(win_id, &self.conn, &self.atoms, window.resizable)?;
-        //X11Window::set_motif_hints(
-        //    win_id,
-        //    &self.conn,
-        //    &self.atoms,
-        //    &[0, 0, window.decorated as u32, 0, 0],
-        //)?;
 
         self.conn.flush()?;
 

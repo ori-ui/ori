@@ -11,30 +11,38 @@ static LIB_EGL: LazyLock<Result<Library, Arc<libloading::Error>>> = LazyLock::ne
     unsafe { Library::new("libEGL.so").map_err(Arc::new) }
 });
 
-#[cfg(x11_platform)]
-static LIB_X11: LazyLock<Result<Library, Arc<libloading::Error>>> = LazyLock::new(|| {
-    // load libX11.so
-    unsafe { Library::new("libX11.so").map_err(Arc::new) }
-});
-
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum EglNativeDisplay {
     #[cfg(x11_platform)]
-    X11(*mut ffi::c_void),
+    X11,
+
+    #[cfg(wayland_platform)]
+    Wayland(*mut ffi::c_void),
 }
 
 impl EglNativeDisplay {
     fn egl_platform(&self) -> i32 {
         match self {
             #[cfg(x11_platform)]
-            Self::X11(_) => EGL_PLATFORM_X11,
+            Self::X11 => EGL_PLATFORM_X11,
+
+            #[cfg(wayland_platform)]
+            Self::Wayland(_) => EGL_PLATFORM_WAYLAND,
+
+            _ => unreachable!(),
         }
     }
 
     fn as_ptr(&self) -> *mut ffi::c_void {
         match self {
             #[cfg(x11_platform)]
-            Self::X11(ptr) => *ptr,
+            Self::X11 => ptr::null_mut(),
+
+            #[cfg(wayland_platform)]
+            Self::Wayland(ptr) => *ptr,
+
+            _ => unreachable!(),
         }
     }
 }
@@ -52,12 +60,6 @@ pub struct EglContext {
 }
 
 impl EglContext {
-    #[cfg(x11_platform)]
-    pub fn new_x11() -> Result<Self, EglError> {
-        let xdisplay = unsafe { x_open_display(ptr::null())? };
-        Self::new(EglNativeDisplay::X11(xdisplay))
-    }
-
     pub fn new(native_display: EglNativeDisplay) -> Result<Self, EglError> {
         let display = unsafe {
             egl_get_platform_display(native_display.egl_platform(), native_display.as_ptr())?
@@ -174,6 +176,13 @@ impl EglSurface {
         })
     }
 
+    pub fn from_raw_surface(context: &EglContext, surface: *mut ffi::c_void) -> Self {
+        Self {
+            cx: context.inner.clone(),
+            surface,
+        }
+    }
+
     pub fn swap_interval(&self, interval: i32) -> Result<(), EglError> {
         unsafe {
             egl_swap_interval(self.cx.display, interval);
@@ -229,6 +238,9 @@ const EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT: i32 = 0x00000001;
 
 #[cfg(x11_platform)]
 const EGL_PLATFORM_X11: i32 = 0x31D5;
+
+#[cfg(wayland_platform)]
+const EGL_PLATFORM_WAYLAND: i32 = 0x31D8;
 
 const EGL_SUCCESS: i32 = 0x3000;
 const EGL_NOT_INITIALIZED: i32 = 0x3001;
@@ -299,25 +311,12 @@ impl std::fmt::Display for EglError {
     }
 }
 
-#[cfg(x11_platform)]
-fn lib_x11() -> Result<&'static Library, EglError> {
-    Ok(LIB_X11.as_ref()?)
-}
-
 fn lib_egl() -> Result<&'static Library, EglError> {
     Ok(LIB_EGL.as_ref()?)
 }
 
 unsafe fn lib_egl_symbol<T>(name: &[u8]) -> Result<libloading::Symbol<T>, EglError> {
     Ok(lib_egl()?.get(name)?)
-}
-
-#[cfg(x11_platform)]
-unsafe fn x_open_display(name: *const ffi::c_char) -> Result<*mut ffi::c_void, EglError> {
-    let x_open_display: libloading::Symbol<
-        unsafe extern "C" fn(*const ffi::c_char) -> *mut ffi::c_void,
-    > = lib_x11()?.get(b"XOpenDisplay").unwrap();
-    Ok(x_open_display(name))
 }
 
 unsafe fn egl_get_error() -> Result<i32, EglError> {

@@ -3,5 +3,5 @@
 mod app;
 mod error;
 
-pub use app::WaylandApp;
+pub use app::launch;
 pub use error::WaylandError;

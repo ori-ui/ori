@@ -60,7 +60,7 @@ impl std::error::Error for Error {}
 
 /// Launch an Ori application.
 #[allow(unused_variables)]
-pub fn launch<T: 'static>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
+pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     let mut filter = EnvFilter::default().add_directive(tracing::Level::DEBUG.into());
 
     if let Ok(env) = std::env::var("RUST_LOG") {
@@ -93,8 +93,8 @@ pub fn launch<T: 'static>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
 
     #[cfg(wayland_platform)]
     {
-        let app = platform::wayland::WaylandApp::new(app, data)?;
-        return Ok(app.run()?);
+        platform::wayland::launch(app, data)?;
+        return Ok(());
     }
 
     #[allow(unreachable_code)]

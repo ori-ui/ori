@@ -754,6 +754,7 @@ impl PointerHandler for State {
                             x,
                             y,
                         );
+                        println!("frame_cursor_icon: {:?}", window.frame_cursor_icon);
                         window.set_cursor_icon = true;
                     }
                 }

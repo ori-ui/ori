@@ -1,4 +1,4 @@
-use std::{mem, num::NonZero, sync::Arc};
+use std::{mem, num::NonZero, sync::Arc, time::Duration};
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
@@ -292,6 +292,7 @@ fn open_window<T>(
         physical_height,
         scale_factor: 1.0,
         cursor_icon: CursorIcon::Default,
+        frame_cursor_icon: None,
         set_cursor_icon: false,
         pointers: Vec::new(),
         title: window.title.clone(),
@@ -477,6 +478,7 @@ struct WindowState {
     physical_height: u32,
     scale_factor: f32,
     cursor_icon: CursorIcon,
+    frame_cursor_icon: Option<CursorIcon>,
     set_cursor_icon: bool,
     pointers: Vec<ObjectId>,
     title: String,
@@ -737,8 +739,18 @@ impl PointerHandler for State {
                     window.pointers.retain(|id| *id != pointer.id());
                 }
 
-                PointerEventKind::Motion { .. } => {
+                PointerEventKind::Motion { time } => {
                     let (x, y) = event.position;
+
+                    if let Some(ref mut frame) = window.frame {
+                        window.frame_cursor_icon = frame.click_point_moved(
+                            Duration::from_millis(time as u64),
+                            &event.surface.id(),
+                            x,
+                            y,
+                        );
+                    }
+
                     let position = Point::new(x as f32, y as f32);
 
                     self.events.push(Event::PointerMoved {
@@ -748,21 +760,15 @@ impl PointerHandler for State {
                     });
                 }
 
-                PointerEventKind::Press { button, .. } => {
-                    self.events.push(Event::PointerButton {
-                        id: window.id,
-                        object_id: pointer.id(),
-                        button: pointer_button(button),
-                        pressed: true,
-                    });
-                }
+                PointerEventKind::Press { button, .. }
+                | PointerEventKind::Release { button, .. } => {
+                    let pressed = matches!(event.kind, PointerEventKind::Press { .. });
 
-                PointerEventKind::Release { button, .. } => {
                     self.events.push(Event::PointerButton {
                         id: window.id,
                         object_id: pointer.id(),
                         button: pointer_button(button),
-                        pressed: false,
+                        pressed,
                     });
                 }
                 PointerEventKind::Axis { .. } => {}

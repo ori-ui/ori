@@ -253,17 +253,25 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
         let total_gap = self.gap * (self.content.len() as f32 - 1.0);
 
-        layout(
-            self, cx, content, state, data, max_major, 0.0, max_minor, total_gap,
-        );
+        /* measure the content */
 
-        /* stretch the content */
-
-        if self.align.is_stretch() {
-            let minor = f32::clamp(state.minor(), min_minor, max_minor);
+        if self.align == Align::Fill || (self.align == Align::Stretch && min_minor == max_minor) {
             layout(
-                self, cx, content, state, data, max_major, minor, minor, total_gap,
+                self, cx, content, state, data, max_major, max_major, max_minor, total_gap,
             );
+        } else {
+            layout(
+                self, cx, content, state, data, max_major, 0.0, max_minor, total_gap,
+            );
+
+            /* stretch the content */
+
+            if self.align == Align::Stretch {
+                let minor = f32::clamp(state.minor(), min_minor, max_minor);
+                layout(
+                    self, cx, content, state, data, max_major, minor, minor, total_gap,
+                );
+            }
         }
 
         /* position content */

@@ -6,20 +6,21 @@ use core::slice;
 pub enum Align {
     /// Items are packed toward the start of the stack.
     Start,
+
     /// Items are packed toward the end of the stack.
     End,
+
     /// Items are packed toward the center of the stack.
     Center,
-    /// Items are stretched to fill the stack.
+
+    /// Items are stretched to all have the same size.
     Stretch,
+
+    /// Items are stretched to fill the available space.
+    Fill,
 }
 
 impl Align {
-    /// Returns true if the alignment is stretch.
-    pub const fn is_stretch(&self) -> bool {
-        matches!(self, Self::Stretch)
-    }
-
     /// Aligns an item within the given space.
     pub fn align(self, available: f32, size: f32) -> f32 {
         match self {
@@ -27,6 +28,7 @@ impl Align {
             Self::End => available - size,
             Self::Center => (available - size) / 2.0,
             Self::Stretch => 0.0,
+            Self::Fill => 0.0,
         }
     }
 }
@@ -37,14 +39,19 @@ impl Align {
 pub enum Justify {
     /// Items are packed toward the start of the stack.
     Start,
+
     /// Items are packed toward the end of the stack.
     End,
+
     /// Items are packed toward the center of the stack.
     Center,
+
     /// Items are evenly distributed in the stack, with equal-size spaces between them.
     SpaceBetween,
+
     /// Items are evenly distributed in the stack, with half-size spaces on either end.
     SpaceAround,
+
     /// Items are evenly distributed in the stack.
     SpaceEvenly,
 }

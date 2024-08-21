@@ -72,10 +72,14 @@ impl<'a, 'b, T> DelegateCx<'a, 'b, T> {
 /// A delegate for handling events in an application.
 pub trait Delegate<T> {
     /// Called when the application is initialized.
-    fn init(&mut self, _cx: &mut DelegateCx<T>, _data: &mut T) {}
+    fn init(&mut self, cx: &mut DelegateCx<T>, data: &mut T) {
+        let _ = (cx, data);
+    }
 
     /// Called when the application is idle.
-    fn idle(&mut self, _cx: &mut DelegateCx<T>, _data: &mut T) {}
+    fn idle(&mut self, cx: &mut DelegateCx<T>, data: &mut T) {
+        let _ = (cx, data);
+    }
 
     /// Handle an event.
     fn event(&mut self, cx: &mut DelegateCx<T>, data: &mut T, event: &Event) -> bool;

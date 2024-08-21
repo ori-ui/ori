@@ -114,9 +114,9 @@ impl Palette {
 
         fn low(color: Color, is_light: bool) -> Color {
             if is_light {
-                color.lighten(0.3).desaturate(0.2)
+                color.lighten(0.15).desaturate(0.1)
             } else {
-                color.darken(0.3).desaturate(0.2)
+                color.darken(0.15).desaturate(0.1)
             }
         }
 

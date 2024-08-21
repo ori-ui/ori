@@ -303,7 +303,7 @@ impl<T> X11App<T> {
             let mut event_option = if self.needs_redraw() {
                 self.event_rx.try_recv().ok()
             } else {
-                match self.event_rx.recv_timeout(Duration::from_millis(10)) {
+                match self.event_rx.recv_timeout(Duration::from_millis(2)) {
                     Ok(event) => Some(event),
                     Err(err) => match err {
                         RecvTimeoutError::Timeout => None,

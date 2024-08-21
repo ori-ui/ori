@@ -96,7 +96,9 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
         let loop_signal = event_loop.get_signal();
         move || loop_signal.wakeup()
     });
+
     let mut app = app.build(waker);
+    app.init(&mut data);
 
     let mut state = State {
         running: true,
@@ -123,11 +125,23 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
     };
 
     while state.running {
-        event_loop.dispatch(None, &mut state).unwrap();
+        let timeout = match state.needs_redraw() {
+            true => Some(Duration::from_millis(2)),
+            false => None,
+        };
+
+        event_loop.dispatch(timeout, &mut state).unwrap();
         app.handle_commands(&mut data);
+
         handle_events(&mut app, &mut data, &mut state)?;
         handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
+
         render_windows(&mut app, &mut data, &mut state)?;
+        handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
+
+        app.idle(&mut data);
+        handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
+
         set_cursor_icons(&mut state);
     }
 
@@ -525,6 +539,12 @@ struct State {
 
     events: Vec<Event>,
     windows: Vec<WindowState>,
+}
+
+impl State {
+    fn needs_redraw(&self) -> bool {
+        self.windows.iter().any(|w| w.needs_redraw)
+    }
 }
 
 enum Event {

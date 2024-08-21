@@ -1,9 +1,8 @@
 use std::{
     collections::{hash_map::Entry, HashMap},
-    ffi::OsString,
     sync::{
         mpsc::{Receiver, RecvTimeoutError, Sender},
-        Arc, LazyLock,
+        Arc,
     },
     thread::{self, JoinHandle},
     time::Duration,
@@ -19,7 +18,6 @@ use ori_core::{
 };
 use ori_glow::GlowRenderer;
 
-use libloading::Library;
 use x11rb::{
     atom_manager,
     connection::{Connection, RequestConnection},
@@ -45,9 +43,9 @@ use x11rb::{
 };
 use xkbcommon::xkb;
 
-use crate::platform::linux::{EglContext, EglNativeDisplay, EglSurface, XkbKeyboard, LIB_GL};
+use crate::platform::linux::{EglContext, EglNativeDisplay, EglSurface, LIB_GL};
 
-use super::{clipboard::X11ClipboardServer, X11Error};
+use super::{clipboard::X11ClipboardServer, xkb::XkbKeyboard, X11Error};
 
 atom_manager! {
     pub Atoms: AtomsCookie {
@@ -260,7 +258,8 @@ impl<T> X11App<T> {
             )?
             .reply()?;
 
-        let database = Database::new_from_default(&reply, OsString::from("anon"));
+        let hostname = std::env::var_os("HOSTNAME").unwrap_or_default();
+        let database = Database::new_from_default(&reply, hostname);
         let cursor_handle = CursorHandle::new(&conn, screen_num, &database)?.reply()?;
 
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);

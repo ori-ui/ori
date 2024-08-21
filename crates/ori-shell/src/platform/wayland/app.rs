@@ -359,12 +359,14 @@ fn set_cursor_icons(state: &mut State) {
 
         window.set_cursor_icon = false;
 
+        let cursor_icon = window.frame_cursor_icon.unwrap_or(window.cursor_icon);
+
         for pointer in &state.pointers {
             if !window.pointers.contains(&pointer.pointer().id()) {
                 continue;
             }
 
-            if let Err(err) = pointer.set_cursor(&state.conn, window.cursor_icon) {
+            if let Err(err) = pointer.set_cursor(&state.conn, cursor_icon) {
                 warn!("Failed to set cursor icon: {}", err);
             }
         }

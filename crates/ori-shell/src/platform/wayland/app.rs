@@ -10,15 +10,17 @@ use ori_core::{
 use ori_glow::GlowRenderer;
 use sctk_adwaita::{AdwaitaFrame, FrameConfig};
 use smithay_client_toolkit::{
-    compositor::{CompositorHandler, CompositorState},
+    compositor::{CompositorHandler, CompositorState, SurfaceData},
     delegate_compositor, delegate_output, delegate_pointer, delegate_registry, delegate_seat,
     delegate_shm, delegate_subcompositor, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
+    reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge,
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         pointer::{
-            CursorIcon, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer,
+            CursorIcon, PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec,
+            ThemedPointer,
         },
         Capability, SeatHandler, SeatState,
     },
@@ -47,7 +49,7 @@ use wayland_client::{
     },
     Connection, Proxy, QueueHandle,
 };
-use wayland_csd_frame::DecorationsFrame;
+use wayland_csd_frame::{DecorationsFrame, FrameAction, FrameClick, ResizeEdge};
 use wayland_egl::WlEglSurface;
 
 use crate::platform::linux::{EglContext, EglNativeDisplay, EglSurface, LIB_GL};
@@ -725,11 +727,106 @@ impl PointerHandler for State {
         events: &[PointerEvent],
     ) {
         for event in events {
-            let Some(window) = window_by_surface(&mut self.windows, &event.surface) else {
+            let surface = &event.surface;
+
+            let parent_surface = match event.surface.data::<SurfaceData>() {
+                Some(data) => data.parent_surface().unwrap_or(surface),
+                None => continue,
+            };
+
+            let Some(window) = window_by_surface(&mut self.windows, parent_surface) else {
                 continue;
             };
 
             match event.kind {
+                PointerEventKind::Enter { .. } | PointerEventKind::Motion { .. }
+                    if surface != parent_surface =>
+                {
+                    let (x, y) = event.position;
+
+                    if let Some(ref mut frame) = window.frame {
+                        window.frame_cursor_icon = frame.click_point_moved(
+                            // winit uses Duration::ZERO, and so will we
+                            Duration::ZERO,
+                            &event.surface.id(),
+                            x,
+                            y,
+                        );
+                    }
+                }
+
+                PointerEventKind::Leave { .. } if surface != parent_surface => {
+                    if let Some(ref mut frame) = window.frame {
+                        frame.click_point_left();
+                    }
+                }
+
+                PointerEventKind::Press {
+                    button,
+                    serial,
+                    time,
+                }
+                | PointerEventKind::Release {
+                    button,
+                    serial,
+                    time,
+                } if surface != parent_surface => {
+                    let pressed = matches!(event.kind, PointerEventKind::Press { .. });
+
+                    let click = match button {
+                        0x110 => FrameClick::Normal,
+                        0x111 => FrameClick::Alternate,
+                        _ => continue,
+                    };
+
+                    if let Some(ref mut frame) = window.frame {
+                        let pointer_data = pointer.data::<PointerData>().unwrap();
+                        let seat = pointer_data.seat();
+
+                        match frame.on_click(Duration::from_millis(time as u64), click, pressed) {
+                            Some(FrameAction::Close) => {
+                                self.events.push(Event::CloseRequested { id: window.id });
+                            }
+                            Some(FrameAction::Minimize) => {
+                                window.xdg_window.set_minimized();
+                                window.xdg_window.commit();
+                            }
+                            Some(FrameAction::Maximize) => {
+                                window.xdg_window.set_maximized();
+                                window.xdg_window.commit();
+                            }
+                            Some(FrameAction::UnMaximize) => {
+                                window.xdg_window.unset_maximized();
+                                window.xdg_window.commit();
+                            }
+                            Some(FrameAction::ShowMenu(x, y)) => {
+                                window.xdg_window.show_window_menu(seat, serial, (x, y));
+                            }
+                            Some(FrameAction::Resize(edge)) => {
+                                let edge = match edge {
+                                    ResizeEdge::None => XdgResizeEdge::None,
+                                    ResizeEdge::Top => XdgResizeEdge::Top,
+                                    ResizeEdge::Bottom => XdgResizeEdge::Bottom,
+                                    ResizeEdge::Left => XdgResizeEdge::Left,
+                                    ResizeEdge::TopLeft => XdgResizeEdge::TopLeft,
+                                    ResizeEdge::BottomLeft => XdgResizeEdge::BottomLeft,
+                                    ResizeEdge::Right => XdgResizeEdge::Right,
+                                    ResizeEdge::TopRight => XdgResizeEdge::TopRight,
+                                    ResizeEdge::BottomRight => XdgResizeEdge::BottomRight,
+                                    _ => continue,
+                                };
+
+                                window.xdg_window.resize(seat, serial, edge);
+                            }
+                            Some(FrameAction::Move) => {
+                                window.xdg_window.move_(seat, serial);
+                            }
+                            Some(_) => {}
+                            None => {}
+                        }
+                    }
+                }
+
                 PointerEventKind::Enter { .. } => {
                     window.pointers.push(pointer.id());
                     window.set_cursor_icon = true;
@@ -739,18 +836,8 @@ impl PointerHandler for State {
                     window.pointers.retain(|id| *id != pointer.id());
                 }
 
-                PointerEventKind::Motion { time } => {
+                PointerEventKind::Motion { .. } => {
                     let (x, y) = event.position;
-
-                    if let Some(ref mut frame) = window.frame {
-                        window.frame_cursor_icon = frame.click_point_moved(
-                            Duration::from_millis(time as u64),
-                            &event.surface.id(),
-                            x,
-                            y,
-                        );
-                    }
-
                     let position = Point::new(x as f32, y as f32);
 
                     self.events.push(Event::PointerMoved {

@@ -20,18 +20,20 @@ features    = ["env-filter"]
 default     = []
 
 x11 = [
-    "libloading",
-    "x11rb",
-    "xkbcommon",
-    "xkbcommon/x11"
+    "dep:libloading",
+    "dep:x11rb",
+    "dep:xkbcommon",
+    "xkbcommon/x11",
 ]
 
 wayland = [
-    "libloading",
-    "wayland-client",
-    "wayland-egl",
-    "smithay-client-toolkit",
-    "smithay-client-toolkit/xkbcommon"
+    "dep:libloading",
+    "dep:wayland-client",
+    "dep:wayland-egl",
+    "dep:wayland-csd-frame",
+    "dep:smithay-client-toolkit",
+    "smithay-client-toolkit/xkbcommon",
+    "dep:sctk-adwaita",
 ]
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -39,7 +41,9 @@ libloading              = { version = "0.8",    optional = true }
 xkbcommon               = { version = "0.8",    optional = true }
 wayland-client          = { version = "0.31",   optional = true }
 wayland-egl             = { version = "0.32",   optional = true }
+wayland-csd-frame       = { version = "0.3",    optional = true }
 smithay-client-toolkit  = { version = "0.19",   optional = true, default-features = false }
+sctk-adwaita            = { version = "0.10",   optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies.x11rb]
 git         = "https://github.com/ChangeCaps/x11rb"

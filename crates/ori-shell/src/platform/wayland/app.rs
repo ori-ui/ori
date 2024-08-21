@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, num::NonZero, sync::Arc};
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
@@ -8,10 +8,11 @@ use ori_core::{
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
 use ori_glow::GlowRenderer;
+use sctk_adwaita::{AdwaitaFrame, FrameConfig};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
     delegate_compositor, delegate_output, delegate_pointer, delegate_registry, delegate_seat,
-    delegate_shm, delegate_xdg_shell, delegate_xdg_window,
+    delegate_shm, delegate_subcompositor, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -23,12 +24,16 @@ use smithay_client_toolkit::{
     },
     shell::{
         xdg::{
-            window::{Window as XdgWindow, WindowConfigure, WindowDecorations, WindowHandler},
+            window::{
+                DecorationMode, Window as XdgWindow, WindowConfigure, WindowDecorations,
+                WindowHandler,
+            },
             XdgShell, XdgSurface,
         },
         WaylandSurface,
     },
     shm::{Shm, ShmHandler},
+    subcompositor::SubcompositorState,
 };
 use tracing::warn;
 use wayland_client::{
@@ -42,6 +47,7 @@ use wayland_client::{
     },
     Connection, Proxy, QueueHandle,
 };
+use wayland_csd_frame::DecorationsFrame;
 use wayland_egl::WlEglSurface;
 
 use crate::platform::linux::{EglContext, EglNativeDisplay, EglSurface, LIB_GL};
@@ -58,6 +64,13 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
     let egl_context = EglContext::new(display)?;
 
     let compositor = CompositorState::bind(&globals, &qhandle).unwrap();
+    let subcompositor = SubcompositorState::bind(
+        // why do we need to clone the compositor here?
+        compositor.wl_compositor().clone(),
+        &globals,
+        &qhandle,
+    )
+    .unwrap();
     let xdg_shell = XdgShell::bind(&globals, &qhandle).unwrap();
     let seat = SeatState::new(&globals, &qhandle);
     let shm = Shm::bind(&globals, &qhandle).unwrap();
@@ -74,7 +87,8 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
         egl_context,
 
         conn,
-        compositor,
+        compositor: Arc::new(compositor),
+        subcompositor: Arc::new(subcompositor),
         xdg_shell,
         seat,
         shm,
@@ -241,8 +255,8 @@ fn open_window<T>(
     let surface = state.compositor.create_surface(qhandle);
     let xdg_window = state.xdg_shell.create_window(
         surface,
-        // We just want to use the default window decorations.
-        WindowDecorations::ServerDefault,
+        // We prefer to use the server-side decorations.
+        WindowDecorations::RequestServer,
         qhandle,
     );
 
@@ -280,11 +294,13 @@ fn open_window<T>(
         cursor_icon: CursorIcon::Default,
         set_cursor_icon: false,
         pointers: Vec::new(),
+        title: window.title.clone(),
 
         wl_egl_surface,
         egl_surface,
         renderer,
 
+        frame: None,
         xdg_window,
     };
 
@@ -300,6 +316,12 @@ fn render_windows<T>(
     state: &mut State,
 ) -> Result<(), WaylandError> {
     for window in &mut state.windows {
+        if let Some(ref mut frame) = window.frame {
+            if frame.is_dirty() && !frame.is_hidden() {
+                frame.draw();
+            }
+        }
+
         if !window.needs_redraw {
             continue;
         }
@@ -362,16 +384,7 @@ fn handle_event<T>(
 ) -> Result<(), WaylandError> {
     match event {
         Event::Resized { id, width, height } => {
-            if let Some(window) = window_by_id(&mut state.windows, id) {
-                window.physical_width = width;
-                window.physical_height = height;
-                window.needs_redraw = true;
-                (window.wl_egl_surface).resize(width as i32, height as i32, 0, 0);
-
-                window.xdg_window.set_window_geometry(0, 0, width, height);
-
-                app.window_resized(data, id, width, height);
-            }
+            app.window_resized(data, id, width, height);
         }
 
         Event::CloseRequested { id } => {
@@ -415,7 +428,8 @@ struct State {
     egl_context: EglContext,
 
     conn: Connection,
-    compositor: CompositorState,
+    compositor: Arc<CompositorState>,
+    subcompositor: Arc<SubcompositorState>,
     xdg_shell: XdgShell,
     seat: SeatState,
     shm: Shm,
@@ -465,11 +479,13 @@ struct WindowState {
     cursor_icon: CursorIcon,
     set_cursor_icon: bool,
     pointers: Vec<ObjectId>,
+    title: String,
 
     wl_egl_surface: WlEglSurface,
     egl_surface: EglSurface,
     renderer: GlowRenderer,
 
+    frame: Option<AdwaitaFrame<State>>,
     xdg_window: XdgWindow,
 }
 
@@ -558,18 +574,88 @@ impl WindowHandler for State {
     fn configure(
         &mut self,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
         window: &XdgWindow,
         configure: WindowConfigure,
         _serial: u32,
     ) {
         if let Some(window) = window_by_surface(&mut self.windows, window.wl_surface()) {
-            if let (Some(width), Some(height)) = configure.new_size {
-                self.events.push(Event::Resized {
-                    id: window.id,
-                    width: width.get(),
-                    height: height.get(),
-                });
+            let (width, height) = configure.new_size;
+
+            match configure.decoration_mode {
+                DecorationMode::Client => {
+                    let frame = window.frame.get_or_insert_with(|| {
+                        let mut frame = AdwaitaFrame::new(
+                            &window.xdg_window,
+                            &self.shm,
+                            self.compositor.clone(),
+                            self.subcompositor.clone(),
+                            qh.clone(),
+                            FrameConfig::auto(),
+                        )
+                        .unwrap();
+                        frame.set_title(window.title.clone());
+                        frame
+                    });
+
+                    frame.set_hidden(false);
+                    frame.update_state(configure.state);
+                    frame.update_wm_capabilities(configure.capabilities);
+
+                    let (current_width, current_height) = frame.add_borders(
+                        //
+                        window.physical_width,
+                        window.physical_height,
+                    );
+
+                    let one = NonZero::new(1).unwrap();
+                    let (width, height) = frame.subtract_borders(
+                        width.unwrap_or(NonZero::new(current_width).unwrap_or(one)),
+                        height.unwrap_or(NonZero::new(current_height).unwrap_or(one)),
+                    );
+
+                    let width = width.unwrap_or(one);
+                    let height = height.unwrap_or(one);
+
+                    frame.resize(width, height);
+
+                    let (x, y) = frame.location();
+                    let (outer_width, outer_height) = frame.add_borders(width.get(), height.get());
+                    window.xdg_window.xdg_surface().set_window_geometry(
+                        x,
+                        y,
+                        outer_width as i32,
+                        outer_height as i32,
+                    );
+
+                    window.physical_width = width.get();
+                    window.physical_height = height.get();
+                    window.needs_redraw = true;
+                    (window.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
+
+                    self.events.push(Event::Resized {
+                        id: window.id,
+                        width: width.get(),
+                        height: height.get(),
+                    });
+                }
+                DecorationMode::Server => {
+                    let width = width.map_or(window.physical_width, |w| w.get());
+                    let height = height.map_or(window.physical_height, |h| h.get());
+
+                    window.physical_width = width;
+                    window.physical_height = height;
+                    window.needs_redraw = true;
+                    (window.wl_egl_surface).resize(width as i32, height as i32, 0, 0);
+
+                    window.xdg_window.set_window_geometry(0, 0, width, height);
+
+                    self.events.push(Event::Resized {
+                        id: window.id,
+                        width,
+                        height,
+                    });
+                }
             }
         }
     }
@@ -703,6 +789,7 @@ impl ProvidesRegistryState for State {
 }
 
 delegate_compositor!(State);
+delegate_subcompositor!(State);
 delegate_output!(State);
 delegate_shm!(State);
 

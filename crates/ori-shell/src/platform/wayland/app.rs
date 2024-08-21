@@ -4,7 +4,7 @@ use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
     command::CommandWaker,
     event::{Code, PointerButton, PointerId},
-    layout::Point,
+    layout::{Point, Vector},
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
 use ori_glow::GlowRenderer;
@@ -186,6 +186,15 @@ fn handle_app_request<T>(
                     window.physical_width = physical_width;
                     window.physical_height = physical_height;
 
+                    if let Some(ref mut frame) = window.frame {
+                        let one = NonZero::new(1).unwrap();
+                        let width = NonZero::new(physical_width).unwrap_or(one);
+                        let height = NonZero::new(physical_height).unwrap_or(one);
+
+                        frame.resize(width, height);
+                    }
+
+                    set_resizable(window, window.resizable);
                     window.xdg_window.set_window_geometry(
                         //
                         0,
@@ -206,7 +215,10 @@ fn handle_app_request<T>(
                     window.scale_factor = scale;
                     window.needs_redraw = true;
                 }
-                WindowUpdate::Resizable(_) => {}
+                WindowUpdate::Resizable(resizable) => {
+                    set_resizable(window, resizable);
+                    window.resizable = resizable;
+                }
                 WindowUpdate::Decorated(_) => {}
                 WindowUpdate::Maximized(_) => {}
                 WindowUpdate::Visible(_) => {}
@@ -286,8 +298,6 @@ fn open_window<T>(
     );
 
     xdg_window.set_title(&window.title);
-    xdg_window.set_min_size(None);
-    xdg_window.set_max_size(None);
     xdg_window.commit();
 
     xdg_window.xdg_surface().set_window_geometry(
@@ -320,6 +330,7 @@ fn open_window<T>(
         frame_cursor_icon: None,
         set_cursor_icon: false,
         title: window.title.clone(),
+        resizable: window.resizable,
 
         pointers: Vec::new(),
         keyboards: Vec::new(),
@@ -332,10 +343,25 @@ fn open_window<T>(
         xdg_window,
     };
 
+    set_resizable(&window_state, window.resizable);
+
     state.windows.push(window_state);
     app.add_window(data, ui, window);
 
     Ok(())
+}
+
+fn set_resizable(window: &WindowState, resizable: bool) {
+    if resizable {
+        window.xdg_window.set_min_size(None);
+        window.xdg_window.set_max_size(None);
+    } else {
+        let size = Some((window.physical_width, window.physical_height));
+        window.xdg_window.set_min_size(size);
+        window.xdg_window.set_max_size(size);
+    }
+
+    window.xdg_window.commit();
 }
 
 fn render_windows<T>(
@@ -448,6 +474,15 @@ fn handle_event<T>(
             app.pointer_button(data, id, pointer_id, button, pressed);
         }
 
+        Event::PointerScroll {
+            id,
+            object_id,
+            delta,
+        } => {
+            let pointer_id = PointerId::from_hash(&object_id);
+            app.pointer_scrolled(data, id, pointer_id, delta);
+        }
+
         Event::Keyboard {
             id,
             code,
@@ -513,6 +548,12 @@ enum Event {
         pressed: bool,
     },
 
+    PointerScroll {
+        id: WindowId,
+        object_id: ObjectId,
+        delta: Vector,
+    },
+
     Keyboard {
         id: WindowId,
         code: Option<Code>,
@@ -537,6 +578,7 @@ struct WindowState {
     frame_cursor_icon: Option<CursorIcon>,
     set_cursor_icon: bool,
     title: String,
+    resizable: bool,
 
     pointers: Vec<ObjectId>,
     keyboards: Vec<ObjectId>,
@@ -950,7 +992,20 @@ impl PointerHandler for State {
                         pressed,
                     });
                 }
-                PointerEventKind::Axis { .. } => {}
+
+                PointerEventKind::Axis {
+                    horizontal,
+                    vertical,
+                    ..
+                } => {
+                    let delta = Vector::new(-horizontal.discrete as f32, -vertical.discrete as f32);
+
+                    self.events.push(Event::PointerScroll {
+                        id: window.id,
+                        object_id: pointer.id(),
+                        delta,
+                    });
+                }
             }
         }
     }

@@ -31,6 +31,8 @@ wayland = [
     "dep:wayland-client",
     "dep:wayland-egl",
     "dep:wayland-csd-frame",
+    "dep:wayland-backend",
+    "wayland-backend/dlopen",
     "dep:smithay-client-toolkit",
     "dep:sctk-adwaita",
 ]
@@ -41,6 +43,7 @@ xkbcommon               = { version = "0.8",    optional = true }
 wayland-client          = { version = "0.31",   optional = true }
 wayland-egl             = { version = "0.32",   optional = true }
 wayland-csd-frame       = { version = "0.3",    optional = true }
+wayland-backend         = { version = "0.3",    optional = true }
 smithay-client-toolkit  = { version = "0.19",   optional = true }
 sctk-adwaita            = { version = "0.10",   optional = true }
 

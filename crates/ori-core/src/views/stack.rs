@@ -253,141 +253,17 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
         let total_gap = self.gap * (self.content.len() as f32 - 1.0);
 
-        /* measure the non-flex content */
-
-        state.flex_sum = 0.0;
-
-        for i in 0..self.content.len() {
-            if content[i].is_flex() {
-                state.flex_sum += content[i].flex();
-                state.majors[i] = 0.0;
-                continue;
-            }
-
-            let space = Space::new(Size::ZERO, self.axis.pack(f32::INFINITY, max_minor));
-
-            let size = self.content.layout_nth(i, content, cx, data, space);
-            state.majors[i] = self.axis.major(size);
-            state.minors[i] = self.axis.minor(size);
-        }
-
-        /* measure the expanded content */
-
-        let remaining = f32::max(max_major - total_gap - state.major(), 0.0);
-        let per_flex = remaining / state.flex_sum;
-
-        for i in 0..self.content.len() {
-            if !content[i].is_flex() || content[i].is_tight() {
-                continue;
-            }
-
-            let flex = content[i].flex();
-            let major = per_flex * flex;
-
-            let space = Space::new(Size::ZERO, self.axis.pack(major, max_minor));
-
-            let size = self.content.layout_nth(i, content, cx, data, space);
-            state.majors[i] = self.axis.major(size);
-            state.minors[i] = self.axis.minor(size);
-        }
-
-        /* measure the flex content */
-
-        let remaining = f32::max(max_major - total_gap - state.major(), 0.0);
-        let per_flex = remaining / state.flex_sum;
-
-        for i in 0..self.content.len() {
-            if !content[i].is_flex() || !content[i].is_tight() {
-                continue;
-            }
-
-            let flex = content[i].flex();
-            let major = per_flex * flex;
-
-            let space = Space::new(self.axis.pack(major, 0.0), self.axis.pack(major, max_minor));
-
-            let size = self.content.layout_nth(i, content, cx, data, space);
-            state.majors[i] = self.axis.major(size);
-            state.minors[i] = self.axis.minor(size);
-        }
+        layout(
+            self, cx, content, state, data, max_major, 0.0, max_minor, total_gap,
+        );
 
         /* stretch the content */
 
         if self.align.is_stretch() {
-            let minor = state.minor();
-            let minor = f32::clamp(minor, min_minor, max_minor);
-
-            state.flex_sum = 0.0;
-
-            /* re-measure the non-flex content */
-
-            for i in 0..self.content.len() {
-                if content[i].is_flex() {
-                    state.flex_sum += content[i].flex();
-                    state.majors[i] = 0.0;
-                    continue;
-                }
-
-                let space = Space {
-                    min: self.axis.pack(0.0, minor),
-                    max: self.axis.pack(f32::INFINITY, minor),
-                };
-
-                // calling layout_nth again is not ideal, as it can lead to exponential time complexity
-                // but considering how cheap layout generally is, this *should* be fine
-                let size = self.content.layout_nth(i, content, cx, data, space);
-
-                state.majors[i] = self.axis.major(size);
-                state.minors[i] = self.axis.minor(size);
-            }
-
-            /* re-measure the expanded content */
-
-            let remaining = f32::max(max_major - total_gap - state.major(), 0.0);
-            let per_flex = remaining / state.flex_sum;
-
-            for i in 0..self.content.len() {
-                if !content[i].is_flex() || content[i].is_tight() {
-                    continue;
-                }
-
-                let flex = content[i].flex();
-                let major = per_flex * flex;
-
-                let space = Space {
-                    min: self.axis.pack(0.0, minor),
-                    max: self.axis.pack(major, minor),
-                };
-
-                let size = self.content.layout_nth(i, content, cx, data, space);
-
-                state.majors[i] = self.axis.major(size);
-                state.minors[i] = self.axis.minor(size);
-            }
-
-            /* re-measure the flex content */
-
-            let remaining = f32::max(max_major - total_gap - state.major(), 0.0);
-            let per_flex = remaining / state.flex_sum;
-
-            for i in 0..self.content.len() {
-                if !content[i].is_flex() || !content[i].is_tight() {
-                    continue;
-                }
-
-                let flex = content[i].flex();
-                let major = per_flex * flex;
-
-                let space = Space {
-                    min: self.axis.pack(major, minor),
-                    max: self.axis.pack(major, minor),
-                };
-
-                let size = self.content.layout_nth(i, content, cx, data, space);
-
-                state.majors[i] = self.axis.major(size);
-                state.minors[i] = self.axis.minor(size);
-            }
+            let minor = f32::clamp(state.minor(), min_minor, max_minor);
+            layout(
+                self, cx, content, state, data, max_major, minor, minor, total_gap,
+            );
         }
 
         /* position content */
@@ -411,5 +287,85 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         for i in 0..self.content.len() {
             self.content.draw_nth(i, content, cx, data);
         }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn layout<T, V: ViewSeq<T>>(
+    stack: &mut Stack<V>,
+    cx: &mut LayoutCx,
+    content: &mut SeqState<T, V>,
+    state: &mut StackState,
+    data: &mut T,
+    max_major: f32,
+    min_minor: f32,
+    max_minor: f32,
+    total_gap: f32,
+) {
+    state.flex_sum = 0.0;
+
+    /* measure the non-flex content */
+
+    for i in 0..stack.content.len() {
+        if content[i].is_flex() {
+            state.flex_sum += content[i].flex();
+            state.majors[i] = 0.0;
+            continue;
+        }
+
+        let space = Space::new(
+            stack.axis.pack(0.0, min_minor),
+            stack.axis.pack(f32::INFINITY, max_minor),
+        );
+
+        let size = stack.content.layout_nth(i, content, cx, data, space);
+        state.majors[i] = stack.axis.major(size);
+        state.minors[i] = stack.axis.minor(size);
+    }
+
+    /* measure the expanded content */
+
+    let remaining = f32::max(max_major - total_gap - state.major(), 0.0);
+    let per_flex = remaining / state.flex_sum;
+
+    for i in 0..stack.content.len() {
+        if !content[i].is_flex() || content[i].is_tight() {
+            continue;
+        }
+
+        let flex = content[i].flex();
+        let major = per_flex * flex;
+
+        let space = Space::new(
+            stack.axis.pack(0.0, min_minor),
+            stack.axis.pack(major, max_minor),
+        );
+
+        let size = stack.content.layout_nth(i, content, cx, data, space);
+        state.majors[i] = stack.axis.major(size);
+        state.minors[i] = stack.axis.minor(size);
+    }
+
+    /* measure the flex content */
+
+    let remaining = f32::max(max_major - total_gap - state.major(), 0.0);
+    let per_flex = remaining / state.flex_sum;
+
+    for i in 0..stack.content.len() {
+        if !content[i].is_flex() || !content[i].is_tight() {
+            continue;
+        }
+
+        let flex = content[i].flex();
+        let major = per_flex * flex;
+
+        let space = Space::new(
+            stack.axis.pack(major, min_minor),
+            stack.axis.pack(major, max_minor),
+        );
+
+        let size = stack.content.layout_nth(i, content, cx, data, space);
+        state.majors[i] = stack.axis.major(size);
+        state.minors[i] = stack.axis.minor(size);
     }
 }

@@ -167,16 +167,16 @@ impl Palette {
     /// The default dark palette.
     pub fn dark() -> Self {
         Self::derived(
-            Color::hex("#1e1e1e"),
-            Color::hex("#242424"),
-            Color::hex("#deddda"),
-            Color::hex("#62a0ea"),
-            Color::hex("#4dd0e1"),
-            Color::hex("#f8e45c"),
-            Color::hex("#ff7b63"),
-            Color::hex("#8ff0a4"),
-            Color::hex("#f8e45c"),
-            Color::hex("#4dd0e1"),
+            Color::hex("#1e1e1eff"),
+            Color::hex("#242424ff"),
+            Color::hex("#dedddaff"),
+            Color::hex("#55b1f0ff"),
+            Color::hex("#d3a4f9ff"),
+            Color::hex("#f9afadff"),
+            Color::hex("#f05d51ff"),
+            Color::hex("#9af079ff"),
+            Color::hex("#f9e35fff"),
+            Color::hex("#639ff7ff"),
         )
     }
 }

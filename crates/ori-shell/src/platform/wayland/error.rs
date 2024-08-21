@@ -8,8 +8,8 @@ pub enum WaylandError {
     /// An error occurred when connecting to the Wayland server.
     Conntect(wayland_client::ConnectError),
 
-    /// An error occurred when interacting with Wayland.
-    Dispatch(wayland_client::DispatchError),
+    /// An error occurred with the Globals.
+    Global(wayland_client::globals::GlobalError),
 
     /// An error occurred with the wl_surface protocol.
     Surface(wl_surface::Error),
@@ -27,9 +27,9 @@ impl From<wayland_client::ConnectError> for WaylandError {
     }
 }
 
-impl From<wayland_client::DispatchError> for WaylandError {
-    fn from(err: wayland_client::DispatchError) -> Self {
-        Self::Dispatch(err)
+impl From<wayland_client::globals::GlobalError> for WaylandError {
+    fn from(err: wayland_client::globals::GlobalError) -> Self {
+        Self::Global(err)
     }
 }
 
@@ -55,7 +55,7 @@ impl std::fmt::Display for WaylandError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Conntect(err) => write!(f, "Wayland connection error: {}", err),
-            Self::Dispatch(err) => write!(f, "Wayland dispatch error: {}", err),
+            Self::Global(err) => write!(f, "Wayland global error: {}", err),
             Self::Surface(err) => write!(f, "Wayland surface error: {:?}", err),
             Self::WlEgl(err) => write!(f, "Wayland EGL error: {}", err),
             Self::Egl(err) => write!(f, "EGL error: {}", err),

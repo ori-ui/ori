@@ -3,7 +3,7 @@ use std::{mem, num::NonZero, sync::Arc, time::Duration};
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
     command::CommandWaker,
-    event::{PointerButton, PointerId},
+    event::{Code, PointerButton, PointerId},
     layout::Point,
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
@@ -11,13 +11,18 @@ use ori_glow::GlowRenderer;
 use sctk_adwaita::{AdwaitaFrame, FrameConfig};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, SurfaceData},
-    delegate_compositor, delegate_output, delegate_pointer, delegate_registry, delegate_seat,
-    delegate_shm, delegate_subcompositor, delegate_xdg_shell, delegate_xdg_window,
+    delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
+    delegate_seat, delegate_shm, delegate_subcompositor, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
-    reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge,
+    reexports::{
+        calloop::{EventLoop, LoopHandle},
+        calloop_wayland_source::WaylandSource,
+        protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge,
+    },
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
+        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers},
         pointer::{
             CursorIcon, PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec,
             ThemedPointer,
@@ -42,6 +47,7 @@ use wayland_client::{
     backend::ObjectId,
     globals::registry_queue_init,
     protocol::{
+        wl_keyboard::WlKeyboard,
         wl_output::{Transform, WlOutput},
         wl_pointer::WlPointer,
         wl_seat::WlSeat,
@@ -59,8 +65,14 @@ use super::error::WaylandError;
 /// Launch an Ori application on the Wayland platform.
 pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
     let conn = Connection::connect_to_env()?;
-    let (globals, mut event_queue) = registry_queue_init(&conn).unwrap();
+    let (globals, event_queue) = registry_queue_init(&conn)?;
     let qhandle = event_queue.handle();
+
+    let mut event_loop = EventLoop::try_new().unwrap();
+    let loop_handle = event_loop.handle();
+    WaylandSource::new(conn.clone(), event_queue)
+        .insert(loop_handle.clone())
+        .unwrap();
 
     let display = EglNativeDisplay::Wayland(conn.backend().display_ptr() as _);
     let egl_context = EglContext::new(display)?;
@@ -89,6 +101,8 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
         egl_context,
 
         conn,
+        loop_handle,
+
         compositor: Arc::new(compositor),
         subcompositor: Arc::new(subcompositor),
         xdg_shell,
@@ -99,13 +113,14 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
         registry,
 
         pointers: Vec::new(),
+        keyboards: Vec::new(),
 
         events: Vec::new(),
         windows: Vec::new(),
     };
 
     while state.running {
-        event_queue.blocking_dispatch(&mut state)?;
+        event_loop.dispatch(None, &mut state).unwrap();
         handle_events(&mut app, &mut data, &mut state)?;
         handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
         render_windows(&mut app, &mut data, &mut state)?;
@@ -139,7 +154,11 @@ fn handle_app_request<T>(
     match request {
         AppRequest::OpenWindow(window, ui) => open_window(app, data, state, qhandle, window, ui)?,
 
-        AppRequest::CloseWindow(_) => {}
+        AppRequest::CloseWindow(id) => {
+            if let Some(index) = window_index_by_id(&state.windows, id) {
+                state.windows.remove(index);
+            }
+        }
 
         AppRequest::DragWindow(_) => {}
 
@@ -167,9 +186,13 @@ fn handle_app_request<T>(
                     window.physical_width = physical_width;
                     window.physical_height = physical_height;
 
-                    window
-                        .xdg_window
-                        .set_window_geometry(0, 0, physical_width, physical_height);
+                    window.xdg_window.set_window_geometry(
+                        //
+                        0,
+                        0,
+                        physical_width,
+                        physical_height,
+                    );
                     window.wl_egl_surface.resize(
                         physical_width as i32,
                         physical_height as i32,
@@ -296,8 +319,10 @@ fn open_window<T>(
         cursor_icon: CursorIcon::Default,
         frame_cursor_icon: None,
         set_cursor_icon: false,
-        pointers: Vec::new(),
         title: window.title.clone(),
+
+        pointers: Vec::new(),
+        keyboards: Vec::new(),
 
         wl_egl_surface,
         egl_surface,
@@ -422,6 +447,19 @@ fn handle_event<T>(
             let pointer_id = PointerId::from_hash(&object_id);
             app.pointer_button(data, id, pointer_id, button, pressed);
         }
+
+        Event::Keyboard {
+            id,
+            code,
+            text,
+            pressed,
+        } => {
+            app.keyboard_key(data, id, code, text, pressed);
+        }
+
+        Event::Modifiers { modifiers } => {
+            app.modifiers_changed(modifiers);
+        }
     }
 
     Ok(())
@@ -433,6 +471,8 @@ struct State {
     egl_context: EglContext,
 
     conn: Connection,
+    loop_handle: LoopHandle<'static, State>,
+
     compositor: Arc<CompositorState>,
     subcompositor: Arc<SubcompositorState>,
     xdg_shell: XdgShell,
@@ -443,6 +483,7 @@ struct State {
     registry: RegistryState,
 
     pointers: Vec<ThemedPointer>,
+    keyboards: Vec<WlKeyboard>,
 
     events: Vec<Event>,
     windows: Vec<WindowState>,
@@ -471,6 +512,17 @@ enum Event {
         button: PointerButton,
         pressed: bool,
     },
+
+    Keyboard {
+        id: WindowId,
+        code: Option<Code>,
+        text: Option<String>,
+        pressed: bool,
+    },
+
+    Modifiers {
+        modifiers: ori_core::event::Modifiers,
+    },
 }
 
 #[allow(unused)]
@@ -484,8 +536,10 @@ struct WindowState {
     cursor_icon: CursorIcon,
     frame_cursor_icon: Option<CursorIcon>,
     set_cursor_icon: bool,
-    pointers: Vec<ObjectId>,
     title: String,
+
+    pointers: Vec<ObjectId>,
+    keyboards: Vec<ObjectId>,
 
     wl_egl_surface: WlEglSurface,
     egl_surface: EglSurface,
@@ -701,6 +755,35 @@ impl SeatHandler for State {
                 self.pointers.push(pointer);
             }
         }
+
+        if capability == Capability::Keyboard {
+            let keyboard = self.seat.get_keyboard_with_repeat(
+                qh,
+                &seat,
+                None,
+                self.loop_handle.clone(),
+                Box::new(|state, keyboard, event| {
+                    for window in &mut state.windows {
+                        if !window.keyboards.contains(&keyboard.id()) {
+                            continue;
+                        }
+
+                        let code = Code::from_linux_scancode(event.raw_code as u8);
+
+                        state.events.push(Event::Keyboard {
+                            id: window.id,
+                            code,
+                            text: event.utf8.clone(),
+                            pressed: true,
+                        });
+                    }
+                }),
+            );
+
+            if let Ok(keyboard) = keyboard {
+                self.keyboards.push(keyboard);
+            }
+        }
     }
 
     fn remove_capability(
@@ -713,6 +796,12 @@ impl SeatHandler for State {
         if capability == Capability::Pointer {
             for pointer in self.pointers.drain(..) {
                 pointer.pointer().release();
+            }
+        }
+
+        if capability == Capability::Keyboard {
+            for keyboard in self.keyboards.drain(..) {
+                keyboard.release();
             }
         }
     }
@@ -754,7 +843,6 @@ impl PointerHandler for State {
                             x,
                             y,
                         );
-                        println!("frame_cursor_icon: {:?}", window.frame_cursor_icon);
                         window.set_cursor_icon = true;
                     }
                 }
@@ -877,6 +965,103 @@ fn pointer_button(button: u32) -> PointerButton {
     }
 }
 
+impl KeyboardHandler for State {
+    fn enter(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        keyboard: &WlKeyboard,
+        surface: &WlSurface,
+        _serial: u32,
+        _raw: &[u32],
+        _keysyms: &[Keysym],
+    ) {
+        if let Some(window) = window_by_surface(&mut self.windows, surface) {
+            window.keyboards.push(keyboard.id());
+        }
+    }
+
+    fn leave(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        keyboard: &WlKeyboard,
+        surface: &WlSurface,
+        _serial: u32,
+    ) {
+        if let Some(window) = window_by_surface(&mut self.windows, surface) {
+            window.keyboards.retain(|id| *id != keyboard.id());
+        }
+    }
+
+    fn press_key(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        keyboard: &WlKeyboard,
+        _serial: u32,
+        event: KeyEvent,
+    ) {
+        let code = Code::from_linux_scancode(event.raw_code as u8);
+
+        for window in &mut self.windows {
+            if !window.keyboards.contains(&keyboard.id()) {
+                continue;
+            }
+
+            self.events.push(Event::Keyboard {
+                id: window.id,
+                code,
+                text: event.utf8.clone(),
+                pressed: true,
+            });
+        }
+    }
+
+    fn release_key(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        keyboard: &WlKeyboard,
+        _serial: u32,
+        event: KeyEvent,
+    ) {
+        let code = Code::from_linux_scancode(event.raw_code as u8);
+
+        for window in &mut self.windows {
+            if !window.keyboards.contains(&keyboard.id()) {
+                continue;
+            }
+
+            self.events.push(Event::Keyboard {
+                id: window.id,
+                code,
+                text: event.utf8.clone(),
+                pressed: false,
+            });
+        }
+    }
+
+    fn update_modifiers(
+        &mut self,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _keyboard: &WlKeyboard,
+        _serial: u32,
+        modifiers: Modifiers,
+        _layout: u32,
+    ) {
+        let modifiers = ori_core::event::Modifiers {
+            shift: modifiers.shift,
+            ctrl: modifiers.ctrl,
+            alt: modifiers.alt,
+            meta: modifiers.logo,
+        };
+
+        self.events.push(Event::Modifiers { modifiers });
+    }
+}
+
 impl ProvidesRegistryState for State {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry
@@ -892,6 +1077,7 @@ delegate_shm!(State);
 
 delegate_seat!(State);
 delegate_pointer!(State);
+delegate_keyboard!(State);
 
 delegate_xdg_shell!(State);
 delegate_xdg_window!(State);

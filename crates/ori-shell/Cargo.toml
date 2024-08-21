@@ -32,7 +32,6 @@ wayland = [
     "dep:wayland-egl",
     "dep:wayland-csd-frame",
     "dep:smithay-client-toolkit",
-    "smithay-client-toolkit/xkbcommon",
     "dep:sctk-adwaita",
 ]
 
@@ -42,7 +41,7 @@ xkbcommon               = { version = "0.8",    optional = true }
 wayland-client          = { version = "0.31",   optional = true }
 wayland-egl             = { version = "0.32",   optional = true }
 wayland-csd-frame       = { version = "0.3",    optional = true }
-smithay-client-toolkit  = { version = "0.19",   optional = true, default-features = false }
+smithay-client-toolkit  = { version = "0.19",   optional = true }
 sctk-adwaita            = { version = "0.10",   optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies.x11rb]

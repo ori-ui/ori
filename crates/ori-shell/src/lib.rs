@@ -85,16 +85,23 @@ pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
         eprintln!("Failed to set global default subscriber: {}", err);
     }
 
+    #[cfg(wayland_platform)]
+    {
+        match platform::wayland::launch(app, data) {
+            Ok(()) => return Ok(()),
+
+            // if x11 is enabled and we fail to connect to the Wayland server, try X11
+            #[cfg(x11_platform)]
+            Err(platform::wayland::WaylandError::Conntect(_)) => {}
+
+            Err(err) => return Err(err.into()),
+        }
+    }
+
     #[cfg(x11_platform)]
     {
         let app = platform::x11::X11App::new(app, data)?;
         return Ok(app.run()?);
-    }
-
-    #[cfg(wayland_platform)]
-    {
-        platform::wayland::launch(app, data)?;
-        return Ok(());
     }
 
     #[allow(unreachable_code)]

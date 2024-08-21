@@ -2,6 +2,7 @@ use std::{mem, num::NonZero, sync::Arc, time::Duration};
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
+    clipboard::{Clipboard, ClipboardBackend},
     command::CommandWaker,
     event::{Code, PointerButton, PointerId},
     layout::{Point, Vector},
@@ -74,8 +75,12 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
         .insert(loop_handle.clone())
         .unwrap();
 
-    let display = EglNativeDisplay::Wayland(conn.backend().display_ptr() as _);
+    let display_ptr = conn.backend().display_ptr() as _;
+    let display = EglNativeDisplay::Wayland(display_ptr);
     let egl_context = EglContext::new(display)?;
+
+    let clipboard = unsafe { smithay_clipboard::Clipboard::new(display_ptr) };
+    let clipboard = WaylandClipboard { clipboard };
 
     let compositor = CompositorState::bind(&globals, &qhandle).unwrap();
     let subcompositor = SubcompositorState::bind(
@@ -98,6 +103,7 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
     });
 
     let mut app = app.build(waker);
+    app.add_context(Clipboard::new(Box::new(clipboard)));
     app.init(&mut data);
 
     let mut state = State {
@@ -1155,6 +1161,20 @@ impl ProvidesRegistryState for State {
     }
 
     registry_handlers!(OutputState);
+}
+
+struct WaylandClipboard {
+    clipboard: smithay_clipboard::Clipboard,
+}
+
+impl ClipboardBackend for WaylandClipboard {
+    fn get_text(&mut self) -> String {
+        self.clipboard.load().unwrap_or_default()
+    }
+
+    fn set_text(&mut self, text: &str) {
+        self.clipboard.store(text);
+    }
 }
 
 delegate_compositor!(State);

@@ -405,7 +405,7 @@ void main() {
 
     if ((v_flags & ANTI_ALIAS_BIT) != 0u) {
         for (uint i = 0u; i < 6u; i++) {
-            vec2 v = v_vertex + offsets[i];
+            vec2 v = v_vertex + v_transform_inv * offsets[i] / resolution;
             alpha += is_inside(v) ? 1.0 : 0.0;
         }
 

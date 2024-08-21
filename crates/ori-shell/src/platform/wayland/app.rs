@@ -92,7 +92,10 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
     let output = OutputState::new(&globals, &qhandle);
     let registry = RegistryState::new(&globals);
 
-    let waker = CommandWaker::new(|| {});
+    let waker = CommandWaker::new({
+        let loop_signal = event_loop.get_signal();
+        move || loop_signal.wakeup()
+    });
     let mut app = app.build(waker);
 
     let mut state = State {
@@ -121,10 +124,10 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
 
     while state.running {
         event_loop.dispatch(None, &mut state).unwrap();
+        app.handle_commands(&mut data);
         handle_events(&mut app, &mut data, &mut state)?;
         handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
         render_windows(&mut app, &mut data, &mut state)?;
-        handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
         set_cursor_icons(&mut state);
     }
 
@@ -315,7 +318,7 @@ fn open_window<T>(
     let egl_surface = EglSurface::new(&state.egl_context, wl_egl_surface.ptr() as _)?;
 
     egl_surface.make_current()?;
-    egl_surface.swap_interval(1)?;
+    egl_surface.swap_interval(0)?;
 
     let renderer = unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
 
@@ -723,17 +726,22 @@ impl WindowHandler for State {
 
                     let (x, y) = frame.location();
                     let (outer_width, outer_height) = frame.add_borders(width.get(), height.get());
+
+                    window.physical_width = width.get();
+                    window.physical_height = height.get();
+                    window.needs_redraw = true;
+
+                    // i have no idea why this is necessary, but it is
+                    //
+                    // KEEP MAKE CURRENT HERE!
+                    window.egl_surface.make_current().unwrap();
+                    (window.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
                     window.xdg_window.xdg_surface().set_window_geometry(
                         x,
                         y,
                         outer_width as i32,
                         outer_height as i32,
                     );
-
-                    window.physical_width = width.get();
-                    window.physical_height = height.get();
-                    window.needs_redraw = true;
-                    (window.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
 
                     self.events.push(Event::Resized {
                         id: window.id,
@@ -748,8 +756,12 @@ impl WindowHandler for State {
                     window.physical_width = width;
                     window.physical_height = height;
                     window.needs_redraw = true;
-                    (window.wl_egl_surface).resize(width as i32, height as i32, 0, 0);
 
+                    // i have no idea why this is necessary, but it is
+                    //
+                    // KEEP MAKE CURRENT HERE!
+                    window.egl_surface.make_current().unwrap();
+                    (window.wl_egl_surface).resize(width as i32, height as i32, 0, 0);
                     window.xdg_window.set_window_geometry(0, 0, width, height);
 
                     self.events.push(Event::Resized {

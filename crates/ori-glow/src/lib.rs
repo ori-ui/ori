@@ -122,10 +122,6 @@ impl GlowRenderer {
             glow::STATIC_DRAW,
         );
 
-        gl.bind_buffer_base(glow::UNIFORM_BUFFER, 0, Some(point_buffer));
-        gl.bind_buffer_base(glow::UNIFORM_BUFFER, 1, Some(band_buffer));
-        gl.bind_buffer_base(glow::UNIFORM_BUFFER, 2, Some(uniform_buffer));
-
         let vertex_array = Self::create_vertex_array(&gl, instance_buffer).unwrap();
 
         let default_data = ImageData::new(vec![255; 4], 1, 1);
@@ -463,13 +459,20 @@ impl GlowRenderer {
         self.gl.uniform_1_i32(location.as_ref(), 0);
 
         self.gl.use_program(Some(self.program));
+
+        (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 0, Some(self.point_buffer));
+        (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 1, Some(self.band_buffer));
+        (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 2, Some(self.uniform_buffer));
+
         self.gl.bind_vertex_array(Some(self.vertex_array));
+
         (self.gl).draw_arrays_instanced(glow::TRIANGLE_STRIP, 0, 6, self.instances.len() as i32);
 
         self.gl.bind_vertex_array(None);
         self.gl.use_program(None);
 
         self.gl.bind_buffer(glow::ARRAY_BUFFER, None);
+        self.gl.bind_buffer(glow::UNIFORM_BUFFER, None);
 
         self.points.clear();
         self.band_data.clear();

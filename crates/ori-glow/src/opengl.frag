@@ -41,10 +41,6 @@ const float PI = 3.1415926535897932384626433832795;
 const float EPSILON = 1.0e-5;
 const float NONE = 1.0e21;
 
-float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
 float quad_bezier(float a, float b, float c, float t) {
     float s = 1.0 - t;
     return s * s * a + 2.0 * s * t * b + t * t * c;

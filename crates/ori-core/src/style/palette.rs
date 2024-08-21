@@ -124,12 +124,12 @@ impl Palette {
 
         Self {
             background,
-            surface_lower: emphasize(surface, is_light, -0.2),
-            surface_low: emphasize(surface, is_light, -0.1),
+            surface_lower: emphasize(surface, is_light, -0.1),
+            surface_low: emphasize(surface, is_light, -0.05),
             surface,
-            surface_high: emphasize(surface, is_light, 0.1),
-            surface_higher: emphasize(surface, is_light, 0.2),
-            surface_highest: emphasize(surface, is_light, 0.3),
+            surface_high: emphasize(surface, is_light, 0.05),
+            surface_higher: emphasize(surface, is_light, 0.1),
+            surface_highest: emphasize(surface, is_light, 0.15),
             contrast,
             primary,
             primary_low: low(primary, is_light),

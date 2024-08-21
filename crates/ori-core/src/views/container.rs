@@ -1,7 +1,7 @@
 use ori_macro::{example, Build};
 
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Color},
+    canvas::{BorderRadius, BorderWidth, Color, Curve, FillRule, Mask},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -78,6 +78,10 @@ pub struct Container<V> {
     /// The border color.
     #[rebuild(draw)]
     pub border_color: Color,
+
+    /// Whether to mask the content.
+    #[rebuild(draw)]
+    pub mask: bool,
 }
 
 impl<V> Container<V> {
@@ -94,6 +98,7 @@ impl<V> Container<V> {
             border_radius: style.border_radius,
             border_width: style.border_width,
             border_color: style.border_color,
+            mask: false,
         }
     }
 
@@ -158,6 +163,18 @@ impl<T, V: View<T>> View<T> for Container<V> {
             self.border_color,
         );
 
-        self.content.draw(state, cx, data);
+        match self.mask {
+            true => {
+                let mut mask = Curve::new();
+                mask.push_rect_with_radius(cx.rect(), self.border_radius);
+
+                cx.mask(Mask::new(mask, FillRule::NonZero), |cx| {
+                    self.content.draw(state, cx, data);
+                });
+            }
+            false => {
+                self.content.draw(state, cx, data);
+            }
+        }
     }
 }

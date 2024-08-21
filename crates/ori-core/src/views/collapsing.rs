@@ -5,7 +5,7 @@ use ori_macro::{example, Build};
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color, Curve, FillRule},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::Event,
+    event::{Event, PointerButton},
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Style, Styles},
@@ -177,7 +177,11 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         self.content.event(&mut state.content, cx, data, event);
 
         match event {
-            Event::PointerPressed(_) if state.header.has_hot() => {
+            Event::PointerPressed(event) if state.header.has_hot() => {
+                if event.button != PointerButton::Primary {
+                    return;
+                }
+
                 state.open = !state.open;
                 cx.animate();
                 cx.request_layout();
@@ -248,6 +252,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             cx.fill(icon(), FillRule::EvenOdd, self.icon_color);
         });
 
+        cx.canvas().trigger(state.header.rect(), state.header.id());
         self.header.draw(&mut state.header, cx, data);
 
         let content_offset = Vector::new(0.0, state.header.size().height);

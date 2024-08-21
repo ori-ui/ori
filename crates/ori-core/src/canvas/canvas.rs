@@ -144,6 +144,13 @@ pub struct Mask {
     pub fill: FillRule,
 }
 
+impl Mask {
+    /// Create a new mask.
+    pub fn new(curve: Curve, fill: FillRule) -> Self {
+        Self { curve, fill }
+    }
+}
+
 impl From<Rect> for Mask {
     fn from(value: Rect) -> Self {
         Self {
@@ -258,17 +265,19 @@ impl Canvas {
     }
 
     /// Draw a trigger rectangle.
-    pub fn trigger(&mut self, rect: Rect) {
-        let curve = Curve::rect(rect);
-        self.fill(
-            curve,
-            FillRule::NonZero,
-            Paint {
-                shader: Shader::Solid(Color::TRANSPARENT),
-                blend: BlendMode::Destination,
-                anti_alias: false,
-            },
-        );
+    pub fn trigger(&mut self, rect: Rect, view: ViewId) {
+        self.hoverable(view, |canvas| {
+            let curve = Curve::rect(rect);
+            canvas.fill(
+                curve,
+                FillRule::NonZero,
+                Paint {
+                    shader: Shader::Solid(Color::TRANSPARENT),
+                    blend: BlendMode::Destination,
+                    anti_alias: false,
+                },
+            );
+        });
     }
 
     /// Fill a curve.
@@ -354,7 +363,7 @@ impl Canvas {
     }
 
     /// Draw a layer with a view.
-    pub fn view<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn hoverable<T>(&mut self, view: ViewId, f: impl FnOnce(&mut Self) -> T) -> T {
         self.layer(Affine::IDENTITY, None, Some(view), f)
     }
 

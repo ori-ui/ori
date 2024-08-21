@@ -202,6 +202,10 @@ impl<T> View<T> for Text {
 
             cx.request_layout();
         }
+
+        if self.color != old.color {
+            cx.request_draw();
+        }
     }
 
     fn event(

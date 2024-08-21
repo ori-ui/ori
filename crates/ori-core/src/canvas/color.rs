@@ -875,36 +875,26 @@ impl Color {
 
     /// Saturates the color by given `amount`.
     pub fn saturate(self, amount: f32) -> Self {
-        let (l, c, h, alpha) = self.to_oklcha();
-
-        if c.abs() < 0.0001 {
-            return self;
-        }
-
-        Self::oklcha(l, c + amount * 0.2, h, alpha)
+        let (h, s, l, alpha) = self.to_okhsla();
+        Self::okhsla(h, s + amount, l, alpha)
     }
 
     /// Desaturates the color by given `amount`.
     pub fn desaturate(self, amount: f32) -> Self {
-        let (l, c, h, alpha) = self.to_oklcha();
-
-        if c.abs() < 0.0001 {
-            return self;
-        }
-
-        Self::oklcha(l, c - amount * 0.2, h, alpha)
+        let (h, s, l, alpha) = self.to_okhsla();
+        Self::okhsla(h, s - amount, l, alpha)
     }
 
     /// Brighten the color by the given `amount`.
     pub fn lighten(self, amount: f32) -> Self {
-        let (l, a, b, alpha) = self.to_oklaba();
-        Self::oklaba(l + amount * 0.5, a, b, alpha)
+        let (h, s, l, alpha) = self.to_okhsla();
+        Self::okhsla(h, s, l + amount, alpha)
     }
 
     /// Darken the color by the given `amount`.
     pub fn darken(self, amount: f32) -> Self {
-        let (l, a, b, alpha) = self.to_oklaba();
-        Self::oklaba(l - amount * 0.5, a, b, alpha)
+        let (h, s, l, alpha) = self.to_okhsla();
+        Self::okhsla(h, s, l - amount, alpha)
     }
 
     /// Fade the color by the given `amount`.

@@ -172,7 +172,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         // propagate event
         self.content.event(content, cx, data, event);
 
-        let on = cx.has_hot() || cx.is_active() || state.scrollbar_hot;
+        let on = cx.is_hot() || cx.has_hot() || cx.is_active() || state.scrollbar_hot;
 
         if !self.transition.complete(state.t, on) {
             cx.animate();
@@ -224,6 +224,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         state.scroll = state.scroll.clamp(0.0, overflow);
         content.translate(self.axis.pack(-state.scroll, 0.0));
 
+        cx.trigger(cx.rect());
         cx.mask(cx.rect(), |cx| {
             self.content.draw(content, cx, data);
         });

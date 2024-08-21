@@ -15,8 +15,8 @@ const uint MAX_CURVE_POINTS = 4096u;
 const uint MAX_CURVE_BANDS = 4096u;
 
 const uint NON_ZERO_BIT = 1u << 31u;
+const uint ANTI_ALIAS_BIT = 1u << 30u;
 const uint BAND_COUNT_MASK = 0x000000ffu;
-const uint SAMPLE_COUNT_MASK = 0x0000ff00u;
 
 uniform CurvePoints {
     vec2 curve_points[MAX_CURVE_POINTS];
@@ -31,42 +31,6 @@ uniform Uniforms {
 };
 
 uniform sampler2D image;
-
-const vec2[32] POISSON_DISK = vec2[32](
-    vec2(-0.613392, 0.617481),
-    vec2(0.170019, -0.040254),
-    vec2(-0.299417, 0.791925),
-    vec2(0.645680, 0.493210),
-    vec2(-0.651784, 0.717887),
-    vec2(0.421003, 0.027070),
-    vec2(-0.817194, -0.271096),
-    vec2(-0.705374, -0.668203),
-    vec2(0.977050, -0.108615),
-    vec2(0.063326, 0.142369),
-    vec2(0.203528, 0.214331),
-    vec2(-0.667531, 0.326090),
-    vec2(-0.098422, -0.295755),
-    vec2(-0.885922, 0.215369),
-    vec2(0.566637, 0.605213),
-    vec2(0.039766, -0.396100),
-    vec2(0.751946, 0.453352),
-    vec2(0.078707, -0.715323),
-    vec2(-0.075838, -0.529344),
-    vec2(0.724479, -0.580798),
-    vec2(0.222999, -0.215125),
-    vec2(-0.467574, -0.405438),
-    vec2(-0.248268, -0.814753),
-    vec2(0.354411, -0.887570),
-    vec2(0.175817, 0.382366),
-    vec2(0.487472, -0.063082),
-    vec2(-0.084078, 0.898312),
-    vec2(0.488876, -0.783441),
-    vec2(0.470016, 0.217933),
-    vec2(-0.696890, -0.549791),
-    vec2(-0.149693, 0.605762),
-    vec2(0.034211, 0.979980)
-);
-    
 
 const uint VERB_MOVE = 0u;
 const uint VERB_LINE = 1u;
@@ -431,17 +395,27 @@ bool is_inside(vec2 v) {
     }
 }
 
+const vec2[] offsets = vec2[](
+    vec2(1.0, 5.0) / 6.5 - (3.5 / 6.5),
+    vec2(2.0, 2.0) / 6.5 - (3.5 / 6.5),
+    vec2(3.0, 6.0) / 6.5 - (3.5 / 6.5),
+    vec2(4.0, 3.0) / 6.5 - (3.5 / 6.5),
+    vec2(5.0, 4.0) / 6.5 - (3.5 / 6.5),
+    vec2(6.0, 1.0) / 6.5 - (3.5 / 6.5)
+);
+
 void main() {
-    uint samples = (v_flags & SAMPLE_COUNT_MASK) >> 8u;
-    uint idx = uint(random(v_vertex) * 32.0);
     float alpha = 0.0;
 
-    for (uint i = 0u; i < samples; i++) {
-        vec2 o = POISSON_DISK[(idx + i) % samples] * 0.8;
-        vec2 v = v_vertex + v_transform_inv * o / resolution;
-        if (samples == 1u) v = v_vertex;
+    if ((v_flags & ANTI_ALIAS_BIT) != 0u) {
+        for (uint i = 0u; i < 6u; i++) {
+            vec2 v = v_vertex + offsets[i];
+            alpha += is_inside(v) ? 1.0 : 0.0;
+        }
 
-        if (is_inside(v)) alpha += 1.0;
+        alpha /= 6.0;
+    } else {
+        alpha = is_inside(v_vertex) ? 1.0 : 0.0;
     }
 
     vec2 image_size = vec2(textureSize(image, 0));
@@ -449,7 +423,6 @@ void main() {
     vec4 color = texture(image, image_uv / image_size);
     color.a *= v_image_offset_opacity.z;
 
-    alpha /= samples;
     if (alpha < 0.01) discard;
 
     f_color = v_color * color;

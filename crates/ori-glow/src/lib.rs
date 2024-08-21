@@ -50,6 +50,7 @@ const VERB_QUAD: u8 = 2;
 const VERB_CUBIC: u8 = 3;
 
 const NON_ZERO_BIT: u32 = 1 << 31;
+const ANTI_ALIAS_BIT: u32 = 1 << 30;
 
 unsafe fn slice_as_bytes<T>(slice: &[T]) -> &[u8] {
     slice::from_raw_parts(slice.as_ptr() as *const u8, mem::size_of_val(slice))
@@ -544,9 +545,7 @@ impl GlowRenderer {
         }
 
         if paint.anti_alias {
-            flags |= 16 << 8;
-        } else {
-            flags |= 1 << 8;
+            flags |= ANTI_ALIAS_BIT;
         }
 
         flags |= band_count;

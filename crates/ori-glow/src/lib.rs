@@ -541,8 +541,8 @@ impl GlowRenderer {
 
         match paint.anti_alias {
             AntiAlias::None => flags |= 0 << 8,
-            AntiAlias::Fast => flags |= 2 << 8,
-            AntiAlias::Full => flags |= 6 << 8,
+            AntiAlias::Fast => flags |= 4 << 8,
+            AntiAlias::Full => flags |= 8 << 8,
         }
 
         flags |= band_count;

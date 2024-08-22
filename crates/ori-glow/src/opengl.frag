@@ -524,30 +524,29 @@ void main() {
     float aa_radius = 0.7;
     uint aa_samples = (v_flags & AA_SAMPLES_MASK) >> 8u; 
 
-    float aa_radius_inv = 1.0 / aa_radius;
-    mat2 t = v_transform * mat2(
-        resolution.x * 0.5 * aa_radius_inv, 0.0, 
-        0.0, -resolution.y * 0.5 * aa_radius_inv
-    );
+    vec2 inv_diameter = 1.0 / fwidth(v_vertex);
+    mat2 t = mat2(inv_diameter.x, 0.0, 0.0, inv_diameter.y);
+    
+    vec2 v = v_vertex + 0.001;
 
     for (uint i = 0u; i < aa_samples; i++) {
         float angle = PI * float(i) / float(aa_samples);
         mat2 rot = t * rotate(angle);
 
-        d += curve_distance(rot, v_vertex);
+        d += curve_distance(rot, v);
     }
 
     d /= float(aa_samples);
     vec4 mask;
 
-    if (aa_samples >= 1u) { 
-        if (is_inside(v_vertex + 0.001)) {
+    if (aa_samples > 0u) { 
+        if (is_inside(v)) {
             mask = vec4(clamp(d * 0.5 + 0.5, 0.0, 1.0));
         } else {
             mask = vec4(clamp(0.5 - d * 0.5, 0.0, 1.0));
         }
     } else {
-        mask = vec4(is_inside(v_vertex + 0.001) ? 1.0 : 0.0);
+        mask = vec4(is_inside(v) ? 1.0 : 0.0);
     }
 
     if (mask.a < 0.01) discard;

@@ -7,7 +7,8 @@ use std::{collections::HashMap, ffi, mem, slice};
 use glow::HasContext;
 use ori_core::{
     canvas::{
-        BlendMode, Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive, Shader, Stroke,
+        AntiAlias, BlendMode, Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive,
+        Shader, Stroke,
     },
     image::{ImageData, WeakImage},
     layout::{Affine, Matrix, Point, Vector},
@@ -51,6 +52,7 @@ const VERB_CUBIC: u8 = 3;
 
 const NON_ZERO_BIT: u32 = 1 << 31;
 const ANTI_ALIAS_BIT: u32 = 1 << 30;
+const ANTI_ALIAS_QUALITY_BIT: u32 = 1 << 29;
 
 unsafe fn slice_as_bytes<T>(slice: &[T]) -> &[u8] {
     slice::from_raw_parts(slice.as_ptr() as *const u8, mem::size_of_val(slice))
@@ -185,12 +187,7 @@ impl GlowRenderer {
 
         self.gl.enable(glow::BLEND);
         self.gl.blend_equation(glow::FUNC_ADD);
-        self.gl.blend_func_separate(
-            glow::SRC_ALPHA,
-            glow::ONE_MINUS_SRC_ALPHA,
-            glow::ONE,
-            glow::ONE_MINUS_SRC_ALPHA,
-        );
+        self.gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_ALPHA);
 
         let x_scale = 2.0 / width as f32;
         let y_scale = 2.0 / height as f32;
@@ -369,7 +366,7 @@ impl GlowRenderer {
                         &Paint {
                             shader: Shader::Solid(Color::TRANSPARENT),
                             blend: BlendMode::Destination,
-                            anti_alias: false,
+                            anti_alias: AntiAlias::None,
                         },
                         transform,
                     )?;
@@ -394,7 +391,7 @@ impl GlowRenderer {
                         &Paint {
                             shader: Shader::Solid(Color::TRANSPARENT),
                             blend: BlendMode::Destination,
-                            anti_alias: false,
+                            anti_alias: AntiAlias::None,
                         },
                         transform,
                     )?;
@@ -544,8 +541,10 @@ impl GlowRenderer {
             flags |= NON_ZERO_BIT;
         }
 
-        if paint.anti_alias {
-            flags |= ANTI_ALIAS_BIT;
+        match paint.anti_alias {
+            AntiAlias::None => {}
+            AntiAlias::Fast => flags |= ANTI_ALIAS_BIT,
+            AntiAlias::Full => flags |= ANTI_ALIAS_BIT | ANTI_ALIAS_QUALITY_BIT,
         }
 
         flags |= band_count;

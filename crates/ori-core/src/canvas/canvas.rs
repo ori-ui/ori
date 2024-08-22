@@ -73,6 +73,19 @@ pub enum BlendMode {
     DestinationOver,
 }
 
+/// Ways to anti-alias a shape.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AntiAlias {
+    /// No anti-aliasing.
+    None,
+
+    /// Fast anti-aliasing.
+    Fast,
+
+    /// Anti-aliasing.
+    Full,
+}
+
 /// A paint that can be used to fill or stroke a shape.
 #[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Paint {
@@ -83,7 +96,7 @@ pub struct Paint {
     pub blend: BlendMode,
 
     /// Whether the paint should be anti-aliased.
-    pub anti_alias: bool,
+    pub anti_alias: AntiAlias,
 }
 
 impl Default for Paint {
@@ -91,7 +104,7 @@ impl Default for Paint {
         Self {
             shader: Shader::Solid(Color::BLACK),
             blend: BlendMode::SourceOver,
-            anti_alias: true,
+            anti_alias: AntiAlias::Fast,
         }
     }
 }
@@ -274,7 +287,7 @@ impl Canvas {
                 Paint {
                     shader: Shader::Solid(Color::TRANSPARENT),
                     blend: BlendMode::Destination,
-                    anti_alias: false,
+                    anti_alias: AntiAlias::None,
                 },
             );
         });

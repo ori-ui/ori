@@ -36,7 +36,7 @@ const EMBEDDED_FONTS: &[&[u8]] = &[
 ];
 
 use crate::{
-    canvas::{Canvas, Curve, FillRule, Paint},
+    canvas::{AntiAlias, Canvas, Curve, FillRule, Paint},
     image::Image,
     layout::{Point, Size, Vector},
 };
@@ -160,6 +160,9 @@ impl Fonts {
         offset: Vector,
         scale: f32,
     ) {
+        let mut paint = paint;
+        paint.anti_alias = AntiAlias::Full;
+
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
                 let physical = glyph.physical((0.0, 0.0), scale);

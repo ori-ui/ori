@@ -5,7 +5,7 @@ flat in uint v_band_index;
 in vec2 v_vertex;
 in vec4 v_bounds;
 in vec4 v_color;
-in mat2 v_transform_inv;
+in mat2 v_transform;
 in mat2 v_image_transform;
 in vec3 v_image_offset_opacity;
 
@@ -16,6 +16,7 @@ const uint MAX_CURVE_BANDS = 4096u;
 
 const uint NON_ZERO_BIT = 1u << 31u;
 const uint ANTI_ALIAS_BIT = 1u << 30u;
+const uint ANTI_ALIAS_QUALITY_BIT = 1u << 29u;
 const uint BAND_COUNT_MASK = 0x000000ffu;
 
 uniform CurvePoints {
@@ -38,7 +39,7 @@ const uint VERB_QUAD = 2u;
 const uint VERB_CUBIC = 3u;
 
 const float PI = 3.1415926535897932384626433832795;
-const float EPSILON = 1.0e-5;
+const float EPSILON = 1.0e-6;
 const float NONE = 1.0e21;
 
 float quad_bezier(float a, float b, float c, float t) {
@@ -280,6 +281,59 @@ int cubic_winding_count(vec2 p0, vec2 p1, vec2 p2, vec2 p3, vec2 h) {
     return winding;
 }
 
+float line_distance(vec2 p0, vec2 p1, vec2 v) {
+    float t = p0.y / (p0.y - p1.y);
+
+    if (t < 0.0 || t >= 1.0) return 1.0;
+
+    return abs(p0.x + t * (p1.x - p0.x));
+}
+
+float quad_distance(vec2 p0, vec2 p1, vec2 p2, vec2 v) {
+    float a = p0.y - 2.0 * p1.y + p2.y;
+    float b = 2.0 * (p1.y - p0.y);
+    float c = p0.y;
+
+    vec2 roots = square_roots(a, b, c); 
+
+    float dist = 1e21;
+
+    if (roots.x >= 0.0 && roots.x < 1.0) {
+        dist = min(dist, abs(quad_bezier(p0.x, p1.x, p2.x, roots.x)));
+    }
+
+    if (roots.y >= 0.0 && roots.y < 1.0) {
+        dist = min(dist, abs(quad_bezier(p0.x, p1.x, p2.x, roots.y)));
+    }
+
+    return dist;
+}
+
+float cubic_distance(vec2 p0, vec2 p1, vec2 p2, vec2 p3, vec2 v) {
+    float a = -p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y;
+    float b = 3.0 * (p0.y - 2.0 * p1.y + p2.y);
+    float c = 3.0 * (p1.y - p0.y);
+    float d = p0.y;
+
+    vec3 roots = cube_roots(a, b, c, d);
+
+    float dist = 1e21;
+
+    if (roots.x >= 0.0 && roots.x < 1.0) {
+        dist = min(dist, abs(cubic_bezier(p0.x, p1.x, p2.x, p3.x, roots.x)));
+    }
+
+    if (roots.y >= 0.0 && roots.y < 1.0) {
+        dist = min(dist, abs(cubic_bezier(p0.x, p1.x, p2.x, p3.x, roots.y)));
+    }
+
+    if (roots.z >= 0.0 && roots.z < 1.0) {
+        dist = min(dist, abs(cubic_bezier(p0.x, p1.x, p2.x, p3.x, roots.z)));
+    }
+
+    return dist;
+}
+
 uint get_band(vec2 v) {
     uint band_count = v_flags & BAND_COUNT_MASK;
     float y = v.y - v_bounds.y;
@@ -391,6 +445,66 @@ bool is_inside(vec2 v) {
     }
 }
 
+float curve_distance(mat2 rot, vec2 v) {
+    uint band = v_band_index + get_band(v);
+    uint segment_offset = curve_bands[band].x;
+    uint segment_count = curve_bands[band].y;
+
+    float d = 1.0;
+
+    vec2 p0 = vec2(0.0);
+    vec2 p1 = vec2(0.0);
+    vec2 p2 = vec2(0.0);
+    vec2 p3 = vec2(0.0);
+
+    for (uint i = 0u; i < segment_count; i++) {
+        uvec2 segment = curve_bands[segment_offset + i];
+        
+        switch (segment.y) {
+        case VERB_LINE:
+            p0 = curve_points[segment.x + 0u];
+            p1 = curve_points[segment.x + 1u];
+
+            p0 = rot * (p0 - v);
+            p1 = rot * (p1 - v);
+
+            d = min(d, line_distance(p0, p1, v));
+            break;
+
+        case VERB_QUAD:
+            p0 = curve_points[segment.x + 0u];
+            p1 = curve_points[segment.x + 1u];
+            p2 = curve_points[segment.x + 2u];
+
+            p0 = rot * (p0 - v);
+            p1 = rot * (p1 - v);
+            p2 = rot * (p2 - v);
+
+            d = min(d, quad_distance(p0, p1, p2, v));
+            break;
+
+        case VERB_CUBIC:
+            p0 = curve_points[segment.x + 0u];
+            p1 = curve_points[segment.x + 1u];
+            p2 = curve_points[segment.x + 2u];
+            p3 = curve_points[segment.x + 3u];
+
+            p0 = rot * (p0 - v);
+            p1 = rot * (p1 - v);
+            p2 = rot * (p2 - v);
+            p3 = rot * (p3 - v);
+
+            d = min(d, cubic_distance(p0, p1, p2, p3, v));
+            break;
+                
+        default:
+            break;
+        }
+    }
+
+    return d;
+}
+
 const vec2[] offsets = vec2[](
     vec2(1.0, 5.0) / 6.5 - (3.5 / 6.5),
     vec2(2.0, 2.0) / 6.5 - (3.5 / 6.5),
@@ -400,27 +514,48 @@ const vec2[] offsets = vec2[](
     vec2(6.0, 1.0) / 6.5 - (3.5 / 6.5)
 );
 
+mat2 rotate(float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return mat2(c, -s, s, c);
+}
+
 void main() {
-    float alpha = 0.0;
+    float d = 0.0;
+    uint samples = 2u;
 
-    if ((v_flags & ANTI_ALIAS_BIT) != 0u) {
-        for (uint i = 0u; i < 6u; i++) {
-            vec2 v = v_vertex + v_transform_inv * offsets[i] / resolution;
-            alpha += is_inside(v) ? 1.0 : 0.0;
-        }
-
-        alpha /= 6.0;
-    } else {
-        alpha = is_inside(v_vertex) ? 1.0 : 0.0;
+    if ((v_flags & ANTI_ALIAS_QUALITY_BIT) != 0u) {
+        samples = 6u;
     }
+
+    mat2 t = v_transform * mat2(resolution.x * 0.5, 0.0, 0.0, -resolution.y * 0.5);
+
+    for (uint i = 0u; i < samples; i++) {
+        float angle = PI * float(i) / float(samples);
+        mat2 rot = t * rotate(angle);
+
+        d += curve_distance(rot, v_vertex);
+    }
+
+    d /= float(samples);
+    vec4 mask;
+
+    if ((v_flags & ANTI_ALIAS_BIT) != 0u) { 
+        if (is_inside(v_vertex + 0.001)) {
+            mask = vec4(clamp(d * 0.5 + 0.5, 0.0, 1.0));
+        } else {
+            mask = vec4(clamp(0.5 - d * 0.5, 0.0, 1.0));
+        }
+    } else {
+        mask = vec4(is_inside(v_vertex + 0.001) ? 1.0 : 0.0);
+    }
+
+    if (mask.a < 0.01) discard;
 
     vec2 image_size = vec2(textureSize(image, 0));
     vec2 image_uv = v_image_transform * (v_vertex + v_image_offset_opacity.xy);
     vec4 color = texture(image, image_uv / image_size);
-    color.a *= v_image_offset_opacity.z;
+    color *= v_image_offset_opacity.z;
 
-    if (alpha < 0.01) discard;
-
-    f_color = v_color * color;
-    f_color.a *= alpha;
+    f_color = v_color * color * mask;
 }

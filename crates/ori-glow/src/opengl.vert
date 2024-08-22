@@ -14,7 +14,7 @@ flat out uint v_band_index;
 out vec2 v_vertex;
 out vec4 v_bounds;
 out vec4 v_color;
-out mat2 v_transform_inv;
+out mat2 v_transform;
 out mat2 v_image_transform;
 out vec3 v_image_offset_opacity;
 
@@ -34,7 +34,7 @@ void main() {
     v_bounds = bounds;
     v_color = color;
     v_flags = flags;
-    v_transform_inv = inverse(transform);
+    v_transform = transform;
     v_band_index = band_index;
     // i have no idea why this is necessary, but taking the inverse works
     v_image_transform = inverse(mat2(image_transform.xy, image_transform.zw));

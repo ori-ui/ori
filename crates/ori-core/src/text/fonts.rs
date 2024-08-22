@@ -15,8 +15,16 @@ const ROBOTO_REGULAR: &[u8] = include_bytes!("../../font/Roboto-Regular.ttf");
 const ROBOTO_THIN: &[u8] = include_bytes!("../../font/Roboto-Thin.ttf");
 const ROBOTO_THIN_ITALIC: &[u8] = include_bytes!("../../font/Roboto-ThinItalic.ttf");
 
-const ROBOTO_MONO: &[u8] = include_bytes!("../../font/RobotoMono.ttf");
+const ROBOTO_MONO_BOLD: &[u8] = include_bytes!("../../font/RobotoMono-Bold.ttf");
+const ROBOTO_MONO_BOLD_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-BoldItalic.ttf");
 const ROBOTO_MONO_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-Italic.ttf");
+const ROBOTO_MONO_LIGHT: &[u8] = include_bytes!("../../font/RobotoMono-Light.ttf");
+const ROBOTO_MONO_LIGHT_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-LightItalic.ttf");
+const ROBOTO_MONO_MEDIUM: &[u8] = include_bytes!("../../font/RobotoMono-Medium.ttf");
+const ROBOTO_MONO_MEDIUM_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-MediumItalic.ttf");
+const ROBOTO_MONO_REGULAR: &[u8] = include_bytes!("../../font/RobotoMono-Regular.ttf");
+const ROBOTO_MONO_THIN: &[u8] = include_bytes!("../../font/RobotoMono-Thin.ttf");
+const ROBOTO_MONO_THIN_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-ThinItalic.ttf");
 
 const EMBEDDED_FONTS: &[&[u8]] = &[
     ROBOTO_BLACK,
@@ -31,8 +39,16 @@ const EMBEDDED_FONTS: &[&[u8]] = &[
     ROBOTO_REGULAR,
     ROBOTO_THIN,
     ROBOTO_THIN_ITALIC,
-    ROBOTO_MONO,
+    ROBOTO_MONO_BOLD,
+    ROBOTO_MONO_BOLD_ITALIC,
     ROBOTO_MONO_ITALIC,
+    ROBOTO_MONO_LIGHT,
+    ROBOTO_MONO_LIGHT_ITALIC,
+    ROBOTO_MONO_MEDIUM,
+    ROBOTO_MONO_MEDIUM_ITALIC,
+    ROBOTO_MONO_REGULAR,
+    ROBOTO_MONO_THIN,
+    ROBOTO_MONO_THIN_ITALIC,
 ];
 
 use crate::{

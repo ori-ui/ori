@@ -522,22 +522,27 @@ mat2 rotate(float angle) {
 
 void main() {
     float d = 0.0;
-    uint samples = 2u;
+    float aa_scale = 0.8;
+    uint aa_samples = 2u;
 
     if ((v_flags & ANTI_ALIAS_QUALITY_BIT) != 0u) {
-        samples = 6u;
+        aa_samples = 6u;
     }
 
-    mat2 t = v_transform * mat2(resolution.x * 0.5, 0.0, 0.0, -resolution.y * 0.5);
+    float aa_scale_inv = 1.0 / aa_scale;
+    mat2 t = v_transform * mat2(
+        resolution.x * 0.5 * aa_scale_inv, 0.0, 
+        0.0, -resolution.y * 0.5 * aa_scale_inv
+    );
 
-    for (uint i = 0u; i < samples; i++) {
-        float angle = PI * float(i) / float(samples);
+    for (uint i = 0u; i < aa_samples; i++) {
+        float angle = PI * float(i) / float(aa_samples);
         mat2 rot = t * rotate(angle);
 
         d += curve_distance(rot, v_vertex);
     }
 
-    d /= float(samples);
+    d /= float(aa_samples);
     vec4 mask;
 
     if ((v_flags & ANTI_ALIAS_BIT) != 0u) { 

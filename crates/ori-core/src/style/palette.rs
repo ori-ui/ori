@@ -169,7 +169,7 @@ impl Palette {
         Self::derived(
             Color::hex("#1e1e1e"),
             Color::hex("#242424"),
-            Color::hex("#deddda"),
+            Color::hex("#f9f9f8"),
             Color::hex("#55b1f0"),
             Color::hex("#8c8bed"),
             Color::hex("#f4a151"),

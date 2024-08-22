@@ -251,6 +251,10 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         let (min_major, min_minor) = self.axis.unpack(space.min);
         let (max_major, max_minor) = self.axis.unpack(space.max);
 
+        // this avoids a panic in later clamp calls
+        let min_major = min_major.min(max_major);
+        let min_minor = min_minor.min(max_minor);
+
         let total_gap = self.gap * (self.content.len() as f32 - 1.0);
 
         /* measure the content */

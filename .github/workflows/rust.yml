@@ -49,4 +49,4 @@ jobs:
     - uses: Swatinem/rust-cache@v2
  
     - name: Run rustfmt
-      run: cargo fmt --check --verbose --no-default-features --features full
+      run: cargo fmt --check --verbose

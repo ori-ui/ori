@@ -43,6 +43,7 @@ jobs:
           command: doc
           args: >-
             --no-deps
+            --no-default-features
             -p ori
             -p ori-app
             -p ori-core

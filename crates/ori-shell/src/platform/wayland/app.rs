@@ -473,6 +473,10 @@ fn handle_event<T>(
             app.window_resized(data, id, width, height);
         }
 
+        Event::Scaled { id, scale } => {
+            app.window_scaled(data, id, scale);
+        }
+
         Event::CloseRequested { id } => {
             if let Some(index) = window_index_by_id(&state.windows, id) {
                 if app.close_requested(data, id) {
@@ -579,6 +583,11 @@ enum Event {
         height: u32,
     },
 
+    Scaled {
+        id: WindowId,
+        scale: f32,
+    },
+
     CloseRequested {
         id: WindowId,
     },
@@ -663,9 +672,22 @@ impl CompositorHandler for State {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _surface: &WlSurface,
-        _new_factor: i32,
+        surface: &WlSurface,
+        new_factor: i32,
     ) {
+        if let Some(window) = window_by_surface(&mut self.windows, surface) {
+            if let Some(ref mut frame) = window.frame {
+                frame.set_scaling_factor(new_factor as f64);
+            }
+
+            window.scale_factor = new_factor as f32;
+            window.needs_redraw = true;
+
+            self.events.push(Event::Scaled {
+                id: window.id,
+                scale: new_factor as f32,
+            });
+        }
     }
 
     fn transform_changed(

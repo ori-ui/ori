@@ -176,7 +176,7 @@ impl Fonts {
                     run.line_y + physical.y as f32 + offset.y,
                 );
 
-                let offset = offset.floor();
+                let offset = offset.round();
 
                 let mut curve = Curve::new();
 

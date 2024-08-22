@@ -521,10 +521,10 @@ mat2 rotate(float angle) {
 
 void main() {
     float d = 0.0;
-    float aa_radius = 0.7;
+    float aa_radius = 0.8;
     uint aa_samples = (v_flags & AA_SAMPLES_MASK) >> 8u; 
 
-    vec2 inv_diameter = 1.0 / fwidth(v_vertex);
+    vec2 inv_diameter = 1.0 / (fwidth(v_vertex) * aa_radius);
     mat2 t = mat2(inv_diameter.x, 0.0, 0.0, inv_diameter.y);
     
     vec2 v = v_vertex + 0.001;

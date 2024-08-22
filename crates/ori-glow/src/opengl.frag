@@ -527,10 +527,10 @@ void main() {
     vec2 inv_diameter = 1.0 / (fwidth(v_vertex) * aa_radius);
     mat2 t = mat2(inv_diameter.x, 0.0, 0.0, inv_diameter.y);
     
-    vec2 v = v_vertex + 0.001;
+    vec2 v = v_vertex + 1e-3;
 
     for (uint i = 0u; i < aa_samples; i++) {
-        float angle = PI * float(i) / float(aa_samples);
+        float angle = PI * float(i) / float(aa_samples) + 0.1;
         mat2 rot = t * rotate(angle);
 
         d += curve_distance(rot, v);

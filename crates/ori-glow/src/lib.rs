@@ -51,8 +51,6 @@ const VERB_QUAD: u8 = 2;
 const VERB_CUBIC: u8 = 3;
 
 const NON_ZERO_BIT: u32 = 1 << 31;
-const ANTI_ALIAS_BIT: u32 = 1 << 30;
-const ANTI_ALIAS_QUALITY_BIT: u32 = 1 << 29;
 
 unsafe fn slice_as_bytes<T>(slice: &[T]) -> &[u8] {
     slice::from_raw_parts(slice.as_ptr() as *const u8, mem::size_of_val(slice))
@@ -542,9 +540,9 @@ impl GlowRenderer {
         }
 
         match paint.anti_alias {
-            AntiAlias::None => {}
-            AntiAlias::Fast => flags |= ANTI_ALIAS_BIT,
-            AntiAlias::Full => flags |= ANTI_ALIAS_BIT | ANTI_ALIAS_QUALITY_BIT,
+            AntiAlias::None => flags |= 0 << 8,
+            AntiAlias::Fast => flags |= 2 << 8,
+            AntiAlias::Full => flags |= 6 << 8,
         }
 
         flags |= band_count;

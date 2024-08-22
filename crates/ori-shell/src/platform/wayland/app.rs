@@ -183,7 +183,14 @@ fn handle_app_request<T>(
             }
         }
 
-        AppRequest::DragWindow(_) => {}
+        AppRequest::DragWindow(id) => {
+            if let Some(window) = window_by_id(&mut state.windows, id) {
+                if let Some(pointer_id) = window.pointers.last() {
+                    let pointer = pointer_by_id(&mut state.pointers, pointer_id.clone()).unwrap();
+                    (window.xdg_window).move_(&pointer.seat, pointer.last_button_serial);
+                }
+            }
+        }
 
         AppRequest::RequestRedraw(id) => {
             if let Some(window) = window_by_id(&mut state.windows, id) {
@@ -436,11 +443,11 @@ fn set_cursor_icons(state: &mut State) {
         let cursor_icon = window.frame_cursor_icon.unwrap_or(window.cursor_icon);
 
         for pointer in &state.pointers {
-            if !window.pointers.contains(&pointer.pointer().id()) {
+            if !window.pointers.contains(&pointer.pointer.pointer().id()) {
                 continue;
             }
 
-            if let Err(err) = pointer.set_cursor(&state.conn, cursor_icon) {
+            if let Err(err) = pointer.pointer.set_cursor(&state.conn, cursor_icon) {
                 warn!("Failed to set cursor icon: {}", err);
             }
         }
@@ -540,8 +547,8 @@ struct State {
     output: OutputState,
     registry: RegistryState,
 
-    pointers: Vec<ThemedPointer>,
-    keyboards: Vec<WlKeyboard>,
+    pointers: Vec<PointerState>,
+    keyboards: Vec<KeyboardState>,
 
     events: Vec<Event>,
     windows: Vec<WindowState>,
@@ -551,6 +558,18 @@ impl State {
     fn needs_redraw(&self) -> bool {
         self.windows.iter().any(|w| w.needs_redraw)
     }
+}
+
+struct PointerState {
+    seat: WlSeat,
+    pointer: ThemedPointer,
+    last_button_serial: u32,
+}
+
+#[allow(unused)]
+struct KeyboardState {
+    seat: WlSeat,
+    keyboard: WlKeyboard,
 }
 
 enum Event {
@@ -626,6 +645,10 @@ fn window_index_by_id(windows: &[WindowState], id: WindowId) -> Option<usize> {
 
 fn window_by_id(windows: &mut [WindowState], id: WindowId) -> Option<&mut WindowState> {
     (windows.iter_mut()).find(|w| w.id == id)
+}
+
+fn pointer_by_id(pointers: &mut [PointerState], id: ObjectId) -> Option<&mut PointerState> {
+    pointers.iter_mut().find(|p| p.pointer.pointer().id() == id)
 }
 
 fn window_by_surface<'a>(
@@ -832,7 +855,13 @@ impl SeatHandler for State {
             );
 
             if let Ok(pointer) = pointer {
-                self.pointers.push(pointer);
+                let state = PointerState {
+                    seat: seat.clone(),
+                    pointer,
+                    last_button_serial: 0,
+                };
+
+                self.pointers.push(state);
             }
         }
 
@@ -861,7 +890,9 @@ impl SeatHandler for State {
             );
 
             if let Ok(keyboard) = keyboard {
-                self.keyboards.push(keyboard);
+                let state = KeyboardState { seat, keyboard };
+
+                self.keyboards.push(state);
             }
         }
     }
@@ -875,13 +906,13 @@ impl SeatHandler for State {
     ) {
         if capability == Capability::Pointer {
             for pointer in self.pointers.drain(..) {
-                pointer.pointer().release();
+                pointer.pointer.pointer().release();
             }
         }
 
         if capability == Capability::Keyboard {
             for keyboard in self.keyboards.drain(..) {
-                keyboard.release();
+                keyboard.keyboard.release();
             }
         }
     }
@@ -1019,9 +1050,13 @@ impl PointerHandler for State {
                     });
                 }
 
-                PointerEventKind::Press { button, .. }
-                | PointerEventKind::Release { button, .. } => {
+                PointerEventKind::Press { button, serial, .. }
+                | PointerEventKind::Release { button, serial, .. } => {
                     let pressed = matches!(event.kind, PointerEventKind::Press { .. });
+
+                    if let Some(pointer) = pointer_by_id(&mut self.pointers, pointer.id()) {
+                        pointer.last_button_serial = serial;
+                    }
 
                     self.events.push(Event::PointerButton {
                         id: window.id,

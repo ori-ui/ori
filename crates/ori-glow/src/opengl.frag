@@ -15,8 +15,7 @@ const uint MAX_CURVE_POINTS = 4096u;
 const uint MAX_CURVE_BANDS = 4096u;
 
 const uint NON_ZERO_BIT = 1u << 31u;
-const uint ANTI_ALIAS_BIT = 1u << 30u;
-const uint ANTI_ALIAS_QUALITY_BIT = 1u << 29u;
+const uint AA_SAMPLES_MASK = 0x0000ff00u;
 const uint BAND_COUNT_MASK = 0x000000ffu;
 
 uniform CurvePoints {
@@ -522,17 +521,13 @@ mat2 rotate(float angle) {
 
 void main() {
     float d = 0.0;
-    float aa_scale = 0.8;
-    uint aa_samples = 2u;
+    float aa_radius = 0.7;
+    uint aa_samples = (v_flags & AA_SAMPLES_MASK) >> 8u; 
 
-    if ((v_flags & ANTI_ALIAS_QUALITY_BIT) != 0u) {
-        aa_samples = 6u;
-    }
-
-    float aa_scale_inv = 1.0 / aa_scale;
+    float aa_radius_inv = 1.0 / aa_radius;
     mat2 t = v_transform * mat2(
-        resolution.x * 0.5 * aa_scale_inv, 0.0, 
-        0.0, -resolution.y * 0.5 * aa_scale_inv
+        resolution.x * 0.5 * aa_radius_inv, 0.0, 
+        0.0, -resolution.y * 0.5 * aa_radius_inv
     );
 
     for (uint i = 0u; i < aa_samples; i++) {
@@ -545,7 +540,7 @@ void main() {
     d /= float(aa_samples);
     vec4 mask;
 
-    if ((v_flags & ANTI_ALIAS_BIT) != 0u) { 
+    if (aa_samples >= 1u) { 
         if (is_inside(v_vertex + 0.001)) {
             mask = vec4(clamp(d * 0.5 + 0.5, 0.0, 1.0));
         } else {

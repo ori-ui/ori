@@ -49,10 +49,10 @@ impl Style for ButtonStyle {
             padding: Padding::all(8.0),
             fancy: 0.0,
             transition: Transition::ease(0.1),
-            color: palette.primary,
+            color: palette.surface_higher,
             border_radius: BorderRadius::all(4.0),
             border_width: BorderWidth::all(0.0),
-            border_color: palette.surface_higher,
+            border_color: palette.surface_highest,
         }
     }
 }

@@ -6,7 +6,6 @@ use crate::{
     layout::{Affine, Point, Rect, Size, Vector},
     text::{Fonts, TextBuffer},
     view::ViewState,
-    window::Window,
 };
 
 use super::BaseCx;
@@ -16,7 +15,6 @@ pub struct DrawCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) transform: Affine,
-    pub(crate) window: &'a mut Window,
     pub(crate) canvas: &'a mut Canvas,
 }
 
@@ -39,14 +37,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     pub fn new(
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
-        window: &'a mut Window,
         canvas: &'a mut Canvas,
     ) -> Self {
         Self {
             base,
             view_state,
             transform: Affine::IDENTITY,
-            window,
             canvas,
         }
     }
@@ -57,7 +53,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             transform: self.transform,
-            window: self.window,
             canvas: self.canvas,
         }
     }
@@ -114,9 +109,9 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         paint: impl Into<Paint>,
         offset: Vector,
     ) {
+        let scale = self.window().scale;
         let contexts = &mut *self.base.contexts;
         let canvas = &mut *self.canvas;
-        let scale = self.window.scale;
 
         contexts
             .get_or_default::<Fonts>()
@@ -153,7 +148,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 base: self.base,
                 view_state: self.view_state,
                 transform: Affine::IDENTITY,
-                window: self.window,
                 canvas,
             };
 
@@ -168,7 +162,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 base: self.base,
                 view_state: self.view_state,
                 transform: self.transform,
-                window: self.window,
                 canvas,
             };
 
@@ -183,7 +176,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 base: self.base,
                 view_state: self.view_state,
                 transform: self.transform,
-                window: self.window,
                 canvas,
             };
 
@@ -198,7 +190,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 base: self.base,
                 view_state: self.view_state,
                 transform: self.transform * transform,
-                window: self.window,
                 canvas,
             };
 
@@ -223,7 +214,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 base: self.base,
                 view_state: self.view_state,
                 transform: self.transform,
-                window: self.window,
                 canvas,
             };
 

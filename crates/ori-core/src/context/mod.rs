@@ -33,7 +33,7 @@ macro_rules! impl_context {
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the window.
     pub fn window(&mut self) -> &mut Window {
-        self.window
+        self.context_mut()
     }
 
     /// Get the id of the view.

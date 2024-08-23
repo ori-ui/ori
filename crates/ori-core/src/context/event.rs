@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{
     layout::{Affine, Point, Rect, Size},
     view::{ViewFlags, ViewState},
-    window::{Cursor, Window},
+    window::Cursor,
 };
 
 use super::{BaseCx, BuildCx, RebuildCx};
@@ -13,7 +13,6 @@ pub struct EventCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) rebuild: &'a mut bool,
-    pub(crate) window: &'a mut Window,
     pub(crate) transform: Affine,
 }
 
@@ -37,7 +36,6 @@ impl<'a, 'b> EventCx<'a, 'b> {
         base: &'a mut BaseCx<'b>,
         view_state: &'a mut ViewState,
         rebuild: &'a mut bool,
-        window: &'a mut Window,
     ) -> Self {
         let transform = view_state.transform;
 
@@ -45,7 +43,6 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base,
             view_state,
             rebuild,
-            window,
             transform,
         }
     }
@@ -56,19 +53,18 @@ impl<'a, 'b> EventCx<'a, 'b> {
             base: self.base,
             view_state: self.view_state,
             rebuild: self.rebuild,
-            window: self.window,
             transform: self.transform,
         }
     }
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base, self.view_state, self.window)
+        BuildCx::new(self.base, self.view_state)
     }
 
     /// Get a rebuild context.
     pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
-        RebuildCx::new(self.base, self.view_state, self.window)
+        RebuildCx::new(self.base, self.view_state)
     }
 
     /// Get the size of the view.

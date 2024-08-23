@@ -1,9 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::{
-    view::ViewState,
-    window::{Cursor, Window},
-};
+use crate::{view::ViewState, window::Cursor};
 
 use super::BaseCx;
 
@@ -11,7 +8,6 @@ use super::BaseCx;
 pub struct BuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
-    pub(crate) window: &'a mut Window,
 }
 
 impl<'a, 'b> Deref for BuildCx<'a, 'b> {
@@ -30,16 +26,8 @@ impl<'a, 'b> DerefMut for BuildCx<'a, 'b> {
 
 impl<'a, 'b> BuildCx<'a, 'b> {
     /// Create a new build context.
-    pub fn new(
-        base: &'a mut BaseCx<'b>,
-        view_state: &'a mut ViewState,
-        window: &'a mut Window,
-    ) -> Self {
-        Self {
-            base,
-            view_state,
-            window,
-        }
+    pub fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
+        Self { base, view_state }
     }
 
     /// Create a child context.
@@ -47,7 +35,6 @@ impl<'a, 'b> BuildCx<'a, 'b> {
         BuildCx {
             base: self.base,
             view_state: self.view_state,
-            window: self.window,
         }
     }
 

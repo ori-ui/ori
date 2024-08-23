@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{
     layout::{Point, Rect, Size},
     view::ViewState,
-    window::{Cursor, Window},
+    window::Cursor,
 };
 
 use super::{BaseCx, BuildCx, LayoutCx};
@@ -12,7 +12,6 @@ use super::{BaseCx, BuildCx, LayoutCx};
 pub struct RebuildCx<'a, 'b> {
     pub(crate) base: &'a mut BaseCx<'b>,
     pub(crate) view_state: &'a mut ViewState,
-    pub(crate) window: &'a mut Window,
 }
 
 impl<'a, 'b> Deref for RebuildCx<'a, 'b> {
@@ -31,16 +30,8 @@ impl<'a, 'b> DerefMut for RebuildCx<'a, 'b> {
 
 impl<'a, 'b> RebuildCx<'a, 'b> {
     /// Create a new rebuild context.
-    pub fn new(
-        base: &'a mut BaseCx<'b>,
-        view_state: &'a mut ViewState,
-        window: &'a mut Window,
-    ) -> Self {
-        Self {
-            base,
-            view_state,
-            window,
-        }
+    pub fn new(base: &'a mut BaseCx<'b>, view_state: &'a mut ViewState) -> Self {
+        Self { base, view_state }
     }
 
     /// Create a child context.
@@ -48,18 +39,17 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         RebuildCx {
             base: self.base,
             view_state: self.view_state,
-            window: self.window,
         }
     }
 
     /// Get a build context.
     pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
-        BuildCx::new(self.base, self.view_state, self.window)
+        BuildCx::new(self.base, self.view_state)
     }
 
     /// Get a layout context.
     pub fn layout_cx(&mut self) -> LayoutCx<'_, 'b> {
-        LayoutCx::new(self.base, self.view_state, self.window)
+        LayoutCx::new(self.base, self.view_state)
     }
 
     /// Get the size of the view.

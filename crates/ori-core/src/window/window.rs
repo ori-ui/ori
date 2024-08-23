@@ -58,7 +58,7 @@ impl Default for WindowSizing {
 }
 
 /// A window.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Window {
     id: WindowId,
     pointers: Vec<Pointer>,

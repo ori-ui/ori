@@ -45,10 +45,14 @@ impl<T> WindowState<T> {
     fn rebuild(&mut self, data: &mut T, base: &mut BaseCx) {
         self.view_state.prepare();
 
-        let mut cx = RebuildCx::new(base, &mut self.view_state, &mut self.window);
+        let mut cx = RebuildCx::new(base, &mut self.view_state);
 
         let mut new_view = (self.ui)(data);
+
+        cx.insert_context(self.window.clone());
         new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
+        self.window = cx.remove_context().expect("Window context missing");
+
         self.view = new_view;
     }
 
@@ -57,9 +61,11 @@ impl<T> WindowState<T> {
         self.view_state.set_hot(hot);
         self.view_state.prepare();
 
-        let mut cx = EventCx::new(base, &mut self.view_state, rebuild, &mut self.window);
+        let mut cx = EventCx::new(base, &mut self.view_state, rebuild);
 
+        cx.insert_context(self.window.clone());
         self.view.event(&mut self.state, &mut cx, data, event);
+        self.window = cx.remove_context().expect("Window context missing");
     }
 
     fn layout(&mut self, data: &mut T, base: &mut BaseCx) {
@@ -73,9 +79,12 @@ impl<T> WindowState<T> {
         };
 
         let space = Space::new(Size::ZERO, max_size);
-        let mut cx = LayoutCx::new(base, &mut self.view_state, &mut self.window);
+        let mut cx = LayoutCx::new(base, &mut self.view_state);
 
+        cx.insert_context(self.window.clone());
         let size = self.view.layout(&mut self.state, &mut cx, data, space);
+        self.window = cx.remove_context().expect("Window context missing");
+
         self.view_state.set_size(size);
 
         // if the window is content sized we set the
@@ -94,14 +103,11 @@ impl<T> WindowState<T> {
 
         self.canvas.clear();
 
-        let mut cx = DrawCx::new(
-            base,
-            &mut self.view_state,
-            &mut self.window,
-            &mut self.canvas,
-        );
+        let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.canvas);
 
+        cx.insert_context(self.window.clone());
         self.view.draw(&mut self.state, &mut cx, data);
+        self.window = cx.remove_context().expect("Window context missing");
     }
 
     fn animate(&mut self, animate: Instant) -> Vec<AppRequest<T>> {
@@ -336,8 +342,14 @@ impl<T> App<T> {
 
         let snapshot = window.snapshot();
 
-        let mut cx = BuildCx::new(&mut base, &mut view_state, &mut window);
-        let state = self.style.as_context(|| view.build(&mut cx, data));
+        let mut cx = BuildCx::new(&mut base, &mut view_state);
+        let state = self.style.as_context(|| {
+            cx.insert_context(window.clone());
+            let state = view.build(&mut cx, data);
+            window = cx.remove_context().expect("Window context missing");
+
+            state
+        });
 
         let window_id = window.id();
         let window_state = WindowState {

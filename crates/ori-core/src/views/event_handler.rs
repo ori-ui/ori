@@ -23,13 +23,14 @@ pub fn on_event<T, V>(
 }
 
 /// A view that handles events.
-#[derive(Rebuild)]
 pub struct EventHandler<T, V> {
     /// The content.
     pub content: V,
+
     /// The callback before an event is propagated.
     #[allow(clippy::type_complexity)]
     pub before: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) + 'static>>,
+
     /// The callback after an event is propagated.
     #[allow(clippy::type_complexity)]
     pub after: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) + 'static>>,
@@ -66,8 +67,6 @@ impl<T, V: View<T>> View<T> for EventHandler<T, V> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
-        Rebuild::rebuild(self, cx, old);
-
         self.content.rebuild(state, cx, data, &old.content);
     }
 

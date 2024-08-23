@@ -74,6 +74,7 @@ where
     pub event: ClickEvent,
 
     /// The callback.
+    #[build(ignore)]
     pub callback: F,
 
     marker: PhantomData<fn() -> T>,

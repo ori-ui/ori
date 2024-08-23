@@ -190,6 +190,7 @@ impl Fonts {
                     .get_outline_commands(&mut self.font_system, physical.cache_key);
 
                 let offset = Vector::new(physical.x as f32, run.line_y + physical.y as f32);
+                let offset = offset.floor();
 
                 let mut curve = Curve::new();
 

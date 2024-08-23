@@ -14,14 +14,6 @@ pub struct State<T, V: View<T> + ?Sized> {
     view_state: ViewState,
 }
 
-impl<T, V: View<T> + ?Sized> State<T, V> {
-    /// Set the state to `active`.
-    pub fn with_active(mut self, active: bool) -> Self {
-        self.view_state.set_active(active);
-        self
-    }
-}
-
 impl<T, V: View<T> + ?Sized> Deref for State<T, V> {
     type Target = ViewState;
 

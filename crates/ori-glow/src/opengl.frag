@@ -556,5 +556,5 @@ void main() {
     vec4 color = texture(image, image_uv / image_size);
     color *= v_image_offset_opacity.z;
 
-    f_color = v_color * color * mask;
+    f_color = v_color * v_color.a * color * mask;
 }

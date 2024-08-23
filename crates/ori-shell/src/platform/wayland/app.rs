@@ -345,7 +345,7 @@ fn open_window<T>(
     let egl_surface = EglSurface::new(&state.egl_context, wl_egl_surface.ptr() as _)?;
 
     egl_surface.make_current()?;
-    egl_surface.swap_interval(0)?;
+    egl_surface.swap_interval(1)?;
 
     let renderer = unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
 

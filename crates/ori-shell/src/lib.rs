@@ -59,7 +59,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 
 /// Launch an Ori application.
-#[allow(unused_variables)]
+#[allow(unused_variables, unreachable_code)]
 pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
     let mut filter = EnvFilter::default().add_directive(tracing::Level::DEBUG.into());
 
@@ -87,15 +87,7 @@ pub fn launch<T>(app: AppBuilder<T>, data: T) -> Result<(), Error> {
 
     #[cfg(wayland_platform)]
     {
-        match platform::wayland::launch(app, data) {
-            Ok(()) => return Ok(()),
-
-            // if x11 is enabled and we fail to connect to the Wayland server, try X11
-            #[cfg(x11_platform)]
-            Err(platform::wayland::WaylandError::Conntect(_)) => {}
-
-            Err(err) => return Err(err.into()),
-        }
+        return Ok(platform::wayland::launch(app, data)?);
     }
 
     #[cfg(x11_platform)]

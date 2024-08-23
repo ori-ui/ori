@@ -31,16 +31,18 @@ fn input(data: &mut Data) -> impl View<Data> {
 }
 
 fn clear_button() -> impl View<Data> {
-    on_click(button(text("Clear")).fancy(4.0), |_, data: &mut Data| {
-        data.text.clear()
+    on_click(button(text("Clear")).fancy(4.0), |cx, data: &mut Data| {
+        data.text.clear();
+        cx.request_rebuild();
     })
 }
 
 fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
     hstack![
         text("Multiline"),
-        on_click(checkbox(data.multiline), |_, data: &mut Data| {
+        on_click(checkbox(data.multiline), |cx, data: &mut Data| {
             data.toogle_multiline();
+            cx.request_rebuild();
         })
     ]
 }

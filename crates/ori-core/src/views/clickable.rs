@@ -126,7 +126,6 @@ where
             Event::PointerPressed(e) if is_hot && self.is_button(e.button) => {
                 if self.event == ClickEvent::Press {
                     (self.callback)(cx, data);
-                    cx.request_rebuild();
                 }
 
                 content.set_active(true);
@@ -134,12 +133,10 @@ where
             Event::PointerReleased(e) if content.is_active() && self.is_button(e.button) => {
                 if self.event == ClickEvent::Release {
                     (self.callback)(cx, data);
-                    cx.request_rebuild();
                 }
 
                 if e.clicked && self.event == ClickEvent::Click {
                     (self.callback)(cx, data);
-                    cx.request_rebuild();
                 }
 
                 content.set_active(false);

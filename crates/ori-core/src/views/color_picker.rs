@@ -178,7 +178,6 @@ impl<T> ColorPicker<T> {
 
             if let Some(ref mut on_input) = self.on_input {
                 on_input(cx, data, color);
-                cx.request_rebuild();
             }
 
             return;
@@ -196,7 +195,6 @@ impl<T> ColorPicker<T> {
 
             if let Some(ref mut on_input) = self.on_input {
                 on_input(cx, data, color);
-                cx.request_rebuild();
             }
         } else if state.can_edit(ColorPickerPart::Lightness, local.x < -2.0) && local.x < -2.0 {
             state.edit = Some(ColorPickerPart::Lightness);
@@ -208,7 +206,6 @@ impl<T> ColorPicker<T> {
 
             if let Some(ref mut on_input) = self.on_input {
                 on_input(cx, data, color);
-                cx.request_rebuild();
             }
         }
     }

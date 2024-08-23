@@ -103,35 +103,43 @@ fn ui(data: &mut Data) -> impl View<Data> {
         text("Offset"),
         slider(data.offset)
             .range(0.0..=100.0)
-            .on_input(|_, data: &mut Data, offset| data.offset = offset),
+            .on_input(|cx, data: &mut Data, offset| {
+                data.offset = offset;
+                cx.request_rebuild();
+            }),
     ];
 
     let line_cap = on_click(
         button(text!("{:?}", data.line_cap)),
-        |_, data: &mut Data| {
+        |cx, data: &mut Data| {
             data.line_cap = match data.line_cap {
                 LineCap::Butt => LineCap::Round,
                 LineCap::Round => LineCap::Square,
                 LineCap::Square => LineCap::Butt,
             };
+
+            cx.request_rebuild();
         },
     );
 
     let line_join = on_click(
         button(text!("{:?}", data.line_join)),
-        |_, data: &mut Data| {
+        |cx, data: &mut Data| {
             data.line_join = match data.line_join {
                 LineJoin::Miter => LineJoin::Round,
                 LineJoin::Round => LineJoin::Bevel,
                 LineJoin::Bevel => LineJoin::Miter,
             };
+
+            cx.request_rebuild();
         },
     );
 
     let cubic = hstack![
         text("Cubic"),
-        on_click(checkbox(data.cubic), |_, data: &mut Data| {
+        on_click(checkbox(data.cubic), |cx, data: &mut Data| {
             data.cubic = !data.cubic;
+            cx.request_rebuild();
         }),
     ]
     .gap(10.0);

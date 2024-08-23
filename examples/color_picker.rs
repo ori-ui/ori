@@ -15,7 +15,10 @@ impl Data {
 fn ui(data: &mut Data) -> impl View<Data> {
     let picker = color_picker()
         .color(data.color)
-        .on_input(|_, data: &mut Data, color| data.color = color);
+        .on_input(|cx, data: &mut Data, color| {
+            data.color = color;
+            cx.request_rebuild();
+        });
 
     let color = background(data.color, height(30.0, ())).border_radius(8.0);
 

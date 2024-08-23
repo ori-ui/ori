@@ -20,7 +20,10 @@ fn counter_button() -> impl View<Data> {
     //
     // Note that the callback is a closure that takes a mutable reference to
     // an `EventCx` and a mutable reference to the `Data` struct.
-    let counter = on_click(counter, |_, data: &mut Data| data.counter += 1);
+    let counter = on_click(counter, |cx, data: &mut Data| {
+        data.counter += 1;
+        cx.request_rebuild();
+    });
     tooltip(counter, "Click to increment the counter!")
 }
 

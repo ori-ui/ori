@@ -13,7 +13,10 @@ fn ui(data: &mut Data) -> impl View<Data> {
         button(label.color(text_color)).fancy(4.0)
     });
 
-    center(on_click(button, |_, data: &mut Data| data.on = !data.on))
+    center(on_click(button, |cx, data: &mut Data| {
+        data.on = !data.on;
+        cx.request_rebuild();
+    }))
 }
 
 fn main() {

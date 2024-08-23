@@ -137,8 +137,8 @@ impl<T> Slider<T> {
     }
 
     /// Set the callback for when the value changes.
-    pub fn on_input(mut self, on_change: impl FnMut(&mut EventCx, &mut T, f32) + 'static) -> Self {
-        self.on_input = Some(Box::new(on_change));
+    pub fn on_input(mut self, on_input: impl FnMut(&mut EventCx, &mut T, f32) + 'static) -> Self {
+        self.on_input = Some(Box::new(on_input));
         self
     }
 }
@@ -173,7 +173,6 @@ impl<T> View<T> for Slider<T> {
 
                     if let Some(on_input) = &mut self.on_input {
                         on_input(cx, data, value);
-                        cx.request_rebuild();
                     }
 
                     cx.set_active(true);
@@ -188,7 +187,6 @@ impl<T> View<T> for Slider<T> {
 
                     if let Some(on_input) = &mut self.on_input {
                         on_input(cx, data, value);
-                        cx.request_rebuild();
                     }
                 }
             }

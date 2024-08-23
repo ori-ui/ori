@@ -88,8 +88,9 @@ fn theme_button(data: &mut Data) -> impl View<Data> {
 
     let button = button(icon).fancy(4.0).color(color);
 
-    on_click(button, |_, data: &mut Data| {
+    on_click(button, |cx, data: &mut Data| {
         data.dark_mode = !data.dark_mode;
+        cx.request_rebuild();
     })
 }
 
@@ -189,12 +190,17 @@ fn selection(data: &mut Data) -> impl View<Data> {
         .color(color(data.selection, Selection::Completed))
         .padding([5.0, 3.0]);
 
-    let all = on_click(all, |_, data: &mut Data| data.selection = Selection::All);
-    let active = on_click(active, |_, data: &mut Data| {
-        data.selection = Selection::Active
+    let all = on_click(all, |cx, data: &mut Data| {
+        data.selection = Selection::All;
+        cx.request_rebuild();
     });
-    let completed = on_click(completed, |_, data: &mut Data| {
-        data.selection = Selection::Completed
+    let active = on_click(active, |cx, data: &mut Data| {
+        data.selection = Selection::Active;
+        cx.request_rebuild();
+    });
+    let completed = on_click(completed, |cx, data: &mut Data| {
+        data.selection = Selection::Completed;
+        cx.request_rebuild();
     });
 
     let items = hstack![all, active, completed].gap(16.0);

@@ -20,16 +20,18 @@ fn form() -> impl View<Data> {
 
         let age = hstack![
             text!("Age: {}", user.age),
-            on_click(button(text("Add")), move |_, (_, user): &mut (_, User)| {
-                user.age += 1
+            on_click(button(text("Add")), move |cx, (_, user): &mut (_, User)| {
+                user.age += 1;
+                cx.request_rebuild();
             })
         ];
 
         let submit = button(text("Submit")).color(palette().accent);
 
-        let submit = on_click(submit, |_, (data, user): &mut (Data, User)| {
+        let submit = on_click(submit, |cx, (data, user): &mut (Data, User)| {
             data.users.push(user.clone());
             *user = User::default();
+            cx.request_rebuild();
         });
 
         vstack![vstack![name, age], submit]

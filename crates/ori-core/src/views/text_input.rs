@@ -538,7 +538,6 @@ impl<T> View<T> for TextInput<T> {
                 if submit {
                     if let Some(ref mut on_submit) = self.on_submit {
                         on_submit(cx, data, text);
-                        cx.request_rebuild();
 
                         if self.text.is_none() {
                             state.clear_text();

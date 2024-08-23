@@ -204,10 +204,14 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let minor_max = self.axis.minor(space.max);
-        let max = self.axis.pack(f32::INFINITY, minor_max);
+        let min_minor = self.axis.minor(space.min);
+        let max_minor = self.axis.minor(space.max);
 
-        let content_space = Space::new(Size::ZERO, max);
+        let content_space = Space::new(
+            self.axis.pack(0.0, min_minor),
+            self.axis.pack(f32::INFINITY, max_minor),
+        );
+
         let content_size = self.content.layout(content, cx, data, content_space);
 
         let size = space.fit(content_size);

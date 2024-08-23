@@ -179,8 +179,6 @@ impl Fonts {
         let mut paint = paint;
         paint.anti_alias = AntiAlias::Full;
 
-        let offset = offset.floor();
-
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
                 let physical = glyph.physical((offset.x, offset.y), scale);
@@ -190,7 +188,7 @@ impl Fonts {
                     .get_outline_commands(&mut self.font_system, physical.cache_key);
 
                 let offset = Vector::new(physical.x as f32, run.line_y + physical.y as f32);
-                let offset = offset.floor();
+                let offset = offset.round();
 
                 let mut curve = Curve::new();
 

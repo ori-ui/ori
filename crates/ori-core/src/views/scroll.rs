@@ -186,7 +186,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         }
 
         if let Event::PointerScrolled(e) = event {
-            if cx.has_hot() {
+            if on {
                 state.scroll -= e.delta.y * 10.0;
                 state.scroll = state.scroll.clamp(0.0, overflow);
 

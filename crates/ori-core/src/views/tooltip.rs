@@ -331,7 +331,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
     fn draw(&mut self, (state, content): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         // make sure the tooltip is hoverable
-        cx.trigger(cx.rect());
+        cx.canvas().trigger(content.rect(), content.id());
 
         // we need to set the view to be enable hit testing
         self.content.draw(content, cx, data);

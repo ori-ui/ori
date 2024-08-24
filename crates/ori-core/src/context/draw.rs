@@ -16,6 +16,7 @@ pub struct DrawCx<'a, 'b> {
     pub(crate) view_state: &'a mut ViewState,
     pub(crate) transform: Affine,
     pub(crate) canvas: &'a mut Canvas,
+    pub(crate) visible: Rect,
 }
 
 impl<'a, 'b> Deref for DrawCx<'a, 'b> {
@@ -33,6 +34,8 @@ impl<'a, 'b> DerefMut for DrawCx<'a, 'b> {
 }
 
 impl<'a, 'b> DrawCx<'a, 'b> {
+    const EVERYTHING: Rect = Rect::new(Point::all(f32::NEG_INFINITY), Point::all(f32::INFINITY));
+
     /// Create a new draw context.
     pub fn new(
         base: &'a mut BaseCx<'b>,
@@ -44,6 +47,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             view_state,
             transform: Affine::IDENTITY,
             canvas,
+            visible: Self::EVERYTHING,
         }
     }
 
@@ -54,7 +58,13 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             view_state: self.view_state,
             transform: self.transform,
             canvas: self.canvas,
+            visible: self.visible,
         }
+    }
+
+    /// Check if a rect is visible.
+    pub fn is_visible(&self, rect: Rect) -> bool {
+        self.visible.intersects(rect)
     }
 
     /// Get the transform of the view.
@@ -79,22 +89,40 @@ impl<'a, 'b> DrawCx<'a, 'b> {
 
     /// Draw a rectangle.
     pub fn fill_rect(&mut self, rect: Rect, paint: impl Into<Paint>) {
+        if !self.is_visible(rect) {
+            return;
+        }
+
         self.canvas.rect(rect, paint.into());
     }
 
     /// Draw a trigger rectangle.
     pub fn trigger(&mut self, rect: Rect) {
+        if !self.is_visible(rect) {
+            return;
+        }
+
         self.canvas.trigger(rect, self.id());
     }
 
     /// Fill a curve.
     pub fn fill(&mut self, curve: Curve, fill: FillRule, paint: impl Into<Paint>) {
+        if !self.is_visible(curve.bounds()) {
+            return;
+        }
+
         self.canvas.fill(curve, fill, paint.into());
     }
 
     /// Stroke a curve.
     pub fn stroke(&mut self, curve: Curve, stroke: impl Into<Stroke>, paint: impl Into<Paint>) {
-        self.canvas.stroke(curve, stroke.into(), paint.into());
+        let stroke = stroke.into();
+
+        if !self.is_visible(curve.bounds().inflate(stroke.width * 2.0)) {
+            return;
+        }
+
+        self.canvas.stroke(curve, stroke, paint.into());
     }
 
     /// Draw a text buffer.
@@ -149,6 +177,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 view_state: self.view_state,
                 transform: Affine::IDENTITY,
                 canvas,
+                visible: Self::EVERYTHING,
             };
 
             f(&mut cx)
@@ -163,6 +192,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 view_state: self.view_state,
                 transform: self.transform,
                 canvas,
+                visible: Self::EVERYTHING,
             };
 
             f(&mut cx);
@@ -177,6 +207,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 view_state: self.view_state,
                 transform: self.transform,
                 canvas,
+                visible: Rect::ZERO,
             };
 
             f(&mut cx);
@@ -185,12 +216,15 @@ impl<'a, 'b> DrawCx<'a, 'b> {
 
     /// Draw a layer.
     pub fn layer(&mut self, transform: Affine, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+        let visible = self.visible.transform(transform.inverse());
+
         self.canvas.layer(transform, None, None, |canvas| {
             let mut cx = DrawCx {
                 base: self.base,
                 view_state: self.view_state,
                 transform: self.transform * transform,
                 canvas,
+                visible,
             };
 
             f(&mut cx);
@@ -209,12 +243,16 @@ impl<'a, 'b> DrawCx<'a, 'b> {
 
     /// Draw a layer with a mask.
     pub fn mask(&mut self, mask: impl Into<Mask>, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
-        (self.canvas).layer(Affine::IDENTITY, Some(mask.into()), None, |canvas| {
+        let mask = mask.into();
+        let visible = self.visible.intersect(mask.curve.bounds());
+
+        (self.canvas).layer(Affine::IDENTITY, Some(mask), None, |canvas| {
             let mut cx = DrawCx {
                 base: self.base,
                 view_state: self.view_state,
                 transform: self.transform,
                 canvas,
+                visible,
             };
 
             f(&mut cx);

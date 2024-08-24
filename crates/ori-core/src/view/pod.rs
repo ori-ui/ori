@@ -217,6 +217,10 @@ impl<T, V: View<T>> View<T> for Pod<V> {
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         Self::draw(&mut state.view_state, cx, |cx| {
+            if !cx.is_visible(cx.rect()) {
+                return;
+            }
+
             (self.view).draw(&mut state.content, cx, data);
         });
     }

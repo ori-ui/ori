@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io, sync::Arc};
+use std::{collections::HashMap, hash::BuildHasherDefault, io, sync::Arc};
 
 use cosmic_text::{fontdb::Source, Buffer, CacheKey, Command, FontSystem, SwashCache};
 
@@ -53,24 +53,10 @@ const EMBEDDED_FONTS: &[&[u8]] = &[
 
 use crate::{
     canvas::{AntiAlias, Canvas, Curve, FillRule, Paint},
-    image::Image,
-    layout::{Point, Size, Vector},
+    layout::{Affine, Point, Size, Vector},
 };
 
 use super::FontSource;
-
-/// A cached glyph.
-#[derive(Clone, Debug)]
-pub struct CachedGlyph {
-    /// The image of the glyph.
-    pub image: Image,
-
-    /// The offset of the glyph.
-    pub offset: Vector,
-
-    /// The size of the glyph.
-    pub size: Size,
-}
 
 /// A context for loading and rasterizing fonts.
 ///
@@ -81,10 +67,12 @@ pub struct CachedGlyph {
 pub struct Fonts {
     /// The swash cache.
     pub swash_cache: SwashCache,
+
     /// The font system.
     pub font_system: FontSystem,
+
     /// The glyph cache.
-    pub glyph_cache: HashMap<CacheKey, CachedGlyph>,
+    pub glyph_cache: HashMap<CacheKey, Arc<Curve>, BuildHasherDefault<seahash::SeaHasher>>,
 }
 
 impl Default for Fonts {
@@ -116,7 +104,7 @@ impl Fonts {
         Self {
             swash_cache,
             font_system,
-            glyph_cache: HashMap::new(),
+            glyph_cache: HashMap::default(),
         }
     }
 
@@ -167,6 +155,54 @@ impl Fonts {
         Size::new(width, height).ceil()
     }
 
+    fn get_glyphs(&mut self, cache_key: CacheKey) -> Arc<Curve> {
+        if let Some(curve) = self.glyph_cache.get(&cache_key).cloned() {
+            return curve;
+        }
+
+        let commands = self
+            .swash_cache
+            .get_outline_commands(&mut self.font_system, cache_key);
+
+        let mut curve = Curve::new();
+
+        for command in commands.into_iter().flatten() {
+            match command {
+                Command::MoveTo(v) => {
+                    let p = Point::new(v.x, -v.y);
+
+                    curve.move_to(p);
+                }
+                Command::LineTo(v) => {
+                    let p = Point::new(v.x, -v.y);
+
+                    curve.line_to(p);
+                }
+                Command::QuadTo(v1, v2) => {
+                    let p1 = Point::new(v1.x, -v1.y);
+                    let p2 = Point::new(v2.x, -v2.y);
+
+                    curve.quad_to(p1, p2);
+                }
+                Command::CurveTo(v1, v2, v3) => {
+                    let p1 = Point::new(v1.x, -v1.y);
+                    let p2 = Point::new(v2.x, -v2.y);
+                    let p3 = Point::new(v3.x, -v3.y);
+
+                    curve.cubic_to(p1, p2, p3);
+                }
+                Command::Close => {
+                    curve.close();
+                }
+            }
+        }
+
+        self.glyph_cache
+            .entry(cache_key)
+            .or_insert(Arc::new(curve))
+            .clone()
+    }
+
     /// Rasterize a buffer.
     pub fn draw_buffer(
         &mut self,
@@ -182,48 +218,13 @@ impl Fonts {
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
                 let physical = glyph.physical((offset.x, offset.y), scale);
-
-                let commands = self
-                    .swash_cache
-                    .get_outline_commands(&mut self.font_system, physical.cache_key);
-
+                let curve = self.get_glyphs(physical.cache_key);
                 let offset = Vector::new(physical.x as f32, run.line_y + physical.y as f32);
                 let offset = offset.round();
 
-                let mut curve = Curve::new();
-
-                for command in commands.into_iter().flatten() {
-                    match command {
-                        Command::MoveTo(v) => {
-                            let p = Point::new(v.x, -v.y);
-
-                            curve.move_to(p + offset);
-                        }
-                        Command::LineTo(v) => {
-                            let p = Point::new(v.x, -v.y);
-
-                            curve.line_to(p + offset);
-                        }
-                        Command::QuadTo(v1, v2) => {
-                            let p1 = Point::new(v1.x, -v1.y);
-                            let p2 = Point::new(v2.x, -v2.y);
-
-                            curve.quad_to(p1 + offset, p2 + offset);
-                        }
-                        Command::CurveTo(v1, v2, v3) => {
-                            let p1 = Point::new(v1.x, -v1.y);
-                            let p2 = Point::new(v2.x, -v2.y);
-                            let p3 = Point::new(v3.x, -v3.y);
-
-                            curve.cubic_to(p1 + offset, p2 + offset, p3 + offset);
-                        }
-                        Command::Close => {
-                            curve.close();
-                        }
-                    }
-                }
-
-                canvas.fill(curve, FillRule::NonZero, paint.clone());
+                canvas.transform(Affine::translate(offset), |canvas| {
+                    canvas.fill(curve.clone(), FillRule::NonZero, paint.clone());
+                });
             }
         }
     }

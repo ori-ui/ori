@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     hash::{BuildHasherDefault, Hash, Hasher},
+    sync::Arc,
 };
 
 use seahash::SeaHasher;
@@ -179,7 +180,7 @@ pub enum Primitive {
     /// A filled curve.
     Fill {
         /// The curve to draw.
-        curve: Curve,
+        curve: Arc<Curve>,
 
         /// The fill rule of the curve.
         fill: FillRule,
@@ -191,7 +192,7 @@ pub enum Primitive {
     /// A stroked curve.
     Stroke {
         /// The curve to draw.
-        curve: Curve,
+        curve: Arc<Curve>,
 
         /// The stroke properties of the curve.
         stroke: Stroke,
@@ -294,14 +295,18 @@ impl Canvas {
     }
 
     /// Fill a curve.
-    pub fn fill(&mut self, curve: Curve, fill: FillRule, paint: Paint) {
-        self.primitives.push(Primitive::Fill { curve, fill, paint });
+    pub fn fill(&mut self, curve: impl Into<Arc<Curve>>, fill: FillRule, paint: Paint) {
+        self.primitives.push(Primitive::Fill {
+            curve: curve.into(),
+            fill,
+            paint,
+        });
     }
 
     /// Stroke a curve.
-    pub fn stroke(&mut self, curve: Curve, stroke: Stroke, paint: Paint) {
+    pub fn stroke(&mut self, curve: impl Into<Arc<Curve>>, stroke: Stroke, paint: Paint) {
         self.primitives.push(Primitive::Stroke {
-            curve,
+            curve: curve.into(),
             stroke,
             paint,
         });
@@ -468,7 +473,7 @@ impl Canvas {
 
                 let hash = hasher.finish();
 
-                let rect = curve.bounds().expand(stroke.width / 2.0);
+                let rect = curve.bounds().inflate(stroke.width / 2.0);
                 rects.insert(hash, rect.transform(transform));
             }
             Primitive::Layer {

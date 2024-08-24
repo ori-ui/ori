@@ -14,7 +14,7 @@ use x11rb::{
     xcb_ffi::XCBConnection,
 };
 
-use super::{app::Atoms, X11Error};
+use super::{launch::Atoms, X11Error};
 
 pub struct X11ClipboardServer {
     owner: u32,

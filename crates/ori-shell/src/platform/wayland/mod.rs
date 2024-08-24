@@ -1,8 +1,8 @@
 //! Wayland platform implementation.
 
-mod app;
 mod error;
+mod launch;
 mod xkb;
 
-pub use app::launch;
 pub use error::WaylandError;
+pub use launch::launch;

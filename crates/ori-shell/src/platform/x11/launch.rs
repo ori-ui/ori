@@ -191,10 +191,122 @@ impl X11Window {
     }
 }
 
-/// An X11 application.
+/// Create a new X11 application.
+pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), X11Error> {
+    let (conn, screen_num) = XCBConnection::connect(None)?;
+    let conn = Arc::new(conn);
+
+    X11App::<T>::init_xkb(&conn)?;
+
+    let atoms = Atoms::new(&conn)?.reply()?;
+    let (clipboard_server, clipboard) = X11ClipboardServer::new(&conn, atoms)?;
+
+    let egl_context = EglContext::new(EglNativeDisplay::X11)?;
+
+    let (event_tx, event_rx) = std::sync::mpsc::channel();
+
+    let thread = thread::spawn({
+        let conn = conn.clone();
+        let tx = event_tx.clone();
+
+        move || loop {
+            let event = conn.wait_for_event().unwrap();
+            clipboard_server.handle_event(&conn, &event).unwrap();
+
+            if tx.send(Some(event)).is_err() {
+                break;
+            }
+        }
+    });
+
+    let waker = CommandWaker::new({
+        let tx = event_tx.clone();
+
+        move || {
+            tx.send(None).unwrap();
+        }
+    });
+
+    let reply = conn
+        .get_property(
+            Database::GET_RESOURCE_DATABASE.delete,
+            conn.setup().roots[screen_num].root,
+            Database::GET_RESOURCE_DATABASE.property,
+            Database::GET_RESOURCE_DATABASE.type_,
+            Database::GET_RESOURCE_DATABASE.long_offset,
+            Database::GET_RESOURCE_DATABASE.long_length,
+        )?
+        .reply()?;
+
+    let hostname = std::env::var_os("HOSTNAME").unwrap_or_default();
+    let database = Database::new_from_default(&reply, hostname);
+    let cursor_handle = CursorHandle::new(&conn, screen_num, &database)?.reply()?;
+
+    let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+    let core_keyboard = XkbKeyboard::x11_new_core(&conn, &xkb_context);
+
+    let mut app = app.build(waker);
+    app.add_context(Clipboard::new(Box::new(clipboard)));
+
+    let mut state = X11App {
+        app,
+        conn,
+        atoms,
+        running: true,
+        screen: screen_num,
+        event_rx,
+        event_tx,
+        thread,
+        windows: Vec::new(),
+        database,
+        cursor_handle,
+        cursors: HashMap::new(),
+
+        egl_context,
+        xkb_context,
+        core_keyboard,
+    };
+
+    state.app.init(data);
+    state.handle_app_requests(data)?;
+
+    while state.running {
+        state.conn.flush()?;
+
+        let mut event_option = if state.needs_redraw() {
+            state.event_rx.try_recv().ok()
+        } else {
+            match state.event_rx.recv_timeout(Duration::from_millis(2)) {
+                Ok(event) => Some(event),
+                Err(err) => match err {
+                    RecvTimeoutError::Timeout => None,
+                    RecvTimeoutError::Disconnected => break,
+                },
+            }
+        };
+
+        while let Some(event) = event_option {
+            match event {
+                Some(event) => state.handle_event(data, event)?,
+                None => state.handle_commands(data)?,
+            }
+
+            state.handle_app_requests(data)?;
+            event_option = state.event_rx.try_recv().ok();
+        }
+
+        state.render_windows(data)?;
+        state.handle_app_requests(data)?;
+
+        state.app.idle(data);
+        state.handle_app_requests(data)?;
+    }
+
+    Ok(())
+}
+
 #[allow(unused)]
-pub struct X11App<T> {
-    data: T,
+struct X11App<T> {
     app: App<T>,
     conn: Arc<XCBConnection>,
     atoms: Atoms,
@@ -214,128 +326,6 @@ pub struct X11App<T> {
 }
 
 impl<T> X11App<T> {
-    /// Create a new X11 application.
-    pub fn new(app: AppBuilder<T>, data: T) -> Result<Self, X11Error> {
-        let (conn, screen_num) = XCBConnection::connect(None)?;
-        let conn = Arc::new(conn);
-
-        Self::init_xkb(&conn)?;
-
-        let atoms = Atoms::new(&conn)?.reply()?;
-        let (clipboard_server, clipboard) = X11ClipboardServer::new(&conn, atoms)?;
-
-        let egl_context = EglContext::new(EglNativeDisplay::X11)?;
-
-        let (event_tx, event_rx) = std::sync::mpsc::channel();
-
-        let thread = thread::spawn({
-            let conn = conn.clone();
-            let tx = event_tx.clone();
-
-            move || loop {
-                let event = conn.wait_for_event().unwrap();
-                clipboard_server.handle_event(&conn, &event).unwrap();
-
-                if tx.send(Some(event)).is_err() {
-                    break;
-                }
-            }
-        });
-
-        let waker = CommandWaker::new({
-            let tx = event_tx.clone();
-
-            move || {
-                tx.send(None).unwrap();
-            }
-        });
-
-        let reply = conn
-            .get_property(
-                Database::GET_RESOURCE_DATABASE.delete,
-                conn.setup().roots[screen_num].root,
-                Database::GET_RESOURCE_DATABASE.property,
-                Database::GET_RESOURCE_DATABASE.type_,
-                Database::GET_RESOURCE_DATABASE.long_offset,
-                Database::GET_RESOURCE_DATABASE.long_length,
-            )?
-            .reply()?;
-
-        let hostname = std::env::var_os("HOSTNAME").unwrap_or_default();
-        let database = Database::new_from_default(&reply, hostname);
-        let cursor_handle = CursorHandle::new(&conn, screen_num, &database)?.reply()?;
-
-        let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-        let core_keyboard = XkbKeyboard::x11_new_core(&conn, &xkb_context);
-
-        let mut app = app.build(waker);
-        app.add_context(Clipboard::new(Box::new(clipboard)));
-
-        Ok(Self {
-            data,
-            app,
-            conn,
-            atoms,
-            running: true,
-            screen: screen_num,
-            event_rx,
-            event_tx,
-            thread,
-            windows: Vec::new(),
-            database,
-            cursor_handle,
-            cursors: HashMap::new(),
-
-            egl_context,
-            xkb_context,
-            core_keyboard,
-        })
-    }
-
-    /// Run the application.
-    pub fn run(mut self) -> Result<(), X11Error> {
-        self.running = true;
-
-        self.app.init(&mut self.data);
-        self.handle_app_requests()?;
-
-        while self.running {
-            self.conn.flush()?;
-
-            let mut event_option = if self.needs_redraw() {
-                self.event_rx.try_recv().ok()
-            } else {
-                match self.event_rx.recv_timeout(Duration::from_millis(2)) {
-                    Ok(event) => Some(event),
-                    Err(err) => match err {
-                        RecvTimeoutError::Timeout => None,
-                        RecvTimeoutError::Disconnected => break,
-                    },
-                }
-            };
-
-            while let Some(event) = event_option {
-                match event {
-                    Some(event) => self.handle_event(event)?,
-                    None => self.handle_commands()?,
-                }
-
-                self.handle_app_requests()?;
-                event_option = self.event_rx.try_recv().ok();
-            }
-
-            self.render_windows()?;
-            self.handle_app_requests()?;
-
-            self.app.idle(&mut self.data);
-            self.handle_app_requests()?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<T> X11App<T> {
     fn get_window_ori(&self, id: WindowId) -> Option<usize> {
         self.windows.iter().position(|w| w.ori_id == id)
     }
@@ -348,13 +338,18 @@ impl<T> X11App<T> {
         self.windows.iter().any(|w| w.needs_redraw)
     }
 
-    fn handle_commands(&mut self) -> Result<(), X11Error> {
-        self.app.handle_commands(&mut self.data);
+    fn handle_commands(&mut self, data: &mut T) -> Result<(), X11Error> {
+        self.app.handle_commands(data);
 
         Ok(())
     }
 
-    fn open_window(&mut self, window: Window, ui: UiBuilder<T>) -> Result<(), X11Error> {
+    fn open_window(
+        &mut self,
+        data: &mut T,
+        window: Window,
+        ui: UiBuilder<T>,
+    ) -> Result<(), X11Error> {
         let win_id = self.conn.generate_id()?;
         let colormap_id = self.conn.generate_id()?;
 
@@ -472,7 +467,7 @@ impl<T> X11App<T> {
         self.conn.flush()?;
 
         self.windows.push(x11_window);
-        self.app.add_window(&mut self.data, ui, window);
+        self.app.add_window(data, ui, window);
 
         Ok(())
     }
@@ -494,7 +489,7 @@ impl<T> X11App<T> {
         }
     }
 
-    fn render_windows(&mut self) -> Result<(), X11Error> {
+    fn render_windows(&mut self, data: &mut T) -> Result<(), X11Error> {
         for window in &mut self.windows {
             if !window.needs_redraw {
                 continue;
@@ -502,7 +497,7 @@ impl<T> X11App<T> {
 
             window.needs_redraw = false;
 
-            if let Some(state) = self.app.draw_window(&mut self.data, window.ori_id) {
+            if let Some(state) = self.app.draw_window(data, window.ori_id) {
                 unsafe {
                     window.egl_surface.make_current()?;
 
@@ -522,9 +517,9 @@ impl<T> X11App<T> {
         Ok(())
     }
 
-    fn handle_app_requests(&mut self) -> Result<(), X11Error> {
+    fn handle_app_requests(&mut self, data: &mut T) -> Result<(), X11Error> {
         for request in self.app.take_requests() {
-            self.handle_app_request(request)?;
+            self.handle_app_request(data, request)?;
         }
 
         Ok(())
@@ -545,9 +540,9 @@ impl<T> X11App<T> {
         Ok(())
     }
 
-    fn handle_app_request(&mut self, request: AppRequest<T>) -> Result<(), X11Error> {
+    fn handle_app_request(&mut self, data: &mut T, request: AppRequest<T>) -> Result<(), X11Error> {
         match request {
-            AppRequest::OpenWindow(window, ui) => self.open_window(window, ui)?,
+            AppRequest::OpenWindow(window, ui) => self.open_window(data, window, ui)?,
             AppRequest::CloseWindow(id) => self.close_window(id)?,
             AppRequest::DragWindow(_) => {}
             AppRequest::RequestRedraw(id) => self.request_redraw(id),
@@ -623,7 +618,7 @@ impl<T> X11App<T> {
         Ok(())
     }
 
-    fn handle_event(&mut self, event: XEvent) -> Result<(), X11Error> {
+    fn handle_event(&mut self, data: &mut T, event: XEvent) -> Result<(), X11Error> {
         match event {
             XEvent::Expose(event) => {
                 if let Some(index) = self.get_window_x11(event.window) {
@@ -647,12 +642,7 @@ impl<T> X11App<T> {
                         window.physical_height = physical_height;
 
                         let id = window.ori_id;
-                        (self.app).window_resized(
-                            &mut self.data,
-                            id,
-                            logical_width,
-                            logical_height,
-                        );
+                        (self.app).window_resized(data, id, logical_width, logical_height);
                         window.needs_redraw = true;
                     }
                 }
@@ -664,7 +654,7 @@ impl<T> X11App<T> {
                     };
 
                     let window = &self.windows[index];
-                    self.app.close_requested(&mut self.data, window.ori_id);
+                    self.app.close_requested(data, window.ori_id);
                 }
 
                 if event.data.as_data32()[0] == self.atoms._NET_WM_SYNC_REQUEST {
@@ -693,12 +683,8 @@ impl<T> X11App<T> {
 
                     let window = &self.windows[index];
                     let id = window.ori_id;
-                    self.app.pointer_moved(
-                        &mut self.data,
-                        id,
-                        pointer_id,
-                        position / window.scale_factor,
-                    );
+                    self.app
+                        .pointer_moved(data, id, pointer_id, position / window.scale_factor);
                 }
             }
             XEvent::LeaveNotify(event) => {
@@ -706,17 +692,17 @@ impl<T> X11App<T> {
                     let pointer_id = PointerId::from_hash(&event.child);
 
                     let id = self.windows[index].ori_id;
-                    self.app.pointer_left(&mut self.data, id, pointer_id);
+                    self.app.pointer_left(data, id, pointer_id);
                 }
             }
             XEvent::ButtonPress(event) => {
                 if let Some(index) = self.get_window_x11(event.event) {
-                    self.pointer_button(self.windows[index].ori_id, event.detail, true);
+                    self.pointer_button(data, self.windows[index].ori_id, event.detail, true);
                 }
             }
             XEvent::ButtonRelease(event) => {
                 if let Some(index) = self.get_window_x11(event.event) {
-                    self.pointer_button(self.windows[index].ori_id, event.detail, false);
+                    self.pointer_button(data, self.windows[index].ori_id, event.detail, false);
                 }
             }
             XEvent::XkbStateNotify(event) => {
@@ -750,7 +736,7 @@ impl<T> X11App<T> {
                     let text = (!utf8.is_empty()).then_some(utf8);
 
                     let id = self.windows[index].ori_id;
-                    (self.app).keyboard_key(&mut self.data, id, key, code, text, true);
+                    (self.app).keyboard_key(data, id, key, code, text, true);
                 }
             }
             XEvent::KeyRelease(event) => {
@@ -759,7 +745,7 @@ impl<T> X11App<T> {
                     let code = Code::from_linux_scancode(event.detail - 8);
 
                     let id = self.windows[index].ori_id;
-                    (self.app).keyboard_key(&mut self.data, id, key, code, None, false);
+                    (self.app).keyboard_key(data, id, key, code, None, false);
                 }
             }
             _ => {}
@@ -768,7 +754,7 @@ impl<T> X11App<T> {
         Ok(())
     }
 
-    fn pointer_button(&mut self, id: WindowId, code: u8, pressed: bool) {
+    fn pointer_button(&mut self, data: &mut T, id: WindowId, code: u8, pressed: bool) {
         let pointer_id = PointerId::from_hash(&0);
 
         match code {
@@ -781,12 +767,12 @@ impl<T> X11App<T> {
                     _ => unreachable!(),
                 };
 
-                (self.app).pointer_scrolled(&mut self.data, id, pointer_id, delta);
+                (self.app).pointer_scrolled(data, id, pointer_id, delta);
             }
             _ => {
                 let button = PointerButton::from_u16(code as u16);
 
-                (self.app).pointer_button(&mut self.data, id, pointer_id, button, pressed);
+                (self.app).pointer_button(data, id, pointer_id, button, pressed);
             }
         }
     }

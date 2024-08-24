@@ -73,7 +73,7 @@ use super::{
 };
 
 /// Launch an Ori application on the Wayland platform.
-pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
+pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
     let conn = Connection::connect_to_env()?;
     let (globals, event_queue) = registry_queue_init(&conn)?;
     let qhandle = event_queue.handle();
@@ -115,7 +115,7 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
 
     let mut app = app.build(waker);
     app.add_context(Clipboard::new(Box::new(clipboard)));
-    app.init(&mut data);
+    app.init(data);
 
     let mut state = State {
         running: true,
@@ -149,16 +149,16 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
         };
 
         event_loop.dispatch(timeout, &mut state).unwrap();
-        app.handle_commands(&mut data);
+        app.handle_commands(data);
 
-        handle_events(&mut app, &mut data, &mut state)?;
-        handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
+        handle_events(&mut app, data, &mut state)?;
+        handle_app_requests(&mut app, data, &mut state, &qhandle)?;
 
-        render_windows(&mut app, &mut data, &mut state)?;
-        handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
+        render_windows(&mut app, data, &mut state)?;
+        handle_app_requests(&mut app, data, &mut state, &qhandle)?;
 
-        app.idle(&mut data);
-        handle_app_requests(&mut app, &mut data, &mut state, &qhandle)?;
+        app.idle(data);
+        handle_app_requests(&mut app, data, &mut state, &qhandle)?;
 
         set_cursor_icons(&mut state);
     }

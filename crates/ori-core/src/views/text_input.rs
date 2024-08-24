@@ -7,7 +7,7 @@ use ori_macro::{example, Build};
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Code, Event, Key, KeyPressed},
+    event::{Event, Key, KeyPressed},
     layout::{Point, Rect, Size, Space, Vector},
     style::{style, Palette, Style, Styles},
     text::{
@@ -499,13 +499,13 @@ impl<T> View<T> for TextInput<T> {
                     state.blink = 0.0;
                 }
 
-                if e.is(Code::C) && e.modifiers.ctrl {
+                if e.is('c') && e.modifiers.ctrl {
                     if let Some(selection) = state.editor.copy_selection() {
                         cx.clipboard().set(selection);
                     }
                 }
 
-                if e.is(Code::X) && e.modifiers.ctrl {
+                if e.is('x') && e.modifiers.ctrl {
                     if let Some(selection) = state.editor.copy_selection() {
                         cx.clipboard().set(selection);
                         cx.request_layout();
@@ -515,7 +515,7 @@ impl<T> View<T> for TextInput<T> {
                     changed = true;
                 }
 
-                if e.is(Code::V) && e.modifiers.ctrl {
+                if e.is('v') && e.modifiers.ctrl {
                     let text = cx.clipboard().get();
                     state.editor.insert_string(&text, None);
 

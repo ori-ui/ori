@@ -12,18 +12,20 @@ use ori_glow::GlowRenderer;
 use sctk_adwaita::{AdwaitaFrame, FrameConfig};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, SurfaceData},
-    delegate_compositor, delegate_keyboard, delegate_output, delegate_pointer, delegate_registry,
-    delegate_seat, delegate_shm, delegate_subcompositor, delegate_xdg_shell, delegate_xdg_window,
+    delegate_compositor, delegate_output, delegate_pointer, delegate_registry, delegate_seat,
+    delegate_shm, delegate_subcompositor, delegate_xdg_shell, delegate_xdg_window,
     output::{OutputHandler, OutputState},
     reexports::{
-        calloop::{EventLoop, LoopHandle},
+        calloop::{
+            timer::{TimeoutAction, Timer},
+            EventLoop, LoopHandle, RegistrationToken,
+        },
         calloop_wayland_source::WaylandSource,
         protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge,
     },
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
-        keyboard::{KeyEvent, KeyboardHandler, Keysym, Modifiers},
         pointer::{
             CursorIcon, PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec,
             ThemedPointer,
@@ -48,23 +50,27 @@ use wayland_client::{
     backend::ObjectId,
     globals::registry_queue_init,
     protocol::{
-        wl_keyboard::{self, WlKeyboard},
+        wl_keyboard::{Event as KeyboardEvent, KeyState, KeymapFormat, WlKeyboard},
         wl_output::{Transform, WlOutput},
         wl_pointer::WlPointer,
         wl_seat::WlSeat,
         wl_surface::WlSurface,
     },
-    Connection, Proxy, QueueHandle,
+    Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
 use wayland_csd_frame::{DecorationsFrame, FrameAction, FrameClick, ResizeEdge};
 use wayland_egl::WlEglSurface;
+use xkeysym::Keysym;
 
 use crate::platform::linux::{
     egl::{EglContext, EglNativeDisplay, EglSurface},
     LIB_GL,
 };
 
-use super::error::WaylandError;
+use super::{
+    error::WaylandError,
+    xkb::{XkbContext, XkbKeyboard},
+};
 
 /// Launch an Ori application on the Wayland platform.
 pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
@@ -81,6 +87,8 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
     let display_ptr = conn.backend().display_ptr() as _;
     let display = EglNativeDisplay::Wayland(display_ptr);
     let egl_context = EglContext::new(display)?;
+
+    let xkb_context = XkbContext::new().unwrap();
 
     let clipboard = unsafe { smithay_clipboard::Clipboard::new(display_ptr) };
     let clipboard = WaylandClipboard { clipboard };
@@ -113,6 +121,7 @@ pub fn launch<T>(app: AppBuilder<T>, mut data: T) -> Result<(), WaylandError> {
         running: true,
 
         egl_context,
+        xkb_context,
 
         conn,
         loop_handle,
@@ -542,6 +551,7 @@ struct State {
     running: bool,
 
     egl_context: EglContext,
+    xkb_context: XkbContext,
 
     conn: Connection,
     loop_handle: LoopHandle<'static, State>,
@@ -578,6 +588,12 @@ struct PointerState {
 struct KeyboardState {
     seat: WlSeat,
     keyboard: WlKeyboard,
+    xkb_keyboard: XkbKeyboard,
+
+    // gap, delay
+    repeat: Option<(Duration, Duration)>,
+    repeat_keysym: Option<Keysym>,
+    repeat_token: Option<RegistrationToken>,
 }
 
 enum Event {
@@ -663,6 +679,10 @@ fn window_by_id(windows: &mut [WindowState], id: WindowId) -> Option<&mut Window
 
 fn pointer_by_id(pointers: &mut [PointerState], id: ObjectId) -> Option<&mut PointerState> {
     pointers.iter_mut().find(|p| p.pointer.pointer().id() == id)
+}
+
+fn keyboard_by_id(keyboards: &mut [KeyboardState], id: ObjectId) -> Option<&mut KeyboardState> {
+    keyboards.iter_mut().find(|k| k.keyboard.id() == id)
 }
 
 fn window_by_surface<'a>(
@@ -893,36 +913,20 @@ impl SeatHandler for State {
         }
 
         if capability == Capability::Keyboard {
-            let keyboard = self.seat.get_keyboard_with_repeat(
-                qh,
-                &seat,
-                None,
-                self.loop_handle.clone(),
-                Box::new(|state, keyboard, event| {
-                    for window in &mut state.windows {
-                        if !window.keyboards.contains(&keyboard.id()) {
-                            continue;
-                        }
+            let keyboard = seat.get_keyboard(qh, ());
+            let xkb_keyboard = XkbKeyboard::new(&self.xkb_context).unwrap();
 
-                        let key = keyevent_to_key(&event);
-                        let code = Code::from_linux_scancode(event.raw_code as u8);
+            let state = KeyboardState {
+                seat,
+                keyboard,
+                xkb_keyboard,
 
-                        state.events.push(Event::Keyboard {
-                            id: window.id,
-                            key,
-                            code,
-                            text: event.utf8.clone(),
-                            pressed: true,
-                        });
-                    }
-                }),
-            );
+                repeat: None,
+                repeat_keysym: None,
+                repeat_token: None,
+            };
 
-            if let Ok(keyboard) = keyboard {
-                let state = KeyboardState { seat, keyboard };
-
-                self.keyboards.push(state);
-            }
+            self.keyboards.push(state);
         }
     }
 
@@ -1122,125 +1126,170 @@ fn pointer_button(button: u32) -> PointerButton {
     }
 }
 
-impl KeyboardHandler for State {
-    fn enter(
-        &mut self,
+impl Dispatch<WlKeyboard, ()> for State {
+    fn event(
+        state: &mut Self,
+        proxy: &WlKeyboard,
+        event: <WlKeyboard as Proxy>::Event,
+        _data: &(),
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        keyboard: &WlKeyboard,
-        surface: &WlSurface,
-        _serial: u32,
-        _raw: &[u32],
-        _keysyms: &[Keysym],
+        _qhandle: &QueueHandle<Self>,
     ) {
-        if let Some(window) = window_by_surface(&mut self.windows, surface) {
-            window.keyboards.push(keyboard.id());
-        }
-    }
-
-    fn leave(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        keyboard: &WlKeyboard,
-        surface: &WlSurface,
-        _serial: u32,
-    ) {
-        if let Some(window) = window_by_surface(&mut self.windows, surface) {
-            window.keyboards.retain(|id| *id != keyboard.id());
-        }
-    }
-
-    fn press_key(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        keyboard: &WlKeyboard,
-        _serial: u32,
-        event: KeyEvent,
-    ) {
-        let code = Code::from_linux_scancode(event.raw_code as u8);
-
-        for window in &mut self.windows {
-            if !window.keyboards.contains(&keyboard.id()) {
-                continue;
-            }
-
-            let key = keyevent_to_key(&event);
-
-            self.events.push(Event::Keyboard {
-                id: window.id,
-                key,
-                code,
-                text: event.utf8.clone(),
-                pressed: true,
-            });
-        }
-    }
-
-    fn release_key(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        keyboard: &WlKeyboard,
-        _serial: u32,
-        event: KeyEvent,
-    ) {
-        let code = Code::from_linux_scancode(event.raw_code as u8);
-
-        for window in &mut self.windows {
-            if !window.keyboards.contains(&keyboard.id()) {
-                continue;
-            }
-
-            let key = keyevent_to_key(&event);
-
-            self.events.push(Event::Keyboard {
-                id: window.id,
-                key,
-                code,
-                text: event.utf8.clone(),
-                pressed: false,
-            });
-        }
-    }
-
-    fn update_modifiers(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _keyboard: &WlKeyboard,
-        _serial: u32,
-        modifiers: Modifiers,
-        _layout: u32,
-    ) {
-        let modifiers = ori_core::event::Modifiers {
-            shift: modifiers.shift,
-            ctrl: modifiers.ctrl,
-            alt: modifiers.alt,
-            meta: modifiers.logo,
+        let Some(keyboard) = keyboard_by_id(&mut state.keyboards, proxy.id()) else {
+            return;
         };
 
-        self.events.push(Event::Modifiers { modifiers });
-    }
-}
+        match event {
+            KeyboardEvent::Keymap { format, fd, size } => {
+                if !matches!(format, WEnum::Value(KeymapFormat::XkbV1)) {
+                    warn!("Unsupported keymap format: {:?}", format);
+                    return;
+                }
 
-fn keyevent_to_key(event: &KeyEvent) -> Key {
-    if let Some(utf8) = &event.utf8 {
-        let mut chars = utf8.chars();
-        let c = chars.next().expect("utf8 string is empty");
+                (keyboard.xkb_keyboard)
+                    .set_keymap_from_fd(fd, size as usize)
+                    .unwrap();
+            }
+            KeyboardEvent::Enter { surface, .. } => {
+                if let Some(window) = window_by_surface(&mut state.windows, &surface) {
+                    window.keyboards.push(keyboard.keyboard.id());
+                }
+            }
+            KeyboardEvent::Leave { surface, .. } => {
+                if let Some(window) = window_by_surface(&mut state.windows, &surface) {
+                    window.keyboards.retain(|id| *id != keyboard.keyboard.id());
+                }
+            }
+            KeyboardEvent::Key {
+                key: scancode,
+                state: key_state,
+                ..
+            } => {
+                let (Some(xkb_state), Some(keymap)) = (
+                    keyboard.xkb_keyboard.state(),
+                    keyboard.xkb_keyboard.keymap(),
+                ) else {
+                    warn!("No keymap or state found for keyboard");
+                    return;
+                };
 
-        if !c.is_control() {
-            debug_assert!(
-                chars.next().is_none(),
-                "utf8 string has more than one character"
-            );
+                let layout = xkb_state.layout();
 
-            return Key::Character(c);
+                let keycode = scancode + 8;
+                let code = Code::from_linux_scancode(scancode as u8);
+                let keysym_raw = keymap.first_keysym(layout, keycode).unwrap();
+                let keysym = xkb_state.get_one_sym(keycode);
+                let key = keyboard.xkb_keyboard.keysym_to_key(keysym_raw);
+                let text = keyboard.xkb_keyboard.keysym_to_utf8(keysym);
+
+                let pressed = matches!(key_state, WEnum::Value(KeyState::Pressed));
+
+                let mut window_ids = Vec::new();
+
+                for window in &mut state.windows {
+                    if window.keyboards.contains(&keyboard.keyboard.id()) {
+                        window_ids.push(window.id);
+                    }
+                }
+
+                for &window_id in &window_ids {
+                    state.events.push(Event::Keyboard {
+                        id: window_id,
+                        key,
+                        code,
+                        text: text.clone(),
+                        pressed,
+                    });
+                }
+
+                if !pressed {
+                    keyboard.repeat_keysym = None;
+
+                    if let Some(token) = keyboard.repeat_token.take() {
+                        state.loop_handle.remove(token);
+                    }
+
+                    return;
+                }
+
+                let Some((_, delay)) = keyboard.repeat else {
+                    return;
+                };
+
+                if !keymap.key_repeats(keycode) {
+                    return;
+                }
+
+                keyboard.repeat_keysym = Some(keysym);
+
+                let timer = Timer::from_duration(delay);
+                let kb_id = keyboard.keyboard.id();
+                let token = state.loop_handle.insert_source(timer, move |_, _, state| {
+                    let Some(keyboard) = keyboard_by_id(&mut state.keyboards, kb_id.clone()) else {
+                        return TimeoutAction::Drop;
+                    };
+
+                    if keyboard.repeat_keysym != Some(keysym) {
+                        return TimeoutAction::Drop;
+                    }
+
+                    for &window in &window_ids {
+                        state.events.push(Event::Keyboard {
+                            id: window,
+                            key,
+                            code,
+                            text: text.clone(),
+                            pressed: true,
+                        });
+                    }
+
+                    match keyboard.repeat {
+                        Some((gap, _)) => TimeoutAction::ToDuration(gap),
+                        None => TimeoutAction::Drop,
+                    }
+                });
+
+                keyboard.repeat_token = token.ok();
+            }
+            KeyboardEvent::Modifiers {
+                mods_depressed,
+                mods_latched,
+                mods_locked,
+                group,
+                ..
+            } => {
+                if let Some(xkb_state) = keyboard.xkb_keyboard.state() {
+                    xkb_state.update_modifiers(
+                        mods_depressed,
+                        mods_latched,
+                        mods_locked,
+                        0,
+                        0,
+                        group,
+                    );
+                    let modifiers = xkb_state.modifiers();
+                    state.events.push(Event::Modifiers { modifiers });
+                }
+            }
+            KeyboardEvent::RepeatInfo { rate, delay } => match rate {
+                0 => {
+                    keyboard.repeat_keysym = None;
+                    keyboard.repeat = None;
+
+                    if let Some(token) = keyboard.repeat_token.take() {
+                        state.loop_handle.remove(token);
+                    }
+                }
+                _ => {
+                    let rate = Duration::from_micros(1_000_000 / rate as u64);
+                    let delay = Duration::from_millis(delay as u64);
+
+                    keyboard.repeat = Some((rate, delay));
+                }
+            },
+            _ => {}
         }
     }
-
-    crate::platform::linux::xkb::keysym_to_key(event.keysym)
 }
 
 impl ProvidesRegistryState for State {
@@ -1272,7 +1321,6 @@ delegate_shm!(State);
 
 delegate_seat!(State);
 delegate_pointer!(State);
-delegate_keyboard!(State);
 
 delegate_xdg_shell!(State);
 delegate_xdg_window!(State);

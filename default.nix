@@ -11,9 +11,5 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.wayland
   ];
 
-  nativeBuildInputs = [
-    pkgs.pkg-config
-  ];
-
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";
 }

@@ -64,7 +64,10 @@ fn title() -> impl View<Data> {
 fn input(border: bool) -> impl View<Data> {
     let input = text_input()
         .placeholder("What needs to be done?")
-        .on_submit(|_, data: &mut Data, text| data.input(text.to_string()))
+        .on_submit(|cx, data: &mut Data, text| {
+            data.input(text.to_string());
+            cx.request_rebuild();
+        })
         .font_size(20.0);
 
     let border = border as i32 as f32 * 2.0;

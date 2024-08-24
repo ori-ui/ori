@@ -49,7 +49,9 @@ impl XkbKeyboard {
     }
 
     pub fn get_key(&self, key: xkb::Keycode) -> Key {
-        let utf8 = self.key_get_utf8(key);
+        let layout = self.state.key_get_layout(key);
+        let keysym = self.keymap.key_get_syms_by_level(key, layout, 0)[0];
+        let utf8 = xkb::keysym_to_utf8(keysym);
 
         if !utf8.is_empty() {
             let mut chars = utf8.chars();
@@ -61,7 +63,6 @@ impl XkbKeyboard {
             }
         }
 
-        let keysym = self.state.key_get_one_sym(key);
         crate::platform::linux::xkb::keysym_to_key(keysym)
     }
 }

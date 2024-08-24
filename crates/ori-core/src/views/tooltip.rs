@@ -339,6 +339,9 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
             return;
         }
 
+        // make sure the tooltip is hoverable
+        cx.trigger(cx.rect());
+
         // we need to try to move the tooltip so it fits on the screen
         let window_rect = Rect::min_size(Point::ZERO, cx.window().size);
 

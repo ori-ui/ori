@@ -11,8 +11,8 @@ in vec3 v_image_offset_opacity;
 
 out vec4 f_color;
 
-const uint MAX_CURVE_POINTS = 4096u;
-const uint MAX_CURVE_BANDS = 4096u;
+const uint MAX_CURVE_POINTS = 2048u;
+const uint MAX_CURVE_BANDS = 2048u;
 
 const uint NON_ZERO_BIT = 1u << 31u;
 const uint AA_SAMPLES_MASK = 0x0000ff00u;

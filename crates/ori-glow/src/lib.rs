@@ -79,8 +79,8 @@ pub struct GlowRenderer {
 }
 
 impl GlowRenderer {
-    const MAX_CURVE_POINTS: usize = 4096;
-    const MAX_BAND_DATA: usize = 4096;
+    const MAX_CURVE_POINTS: usize = 2048;
+    const MAX_BAND_DATA: usize = 2048;
     const MAX_INSTANCES: usize = 256;
     const MAX_BANDS: usize = 256;
 

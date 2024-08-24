@@ -4,7 +4,7 @@ use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
     clipboard::{Clipboard, ClipboardBackend},
     command::CommandWaker,
-    event::{Code, PointerButton, PointerId},
+    event::{Code, Key, PointerButton, PointerId},
     layout::{Point, Vector},
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
@@ -48,7 +48,7 @@ use wayland_client::{
     backend::ObjectId,
     globals::registry_queue_init,
     protocol::{
-        wl_keyboard::WlKeyboard,
+        wl_keyboard::{self, WlKeyboard},
         wl_output::{Transform, WlOutput},
         wl_pointer::WlPointer,
         wl_seat::WlSeat,
@@ -59,7 +59,10 @@ use wayland_client::{
 use wayland_csd_frame::{DecorationsFrame, FrameAction, FrameClick, ResizeEdge};
 use wayland_egl::WlEglSurface;
 
-use crate::platform::linux::{EglContext, EglNativeDisplay, EglSurface, LIB_GL};
+use crate::platform::linux::{
+    egl::{EglContext, EglNativeDisplay, EglSurface},
+    LIB_GL,
+};
 
 use super::error::WaylandError;
 
@@ -519,11 +522,12 @@ fn handle_event<T>(
 
         Event::Keyboard {
             id,
+            key,
             code,
             text,
             pressed,
         } => {
-            app.keyboard_key(data, id, code, text, pressed);
+            app.keyboard_key(data, id, key, code, text, pressed);
         }
 
         Event::Modifiers { modifiers } => {
@@ -613,6 +617,7 @@ enum Event {
 
     Keyboard {
         id: WindowId,
+        key: Key,
         code: Option<Code>,
         text: Option<String>,
         pressed: bool,
@@ -899,10 +904,12 @@ impl SeatHandler for State {
                             continue;
                         }
 
+                        let key = keyevent_to_key(&event);
                         let code = Code::from_linux_scancode(event.raw_code as u8);
 
                         state.events.push(Event::Keyboard {
                             id: window.id,
+                            key,
                             code,
                             text: event.utf8.clone(),
                             pressed: true,
@@ -1159,8 +1166,11 @@ impl KeyboardHandler for State {
                 continue;
             }
 
+            let key = keyevent_to_key(&event);
+
             self.events.push(Event::Keyboard {
                 id: window.id,
+                key,
                 code,
                 text: event.utf8.clone(),
                 pressed: true,
@@ -1183,8 +1193,11 @@ impl KeyboardHandler for State {
                 continue;
             }
 
+            let key = keyevent_to_key(&event);
+
             self.events.push(Event::Keyboard {
                 id: window.id,
+                key,
                 code,
                 text: event.utf8.clone(),
                 pressed: false,
@@ -1210,6 +1223,24 @@ impl KeyboardHandler for State {
 
         self.events.push(Event::Modifiers { modifiers });
     }
+}
+
+fn keyevent_to_key(event: &KeyEvent) -> Key {
+    if let Some(utf8) = &event.utf8 {
+        let mut chars = utf8.chars();
+        let c = chars.next().expect("utf8 string is empty");
+
+        if !c.is_control() {
+            debug_assert!(
+                chars.next().is_none(),
+                "utf8 string has more than one character"
+            );
+
+            return Key::Character(c);
+        }
+    }
+
+    crate::platform::linux::xkb::keysym_to_key(event.keysym)
 }
 
 impl ProvidesRegistryState for State {

@@ -1,3 +1,4 @@
+use ori_core::event::Key;
 use xkbcommon::xkb;
 
 #[allow(unused)]
@@ -45,5 +46,22 @@ impl XkbKeyboard {
 
     pub fn key_get_utf8(&self, key: xkb::Keycode) -> String {
         self.state.key_get_utf8(key)
+    }
+
+    pub fn get_key(&self, key: xkb::Keycode) -> Key {
+        let utf8 = self.key_get_utf8(key);
+
+        if !utf8.is_empty() {
+            let mut chars = utf8.chars();
+            let c = chars.next().unwrap();
+            debug_assert!(chars.next().is_none());
+
+            if !c.is_control() {
+                return Key::Character(c);
+            }
+        }
+
+        let keysym = self.state.key_get_one_sym(key);
+        crate::platform::linux::xkb::keysym_to_key(keysym)
     }
 }

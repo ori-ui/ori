@@ -1,4 +1,4 @@
-use crate::platform::linux::EglError;
+use crate::platform::linux::egl::EglError;
 
 /// Errors that can occur when interacting with X11.
 #[derive(Debug)]

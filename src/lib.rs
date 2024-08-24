@@ -38,7 +38,7 @@ pub mod prelude {
         command::CommandProxy,
         context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
         event::{
-            CloseRequested, Code, Event, KeyPressed, Modifiers, PointerButton, PointerId,
+            CloseRequested, Code, Event, Key, KeyPressed, Modifiers, PointerButton, PointerId,
             PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
         },
         image::{Image, ImageData, ImageId},

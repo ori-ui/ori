@@ -1,42 +1,184 @@
 use super::Modifiers;
 
+/// A trait for checking if something is a certain key.
+pub trait IsKey {
+    /// Check if the key is the given key.
+    fn is(&self, key: Key, code: Option<Code>) -> bool;
+}
+
+impl IsKey for char {
+    fn is(&self, key: Key, _: Option<Code>) -> bool {
+        if let Key::Character(c) = key {
+            c == *self
+        } else {
+            false
+        }
+    }
+}
+
+impl IsKey for Key {
+    fn is(&self, key: Key, _: Option<Code>) -> bool {
+        self == &key
+    }
+}
+
+impl IsKey for Code {
+    fn is(&self, _: Key, code: Option<Code>) -> bool {
+        self == &code.unwrap()
+    }
+}
+
 /// An event fired when a key is pressed.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct KeyPressed {
     /// The key that was pressed or released.
+    pub key: Key,
+
+    /// The code of the key that was pressed or released.
     pub code: Option<Code>,
+
     /// The text that was entered.
     pub text: Option<String>,
+
     /// The modifiers that were active.
     pub modifiers: Modifiers,
 }
 
 impl KeyPressed {
     /// Check if the `key` is pressed.
-    pub fn is(&self, key: Code) -> bool {
-        self.code == Some(key)
+    pub fn is(&self, key: impl IsKey) -> bool {
+        key.is(self.key, self.code)
     }
 }
 
 /// An event fired when a key is released.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct KeyReleased {
     /// The key that was pressed or released.
+    pub key: Key,
+
+    /// The code of the key that was pressed or released.
     pub code: Option<Code>,
+
     /// The modifiers that were active.
     pub modifiers: Modifiers,
 }
 
 impl KeyReleased {
     /// Check if the `key` is released.
-    pub fn is(&self, key: Code) -> bool {
-        self.code == Some(key)
+    pub fn is(&self, key: impl IsKey) -> bool {
+        key.is(self.key, self.code)
     }
 }
 
 /// A keyboard key.
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum Key {
+    /* special keys */
+    Character(char),
+    Unidentified,
+
+    /* modifier keys */
+    Alt,
+    AltGraph,
+    Control,
+    Shift,
+    Meta,
+    Super,
+    Hyper,
+    Symbol,
+    Fn,
+
+    /* lock keys */
+    FnLock,
+    NumLock,
+    CapsLock,
+    ScrollLock,
+    SymbolLock,
+
+    /* function keys */
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
+    F13,
+    F14,
+    F15,
+    F16,
+    F17,
+    F18,
+    F19,
+    F20,
+    F21,
+    F22,
+    F23,
+    F24,
+
+    /* misc keys */
+    Enter,
+    Tab,
+    Down,
+    Left,
+    Right,
+    Up,
+    End,
+    Home,
+    PageDown,
+    PageUp,
+    Backspace,
+    Clear,
+    Copy,
+    Cut,
+    Delete,
+    Insert,
+    Paste,
+    Redo,
+    Undo,
+    Accept,
+    Again,
+    Cancel,
+    Escape,
+    Execute,
+    Find,
+    Help,
+    Pause,
+    Play,
+    Select,
+    PrintScreen,
+    Alphanumeric,
+    CodeInput,
+    Compose,
+    Convert,
+    Dead,
+    HangulMode,
+    HanjaMode,
+    JunjaMode,
+    KanjiMode,
+    KanaMode,
+    Eisu,
+    Hankaku,
+    Hiragana,
+    Katakana,
+    HiraganaKatakana,
+    Romaji,
+    Zenkaku,
+    ZenkakuHankaku,
+}
+
+/// A keyboard key-code.
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Code {
     // Alphabetical keys
     A,

@@ -6,9 +6,9 @@ use ori_core::{
     command::{CommandProxy, CommandReceiver},
     context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
-        CloseRequested, Code, Event, KeyPressed, KeyReleased, Modifiers, PointerButton, PointerId,
-        PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled, WindowResized,
-        WindowScaled,
+        CloseRequested, Code, Event, Key, KeyPressed, KeyReleased, Modifiers, PointerButton,
+        PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
+        WindowResized, WindowScaled,
     },
     layout::{Point, Size, Space, Vector},
     style::Styles,
@@ -304,12 +304,14 @@ impl<T> App<T> {
         &mut self,
         data: &mut T,
         window_id: WindowId,
+        key: Key,
         code: Option<Code>,
         text: Option<String>,
         pressed: bool,
     ) {
         if pressed {
             let event = Event::KeyPressed(KeyPressed {
+                key,
                 code,
                 text,
                 modifiers: self.modifiers,
@@ -318,6 +320,7 @@ impl<T> App<T> {
             self.window_event(data, window_id, &event);
         } else {
             let event = Event::KeyReleased(KeyReleased {
+                key,
                 code,
                 modifiers: self.modifiers,
             });

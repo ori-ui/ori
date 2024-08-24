@@ -43,7 +43,10 @@ use x11rb::{
 };
 use xkbcommon::xkb;
 
-use crate::platform::linux::{EglContext, EglNativeDisplay, EglSurface, LIB_GL};
+use crate::platform::linux::{
+    egl::{EglContext, EglNativeDisplay, EglSurface},
+    LIB_GL,
+};
 
 use super::{clipboard::X11ClipboardServer, xkb::XkbKeyboard, X11Error};
 
@@ -742,19 +745,21 @@ impl<T> X11App<T> {
             XEvent::KeyPress(event) => {
                 if let Some(index) = self.get_window_x11(event.event) {
                     let utf8 = self.core_keyboard.key_get_utf8(event.detail.into());
+                    let key = self.core_keyboard.get_key(event.detail.into());
                     let code = Code::from_linux_scancode(event.detail - 8);
                     let text = (!utf8.is_empty()).then_some(utf8);
 
                     let id = self.windows[index].ori_id;
-                    self.app.keyboard_key(&mut self.data, id, code, text, true);
+                    (self.app).keyboard_key(&mut self.data, id, key, code, text, true);
                 }
             }
             XEvent::KeyRelease(event) => {
                 if let Some(index) = self.get_window_x11(event.event) {
+                    let key = self.core_keyboard.get_key(event.detail.into());
                     let code = Code::from_linux_scancode(event.detail - 8);
 
                     let id = self.windows[index].ori_id;
-                    self.app.keyboard_key(&mut self.data, id, code, None, false);
+                    (self.app).keyboard_key(&mut self.data, id, key, code, None, false);
                 }
             }
             _ => {}

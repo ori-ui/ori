@@ -23,11 +23,13 @@ x11 = [
     "dep:libloading",
     "dep:x11rb",
     "dep:xkbcommon",
+    "dep:xkeysym",
     "xkbcommon/x11",
 ]
 
 wayland = [
     "dep:libloading",
+    "dep:xkeysym",
     "dep:wayland-client",
     "dep:wayland-egl",
     "dep:wayland-csd-frame",
@@ -41,6 +43,7 @@ wayland = [
 [target.'cfg(target_os = "linux")'.dependencies]
 libloading              = { version = "0.8",    optional = true }
 xkbcommon               = { version = "0.8",    optional = true }
+xkeysym                 = { version = "0.2",    optional = true }
 wayland-client          = { version = "0.31",   optional = true }
 wayland-egl             = { version = "0.32",   optional = true }
 wayland-csd-frame       = { version = "0.3",    optional = true }

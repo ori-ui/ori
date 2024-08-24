@@ -7,7 +7,7 @@ use ori_macro::{example, Build};
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Code, Event, KeyPressed},
+    event::{Code, Event, Key, KeyPressed},
     layout::{Point, Rect, Size, Space, Vector},
     style::{style, Palette, Style, Styles},
     text::{
@@ -312,21 +312,21 @@ impl TextInputState {
 }
 
 fn move_key(e: &KeyPressed) -> Option<Motion> {
-    match e.code {
-        Some(Code::Left) if e.modifiers.ctrl => Some(Motion::LeftWord),
-        Some(Code::Right) if e.modifiers.ctrl => Some(Motion::RightWord),
-        Some(Code::Left) => Some(Motion::Left),
-        Some(Code::Right) => Some(Motion::Right),
-        Some(Code::Up) => Some(Motion::Up),
-        Some(Code::Down) => Some(Motion::Down),
+    match e.key {
+        Key::Left if e.modifiers.ctrl => Some(Motion::LeftWord),
+        Key::Right if e.modifiers.ctrl => Some(Motion::RightWord),
+        Key::Left => Some(Motion::Left),
+        Key::Right => Some(Motion::Right),
+        Key::Up => Some(Motion::Up),
+        Key::Down => Some(Motion::Down),
         _ => None,
     }
 }
 
 fn delete_key(e: &KeyPressed) -> Option<Action> {
-    match e.code {
-        Some(Code::Backspace) => Some(Action::Backspace),
-        Some(Code::Delete) => Some(Action::Delete),
+    match e.key {
+        Key::Backspace => Some(Action::Backspace),
+        Key::Delete => Some(Action::Delete),
         _ => None,
     }
 }
@@ -475,20 +475,20 @@ impl<T> View<T> for TextInput<T> {
                     changed = true;
                 }
 
-                if e.is(Code::Escape) {
+                if e.is(Key::Escape) {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                     cx.set_focused(false);
                     cx.request_draw();
                 }
 
-                if e.is(Code::Enter) && self.multiline {
+                if e.is(Key::Enter) && self.multiline {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Enter);
                     cx.request_layout();
                     state.blink = 0.0;
                     changed = true;
                 }
 
-                if e.is(Code::Enter) && !self.multiline {
+                if e.is(Key::Enter) && !self.multiline {
                     cx.set_focused(false);
                     submit = true;
                 }

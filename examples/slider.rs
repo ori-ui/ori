@@ -24,5 +24,5 @@ fn main() {
 
     let app = App::build().window(window, ui);
 
-    ori::launch(app, Data::new()).unwrap();
+    ori::launch(app, &mut Data::new()).unwrap();
 }

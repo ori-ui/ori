@@ -256,5 +256,5 @@ fn main() {
 
     let app = AppBuilder::new().window(window, ui).delegate(AppDelegate);
 
-    ori::launch(app, Data::default()).unwrap();
+    ori::launch(app, &mut Data::default()).unwrap();
 }

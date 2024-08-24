@@ -46,5 +46,5 @@ fn main() {
     // Then we set the title of the window and run the app.
     let app = App::build().window(window, ui);
 
-    ori::launch(app, Data::default()).unwrap();
+    ori::launch(app, &mut Data::default()).unwrap();
 }

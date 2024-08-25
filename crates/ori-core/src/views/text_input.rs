@@ -475,20 +475,20 @@ impl<T> View<T> for TextInput<T> {
                     changed = true;
                 }
 
-                if e.is(Key::Escape) {
+                if e.is_key(Key::Escape) {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                     cx.set_focused(false);
                     cx.request_draw();
                 }
 
-                if e.is(Key::Enter) && self.multiline {
+                if e.is_key(Key::Enter) && self.multiline {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Enter);
                     cx.request_layout();
                     state.blink = 0.0;
                     changed = true;
                 }
 
-                if e.is(Key::Enter) && !self.multiline {
+                if e.is_key(Key::Enter) && !self.multiline {
                     cx.set_focused(false);
                     submit = true;
                 }
@@ -499,13 +499,13 @@ impl<T> View<T> for TextInput<T> {
                     state.blink = 0.0;
                 }
 
-                if e.is('c') && e.modifiers.ctrl {
+                if e.is_key('c') && e.modifiers.ctrl {
                     if let Some(selection) = state.editor.copy_selection() {
                         cx.clipboard().set(selection);
                     }
                 }
 
-                if e.is('x') && e.modifiers.ctrl {
+                if e.is_key('x') && e.modifiers.ctrl {
                     if let Some(selection) = state.editor.copy_selection() {
                         cx.clipboard().set(selection);
                         cx.request_layout();
@@ -515,7 +515,7 @@ impl<T> View<T> for TextInput<T> {
                     changed = true;
                 }
 
-                if e.is('v') && e.modifiers.ctrl {
+                if e.is_key('v') && e.modifiers.ctrl {
                     let text = cx.clipboard().get();
                     state.editor.insert_string(&text, None);
 

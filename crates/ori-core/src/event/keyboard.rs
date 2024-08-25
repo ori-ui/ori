@@ -8,23 +8,31 @@ pub trait IsKey {
 
 impl IsKey for char {
     fn is(&self, key: Key, _: Option<Code>) -> bool {
-        if let Key::Character(c) = key {
-            c == *self
-        } else {
-            false
-        }
+        Key::Character(*self) == key
     }
 }
 
 impl IsKey for Key {
     fn is(&self, key: Key, _: Option<Code>) -> bool {
-        self == &key
+        *self == key
     }
 }
 
 impl IsKey for Code {
     fn is(&self, _: Key, code: Option<Code>) -> bool {
-        self == &code.unwrap()
+        Some(self) == code.as_ref()
+    }
+}
+
+impl<T: IsKey> IsKey for &T {
+    fn is(&self, key: Key, code: Option<Code>) -> bool {
+        T::is(self, key, code)
+    }
+}
+
+impl<T: IsKey> IsKey for &mut T {
+    fn is(&self, key: Key, code: Option<Code>) -> bool {
+        T::is(self, key, code)
     }
 }
 
@@ -46,7 +54,7 @@ pub struct KeyPressed {
 
 impl KeyPressed {
     /// Check if the `key` is pressed.
-    pub fn is(&self, key: impl IsKey) -> bool {
+    pub fn is_key(&self, key: impl IsKey) -> bool {
         key.is(self.key, self.code)
     }
 }
@@ -66,7 +74,7 @@ pub struct KeyReleased {
 
 impl KeyReleased {
     /// Check if the `key` is released.
-    pub fn is(&self, key: impl IsKey) -> bool {
+    pub fn is_key(&self, key: impl IsKey) -> bool {
         key.is(self.key, self.code)
     }
 }

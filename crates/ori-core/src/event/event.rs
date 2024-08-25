@@ -3,7 +3,7 @@ use std::any::Any;
 use crate::command::Command;
 
 use super::{
-    CloseRequested, KeyPressed, KeyReleased, PointerLeft, PointerMoved, PointerPressed,
+    CloseRequested, IsKey, KeyPressed, KeyReleased, PointerLeft, PointerMoved, PointerPressed,
     PointerReleased, PointerScrolled, WindowResized, WindowScaled,
 };
 
@@ -65,8 +65,24 @@ impl Event {
     /// Returns `None` if the event is not a command or if the command is not of the specified type.
     pub fn cmd<T: Any>(&self) -> Option<&T> {
         match self {
-            Event::Command(cmd) => cmd.get::<T>(),
+            Event::Command(cmd) => cmd.get(),
             _ => None,
+        }
+    }
+
+    /// Check if the event represents a key press of a specific key.
+    pub fn is_key_pressed(&self, key: impl IsKey) -> bool {
+        match self {
+            Event::KeyPressed(pressed) => pressed.is_key(key),
+            _ => false,
+        }
+    }
+
+    /// Check if the event represents a key release of a specific key.
+    pub fn is_key_released(&self, key: impl IsKey) -> bool {
+        match self {
+            Event::KeyReleased(released) => released.is_key(key),
+            _ => false,
         }
     }
 }

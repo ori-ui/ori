@@ -325,6 +325,27 @@ impl X11Window {
 
         Ok(())
     }
+
+    fn is_maximized(window: u32, conn: &XCBConnection, atoms: &Atoms) -> Result<bool, X11Error> {
+        let reply = conn.get_property(
+            false,
+            window,
+            atoms._NET_WM_STATE,
+            AtomEnum::ATOM,
+            0,
+            u32::MAX,
+        )?;
+
+        let states = reply
+            .reply()?
+            .value32()
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        Ok(states.contains(&atoms._NET_WM_STATE_MAXIMIZED_HORZ)
+            && states.contains(&atoms._NET_WM_STATE_MAXIMIZED_VERT))
+    }
 }
 
 /// Create a new X11 application.
@@ -799,6 +820,15 @@ impl<T> X11App<T> {
                     {
                         window.physical_width = physical_width;
                         window.physical_height = physical_height;
+
+                        if let Some(app_window) = self.app.get_window_mut(window.ori_id) {
+                            app_window.maximized = X11Window::is_maximized(
+                                //
+                                window.x11_id,
+                                &self.conn,
+                                &self.atoms,
+                            )?
+                        }
 
                         let id = window.ori_id;
                         (self.app).window_resized(data, id, logical_width, logical_height);

@@ -59,6 +59,7 @@ atom_manager! {
         UTF8_STRING,
         WM_PROTOCOLS,
         WM_DELETE_WINDOW,
+        _MOTIF_WM_HINTS,
         _NET_WM_NAME,
         _NET_WM_ICON,
         _NET_WM_SYNC_REQUEST,
@@ -186,25 +187,65 @@ impl X11Window {
         Ok(())
     }
 
+    fn get_motif_hints(
+        window: u32,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+    ) -> Result<Vec<u32>, X11Error> {
+        let reply = conn.get_property(
+            false,
+            window,
+            atoms._MOTIF_WM_HINTS,
+            AtomEnum::ATOM,
+            0,
+            u32::MAX,
+        )?;
+
+        let hints = reply
+            .reply()?
+            .value32()
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>();
+
+        Ok(hints)
+    }
+
+    fn set_motif_hints(
+        window: u32,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        hints: &[u32],
+    ) -> Result<(), X11Error> {
+        conn.change_property32(
+            PropMode::REPLACE,
+            window,
+            atoms._MOTIF_WM_HINTS,
+            AtomEnum::ATOM,
+            hints,
+        )?
+        .check()?;
+
+        Ok(())
+    }
+
     fn set_decorated(
         window: u32,
         conn: &XCBConnection,
         atoms: &Atoms,
         decorated: bool,
     ) -> Result<(), X11Error> {
-        let window_type = match decorated {
-            true => atoms._NET_WM_WINDOW_TYPE_NORMAL,
-            false => atoms._NET_WM_WINDOW_TYPE_DOCK,
-        };
+        let mut hints = Self::get_motif_hints(window, conn, atoms)?;
+        hints.resize(5, 0);
 
-        conn.change_property32(
-            PropMode::REPLACE,
-            window,
-            atoms._NET_WM_WINDOW_TYPE,
-            AtomEnum::ATOM,
-            &[window_type],
-        )?
-        .check()?;
+        // magic numbers go brrr
+        if decorated {
+            hints[0] |= 1 << 1;
+        } else {
+            hints[0] &= !(1 << 1);
+        }
+
+        Self::set_motif_hints(window, conn, atoms, &hints)?;
 
         Ok(())
     }

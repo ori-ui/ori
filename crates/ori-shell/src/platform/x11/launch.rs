@@ -324,7 +324,8 @@ impl X11Window {
                 type_: atoms._NET_WM_STATE,
                 data: ClientMessageData::from(data),
             },
-        )?;
+        )?
+        .check()?;
 
         Ok(())
     }

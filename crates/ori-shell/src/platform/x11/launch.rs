@@ -18,6 +18,7 @@ use ori_core::{
 };
 use ori_glow::GlowRenderer;
 
+use tracing::warn;
 use x11rb::{
     atom_manager,
     connection::{Connection, RequestConnection},
@@ -66,6 +67,9 @@ atom_manager! {
         _NET_WM_ACTION_MOVE,
         _NET_WM_ACTION_RESIZE,
         _NET_WM_STATE,
+        _NET_WM_WINDOW_TYPE,
+        _NET_WM_WINDOW_TYPE_NORMAL,
+        _NET_WM_WINDOW_TYPE_DIALOG,
     }
 }
 
@@ -182,11 +186,24 @@ impl X11Window {
     }
 
     fn set_decorated(
-        _window: u32,
-        _conn: &XCBConnection,
-        _atoms: &Atoms,
-        _decorated: bool,
+        window: u32,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        decorated: bool,
     ) -> Result<(), X11Error> {
+        let window_type = match decorated {
+            true => atoms._NET_WM_WINDOW_TYPE_NORMAL,
+            false => atoms._NET_WM_WINDOW_TYPE_DIALOG,
+        };
+
+        conn.change_property32(
+            PropMode::REPLACE,
+            window,
+            atoms._NET_WM_WINDOW_TYPE,
+            AtomEnum::ATOM,
+            &[window_type],
+        )?;
+
         Ok(())
     }
 }
@@ -544,7 +561,9 @@ impl<T> X11App<T> {
         match request {
             AppRequest::OpenWindow(window, ui) => self.open_window(data, window, ui)?,
             AppRequest::CloseWindow(id) => self.close_window(id)?,
-            AppRequest::DragWindow(_) => {}
+            AppRequest::DragWindow(_id) => {
+                warn!("DragWindow is not supported on X11");
+            }
             AppRequest::RequestRedraw(id) => self.request_redraw(id),
             AppRequest::UpdateWindow(id, update) => {
                 let Some(index) = self.windows.iter().position(|w| w.ori_id == id) else {
@@ -597,7 +616,9 @@ impl<T> X11App<T> {
                             decorated,
                         )?;
                     }
-                    WindowUpdate::Maximized(_) => {}
+                    WindowUpdate::Maximized(_) => {
+                        warn!("Maximized is not supported on X11");
+                    }
                     WindowUpdate::Visible(visible) => {
                         if visible {
                             self.conn.map_window(window.x11_id)?;
@@ -605,7 +626,9 @@ impl<T> X11App<T> {
                             self.conn.unmap_window(window.x11_id)?;
                         }
                     }
-                    WindowUpdate::Color(_) => {}
+                    WindowUpdate::Color(_) => {
+                        self.request_redraw(id);
+                    }
                     WindowUpdate::Cursor(cursor) => {
                         let x_window = window.x11_id;
                         self.set_cursor(x_window, cursor)?;

@@ -70,6 +70,7 @@ atom_manager! {
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_NORMAL,
         _NET_WM_WINDOW_TYPE_DIALOG,
+        _NET_WM_WINDOW_TYPE_DOCK,
     }
 }
 
@@ -193,7 +194,7 @@ impl X11Window {
     ) -> Result<(), X11Error> {
         let window_type = match decorated {
             true => atoms._NET_WM_WINDOW_TYPE_NORMAL,
-            false => atoms._NET_WM_WINDOW_TYPE_DIALOG,
+            false => atoms._NET_WM_WINDOW_TYPE_DOCK,
         };
 
         conn.change_property32(
@@ -202,7 +203,8 @@ impl X11Window {
             atoms._NET_WM_WINDOW_TYPE,
             AtomEnum::ATOM,
             &[window_type],
-        )?;
+        )?
+        .check()?;
 
         Ok(())
     }

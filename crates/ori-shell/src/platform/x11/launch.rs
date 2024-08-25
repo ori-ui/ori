@@ -33,9 +33,10 @@ use x11rb::{
             SelectEventsAux as XkbSelectEventsAux, ID as XkbID,
         },
         xproto::{
-            AtomEnum, ChangeWindowAttributesAux, ColormapAlloc, ConfigureWindowAux,
-            ConnectionExt as _, CreateWindowAux, Cursor as XCursor, EventMask, ModMask, PropMode,
-            VisualClass, Visualid, WindowClass,
+            AtomEnum, ChangeWindowAttributesAux, ClientMessageData, ClientMessageEvent,
+            ColormapAlloc, ConfigureWindowAux, ConnectionExt as _, CreateWindowAux,
+            Cursor as XCursor, EventMask, ModMask, PropMode, VisualClass, Visualid, WindowClass,
+            CLIENT_MESSAGE_EVENT,
         },
         Event as XEvent,
     },
@@ -69,6 +70,10 @@ atom_manager! {
         _NET_WM_ACTION_MOVE,
         _NET_WM_ACTION_RESIZE,
         _NET_WM_STATE,
+        _NET_WM_STATE_MAXIMIZED_VERT,
+        _NET_WM_STATE_MAXIMIZED_HORZ,
+        _NET_WM_STATE_ADD,
+        _NET_WM_STATE_REMOVE,
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_NORMAL,
         _NET_WM_WINDOW_TYPE_DIALOG,
@@ -283,6 +288,43 @@ impl X11Window {
         hints[2] = if decorated { 1 } else { 0 };
 
         Self::set_motif_hints(window, conn, atoms, &hints)?;
+
+        Ok(())
+    }
+
+    fn set_maximized(
+        window: u32,
+        root: usize,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        maximized: bool,
+    ) -> Result<(), X11Error> {
+        let mut data = [0u32; 5];
+
+        data[0] = if maximized {
+            atoms._NET_WM_STATE_ADD
+        } else {
+            atoms._NET_WM_STATE_REMOVE
+        };
+
+        data[1] = atoms._NET_WM_STATE_MAXIMIZED_VERT;
+        data[2] = atoms._NET_WM_STATE_MAXIMIZED_HORZ;
+
+        let screen = conn.setup().roots[root].root;
+
+        conn.send_event(
+            false,
+            screen,
+            EventMask::SUBSTRUCTURE_NOTIFY,
+            ClientMessageEvent {
+                response_type: CLIENT_MESSAGE_EVENT,
+                format: 32,
+                sequence: 0,
+                window,
+                type_: atoms._NET_WM_STATE,
+                data: ClientMessageData::from(data),
+            },
+        )?;
 
         Ok(())
     }
@@ -707,8 +749,14 @@ impl<T> X11App<T> {
                             decorated,
                         )?;
                     }
-                    WindowUpdate::Maximized(_) => {
-                        warn!("Maximized is not supported on X11");
+                    WindowUpdate::Maximized(maximized) => {
+                        X11Window::set_maximized(
+                            window.x11_id,
+                            self.screen,
+                            &self.conn,
+                            &self.atoms,
+                            maximized,
+                        )?;
                     }
                     WindowUpdate::Visible(visible) => {
                         if visible {

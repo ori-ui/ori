@@ -219,6 +219,10 @@ fn handle_app_request<T>(
 
             match update {
                 WindowUpdate::Title(title) => {
+                    if let Some(ref mut frame) = window.frame {
+                        frame.set_title(&title);
+                    }
+
                     window.xdg_window.set_title(&title);
                     window.xdg_window.commit();
                 }
@@ -231,33 +235,17 @@ fn handle_app_request<T>(
                     let physical_width = (size.width * window.scale_factor) as u32;
                     let physical_height = (size.height * window.scale_factor) as u32;
 
-                    window.physical_width = physical_width;
-                    window.physical_height = physical_height;
-
-                    if let Some(ref mut frame) = window.frame {
+                    if let Some(ref mut configure) = window.last_configure {
                         let one = NonZero::new(1).unwrap();
                         let width = NonZero::new(physical_width).unwrap_or(one);
                         let height = NonZero::new(physical_height).unwrap_or(one);
 
-                        frame.resize(width, height);
+                        configure.new_size = (Some(width), Some(height));
                     }
 
-                    set_resizable(window, window.resizable);
-                    window.xdg_window.set_window_geometry(
-                        //
-                        0,
-                        0,
-                        physical_width,
-                        physical_height,
-                    );
-                    window.wl_egl_surface.resize(
-                        physical_width as i32,
-                        physical_height as i32,
-                        0,
-                        0,
-                    );
-                    window.xdg_window.commit();
-                    window.needs_redraw = true;
+                    if let Some(event) = window.resize() {
+                        state.events.push(event);
+                    }
                 }
                 WindowUpdate::Scale(scale) => {
                     window.scale_factor = scale;
@@ -934,7 +922,7 @@ impl WindowHandler for State {
                 && window.decorated
                 && window.frame.is_none()
             {
-                let frame = AdwaitaFrame::new(
+                let mut frame = AdwaitaFrame::new(
                     &window.xdg_window,
                     &self.shm,
                     self.compositor.clone(),
@@ -944,6 +932,7 @@ impl WindowHandler for State {
                 )
                 .unwrap();
 
+                frame.set_title(&window.title);
                 window.frame = Some(frame);
             }
 

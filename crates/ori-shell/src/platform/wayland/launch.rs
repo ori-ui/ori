@@ -515,9 +515,16 @@ fn handle_event<T>(
             app.window_scaled(data, id, scale);
         }
 
-        Event::State { id, state } => {
-            let app_window = app.get_window_mut(id).unwrap();
-            app_window.maximized = state.contains(CsdWindowState::MAXIMIZED);
+        Event::State {
+            id,
+            state: win_state,
+        } => {
+            if let Some(window) = window_by_id(&mut state.windows, id) {
+                let app_window = app.get_window_mut(id).expect("Window exists in state.app");
+
+                let maximized = win_state.contains(CsdWindowState::MAXIMIZED);
+                app_window.maximized = maximized && window.resizable;
+            }
         }
 
         Event::CloseRequested { id } => {

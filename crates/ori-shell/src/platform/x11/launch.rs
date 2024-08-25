@@ -238,12 +238,10 @@ impl X11Window {
         let mut hints = Self::get_motif_hints(window, conn, atoms)?;
         hints.resize(5, 0);
 
+        hints[0] |= 1 << 1;
+
         // magic numbers go brrr
-        if decorated {
-            hints[0] |= 1 << 1;
-        } else {
-            hints[0] &= !(1 << 1);
-        }
+        hints[2] = if decorated { 1 } else { 0 };
 
         Self::set_motif_hints(window, conn, atoms, &hints)?;
 

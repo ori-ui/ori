@@ -826,7 +826,7 @@ impl WindowHandler for State {
             });
 
             match configure.decoration_mode {
-                DecorationMode::Client => {
+                DecorationMode::Client if window.decorated => {
                     let frame = window.frame.get_or_insert_with(|| {
                         let mut frame = AdwaitaFrame::new(
                             &window.xdg_window,
@@ -841,7 +841,7 @@ impl WindowHandler for State {
                         frame
                     });
 
-                    frame.set_hidden(!window.decorated);
+                    frame.set_hidden(false);
                     frame.update_state(configure.state);
                     frame.update_wm_capabilities(configure.capabilities);
 
@@ -887,7 +887,7 @@ impl WindowHandler for State {
                         height: height.get(),
                     });
                 }
-                DecorationMode::Server => {
+                _ => {
                     let width = width.map_or(window.physical_width, |w| w.get());
                     let height = height.map_or(window.physical_height, |h| h.get());
 

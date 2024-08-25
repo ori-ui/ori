@@ -42,6 +42,7 @@ use x11rb::{
     },
     resource_manager::Database,
     wrapper::ConnectionExt as _,
+    x11_utils::Serialize,
     xcb_ffi::XCBConnection,
 };
 use xkbcommon::xkb;
@@ -72,8 +73,6 @@ atom_manager! {
         _NET_WM_STATE,
         _NET_WM_STATE_MAXIMIZED_VERT,
         _NET_WM_STATE_MAXIMIZED_HORZ,
-        _NET_WM_STATE_ADD,
-        _NET_WM_STATE_REMOVE,
         _NET_WM_WINDOW_TYPE,
         _NET_WM_WINDOW_TYPE_NORMAL,
         _NET_WM_WINDOW_TYPE_DIALOG,
@@ -287,7 +286,7 @@ impl X11Window {
         // magic numbers go brrr
         hints[2] = if decorated { 1 } else { 0 };
 
-        //Self::set_motif_hints(window, conn, atoms, &hints)?;
+        Self::set_motif_hints(window, conn, atoms, &hints)?;
 
         Ok(())
     }
@@ -301,14 +300,9 @@ impl X11Window {
     ) -> Result<(), X11Error> {
         let mut data = [0u32; 5];
 
-        data[0] = if maximized {
-            atoms._NET_WM_STATE_ADD
-        } else {
-            atoms._NET_WM_STATE_REMOVE
-        };
-
-        data[1] = atoms._NET_WM_STATE_MAXIMIZED_VERT;
-        data[2] = atoms._NET_WM_STATE_MAXIMIZED_HORZ;
+        data[0] = maximized as u32;
+        data[1] = atoms._NET_WM_STATE_MAXIMIZED_HORZ;
+        data[2] = atoms._NET_WM_STATE_MAXIMIZED_VERT;
 
         let screen = conn.setup().roots[screen].root;
 
@@ -323,7 +317,8 @@ impl X11Window {
                 window,
                 type_: atoms._NET_WM_STATE,
                 data: ClientMessageData::from(data),
-            },
+            }
+            .serialize(),
         )?
         .check()?;
         conn.flush()?;

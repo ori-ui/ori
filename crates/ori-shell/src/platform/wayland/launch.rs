@@ -762,16 +762,18 @@ impl WindowState {
                 self.physical_height = height.get();
                 self.needs_redraw = true;
 
+                let (outer_width, outer_height) = frame.add_borders(width.get(), height.get());
+
                 // i have no idea why this is necessary, but it is
                 //
                 // KEEP MAKE CURRENT HERE!
                 self.egl_surface.make_current().unwrap();
-                (self.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
+                (self.wl_egl_surface).resize(outer_width as i32, outer_height as i32, 0, 0);
                 self.xdg_window.xdg_surface().set_window_geometry(
                     x,
                     y,
-                    width.get() as i32,
-                    height.get() as i32,
+                    outer_width as i32,
+                    outer_height as i32,
                 );
 
                 Some(Event::Resized {

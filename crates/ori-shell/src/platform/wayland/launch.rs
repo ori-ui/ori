@@ -841,7 +841,7 @@ impl WindowHandler for State {
                         frame
                     });
 
-                    frame.set_hidden(window.decorated);
+                    frame.set_hidden(!window.decorated);
                     frame.update_state(configure.state);
                     frame.update_wm_capabilities(configure.capabilities);
 

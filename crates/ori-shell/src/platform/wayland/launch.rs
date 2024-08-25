@@ -276,18 +276,6 @@ fn handle_app_request<T>(
                     };
 
                     window.xdg_window.request_decoration_mode(Some(mode));
-                    window.xdg_window.set_window_geometry(
-                        0,
-                        0,
-                        window.physical_width,
-                        window.physical_height,
-                    );
-                    window.xdg_window.commit();
-                    window.needs_redraw = true;
-
-                    if let Some(ref mut frame) = window.frame {
-                        frame.set_hidden(!decorated);
-                    }
                 }
                 WindowUpdate::Maximized(maximized) => {
                     match maximized {
@@ -903,6 +891,10 @@ impl WindowHandler for State {
                     });
                 }
                 _ => {
+                    if let Some(ref mut frame) = window.frame {
+                        frame.set_hidden(true);
+                    }
+
                     let width = width.map_or(window.physical_width, |w| w.get());
                     let height = height.map_or(window.physical_height, |h| h.get());
 

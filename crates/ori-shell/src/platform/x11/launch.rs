@@ -287,14 +287,14 @@ impl X11Window {
         // magic numbers go brrr
         hints[2] = if decorated { 1 } else { 0 };
 
-        Self::set_motif_hints(window, conn, atoms, &hints)?;
+        //Self::set_motif_hints(window, conn, atoms, &hints)?;
 
         Ok(())
     }
 
     fn set_maximized(
         window: u32,
-        root: usize,
+        screen: usize,
         conn: &XCBConnection,
         atoms: &Atoms,
         maximized: bool,
@@ -310,12 +310,12 @@ impl X11Window {
         data[1] = atoms._NET_WM_STATE_MAXIMIZED_VERT;
         data[2] = atoms._NET_WM_STATE_MAXIMIZED_HORZ;
 
-        let screen = conn.setup().roots[root].root;
+        let screen = conn.setup().roots[screen].root;
 
         conn.send_event(
             false,
             screen,
-            EventMask::SUBSTRUCTURE_NOTIFY,
+            EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY,
             ClientMessageEvent {
                 response_type: CLIENT_MESSAGE_EVENT,
                 format: 32,
@@ -326,6 +326,7 @@ impl X11Window {
             },
         )?
         .check()?;
+        conn.flush()?;
 
         Ok(())
     }

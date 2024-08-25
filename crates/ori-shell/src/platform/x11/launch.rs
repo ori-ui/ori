@@ -13,6 +13,7 @@ use ori_core::{
     clipboard::Clipboard,
     command::CommandWaker,
     event::{Code, Modifiers, PointerButton, PointerId},
+    image::Image,
     layout::{Point, Vector},
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
@@ -127,6 +128,44 @@ impl X11Window {
         };
 
         size_hints.set_normal_hints(conn, window)?;
+
+        Ok(())
+    }
+
+    fn set_icon(
+        window: u32,
+        conn: &XCBConnection,
+        atoms: &Atoms,
+        image: &Image,
+    ) -> Result<(), X11Error> {
+        let mut data = Vec::with_capacity(image.width() as usize * image.height() as usize + 2);
+        data.push(image.width());
+        data.push(image.height());
+
+        for pixel in image.chunks_exact(4) {
+            let r = pixel[0];
+            let g = pixel[1];
+            let b = pixel[2];
+            let a = pixel[3];
+
+            let pixel = u32::from_ne_bytes([r, g, b, a]);
+            data.push(pixel);
+        }
+
+        conn.change_property32(
+            PropMode::REPLACE,
+            window,
+            atoms._NET_WM_ICON,
+            AtomEnum::CARDINAL,
+            &data,
+        )?
+        .check()?;
+
+        Ok(())
+    }
+
+    fn unset_icon(window: u32, conn: &XCBConnection, atoms: &Atoms) -> Result<(), X11Error> {
+        conn.delete_property(window, atoms._NET_WM_ICON)?;
 
         Ok(())
     }
@@ -493,6 +532,10 @@ impl<T> X11App<T> {
         X11Window::set_decorated(win_id, &self.conn, &self.atoms, window.decorated)?;
         X11Window::set_resizable(win_id, &self.conn, &self.atoms, window.resizable)?;
 
+        if let Some(ref icon) = window.icon {
+            X11Window::set_icon(win_id, &self.conn, &self.atoms, icon)?;
+        }
+
         self.conn.flush()?;
 
         let egl_surface = EglSurface::new(&self.egl_context, win_id as _)?;
@@ -616,7 +659,14 @@ impl<T> X11App<T> {
                     WindowUpdate::Title(title) => {
                         X11Window::set_title(window.x11_id, &self.conn, &self.atoms, &title)?;
                     }
-                    WindowUpdate::Icon(_) => {}
+                    WindowUpdate::Icon(icon) => match icon {
+                        Some(icon) => {
+                            X11Window::set_icon(window.x11_id, &self.conn, &self.atoms, &icon)?;
+                        }
+                        None => {
+                            X11Window::unset_icon(window.x11_id, &self.conn, &self.atoms)?;
+                        }
+                    },
                     WindowUpdate::Size(size) => {
                         let physical_width = (size.width * window.scale_factor) as u32;
                         let physical_height = (size.height * window.scale_factor) as u32;

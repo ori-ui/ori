@@ -45,7 +45,7 @@ use smithay_client_toolkit::{
     shm::{Shm, ShmHandler},
     subcompositor::SubcompositorState,
 };
-use tracing::warn;
+use tracing::{debug, warn};
 use wayland_client::{
     backend::ObjectId,
     globals::registry_queue_init,
@@ -220,7 +220,11 @@ fn handle_app_request<T>(
                     window.xdg_window.set_title(&title);
                     window.xdg_window.commit();
                 }
-                WindowUpdate::Icon(_) => {}
+                WindowUpdate::Icon(_) => {
+                    warn!(
+                        "Setting window icons is not supported on Wayland, set it a .desktop file"
+                    );
+                }
                 WindowUpdate::Size(size) => {
                     let physical_width = (size.width * window.scale_factor) as u32;
                     let physical_height = (size.height * window.scale_factor) as u32;
@@ -269,7 +273,9 @@ fn handle_app_request<T>(
                     window.decorated = decorated;
                 }
                 WindowUpdate::Maximized(_) => {}
-                WindowUpdate::Visible(_) => {}
+                WindowUpdate::Visible(_) => {
+                    warn!("Setting window visibility is not supported on Wayland");
+                }
                 WindowUpdate::Color(_) => {
                     window.needs_redraw = true;
                 }
@@ -366,6 +372,10 @@ fn open_window<T>(
     egl_surface.swap_interval(1)?;
 
     let renderer = unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
+
+    if window.icon.is_some() {
+        debug!("Window icons are not supported on Wayland, set it a .desktop file");
+    }
 
     let window_state = WindowState {
         id: window.id(),

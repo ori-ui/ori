@@ -13,16 +13,14 @@ use std::{
 
 use crossbeam_channel::{Receiver, Sender};
 
-type CommandWakerInner = Arc<dyn Fn() + Send + Sync>;
-
 /// A waker for the event loop, triggered when a command is sent.
 #[derive(Clone)]
-pub struct CommandWaker(CommandWakerInner);
+pub struct CommandWaker(Arc<dyn Fn() + Send + Sync>);
 
 impl CommandWaker {
     /// Create a new [`CommandWaker`].
-    pub fn new(waker: impl Fn() + Send + Sync + 'static) -> Self {
-        Self(Arc::new(waker))
+    pub fn new(wake: impl Fn() + Send + Sync + 'static) -> Self {
+        Self(Arc::new(wake))
     }
 
     /// Wake the event loop.
@@ -31,9 +29,9 @@ impl CommandWaker {
     }
 }
 
-impl From<CommandWakerInner> for CommandWaker {
-    fn from(waker: CommandWakerInner) -> Self {
-        Self(waker)
+impl From<Arc<dyn Fn() + Send + Sync>> for CommandWaker {
+    fn from(wake: Arc<dyn Fn() + Send + Sync>) -> Self {
+        Self(wake)
     }
 }
 
@@ -43,13 +41,10 @@ impl Debug for CommandWaker {
     }
 }
 
-type CommandData = Box<dyn Any + Send>;
-
-/// A command.
-#[derive(Debug)]
+/// A command containing arbitrary data.
 pub struct Command {
     type_id: TypeId,
-    data: CommandData,
+    data: Box<dyn Any + Send>,
     name: &'static str,
 }
 
@@ -90,6 +85,12 @@ impl Command {
     /// Convert the command into a boxed [`Any`] value.
     pub fn to_any(self) -> Box<dyn Any + Send> {
         self.data
+    }
+}
+
+impl Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Command").field("type", &self.name).finish()
     }
 }
 
@@ -155,7 +156,6 @@ impl Debug for CommandProxy {
 }
 
 /// A receiver for [`Command`]s.
-#[derive(Debug)]
 pub struct CommandReceiver {
     rx: Receiver<Command>,
 }
@@ -179,6 +179,12 @@ impl CommandReceiver {
         }
 
         Some(command)
+    }
+}
+
+impl Debug for CommandReceiver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CommandReceiver").finish()
     }
 }
 

@@ -768,7 +768,7 @@ impl WindowState {
                 //
                 // KEEP MAKE CURRENT HERE!
                 self.egl_surface.make_current().unwrap();
-                (self.wl_egl_surface).resize(outer_width as i32, outer_height as i32, 0, 0);
+                (self.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
                 self.xdg_window.xdg_surface().set_window_geometry(
                     x,
                     y,

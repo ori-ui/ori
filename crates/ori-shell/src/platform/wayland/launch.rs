@@ -58,7 +58,9 @@ use wayland_client::{
     },
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
-use wayland_csd_frame::{DecorationsFrame, FrameAction, FrameClick, ResizeEdge};
+use wayland_csd_frame::{
+    DecorationsFrame, FrameAction, FrameClick, ResizeEdge, WindowState as CsdWindowState,
+};
 use wayland_egl::WlEglSurface;
 use xkeysym::Keysym;
 
@@ -272,7 +274,14 @@ fn handle_app_request<T>(
 
                     window.decorated = decorated;
                 }
-                WindowUpdate::Maximized(_) => {}
+                WindowUpdate::Maximized(maximized) => {
+                    match maximized {
+                        true => window.xdg_window.set_maximized(),
+                        false => window.xdg_window.unset_maximized(),
+                    }
+
+                    window.xdg_window.commit();
+                }
                 WindowUpdate::Visible(_) => {
                     warn!("Setting window visibility is not supported on Wayland");
                 }
@@ -506,6 +515,11 @@ fn handle_event<T>(
             app.window_scaled(data, id, scale);
         }
 
+        Event::State { id, state } => {
+            let app_window = app.get_window_mut(id).unwrap();
+            app_window.maximized = state.contains(CsdWindowState::MAXIMIZED);
+        }
+
         Event::CloseRequested { id } => {
             if let Some(index) = window_index_by_id(&state.windows, id) {
                 if app.close_requested(data, id) {
@@ -623,6 +637,11 @@ enum Event {
     Scaled {
         id: WindowId,
         scale: f32,
+    },
+
+    State {
+        id: WindowId,
+        state: CsdWindowState,
     },
 
     CloseRequested {
@@ -800,6 +819,11 @@ impl WindowHandler for State {
     ) {
         if let Some(window) = window_by_surface(&mut self.windows, window.wl_surface()) {
             let (width, height) = configure.new_size;
+
+            self.events.push(Event::State {
+                id: window.id,
+                state: configure.state,
+            });
 
             match configure.decoration_mode {
                 DecorationMode::Client => {

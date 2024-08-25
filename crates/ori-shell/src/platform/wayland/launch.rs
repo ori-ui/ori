@@ -276,6 +276,14 @@ fn handle_app_request<T>(
                     };
 
                     window.xdg_window.request_decoration_mode(Some(mode));
+
+                    if let Some(ref mut frame) = window.frame {
+                        frame.set_hidden(!decorated);
+
+                        if let Some(event) = window.resize() {
+                            state.events.push(event);
+                        }
+                    }
                 }
                 WindowUpdate::Maximized(maximized) => {
                     match maximized {
@@ -402,6 +410,7 @@ fn open_window<T>(
         title: window.title.clone(),
         resizable: window.resizable,
         decorated: window.decorated,
+        last_configure: None,
 
         pointers: Vec::new(),
         keyboards: Vec::new(),
@@ -697,6 +706,7 @@ struct WindowState {
     title: String,
     resizable: bool,
     decorated: bool,
+    last_configure: Option<WindowConfigure>,
 
     pointers: Vec<ObjectId>,
     keyboards: Vec<ObjectId>,
@@ -707,6 +717,96 @@ struct WindowState {
 
     frame: Option<AdwaitaFrame<State>>,
     xdg_window: XdgWindow,
+}
+
+impl WindowState {
+    fn resize(&mut self) -> Option<Event> {
+        let Some(ref configure) = self.last_configure else {
+            warn!("No last configure event for window {}", self.id);
+            return None;
+        };
+
+        let (width, height) = configure.new_size;
+
+        match configure.decoration_mode {
+            DecorationMode::Client if self.decorated => {
+                let Some(ref mut frame) = self.frame else {
+                    warn!("No frame for window {}", self.id);
+                    return None;
+                };
+
+                frame.set_hidden(false);
+                frame.update_state(configure.state);
+                frame.update_wm_capabilities(configure.capabilities);
+
+                let (current_width, current_height) = frame.add_borders(
+                    //
+                    self.physical_width,
+                    self.physical_height,
+                );
+
+                let one = NonZero::new(1).unwrap();
+                let (width, height) = frame.subtract_borders(
+                    width.unwrap_or(NonZero::new(current_width).unwrap_or(one)),
+                    height.unwrap_or(NonZero::new(current_height).unwrap_or(one)),
+                );
+
+                let width = width.unwrap_or(one);
+                let height = height.unwrap_or(one);
+
+                frame.resize(width, height);
+
+                let (x, y) = frame.location();
+
+                self.physical_width = width.get();
+                self.physical_height = height.get();
+                self.needs_redraw = true;
+
+                // i have no idea why this is necessary, but it is
+                //
+                // KEEP MAKE CURRENT HERE!
+                self.egl_surface.make_current().unwrap();
+                (self.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
+                self.xdg_window.xdg_surface().set_window_geometry(
+                    x,
+                    y,
+                    width.get() as i32,
+                    height.get() as i32,
+                );
+
+                Some(Event::Resized {
+                    id: self.id,
+                    width: width.get(),
+                    height: height.get(),
+                })
+            }
+            _ => {
+                if let Some(ref mut frame) = self.frame {
+                    frame.set_hidden(true);
+                }
+
+                let width = width.map_or(self.physical_width, |w| w.get());
+                let height = height.map_or(self.physical_height, |h| h.get());
+
+                self.physical_width = width;
+                self.physical_height = height;
+                self.needs_redraw = true;
+
+                // i have no idea why this is necessary, but it is
+                //
+                // KEEP MAKE CURRENT HERE!
+                self.egl_surface.make_current().unwrap();
+                (self.wl_egl_surface).resize(width as i32, height as i32, 0, 0);
+                self.xdg_window.set_window_geometry(0, 0, width, height);
+
+                Some(Event::Resized {
+                    id: self.id,
+                    width,
+                    height,
+                })
+            }
+        }
+    }
 }
 
 fn window_index_by_id(windows: &[WindowState], id: WindowId) -> Option<usize> {
@@ -821,100 +921,32 @@ impl WindowHandler for State {
         _serial: u32,
     ) {
         if let Some(window) = window_by_surface(&mut self.windows, window.wl_surface()) {
-            let (width, height) = configure.new_size;
+            window.last_configure = Some(configure.clone());
 
             self.events.push(Event::State {
                 id: window.id,
                 state: configure.state,
             });
 
-            match configure.decoration_mode {
-                DecorationMode::Client if window.decorated => {
-                    let frame = window.frame.get_or_insert_with(|| {
-                        let mut frame = AdwaitaFrame::new(
-                            &window.xdg_window,
-                            &self.shm,
-                            self.compositor.clone(),
-                            self.subcompositor.clone(),
-                            qh.clone(),
-                            FrameConfig::auto(),
-                        )
-                        .unwrap();
-                        frame.set_title(window.title.clone());
-                        frame
-                    });
+            if configure.decoration_mode == DecorationMode::Client
+                && window.decorated
+                && window.frame.is_none()
+            {
+                let frame = AdwaitaFrame::new(
+                    &window.xdg_window,
+                    &self.shm,
+                    self.compositor.clone(),
+                    self.subcompositor.clone(),
+                    qh.clone(),
+                    FrameConfig::auto(),
+                )
+                .unwrap();
 
-                    frame.set_hidden(false);
-                    frame.update_state(configure.state);
-                    frame.update_wm_capabilities(configure.capabilities);
+                window.frame = Some(frame);
+            }
 
-                    let (current_width, current_height) = frame.add_borders(
-                        //
-                        window.physical_width,
-                        window.physical_height,
-                    );
-
-                    let one = NonZero::new(1).unwrap();
-                    let (width, height) = frame.subtract_borders(
-                        width.unwrap_or(NonZero::new(current_width).unwrap_or(one)),
-                        height.unwrap_or(NonZero::new(current_height).unwrap_or(one)),
-                    );
-
-                    let width = width.unwrap_or(one);
-                    let height = height.unwrap_or(one);
-
-                    frame.resize(width, height);
-
-                    let (x, y) = frame.location();
-                    let (outer_width, outer_height) = frame.add_borders(width.get(), height.get());
-
-                    window.physical_width = width.get();
-                    window.physical_height = height.get();
-                    window.needs_redraw = true;
-
-                    // i have no idea why this is necessary, but it is
-                    //
-                    // KEEP MAKE CURRENT HERE!
-                    window.egl_surface.make_current().unwrap();
-                    (window.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
-                    window.xdg_window.xdg_surface().set_window_geometry(
-                        x,
-                        y,
-                        outer_width as i32,
-                        outer_height as i32,
-                    );
-
-                    self.events.push(Event::Resized {
-                        id: window.id,
-                        width: width.get(),
-                        height: height.get(),
-                    });
-                }
-                _ => {
-                    if let Some(ref mut frame) = window.frame {
-                        frame.set_hidden(true);
-                    }
-
-                    let width = width.map_or(window.physical_width, |w| w.get());
-                    let height = height.map_or(window.physical_height, |h| h.get());
-
-                    window.physical_width = width;
-                    window.physical_height = height;
-                    window.needs_redraw = true;
-
-                    // i have no idea why this is necessary, but it is
-                    //
-                    // KEEP MAKE CURRENT HERE!
-                    window.egl_surface.make_current().unwrap();
-                    (window.wl_egl_surface).resize(width as i32, height as i32, 0, 0);
-                    window.xdg_window.set_window_geometry(0, 0, width, height);
-
-                    self.events.push(Event::Resized {
-                        id: window.id,
-                        width,
-                        height,
-                    });
-                }
+            if let Some(event) = window.resize() {
+                self.events.push(event);
             }
         }
     }

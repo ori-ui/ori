@@ -268,10 +268,6 @@ fn handle_app_request<T>(
                     window.resizable = resizable;
                 }
                 WindowUpdate::Decorated(decorated) => {
-                    if let Some(ref mut frame) = window.frame {
-                        frame.set_hidden(!decorated);
-                    }
-
                     window.decorated = decorated;
 
                     let mode = match decorated {
@@ -288,6 +284,10 @@ fn handle_app_request<T>(
                     );
                     window.xdg_window.commit();
                     window.needs_redraw = true;
+
+                    if let Some(ref mut frame) = window.frame {
+                        frame.set_hidden(!decorated);
+                    }
                 }
                 WindowUpdate::Maximized(maximized) => {
                     match maximized {

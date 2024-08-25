@@ -273,6 +273,21 @@ fn handle_app_request<T>(
                     }
 
                     window.decorated = decorated;
+
+                    let mode = match decorated {
+                        true => DecorationMode::Server,
+                        false => DecorationMode::Client,
+                    };
+
+                    window.xdg_window.request_decoration_mode(Some(mode));
+                    window.xdg_window.set_window_geometry(
+                        0,
+                        0,
+                        window.physical_width,
+                        window.physical_height,
+                    );
+                    window.xdg_window.commit();
+                    window.needs_redraw = true;
                 }
                 WindowUpdate::Maximized(maximized) => {
                     match maximized {

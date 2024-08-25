@@ -261,7 +261,13 @@ fn handle_app_request<T>(
                     set_resizable(window, resizable);
                     window.resizable = resizable;
                 }
-                WindowUpdate::Decorated(_) => {}
+                WindowUpdate::Decorated(decorated) => {
+                    if let Some(ref mut frame) = window.frame {
+                        frame.set_hidden(!decorated);
+                    }
+
+                    window.decorated = decorated;
+                }
                 WindowUpdate::Maximized(_) => {}
                 WindowUpdate::Visible(_) => {}
                 WindowUpdate::Color(_) => {
@@ -373,6 +379,7 @@ fn open_window<T>(
         set_cursor_icon: false,
         title: window.title.clone(),
         resizable: window.resizable,
+        decorated: window.decorated,
 
         pointers: Vec::new(),
         keyboards: Vec::new(),
@@ -657,6 +664,7 @@ struct WindowState {
     set_cursor_icon: bool,
     title: String,
     resizable: bool,
+    decorated: bool,
 
     pointers: Vec<ObjectId>,
     keyboards: Vec<ObjectId>,
@@ -799,7 +807,7 @@ impl WindowHandler for State {
                         frame
                     });
 
-                    frame.set_hidden(false);
+                    frame.set_hidden(window.decorated);
                     frame.update_state(configure.state);
                     frame.update_wm_capabilities(configure.capabilities);
 

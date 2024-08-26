@@ -8,6 +8,7 @@ use std::{
     time::Duration,
 };
 
+use as_raw_xcb_connection::AsRawXcbConnection;
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
     clipboard::Clipboard,
@@ -45,14 +46,14 @@ use x11rb::{
     x11_utils::Serialize,
     xcb_ffi::XCBConnection,
 };
-use xkbcommon::xkb;
 
 use crate::platform::linux::{
     egl::{EglContext, EglNativeDisplay, EglSurface},
+    xkb::{XkbContext, XkbKeyboard},
     LIB_GL,
 };
 
-use super::{clipboard::X11ClipboardServer, xkb::XkbKeyboard, X11Error};
+use super::{clipboard::X11ClipboardServer, X11Error};
 
 atom_manager! {
     pub Atoms: AtomsCookie {
@@ -399,8 +400,9 @@ pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), X11Error> {
     let database = Database::new_from_default(&reply, hostname);
     let cursor_handle = CursorHandle::new(&conn, screen_num, &database)?.reply()?;
 
-    let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
-    let core_keyboard = XkbKeyboard::x11_new_core(&conn, &xkb_context);
+    let xcb_conn = conn.as_raw_xcb_connection() as *mut _;
+    let xkb_context = unsafe { XkbContext::from_xcb(xcb_conn).unwrap() };
+    let core_keyboard = unsafe { XkbKeyboard::new_xcb(&xkb_context, xcb_conn).unwrap() };
 
     let mut app = app.build(waker);
     app.add_context(Clipboard::new(Box::new(clipboard)));
@@ -478,7 +480,7 @@ struct X11App<T> {
     cursors: HashMap<Cursor, XCursor>,
 
     egl_context: EglContext,
-    xkb_context: xkb::Context,
+    xkb_context: XkbContext,
     core_keyboard: XkbKeyboard,
 }
 
@@ -895,11 +897,9 @@ impl<T> X11App<T> {
                 }
             }
             XEvent::XkbStateNotify(event) => {
-                if event.device_id as i32 != self.core_keyboard.device_id() {
-                    return Ok(());
-                }
+                let state = self.core_keyboard.state().unwrap();
 
-                self.core_keyboard.state.update_mask(
+                state.update_modifiers(
                     event.base_mods.into(),
                     event.latched_mods.into(),
                     event.locked_mods.into(),
@@ -919,10 +919,16 @@ impl<T> X11App<T> {
             }
             XEvent::KeyPress(event) => {
                 if let Some(index) = self.get_window_x11(event.event) {
-                    let utf8 = self.core_keyboard.key_get_utf8(event.detail.into());
-                    let key = self.core_keyboard.get_key(event.detail.into());
+                    let keymap = self.core_keyboard.keymap().unwrap();
+                    let state = self.core_keyboard.state().unwrap();
+
+                    let layout = state.layout();
                     let code = Code::from_linux_scancode(event.detail - 8);
-                    let text = (!utf8.is_empty()).then_some(utf8);
+                    let keysym_raw = keymap.first_keysym(layout, event.detail as _).unwrap();
+                    let keysym = state.get_one_sym(event.detail as _);
+
+                    let key = self.core_keyboard.keysym_to_key(keysym_raw);
+                    let text = self.core_keyboard.keysym_to_utf8(keysym);
 
                     let id = self.windows[index].ori_id;
                     (self.app).keyboard_key(data, id, key, code, text, true);
@@ -930,11 +936,19 @@ impl<T> X11App<T> {
             }
             XEvent::KeyRelease(event) => {
                 if let Some(index) = self.get_window_x11(event.event) {
-                    let key = self.core_keyboard.get_key(event.detail.into());
+                    let keymap = self.core_keyboard.keymap().unwrap();
+                    let state = self.core_keyboard.state().unwrap();
+
+                    let layout = state.layout();
                     let code = Code::from_linux_scancode(event.detail - 8);
+                    let keysym_raw = keymap.first_keysym(layout, event.detail as _).unwrap();
+                    let keysym = state.get_one_sym(event.detail as _);
+
+                    let key = self.core_keyboard.keysym_to_key(keysym_raw);
+                    let text = self.core_keyboard.keysym_to_utf8(keysym);
 
                     let id = self.windows[index].ori_id;
-                    (self.app).keyboard_key(data, id, key, code, None, false);
+                    (self.app).keyboard_key(data, id, key, code, text, false);
                 }
             }
             _ => {}

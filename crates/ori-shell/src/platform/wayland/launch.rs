@@ -66,13 +66,11 @@ use xkeysym::Keysym;
 
 use crate::platform::linux::{
     egl::{EglContext, EglNativeDisplay, EglSurface},
+    xkb::{XkbContext, XkbKeyboard},
     LIB_GL,
 };
 
-use super::{
-    error::WaylandError,
-    xkb::{XkbContext, XkbKeyboard},
-};
+use super::error::WaylandError;
 
 /// Launch an Ori application on the Wayland platform.
 pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {

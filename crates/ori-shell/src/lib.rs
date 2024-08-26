@@ -86,7 +86,7 @@ pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), Error> {
     }
 
     #[cfg(wayland_platform)]
-    {
+    if platform::wayland::is_available() {
         return Ok(platform::wayland::launch(app, data)?);
     }
 

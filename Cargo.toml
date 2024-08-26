@@ -46,7 +46,7 @@ version = "0.1.0-alpha.1"
 features = ["full"]
 
 [features]
-default = ["shell", "wayland"]
+default = ["shell", "x11", "wayland"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 serde = ["ori-core/serde"]

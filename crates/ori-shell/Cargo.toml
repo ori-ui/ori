@@ -23,8 +23,9 @@ x11 = [
     "dep:libloading",
     "dep:x11rb",
     "dep:xkeysym",
-    "dep:xkbcommon",
-    "xkbcommon/x11",
+    "dep:xkbcommon-dl",
+    "xkbcommon-dl/x11",
+    "dep:as-raw-xcb-connection",
 ]
 
 wayland = [
@@ -43,11 +44,12 @@ wayland = [
     "dep:sctk-adwaita",
 ]
 
-[target.'cfg(target_os = "linux")'.dependencies]
+# Linux
+[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
 libloading              = { version = "0.8",    optional = true                              }
 memmap                  = { version = "0.7",    optional = true                              }
 xkeysym                 = { version = "0.2",    optional = true                              }
-xkbcommon               = { version = "0.8",    optional = true                              }
+as-raw-xcb-connection   = { version = "1.0",    optional = true                              }
 xkbcommon-dl            = { version = "0.4",    optional = true                              }
 wayland-client          = { version = "0.31",   optional = true                              }
 wayland-egl             = { version = "0.32",   optional = true                              }
@@ -57,7 +59,7 @@ smithay-client-toolkit  = { version = "0.19",   optional = true,    default-feat
 smithay-clipboard       = { version = "0.7",    optional = true                              }
 sctk-adwaita            = { version = "0.10",   optional = true                              }
 
-[target.'cfg(target_os = "linux")'.dependencies.x11rb]
+[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd", target_os = "netbsd"))'.dependencies.x11rb]
 git         = "https://github.com/ChangeCaps/x11rb"
 rev         = "070e2bb"
 optional    = true

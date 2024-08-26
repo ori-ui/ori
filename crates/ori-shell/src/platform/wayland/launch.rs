@@ -523,7 +523,10 @@ fn handle_event<T>(
                 let app_window = app.get_window_mut(id).expect("Window exists in state.app");
 
                 let maximized = win_state.contains(CsdWindowState::MAXIMIZED);
-                app_window.maximized = maximized && window.resizable;
+
+                if window.resizable {
+                    app_window.maximized = maximized;
+                }
             }
         }
 

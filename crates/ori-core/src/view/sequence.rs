@@ -69,7 +69,7 @@ impl<T, V: View<T>> ViewSeq<T> for Vec<V> {
         let mut view_states = Vec::with_capacity(self.len());
 
         for view in self.iter_mut() {
-            let (state, view_state) = Pod::<V>::build(cx, |cx| view.build(cx, data));
+            let (state, view_state) = Pod::<V>::build_with(cx, |cx| view.build(cx, data));
             view_states.push(view_state);
             states.push(state);
         }
@@ -188,7 +188,10 @@ macro_rules! impl_tuple {
                 let mut view_states = Vec::with_capacity(self.len());
 
                 let state = ($({
-                    let (state, view_state) = Pod::<$name>::build(cx, |cx| self.$index.build(cx, data));
+                    let (state, view_state) = Pod::<$name>::build_with(cx, |cx| {
+                        self.$index.build(cx, data)
+                    });
+
                     view_states.push(view_state);
                     state
                 },)*);
@@ -411,7 +414,7 @@ impl<V> PodSeq<V> {
     ) where
         V: ViewSeq<T>,
     {
-        Pod::<V>::rebuild(&mut state.view_state[n], cx, |cx| {
+        Pod::<V>::rebuild_with(&mut state.view_state[n], cx, |cx| {
             (self.views).rebuild_nth(n, &mut state.content, cx, data, &old.views);
         });
     }
@@ -427,7 +430,7 @@ impl<V> PodSeq<V> {
     ) where
         V: ViewSeq<T>,
     {
-        Pod::<V>::event(&mut state.view_state[n], cx, event, |cx, event| {
+        Pod::<V>::event_with(&mut state.view_state[n], cx, event, |cx, event| {
             (self.views).event_nth(n, &mut state.content, cx, data, event);
         });
     }
@@ -444,7 +447,7 @@ impl<V> PodSeq<V> {
     where
         V: ViewSeq<T>,
     {
-        Pod::<V>::layout(&mut state.view_state[n], cx, |cx| {
+        Pod::<V>::layout_with(&mut state.view_state[n], cx, |cx| {
             (self.views).layout_nth(n, &mut state.content, cx, data, space)
         })
     }
@@ -459,7 +462,7 @@ impl<V> PodSeq<V> {
     ) where
         V: ViewSeq<T>,
     {
-        Pod::<V>::draw(&mut state.view_state[n], cx, |cx| {
+        Pod::<V>::draw_with(&mut state.view_state[n], cx, |cx| {
             (self.views).draw_nth(n, &mut state.content, cx, data)
         });
     }

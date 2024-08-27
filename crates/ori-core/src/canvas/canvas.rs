@@ -152,7 +152,7 @@ pub enum FillRule {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Mask {
     /// The curve of the mask.
-    pub curve: Curve,
+    pub curve: Arc<Curve>,
 
     /// The fill rule of the mask.
     pub fill: FillRule,
@@ -160,17 +160,17 @@ pub struct Mask {
 
 impl Mask {
     /// Create a new mask.
-    pub fn new(curve: Curve, fill: FillRule) -> Self {
-        Self { curve, fill }
+    pub fn new(curve: impl Into<Arc<Curve>>, fill: FillRule) -> Self {
+        Self {
+            curve: curve.into(),
+            fill,
+        }
     }
 }
 
 impl From<Rect> for Mask {
     fn from(value: Rect) -> Self {
-        Self {
-            curve: Curve::from(value),
-            fill: FillRule::NonZero,
-        }
+        Self::new(Curve::rect(value), FillRule::NonZero)
     }
 }
 
@@ -204,7 +204,7 @@ pub enum Primitive {
     /// A layer that can be transformed and masked.
     Layer {
         /// The primitives of the layer.
-        primitives: Vec<Primitive>,
+        primitives: Arc<[Primitive]>,
 
         /// The transformation of the layer.
         transform: Affine,
@@ -361,7 +361,7 @@ impl Canvas {
         }
 
         self.primitives.push(Primitive::Layer {
-            primitives: layer.primitives,
+            primitives: layer.primitives.into(),
             transform,
             mask,
             view,
@@ -483,7 +483,7 @@ impl Canvas {
             } => {
                 let transform = transform * *layer_transform;
 
-                for primitive in primitives {
+                for primitive in primitives.iter() {
                     Self::extract_primitive_rects(primitive, transform, rects);
                 }
             }

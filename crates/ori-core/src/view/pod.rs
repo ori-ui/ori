@@ -1,6 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
+    canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
@@ -12,6 +13,7 @@ use super::{View, ViewState};
 pub struct State<T, V: View<T> + ?Sized> {
     content: V::State,
     view_state: ViewState,
+    canvas: Canvas,
 }
 
 impl<T, V: View<T> + ?Sized> Deref for State<T, V> {
@@ -74,8 +76,13 @@ impl<V> Pod<V> {
         Self { view }
     }
 
-    /// Build a pod view.
-    pub fn build<T>(cx: &mut BuildCx, f: impl FnOnce(&mut BuildCx) -> T) -> (T, ViewState) {
+    /// Call a closure with the [`BuildCx`] provided by a pod.
+    ///
+    /// This will create both `T` and the new [`ViewState`].
+    pub(crate) fn build_with<T>(
+        cx: &mut BuildCx,
+        f: impl FnOnce(&mut BuildCx) -> T,
+    ) -> (T, ViewState) {
         let mut view_state = ViewState::default();
 
         let mut new_cx = cx.child();
@@ -88,8 +95,12 @@ impl<V> Pod<V> {
         (state, view_state)
     }
 
-    /// Rebuild a pod view.
-    pub fn rebuild(view_state: &mut ViewState, cx: &mut RebuildCx, f: impl FnOnce(&mut RebuildCx)) {
+    /// Call a closure with the [`RebuildCx`] provided by a pod.
+    pub(crate) fn rebuild_with(
+        view_state: &mut ViewState,
+        cx: &mut RebuildCx,
+        f: impl FnOnce(&mut RebuildCx),
+    ) {
         view_state.prepare();
 
         let mut new_cx = cx.child();
@@ -100,8 +111,8 @@ impl<V> Pod<V> {
         cx.view_state.propagate(view_state);
     }
 
-    /// Handle an event.
-    pub fn event(
+    /// Call a closure with the [`EventCx`] provided by a pod.
+    pub(crate) fn event_with(
         view_state: &mut ViewState,
         cx: &mut EventCx,
         event: &Event,
@@ -131,8 +142,8 @@ impl<V> Pod<V> {
         cx.view_state.propagate(view_state);
     }
 
-    /// Layout a pod view.
-    pub fn layout(
+    /// Call a closure with the [`LayoutCx`] provided by a pod.
+    pub(crate) fn layout_with(
         view_state: &mut ViewState,
         cx: &mut LayoutCx,
         f: impl FnOnce(&mut LayoutCx) -> Size,
@@ -146,8 +157,12 @@ impl<V> Pod<V> {
         view_state.size
     }
 
-    /// Draw a pod view.
-    pub fn draw(view_state: &mut ViewState, cx: &mut DrawCx, f: impl FnOnce(&mut DrawCx)) {
+    /// Call a closure with the [`DrawCx`] provided by a pod.
+    pub(crate) fn draw_with(
+        view_state: &mut ViewState,
+        cx: &mut DrawCx,
+        f: impl FnOnce(&mut DrawCx),
+    ) {
         view_state.mark_drawn();
 
         // create the draw context
@@ -187,22 +202,23 @@ impl<T, V: View<T>> View<T> for Pod<V> {
     type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let (content, view_state) = Self::build(cx, |cx| self.view.build(cx, data));
+        let (content, view_state) = Self::build_with(cx, |cx| self.view.build(cx, data));
 
         State {
             content,
             view_state,
+            canvas: Canvas::new(),
         }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
-        Self::rebuild(&mut state.view_state, cx, |cx| {
+        Self::rebuild_with(&mut state.view_state, cx, |cx| {
             (self.view).rebuild(&mut state.content, cx, data, &old.view);
         });
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        Self::event(&mut state.view_state, cx, event, |cx, event| {
+        Self::event_with(&mut state.view_state, cx, event, |cx, event| {
             (self.view).event(&mut state.content, cx, data, event);
         });
     }
@@ -214,14 +230,25 @@ impl<T, V: View<T>> View<T> for Pod<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        Self::layout(&mut state.view_state, cx, |cx| {
+        Self::layout_with(&mut state.view_state, cx, |cx| {
             (self.view).layout(&mut state.content, cx, data, space)
         })
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        Self::draw(&mut state.view_state, cx, |cx| {
-            (self.view).draw(&mut state.content, cx, data);
+        // we need to check if the view needs to be drawn here
+        // since the flag gets cleared in draw function
+        let needs_draw = state.view_state.needs_draw();
+
+        Self::draw_with(&mut state.view_state, cx, |cx| {
+            if needs_draw {
+                // if the view needs to be drawn we draw it and save the canvas
+                (self.view).draw(&mut state.content, cx, data);
+                state.canvas = cx.canvas.clone();
+            } else {
+                // if the view doesn't need to be drawn we just draw the saved canvas
+                *cx.canvas = state.canvas.clone();
+            }
         });
     }
 }

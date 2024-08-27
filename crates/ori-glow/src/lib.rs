@@ -374,7 +374,7 @@ impl GlowRenderer {
                     self.gl.stencil_func(glow::LEQUAL, self.stencil, 0xFF);
                 }
 
-                for primitive in primitives {
+                for primitive in primitives.iter() {
                     self.draw_primitive(primitive, transform * *layer_transform)?;
                 }
 

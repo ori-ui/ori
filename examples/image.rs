@@ -11,5 +11,5 @@ fn ui() -> impl View {
 
 fn main() {
     let window = Window::new().title("Image (examples/image.rs)");
-    ori::launch_simple(window, ui).unwrap();
+    ori::run_simple(window, ui).unwrap();
 }

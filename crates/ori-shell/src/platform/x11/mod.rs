@@ -2,7 +2,7 @@
 
 mod clipboard;
 mod error;
-mod launch;
+mod run;
 
 pub use error::X11Error;
-pub use launch::launch;
+pub use run::run;

@@ -73,7 +73,7 @@ use crate::platform::linux::{
 use super::error::WaylandError;
 
 /// Launch an Ori application on the Wayland platform.
-pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
+pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
     let conn = Connection::connect_to_env()?;
     let (globals, event_queue) = registry_queue_init(&conn)?;
     let qhandle = event_queue.handle();

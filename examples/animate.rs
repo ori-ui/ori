@@ -15,5 +15,5 @@ fn ui() -> impl View {
 
 fn main() {
     let window = Window::new().title("Animate (examples/animate.rs)");
-    ori::launch_simple(window, ui).unwrap();
+    ori::run_simple(window, ui).unwrap();
 }

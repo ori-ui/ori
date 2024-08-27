@@ -6,5 +6,5 @@ fn ui() -> impl View {
 
 fn main() {
     let window = Window::new().title("Hello, World! (examples/hello_world.rs)");
-    ori::launch_simple(window, ui).unwrap();
+    ori::run_simple(window, ui).unwrap();
 }

@@ -58,9 +58,9 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-/// Launch an Ori application.
+/// Run an Ori application.
 #[allow(unused_variables, unreachable_code)]
-pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), Error> {
+pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), Error> {
     let mut filter = EnvFilter::default().add_directive(tracing::Level::DEBUG.into());
 
     if let Ok(env) = std::env::var("RUST_LOG") {
@@ -87,23 +87,23 @@ pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), Error> {
 
     #[cfg(wayland_platform)]
     if platform::wayland::is_available() {
-        return Ok(platform::wayland::launch(app, data)?);
+        return Ok(platform::wayland::run(app, data)?);
     }
 
     #[cfg(x11_platform)]
     {
-        return Ok(platform::x11::launch(app, data)?);
+        return Ok(platform::x11::run(app, data)?);
     }
 
     #[allow(unreachable_code)]
     Err(Error::NoPlatform)
 }
 
-/// Launch an Ori simple application.
-pub fn launch_simple<V, P>(
+/// Run an Ori simple application.
+pub fn run_simple<V, P>(
     window: Window,
     ui: impl IntoUiBuilder<V, P, Data = ()>,
 ) -> Result<(), Error> {
     let app = AppBuilder::new().window(window, ui);
-    launch(app, &mut ())
+    run(app, &mut ())
 }

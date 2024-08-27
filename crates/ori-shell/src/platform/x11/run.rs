@@ -351,7 +351,7 @@ impl X11Window {
 }
 
 /// Create a new X11 application.
-pub fn launch<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), X11Error> {
+pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), X11Error> {
     let (conn, screen_num) = XCBConnection::connect(None)?;
     let conn = Arc::new(conn);
 

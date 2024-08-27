@@ -161,5 +161,5 @@ fn main() {
 
     let app = App::build().window(window, ui).style(Palette::light());
 
-    ori::launch(app, &mut Data::new()).unwrap();
+    ori::run(app, &mut Data::new()).unwrap();
 }

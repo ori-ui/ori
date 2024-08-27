@@ -21,7 +21,7 @@ pub mod font_awesome {
 }
 
 #[cfg(feature = "shell")]
-pub use ori_shell::{launch, launch_simple};
+pub use ori_shell::{run, run_simple};
 
 pub mod prelude {
     //! Convenient imports for Ori.

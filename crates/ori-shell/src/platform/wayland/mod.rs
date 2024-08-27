@@ -1,10 +1,10 @@
 //! Wayland platform implementation.
 
 mod error;
-mod launch;
+mod run;
 
 pub use error::WaylandError;
-pub use launch::launch;
+pub use run::run;
 
 /// Check if the Wayland platform is available.
 pub fn is_available() -> bool {

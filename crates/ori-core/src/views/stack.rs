@@ -12,6 +12,8 @@ use crate::{
 
 pub use crate::{hstack, vstack};
 
+use super::Flex;
+
 /// Create a horizontal [`Stack`].
 #[macro_export]
 macro_rules! hstack {
@@ -319,8 +321,8 @@ fn layout<T, V: ViewSeq<T>>(
     /* measure the non-flex content */
 
     for i in 0..stack.content.len() {
-        if content[i].is_flex() {
-            state.flex_sum += content[i].flex();
+        if let Some(flex) = content[i].get_property::<Flex>() {
+            state.flex_sum += flex.amount;
             state.majors[i] = 0.0;
             continue;
         }
@@ -341,12 +343,15 @@ fn layout<T, V: ViewSeq<T>>(
     let per_flex = remaining / state.flex_sum;
 
     for i in 0..stack.content.len() {
-        if !content[i].is_flex() || content[i].is_tight() {
+        let Some(flex) = content[i].get_property::<Flex>() else {
+            continue;
+        };
+
+        if !flex.is_tight {
             continue;
         }
 
-        let flex = content[i].flex();
-        let major = per_flex * flex;
+        let major = per_flex * flex.amount;
 
         let space = Space::new(
             stack.axis.pack(0.0, min_minor),
@@ -364,12 +369,11 @@ fn layout<T, V: ViewSeq<T>>(
     let per_flex = remaining / state.flex_sum;
 
     for i in 0..stack.content.len() {
-        if !content[i].is_flex() || !content[i].is_tight() {
+        let Some(flex) = content[i].get_property::<Flex>() else {
             continue;
-        }
+        };
 
-        let flex = content[i].flex();
-        let major = per_flex * flex;
+        let major = per_flex * flex.amount;
 
         let space = Space::new(
             stack.axis.pack(major, min_minor),

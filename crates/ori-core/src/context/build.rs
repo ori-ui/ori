@@ -84,14 +84,4 @@ impl<'a, 'b> BuildCx<'a, 'b> {
         self.view_state.set_active(active);
         updated
     }
-
-    /// Set the flex of the view.
-    pub fn set_flex(&mut self, flex: f32) {
-        self.view_state.set_flex(flex);
-    }
-
-    /// Set whether the view is tight.
-    pub fn set_tight(&mut self, tight: bool) {
-        self.view_state.set_tight(tight);
-    }
 }

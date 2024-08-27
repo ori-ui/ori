@@ -8,29 +8,41 @@ use crate::{
     view::View,
 };
 
-/// Create a new [`Flex`] view.
-pub fn flex<V>(content: V) -> Flex<V> {
-    Flex::new(1.0, false, content)
+/// The flex value of a view.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Flex {
+    /// The flex value.
+    pub amount: f32,
+
+    /// Whether the view is tight.
+    pub is_tight: bool,
 }
 
-/// Create a new expanded [`Flex`] view.
-pub fn expand<V>(content: V) -> Flex<V> {
-    Flex::new(1.0, true, content)
+/// Create a new [`Flexible`] view.
+pub fn flex<V>(content: V) -> Flexible<V> {
+    Flexible::new(1.0, false, content)
+}
+
+/// Create a new expanded [`Flexible`] view.
+pub fn expand<V>(content: V) -> Flexible<V> {
+    Flexible::new(1.0, true, content)
 }
 
 /// A flexible view.
 #[example(name = "flex", width = 400, height = 300)]
 #[derive(Rebuild)]
-pub struct Flex<V> {
+pub struct Flexible<V> {
     /// The content of the view.
     pub content: V,
+
     /// The flex value of the view.
     pub flex: f32,
+
     /// Whether the view is tight.
     pub tight: bool,
 }
 
-impl<V> Flex<V> {
+impl<V> Flexible<V> {
     /// Create a new flexible view.
     pub fn new(flex: f32, tight: bool, content: V) -> Self {
         Self {
@@ -41,20 +53,22 @@ impl<V> Flex<V> {
     }
 
     /// Set the flex value of the view.
-    pub fn factor(mut self, flex: f32) -> Self {
+    pub fn amount(mut self, flex: f32) -> Self {
         self.flex = flex;
         self
     }
 }
 
-impl<T, V: View<T>> View<T> for Flex<V> {
+impl<T, V: View<T>> View<T> for Flexible<V> {
     type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let state = self.content.build(cx, data);
 
-        cx.set_flex(self.flex);
-        cx.set_tight(self.tight);
+        cx.insert_property(Flex {
+            amount: self.flex,
+            is_tight: self.tight,
+        });
 
         state
     }
@@ -62,8 +76,10 @@ impl<T, V: View<T>> View<T> for Flex<V> {
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         self.content.rebuild(state, cx, data, &old.content);
 
-        cx.set_flex(self.flex);
-        cx.set_tight(self.tight);
+        cx.insert_property(Flex {
+            amount: self.flex,
+            is_tight: self.tight,
+        });
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {

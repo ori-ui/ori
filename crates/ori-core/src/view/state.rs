@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     fmt::{Debug, Display},
     num::NonZeroU64,
     sync::atomic::{AtomicU64, Ordering},
@@ -107,7 +108,7 @@ impl Display for ViewId {
 }
 
 /// State associated with a [`View`](super::View).
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ViewState {
     pub(crate) id: ViewId,
 
@@ -116,9 +117,10 @@ pub struct ViewState {
     pub(crate) flags: ViewFlags,
     pub(crate) update: Update,
 
+    /* properties */
+    pub(crate) properties: Properties,
+
     /* layout */
-    pub(crate) flex: f32,
-    pub(crate) is_tight: bool,
     pub(crate) size: Size,
     pub(crate) transform: Affine,
 
@@ -144,9 +146,10 @@ impl ViewState {
             flags: ViewFlags::default(),
             update: Update::LAYOUT | Update::DRAW,
 
+            /* properties */
+            properties: Properties::new(),
+
             /* layout */
-            flex: 0.0,
-            is_tight: false,
             size: Size::ZERO,
             transform: Affine::IDENTITY,
 
@@ -234,29 +237,44 @@ impl ViewState {
         self.flags.set(ViewFlags::FOCUSABLE, focusable);
     }
 
-    /// Get the flex of the view.
-    pub fn flex(&self) -> f32 {
-        self.flex
+    /// Check if the view has the property `T`.
+    pub fn contains_property<T: 'static>(&self) -> bool {
+        self.properties.contains::<T>()
     }
 
-    /// Set the flex of the view.
-    pub fn set_flex(&mut self, flex: f32) {
-        self.flex = flex;
+    /// Insert a property into the view.
+    pub fn insert_property<T: 'static>(&mut self, item: T) {
+        self.properties.insert(item);
     }
 
-    /// Get whether the view is flexible.
-    pub fn is_flex(&self) -> bool {
-        self.flex > 0.0
+    /// Remove a property from the view.
+    pub fn remove_property<T: 'static>(&mut self) -> Option<T> {
+        self.properties.remove::<T>()
     }
 
-    /// Get whether the view is tight.
-    pub fn is_tight(&self) -> bool {
-        self.is_tight
+    /// Get the property `T` of the view.
+    pub fn get_property<T: 'static>(&self) -> Option<&T> {
+        self.properties.get()
     }
 
-    /// Set whether the view is tight.
-    pub fn set_tight(&mut self, tight: bool) {
-        self.is_tight = tight;
+    /// Get the property `T` of the view mutably.
+    pub fn get_property_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        self.properties.get_mut()
+    }
+
+    /// Get the property `T` of the view or insert it with a value.
+    pub fn get_property_or_insert_with<T: 'static, F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
+        self.properties.get_or_insert_with(f)
+    }
+
+    /// Get the property `T` of the view or insert it with a value.
+    pub fn get_property_or<T: 'static>(&mut self, item: T) -> &mut T {
+        self.properties.get_or_insert(item)
+    }
+
+    /// Get the property `T` of the view or insert it with a default value.
+    pub fn get_property_or_default<T: 'static + Default>(&mut self) -> &mut T {
+        self.properties.get_or_default()
     }
 
     /// Set the size of the view.
@@ -358,6 +376,72 @@ impl ViewState {
     /// Set the cursor of the view.
     pub fn set_cursor(&mut self, cursor: Option<Cursor>) {
         self.cursor = cursor;
+    }
+}
+
+pub(crate) struct Properties {
+    items: Vec<Box<dyn Any>>,
+}
+
+impl Properties {
+    fn new() -> Self {
+        Self { items: Vec::new() }
+    }
+
+    fn insert<T: 'static>(&mut self, item: T) {
+        if let Some(index) = self.get_index::<T>() {
+            self.items[index] = Box::new(item);
+        } else {
+            self.items.push(Box::new(item));
+        }
+    }
+
+    fn remove<T: 'static>(&mut self) -> Option<T> {
+        if let Some(index) = self.get_index::<T>() {
+            Some(*self.items.remove(index).downcast().unwrap())
+        } else {
+            None
+        }
+    }
+
+    fn contains<T: 'static>(&self) -> bool {
+        self.items.iter().any(|item| item.is::<T>())
+    }
+
+    fn get<T: 'static>(&self) -> Option<&T> {
+        self.items.iter().find_map(|item| item.downcast_ref())
+    }
+
+    fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        self.items.iter_mut().find_map(|item| item.downcast_mut())
+    }
+
+    fn get_index<T: 'static>(&self) -> Option<usize> {
+        self.items.iter().position(|item| item.is::<T>())
+    }
+
+    fn get_or_insert_with<T: 'static, F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
+        if let Some(index) = self.get_index::<T>() {
+            self.items[index].downcast_mut().unwrap()
+        } else {
+            let item = f();
+            self.insert(item);
+            self.items.last_mut().unwrap().downcast_mut().unwrap()
+        }
+    }
+
+    fn get_or_insert<T: 'static>(&mut self, item: T) -> &mut T {
+        self.get_or_insert_with(|| item)
+    }
+
+    fn get_or_default<T: 'static + Default>(&mut self) -> &mut T {
+        self.get_or_insert_with(Default::default)
+    }
+}
+
+impl Debug for Properties {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Properties").finish()
     }
 }
 

@@ -61,7 +61,7 @@ pub fn pod<V>(view: V) -> Pod<V> {
 ///         self.content.build(cx, data)
 ///     }
 ///
-///     ...
+///     // ...
 /// }
 /// ```
 #[repr(transparent)]
@@ -126,6 +126,11 @@ impl<V> Pod<V> {
             }
 
             view_state.mark_animated();
+        }
+
+        // if the window was scaled or resized we need want to be layed out again
+        if matches!(event, Event::WindowScaled(_) | Event::WindowResized(_)) {
+            view_state.request_layout();
         }
 
         view_state.set_hot(cx.window().is_hovered(view_state.id()));

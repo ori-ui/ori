@@ -261,7 +261,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
         if self.align == Align::Fill || (self.align == Align::Stretch && min_minor == max_minor) {
             layout(
-                self, cx, content, state, data, max_major, max_major, max_minor, total_gap,
+                self, cx, content, state, data, max_major, max_minor, max_minor, total_gap,
             );
         } else {
             layout(

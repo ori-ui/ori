@@ -30,7 +30,7 @@ const vec2 rect[6] = vec2[6](
 void main() {
     mat2 transform = mat2(transform.xy, transform.zw);
 
-    v_vertex = bounds.xy - 8.0 + rect[gl_VertexID] * (bounds.zw + 16.0);
+    v_vertex = bounds.xy - 4.0 + rect[gl_VertexID] * (bounds.zw + 8.0);
     v_bounds = bounds;
     v_color = color;
     v_flags = flags;

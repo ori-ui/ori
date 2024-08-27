@@ -47,7 +47,7 @@ impl Style for ColorPickerStyle {
         Self {
             size: 140.0,
             border_width: 2.0,
-            border_color: palette.surface_higher,
+            border_color: palette.outline,
             slider_width: 12.0,
             lightness_color: palette.primary,
             alpha_color: palette.secondary,

@@ -838,7 +838,7 @@ impl Color {
 
     /// Get the luminocity.
     pub fn luminocity(self) -> f32 {
-        let (_, _, l, _) = self.to_hsla();
+        let (_, _, l) = self.to_okhsl();
         l
     }
 

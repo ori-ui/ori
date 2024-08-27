@@ -50,7 +50,7 @@ impl Style for ContainerStyle {
             background: style.palette().surface,
             border_radius: BorderRadius::all(0.0),
             border_width: BorderWidth::all(0.0),
-            border_color: style.palette().surface_higher,
+            border_color: style.palette().outline,
         }
     }
 }

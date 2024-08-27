@@ -537,24 +537,26 @@ void main() {
     }
 
     d /= float(aa_samples);
-    vec4 mask;
+
+    float alpha_bias = 0.55;
+    float alpha;
 
     if (aa_samples > 0u) { 
         if (is_inside(v)) {
-            mask = vec4(clamp(d * 0.5 + 0.5, 0.0, 1.0));
+            alpha = clamp(d * (1.0 - alpha_bias) + alpha_bias, 0.0, 1.0);
         } else {
-            mask = vec4(clamp(0.5 - d * 0.5, 0.0, 1.0));
+            alpha = clamp(alpha_bias - d * alpha_bias, 0.0, 1.0);
         }
     } else {
-        mask = vec4(is_inside(v) ? 1.0 : 0.0);
+        alpha = float(is_inside(v));
     }
 
-    if (mask.a < 0.01) discard;
+    if (alpha < 0.01) discard;
 
     vec2 image_size = vec2(textureSize(image, 0));
     vec2 image_uv = v_image_transform * (v_vertex + v_image_offset_opacity.xy);
     vec4 color = texture(image, image_uv / image_size);
     color *= v_image_offset_opacity.z;
 
-    f_color = v_color * v_color.a * color * mask;
+    f_color = v_color * v_color.a * color * alpha;
 }

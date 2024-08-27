@@ -239,10 +239,33 @@ fn handle_app_request<T>(
                         let height = NonZero::new(physical_height).unwrap_or(one);
 
                         configure.new_size = (Some(width), Some(height));
-                    }
 
-                    if let Some(event) = window.resize() {
-                        state.events.push(event);
+                        if let Some(event) = window.resize() {
+                            state.events.push(event);
+                        }
+                    } else {
+                        // FIXME: this is pretty much a warcrime
+
+                        window.physical_width = physical_width;
+                        window.physical_height = physical_height;
+                        window.needs_redraw = true;
+
+                        set_resizable(window, window.resizable);
+
+                        window.egl_surface.make_current()?;
+                        (window.wl_egl_surface).resize(
+                            physical_width as i32,
+                            physical_height as i32,
+                            0,
+                            0,
+                        );
+                        window.xdg_window.xdg_surface().set_window_geometry(
+                            0,
+                            0,
+                            physical_width as i32,
+                            physical_height as i32,
+                        );
+                        window.xdg_window.commit();
                     }
                 }
                 WindowUpdate::Scale(scale) => {

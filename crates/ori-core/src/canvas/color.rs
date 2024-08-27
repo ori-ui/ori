@@ -1051,29 +1051,51 @@ impl DisplayHex {
             bytes: [b'#', r1, r2, g1, g2, b1, b2, a1, a2],
         }
     }
+
+    /// Convert the hex color display to a `&str`.
+    pub fn as_str_with_alpha(&self) -> &str {
+        std::str::from_utf8(&self.bytes).unwrap()
+    }
+
+    /// Convert the hex color display to a `&str`.
+    ///
+    /// If the alpha component is `ff` it is omitted.
+    pub fn as_str(&self) -> &str {
+        if &self.bytes[7..] == b"ff" {
+            &self.as_str_with_alpha()[..7]
+        } else {
+            self.as_str_with_alpha()
+        }
+    }
 }
 
 impl Debug for DisplayHex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())
+        f.write_str(self.as_str_with_alpha())
     }
 }
 
 impl Display for DisplayHex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_ref())
+        f.write_str(self.as_str())
     }
 }
 
 impl From<DisplayHex> for String {
     fn from(value: DisplayHex) -> Self {
-        String::from(value.as_ref())
+        String::from(value.as_str())
+    }
+}
+
+impl From<&DisplayHex> for String {
+    fn from(value: &DisplayHex) -> Self {
+        String::from(value.as_str())
     }
 }
 
 impl AsRef<str> for DisplayHex {
     fn as_ref(&self) -> &str {
-        std::str::from_utf8(&self.bytes).unwrap()
+        self.as_str()
     }
 }
 
@@ -1081,7 +1103,7 @@ impl Deref for DisplayHex {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        self.as_ref()
+        self.as_str()
     }
 }
 

@@ -187,7 +187,6 @@ impl ViewState {
     /// Set whether the view is hot.
     pub fn set_hot(&mut self, hot: bool) {
         self.flags.set(ViewFlags::HOT, hot);
-        self.flags.set(ViewFlags::HAS_HOT, hot);
     }
 
     /// Get whether the view is focused.
@@ -198,7 +197,6 @@ impl ViewState {
     /// Set whether the view is focused.
     pub fn set_focused(&mut self, focused: bool) {
         self.flags.set(ViewFlags::FOCUSED, focused);
-        self.flags.set(ViewFlags::HAS_FOCUSED, focused);
     }
 
     /// Get whether the view is active.
@@ -209,22 +207,24 @@ impl ViewState {
     /// Set whether the view is active.
     pub fn set_active(&mut self, active: bool) {
         self.flags.set(ViewFlags::ACTIVE, active);
-        self.flags.set(ViewFlags::HAS_ACTIVE, active);
     }
 
     /// Get whether the view has a hot child.
     pub fn has_hot(&self) -> bool {
-        self.flags.contains(ViewFlags::HAS_HOT)
+        let flags = self.flags & (ViewFlags::HOT | ViewFlags::HAS_HOT);
+        flags != ViewFlags::empty()
     }
 
     /// Get whether the view has a focused child.
     pub fn has_focused(&self) -> bool {
-        self.flags.contains(ViewFlags::HAS_FOCUSED)
+        let flags = self.flags & (ViewFlags::FOCUSED | ViewFlags::HAS_FOCUSED);
+        flags != ViewFlags::empty()
     }
 
     /// Get whether the view has an active child.
     pub fn has_active(&self) -> bool {
-        self.flags.contains(ViewFlags::HAS_ACTIVE)
+        let flags = self.flags & (ViewFlags::ACTIVE | ViewFlags::HAS_ACTIVE);
+        flags != ViewFlags::empty()
     }
 
     /// Get whether the view is focusable.

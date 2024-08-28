@@ -156,17 +156,20 @@ impl<'a, 'b> EventCx<'a, 'b> {
 
     /// Get whether a child view was hot last call.
     pub fn had_hot(&self) -> bool {
-        self.view_state.prev_flags.contains(ViewFlags::HAS_HOT)
+        let flags = self.view_state.prev_flags & (ViewFlags::HOT | ViewFlags::HAS_HOT);
+        flags != ViewFlags::empty()
     }
 
     /// Get whether a child view was focused last call.
     pub fn had_focused(&self) -> bool {
-        self.view_state.prev_flags.contains(ViewFlags::HAS_FOCUSED)
+        let flags = self.view_state.prev_flags & (ViewFlags::FOCUSED | ViewFlags::HAS_FOCUSED);
+        flags != ViewFlags::empty()
     }
 
     /// Get whether a child view was active last call.
     pub fn had_active(&self) -> bool {
-        self.view_state.prev_flags.contains(ViewFlags::HAS_ACTIVE)
+        let flags = self.view_state.prev_flags & (ViewFlags::ACTIVE | ViewFlags::HAS_ACTIVE);
+        flags != ViewFlags::empty()
     }
 
     /// Get whether the view's hot state changed.

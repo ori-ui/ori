@@ -90,7 +90,7 @@ impl Style for TooltipStyle {
             wrap: text_style.wrap,
             background: palette.surface_higher,
             border_radius: BorderRadius::all(4.0),
-            border_width: BorderWidth::all(0.0),
+            border_width: BorderWidth::all(1.0),
             border_color: palette.outline,
         }
     }

@@ -198,7 +198,7 @@ impl<T> TextInput<T> {
     }
 
     fn set_attributes(&self, fonts: &mut Fonts, state: &mut TextInputState) {
-        let font_size = f32::round(self.font_size * (96.0 / 72.0));
+        let font_size = self.font_size * (96.0 / 72.0);
 
         let attrs = TextAttributes {
             family: self.font_family.clone(),
@@ -337,7 +337,7 @@ impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        let font_size = f32::round(self.font_size * (96.0 / 72.0));
+        let font_size = self.font_size * (96.0 / 72.0);
 
         let editor = Editor::new(Buffer::new(
             &mut cx.fonts().font_system,
@@ -363,7 +363,7 @@ impl<T> View<T> for TextInput<T> {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         if self.font_size != old.font_size || self.line_height != old.line_height {
-            let font_size = f32::round(self.font_size * (96.0 / 72.0));
+            let font_size = self.font_size * (96.0 / 72.0);
 
             state.buffer_mut().set_metrics(
                 &mut cx.fonts().font_system,
@@ -644,7 +644,7 @@ impl<T> View<T> for TextInput<T> {
             // FIXME: this is bad
             (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
 
-            let font_size = f32::round(self.font_size * (96.0 / 72.0));
+            let font_size = self.font_size * (96.0 / 72.0);
             let cursor = state.editor.cursor();
 
             /* draw the highlights and the cursor */

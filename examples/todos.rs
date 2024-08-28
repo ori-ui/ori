@@ -58,7 +58,7 @@ impl Data {
 }
 
 fn title() -> impl View<Data> {
-    text("todos").font_size(50.0)
+    text("todos").font_size(40.0)
 }
 
 fn input(border: bool) -> impl View<Data> {
@@ -68,7 +68,7 @@ fn input(border: bool) -> impl View<Data> {
             data.input(text.to_string());
             cx.request_rebuild();
         })
-        .font_size(20.0);
+        .font_size(14.0);
 
     let border = border as i32 as f32 * 2.0;
     let input = container(pad([64.0, 16.0], input)).border_bottom(border);
@@ -99,16 +99,19 @@ fn theme_button(data: &mut Data) -> impl View<Data> {
 
 fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = checkbox(todo.completed).border_radius(12.0);
-    let completed = on_press(completed, |_, data: &mut Todo| data.toggle());
+    let completed = on_click(completed, |cx, data: &mut Todo| {
+        data.toggle();
+        cx.request_rebuild();
+    });
     let completed = tooltip(completed, "Toggle whether the todo is completed");
 
     let title_color = if todo.completed {
-        palette().surface_highest
+        palette().contrast_low
     } else {
         palette().contrast
     };
 
-    let title = text(&todo.text).font_size(20.0).color(title_color);
+    let title = text(&todo.text).font_size(14.0).color(title_color);
 
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
@@ -164,7 +167,7 @@ fn active_count(data: &mut Data) -> impl View<Data> {
         format!("{} items left", active)
     };
 
-    text(active_text).font_size(14.0)
+    text(active_text).font_size(11.0)
 }
 
 fn selection(data: &mut Data) -> impl View<Data> {
@@ -224,12 +227,12 @@ fn ui(data: &mut Data) -> impl View<Data> {
     styled(style, || {
         let rows = vstack![
             input(!data.todos.is_empty()),
-            flex(vscroll(todos(data))),
+            expand(vscroll(todos(data))),
             selection(data)
         ]
         .gap(0.0);
 
-        let stack = vstack![title(), flex(rows)].gap(16.0);
+        let stack = vstack![title(), expand(rows)].gap(16.0);
         let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
 
         background(palette().background, pad(64.0, content))

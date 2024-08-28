@@ -157,6 +157,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     ) {
         let radius = border_radius.into();
         let width = border_width.into();
+        let rect = rect.round();
 
         let mut curve = Curve::new();
         curve.push_rect_with_radius(rect, radius);

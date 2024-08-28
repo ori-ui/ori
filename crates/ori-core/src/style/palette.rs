@@ -50,10 +50,10 @@ impl Theme {
     /// Create the default light theme.
     pub fn light() -> Self {
         Self {
-            background: Color::hex("#f5f5f5"),
-            surface: Color::hex("#e4e4e4"),
-            outline: Color::hex("#717171"),
-            contrast: Color::hex("#212121"),
+            background: Color::hex("#ffffff"),
+            surface: Color::hex("#eeeff0"),
+            outline: Color::hex("#d7d8dd"),
+            contrast: Color::hex("#060607"),
             primary: Color::hex("#1c71d8"),
             secondary: Color::hex("#f6d32d"),
             accent: Color::hex("#0077c2"),
@@ -69,7 +69,7 @@ impl Theme {
         Self {
             background: Color::hex("#1e1e1e"),
             surface: Color::hex("#242424"),
-            outline: Color::hex("#525252"),
+            outline: Color::hex("#4d4d4d"),
             contrast: Color::hex("#f9f9f8"),
             primary: Color::hex("#55b1f0"),
             secondary: Color::hex("#8c8bed"),
@@ -186,13 +186,21 @@ impl Palette {
             let level = level as f32;
 
             if is_light {
-                color.darken(level * 0.04).saturate(level * 0.02)
+                color.darken(level * 0.025).saturate(level * 0.015)
             } else {
                 color.lighten(level * 0.04).saturate(level * 0.02)
             }
         }
 
         fn low(color: Color, is_light: bool) -> Color {
+            if is_light {
+                color.lighten(0.2).desaturate(0.1)
+            } else {
+                color.darken(0.2).desaturate(0.1)
+            }
+        }
+
+        fn contrast_low(color: Color, is_light: bool) -> Color {
             if is_light {
                 color.lighten(0.2).desaturate(0.1)
             } else {
@@ -213,7 +221,7 @@ impl Palette {
             outline: theme.outline,
             outline_low: low(theme.outline, is_light),
             contrast: theme.contrast,
-            contrast_low: low(theme.contrast, is_light),
+            contrast_low: contrast_low(theme.contrast, is_light),
             primary: theme.primary,
             primary_low: low(theme.primary, is_light),
             secondary: theme.secondary,

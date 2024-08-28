@@ -46,7 +46,7 @@ impl Style for ButtonStyle {
         let palette = style.palette();
 
         Self {
-            padding: Padding::all(8.0),
+            padding: Padding::all(10.0),
             fancy: 0.0,
             transition: Transition::ease(0.1),
             color: palette.surface_higher,

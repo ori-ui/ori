@@ -373,6 +373,10 @@ fn layout<T, V: ViewSeq<T>>(
             continue;
         };
 
+        if flex.is_tight {
+            continue;
+        }
+
         let major = per_flex * flex.amount;
 
         let space = Space::new(

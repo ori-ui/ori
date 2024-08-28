@@ -40,20 +40,28 @@ pub fn text(text: impl Into<SmolStr>) -> Text {
 pub struct TextStyle {
     /// The font size of the text.
     pub font_size: f32,
+
     /// The font family of the text.
     pub font_family: FontFamily,
+
     /// The font weight of the text.
     pub font_weight: FontWeight,
+
     /// The font stretch of the text.
     pub font_stretch: FontStretch,
+
     /// The font style of the text.
     pub font_style: FontStyle,
+
     /// The color of the text.
     pub color: Color,
+
     /// The horizontal alignment of the text.
     pub align: TextAlign,
+
     /// The line height of the text.
     pub line_height: f32,
+
     /// The text wrap of the text.
     pub wrap: TextWrap,
 }
@@ -61,7 +69,7 @@ pub struct TextStyle {
 impl Style for TextStyle {
     fn styled(style: &Styles) -> Self {
         Self {
-            font_size: 16.0,
+            font_size: 13.0,
             font_family: FontFamily::SansSerif,
             font_weight: FontWeight::NORMAL,
             font_stretch: FontStretch::Normal,

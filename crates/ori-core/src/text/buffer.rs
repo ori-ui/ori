@@ -13,6 +13,8 @@ pub struct TextBuffer {
 impl TextBuffer {
     /// Create a new text buffer.
     pub fn new(fonts: &mut Fonts, font_size: f32, line_height: f32) -> Self {
+        let font_size = f32::round(font_size * (96.0 / 72.0));
+
         let buffer = Buffer::new(
             &mut fonts.font_system,
             cosmic_text::Metrics {
@@ -41,6 +43,8 @@ impl TextBuffer {
 
     /// Set the metrics of the text buffer.
     pub fn set_metrics(&mut self, fonts: &mut Fonts, font_size: f32, line_height: f32) {
+        let font_size = f32::round(font_size * (96.0 / 72.0));
+
         self.buffer.set_metrics(
             &mut fonts.font_system,
             cosmic_text::Metrics {

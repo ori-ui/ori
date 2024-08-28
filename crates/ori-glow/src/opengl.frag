@@ -379,9 +379,6 @@ bool is_inside_even_odd(vec2 v) {
 
             crossings += cubic_intersection_count(p0, p1, p2, p3, v);
             break;
-                
-        default:
-            break;
         }
     }
 
@@ -426,9 +423,6 @@ bool is_inside_non_zero(vec2 v) {
             p3 = curve_points[segment.x + 3u];
 
             winding += cubic_winding_count(p0, p1, p2, p3, v);
-            break;
-                
-        default:
             break;
         }
     }
@@ -495,9 +489,6 @@ float curve_distance(mat2 rot, vec2 v) {
 
             d = min(d, cubic_distance(p0, p1, p2, p3, v));
             break;
-                
-        default:
-            break;
         }
     }
 
@@ -521,7 +512,7 @@ mat2 rotate(float angle) {
 
 void main() {
     float d = 0.0;
-    float aa_radius = 0.75;
+    float aa_radius = 0.8;
     uint aa_samples = (v_flags & AA_SAMPLES_MASK) >> 8u; 
 
     vec2 inv_diameter = 1.0 / (fwidth(v_vertex) * aa_radius);

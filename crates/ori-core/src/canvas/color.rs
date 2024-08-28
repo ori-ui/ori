@@ -347,7 +347,7 @@ impl Color {
 
     fn to_linear(x: f32) -> f32 {
         if x < 0.04045 {
-            x * 12.92
+            x / 12.92
         } else {
             f32::powf((x + 0.055) / 1.055, 2.4)
         }
@@ -355,7 +355,7 @@ impl Color {
 
     fn from_linear(x: f32) -> f32 {
         if x <= 0.0031308 {
-            x / 12.92
+            x * 12.92
         } else {
             1.055 * f32::powf(x, 0.416_666_66) - 0.055
         }
@@ -708,7 +708,7 @@ impl Color {
         };
 
         if a == 0.0 && b == 0.0 {
-            return (0.0, 0.0, l, self.a);
+            return (0.0, 0.0, Self::toe(l), self.a);
         };
 
         let c = f32::sqrt(a * a + b * b);

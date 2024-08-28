@@ -79,7 +79,7 @@ impl Style for TooltipStyle {
         Self {
             delay: 0.2,
             padding: Padding::from([8.0, 4.0]),
-            font_size: 14.0,
+            font_size: 10.0,
             font_family: text_style.font_family.clone(),
             font_weight: text_style.font_weight,
             font_stretch: text_style.font_stretch,

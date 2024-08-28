@@ -220,7 +220,6 @@ impl Fonts {
                 let physical = glyph.physical((offset.x, offset.y), scale);
                 let curve = self.get_glyphs(physical.cache_key);
                 let offset = Vector::new(physical.x as f32, run.line_y + physical.y as f32);
-                let offset = offset.round();
 
                 canvas.transform(Affine::translate(offset), |canvas| {
                     canvas.fill(curve.clone(), FillRule::NonZero, paint.clone());

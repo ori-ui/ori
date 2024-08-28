@@ -26,3 +26,8 @@ pub use vector::*;
 
 /// A constant used to indicate that a dimension should fill the available space.
 pub const FILL: f32 = f32::INFINITY;
+
+/// Convert a from points to pixels.
+pub fn pt(x: f32) -> f32 {
+    x * 96.0 / 72.0
+}

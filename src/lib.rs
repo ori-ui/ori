@@ -43,7 +43,7 @@ pub mod prelude {
         },
         image::{Image, ImageData, ImageId},
         layout::{
-            Affine, Align, Alignment, Axis, Justify, Matrix, Padding, Point, Rect, Size, Space,
+            pt, Affine, Align, Alignment, Axis, Justify, Matrix, Padding, Point, Rect, Size, Space,
             Vector, FILL,
         },
         log::{debug, error, info, trace, warn},

@@ -6,8 +6,10 @@ enum Selection {
     // show all todos
     #[default]
     All,
+
     // show active todos
     Active,
+
     // show completed todos
     Completed,
 }
@@ -58,7 +60,7 @@ impl Data {
 }
 
 fn title() -> impl View<Data> {
-    text("todos").font_size(40.0)
+    text("todos").font_size(50.0)
 }
 
 fn input(border: bool) -> impl View<Data> {
@@ -68,7 +70,7 @@ fn input(border: bool) -> impl View<Data> {
             data.input(text.to_string());
             cx.request_rebuild();
         })
-        .font_size(14.0);
+        .font_size(20.0);
 
     let border = border as i32 as f32 * 2.0;
     let input = container(pad([64.0, 16.0], input)).border_bottom(border);
@@ -111,7 +113,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
         palette().contrast
     };
 
-    let title = text(&todo.text).font_size(14.0).color(title_color);
+    let title = text(&todo.text).font_size(20.0).color(title_color);
 
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
@@ -167,7 +169,7 @@ fn active_count(data: &mut Data) -> impl View<Data> {
         format!("{} items left", active)
     };
 
-    text(active_text).font_size(11.0)
+    text(active_text).font_size(16.0)
 }
 
 fn selection(data: &mut Data) -> impl View<Data> {

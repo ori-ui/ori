@@ -52,7 +52,7 @@ impl Icon {
         Self {
             icon: icon.into(),
             solid: false,
-            size: 13.0,
+            size: 16.0,
             color: palette().contrast,
         }
     }

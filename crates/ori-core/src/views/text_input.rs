@@ -198,8 +198,6 @@ impl<T> TextInput<T> {
     }
 
     fn set_attributes(&self, fonts: &mut Fonts, state: &mut TextInputState) {
-        let font_size = self.font_size * (96.0 / 72.0);
-
         let attrs = TextAttributes {
             family: self.font_family.clone(),
             stretch: self.font_stretch,
@@ -213,8 +211,8 @@ impl<T> TextInput<T> {
             style: self.font_style,
         };
         let metrics = Metrics {
-            font_size,
-            line_height: self.line_height * font_size,
+            font_size: self.font_size,
+            line_height: self.line_height * self.font_size,
         };
 
         /* editor */
@@ -337,13 +335,11 @@ impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        let font_size = self.font_size * (96.0 / 72.0);
-
         let editor = Editor::new(Buffer::new(
             &mut cx.fonts().font_system,
             Metrics {
-                font_size,
-                line_height: self.line_height * font_size,
+                font_size: self.font_size,
+                line_height: self.line_height * self.font_size,
             },
         ));
 
@@ -363,13 +359,11 @@ impl<T> View<T> for TextInput<T> {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         if self.font_size != old.font_size || self.line_height != old.line_height {
-            let font_size = self.font_size * (96.0 / 72.0);
-
             state.buffer_mut().set_metrics(
                 &mut cx.fonts().font_system,
                 Metrics {
-                    font_size,
-                    line_height: self.line_height * font_size,
+                    font_size: self.font_size,
+                    line_height: self.line_height * self.font_size,
                 },
             );
 
@@ -644,7 +638,6 @@ impl<T> View<T> for TextInput<T> {
             // FIXME: this is bad
             (state.editor).shape_as_needed(&mut cx.fonts().font_system, true);
 
-            let font_size = self.font_size * (96.0 / 72.0);
             let cursor = state.editor.cursor();
 
             /* draw the highlights and the cursor */
@@ -658,7 +651,7 @@ impl<T> View<T> for TextInput<T> {
                     if let Some((start, width)) = run.highlight(start, end) {
                         let min =
                             Point::new(cx.rect().min.x + start, cx.rect().min.y + run.line_top);
-                        let size = Size::new(width, font_size * self.line_height);
+                        let size = Size::new(width, self.font_size * self.line_height);
 
                         let highlight = Rect::min_size(min, size);
 
@@ -667,7 +660,7 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if i == cursor.line {
-                    let size = Size::new(1.0, font_size * self.line_height);
+                    let size = Size::new(1.0, self.font_size * self.line_height);
 
                     let min = match run.glyphs.get(cursor.index) {
                         Some(glyph) => {

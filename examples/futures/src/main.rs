@@ -35,7 +35,7 @@ impl Delegate<Data> for AppDelegate {
         if let Some(msg) = event.cmd::<&str>() {
             info!("Future says: {}", msg);
             data.futures_completed += 1;
-            cx.request_rebuild();
+            cx.rebuild();
         }
 
         false

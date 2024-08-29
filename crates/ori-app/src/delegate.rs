@@ -44,7 +44,7 @@ impl<'a, 'b, T> DelegateCx<'a, 'b, T> {
     }
 
     /// Request a rebuild of the view tree.
-    pub fn request_rebuild(&mut self) {
+    pub fn rebuild(&mut self) {
         *self.rebuild = true;
     }
 

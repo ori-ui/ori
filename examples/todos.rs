@@ -247,7 +247,7 @@ impl Delegate<Data> for AppDelegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
         if let Some(&RemoveTodo(index)) = event.cmd() {
             data.remove_todo(index);
-            cx.request_rebuild();
+            cx.rebuild();
 
             return true;
         }

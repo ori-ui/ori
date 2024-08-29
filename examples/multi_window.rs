@@ -70,7 +70,7 @@ impl Delegate<Data> for AppDelegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
         if let Some(request) = event.cmd::<CloseRequested>() {
             data.windows.retain(|window| *window != request.window);
-            cx.request_rebuild();
+            cx.rebuild();
 
             info!("Window {} closed", request.window);
         }
@@ -88,7 +88,7 @@ impl Delegate<Data> for AppDelegate {
             info!("Window {} opened", desc.id());
 
             cx.open_window(desc, window);
-            cx.request_rebuild();
+            cx.rebuild();
         }
 
         if let Some(CloseWindow(window)) = event.cmd() {

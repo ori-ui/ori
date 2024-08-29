@@ -39,10 +39,10 @@ impl<T: IsKey> IsKey for &mut T {
 /// An event fired when a key is pressed.
 #[derive(Clone, Debug)]
 pub struct KeyPressed {
-    /// The key that was pressed or released.
+    /// The key that was pressed, ignoring modifiers.
     pub key: Key,
 
-    /// The code of the key that was pressed or released.
+    /// The code of the key that was pressed.
     pub code: Option<Code>,
 
     /// The text that was entered.
@@ -62,10 +62,10 @@ impl KeyPressed {
 /// An event fired when a key is released.
 #[derive(Clone, Debug)]
 pub struct KeyReleased {
-    /// The key that was pressed or released.
+    /// The key that was released, ignoring modifiers.
     pub key: Key,
 
-    /// The code of the key that was pressed or released.
+    /// The code of the key that was released.
     pub code: Option<Code>,
 
     /// The modifiers that were active.
@@ -181,6 +181,16 @@ pub enum Key {
     Romaji,
     Zenkaku,
     ZenkakuHankaku,
+}
+
+impl Key {
+    /// Get a character from the key.
+    pub const fn as_char(self) -> Option<char> {
+        match self {
+            Self::Character(c) => Some(c),
+            _ => None,
+        }
+    }
 }
 
 /// A keyboard key-code.

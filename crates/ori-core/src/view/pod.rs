@@ -4,7 +4,7 @@ use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Size, Space},
+    layout::{Rect, Size, Space},
 };
 
 use super::{View, ViewState};
@@ -13,7 +13,8 @@ use super::{View, ViewState};
 pub struct State<T, V: View<T> + ?Sized> {
     content: V::State,
     view_state: ViewState,
-    canvas: Canvas,
+    prev_canvas: Canvas,
+    prev_visible: Rect,
 }
 
 impl<T, V: View<T> + ?Sized> Deref for State<T, V> {
@@ -176,9 +177,7 @@ impl<V> Pod<V> {
 
         // draw the content
         new_cx.layer(new_cx.view_state.transform, |cx| {
-            if cx.is_visible(cx.rect()) {
-                f(cx);
-            }
+            f(cx);
         });
     }
 }
@@ -212,7 +211,8 @@ impl<T, V: View<T>> View<T> for Pod<V> {
         State {
             content,
             view_state,
-            canvas: Canvas::new(),
+            prev_canvas: Canvas::new(),
+            prev_visible: Rect::ZERO,
         }
     }
 
@@ -246,13 +246,23 @@ impl<T, V: View<T>> View<T> for Pod<V> {
         let needs_draw = state.view_state.needs_draw();
 
         Self::draw_with(&mut state.view_state, cx, |cx| {
-            if needs_draw {
+            if !cx.is_visible(cx.rect()) {
+                return;
+            }
+
+            // if the visible rect has changed since out last draw, we need to invalidate
+            // the cached canvas, since content that previously wasn't visible might be now
+            // and vice versa.
+            //
+            // this fixes a bug with the scroll view
+            if needs_draw || state.prev_visible != cx.visible {
                 // if the view needs to be drawn we draw it and save the canvas
                 (self.view).draw(&mut state.content, cx, data);
-                state.canvas = cx.canvas.clone();
+                state.prev_canvas = cx.canvas.clone();
+                state.prev_visible = cx.visible;
             } else {
                 // if the view doesn't need to be drawn we just draw the saved canvas
-                *cx.canvas = state.canvas.clone();
+                *cx.canvas = state.prev_canvas.clone();
             }
         });
     }

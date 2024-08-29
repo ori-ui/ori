@@ -27,23 +27,30 @@ pub fn vscroll<V>(content: V) -> Scroll<V> {
 pub struct Scroll<V> {
     /// The content.
     pub content: Pod<V>,
+
     /// The axis of the scroll.
     #[rebuild(layout)]
     pub axis: Axis,
+
     /// The transition of the scrollbar.
     pub transition: Transition,
+
     /// The inset of the scrollbar.
     #[rebuild(draw)]
     pub inset: f32,
+
     /// The width of the scrollbar.
     #[rebuild(draw)]
     pub width: f32,
+
     /// The radius of the scrollbar.
     #[rebuild(draw)]
     pub border_radius: BorderRadius,
+
     /// The color of the scrollbar.
     #[rebuild(draw)]
     pub color: Color,
+
     /// The color of the scrollbar knob.
     #[rebuild(draw)]
     pub knob_color: Color,

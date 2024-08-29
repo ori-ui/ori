@@ -463,6 +463,10 @@ impl<V> PodSeq<V> {
         V: ViewSeq<T>,
     {
         Pod::<V>::draw_with(&mut state.view_state[n], cx, |cx| {
+            if !cx.is_visible(cx.rect()) {
+                return;
+            }
+
             (self.views).draw_nth(n, &mut state.content, cx, data)
         });
     }

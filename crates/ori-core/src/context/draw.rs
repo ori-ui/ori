@@ -186,7 +186,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     }
 
     /// Draw a hoverable layer.
-    pub fn hoverable(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+    pub fn hoverable<T>(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
         self.canvas.hoverable(self.id(), |canvas| {
             let mut cx = DrawCx {
                 base: self.base,
@@ -196,12 +196,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 visible: Self::EVERYTHING,
             };
 
-            f(&mut cx);
-        });
+            f(&mut cx)
+        })
     }
 
     /// Draw a layer that does not affect the canvas.
-    pub fn void(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+    pub fn void<T>(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
         self.canvas.void(|canvas| {
             let mut cx = DrawCx {
                 base: self.base,
@@ -211,12 +211,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 visible: Rect::ZERO,
             };
 
-            f(&mut cx);
-        });
+            f(&mut cx)
+        })
     }
 
     /// Draw a layer.
-    pub fn layer(&mut self, transform: Affine, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+    pub fn layer<T>(&mut self, transform: Affine, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
         let visible = self.visible.transform(transform.inverse());
 
         self.canvas.layer(transform, None, None, |canvas| {
@@ -228,22 +228,30 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 visible,
             };
 
-            f(&mut cx);
-        });
+            f(&mut cx)
+        })
     }
 
     /// Draw a layer with a translation.
-    pub fn translate(&mut self, translation: Vector, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
-        self.layer(Affine::translate(translation), f);
+    pub fn translate<T>(
+        &mut self,
+        translation: Vector,
+        f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
+    ) -> T {
+        self.layer(Affine::translate(translation), f)
     }
 
     /// Draw a layer with a rotation.
-    pub fn rotate(&mut self, angle: f32, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
-        self.layer(Affine::rotate(angle), f);
+    pub fn rotate<T>(&mut self, angle: f32, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
+        self.layer(Affine::rotate(angle), f)
     }
 
     /// Draw a layer with a mask.
-    pub fn mask(&mut self, mask: impl Into<Mask>, f: impl FnOnce(&mut DrawCx<'_, 'b>)) {
+    pub fn mask<T>(
+        &mut self,
+        mask: impl Into<Mask>,
+        f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
+    ) -> T {
         let mask = mask.into();
         let visible = self.visible.intersect(mask.curve.bounds());
 
@@ -256,7 +264,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 visible,
             };
 
-            f(&mut cx);
-        });
+            f(&mut cx)
+        })
     }
 }

@@ -3,14 +3,14 @@ use crate::{layout::Size, window::WindowId};
 /// Event emitted when a window wants to close.
 ///
 /// After this event is emitted, if it wasn't handled, the window will be closed.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct CloseRequested {
     /// The window that wants to close.
     pub window: WindowId,
 }
 
 /// Event emitted when a window is resized.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct WindowResized {
     /// The window that was resized.
     pub window: WindowId,
@@ -30,11 +30,21 @@ impl WindowResized {
 }
 
 /// Event emitted when a window is scaled.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub struct WindowScaled {
     /// The window that was scaled.
     pub window: WindowId,
 
     /// The new scale factor of the window.
     pub scale_factor: f32,
+}
+
+/// Event emitted when a window is maximized.
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
+pub struct WindowMaximized {
+    /// The window that was maximized.
+    pub window: WindowId,
+
+    /// Whether the window is maximized or not.
+    pub maximized: bool,
 }

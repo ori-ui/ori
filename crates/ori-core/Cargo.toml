@@ -32,6 +32,7 @@ features = [
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
+default-features = false
 optional = true
 
 [features]

@@ -8,7 +8,7 @@ use ori_core::{
     event::{
         CloseRequested, Code, Event, Key, KeyPressed, KeyReleased, Modifiers, PointerButton,
         PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
-        WindowResized, WindowScaled,
+        WindowMaximized, WindowResized, WindowScaled,
     },
     layout::{Point, Size, Space, Vector},
     style::Styles,
@@ -180,11 +180,28 @@ impl<T> App<T> {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             window_state.view_state.request_layout();
             window_state.window.scale = scale;
+            window_state.snapshot.scale = scale;
         }
 
         let event = Event::WindowScaled(WindowScaled {
             window: window_id,
             scale_factor: scale,
+        });
+
+        self.window_event(data, window_id, &event);
+    }
+
+    /// The maximized state of a window changed.
+    pub fn window_maximized(&mut self, data: &mut T, window_id: WindowId, maximized: bool) {
+        if let Some(window_state) = self.windows.get_mut(&window_id) {
+            window_state.view_state.request_layout();
+            window_state.window.maximized = maximized;
+            window_state.snapshot.maximized = maximized;
+        }
+
+        let event = Event::WindowMaximized(WindowMaximized {
+            window: window_id,
+            maximized,
         });
 
         self.window_event(data, window_id, &event);

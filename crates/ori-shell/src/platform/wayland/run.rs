@@ -417,6 +417,7 @@ fn open_window<T>(
         frame_cursor_icon: None,
         set_cursor_icon: false,
         title: window.title.clone(),
+        maximized: window.maximized,
         resizable: window.resizable,
         decorated: window.decorated,
         last_configure: None,
@@ -433,6 +434,10 @@ fn open_window<T>(
     };
 
     set_resizable(&window_state, window.resizable);
+
+    if window.maximized {
+        window_state.xdg_window.set_maximized();
+    }
 
     state.windows.push(window_state);
     app.add_window(data, ui, window);
@@ -541,12 +546,10 @@ fn handle_event<T>(
             state: win_state,
         } => {
             if let Some(window) = window_by_id(&mut state.windows, id) {
-                let app_window = app.get_window_mut(id).expect("Window exists in state.app");
-
                 let maximized = win_state.contains(CsdWindowState::MAXIMIZED);
 
-                if window.resizable {
-                    app_window.maximized = maximized;
+                if window.resizable && window.maximized != maximized {
+                    app.window_maximized(data, id, maximized);
                 }
             }
         }
@@ -723,6 +726,7 @@ struct WindowState {
     frame_cursor_icon: Option<CursorIcon>,
     set_cursor_icon: bool,
     title: String,
+    maximized: bool,
     resizable: bool,
     decorated: bool,
     last_configure: Option<WindowConfigure>,

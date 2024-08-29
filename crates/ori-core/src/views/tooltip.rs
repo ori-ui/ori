@@ -5,7 +5,7 @@ use crate::{
     canvas::{BorderRadius, BorderWidth, Color},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Padding, Point, Rect, Size, Space, Vector},
+    layout::{pt, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{style, Style, Styles},
     text::{
@@ -79,7 +79,7 @@ impl Style for TooltipStyle {
         Self {
             delay: 0.2,
             padding: Padding::from([8.0, 4.0]),
-            font_size: 10.0,
+            font_size: pt(10.0),
             font_family: text_style.font_family.clone(),
             font_weight: text_style.font_weight,
             font_stretch: text_style.font_stretch,

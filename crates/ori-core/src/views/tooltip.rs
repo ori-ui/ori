@@ -289,12 +289,20 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     ) {
         self.content.event(content, cx, data, event);
 
+        if !content.has_hot() && state.timer > 0.0 {
+            state.timer = 0.0;
+            cx.draw();
+        }
+
         match event {
             Event::WindowResized(_) => {
                 cx.layout();
             }
             Event::PointerMoved(e) => {
-                state.timer = 0.0;
+                if state.timer > 0.0 {
+                    state.timer = 0.0;
+                    cx.draw();
+                }
 
                 if content.has_hot() {
                     state.position = e.position;
@@ -305,6 +313,10 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 if content.has_hot() && state.timer < 1.0 {
                     state.timer += dt / self.delay;
                     cx.animate();
+                }
+
+                if let Some(pointer) = cx.window().pointers().first() {
+                    state.position = pointer.position;
                 }
 
                 state.timer = f32::clamp(state.timer, 0.0, 1.0);

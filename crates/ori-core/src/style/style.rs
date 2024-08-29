@@ -80,7 +80,7 @@ impl Styles {
             let styles = ManuallyDrop::new(item);
 
             unsafe {
-                // SAFETY: we know that the type is Style
+                // SAFETY: we know that the type is Self
                 self.extend(mem::transmute_copy(&styles));
             }
 

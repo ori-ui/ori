@@ -1,7 +1,7 @@
 use std::{
     any::Any,
     fmt::{Debug, Display},
-    num::NonZeroU64,
+    num::NonZero,
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -61,7 +61,7 @@ impl ViewFlags {
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViewId {
-    id: NonZeroU64,
+    id: NonZero<u64>,
 }
 
 impl Default for ViewId {
@@ -78,13 +78,8 @@ impl ViewId {
         loop {
             let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
 
-            if id == 0 {
-                continue;
-            }
-
-            break Self {
-                // SAFETY: `id` is never 0.
-                id: unsafe { NonZeroU64::new_unchecked(id) },
+            if let Some(id) = NonZero::new(id) {
+                break Self { id };
             };
         }
     }

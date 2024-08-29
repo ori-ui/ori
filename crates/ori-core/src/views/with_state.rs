@@ -59,24 +59,6 @@ impl<T, S, V> WithState<T, S, V> {
             theme: Styles::snapshot(),
         }
     }
-
-    // NOTE: this seems incredibly dodgy and i don't know if it's safe
-    fn data<O>(state: &mut S, data: &mut T, f: impl FnOnce(&mut (T, S)) -> O) -> O {
-        let mut data_state: ManuallyDrop<(T, S)> =
-            unsafe { ManuallyDrop::new((ptr::read(data), ptr::read(state))) };
-
-        let result = f(&mut data_state);
-
-        unsafe {
-            // note that we don't drop the data and state here
-            // see ptr::write.
-            let (data_inner, state_inner): (T, S) = ManuallyDrop::into_inner(data_state);
-            ptr::write(data, data_inner);
-            ptr::write(state, state_inner);
-        }
-
-        result
-    }
 }
 
 impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
@@ -89,7 +71,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
             (view, state)
         });
 
-        let content = Self::data(&mut state, data, |data| view.build(cx, data));
+        let content = with_data(&mut state, data, |data| view.build(cx, data));
 
         (view, state, content)
     }
@@ -106,8 +88,8 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
             Pod::new((self.view)(data, data_state))
         });
 
-        Self::data(data_state, data, |data| {
-            new_view.rebuild(state, cx, data, view)
+        with_data(data_state, data, |data| {
+            new_view.rebuild(state, cx, data, view);
         });
 
         *view = new_view;
@@ -120,7 +102,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         event: &Event,
     ) {
-        Self::data(data_state, data, |data| view.event(state, cx, data, event));
+        with_data(data_state, data, |data| view.event(state, cx, data, event));
     }
 
     fn layout(
@@ -130,10 +112,48 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        Self::data(data_state, data, |data| view.layout(state, cx, data, space))
+        with_data(data_state, data, |data| view.layout(state, cx, data, space))
     }
 
     fn draw(&mut self, (view, data_state, state): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        Self::data(data_state, data, |data| view.draw(state, cx, data));
+        with_data(data_state, data, |data| view.draw(state, cx, data));
     }
+}
+
+fn with_data<S, T, O>(state: &mut S, data: &mut T, f: impl FnOnce(&mut (T, S)) -> O) -> O {
+    // convert the state and data to raw pointers
+    let state_ptr = state as *mut S;
+    let data_ptr = data as *mut T;
+
+    // data and state are dropped here, no mutable references are held
+    #[allow(dropping_references)]
+    {
+        drop(data);
+        drop(state);
+    }
+
+    // SAFETY: data_ptr and state_ptr are created from mutable references and are thus
+    // - valid for reads
+    // - aligned
+    // - point to initialized values
+    //
+    // data_state is wrapped in ManuallyDrop to prevent it from being dropped since we don't own
+    // the values pointed to by data_ptr and state_ptr. the ManuallyDrop is necessary to prevent
+    // the case where `f` panics, which would lead to a double drop.
+    let mut data_state = unsafe { ManuallyDrop::new((ptr::read(data_ptr), ptr::read(state_ptr))) };
+
+    // here a mutable reference to data_state is created, as stated above, no other mutable
+    // references to the values pointed to by data_ptr and state_ptr exist.
+    let result = f(&mut data_state);
+
+    // SAFETY: valid for the same reasons as above
+    //
+    // ptr::write moves the values and prevents them from being dropped
+    unsafe {
+        let (data_inner, state_inner): (T, S) = ManuallyDrop::into_inner(data_state);
+        ptr::write(data_ptr, data_inner);
+        ptr::write(state_ptr, state_inner);
+    }
+
+    result
 }

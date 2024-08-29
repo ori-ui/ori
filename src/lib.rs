@@ -23,6 +23,8 @@ pub mod font_awesome {
 #[cfg(feature = "shell")]
 pub use ori_shell::{run, run_simple};
 
+pub use ori_core::log;
+
 pub mod prelude {
     //! Convenient imports for Ori.
 
@@ -36,7 +38,7 @@ pub mod prelude {
         },
         clipboard::Clipboard,
         command::CommandProxy,
-        context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
+        context::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
         event::{
             CloseRequested, Code, Event, Key, KeyPressed, Modifiers, PointerButton, PointerId,
             PointerMoved, PointerPressed, PointerReleased, PointerScrolled,

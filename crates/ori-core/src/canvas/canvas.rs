@@ -393,7 +393,7 @@ impl Canvas {
             for primitive in primitives.iter().rev() {
                 match primitive {
                     Primitive::Fill { curve, fill, .. } => {
-                        if curve.contains(point, *fill) {
+                        if view.is_some() && curve.contains(point, *fill) {
                             return view;
                         }
                     }

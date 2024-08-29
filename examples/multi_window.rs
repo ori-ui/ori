@@ -18,7 +18,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
         cx.cmd(CloseWindow(window_id));
 
         data.windows.retain(|window| *window != window_id);
-        cx.request_rebuild();
+        cx.rebuild();
     }));
 
     let content = container(zstack![center(text("Hello World!")), close])
@@ -51,7 +51,7 @@ fn close_window_button(data: &mut Data) -> impl View<Data> {
     on_click(close_window, |cx, data: &mut Data| {
         if let Some(window) = data.windows.pop() {
             cx.cmd(CloseWindow(window));
-            cx.request_rebuild();
+            cx.rebuild();
 
             info!("Window {} closed", window);
         }

@@ -68,7 +68,7 @@ fn input(border: bool) -> impl View<Data> {
         .placeholder("What needs to be done?")
         .on_submit(|cx, data: &mut Data, text| {
             data.input(text.to_string());
-            cx.request_rebuild();
+            cx.rebuild();
         })
         .font_size(20.0);
 
@@ -95,7 +95,7 @@ fn theme_button(data: &mut Data) -> impl View<Data> {
 
     on_click(button, |cx, data: &mut Data| {
         data.dark_mode = !data.dark_mode;
-        cx.request_rebuild();
+        cx.rebuild();
     })
 }
 
@@ -103,7 +103,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = checkbox(todo.completed).border_radius(12.0);
     let completed = on_click(completed, |cx, data: &mut Todo| {
         data.toggle();
-        cx.request_rebuild();
+        cx.rebuild();
     });
     let completed = tooltip(completed, "Toggle whether the todo is completed");
 
@@ -200,15 +200,15 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
     let all = on_click(all, |cx, data: &mut Data| {
         data.selection = Selection::All;
-        cx.request_rebuild();
+        cx.rebuild();
     });
     let active = on_click(active, |cx, data: &mut Data| {
         data.selection = Selection::Active;
-        cx.request_rebuild();
+        cx.rebuild();
     });
     let completed = on_click(completed, |cx, data: &mut Data| {
         data.selection = Selection::Completed;
-        cx.request_rebuild();
+        cx.rebuild();
     });
 
     let items = hstack![all, active, completed].gap(16.0);

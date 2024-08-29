@@ -193,7 +193,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
                 cx.animate();
             }
 
-            cx.request_draw();
+            cx.draw();
         }
     }
 

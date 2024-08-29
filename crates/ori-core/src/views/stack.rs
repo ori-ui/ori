@@ -221,10 +221,10 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
         if self.content.len() != old.content.len() {
             state.resize(self.content.len());
-            cx.request_layout();
+            cx.layout();
         }
 
-        (self.content).rebuild(content, &mut cx.build_cx(), data, &old.content);
+        (self.content).rebuild(content, &mut cx.as_build_cx(), data, &old.content);
 
         for i in 0..self.content.len() {
             self.content.rebuild_nth(i, content, cx, data, &old.content)

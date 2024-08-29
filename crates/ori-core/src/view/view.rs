@@ -115,7 +115,7 @@ impl<T, V: View<T>> View<T> for Option<V> {
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
         if let Some(view) = self {
             if state.is_none() {
-                *state = Some(view.build(&mut cx.build_cx(), data));
+                *state = Some(view.build(&mut cx.as_build_cx(), data));
             }
 
             if let Some(old_view) = old {
@@ -168,10 +168,10 @@ impl<T, V: View<T>, E: View<T>> View<T> for Result<V, E> {
             (Ok(view), Ok(state), Ok(old)) => view.rebuild(state, cx, data, old),
             (Err(view), Err(state), Err(old)) => view.rebuild(state, cx, data, old),
             _ => {
-                *state = self.build(&mut cx.build_cx(), data);
+                *state = self.build(&mut cx.as_build_cx(), data);
                 *cx.view_state = Default::default();
 
-                cx.request_layout();
+                cx.layout();
             }
         }
     }

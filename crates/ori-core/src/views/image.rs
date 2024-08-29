@@ -14,8 +14,8 @@ impl<T> View<T> for Image {
 
     fn rebuild(&mut self, _state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         if self != old {
-            cx.request_layout();
-            cx.request_draw();
+            cx.layout();
+            cx.draw();
         }
     }
 

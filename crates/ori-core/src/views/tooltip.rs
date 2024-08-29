@@ -274,7 +274,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 },
             );
 
-            cx.request_layout();
+            cx.layout();
         }
 
         (self.content).rebuild(content, cx, data, &old.content);
@@ -291,7 +291,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
         match event {
             Event::WindowResized(_) => {
-                cx.request_layout();
+                cx.layout();
             }
             Event::PointerMoved(e) => {
                 state.timer = 0.0;
@@ -310,7 +310,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 state.timer = f32::clamp(state.timer, 0.0, 1.0);
 
                 if state.timer >= 0.9 {
-                    cx.request_draw();
+                    cx.draw();
                 }
             }
             _ => {}

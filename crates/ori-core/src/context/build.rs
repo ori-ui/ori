@@ -39,12 +39,12 @@ impl<'a, 'b> BuildCx<'a, 'b> {
     }
 
     /// Request a layout of the view tree.
-    pub fn request_layout(&mut self) {
+    pub fn layout(&mut self) {
         self.view_state.request_layout();
     }
 
     /// Request a draw of the view tree.
-    pub fn request_draw(&mut self) {
+    pub fn draw(&mut self) {
         self.view_state.request_draw();
     }
 

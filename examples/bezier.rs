@@ -89,8 +89,8 @@ fn ui(data: &mut Data) -> impl View<Data> {
 
             if let Some(i) = data.selected {
                 data.points[i] = local;
-                cx.request_draw();
-                cx.request_rebuild();
+                cx.draw();
+                cx.rebuild();
             }
         }
         Event::PointerReleased(_) => {
@@ -105,7 +105,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
             .range(0.0..=100.0)
             .on_input(|cx, data: &mut Data, offset| {
                 data.offset = offset;
-                cx.request_rebuild();
+                cx.rebuild();
             }),
     ];
 
@@ -118,7 +118,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
                 LineCap::Square => LineCap::Butt,
             };
 
-            cx.request_rebuild();
+            cx.rebuild();
         },
     );
 
@@ -131,7 +131,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
                 LineJoin::Bevel => LineJoin::Miter,
             };
 
-            cx.request_rebuild();
+            cx.rebuild();
         },
     );
 
@@ -139,7 +139,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
         text("Cubic"),
         on_click(checkbox(data.cubic), |cx, data: &mut Data| {
             data.cubic = !data.cubic;
-            cx.request_rebuild();
+            cx.rebuild();
         }),
     ]
     .gap(10.0);

@@ -369,14 +369,14 @@ impl<T> View<T> for TextInput<T> {
 
             (state.placeholder).set_metrics(cx.fonts(), self.font_size, self.line_height);
 
-            cx.request_layout();
+            cx.layout();
         }
 
         if self.wrap != old.wrap {
             (state.buffer_mut()).set_wrap(&mut cx.fonts().font_system, self.wrap.to_cosmic_text());
             state.placeholder.set_wrap(cx.fonts(), self.wrap);
 
-            cx.request_layout();
+            cx.layout();
         }
 
         if self.align != old.align {
@@ -386,7 +386,7 @@ impl<T> View<T> for TextInput<T> {
 
             state.placeholder.set_align(self.align);
 
-            cx.request_layout();
+            cx.layout();
         }
 
         let attrs_changed = self.font_family != old.font_family
@@ -414,12 +414,12 @@ impl<T> View<T> for TextInput<T> {
                     Shaping::Advanced,
                 );
 
-                cx.request_layout();
+                cx.layout();
             }
         } else if attrs_changed {
             self.set_attrs_list(state.buffer_mut());
 
-            cx.request_layout();
+            cx.layout();
         }
 
         if self.placeholder != old.placeholder || attrs_changed {
@@ -434,7 +434,7 @@ impl<T> View<T> for TextInput<T> {
                 },
             );
 
-            cx.request_layout();
+            cx.layout();
         }
     }
 
@@ -462,7 +462,7 @@ impl<T> View<T> for TextInput<T> {
 
                         self.set_attrs_list(state.buffer_mut());
 
-                        cx.request_layout();
+                        cx.layout();
                         state.blink = 0.0;
                         changed = true;
                     }
@@ -470,7 +470,7 @@ impl<T> View<T> for TextInput<T> {
 
                 if let Some(action) = delete_key(e) {
                     state.editor.action(&mut cx.fonts().font_system, action);
-                    cx.request_layout();
+                    cx.layout();
                     state.blink = 0.0;
                     changed = true;
                 }
@@ -478,12 +478,12 @@ impl<T> View<T> for TextInput<T> {
                 if e.is_key(Key::Escape) {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                     cx.set_focused(false);
-                    cx.request_draw();
+                    cx.draw();
                 }
 
                 if e.is_key(Key::Enter) && self.multiline {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Enter);
-                    cx.request_layout();
+                    cx.layout();
                     state.blink = 0.0;
                     changed = true;
                 }
@@ -495,7 +495,7 @@ impl<T> View<T> for TextInput<T> {
 
                 if let Some(motion) = move_key(e) {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Motion(motion));
-                    cx.request_draw();
+                    cx.draw();
                     state.blink = 0.0;
                 }
 
@@ -508,7 +508,7 @@ impl<T> View<T> for TextInput<T> {
                 if e.is_key('x') && e.modifiers.ctrl {
                     if let Some(selection) = state.editor.copy_selection() {
                         cx.clipboard().set(selection);
-                        cx.request_layout();
+                        cx.layout();
                     }
 
                     state.editor.delete_selection();
@@ -519,7 +519,7 @@ impl<T> View<T> for TextInput<T> {
                     let text = cx.clipboard().get();
                     state.editor.insert_string(&text, None);
 
-                    cx.request_layout();
+                    cx.layout();
                     changed = true;
                 }
 
@@ -552,7 +552,7 @@ impl<T> View<T> for TextInput<T> {
                     if cx.is_focused() {
                         (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                         cx.set_focused(false);
-                        cx.request_draw();
+                        cx.draw();
                     }
 
                     return;
@@ -588,13 +588,13 @@ impl<T> View<T> for TextInput<T> {
                         },
                     );
 
-                    cx.request_draw();
+                    cx.draw();
                 }
             }
             Event::Animate(dt) => {
                 if cx.is_focused() {
                     cx.animate();
-                    cx.request_draw();
+                    cx.draw();
 
                     state.blink += *dt * 10.0;
                 }

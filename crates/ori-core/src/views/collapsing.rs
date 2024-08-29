@@ -184,7 +184,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
 
                 state.open = !state.open;
                 cx.animate();
-                cx.request_layout();
+                cx.layout();
 
                 if let Some(ref mut on_open) = self.on_open {
                     on_open(cx, data, state.open);
@@ -193,7 +193,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             Event::Animate(dt) => {
                 if self.transition.step(&mut state.t, state.open, *dt) {
                     cx.animate();
-                    cx.request_layout();
+                    cx.layout();
                 }
             }
             _ => {}

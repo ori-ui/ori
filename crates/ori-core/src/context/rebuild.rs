@@ -43,12 +43,12 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
     }
 
     /// Get a build context.
-    pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
+    pub fn as_build_cx(&mut self) -> BuildCx<'_, 'b> {
         BuildCx::new(self.base, self.view_state)
     }
 
     /// Get a layout context.
-    pub fn layout_cx(&mut self) -> LayoutCx<'_, 'b> {
+    pub fn as_layout_cx(&mut self) -> LayoutCx<'_, 'b> {
         LayoutCx::new(self.base, self.view_state)
     }
 
@@ -63,12 +63,12 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
     }
 
     /// Request a layout of the view tree.
-    pub fn request_layout(&mut self) {
+    pub fn layout(&mut self) {
         self.view_state.request_layout();
     }
 
     /// Request a draw of the view tree.
-    pub fn request_draw(&mut self) {
+    pub fn draw(&mut self) {
         self.view_state.request_draw();
     }
 

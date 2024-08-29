@@ -15,7 +15,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
 
     center(on_click(button, |cx, data: &mut Data| {
         data.on = !data.on;
-        cx.request_rebuild();
+        cx.rebuild();
     }))
 }
 

@@ -185,11 +185,11 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
         if let Some(mut new_view) = new_view {
             match state.view {
                 Some((ref mut view_state, ref mut view)) => {
-                    new_view.rebuild(view_state, &mut cx.rebuild_cx(), data, view);
+                    new_view.rebuild(view_state, &mut cx.as_rebuild_cx(), data, view);
                     *view = new_view;
                 }
                 None => {
-                    let mut view_state = new_view.build(&mut cx.build_cx(), data);
+                    let mut view_state = new_view.build(&mut cx.as_build_cx(), data);
                     new_view.event(&mut view_state, cx, data, event);
                     state.view = Some((view_state, new_view));
                 }

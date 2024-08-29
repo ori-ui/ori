@@ -147,7 +147,7 @@ impl<T> View<T> for Checkbox {
                 cx.animate();
             }
 
-            cx.request_draw();
+            cx.draw();
         }
     }
 

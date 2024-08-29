@@ -22,7 +22,7 @@ fn form() -> impl View<Data> {
             text!("Age: {}", user.age),
             on_click(button(text("Add")), move |cx, (_, user): &mut (_, User)| {
                 user.age += 1;
-                cx.request_rebuild();
+                cx.rebuild();
             })
         ];
 
@@ -31,7 +31,7 @@ fn form() -> impl View<Data> {
         let submit = on_click(submit, |cx, (data, user): &mut (Data, User)| {
             data.users.push(user.clone());
             *user = User::default();
-            cx.request_rebuild();
+            cx.rebuild();
         });
 
         vstack![vstack![name, age], submit]

@@ -58,12 +58,12 @@ impl<'a, 'b> EventCx<'a, 'b> {
     }
 
     /// Get a build context.
-    pub fn build_cx(&mut self) -> BuildCx<'_, 'b> {
+    pub fn as_build_cx(&mut self) -> BuildCx<'_, 'b> {
         BuildCx::new(self.base, self.view_state)
     }
 
     /// Get a rebuild context.
-    pub fn rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
+    pub fn as_rebuild_cx(&mut self) -> RebuildCx<'_, 'b> {
         RebuildCx::new(self.base, self.view_state)
     }
 
@@ -88,17 +88,17 @@ impl<'a, 'b> EventCx<'a, 'b> {
     }
 
     /// Request a rebuild of the view tree.
-    pub fn request_rebuild(&mut self) {
+    pub fn rebuild(&mut self) {
         *self.rebuild = true;
     }
 
     /// Request a layout of the view tree.
-    pub fn request_layout(&mut self) {
+    pub fn layout(&mut self) {
         self.view_state.request_layout();
     }
 
     /// Request a draw of the view tree.
-    pub fn request_draw(&mut self) {
+    pub fn draw(&mut self) {
         self.view_state.request_draw();
     }
 

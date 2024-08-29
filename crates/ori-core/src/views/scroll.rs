@@ -155,18 +155,18 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
                 content.translate(self.axis.pack(-state.scroll, 0.0));
 
-                cx.request_draw();
+                cx.draw();
             }
         }
 
         if matches!(event, Event::PointerPressed(_)) && state.scrollbar_hot {
             cx.set_active(true);
-            cx.request_draw();
+            cx.draw();
         }
 
         if matches!(event, Event::PointerReleased(_)) && cx.is_active() {
             cx.set_active(false);
-            cx.request_draw();
+            cx.draw();
         }
 
         // propagate event
@@ -181,7 +181,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         if let Event::Animate(dt) = event {
             if (self.transition).step(&mut state.t, on, *dt) {
                 cx.animate();
-                cx.request_draw();
+                cx.draw();
             }
         }
 
@@ -192,7 +192,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
                 content.translate(self.axis.pack(-state.scroll, 0.0));
 
-                cx.request_draw();
+                cx.draw();
             }
         }
     }

@@ -176,19 +176,19 @@ impl<T> View<T> for Text {
         if self.font_size != old.font_size || self.line_height != old.line_height {
             (state.buffer).set_metrics(cx.fonts(), self.font_size, self.line_height);
 
-            cx.request_layout();
+            cx.layout();
         }
 
         if self.wrap != old.wrap {
             state.buffer.set_wrap(cx.fonts(), self.wrap);
 
-            cx.request_draw();
+            cx.draw();
         }
 
         if self.align != old.align {
             state.buffer.set_align(self.align);
 
-            cx.request_draw();
+            cx.draw();
         }
 
         if self.text != old.text
@@ -208,11 +208,11 @@ impl<T> View<T> for Text {
                 },
             );
 
-            cx.request_layout();
+            cx.layout();
         }
 
         if self.color != old.color {
-            cx.request_draw();
+            cx.draw();
         }
     }
 

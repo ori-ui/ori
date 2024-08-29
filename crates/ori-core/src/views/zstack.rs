@@ -51,7 +51,7 @@ impl<T, V: ViewSeq<T>> View<T> for ZStack<V> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
-        (self.content).rebuild(state, &mut cx.build_cx(), data, &old.content);
+        (self.content).rebuild(state, &mut cx.as_build_cx(), data, &old.content);
 
         for i in 0..self.content.len() {
             self.content.rebuild_nth(i, state, cx, data, &old.content);

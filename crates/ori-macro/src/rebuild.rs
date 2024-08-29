@@ -64,11 +64,11 @@ impl FieldAttributes {
         let mut tokens = TokenStream::new();
 
         if self.layout {
-            tokens.extend(quote!(cx.request_layout();));
+            tokens.extend(quote!(cx.layout();));
         }
 
         if self.draw {
-            tokens.extend(quote!(cx.request_draw();));
+            tokens.extend(quote!(cx.draw();));
         }
 
         tokens

@@ -194,7 +194,7 @@ impl<T, V: View<T>> View<T> for Watcher<V> {
         event: &Event,
     ) {
         if event.is_cmd::<Modified>() && handle.is_finished() {
-            cx.request_rebuild();
+            cx.rebuild();
 
             *handle = self.spawn(cx.proxy());
         }

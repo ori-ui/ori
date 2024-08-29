@@ -106,7 +106,7 @@ where
             }
         } else {
             *cx.view_state = Default::default();
-            *state = self.dyn_build(&mut cx.build_cx(), data);
+            *state = self.dyn_build(&mut cx.as_build_cx(), data);
         }
     }
 

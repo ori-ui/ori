@@ -248,7 +248,7 @@ impl<T> View<T> for ColorPicker<T> {
 
         if (l - old_l).abs() > 1e-6 || (a - old_a).abs() > 1e-6 {
             state.image = None;
-            cx.request_draw();
+            cx.draw();
         }
     }
 

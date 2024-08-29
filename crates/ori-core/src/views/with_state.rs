@@ -125,13 +125,6 @@ fn with_data<S, T, O>(state: &mut S, data: &mut T, f: impl FnOnce(&mut (T, S)) -
     let state_ptr = state as *mut S;
     let data_ptr = data as *mut T;
 
-    // data and state are dropped here, no mutable references are held
-    #[allow(dropping_references)]
-    {
-        drop(data);
-        drop(state);
-    }
-
     // SAFETY: data_ptr and state_ptr are created from mutable references and are thus
     // - valid for reads
     // - aligned

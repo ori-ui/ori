@@ -385,21 +385,4 @@ impl Code {
             _ => return None,
         })
     }
-
-    /// Get the digit of the key, if it is a digit.
-    pub const fn as_digit(self) -> Option<u8> {
-        match self {
-            Self::Key0 => Some(0),
-            Self::Key1 => Some(1),
-            Self::Key2 => Some(2),
-            Self::Key3 => Some(3),
-            Self::Key4 => Some(4),
-            Self::Key5 => Some(5),
-            Self::Key6 => Some(6),
-            Self::Key7 => Some(7),
-            Self::Key8 => Some(8),
-            Self::Key9 => Some(9),
-            _ => None,
-        }
-    }
 }

@@ -71,7 +71,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
             (view, state)
         });
 
-        let content = with_data(&mut state, data, |data| view.build(cx, data));
+        let content = with_data_state(data, &mut state, |data| view.build(cx, data));
 
         (view, state, content)
     }
@@ -88,7 +88,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
             Pod::new((self.view)(data, data_state))
         });
 
-        with_data(data_state, data, |data| {
+        with_data_state(data, data_state, |data| {
             new_view.rebuild(state, cx, data, view);
         });
 
@@ -102,7 +102,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         event: &Event,
     ) {
-        with_data(data_state, data, |data| view.event(state, cx, data, event));
+        with_data_state(data, data_state, |data| view.event(state, cx, data, event));
     }
 
     fn layout(
@@ -112,41 +112,41 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        with_data(data_state, data, |data| view.layout(state, cx, data, space))
+        with_data_state(data, data_state, |data| view.layout(state, cx, data, space))
     }
 
     fn draw(&mut self, (view, data_state, state): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        with_data(data_state, data, |data| view.draw(state, cx, data));
+        with_data_state(data, data_state, |data| view.draw(state, cx, data));
     }
 }
 
-fn with_data<S, T, O>(state: &mut S, data: &mut T, f: impl FnOnce(&mut (T, S)) -> O) -> O {
-    // convert the state and data to raw pointers
-    let state_ptr = state as *mut S;
-    let data_ptr = data as *mut T;
-
-    // SAFETY: data_ptr and state_ptr are created from mutable references and are thus
-    // - valid for reads
-    // - aligned
-    // - point to initialized values
-    //
-    // data_state is wrapped in ManuallyDrop to prevent it from being dropped since we don't own
-    // the values pointed to by data_ptr and state_ptr. the ManuallyDrop is necessary to prevent
-    // the case where `f` panics, which would lead to a double drop.
-    let mut data_state = unsafe { ManuallyDrop::new((ptr::read(data_ptr), ptr::read(state_ptr))) };
-
-    // here a mutable reference to data_state is created, as stated above, no other mutable
-    // references to the values pointed to by data_ptr and state_ptr exist.
-    let result = f(&mut data_state);
-
-    // SAFETY: valid for the same reasons as above
-    //
-    // ptr::write moves the values and prevents them from being dropped
+fn with_data_state<D, S, O>(data: &mut D, state: &mut S, f: impl FnOnce(&mut (D, S)) -> O) -> O {
     unsafe {
-        let (data_inner, state_inner): (T, S) = ManuallyDrop::into_inner(data_state);
-        ptr::write(data_ptr, data_inner);
-        ptr::write(state_ptr, state_inner);
-    }
+        let state_ptr = state as *mut S;
+        let data_ptr = data as *mut D;
 
-    result
+        let mut data_state = DataState {
+            data_ptr,
+            state_ptr,
+            data_state: ManuallyDrop::new((ptr::read(data_ptr), ptr::read(state_ptr))),
+        };
+
+        f(&mut data_state.data_state)
+    }
+}
+
+struct DataState<D, S> {
+    data_ptr: *mut D,
+    state_ptr: *mut S,
+    data_state: ManuallyDrop<(D, S)>,
+}
+
+impl<D, S> Drop for DataState<D, S> {
+    fn drop(&mut self) {
+        unsafe {
+            let (data, state) = ptr::read(&*self.data_state);
+            ptr::write(self.data_ptr, data);
+            ptr::write(self.state_ptr, state);
+        }
+    }
 }

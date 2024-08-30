@@ -521,7 +521,7 @@ void main() {
     vec2 v = v_vertex + 1e-3;
 
     for (uint i = 0u; i < aa_samples; i++) {
-        float angle = PI * float(i) / float(aa_samples) + 0.1;
+        float angle = PI * float(i) / float(aa_samples) + 1e-3;
         mat2 rot = t * rotate(angle);
 
         d += curve_distance(rot, v);

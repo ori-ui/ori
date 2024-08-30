@@ -97,17 +97,17 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     }
 
     /// Get the property `T` of the view or insert it with a value.
-    pub fn get_property_or_insert_with<T: 'static, F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
-        self.view_state.get_property_or_insert_with(f)
+    pub fn property_or_insert_with<T: 'static, F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
+        self.view_state.property_or_insert_with(f)
     }
 
     /// Get the property `T` of the view or insert it with a value.
-    pub fn get_property_or<T: 'static>(&mut self, item: T) -> &mut T {
-        self.view_state.get_property_or(item)
+    pub fn property_or<T: 'static>(&mut self, item: T) -> &mut T {
+        self.view_state.property_or(item)
     }
 
     /// Get the property `T` of the view or insert it with a default value.
-    pub fn get_property_or_default<T: 'static + Default>(&mut self) -> &mut T {
-        self.view_state.get_property_or_default()
+    pub fn property_or_default<T: 'static + Default>(&mut self) -> &mut T {
+        self.view_state.property_or_default()
     }
 }}

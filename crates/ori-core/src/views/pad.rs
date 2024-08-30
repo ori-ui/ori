@@ -106,3 +106,25 @@ impl<T, V: View<T>> View<T> for Pad<V> {
         self.content.draw(state, cx, data);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        layout::{Rect, Space},
+        views::{
+            pad, size,
+            testing::{save_layout, test_layout},
+        },
+    };
+
+    #[test]
+    fn layout() {
+        let inner = save_layout(size(9.0, ()), "inner");
+        let mut view = save_layout(pad([3.0, 4.0, 5.0, 6.0], inner), "pad");
+
+        let layouts = test_layout(&mut view, &mut (), Space::UNBOUNDED);
+
+        assert_eq!(layouts["pad"], Rect::from([0.0, 0.0, 19.0, 17.0]));
+        assert_eq!(layouts["inner"], Rect::from([6.0, 3.0, 15.0, 12.0]));
+    }
+}

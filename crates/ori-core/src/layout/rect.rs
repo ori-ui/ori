@@ -236,6 +236,21 @@ impl From<Size> for Rect {
     }
 }
 
+impl From<[f32; 4]> for Rect {
+    fn from([min_x, min_y, max_x, max_y]: [f32; 4]) -> Self {
+        Self {
+            min: Point::new(min_x, min_y),
+            max: Point::new(max_x, max_y),
+        }
+    }
+}
+
+impl From<Rect> for [f32; 4] {
+    fn from(rect: Rect) -> Self {
+        [rect.min.x, rect.min.y, rect.max.x, rect.max.y]
+    }
+}
+
 impl Add<Vector> for Rect {
     type Output = Self;
 

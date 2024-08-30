@@ -258,17 +258,17 @@ impl ViewState {
     }
 
     /// Get the property `T` of the view or insert it with a value.
-    pub fn get_property_or_insert_with<T: 'static, F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
+    pub fn property_or_insert_with<T: 'static, F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
         self.properties.get_or_insert_with(f)
     }
 
     /// Get the property `T` of the view or insert it with a value.
-    pub fn get_property_or<T: 'static>(&mut self, item: T) -> &mut T {
+    pub fn property_or<T: 'static>(&mut self, item: T) -> &mut T {
         self.properties.get_or_insert(item)
     }
 
     /// Get the property `T` of the view or insert it with a default value.
-    pub fn get_property_or_default<T: 'static + Default>(&mut self) -> &mut T {
+    pub fn property_or_default<T: 'static + Default>(&mut self) -> &mut T {
         self.properties.get_or_default()
     }
 

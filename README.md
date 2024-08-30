@@ -64,6 +64,6 @@ fn main() {
     let app = App::build().window(window, ui);
 
     // Finally we launch the app.
-    ori::launch(app, Data::default());
+    ori::run(app, &mut Data::default());
 }
 ```

@@ -150,3 +150,51 @@ impl<D, S> Drop for DataState<D, S> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{panic, rc::Rc};
+
+    use super::*;
+
+    /// Test that `with_data_state` correctly reads the data and state.
+    #[test]
+    fn writes() {
+        let mut data = Some(Box::new(42));
+        let mut state = 69;
+
+        with_data_state(&mut data, &mut state, |(data, state)| {
+            assert_eq!(*data, Some(Box::new(42)));
+            assert_eq!(*state, 69);
+
+            *data = None;
+            *state = 0;
+        });
+
+        assert_eq!(data, None);
+        assert_eq!(state, 0);
+    }
+
+    /// Test that `with_data_state` correctly updates the data and state when the closure panics.
+    #[test]
+    fn writes_on_panic() {
+        let data = Rc::new(());
+        let state = Rc::new(());
+
+        let _ = panic::catch_unwind({
+            let mut data = Some(data.clone());
+            let mut state = Some(state.clone());
+
+            move || {
+                with_data_state(&mut data, &mut state, |(data, state)| {
+                    *data = None;
+                    *state = None;
+                    panic!();
+                });
+            }
+        });
+
+        assert_eq!(Rc::strong_count(&data), 1);
+        assert_eq!(Rc::strong_count(&state), 1);
+    }
+}

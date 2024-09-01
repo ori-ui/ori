@@ -217,9 +217,12 @@ impl Fonts {
 
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
-                let physical = glyph.physical((offset.x, offset.y), scale);
+                let physical = glyph.physical((0.0, 0.0), scale);
                 let curve = self.get_glyphs(physical.cache_key);
-                let offset = Vector::new(physical.x as f32, run.line_y + physical.y as f32);
+                let offset = Vector::new(
+                    glyph.x + glyph.x_offset,
+                    glyph.y + run.line_y + glyph.y_offset,
+                ) + offset;
 
                 canvas.transform(Affine::translate(offset), |canvas| {
                     canvas.fill(curve.clone(), FillRule::NonZero, paint.clone());

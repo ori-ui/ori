@@ -495,15 +495,6 @@ float curve_distance(mat2 rot, vec2 v) {
     return d;
 }
 
-const vec2[] offsets = vec2[](
-    vec2(1.0, 5.0) / 6.5 - (3.5 / 6.5),
-    vec2(2.0, 2.0) / 6.5 - (3.5 / 6.5),
-    vec2(3.0, 6.0) / 6.5 - (3.5 / 6.5),
-    vec2(4.0, 3.0) / 6.5 - (3.5 / 6.5),
-    vec2(5.0, 4.0) / 6.5 - (3.5 / 6.5),
-    vec2(6.0, 1.0) / 6.5 - (3.5 / 6.5)
-);
-
 mat2 rotate(float angle) {
     float c = cos(angle);
     float s = sin(angle);
@@ -511,8 +502,7 @@ mat2 rotate(float angle) {
 }
 
 void main() {
-    float d = 0.0;
-    float aa_radius = 1.0;
+    float aa_radius = 0.65;
     uint aa_samples = (v_flags & AA_SAMPLES_MASK) >> 8u; 
 
     vec2 inv_diameter = 1.0 / (fwidth(v_vertex) * aa_radius);
@@ -520,23 +510,25 @@ void main() {
     
     vec2 v = v_vertex + 1e-3;
 
+    float d = 0.0;
+
     for (uint i = 0u; i < aa_samples; i++) {
         float angle = PI * float(i) / float(aa_samples) + 1e-3;
         mat2 rot = t * rotate(angle);
 
-        d += curve_distance(rot, v);
+        d += clamp(curve_distance(rot, v), 0.0, 1.0);
     }
 
     d /= float(aa_samples);
 
-    float alpha_bias = 0.5;
+    float alpha_bias = 0.65;
     float alpha;
 
     if (aa_samples > 0u) { 
         if (is_inside(v)) {
-            alpha = clamp(d * (1.0 - alpha_bias) + alpha_bias, 0.0, 1.0);
+            alpha = d * (1.0 - alpha_bias) + alpha_bias;
         } else {
-            alpha = clamp(alpha_bias - d * alpha_bias, 0.0, 1.0);
+            alpha = alpha_bias - d * alpha_bias;
         }
     } else {
         alpha = float(is_inside(v));

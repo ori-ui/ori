@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         input.extend_from_slice(font);
     }
 
-    let compressed = miniz_oxide::deflate::compress_to_vec(&input, 6);
+    let compressed = miniz_oxide::deflate::compress_to_vec(&input, 10);
     let out = env::var("OUT_DIR")?;
 
     // write the output to the file

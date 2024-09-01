@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     hash::{BuildHasherDefault, Hash, Hasher},
+    mem,
     sync::Arc,
 };
 
@@ -204,7 +205,7 @@ pub enum Primitive {
     /// A layer that can be transformed and masked.
     Layer {
         /// The primitives of the layer.
-        primitives: Arc<[Primitive]>,
+        primitives: Arc<Vec<Primitive>>,
 
         /// The transformation of the layer.
         transform: Affine,
@@ -231,8 +232,8 @@ impl Primitive {
 /// A canvas that can be drawn on.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Canvas {
-    overlays: BTreeMap<i32, Vec<Primitive>>,
-    primitives: Vec<Primitive>,
+    overlays: BTreeMap<i32, Arc<Vec<Primitive>>>,
+    primitives: Arc<Vec<Primitive>>,
 }
 
 impl Default for Canvas {
@@ -246,18 +247,8 @@ impl Canvas {
     pub fn new() -> Self {
         Self {
             overlays: BTreeMap::new(),
-            primitives: Vec::new(),
+            primitives: Arc::new(Vec::new()),
         }
-    }
-
-    /// Count the number of primitives.
-    pub fn primitive_count(&self) -> usize {
-        self.primitives.iter().map(Primitive::count).sum::<usize>()
-            + self
-                .overlays
-                .values()
-                .map(|p| p.iter().map(Primitive::count).sum::<usize>())
-                .sum::<usize>()
     }
 
     /// Get the primitives of the canvas.
@@ -269,7 +260,7 @@ impl Canvas {
     /// Clear the canvas.
     pub fn clear(&mut self) {
         self.overlays.clear();
-        self.primitives.clear();
+        Arc::make_mut(&mut self.primitives).clear();
     }
 
     /// Draw a rectangle.
@@ -295,21 +286,33 @@ impl Canvas {
     }
 
     /// Fill a curve.
-    pub fn fill(&mut self, curve: impl Into<Arc<Curve>>, fill: FillRule, paint: Paint) {
-        self.primitives.push(Primitive::Fill {
+    pub fn fill(&mut self, curve: impl Into<Arc<Curve>>, fill: FillRule, paint: impl Into<Paint>) {
+        let primitives = Arc::make_mut(&mut self.primitives);
+        primitives.push(Primitive::Fill {
             curve: curve.into(),
             fill,
-            paint,
+            paint: paint.into(),
         });
     }
 
     /// Stroke a curve.
-    pub fn stroke(&mut self, curve: impl Into<Arc<Curve>>, stroke: Stroke, paint: Paint) {
-        self.primitives.push(Primitive::Stroke {
+    pub fn stroke(
+        &mut self,
+        curve: impl Into<Arc<Curve>>,
+        stroke: Stroke,
+        paint: impl Into<Paint>,
+    ) {
+        let primitives = Arc::make_mut(&mut self.primitives);
+        primitives.push(Primitive::Stroke {
             curve: curve.into(),
             stroke,
-            paint,
+            paint: paint.into(),
         });
+    }
+
+    /// Draw a canvas.
+    pub fn canvas(&mut self, canvas: Canvas) {
+        self.layer(Affine::IDENTITY, None, None, |ca| *ca = canvas);
     }
 
     /// Draw an overlay.
@@ -318,32 +321,22 @@ impl Canvas {
 
         let result = f(&mut overlay);
 
-        for (i, primitives) in overlay.overlays {
-            self.overlays
-                .entry(i + index)
-                .or_default()
-                .extend(primitives);
+        for (i, mut others) in overlay.overlays {
+            let others = mem::take(Arc::make_mut(&mut others));
+            let primitives = Arc::make_mut(self.overlays.entry(i).or_default());
+            primitives.extend(others);
         }
 
-        self.overlays
-            .entry(index)
-            .or_default()
-            .extend(overlay.primitives);
+        let other = mem::take(Arc::make_mut(&mut overlay.primitives));
+        let primitives = Arc::make_mut(self.overlays.entry(index).or_default());
+        primitives.extend(other);
 
         result
     }
 
     /// Draw a layer that does not affect the canvas.
     pub fn void<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let mut canvas = Canvas::new();
-
-        let result = f(&mut canvas);
-
-        for (i, primitives) in canvas.overlays {
-            self.overlays.entry(i).or_default().extend(primitives);
-        }
-
-        result
+        f(&mut Canvas::new())
     }
 
     /// Draw a layer.
@@ -358,12 +351,15 @@ impl Canvas {
 
         let result = f(&mut layer);
 
-        for (i, overlay) in layer.overlays {
-            self.overlays.entry(i).or_default().extend(overlay);
+        for (i, mut other) in layer.overlays {
+            let other = mem::take(Arc::make_mut(&mut other));
+            let primitives = Arc::make_mut(self.overlays.entry(i).or_default());
+            primitives.extend(other);
         }
 
-        self.primitives.push(Primitive::Layer {
-            primitives: layer.primitives.into(),
+        let primitives = Arc::make_mut(&mut self.primitives);
+        primitives.push(Primitive::Layer {
+            primitives: layer.primitives,
             transform,
             mask,
             view,
@@ -531,23 +527,23 @@ impl CanvasDiff {
 
         // collect new rects
         for primitives in new.overlays.values() {
-            for primitive in primitives {
+            for primitive in primitives.iter() {
                 Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
             }
         }
 
-        for primitive in &new.primitives {
+        for primitive in new.primitives.iter() {
             Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.new_rects);
         }
 
         // collect old rects
         for primitives in old.overlays.values() {
-            for primitive in primitives {
+            for primitive in primitives.iter() {
                 Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
             }
         }
 
-        for primitive in &old.primitives {
+        for primitive in old.primitives.iter() {
             Canvas::extract_primitive_rects(primitive, Affine::IDENTITY, &mut self.old_rects);
         }
 

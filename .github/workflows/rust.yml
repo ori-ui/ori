@@ -28,8 +28,11 @@ jobs:
     - uses: actions/checkout@v3
     - uses: Swatinem/rust-cache@v2
 
+    - name: Install dependencies
+      run: sudo apt-get install -y libgl libxkbcommon libxcb libwayland
+
     - name: Run tests
-      run: cargo test --package "ori-core" --verbose
+      run: cargo +nightly miri test --verbose --workspace
 
   clippy:
     runs-on: ubuntu-latest

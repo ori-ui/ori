@@ -502,7 +502,7 @@ mat2 rotate(float angle) {
 }
 
 void main() {
-    float aa_radius = 0.65;
+    float aa_radius = 0.6;
     uint aa_samples = (v_flags & AA_SAMPLES_MASK) >> 8u; 
 
     vec2 inv_diameter = 1.0 / (fwidth(v_vertex) * aa_radius);
@@ -510,16 +510,14 @@ void main() {
     
     vec2 v = v_vertex + 1e-3;
 
-    float d = 0.0;
+    float d = 1.0;
 
     for (uint i = 0u; i < aa_samples; i++) {
         float angle = PI * float(i) / float(aa_samples) + 1e-3;
         mat2 rot = t * rotate(angle);
 
-        d += clamp(curve_distance(rot, v), 0.0, 1.0);
+        d = min(d, curve_distance(rot, v));
     }
-
-    d /= float(aa_samples);
 
     float alpha_bias = 0.65;
     float alpha;

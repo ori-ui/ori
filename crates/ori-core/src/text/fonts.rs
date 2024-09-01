@@ -1,55 +1,8 @@
 use std::{collections::HashMap, hash::BuildHasherDefault, io, sync::Arc};
 
-use cosmic_text::{fontdb::Source, Buffer, CacheKey, Command, FontSystem, SwashCache};
+use cosmic_text::{Buffer, CacheKey, Command, FontSystem, SwashCache};
 
-const ROBOTO_BLACK: &[u8] = include_bytes!("../../font/Roboto-Black.ttf");
-const ROBOTO_BLACK_ITALIC: &[u8] = include_bytes!("../../font/Roboto-BlackItalic.ttf");
-const ROBOTO_BOLD: &[u8] = include_bytes!("../../font/Roboto-Bold.ttf");
-const ROBOTO_BOLD_ITALIC: &[u8] = include_bytes!("../../font/Roboto-BoldItalic.ttf");
-const ROBOTO_ITALIC: &[u8] = include_bytes!("../../font/Roboto-Italic.ttf");
-const ROBOTO_LIGHT: &[u8] = include_bytes!("../../font/Roboto-Light.ttf");
-const ROBOTO_LIGHT_ITALIC: &[u8] = include_bytes!("../../font/Roboto-LightItalic.ttf");
-const ROBOTO_MEDIUM: &[u8] = include_bytes!("../../font/Roboto-Medium.ttf");
-const ROBOTO_MEDIUM_ITALIC: &[u8] = include_bytes!("../../font/Roboto-MediumItalic.ttf");
-const ROBOTO_REGULAR: &[u8] = include_bytes!("../../font/Roboto-Regular.ttf");
-const ROBOTO_THIN: &[u8] = include_bytes!("../../font/Roboto-Thin.ttf");
-const ROBOTO_THIN_ITALIC: &[u8] = include_bytes!("../../font/Roboto-ThinItalic.ttf");
-
-const ROBOTO_MONO_BOLD: &[u8] = include_bytes!("../../font/RobotoMono-Bold.ttf");
-const ROBOTO_MONO_BOLD_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-BoldItalic.ttf");
-const ROBOTO_MONO_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-Italic.ttf");
-const ROBOTO_MONO_LIGHT: &[u8] = include_bytes!("../../font/RobotoMono-Light.ttf");
-const ROBOTO_MONO_LIGHT_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-LightItalic.ttf");
-const ROBOTO_MONO_MEDIUM: &[u8] = include_bytes!("../../font/RobotoMono-Medium.ttf");
-const ROBOTO_MONO_MEDIUM_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-MediumItalic.ttf");
-const ROBOTO_MONO_REGULAR: &[u8] = include_bytes!("../../font/RobotoMono-Regular.ttf");
-const ROBOTO_MONO_THIN: &[u8] = include_bytes!("../../font/RobotoMono-Thin.ttf");
-const ROBOTO_MONO_THIN_ITALIC: &[u8] = include_bytes!("../../font/RobotoMono-ThinItalic.ttf");
-
-const EMBEDDED_FONTS: &[&[u8]] = &[
-    ROBOTO_BLACK,
-    ROBOTO_BLACK_ITALIC,
-    ROBOTO_BOLD,
-    ROBOTO_BOLD_ITALIC,
-    ROBOTO_ITALIC,
-    ROBOTO_LIGHT,
-    ROBOTO_LIGHT_ITALIC,
-    ROBOTO_MEDIUM,
-    ROBOTO_MEDIUM_ITALIC,
-    ROBOTO_REGULAR,
-    ROBOTO_THIN,
-    ROBOTO_THIN_ITALIC,
-    ROBOTO_MONO_BOLD,
-    ROBOTO_MONO_BOLD_ITALIC,
-    ROBOTO_MONO_ITALIC,
-    ROBOTO_MONO_LIGHT,
-    ROBOTO_MONO_LIGHT_ITALIC,
-    ROBOTO_MONO_MEDIUM,
-    ROBOTO_MONO_MEDIUM_ITALIC,
-    ROBOTO_MONO_REGULAR,
-    ROBOTO_MONO_THIN,
-    ROBOTO_MONO_THIN_ITALIC,
-];
+const EMBEDDED_FONTS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/fonts.bin"));
 
 use crate::{
     canvas::{AntiAlias, Canvas, Curve, FillRule, Paint},
@@ -86,12 +39,7 @@ impl Fonts {
     pub fn new() -> Self {
         let swash_cache = SwashCache::new();
 
-        let mut fonts = Vec::new();
-
-        for font in EMBEDDED_FONTS {
-            fonts.push(Source::Binary(Arc::new(font.to_vec())));
-        }
-
+        let fonts = decompress_embedded_fonts();
         let mut font_system = FontSystem::new_with_fonts(fonts);
         let db = font_system.db_mut();
 
@@ -230,4 +178,26 @@ impl Fonts {
             }
         }
     }
+}
+
+fn decompress_embedded_fonts() -> Vec<cosmic_text::fontdb::Source> {
+    let mut fonts = Vec::new();
+
+    let data = miniz_oxide::inflate::decompress_to_vec(EMBEDDED_FONTS).unwrap();
+    let mut i = data.as_slice();
+
+    let num_fonts = u32::from_le_bytes([i[0], i[1], i[2], i[3]]) as usize;
+    i = &i[4..];
+
+    for _ in 0..num_fonts {
+        let len = u32::from_le_bytes([i[0], i[1], i[2], i[3]]) as usize;
+        i = &i[4..];
+
+        let data = Box::<[u8]>::from(&i[..len]);
+        i = &i[len..];
+
+        fonts.push(cosmic_text::fontdb::Source::Binary(Arc::new(data)));
+    }
+
+    fonts
 }

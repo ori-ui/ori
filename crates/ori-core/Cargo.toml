@@ -5,12 +5,16 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[build-dependencies]
+miniz_oxide = "0.8"
+
 [dependencies]
 ori-macro = { workspace = true }
 
 bitflags = "2.4"
 crossbeam-channel = "0.5"
 cosmic-text = "0.12"
+miniz_oxide = "0.8"
 seahash = "4.1"
 smol_str = "0.2.1"
 tracing = "0.1"

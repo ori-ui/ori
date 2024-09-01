@@ -32,7 +32,12 @@ macro_rules! impl_context {
 
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_, '_>, DrawCx<'_, '_> {
     /// Get the window.
-    pub fn window(&mut self) -> &mut Window {
+    pub fn window(&self) -> &Window {
+        self.context()
+    }
+
+    /// Get the window mutably.
+    pub fn window_mut(&mut self) -> &mut Window {
         self.context_mut()
     }
 

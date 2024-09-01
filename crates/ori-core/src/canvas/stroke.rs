@@ -363,6 +363,8 @@ impl Curve {
                 break;
             };
 
+            let ps = p0;
+
             match segment {
                 CurveSegment::Move(p1) => {
                     p0 = p1;
@@ -443,7 +445,7 @@ impl Curve {
             }
 
             if matches!(segments.peek(), None | Some(CurveSegment::Move(_))) {
-                if let Some(n) = segment_normal(segment, p0, 1.0) {
+                if let Some(n) = segment_normal(segment, ps, 1.0) {
                     self.stroke_line_cap(p0, -n, -n.hat(), stroke);
                     self.append_reverse(&outside);
 

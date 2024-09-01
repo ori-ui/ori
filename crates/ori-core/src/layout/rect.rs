@@ -83,18 +83,13 @@ impl Rect {
         self.width() * self.height()
     }
 
-    /// Get the center point of the rectangle.
-    pub fn center(self) -> Point {
-        self.min + self.size() / 2.0
-    }
-
     /// Get the top left point of the rectangle.
     pub fn top_left(self) -> Point {
         self.min
     }
 
     /// Get the top center point of the rectangle.
-    pub fn top(self) -> Point {
+    pub fn top_center(self) -> Point {
         Point::new(self.center().x, self.min.y)
     }
 
@@ -104,12 +99,17 @@ impl Rect {
     }
 
     /// Get the left center point of the rectangle.
-    pub fn left(self) -> Point {
+    pub fn center_left(self) -> Point {
         Point::new(self.min.x, self.center().y)
     }
 
+    /// Get the center point of the rectangle.
+    pub fn center(self) -> Point {
+        self.min + self.size() / 2.0
+    }
+
     /// Get the right center point of the rectangle.
-    pub fn right(self) -> Point {
+    pub fn center_right(self) -> Point {
         Point::new(self.max.x, self.center().y)
     }
 
@@ -119,13 +119,33 @@ impl Rect {
     }
 
     /// Get the bottom center point of the rectangle.
-    pub fn bottom(self) -> Point {
+    pub fn bottom_center(self) -> Point {
         Point::new(self.center().x, self.max.y)
     }
 
     /// Get the bottom right point of the rectangle.
     pub fn bottom_right(self) -> Point {
         self.max
+    }
+
+    /// Get the top edge of the rectangle.
+    pub fn top(self) -> f32 {
+        self.min.y
+    }
+
+    /// Get the left edge of the rectangle.
+    pub fn left(self) -> f32 {
+        self.min.x
+    }
+
+    /// Get the right edge of the rectangle.
+    pub fn right(self) -> f32 {
+        self.max.x
+    }
+
+    /// Get the bottom edge of the rectangle.
+    pub fn bottom(self) -> f32 {
+        self.max.y
     }
 
     /// Shrink the rectangle by the given amount.

@@ -3,8 +3,8 @@ use ori::prelude::*;
 struct Data {
     points: Vec<Point>,
     selected: Option<usize>,
-    line_cap: LineCap,
-    line_join: LineJoin,
+    cap: StrokeCap,
+    join: StrokeJoin,
     cubic: bool,
     offset: f32,
 }
@@ -22,8 +22,8 @@ impl Data {
                 Point::new(400.0, 200.0),
             ],
             selected: None,
-            line_cap: LineCap::Round,
-            line_join: LineJoin::Round,
+            cap: StrokeCap::Round,
+            join: StrokeJoin::Round,
             cubic: false,
             offset: 50.0,
         }
@@ -56,8 +56,8 @@ fn ui(data: &mut Data) -> impl View<Data> {
             &curve,
             Stroke {
                 width: data.offset,
-                cap: data.line_cap,
-                join: data.line_join,
+                cap: data.cap,
+                join: data.join,
                 miter: 4.0,
             },
         );
@@ -109,31 +109,25 @@ fn ui(data: &mut Data) -> impl View<Data> {
             }),
     ];
 
-    let line_cap = on_click(
-        button(text!("{:?}", data.line_cap)),
-        |cx, data: &mut Data| {
-            data.line_cap = match data.line_cap {
-                LineCap::Butt => LineCap::Round,
-                LineCap::Round => LineCap::Square,
-                LineCap::Square => LineCap::Butt,
-            };
+    let line_cap = on_click(button(text!("{:?}", data.cap)), |cx, data: &mut Data| {
+        data.cap = match data.cap {
+            StrokeCap::Butt => StrokeCap::Round,
+            StrokeCap::Round => StrokeCap::Square,
+            StrokeCap::Square => StrokeCap::Butt,
+        };
 
-            cx.rebuild();
-        },
-    );
+        cx.rebuild();
+    });
 
-    let line_join = on_click(
-        button(text!("{:?}", data.line_join)),
-        |cx, data: &mut Data| {
-            data.line_join = match data.line_join {
-                LineJoin::Miter => LineJoin::Round,
-                LineJoin::Round => LineJoin::Bevel,
-                LineJoin::Bevel => LineJoin::Miter,
-            };
+    let line_join = on_click(button(text!("{:?}", data.join)), |cx, data: &mut Data| {
+        data.join = match data.join {
+            StrokeJoin::Miter => StrokeJoin::Round,
+            StrokeJoin::Round => StrokeJoin::Bevel,
+            StrokeJoin::Bevel => StrokeJoin::Miter,
+        };
 
-            cx.rebuild();
-        },
-    );
+        cx.rebuild();
+    });
 
     let cubic = hstack![
         text("Cubic"),

@@ -294,11 +294,11 @@ impl Curve {
     pub fn push_oval(&mut self, oval: Rect) {
         let weight = SQRT_2 / 2.0;
 
-        self.move_to(oval.top());
-        self.conic_to(oval.top_left(), oval.left(), weight);
-        self.conic_to(oval.bottom_left(), oval.bottom(), weight);
-        self.conic_to(oval.bottom_right(), oval.right(), weight);
-        self.conic_to(oval.top_right(), oval.top(), weight);
+        self.move_to(oval.top_center());
+        self.conic_to(oval.top_left(), oval.center_left(), weight);
+        self.conic_to(oval.bottom_left(), oval.bottom_center(), weight);
+        self.conic_to(oval.bottom_right(), oval.center_right(), weight);
+        self.conic_to(oval.top_right(), oval.top_center(), weight);
         self.close();
     }
 

@@ -33,8 +33,8 @@ pub mod prelude {
     pub use ori_core::{
         canvas::{
             hex, hsl, hsla, hsv, hsva, okhsl, okhsla, okhsv, okhsva, oklab, oklaba, oklch, oklcha,
-            rgb, rgba, BlendMode, BorderRadius, BorderWidth, Canvas, Color, Curve, FillRule,
-            LineCap, LineJoin, Paint, Pattern, Shader, Stroke,
+            rgb, rgba, BlendMode, BorderRadius, BorderWidth, Canvas, Color, Curve, FillRule, Paint,
+            Pattern, Shader, Stroke, StrokeCap, StrokeJoin,
         },
         clipboard::Clipboard,
         command::CommandProxy,

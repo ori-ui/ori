@@ -7,29 +7,29 @@ use crate::{
 
 use super::Curve;
 
-/// Ways to draw the end of a line.
+/// Ways to draw the end of a stroke.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum LineCap {
-    /// The end of the line is squared off.
+pub enum StrokeCap {
+    /// The end of the stoke is squared off.
     Butt,
 
-    /// The end of the line is rounded.
+    /// The end of the stroke is rounded.
     Round,
 
-    /// The end of the line is squared off and extends past the end of the line.
+    /// The end of the stroke is squared off and extends past the end of the line.
     Square,
 }
 
-/// Ways to join two lines.
+/// Ways to join two segments of a stroke.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum LineJoin {
-    /// The lines are joined with a sharp corner.
+pub enum StrokeJoin {
+    /// The strokes are joined with a sharp corner.
     Miter,
 
-    /// The lines are joined with a rounded corner.
+    /// The strokes are joined with a rounded corner.
     Round,
 
-    /// The lines are joined with a beveled corner.
+    /// The strokes are joined with a beveled corner.
     Bevel,
 }
 
@@ -43,10 +43,10 @@ pub struct Stroke {
     pub miter: f32,
 
     /// The cap of the stroke.
-    pub cap: LineCap,
+    pub cap: StrokeCap,
 
     /// The join of the stroke.
-    pub join: LineJoin,
+    pub join: StrokeJoin,
 }
 
 impl Default for Stroke {
@@ -54,8 +54,8 @@ impl Default for Stroke {
         Self {
             width: 1.0,
             miter: 4.0,
-            cap: LineCap::Butt,
-            join: LineJoin::Miter,
+            cap: StrokeCap::Butt,
+            join: StrokeJoin::Miter,
         }
     }
 }
@@ -246,10 +246,10 @@ impl Curve {
         let r = stroke.width / 2.0;
 
         match stroke.cap {
-            LineCap::Butt => {
+            StrokeCap::Butt => {
                 self.line_to(p + n * r);
             }
-            LineCap::Round => {
+            StrokeCap::Round => {
                 let p0 = p - n * r;
                 let p1 = p + n * r;
 
@@ -261,7 +261,7 @@ impl Curve {
                 self.cubic_to(p0 + hat, c - nat, c);
                 self.cubic_to(c + nat, p1 + hat, p1);
             }
-            LineCap::Square => {
+            StrokeCap::Square => {
                 let p0 = p - n * r;
                 let p1 = p + n * r;
 
@@ -280,7 +280,7 @@ impl Curve {
         n0: Vector,
         n1: Vector,
         r: f32,
-        join: LineJoin,
+        join: StrokeJoin,
         miter_limit: f32,
     ) {
         if n0.cross(n1) * r > 0.0 {
@@ -289,9 +289,9 @@ impl Curve {
         }
 
         match join {
-            LineJoin::Miter => self.stroke_miter(pivot, n0, n1, r, miter_limit),
-            LineJoin::Round => self.stroke_round(pivot, n0, n1, r),
-            LineJoin::Bevel => self.stroke_bevel(pivot, n1, r),
+            StrokeJoin::Miter => self.stroke_miter(pivot, n0, n1, r, miter_limit),
+            StrokeJoin::Round => self.stroke_round(pivot, n0, n1, r),
+            StrokeJoin::Bevel => self.stroke_bevel(pivot, n1, r),
         }
     }
 

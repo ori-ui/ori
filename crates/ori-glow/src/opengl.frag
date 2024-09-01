@@ -519,7 +519,7 @@ void main() {
         d = min(d, curve_distance(rot, v));
     }
 
-    float alpha_bias = 0.65;
+    float alpha_bias = 0.55;
     float alpha;
 
     if (aa_samples > 0u) { 

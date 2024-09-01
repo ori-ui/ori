@@ -63,6 +63,11 @@ impl Rect {
         }
     }
 
+    /// Get the offset of the rectangle.
+    pub fn offset(self) -> Vector {
+        self.min.to_vector()
+    }
+
     /// Get the size of the rectangle.
     pub fn size(self) -> Size {
         Size::from(self.max - self.min)
@@ -189,7 +194,7 @@ impl Rect {
     }
 
     /// Compute the intersection of the rectangle with the given rectangle.
-    pub fn try_intersect(self, other: Self) -> Option<Self> {
+    pub fn try_intersection(self, other: Self) -> Option<Self> {
         let min_x = f32::max(self.min.x, other.min.x);
         let min_y = f32::max(self.min.y, other.min.y);
         let max_x = f32::min(self.max.x, other.max.x);
@@ -207,14 +212,14 @@ impl Rect {
 
     /// Compute the intersection of the rectangle with the given rectangle.
     ///
-    /// If the rectangles do not intersect, the zero rectangle is returned.
-    pub fn intersect(self, other: Self) -> Self {
-        self.try_intersect(other).unwrap_or(Self::ZERO)
+    /// If the rectangles do not intersect [`Rect::ZERO`] is returned.
+    pub fn intersection(self, other: Self) -> Self {
+        self.try_intersection(other).unwrap_or(Self::ZERO)
     }
 
     /// Check if the rectangle intersects the given rectangle.
     pub fn intersects(self, other: Self) -> bool {
-        self.try_intersect(other).is_some()
+        self.try_intersection(other).is_some()
     }
 
     /// Compute the union of the rectangle with the given rectangle.
@@ -345,12 +350,12 @@ impl BitAnd for Rect {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        self.intersect(rhs)
+        self.intersection(rhs)
     }
 }
 
 impl BitAndAssign for Rect {
     fn bitand_assign(&mut self, rhs: Self) {
-        *self = self.intersect(rhs);
+        *self = self.intersection(rhs);
     }
 }

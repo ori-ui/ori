@@ -253,7 +253,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
     ) -> T {
         let mask = mask.into();
-        let visible = self.visible.intersect(mask.curve.bounds());
+        let visible = self.visible.intersection(mask.curve.bounds());
 
         (self.canvas).layer(Affine::IDENTITY, Some(mask), None, |canvas| {
             let mut cx = DrawCx {

@@ -33,6 +33,8 @@ jobs:
 
     - name: Install miri
       run: rustup +nightly component add miri
+
+    - name: Setup miri
       run: cargo +nightly miri setup
 
     - name: Run tests

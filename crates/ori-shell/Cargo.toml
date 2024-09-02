@@ -60,8 +60,8 @@ smithay-clipboard       = { version = "0.7",    optional = true                 
 sctk-adwaita            = { version = "0.10",   optional = true                              }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd", target_os = "netbsd"))'.dependencies.x11rb]
-git         = "https://github.com/ChangeCaps/x11rb"
-rev         = "070e2bb"
+git         = "https://github.com/psychon/x11rb"
+rev         = "8d43dd0"
 optional    = true
 features    = [
     "render", 

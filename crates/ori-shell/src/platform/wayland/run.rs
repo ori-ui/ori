@@ -100,7 +100,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
         &globals,
         &qhandle,
     )
-    .unwrap();
+        .unwrap();
     let xdg_shell = XdgShell::bind(&globals, &qhandle).unwrap();
     let seat = SeatState::new(&globals, &qhandle);
     let shm = Shm::bind(&globals, &qhandle).unwrap();
@@ -252,8 +252,8 @@ fn handle_app_request<T>(
 
                         set_resizable(window, window.resizable);
 
-                        window.egl_surface.make_current()?;
-                        (window.wl_egl_surface).resize(
+                        window.egl_surface.as_ref().unwrap().make_current()?;
+                        (window.wl_egl_surface.as_ref().unwrap()).resize(
                             physical_width as i32,
                             physical_height as i32,
                             0,
@@ -390,17 +390,6 @@ fn open_window<T>(
         physical_height as i32,
     );
 
-    let wl_egl_surface = WlEglSurface::new(
-        xdg_window.wl_surface().id(),
-        physical_width as i32,
-        physical_height as i32,
-    )?;
-    let egl_surface = EglSurface::new(&state.egl_context, wl_egl_surface.ptr() as _)?;
-
-    egl_surface.make_current()?;
-    egl_surface.swap_interval(1)?;
-
-    let renderer = unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
 
     if window.icon.is_some() {
         debug!("Window icons are not supported on Wayland, set it a .desktop file");
@@ -425,9 +414,9 @@ fn open_window<T>(
         pointers: Vec::new(),
         keyboards: Vec::new(),
 
-        wl_egl_surface,
-        egl_surface,
-        renderer,
+        wl_egl_surface: None,
+        egl_surface: None,
+        renderer: None,
 
         frame: None,
         xdg_window,
@@ -470,17 +459,20 @@ fn render_windows<T>(
             }
         }
 
-        if !window.needs_redraw {
+        if !window.needs_redraw || window.renderer.is_none() {
             continue;
         }
 
         window.needs_redraw = false;
 
         if let Some(draw_state) = app.draw_window(data, window.id) {
-            window.egl_surface.make_current()?;
+            let egl_surface = window.egl_surface.as_ref().unwrap();
+            let renderer = window.renderer.as_mut().unwrap();
+
+            egl_surface.make_current()?;
 
             unsafe {
-                window.renderer.render(
+                renderer.render(
                     draw_state.canvas,
                     draw_state.clear_color,
                     window.physical_width,
@@ -489,7 +481,7 @@ fn render_windows<T>(
                 );
             }
 
-            window.egl_surface.swap_buffers()?;
+            egl_surface.swap_buffers()?;
         }
     }
 
@@ -734,9 +726,9 @@ struct WindowState {
     pointers: Vec<ObjectId>,
     keyboards: Vec<ObjectId>,
 
-    wl_egl_surface: WlEglSurface,
-    egl_surface: EglSurface,
-    renderer: GlowRenderer,
+    wl_egl_surface: Option<WlEglSurface>,
+    egl_surface: Option<EglSurface>,
+    renderer: Option<GlowRenderer>,
 
     frame: Option<AdwaitaFrame<State>>,
     xdg_window: XdgWindow,
@@ -790,8 +782,8 @@ impl WindowState {
                 // i have no idea why this is necessary, but it is
                 //
                 // KEEP MAKE CURRENT HERE!
-                self.egl_surface.make_current().unwrap();
-                (self.wl_egl_surface).resize(width.get() as i32, height.get() as i32, 0, 0);
+                self.egl_surface.as_ref().unwrap().make_current().unwrap();
+                (self.wl_egl_surface.as_ref().unwrap()).resize(width.get() as i32, height.get() as i32, 0, 0);
                 self.xdg_window.xdg_surface().set_window_geometry(
                     x,
                     y,
@@ -820,8 +812,8 @@ impl WindowState {
                 // i have no idea why this is necessary, but it is
                 //
                 // KEEP MAKE CURRENT HERE!
-                self.egl_surface.make_current().unwrap();
-                (self.wl_egl_surface).resize(width as i32, height as i32, 0, 0);
+                self.egl_surface.as_ref().unwrap().make_current().unwrap();
+                (self.wl_egl_surface.as_ref().unwrap()).resize(width as i32, height as i32, 0, 0);
                 self.xdg_window.set_window_geometry(0, 0, width, height);
 
                 Some(Event::Resized {
@@ -886,8 +878,7 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _new_transform: Transform,
-    ) {
-    }
+    ) {}
 
     fn frame(
         &mut self,
@@ -895,8 +886,7 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _time: u32,
-    ) {
-    }
+    ) {}
 
     fn surface_enter(
         &mut self,
@@ -904,8 +894,7 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _output: &WlOutput,
-    ) {
-    }
+    ) {}
 
     fn surface_leave(
         &mut self,
@@ -913,8 +902,7 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _output: &WlOutput,
-    ) {
-    }
+    ) {}
 }
 
 impl OutputHandler for State {
@@ -926,8 +914,7 @@ impl OutputHandler for State {
 
     fn update_output(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _output: WlOutput) {}
 
-    fn output_destroyed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _output: WlOutput) {
-    }
+    fn output_destroyed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _output: WlOutput) {}
 }
 
 impl WindowHandler for State {
@@ -948,6 +935,24 @@ impl WindowHandler for State {
         if let Some(window) = window_by_surface(&mut self.windows, window.wl_surface()) {
             window.last_configure = Some(configure.clone());
 
+            if window.renderer.is_none() {
+                let wl_egl_surface = WlEglSurface::new(
+                    window.xdg_window.wl_surface().id(),
+                    window.physical_width as i32,
+                    window.physical_height as i32,
+                ).unwrap();
+                let egl_surface = EglSurface::new(&self.egl_context, wl_egl_surface.ptr() as _).unwrap();
+
+                egl_surface.make_current().unwrap();
+                egl_surface.swap_interval(1).unwrap();
+
+                let renderer = unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
+
+                window.wl_egl_surface = Some(wl_egl_surface);
+                window.egl_surface = Some(egl_surface);
+                window.renderer = Some(renderer);
+            }
+
             self.events.push(Event::State {
                 id: window.id,
                 state: configure.state,
@@ -965,7 +970,7 @@ impl WindowHandler for State {
                     qh.clone(),
                     FrameConfig::auto(),
                 )
-                .unwrap();
+                    .unwrap();
 
                 frame.set_title(&window.title);
                 window.frame = Some(frame);
@@ -1082,21 +1087,21 @@ impl PointerHandler for State {
 
             match event.kind {
                 PointerEventKind::Enter { .. } | PointerEventKind::Motion { .. }
-                    if surface != parent_surface =>
-                {
-                    let (x, y) = event.position;
+                if surface != parent_surface =>
+                    {
+                        let (x, y) = event.position;
 
-                    if let Some(ref mut frame) = window.frame {
-                        window.frame_cursor_icon = frame.click_point_moved(
-                            // winit uses Duration::ZERO, and so will we
-                            Duration::ZERO,
-                            &event.surface.id(),
-                            x,
-                            y,
-                        );
-                        window.set_cursor_icon = true;
+                        if let Some(ref mut frame) = window.frame {
+                            window.frame_cursor_icon = frame.click_point_moved(
+                                // winit uses Duration::ZERO, and so will we
+                                Duration::ZERO,
+                                &event.surface.id(),
+                                x,
+                                y,
+                            );
+                            window.set_cursor_icon = true;
+                        }
                     }
-                }
 
                 PointerEventKind::Leave { .. } if surface != parent_surface => {
                     if let Some(ref mut frame) = window.frame {

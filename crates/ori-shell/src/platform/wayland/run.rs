@@ -100,7 +100,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
         &globals,
         &qhandle,
     )
-        .unwrap();
+    .unwrap();
     let xdg_shell = XdgShell::bind(&globals, &qhandle).unwrap();
     let seat = SeatState::new(&globals, &qhandle);
     let shm = Shm::bind(&globals, &qhandle).unwrap();
@@ -252,13 +252,11 @@ fn handle_app_request<T>(
 
                         set_resizable(window, window.resizable);
 
-                        window.egl_surface.as_ref().unwrap().make_current()?;
-                        (window.wl_egl_surface.as_ref().unwrap()).resize(
-                            physical_width as i32,
-                            physical_height as i32,
-                            0,
-                            0,
-                        );
+                        let egl_surface = window.egl_surface.as_ref().unwrap();
+                        let wl_egl_surface = window.wl_egl_surface.as_ref().unwrap();
+
+                        egl_surface.make_current().unwrap();
+                        wl_egl_surface.resize(physical_width as i32, physical_height as i32, 0, 0);
                         window.xdg_window.xdg_surface().set_window_geometry(
                             0,
                             0,
@@ -389,7 +387,6 @@ fn open_window<T>(
         physical_width as i32,
         physical_height as i32,
     );
-
 
     if window.icon.is_some() {
         debug!("Window icons are not supported on Wayland, set it a .desktop file");
@@ -779,11 +776,14 @@ impl WindowState {
 
                 let (outer_width, outer_height) = frame.add_borders(width.get(), height.get());
 
+                let egl_surface = self.egl_surface.as_ref().unwrap();
+                let wl_egl_surface = self.wl_egl_surface.as_ref().unwrap();
+
                 // i have no idea why this is necessary, but it is
                 //
                 // KEEP MAKE CURRENT HERE!
-                self.egl_surface.as_ref().unwrap().make_current().unwrap();
-                (self.wl_egl_surface.as_ref().unwrap()).resize(width.get() as i32, height.get() as i32, 0, 0);
+                egl_surface.make_current().unwrap();
+                wl_egl_surface.resize(width.get() as i32, height.get() as i32, 0, 0);
                 self.xdg_window.xdg_surface().set_window_geometry(
                     x,
                     y,
@@ -809,11 +809,14 @@ impl WindowState {
                 self.physical_height = height;
                 self.needs_redraw = true;
 
+                let egl_surface = self.egl_surface.as_ref().unwrap();
+                let wl_egl_surface = self.wl_egl_surface.as_ref().unwrap();
+
                 // i have no idea why this is necessary, but it is
                 //
                 // KEEP MAKE CURRENT HERE!
-                self.egl_surface.as_ref().unwrap().make_current().unwrap();
-                (self.wl_egl_surface.as_ref().unwrap()).resize(width as i32, height as i32, 0, 0);
+                egl_surface.make_current().unwrap();
+                wl_egl_surface.resize(width as i32, height as i32, 0, 0);
                 self.xdg_window.set_window_geometry(0, 0, width, height);
 
                 Some(Event::Resized {
@@ -878,7 +881,8 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _new_transform: Transform,
-    ) {}
+    ) {
+    }
 
     fn frame(
         &mut self,
@@ -886,7 +890,8 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _time: u32,
-    ) {}
+    ) {
+    }
 
     fn surface_enter(
         &mut self,
@@ -894,7 +899,8 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _output: &WlOutput,
-    ) {}
+    ) {
+    }
 
     fn surface_leave(
         &mut self,
@@ -902,7 +908,8 @@ impl CompositorHandler for State {
         _qh: &QueueHandle<Self>,
         _surface: &WlSurface,
         _output: &WlOutput,
-    ) {}
+    ) {
+    }
 }
 
 impl OutputHandler for State {
@@ -914,7 +921,8 @@ impl OutputHandler for State {
 
     fn update_output(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _output: WlOutput) {}
 
-    fn output_destroyed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _output: WlOutput) {}
+    fn output_destroyed(&mut self, _conn: &Connection, _qh: &QueueHandle<Self>, _output: WlOutput) {
+    }
 }
 
 impl WindowHandler for State {
@@ -940,13 +948,16 @@ impl WindowHandler for State {
                     window.xdg_window.wl_surface().id(),
                     window.physical_width as i32,
                     window.physical_height as i32,
-                ).unwrap();
-                let egl_surface = EglSurface::new(&self.egl_context, wl_egl_surface.ptr() as _).unwrap();
+                )
+                .unwrap();
+                let egl_surface =
+                    EglSurface::new(&self.egl_context, wl_egl_surface.ptr() as _).unwrap();
 
                 egl_surface.make_current().unwrap();
                 egl_surface.swap_interval(1).unwrap();
 
-                let renderer = unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
+                let renderer =
+                    unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
 
                 window.wl_egl_surface = Some(wl_egl_surface);
                 window.egl_surface = Some(egl_surface);
@@ -970,7 +981,7 @@ impl WindowHandler for State {
                     qh.clone(),
                     FrameConfig::auto(),
                 )
-                    .unwrap();
+                .unwrap();
 
                 frame.set_title(&window.title);
                 window.frame = Some(frame);
@@ -1087,21 +1098,21 @@ impl PointerHandler for State {
 
             match event.kind {
                 PointerEventKind::Enter { .. } | PointerEventKind::Motion { .. }
-                if surface != parent_surface =>
-                    {
-                        let (x, y) = event.position;
+                    if surface != parent_surface =>
+                {
+                    let (x, y) = event.position;
 
-                        if let Some(ref mut frame) = window.frame {
-                            window.frame_cursor_icon = frame.click_point_moved(
-                                // winit uses Duration::ZERO, and so will we
-                                Duration::ZERO,
-                                &event.surface.id(),
-                                x,
-                                y,
-                            );
-                            window.set_cursor_icon = true;
-                        }
+                    if let Some(ref mut frame) = window.frame {
+                        window.frame_cursor_icon = frame.click_point_moved(
+                            // winit uses Duration::ZERO, and so will we
+                            Duration::ZERO,
+                            &event.surface.id(),
+                            x,
+                            y,
+                        );
+                        window.set_cursor_icon = true;
                     }
+                }
 
                 PointerEventKind::Leave { .. } if surface != parent_surface => {
                     if let Some(ref mut frame) = window.frame {

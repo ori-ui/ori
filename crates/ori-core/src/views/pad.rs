@@ -41,6 +41,7 @@ pub fn pad_left<V>(padding: f32, content: V) -> Pad<V> {
 pub struct Pad<V> {
     /// The content.
     pub content: Pod<V>,
+
     /// The padding.
     #[rebuild(layout)]
     pub padding: Padding,

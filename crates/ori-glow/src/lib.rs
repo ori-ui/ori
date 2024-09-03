@@ -39,12 +39,6 @@ struct Instance {
     image_offset_opacity: [f32; 3],
 }
 
-#[repr(C)]
-#[derive(Debug)]
-struct Uniform {
-    resolution: [f32; 2],
-}
-
 const VERB_LINE: u8 = 1;
 const VERB_QUAD: u8 = 2;
 const VERB_CUBIC: u8 = 3;
@@ -115,9 +109,10 @@ pub struct GlowRenderer {
     bands: Vec<Vec<[u32; 2]>>,
     band_data: Vec<[u32; 2]>,
     instances: Vec<Instance>,
-    point_buffer: glow::Buffer,
-    band_buffer: glow::Buffer,
-    uniform_buffer: glow::Buffer,
+    point_buffer: glow::Texture,
+    band_buffer: glow::Texture,
+    point_buffer_height: usize,
+    band_buffer_height: usize,
     instance_buffer: glow::Buffer,
     vertex_array: glow::VertexArray,
     images: HashMap<WeakImage, glow::Texture>,
@@ -132,9 +127,8 @@ impl Drop for GlowRenderer {
     fn drop(&mut self) {
         unsafe {
             self.gl.delete_program(self.program);
-            self.gl.delete_buffer(self.point_buffer);
-            self.gl.delete_buffer(self.band_buffer);
-            self.gl.delete_buffer(self.uniform_buffer);
+            self.gl.delete_texture(self.point_buffer);
+            self.gl.delete_texture(self.band_buffer);
             self.gl.delete_buffer(self.instance_buffer);
             self.gl.delete_vertex_array(self.vertex_array);
 
@@ -149,8 +143,7 @@ impl Drop for GlowRenderer {
 }
 
 impl GlowRenderer {
-    const MAX_CURVE_POINTS: usize = 2048;
-    const MAX_BAND_DATA: usize = 2048;
+    const TEXTURE_BUFFER_WIDTH: usize = 2048;
     const MAX_INSTANCES: usize = 256;
     const MAX_BANDS: usize = 256;
 
@@ -164,31 +157,9 @@ impl GlowRenderer {
             include_str!("shader.frag"),
         )?;
 
-        let point_buffer = gl.create_buffer()?;
-        let band_buffer = gl.create_buffer()?;
-        let uniform_buffer = gl.create_buffer()?;
+        let point_buffer = Self::create_point_buffer(&gl, 1);
+        let band_buffer = Self::create_band_buffer(&gl, 1);
         let instance_buffer = gl.create_buffer()?;
-
-        gl.bind_buffer(glow::ARRAY_BUFFER, Some(point_buffer));
-        gl.buffer_data_size(
-            glow::ARRAY_BUFFER,
-            size_of::<[f32; 2]>() as i32 * Self::MAX_CURVE_POINTS as i32,
-            glow::DYNAMIC_DRAW,
-        );
-
-        gl.bind_buffer(glow::ARRAY_BUFFER, Some(band_buffer));
-        gl.buffer_data_size(
-            glow::ARRAY_BUFFER,
-            size_of::<[u32; 2]>() as i32 * Self::MAX_BAND_DATA as i32,
-            glow::DYNAMIC_DRAW,
-        );
-
-        gl.bind_buffer(glow::UNIFORM_BUFFER, Some(uniform_buffer));
-        gl.buffer_data_size(
-            glow::UNIFORM_BUFFER,
-            size_of::<Uniform>() as i32,
-            glow::DYNAMIC_DRAW,
-        );
 
         gl.bind_buffer(glow::ARRAY_BUFFER, Some(instance_buffer));
         gl.buffer_data_size(
@@ -207,13 +178,14 @@ impl GlowRenderer {
             program,
             width: 0,
             height: 0,
-            points: Vec::with_capacity(Self::MAX_CURVE_POINTS),
+            points: Vec::new(),
             bands: Vec::with_capacity(Self::MAX_BANDS),
-            band_data: Vec::with_capacity(Self::MAX_BAND_DATA),
+            band_data: Vec::new(),
             instances: Vec::with_capacity(Self::MAX_INSTANCES),
             point_buffer,
             band_buffer,
-            uniform_buffer,
+            point_buffer_height: 1,
+            band_buffer_height: 1,
             instance_buffer,
             vertex_array,
             images: HashMap::new(),
@@ -277,6 +249,64 @@ impl GlowRenderer {
             self.gl.delete_texture(mask.texture);
             self.gl.delete_framebuffer(mask.framebuffer);
         }
+    }
+
+    unsafe fn create_point_buffer(gl: &glow::Context, height: u32) -> glow::Texture {
+        let texture = gl.create_texture().unwrap();
+        gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+        gl.tex_image_2d(
+            glow::TEXTURE_2D,
+            0,
+            glow::RG32F as i32,
+            Self::TEXTURE_BUFFER_WIDTH as i32,
+            height as i32,
+            0,
+            glow::RG,
+            glow::FLOAT,
+            None,
+        );
+
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MIN_FILTER,
+            glow::NEAREST as i32,
+        );
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MAG_FILTER,
+            glow::NEAREST as i32,
+        );
+
+        texture
+    }
+
+    unsafe fn create_band_buffer(gl: &glow::Context, height: u32) -> glow::Texture {
+        let texture = gl.create_texture().unwrap();
+        gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+        gl.tex_image_2d(
+            glow::TEXTURE_2D,
+            0,
+            glow::RG32UI as i32,
+            Self::TEXTURE_BUFFER_WIDTH as i32,
+            height as i32,
+            0,
+            glow::RG_INTEGER,
+            glow::UNSIGNED_INT,
+            None,
+        );
+
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MIN_FILTER,
+            glow::NEAREST as i32,
+        );
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MAG_FILTER,
+            glow::NEAREST as i32,
+        );
+
+        texture
     }
 
     unsafe fn create_image(gl: &glow::Context, data: &ImageData) -> glow::Texture {
@@ -394,14 +424,6 @@ impl GlowRenderer {
         gl.delete_shader(vertex);
         gl.delete_shader(fragment);
 
-        let points_index = gl.get_uniform_block_index(program, "CurvePoints").unwrap();
-        let bands_index = gl.get_uniform_block_index(program, "CurveBands").unwrap();
-        let uniform_index = gl.get_uniform_block_index(program, "Uniforms").unwrap();
-
-        gl.uniform_block_binding(program, points_index, 0);
-        gl.uniform_block_binding(program, bands_index, 1);
-        gl.uniform_block_binding(program, uniform_index, 2);
-
         gl.use_program(Some(program));
 
         Ok(program)
@@ -507,23 +529,51 @@ impl GlowRenderer {
             return;
         }
 
-        let uniform = Uniform {
-            resolution: [self.width as f32, self.height as f32],
-        };
+        let point_buffer_height = self.points.len() / Self::TEXTURE_BUFFER_WIDTH + 1;
+        let band_buffer_height = self.band_data.len() / Self::TEXTURE_BUFFER_WIDTH + 1;
 
-        (self.gl).bind_buffer(glow::UNIFORM_BUFFER, Some(self.uniform_buffer));
-        (self.gl).buffer_sub_data_u8_slice(glow::UNIFORM_BUFFER, 0, slice_as_bytes(&[uniform]));
+        if point_buffer_height > self.point_buffer_height {
+            let height = point_buffer_height;
 
-        (self.gl).bind_buffer(glow::ARRAY_BUFFER, Some(self.point_buffer));
-        (self.gl).buffer_sub_data_u8_slice(glow::ARRAY_BUFFER, 0, slice_as_bytes(&self.points));
+            self.point_buffer_height = height;
+            self.point_buffer = Self::create_point_buffer(&self.gl, height as u32);
+        }
 
-        (self.gl).bind_buffer(glow::ARRAY_BUFFER, Some(self.band_buffer));
-        (self.gl).buffer_sub_data_u8_slice(glow::ARRAY_BUFFER, 0, slice_as_bytes(&self.band_data));
+        if band_buffer_height > self.band_buffer_height {
+            let height = band_buffer_height;
+
+            self.band_buffer_height = height;
+            self.band_buffer = Self::create_band_buffer(&self.gl, height as u32);
+        }
+
+        (self.gl).bind_texture(glow::TEXTURE_2D, Some(self.point_buffer));
+        (self.gl).tex_sub_image_2d(
+            glow::TEXTURE_2D,
+            0,
+            0,
+            0,
+            Self::TEXTURE_BUFFER_WIDTH as i32,
+            self.point_buffer_height as i32,
+            glow::RG,
+            glow::FLOAT,
+            glow::PixelUnpackData::Slice(slice_as_bytes(&self.points)),
+        );
+
+        (self.gl).bind_texture(glow::TEXTURE_2D, Some(self.band_buffer));
+        (self.gl).tex_sub_image_2d(
+            glow::TEXTURE_2D,
+            0,
+            0,
+            0,
+            Self::TEXTURE_BUFFER_WIDTH as i32,
+            self.band_buffer_height as i32,
+            glow::RG_INTEGER,
+            glow::UNSIGNED_INT,
+            glow::PixelUnpackData::Slice(slice_as_bytes(&self.band_data)),
+        );
 
         (self.gl).bind_buffer(glow::ARRAY_BUFFER, Some(self.instance_buffer));
         (self.gl).buffer_sub_data_u8_slice(glow::ARRAY_BUFFER, 0, slice_as_bytes(&self.instances));
-
-        self.gl.bind_buffer(glow::UNIFORM_BUFFER, None);
 
         let texture = self.active_image.unwrap_or(self.default_image);
         let mask = match self.mask {
@@ -539,15 +589,23 @@ impl GlowRenderer {
         self.gl.active_texture(glow::TEXTURE1);
         self.gl.bind_texture(glow::TEXTURE_2D, Some(mask));
 
+        self.gl.active_texture(glow::TEXTURE2);
+        (self.gl).bind_texture(glow::TEXTURE_2D, Some(self.point_buffer));
+
+        self.gl.active_texture(glow::TEXTURE3);
+        (self.gl).bind_texture(glow::TEXTURE_2D, Some(self.band_buffer));
+
         let location = self.gl.get_uniform_location(self.program, "image");
         self.gl.uniform_1_i32(location.as_ref(), 0);
 
         let location = self.gl.get_uniform_location(self.program, "mask");
         self.gl.uniform_1_i32(location.as_ref(), 1);
 
-        (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 0, Some(self.point_buffer));
-        (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 1, Some(self.band_buffer));
-        (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 2, Some(self.uniform_buffer));
+        let location = self.gl.get_uniform_location(self.program, "points");
+        self.gl.uniform_1_i32(location.as_ref(), 2);
+
+        let location = self.gl.get_uniform_location(self.program, "bands");
+        self.gl.uniform_1_i32(location.as_ref(), 3);
 
         self.gl.bind_vertex_array(Some(self.vertex_array));
 
@@ -557,12 +615,19 @@ impl GlowRenderer {
         self.gl.use_program(None);
 
         self.gl.bind_buffer(glow::ARRAY_BUFFER, None);
-        self.gl.bind_buffer(glow::UNIFORM_BUFFER, None);
 
         self.points.clear();
         self.band_data.clear();
         self.instances.clear();
         self.active_image = None;
+    }
+
+    fn point_buffer_cap(&self) -> usize {
+        Self::TEXTURE_BUFFER_WIDTH * self.point_buffer_height
+    }
+
+    fn band_buffer_cap(&self) -> usize {
+        Self::TEXTURE_BUFFER_WIDTH * self.band_buffer_height
     }
 
     unsafe fn fill_curve(
@@ -578,11 +643,11 @@ impl GlowRenderer {
 
         let (mut band_index, mut band_count) = self.push_bands(curve);
 
-        if self.points.len() >= Self::MAX_CURVE_POINTS
-            || self.band_data.len() >= Self::MAX_BAND_DATA
+        if self.points.len() >= self.point_buffer_cap()
+            || self.band_data.len() >= self.band_buffer_cap()
         {
-            self.points.truncate(Self::MAX_CURVE_POINTS);
-            self.band_data.truncate(Self::MAX_BAND_DATA);
+            self.points.truncate(self.point_buffer_cap());
+            self.band_data.truncate(self.band_buffer_cap());
             self.dispatch();
 
             let (index, count) = self.push_bands(curve);

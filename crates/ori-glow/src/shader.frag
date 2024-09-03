@@ -12,27 +12,16 @@ in vec3 v_image_offset_opacity;
 
 out vec4 f_color;
 
-const uint MAX_CURVE_POINTS = 2048u;
-const uint MAX_CURVE_BANDS = 2048u;
+const uint TEXTURE_BUFFER_WIDTH = 2048u;
 
 const uint NON_ZERO_BIT = 1u << 31u;
 const uint AA_SAMPLES_MASK = 0x0000ff00u;
 const uint BAND_COUNT_MASK = 0x000000ffu;
 
-uniform CurvePoints {
-    vec2 curve_points[MAX_CURVE_POINTS];
-};
-
-uniform CurveBands {
-    uvec2 curve_bands[MAX_CURVE_BANDS];
-};
-
-uniform Uniforms {
-    vec2 resolution;
-};
-
 uniform sampler2D image;
 uniform sampler2D mask;
+uniform sampler2D points;
+uniform usampler2D bands;
 
 const uint VERB_MOVE = 0u;
 const uint VERB_LINE = 1u;
@@ -342,10 +331,20 @@ uint get_band(vec2 v) {
     return min(band, band_count - 1u);
 }
 
+uvec2 get_band_segment(uint i) {
+    ivec2 uv = ivec2(i % TEXTURE_BUFFER_WIDTH, i / TEXTURE_BUFFER_WIDTH);
+    return texelFetch(bands, uv, 0).xy;
+}
+
+vec2 get_point(uint i) {
+    ivec2 uv = ivec2(i % TEXTURE_BUFFER_WIDTH, i / TEXTURE_BUFFER_WIDTH);
+    return texelFetch(points, uv, 0).xy;
+}
+
 bool is_inside_even_odd(vec2 v) {
     uint band = v_band_index + get_band(v);
-    uint segment_offset = curve_bands[band].x;
-    uint segment_count = curve_bands[band].y;
+    uint segment_offset = get_band_segment(band).x;
+    uint segment_count = get_band_segment(band).y;
 
     uint crossings = 0u;
 
@@ -355,29 +354,29 @@ bool is_inside_even_odd(vec2 v) {
     vec2 p3 = vec2(0.0);
 
     for (uint i = 0u; i < segment_count; i++) {
-        uvec2 segment = curve_bands[segment_offset + i];
+        uvec2 segment = get_band_segment(segment_offset + i);
         
         switch (segment.y) {
         case VERB_LINE:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
 
             crossings += line_intersection_count(p0, p1, v);
             break;
 
         case VERB_QUAD:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
-            p2 = curve_points[segment.x + 2u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
+            p2 = get_point(segment.x + 2u);
 
             crossings += quad_intersection_count(p0, p1, p2, v);
             break;
 
         case VERB_CUBIC:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
-            p2 = curve_points[segment.x + 2u];
-            p3 = curve_points[segment.x + 3u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
+            p2 = get_point(segment.x + 2u);
+            p3 = get_point(segment.x + 3u);
 
             crossings += cubic_intersection_count(p0, p1, p2, p3, v);
             break;
@@ -389,8 +388,8 @@ bool is_inside_even_odd(vec2 v) {
 
 bool is_inside_non_zero(vec2 v) { 
     uint band = v_band_index + get_band(v);
-    uint segment_offset = curve_bands[band].x;
-    uint segment_count = curve_bands[band].y;
+    uint segment_offset = get_band_segment(band).x;
+    uint segment_count = get_band_segment(band).y;
 
     int winding = 0;
 
@@ -400,29 +399,29 @@ bool is_inside_non_zero(vec2 v) {
     vec2 p3 = vec2(0.0);
 
     for (uint i = 0u; i < segment_count; i++) {
-        uvec2 segment = curve_bands[segment_offset + i];
+        uvec2 segment = get_band_segment(segment_offset + i);
         
         switch (segment.y) {
         case VERB_LINE:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
 
             winding += line_winding_count(p0, p1, v);
             break;
 
         case VERB_QUAD:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
-            p2 = curve_points[segment.x + 2u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
+            p2 = get_point(segment.x + 2u);
 
             winding += quad_winding_count(p0, p1, p2, v);
             break;
 
         case VERB_CUBIC:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
-            p2 = curve_points[segment.x + 2u];
-            p3 = curve_points[segment.x + 3u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
+            p2 = get_point(segment.x + 2u);
+            p3 = get_point(segment.x + 3u);
 
             winding += cubic_winding_count(p0, p1, p2, p3, v);
             break;
@@ -442,8 +441,8 @@ bool is_inside(vec2 v) {
 
 float curve_distance(mat2 rot, vec2 v) {
     uint band = v_band_index + get_band(v);
-    uint segment_offset = curve_bands[band].x;
-    uint segment_count = curve_bands[band].y;
+    uint segment_offset = get_band_segment(band).x;
+    uint segment_count = get_band_segment(band).y;
 
     float d = 1.0;
 
@@ -453,12 +452,12 @@ float curve_distance(mat2 rot, vec2 v) {
     vec2 p3 = vec2(0.0);
 
     for (uint i = 0u; i < segment_count; i++) {
-        uvec2 segment = curve_bands[segment_offset + i];
+        uvec2 segment = get_band_segment(segment_offset + i);
         
         switch (segment.y) {
         case VERB_LINE:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
 
             p0 = rot * (p0 - v);
             p1 = rot * (p1 - v);
@@ -467,9 +466,9 @@ float curve_distance(mat2 rot, vec2 v) {
             break;
 
         case VERB_QUAD:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
-            p2 = curve_points[segment.x + 2u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
+            p2 = get_point(segment.x + 2u);
 
             p0 = rot * (p0 - v);
             p1 = rot * (p1 - v);
@@ -479,10 +478,10 @@ float curve_distance(mat2 rot, vec2 v) {
             break;
 
         case VERB_CUBIC:
-            p0 = curve_points[segment.x + 0u];
-            p1 = curve_points[segment.x + 1u];
-            p2 = curve_points[segment.x + 2u];
-            p3 = curve_points[segment.x + 3u];
+            p0 = get_point(segment.x + 0u);
+            p1 = get_point(segment.x + 1u);
+            p2 = get_point(segment.x + 2u);
+            p3 = get_point(segment.x + 3u);
 
             p0 = rot * (p0 - v);
             p1 = rot * (p1 - v);

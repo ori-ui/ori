@@ -7,8 +7,7 @@ use std::{collections::HashMap, ffi, mem, slice};
 use glow::HasContext;
 use ori_core::{
     canvas::{
-        AntiAlias, BlendMode, Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive,
-        Shader, Stroke,
+        AntiAlias, Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive, Shader, Stroke,
     },
     image::{ImageData, WeakImage},
     layout::{Affine, Matrix, Point, Vector},
@@ -56,13 +55,62 @@ unsafe fn slice_as_bytes<T>(slice: &[T]) -> &[u8] {
     slice::from_raw_parts(slice.as_ptr() as *const u8, mem::size_of_val(slice))
 }
 
+struct Mask {
+    texture: glow::Texture,
+    framebuffer: glow::Framebuffer,
+}
+
+impl Mask {
+    unsafe fn new(gl: &glow::Context, width: u32, height: u32) -> Self {
+        let texture = gl.create_texture().unwrap();
+        gl.bind_texture(glow::TEXTURE_2D, Some(texture));
+        gl.tex_image_2d(
+            glow::TEXTURE_2D,
+            0,
+            glow::R8 as i32,
+            width as i32,
+            height as i32,
+            0,
+            glow::RGBA,
+            glow::UNSIGNED_BYTE,
+            None,
+        );
+
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MIN_FILTER,
+            glow::NEAREST as i32,
+        );
+        gl.tex_parameter_i32(
+            glow::TEXTURE_2D,
+            glow::TEXTURE_MAG_FILTER,
+            glow::NEAREST as i32,
+        );
+
+        let framebuffer = gl.create_framebuffer().unwrap();
+        gl.bind_framebuffer(glow::FRAMEBUFFER, Some(framebuffer));
+        gl.framebuffer_texture_2d(
+            glow::FRAMEBUFFER,
+            glow::COLOR_ATTACHMENT0,
+            glow::TEXTURE_2D,
+            Some(texture),
+            0,
+        );
+        gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+
+        Self {
+            texture,
+            framebuffer,
+        }
+    }
+}
+
 /// A glow renderer.
 pub struct GlowRenderer {
     gl: glow::Context,
     program: glow::Program,
     width: u32,
     height: u32,
-    stencil: i32,
     points: Vec<[f32; 2]>,
     bands: Vec<Vec<[u32; 2]>>,
     band_data: Vec<[u32; 2]>,
@@ -73,9 +121,31 @@ pub struct GlowRenderer {
     instance_buffer: glow::Buffer,
     vertex_array: glow::VertexArray,
     images: HashMap<WeakImage, glow::Texture>,
+    masks: Vec<Mask>,
+    mask: Option<usize>,
     default_image: glow::Texture,
     active_image: Option<glow::Texture>,
     scratch_curve: Curve,
+}
+
+impl Drop for GlowRenderer {
+    fn drop(&mut self) {
+        unsafe {
+            self.gl.delete_program(self.program);
+            self.gl.delete_buffer(self.point_buffer);
+            self.gl.delete_buffer(self.band_buffer);
+            self.gl.delete_buffer(self.uniform_buffer);
+            self.gl.delete_buffer(self.instance_buffer);
+            self.gl.delete_vertex_array(self.vertex_array);
+
+            for texture in self.images.values() {
+                self.gl.delete_texture(*texture);
+            }
+
+            self.clear_masks();
+            self.gl.delete_texture(self.default_image);
+        }
+    }
 }
 
 impl GlowRenderer {
@@ -86,14 +156,18 @@ impl GlowRenderer {
 
     /// # Safety
     /// - This can never truly be safe, this is loading opengl functions, here be dragons.
-    pub unsafe fn new(loader: impl FnMut(&str) -> *const ffi::c_void) -> Self {
+    pub unsafe fn new(loader: impl FnMut(&str) -> *const ffi::c_void) -> Result<Self, GlError> {
         let gl = glow::Context::from_loader_function(loader);
-        let program = Self::create_shader_program(&gl).unwrap();
+        let program = Self::create_program(
+            &gl,
+            include_str!("shader.vert"),
+            include_str!("shader.frag"),
+        )?;
 
-        let point_buffer = gl.create_buffer().unwrap();
-        let band_buffer = gl.create_buffer().unwrap();
-        let uniform_buffer = gl.create_buffer().unwrap();
-        let instance_buffer = gl.create_buffer().unwrap();
+        let point_buffer = gl.create_buffer()?;
+        let band_buffer = gl.create_buffer()?;
+        let uniform_buffer = gl.create_buffer()?;
+        let instance_buffer = gl.create_buffer()?;
 
         gl.bind_buffer(glow::ARRAY_BUFFER, Some(point_buffer));
         gl.buffer_data_size(
@@ -128,12 +202,11 @@ impl GlowRenderer {
         let default_data = ImageData::new(vec![255; 4], 1, 1);
         let default_image = Self::create_image(&gl, &default_data);
 
-        Self {
+        Ok(Self {
             gl,
             program,
             width: 0,
             height: 0,
-            stencil: 0,
             points: Vec::with_capacity(Self::MAX_CURVE_POINTS),
             bands: Vec::with_capacity(Self::MAX_BANDS),
             band_data: Vec::with_capacity(Self::MAX_BAND_DATA),
@@ -144,10 +217,12 @@ impl GlowRenderer {
             instance_buffer,
             vertex_array,
             images: HashMap::new(),
+            masks: Vec::new(),
+            mask: None,
             default_image,
             active_image: None,
             scratch_curve: Curve::new(),
-        }
+        })
     }
 
     /// # Safety
@@ -159,27 +234,19 @@ impl GlowRenderer {
         width: u32,
         height: u32,
         scale_factor: f32,
-    ) {
+    ) -> Result<(), GlError> {
         self.idle();
+
+        if self.width != width || self.height != height {
+            self.clear_masks();
+        }
 
         self.width = width;
         self.height = height;
-
-        self.stencil = 0;
-
-        self.gl.enable(glow::STENCIL_TEST);
-        self.gl.enable(glow::DEPTH_TEST);
+        self.mask = None;
 
         self.gl.clear_color(color.r, color.g, color.b, color.a);
-        self.gl.clear_stencil(self.stencil);
-        self.gl.stencil_mask(0xFF);
-
         self.gl.clear(glow::COLOR_BUFFER_BIT);
-        self.gl.clear(glow::STENCIL_BUFFER_BIT);
-
-        self.gl.stencil_op(glow::KEEP, glow::KEEP, glow::INCR);
-        self.gl.stencil_func(glow::LEQUAL, self.stencil, 0xFF);
-        self.gl.stencil_mask(0x00);
 
         self.gl.viewport(0, 0, width as i32, height as i32);
 
@@ -197,10 +264,19 @@ impl GlowRenderer {
         };
 
         for primitive in canvas.primitives() {
-            self.draw_primitive(primitive, transform).unwrap();
+            self.draw_primitive(primitive, transform)?;
         }
 
         self.dispatch();
+
+        Ok(())
+    }
+
+    unsafe fn clear_masks(&mut self) {
+        for mask in self.masks.drain(..) {
+            self.gl.delete_texture(mask.texture);
+            self.gl.delete_framebuffer(mask.framebuffer);
+        }
     }
 
     unsafe fn create_image(gl: &glow::Context, data: &ImageData) -> glow::Texture {
@@ -284,10 +360,11 @@ impl GlowRenderer {
         });
     }
 
-    unsafe fn create_shader_program(gl: &glow::Context) -> Result<glow::Program, GlError> {
-        let vert = include_str!("opengl.vert");
-        let frag = include_str!("opengl.frag");
-
+    unsafe fn create_program(
+        gl: &glow::Context,
+        vert: &str,
+        frag: &str,
+    ) -> Result<glow::Program, GlError> {
         let program = gl.create_program()?;
 
         let vertex = gl.create_shader(glow::VERTEX_SHADER)?;
@@ -355,50 +432,52 @@ impl GlowRenderer {
             } => {
                 if let Some(mask) = mask {
                     self.dispatch();
-                    self.stencil += 1;
-                    self.gl.stencil_mask(0xFF);
+
+                    let index = self.mask.map_or(0, |m| m + 1);
+
+                    if index >= self.masks.len() {
+                        let mask = Mask::new(&self.gl, self.width, self.height);
+                        self.masks.push(mask);
+                    }
+
+                    let gpu_mask = &self.masks[index];
+                    (self.gl).bind_framebuffer(glow::FRAMEBUFFER, Some(gpu_mask.framebuffer));
+                    self.gl.clear_color(0.0, 0.0, 0.0, 0.0);
+                    self.gl.clear(glow::COLOR_BUFFER_BIT);
+
+                    self.gl.disable(glow::BLEND);
 
                     self.fill_curve(
                         &mask.curve,
                         &mask.fill,
                         &Paint {
-                            shader: Shader::Solid(Color::TRANSPARENT),
-                            blend: BlendMode::Destination,
-                            anti_alias: AntiAlias::None,
+                            shader: Shader::Solid(Color::WHITE),
+                            anti_alias: AntiAlias::Fast,
+                            ..Default::default()
                         },
                         transform,
                     )?;
 
                     self.dispatch();
-                    self.gl.stencil_mask(0x00);
-                    self.gl.stencil_func(glow::LEQUAL, self.stencil, 0xFF);
+
+                    self.gl.bind_framebuffer(glow::FRAMEBUFFER, None);
+                    self.gl.enable(glow::BLEND);
+
+                    self.mask = Some(index);
                 }
 
                 for primitive in primitives.iter() {
                     self.draw_primitive(primitive, transform * *layer_transform)?;
                 }
 
-                if let Some(mask) = mask {
+                if mask.is_some() {
                     self.dispatch();
-                    self.gl.stencil_op(glow::KEEP, glow::KEEP, glow::DECR);
-                    self.gl.stencil_mask(0xFF);
 
-                    self.fill_curve(
-                        &mask.curve,
-                        &mask.fill,
-                        &Paint {
-                            shader: Shader::Solid(Color::TRANSPARENT),
-                            blend: BlendMode::Destination,
-                            anti_alias: AntiAlias::None,
-                        },
-                        transform,
-                    )?;
-
-                    self.dispatch();
-                    self.stencil -= 1;
-                    self.gl.stencil_mask(0x00);
-                    self.gl.stencil_op(glow::KEEP, glow::KEEP, glow::INCR);
-                    self.gl.stencil_func(glow::LEQUAL, self.stencil, 0xFF);
+                    match self.mask {
+                        Some(0) => self.mask = None,
+                        Some(mask) => self.mask = Some(mask - 1),
+                        None => unreachable!(),
+                    }
                 }
             }
         }
@@ -447,12 +526,22 @@ impl GlowRenderer {
         self.gl.bind_buffer(glow::UNIFORM_BUFFER, None);
 
         let texture = self.active_image.unwrap_or(self.default_image);
+        let mask = match self.mask {
+            Some(mask) => self.masks[mask].texture,
+            None => self.default_image,
+        };
 
         self.gl.active_texture(glow::TEXTURE0);
         self.gl.bind_texture(glow::TEXTURE_2D, Some(texture));
 
+        self.gl.active_texture(glow::TEXTURE1);
+        self.gl.bind_texture(glow::TEXTURE_2D, Some(mask));
+
         let location = self.gl.get_uniform_location(self.program, "image");
         self.gl.uniform_1_i32(location.as_ref(), 0);
+
+        let location = self.gl.get_uniform_location(self.program, "mask");
+        self.gl.uniform_1_i32(location.as_ref(), 1);
 
         self.gl.use_program(Some(self.program));
 

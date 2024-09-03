@@ -91,8 +91,6 @@ impl EglContext {
             8,
             EGL_ALPHA_SIZE,
             8,
-            EGL_STENCIL_SIZE,
-            8,
             EGL_NONE,
         ];
 

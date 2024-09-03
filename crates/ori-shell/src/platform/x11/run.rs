@@ -617,6 +617,7 @@ impl<T> X11App<T> {
                 let name = std::ffi::CString::new(name).unwrap();
                 *LIB_GL.get(name.as_bytes_with_nul()).unwrap()
             })
+            .unwrap()
         };
 
         let x11_window = X11Window {
@@ -672,13 +673,16 @@ impl<T> X11App<T> {
                 unsafe {
                     window.egl_surface.make_current()?;
 
-                    window.renderer.render(
-                        state.canvas,
-                        state.clear_color,
-                        window.physical_width,
-                        window.physical_height,
-                        window.scale_factor,
-                    );
+                    window
+                        .renderer
+                        .render(
+                            state.canvas,
+                            state.clear_color,
+                            window.physical_width,
+                            window.physical_height,
+                            window.scale_factor,
+                        )
+                        .unwrap();
 
                     window.egl_surface.swap_buffers()?;
                 }

@@ -1,4 +1,4 @@
-use std::{mem, num::NonZero, sync::Arc, time::Duration};
+use std::{ffi, mem, num::NonZero, sync::Arc, time::Duration};
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
@@ -469,13 +469,15 @@ fn render_windows<T>(
             egl_surface.make_current()?;
 
             unsafe {
-                renderer.render(
-                    draw_state.canvas,
-                    draw_state.clear_color,
-                    window.physical_width,
-                    window.physical_height,
-                    window.scale_factor,
-                );
+                renderer
+                    .render(
+                        draw_state.canvas,
+                        draw_state.clear_color,
+                        window.physical_width,
+                        window.physical_height,
+                        window.scale_factor,
+                    )
+                    .unwrap();
             }
 
             egl_surface.swap_buffers()?;
@@ -950,14 +952,20 @@ impl WindowHandler for State {
                     window.physical_height as i32,
                 )
                 .unwrap();
-                let egl_surface =
-                    EglSurface::new(&self.egl_context, wl_egl_surface.ptr() as _).unwrap();
+
+                let wl_egl_ptr = wl_egl_surface.ptr() as *mut _;
+                let egl_surface = EglSurface::new(&self.egl_context, wl_egl_ptr).unwrap();
 
                 egl_surface.make_current().unwrap();
                 egl_surface.swap_interval(1).unwrap();
 
-                let renderer =
-                    unsafe { GlowRenderer::new(|symbol| *LIB_GL.get(symbol.as_bytes()).unwrap()) };
+                let renderer = unsafe {
+                    GlowRenderer::new(|symbol| {
+                        let symbol = ffi::CString::new(symbol).unwrap();
+                        *LIB_GL.get(symbol.as_bytes_with_nul()).unwrap()
+                    })
+                    .unwrap()
+                };
 
                 window.wl_egl_surface = Some(wl_egl_surface);
                 window.egl_surface = Some(egl_surface);

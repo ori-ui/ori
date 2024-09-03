@@ -11,6 +11,7 @@ layout(location = 7) in vec3 image_offset_opacity;
 
 flat out uint v_flags;
 flat out uint v_band_index;
+out vec2 v_uv;
 out vec2 v_vertex;
 out vec4 v_bounds;
 out vec4 v_color;
@@ -40,8 +41,8 @@ void main() {
     v_image_transform = inverse(mat2(image_transform.xy, image_transform.zw));
     v_image_offset_opacity = image_offset_opacity;
 
-    gl_Position = vec4(
-        transform * v_vertex + translation,
-        0.0, 1.0
-    );
+    vec2 clip = transform * v_vertex + translation;
+    v_uv = clip * 0.5 + 0.5;
+
+    gl_Position = vec4(clip, 0.0, 1.0);
 }

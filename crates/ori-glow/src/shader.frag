@@ -2,6 +2,7 @@
 
 flat in uint v_flags;
 flat in uint v_band_index;
+in vec2 v_uv;
 in vec2 v_vertex;
 in vec4 v_bounds;
 in vec4 v_color;
@@ -31,6 +32,7 @@ uniform Uniforms {
 };
 
 uniform sampler2D image;
+uniform sampler2D mask;
 
 const uint VERB_MOVE = 0u;
 const uint VERB_LINE = 1u;
@@ -94,7 +96,7 @@ vec3 cube_roots(float a, float b, float c, float d) {
     float discr = 4.0 * dd * db - dc * dc;
     float de = -2.0 * B * dd + dc;
 
-    /*
+    /* this is technically correct, but results seem to be better without it
     if (abs(discr) < 1e-8) {
         float t1 = sqrt(-dd) * sign(de);
         return vec3(t1 - B, -2.0 * t1 - B, NONE);
@@ -502,6 +504,9 @@ mat2 rotate(float angle) {
 }
 
 void main() {
+    float mask = texture(mask, v_uv).r;
+    if (mask == 0.0) discard;
+
     float aa_radius = 0.6;
     uint aa_samples = (v_flags & AA_SAMPLES_MASK) >> 8u; 
 
@@ -532,12 +537,12 @@ void main() {
         alpha = float(is_inside(v));
     }
 
-    if (alpha < 0.01) discard;
+    if (alpha == 0.0) discard;
 
     vec2 image_size = vec2(textureSize(image, 0));
     vec2 image_uv = v_image_transform * (v_vertex + v_image_offset_opacity.xy);
     vec4 color = texture(image, image_uv / image_size);
     color *= v_image_offset_opacity.z;
 
-    f_color = v_color * v_color.a * color * alpha;
+    f_color = v_color * v_color.a * color * alpha * mask;
 }

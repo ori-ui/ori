@@ -240,30 +240,16 @@ fn handle_app_request<T>(
 
                         configure.new_size = (Some(width), Some(height));
 
+                        if !window.resizable {
+                            window.physical_width = physical_width;
+                            window.physical_height = physical_height;
+                        }
+
                         if let Some(event) = window.resize() {
                             state.events.push(event);
                         }
                     } else {
-                        // FIXME: this is pretty much a warcrime
-
-                        window.physical_width = physical_width;
-                        window.physical_height = physical_height;
-                        window.needs_redraw = true;
-
-                        set_resizable(window, window.resizable);
-
-                        let egl_surface = window.egl_surface.as_ref().unwrap();
-                        let wl_egl_surface = window.wl_egl_surface.as_ref().unwrap();
-
-                        egl_surface.make_current().unwrap();
-                        wl_egl_surface.resize(physical_width as i32, physical_height as i32, 0, 0);
-                        window.xdg_window.xdg_surface().set_window_geometry(
-                            0,
-                            0,
-                            physical_width as i32,
-                            physical_height as i32,
-                        );
-                        window.xdg_window.commit();
+                        warn!("No last configure event for window {}", id);
                     }
                 }
                 WindowUpdate::Scale(scale) => {
@@ -765,8 +751,13 @@ impl WindowState {
                     height.unwrap_or(NonZero::new(current_height).unwrap_or(one)),
                 );
 
-                let width = width.unwrap_or(one);
-                let height = height.unwrap_or(one);
+                let mut width = width.unwrap_or(one);
+                let mut height = height.unwrap_or(one);
+
+                if !self.resizable {
+                    width = NonZero::new(self.physical_width).unwrap();
+                    height = NonZero::new(self.physical_height).unwrap();
+                }
 
                 frame.resize(width, height);
 
@@ -777,6 +768,8 @@ impl WindowState {
                 self.needs_redraw = true;
 
                 let (outer_width, outer_height) = frame.add_borders(width.get(), height.get());
+
+                set_resizable(self, self.resizable);
 
                 let egl_surface = self.egl_surface.as_ref().unwrap();
                 let wl_egl_surface = self.wl_egl_surface.as_ref().unwrap();
@@ -804,12 +797,19 @@ impl WindowState {
                     frame.set_hidden(true);
                 }
 
-                let width = width.map_or(self.physical_width, |w| w.get());
-                let height = height.map_or(self.physical_height, |h| h.get());
+                let mut width = width.map_or(self.physical_width, |w| w.get());
+                let mut height = height.map_or(self.physical_height, |h| h.get());
+
+                if !self.resizable {
+                    width = self.physical_width;
+                    height = self.physical_height;
+                }
 
                 self.physical_width = width;
                 self.physical_height = height;
                 self.needs_redraw = true;
+
+                set_resizable(self, self.resizable);
 
                 let egl_surface = self.egl_surface.as_ref().unwrap();
                 let wl_egl_surface = self.wl_egl_surface.as_ref().unwrap();
@@ -966,6 +966,8 @@ impl WindowHandler for State {
                     })
                     .unwrap()
                 };
+
+                set_resizable(window, window.resizable);
 
                 window.wl_egl_surface = Some(wl_egl_surface);
                 window.egl_surface = Some(egl_surface);

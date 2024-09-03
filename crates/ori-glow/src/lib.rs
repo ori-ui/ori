@@ -531,6 +531,8 @@ impl GlowRenderer {
             None => self.default_image,
         };
 
+        self.gl.use_program(Some(self.program));
+
         self.gl.active_texture(glow::TEXTURE0);
         self.gl.bind_texture(glow::TEXTURE_2D, Some(texture));
 
@@ -542,8 +544,6 @@ impl GlowRenderer {
 
         let location = self.gl.get_uniform_location(self.program, "mask");
         self.gl.uniform_1_i32(location.as_ref(), 1);
-
-        self.gl.use_program(Some(self.program));
 
         (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 0, Some(self.point_buffer));
         (self.gl).bind_buffer_base(glow::UNIFORM_BUFFER, 1, Some(self.band_buffer));

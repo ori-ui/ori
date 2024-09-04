@@ -54,7 +54,7 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a font to the application.
-    pub fn font(mut self, font: impl Into<FontSource>) -> Self {
+    pub fn font<'a>(mut self, font: impl Into<FontSource<'a>>) -> Self {
         if let Err(err) = self.fonts.load_font(font) {
             eprintln!("Failed to load font: {}", err);
         }

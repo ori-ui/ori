@@ -8,13 +8,9 @@ use ori_core::{
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
     view::View,
 };
-use ori_macro::Build;
+use ori_macro::{include_font, Build};
 
 use crate::{IconCode, IconFont};
-
-const REGULAR: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Regular-400.otf");
-const SOLID: &[u8] = include_bytes!("../font/Font Awesome 6 Free-Solid-900.otf");
-const BRAND: &[u8] = include_bytes!("../font/Font Awesome 6 Brands-Regular-400.otf");
 
 /// Create a new [`Icon`].
 pub fn icon(icon: impl Into<IconCode>) -> Icon {
@@ -77,9 +73,7 @@ impl Icon {
 
         // ensure that all the fonts are loaded
         if !cx.contains_context::<FontsLoaded>() {
-            cx.fonts().load_font(REGULAR).unwrap();
-            cx.fonts().load_font(SOLID).unwrap();
-            cx.fonts().load_font(BRAND).unwrap();
+            cx.fonts().load_font(include_font!("font")).unwrap();
 
             cx.insert_context(FontsLoaded);
         }

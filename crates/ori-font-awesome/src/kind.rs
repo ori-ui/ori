@@ -27,7 +27,7 @@ impl IconFont {
             Self::Brand => "Font Awesome 6 Brands",
         };
 
-        FontFamily::Name(String::from(name))
+        FontFamily::from(name)
     }
 
     /// Get the font weight for the icon font.

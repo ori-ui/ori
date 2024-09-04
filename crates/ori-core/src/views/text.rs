@@ -247,7 +247,7 @@ impl<T> View<T> for Text {
 
 impl From<fmt::Arguments<'_>> for Text {
     fn from(args: fmt::Arguments<'_>) -> Text {
-        let mut w = smol_str::Writer::new();
+        let mut w = smol_str::SmolStrBuilder::new();
         let _ = w.write_fmt(args);
         Text::new(w)
     }

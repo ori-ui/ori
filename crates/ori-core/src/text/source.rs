@@ -1,50 +1,49 @@
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 pub use ori_macro::include_font;
 
 /// A source for a font.
 #[derive(Clone, Debug)]
-pub enum FontSource {
+pub enum FontSource<'a> {
     /// A font loaded from data.
-    Data(Vec<u8>),
+    Data(Cow<'a, [u8]>),
+
     /// A font loaded from a file.
-    Path(PathBuf),
+    Path(Cow<'a, Path>),
+
     /// A collection of fonts.
-    Set(Vec<FontSource>),
+    Bundle(Cow<'a, [u8]>),
 }
 
-impl From<Vec<u8>> for FontSource {
+impl From<Vec<u8>> for FontSource<'_> {
     fn from(data: Vec<u8>) -> Self {
-        Self::Data(data)
+        Self::Data(Cow::Owned(data))
     }
 }
 
-impl From<&[u8]> for FontSource {
-    fn from(data: &[u8]) -> Self {
-        Self::Data(data.to_vec())
+impl<'a> From<&'a [u8]> for FontSource<'a> {
+    fn from(data: &'a [u8]) -> Self {
+        Self::Data(Cow::Borrowed(data))
     }
 }
 
-impl From<&str> for FontSource {
-    fn from(data: &str) -> Self {
-        Self::Data(data.as_bytes().to_vec())
+impl<'a> From<&'a str> for FontSource<'a> {
+    fn from(data: &'a str) -> Self {
+        Self::Path(Cow::Borrowed(Path::new(data)))
     }
 }
 
-impl From<&Path> for FontSource {
-    fn from(path: &Path) -> Self {
-        Self::Path(path.to_path_buf())
+impl<'a> From<&'a Path> for FontSource<'a> {
+    fn from(path: &'a Path) -> Self {
+        Self::Path(Cow::Borrowed(path))
     }
 }
 
-impl From<PathBuf> for FontSource {
+impl From<PathBuf> for FontSource<'_> {
     fn from(path: PathBuf) -> Self {
-        Self::Path(path)
-    }
-}
-
-impl From<Vec<FontSource>> for FontSource {
-    fn from(sources: Vec<FontSource>) -> Self {
-        Self::Set(sources)
+        Self::Path(Cow::Owned(path))
     }
 }

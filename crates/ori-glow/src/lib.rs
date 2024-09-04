@@ -535,12 +535,16 @@ impl GlowRenderer {
         if point_buffer_height > self.point_buffer_height {
             let height = point_buffer_height;
 
+            self.gl.delete_texture(self.point_buffer);
+
             self.point_buffer_height = height;
             self.point_buffer = Self::create_point_buffer(&self.gl, height as u32);
         }
 
         if band_buffer_height > self.band_buffer_height {
             let height = band_buffer_height;
+
+            self.gl.delete_texture(self.band_buffer);
 
             self.band_buffer_height = height;
             self.band_buffer = Self::create_band_buffer(&self.gl, height as u32);

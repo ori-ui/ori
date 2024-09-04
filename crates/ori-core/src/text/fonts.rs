@@ -1,8 +1,7 @@
 use std::{collections::HashMap, hash::BuildHasherDefault, io, sync::Arc};
 
 use cosmic_text::{Buffer, CacheKey, Command, FontSystem, SwashCache};
-
-const EMBEDDED_FONTS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/fonts.bin"));
+use ori_macro::include_font;
 
 use crate::{
     canvas::{AntiAlias, Canvas, Curve, FillRule, Paint},
@@ -37,53 +36,46 @@ impl Default for Fonts {
 impl Fonts {
     /// Creates a new font context.
     pub fn new() -> Self {
-        let swash_cache = SwashCache::new();
+        let mut fonts = Self {
+            swash_cache: SwashCache::new(),
+            font_system: FontSystem::new(),
+            glyph_cache: HashMap::default(),
+        };
 
-        let fonts = decompress_embedded_fonts();
-        let mut font_system = FontSystem::new_with_fonts(fonts);
-        let db = font_system.db_mut();
+        fonts.load_font(include_font!("font")).unwrap();
 
+        let db = fonts.font_system.db_mut();
         db.set_serif_family("Roboto");
         db.set_sans_serif_family("Roboto");
         db.set_monospace_family("Roboto Mono");
         db.set_cursive_family("Roboto");
         db.set_fantasy_family("Roboto");
 
-        Self {
-            swash_cache,
-            font_system,
-            glyph_cache: HashMap::default(),
-        }
+        fonts
     }
 
     /// Loads a font from a [`FontSource`].
     ///
     /// This will usually either be a path to a font file or the font data itself, but can also
     /// be a [`Vec<FontSource>`] to load multiple fonts at once.
-    pub fn load_font(&mut self, source: impl Into<FontSource>) -> Result<(), io::Error> {
+    pub fn load_font<'a>(&mut self, source: impl Into<FontSource<'a>>) -> Result<(), io::Error> {
         match source.into() {
             FontSource::Data(data) => {
-                self.font_system.db_mut().load_font_data(data);
+                self.font_system.db_mut().load_font_data(data.to_vec());
             }
             FontSource::Path(path) => {
                 self.font_system.db_mut().load_font_file(path)?;
             }
-            FontSource::Set(sources) => {
-                for source in sources {
-                    self.load_font(source)?;
+            FontSource::Bundle(data) => {
+                let fonts = decompress_font_bundle(data.as_ref());
+
+                for font in fonts {
+                    self.font_system.db_mut().load_font_source(font);
                 }
             }
         }
 
         Ok(())
-    }
-
-    /// Loads the system fonts.
-    ///
-    /// This is a platform-specific operation, for more information see the
-    /// documentation for [`fontdb::Database::load_system_fonts`](cosmic_text::fontdb::Database::load_system_fonts).
-    pub fn load_system_fonts(&mut self) {
-        self.font_system.db_mut().load_system_fonts();
     }
 
     /// Calculates the size of a text buffer.
@@ -180,10 +172,10 @@ impl Fonts {
     }
 }
 
-fn decompress_embedded_fonts() -> Vec<cosmic_text::fontdb::Source> {
+fn decompress_font_bundle(bytes: &[u8]) -> Vec<cosmic_text::fontdb::Source> {
     let mut fonts = Vec::new();
 
-    let data = miniz_oxide::inflate::decompress_to_vec(EMBEDDED_FONTS).unwrap();
+    let data = miniz_oxide::inflate::decompress_to_vec(bytes).unwrap();
     let mut i = data.as_slice();
 
     let num_fonts = u32::from_le_bytes([i[0], i[1], i[2], i[3]]) as usize;

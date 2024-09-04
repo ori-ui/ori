@@ -1,10 +1,11 @@
 use cosmic_text::fontdb;
+use smol_str::SmolStr;
 
 /// A font family, by default [`FontFamily::SansSerif`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FontFamily {
     /// A font family by name, e.g. "Arial".
-    Name(String),
+    Name(SmolStr),
 
     /// A serif font family.
     Serif,
@@ -30,8 +31,7 @@ impl FontFamily {
             Self::Name(name) => fontdb::Family::Name(name),
             Self::Serif => fontdb::Family::Serif,
             Self::SansSerif => fontdb::Family::SansSerif,
-            // FIXME: this is a hack because performance is in the shitter otherwise.
-            Self::Monospace => fontdb::Family::Name("Roboto Mono"),
+            Self::Monospace => fontdb::Family::Monospace,
             Self::Cursive => fontdb::Family::Cursive,
             Self::Fantasy => fontdb::Family::Fantasy,
         }
@@ -40,12 +40,18 @@ impl FontFamily {
 
 impl From<&str> for FontFamily {
     fn from(name: &str) -> Self {
-        Self::Name(name.to_owned())
+        Self::Name(SmolStr::new(name))
     }
 }
 
 impl From<String> for FontFamily {
     fn from(name: String) -> Self {
+        Self::Name(SmolStr::new(name))
+    }
+}
+
+impl From<SmolStr> for FontFamily {
+    fn from(name: SmolStr) -> Self {
         Self::Name(name)
     }
 }

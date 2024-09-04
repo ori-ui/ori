@@ -10,6 +10,7 @@ proc-macro = true
 
 [dependencies]
 manyhow = "0.11"
+miniz_oxide = "0.8"
 proc-macro2 = "1.0"
 proc-macro-crate = "3.0"
 quote = "1.0"

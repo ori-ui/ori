@@ -44,7 +44,7 @@ pub struct WithState<T, S, V> {
     build: Box<dyn Fn() -> S>,
     #[allow(clippy::type_complexity)]
     view: Box<dyn FnMut(&mut T, &mut S) -> V>,
-    theme: Styles,
+    styles: Styles,
 }
 
 impl<T, S, V> WithState<T, S, V> {
@@ -56,7 +56,7 @@ impl<T, S, V> WithState<T, S, V> {
         Self {
             build: Box::new(build),
             view: Box::new(view),
-            theme: Styles::snapshot(),
+            styles: Styles::snapshot(),
         }
     }
 }
@@ -65,7 +65,7 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
     type State = (Pod<V>, U, State<(T, U), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let (mut view, mut state) = self.theme.as_context(|| {
+        let (mut view, mut state) = self.styles.as_context(|| {
             let mut state = (self.build)();
             let view = Pod::new((self.view)(data, &mut state));
             (view, state)
@@ -83,8 +83,8 @@ impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
         data: &mut T,
         _old: &Self,
     ) {
-        let mut new_view = self.theme.as_context(|| {
-            // we need apply the global theme here
+        let mut new_view = self.styles.as_context(|| {
+            // we need apply the styles here
             Pod::new((self.view)(data, data_state))
         });
 

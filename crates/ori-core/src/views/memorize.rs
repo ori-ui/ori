@@ -20,7 +20,7 @@ pub struct Memo<T, V, D> {
     data: Option<Box<dyn FnOnce(&mut T) -> D>>,
     #[allow(clippy::type_complexity)]
     build: Option<Box<dyn FnOnce(&mut T) -> V>>,
-    theme: Styles,
+    styles: Styles,
 }
 
 impl<T, V, D: PartialEq> Memo<T, V, D> {
@@ -32,16 +32,16 @@ impl<T, V, D: PartialEq> Memo<T, V, D> {
         Self {
             data: Some(Box::new(data)),
             build: Some(Box::new(build)),
-            theme: Styles::snapshot(),
+            styles: Styles::snapshot(),
         }
     }
 
     fn data(&mut self, data: &mut T) -> D {
-        (self.theme).as_context(|| (self.data.take().expect("Memo::data called twice"))(data))
+        (self.styles).as_context(|| (self.data.take().expect("Memo::data called twice"))(data))
     }
 
     fn build(&mut self, data: &mut T) -> V {
-        (self.theme).as_context(|| (self.build.take().expect("Memo::build called twice"))(data))
+        (self.styles).as_context(|| (self.build.take().expect("Memo::build called twice"))(data))
     }
 }
 

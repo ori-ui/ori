@@ -26,6 +26,8 @@ fn ui(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
+    ori::log::install().unwrap();
+
     let window = Window::new().title("Color Picker (examples/color_picker.rs)");
 
     let app = App::build().window(window, ui).style(Palette::light());

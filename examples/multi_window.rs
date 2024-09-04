@@ -107,6 +107,8 @@ impl Delegate<Data> for AppDelegate {
 }
 
 fn main() {
+    ori::log::install().unwrap();
+
     let window = Window::new().title("Multi Window (examples/multi_window.rs)");
 
     let app = App::build().window(window, ui).delegate(AppDelegate);

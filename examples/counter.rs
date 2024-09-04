@@ -40,6 +40,9 @@ fn ui(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
+    // We install the logger.
+    ori::log::install().unwrap();
+
     let window = Window::new().title("Counter (examples/counter.rs)");
 
     // We create a new app with our `ui` function and initial `Data` struct.

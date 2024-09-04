@@ -151,6 +151,8 @@ fn ui(data: &mut Data) -> impl View<Data> {
 }
 
 fn main() {
+    ori::log::install().unwrap();
+
     let window = Window::new().title("Bezier (examples/bezier.rs)");
 
     let app = App::build().window(window, ui).style(Palette::light());

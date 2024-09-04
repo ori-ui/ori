@@ -257,6 +257,8 @@ impl Delegate<Data> for AppDelegate {
 }
 
 fn main() {
+    ori::log::install().unwrap();
+
     let window = Window::new().title("Todos (examples/todos.rs)");
 
     let app = AppBuilder::new().window(window, ui).delegate(AppDelegate);

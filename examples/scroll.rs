@@ -33,6 +33,8 @@ fn ui() -> impl View {
 }
 
 fn main() {
+    ori::log::install().unwrap();
+
     let window = Window::new().title("Scroll (examples/scroll.rs)");
     ori::run_simple(window, ui).unwrap();
 }

@@ -11,14 +11,12 @@ fn ui(data: &mut Data) -> impl View<Data> {
     let button = button(text("Click me!")).fancy(4.0);
 
     let button = on_click(button, |cx, _| {
-        let proxy = cx.proxy();
-
-        cx.spawn_async(async move {
+        cx.cmd_async(async move {
             info!("Future started!");
 
             async_std::task::sleep(Duration::from_secs(1)).await;
 
-            proxy.cmd("Hello from the future!");
+            "Hello from the future!"
         });
     });
 
@@ -43,6 +41,8 @@ impl Delegate<Data> for AppDelegate {
 }
 
 fn main() {
+    ori::log::install().unwrap();
+
     let window = Window::new().title("Futures (examples/futures.rs)");
 
     let app = App::build().window(window, ui).delegate(AppDelegate);

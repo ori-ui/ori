@@ -21,7 +21,7 @@ pub mod font_awesome {
 }
 
 #[cfg(feature = "shell")]
-pub use ori_shell::{run, run_simple};
+pub use ori_shell::{install_logger, run, run_simple};
 
 pub use ori_core::log;
 

@@ -9,10 +9,10 @@ use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
 
 pub mod platform;
 
-/// Errors that can occur when using ori-shell.
+/// Errors that can occur when running an Ori application.
 #[non_exhaustive]
 #[derive(Debug)]
-pub enum Error {
+pub enum RunError {
     /// X11 error.
     #[cfg(x11_platform)]
     X11(platform::x11::X11Error),
@@ -26,65 +26,99 @@ pub enum Error {
 }
 
 #[cfg(x11_platform)]
-impl From<platform::x11::X11Error> for Error {
+impl From<platform::x11::X11Error> for RunError {
     fn from(err: platform::x11::X11Error) -> Self {
         Self::X11(err)
     }
 }
 
 #[cfg(wayland_platform)]
-impl From<platform::wayland::WaylandError> for Error {
+impl From<platform::wayland::WaylandError> for RunError {
     fn from(err: platform::wayland::WaylandError) -> Self {
         Self::Wayland(err)
     }
 }
 
-impl std::fmt::Display for Error {
+impl std::fmt::Display for RunError {
     #[allow(unused_variables, unreachable_patterns)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             #[cfg(x11_platform)]
-            Error::X11(err) => write!(f, "{}", err),
+            RunError::X11(err) => write!(f, "{}", err),
 
             #[cfg(wayland_platform)]
-            Error::Wayland(err) => write!(f, "{}", err),
+            RunError::Wayland(err) => write!(f, "{}", err),
 
-            Error::NoPlatform => write!(f, "no platform feature enabled"),
+            RunError::NoPlatform => write!(f, "no platform feature enabled"),
 
             _ => unreachable!(),
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for RunError {}
 
-/// Run an Ori application.
-#[allow(unused_variables, unreachable_code)]
-pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), Error> {
+/// Errors that can occur when installing the logger.
+#[derive(Debug)]
+pub enum LogError {
+    /// Error parsing the log filter.
+    FilterParseError(tracing_subscriber::filter::ParseError),
+
+    /// Error setting the global default subscriber.
+    SetGlobalError(tracing::subscriber::SetGlobalDefaultError),
+}
+
+impl From<tracing_subscriber::filter::ParseError> for LogError {
+    fn from(err: tracing_subscriber::filter::ParseError) -> Self {
+        Self::FilterParseError(err)
+    }
+}
+
+impl From<tracing::subscriber::SetGlobalDefaultError> for LogError {
+    fn from(err: tracing::subscriber::SetGlobalDefaultError) -> Self {
+        Self::SetGlobalError(err)
+    }
+}
+
+impl std::fmt::Display for LogError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LogError::FilterParseError(err) => write!(f, "{}", err),
+            LogError::SetGlobalError(err) => write!(f, "{}", err),
+        }
+    }
+}
+
+impl std::error::Error for LogError {}
+
+/// Install the default logger.
+///
+/// Logging in Ori is powered by the [`tracing`] crate. This function installs a logger with sane
+/// defaults, however for anything more advanced you should use the [`tracing_subscriber`] crate
+/// directly.
+pub fn install_logger() -> Result<(), LogError> {
     let mut filter = EnvFilter::default().add_directive(tracing::Level::DEBUG.into());
 
     if let Ok(env) = std::env::var("RUST_LOG") {
-        filter = filter.add_directive(env.parse().unwrap());
+        filter = filter.add_directive(env.parse()?);
     }
 
     let subscriber = tracing_subscriber::registry().with(filter);
 
     #[cfg(not(target_arch = "wasm32"))]
-    let subscriber = {
-        let fmt_layer = tracing_subscriber::fmt::Layer::default();
-        subscriber.with(fmt_layer)
-    };
+    let subscriber = subscriber.with(tracing_subscriber::fmt::Layer::default());
 
     #[cfg(target_arch = "wasm32")]
-    let subscriber = {
-        let wasm_layer = tracing_wasm::WASMLayer::new(Default::default());
-        subscriber.with(fmt_layer)
-    };
+    let subscriber = subscriber.with(tracing_wasm::WASMLayer::new(Default::default()));
 
-    if let Err(err) = tracing::subscriber::set_global_default(subscriber) {
-        eprintln!("Failed to set global default subscriber: {}", err);
-    }
+    tracing::subscriber::set_global_default(subscriber)?;
 
+    Ok(())
+}
+
+/// Run an Ori application.
+#[allow(unused_variables, unreachable_code)]
+pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), RunError> {
     #[cfg(wayland_platform)]
     if platform::wayland::is_available() {
         return Ok(platform::wayland::run(app, data)?);
@@ -96,14 +130,14 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), Error> {
     }
 
     #[allow(unreachable_code)]
-    Err(Error::NoPlatform)
+    Err(RunError::NoPlatform)
 }
 
 /// Run an Ori simple application.
 pub fn run_simple<V, P>(
     window: Window,
     ui: impl IntoUiBuilder<V, P, Data = ()>,
-) -> Result<(), Error> {
+) -> Result<(), RunError> {
     let app = AppBuilder::new().window(window, ui);
     run(app, &mut ())
 }

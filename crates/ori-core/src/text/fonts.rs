@@ -2,6 +2,7 @@ use std::{collections::HashMap, hash::BuildHasherDefault, io, sync::Arc};
 
 use cosmic_text::{Buffer, CacheKey, Command, FontSystem, SwashCache};
 use ori_macro::include_font;
+use tracing::debug;
 
 use crate::{
     canvas::{AntiAlias, Canvas, Curve, FillRule, Paint},
@@ -70,7 +71,15 @@ impl Fonts {
                 let fonts = decompress_font_bundle(data.as_ref());
 
                 for font in fonts {
-                    self.font_system.db_mut().load_font_source(font);
+                    let ids = self.font_system.db_mut().load_font_source(font);
+
+                    for id in ids {
+                        let face = self.font_system.db_mut().face(id).unwrap();
+
+                        for (family, _) in &face.families {
+                            debug!("Loaded font family: {}", family);
+                        }
+                    }
                 }
             }
         }

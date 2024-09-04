@@ -43,6 +43,12 @@ impl Fonts {
             glyph_cache: HashMap::default(),
         };
 
+        for font in fonts.font_system.db().faces() {
+            for (family, _) in &font.families {
+                debug!("Loaded font family: {}", family);
+            }
+        }
+
         fonts.load_font(include_font!("font")).unwrap();
 
         let db = fonts.font_system.db_mut();

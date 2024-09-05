@@ -309,7 +309,7 @@ impl Canvas {
     }
 
     /// Draw a canvas.
-    pub fn canvas(&mut self, canvas: Canvas) {
+    pub fn draw_canvas(&mut self, canvas: Canvas) {
         self.layer(Affine::IDENTITY, None, None, |ca| *ca = canvas);
     }
 

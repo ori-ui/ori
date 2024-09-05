@@ -169,6 +169,11 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         self.fill(curve, FillRule::NonZero, border_paint);
     }
 
+    /// Draw a canvas.
+    pub fn draw_canvas(&mut self, canvas: Canvas) {
+        self.canvas.draw_canvas(canvas);
+    }
+
     /// Draw an overlay, at `index`.
     pub fn overlay<T>(&mut self, index: i32, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
         self.canvas.overlay(index, |canvas| {

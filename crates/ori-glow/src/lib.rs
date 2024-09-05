@@ -659,7 +659,7 @@ impl GlowRenderer {
             band_count = count;
         }
 
-        let (image, image_transform, image_data) = match paint.shader {
+        let (image, image_transform, image_offset_opacity) = match paint.shader {
             Shader::Pattern(ref pattern) => {
                 let weak = pattern.image.downgrade();
 
@@ -714,7 +714,7 @@ impl GlowRenderer {
             flags,
             band_index,
             image_transform,
-            image_offset_opacity: image_data,
+            image_offset_opacity,
         };
 
         self.instances.push(instance);

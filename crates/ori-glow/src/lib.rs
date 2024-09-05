@@ -723,7 +723,7 @@ impl GlowRenderer {
     }
 
     unsafe fn push_bands(&mut self, curve: &Curve) -> (u32, u32) {
-        let count = curve.bounds().height() / 10.0;
+        let count = curve.bounds().height() / 5.0;
         let count = usize::clamp(count.ceil() as usize, 1, Self::MAX_BANDS - 1);
 
         self.bands.clear();

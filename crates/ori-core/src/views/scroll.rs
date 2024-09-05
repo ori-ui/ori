@@ -236,7 +236,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         content.translate(self.axis.pack(-state.scroll, 0.0));
 
         cx.trigger(cx.rect());
-        cx.mask(cx.rect(), |cx| {
+        cx.masked(cx.rect(), |cx| {
             self.content.draw(content, cx, data);
         });
 

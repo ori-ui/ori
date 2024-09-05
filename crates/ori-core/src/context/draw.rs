@@ -199,23 +199,12 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         })
     }
 
-    /// Draw a layer that does not affect the canvas.
-    pub fn void<T>(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
-        self.canvas.void(|canvas| {
-            let mut cx = DrawCx {
-                base: self.base,
-                view_state: self.view_state,
-                transform: self.transform,
-                canvas,
-                visible: Rect::ZERO,
-            };
-
-            f(&mut cx)
-        })
-    }
-
-    /// Draw a layer.
-    pub fn layer<T>(&mut self, transform: Affine, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
+    /// Draw a layer with a transform.
+    pub fn transformed<T>(
+        &mut self,
+        transform: Affine,
+        f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
+    ) -> T {
         let visible = self.visible.transform(transform.inverse());
 
         self.canvas.layer(transform, None, None, |canvas| {
@@ -232,21 +221,26 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     }
 
     /// Draw a layer with a translation.
-    pub fn translate<T>(
+    pub fn translated<T>(
         &mut self,
         translation: Vector,
         f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
     ) -> T {
-        self.layer(Affine::translate(translation), f)
+        self.transformed(Affine::translate(translation), f)
     }
 
     /// Draw a layer with a rotation.
-    pub fn rotate<T>(&mut self, angle: f32, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
-        self.layer(Affine::rotate(angle), f)
+    pub fn rotated<T>(&mut self, angle: f32, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
+        self.transformed(Affine::rotate(angle), f)
+    }
+
+    /// Draw a layer with a scale.
+    pub fn scaled<T>(&mut self, scale: Vector, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
+        self.transformed(Affine::scale(scale), f)
     }
 
     /// Draw a layer with a mask.
-    pub fn mask<T>(
+    pub fn masked<T>(
         &mut self,
         mask: impl Into<Mask>,
         f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,

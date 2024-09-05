@@ -369,7 +369,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         offset -= Vector::max(br_delta, Vector::ZERO);
 
         cx.overlay(0, |cx| {
-            cx.translate(Vector::from(state.position + offset), |cx| {
+            cx.translated(Vector::from(state.position + offset), |cx| {
                 cx.quad(
                     Rect::min_size(Point::ZERO, size),
                     self.background.fade(alpha),

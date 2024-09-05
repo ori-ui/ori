@@ -287,13 +287,13 @@ impl<T> View<T> for ColorPicker<T> {
 
         let image = state.image.get_or_insert_with(|| Self::wheel_image(l, a));
 
-        cx.translate(cx.rect().center() - cx.rect().top_left(), |cx| {
+        cx.translated(cx.rect().center() - cx.rect().top_left(), |cx| {
             cx.hoverable(|cx| {
                 // draw the sliders
                 let lightness_angle = -Self::SLIDER_HALF + l * Self::SLIDER_ARC;
                 let alpha_angle = Self::SLIDER_HALF - a * Self::SLIDER_ARC;
 
-                cx.rotate(lightness_angle, |cx| {
+                cx.rotated(lightness_angle, |cx| {
                     cx.quad(
                         Rect::center_size(
                             Point::new(-wheel_radius, 0.0),
@@ -306,7 +306,7 @@ impl<T> View<T> for ColorPicker<T> {
                     );
                 });
 
-                cx.rotate(alpha_angle, |cx| {
+                cx.rotated(alpha_angle, |cx| {
                     cx.quad(
                         Rect::center_size(
                             Point::new(wheel_radius, 0.0),

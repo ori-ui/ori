@@ -179,7 +179,7 @@ impl Fonts {
                     glyph.y + run.line_y + glyph.y_offset,
                 ) + offset;
 
-                canvas.transform(Affine::translate(offset), |canvas| {
+                canvas.transformed(Affine::translate(offset), |canvas| {
                     canvas.fill(curve.clone(), FillRule::NonZero, paint.clone());
                 });
             }

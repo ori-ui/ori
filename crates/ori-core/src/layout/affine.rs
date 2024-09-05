@@ -8,6 +8,7 @@ use super::{Matrix, Point, Vector};
 pub struct Affine {
     /// The translation of the affine transformation.
     pub translation: Vector,
+
     /// The matrix of the affine transformation.
     pub matrix: Matrix,
 }

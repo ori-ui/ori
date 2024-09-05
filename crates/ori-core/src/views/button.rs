@@ -248,7 +248,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
 
             let float = Vector::NEG_Y * (1.0 - active) * self.fancy;
 
-            cx.translate(float, |cx| {
+            cx.translated(float, |cx| {
                 cx.quad(
                     cx.rect(),
                     face,

@@ -69,42 +69,6 @@ pub trait View<T: ?Sized = ()> {
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T);
 }
 
-impl<T> View<T> for () {
-    type State = ();
-
-    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {}
-
-    fn rebuild(
-        &mut self,
-        _state: &mut Self::State,
-        _cx: &mut RebuildCx,
-        _data: &mut T,
-        _old: &Self,
-    ) {
-    }
-
-    fn event(
-        &mut self,
-        _state: &mut Self::State,
-        _cx: &mut EventCx,
-        _data: &mut T,
-        _event: &Event,
-    ) {
-    }
-
-    fn layout(
-        &mut self,
-        _state: &mut Self::State,
-        _cx: &mut LayoutCx,
-        _data: &mut T,
-        space: Space,
-    ) -> Size {
-        space.min
-    }
-
-    fn draw(&mut self, _state: &mut Self::State, _cx: &mut DrawCx, _data: &mut T) {}
-}
-
 impl<T, V: View<T>> View<T> for Option<V> {
     type State = Option<V::State>;
 

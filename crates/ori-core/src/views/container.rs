@@ -168,7 +168,7 @@ impl<T, V: View<T>> View<T> for Container<V> {
                 let mut mask = Curve::new();
                 mask.push_rect_with_radius(cx.rect(), self.border_radius);
 
-                cx.mask(Mask::new(mask, FillRule::NonZero), |cx| {
+                cx.masked(Mask::new(mask, FillRule::NonZero), |cx| {
                     self.content.draw(state, cx, data);
                 });
             }

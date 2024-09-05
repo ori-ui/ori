@@ -176,7 +176,7 @@ impl<V> Pod<V> {
         new_cx.view_state = view_state;
 
         // draw the content
-        new_cx.layer(new_cx.view_state.transform, |cx| {
+        new_cx.transformed(new_cx.view_state.transform, |cx| {
             f(cx);
         });
     }

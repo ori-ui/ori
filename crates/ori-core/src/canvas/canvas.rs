@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     image::Image,
-    layout::{Affine, Point, Rect},
+    layout::{Affine, Point, Rect, Vector},
     view::ViewId,
 };
 
@@ -262,7 +262,7 @@ impl Canvas {
     }
 
     /// Draw a rectangle.
-    pub fn rect(&mut self, rect: Rect, paint: Paint) {
+    pub fn rect(&mut self, rect: Rect, paint: impl Into<Paint>) {
         let curve = Curve::rect(rect);
         self.fill(curve.clone(), FillRule::NonZero, paint);
     }
@@ -297,13 +297,13 @@ impl Canvas {
     pub fn stroke(
         &mut self,
         curve: impl Into<Arc<Curve>>,
-        stroke: Stroke,
+        stroke: impl Into<Stroke>,
         paint: impl Into<Paint>,
     ) {
         let primitives = Arc::make_mut(&mut self.primitives);
         primitives.push(Primitive::Stroke {
             curve: curve.into(),
-            stroke,
+            stroke: stroke.into(),
             paint: paint.into(),
         });
     }
@@ -330,11 +330,6 @@ impl Canvas {
         primitives.extend(other);
 
         result
-    }
-
-    /// Draw a layer that does not affect the canvas.
-    pub fn void<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        f(&mut Canvas::new())
     }
 
     /// Draw a layer.
@@ -367,12 +362,27 @@ impl Canvas {
     }
 
     /// Draw a layer with a transformation.
-    pub fn transform<T>(&mut self, transform: Affine, f: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn transformed<T>(&mut self, transform: Affine, f: impl FnOnce(&mut Self) -> T) -> T {
         self.layer(transform, None, None, f)
     }
 
+    /// Draw a layer with a translation.
+    pub fn translated<T>(&mut self, translation: Vector, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.transformed(Affine::translate(translation), f)
+    }
+
+    /// Draw a layer with a rotation.
+    pub fn rotated<T>(&mut self, angle: f32, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.transformed(Affine::rotate(angle), f)
+    }
+
+    /// Draw a layer with a scale.
+    pub fn scaled<T>(&mut self, scale: Vector, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.transformed(Affine::scale(scale), f)
+    }
+
     /// Draw a layer with a mask.
-    pub fn mask<T>(&mut self, mask: Mask, f: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn masked<T>(&mut self, mask: Mask, f: impl FnOnce(&mut Self) -> T) -> T {
         self.layer(Affine::IDENTITY, Some(mask), None, f)
     }
 

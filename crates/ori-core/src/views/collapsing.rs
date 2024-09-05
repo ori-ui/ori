@@ -248,7 +248,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             * Affine::scale(Vector::all(self.icon_size))
             * Affine::rotate(PI / 2.0 * t);
 
-        cx.layer(transform, |cx| {
+        cx.transformed(transform, |cx| {
             cx.fill(icon(), FillRule::EvenOdd, self.icon_color);
         });
 
@@ -262,7 +262,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         let content_min = cx.rect().top_left() + content_offset;
         let content_rect = Rect::min_size(content_min, state.content.size());
 
-        cx.mask(content_rect, |cx| {
+        cx.masked(content_rect, |cx| {
             self.content.draw(&mut state.content, cx, data);
         });
     }

@@ -1199,6 +1199,15 @@ impl PointerHandler for State {
                 PointerEventKind::Enter { .. } => {
                     window.pointers.push(pointer.id());
                     window.set_cursor_icon = true;
+
+                    let (x, y) = event.position;
+                    let position = Point::new(x as f32, y as f32);
+
+                    self.events.push(Event::PointerMoved {
+                        id: window.id,
+                        object_id: pointer.id(),
+                        position,
+                    });
                 }
 
                 PointerEventKind::Leave { .. } => {

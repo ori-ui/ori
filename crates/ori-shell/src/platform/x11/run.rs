@@ -593,14 +593,17 @@ impl<T> X11App<T> {
 
         X11Window::set_title(win_id, &self.conn, &self.atoms, &window.title)?;
         X11Window::set_decorated(win_id, &self.conn, &self.atoms, window.decorated)?;
-        X11Window::set_resizable(win_id, &self.conn, &self.atoms, window.resizable)?;
-        X11Window::set_size_hints(
-            win_id,
-            &self.conn,
-            physical_width as i32,
-            physical_height as i32,
-            window.resizable,
-        )?;
+
+        if !window.resizable {
+            X11Window::set_resizable(win_id, &self.conn, &self.atoms, window.resizable)?;
+            X11Window::set_size_hints(
+                win_id,
+                &self.conn,
+                physical_width as i32,
+                physical_height as i32,
+                window.resizable,
+            )?;
+        }
 
         if let Some(ref icon) = window.icon {
             X11Window::set_icon(win_id, &self.conn, &self.atoms, icon)?;

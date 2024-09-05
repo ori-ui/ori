@@ -352,6 +352,22 @@ impl<T> View<T> for TextInput<T> {
             blink: 0.0,
         };
 
+        if let Some(ref text) = self.text {
+            let attrs = TextAttributes {
+                family: self.font_family.clone(),
+                stretch: self.font_stretch,
+                weight: self.font_weight,
+                style: self.font_style,
+            };
+
+            state.buffer_mut().set_text(
+                &mut cx.fonts().font_system,
+                text,
+                attrs.to_cosmic_text(),
+                Shaping::Advanced,
+            );
+        }
+
         self.set_attributes(cx.fonts(), &mut state);
 
         state

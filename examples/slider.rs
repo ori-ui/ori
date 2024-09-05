@@ -13,7 +13,10 @@ impl Data {
 fn ui(data: &mut Data) -> impl View<Data> {
     center(vstack![
         slider(data.font_size)
-            .on_input(|_, data: &mut Data, font_size| data.font_size = font_size)
+            .on_input(|cx, data: &mut Data, font_size| {
+                data.font_size = font_size;
+                cx.rebuild();
+            })
             .range(8.0..=32.0),
         text("Hello, World!").font_size(data.font_size),
     ])

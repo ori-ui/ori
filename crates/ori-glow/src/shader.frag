@@ -543,5 +543,8 @@ void main() {
     vec4 color = texture(image, image_uv / image_size);
     color *= v_image_offset_opacity.z;
 
-    f_color = v_color * v_color.a * color * alpha * mask;
+    f_color = v_color * color;
+    f_color.rgb *= f_color.a; // premultiply alpha
+    f_color *= alpha; // apply curve alpha
+    f_color *= mask; // apply mask alpha
 }

@@ -343,6 +343,36 @@ impl Curve {
         self.line_to(p1);
     }
 
+    fn push_line(
+        &mut self,
+        outside: &mut Self,
+        p0: Point,
+        p1: Point,
+        n0: Option<Vector>,
+        r: f32,
+        stroke: Stroke,
+        first: &mut Option<(Point, Vector)>,
+    ) -> (Point, Vector) {
+        let n1 = line_normal(p0, p1);
+
+        match n0 {
+            Some(n0) => {
+                self.stroke_join(p0, n0, n1, r, stroke.join, stroke.miter);
+                outside.stroke_join(p0, n0, n1, -r, stroke.join, stroke.miter);
+            }
+            None => {
+                self.move_to(p0 + n1 * r);
+                outside.move_to(p0 - n1 * r);
+                *first = Some((p0, n1));
+            }
+        }
+
+        self.offset_line(p0, p1, r);
+        outside.offset_line(p0, p1, -r);
+
+        (p1, n1)
+    }
+
     pub(super) fn stroke_impl(&mut self, curve: &Curve, stroke: Stroke) {
         if stroke.width <= 0.0 {
             return;
@@ -372,23 +402,7 @@ impl Curve {
                     first = None;
                 }
                 CurveSegment::Line(p1) => {
-                    let n1 = line_normal(p0, p1);
-
-                    match n0 {
-                        Some(n0) => {
-                            self.stroke_join(p0, n0, n1, r, stroke.join, stroke.miter);
-                            outside.stroke_join(p0, n0, n1, -r, stroke.join, stroke.miter);
-                        }
-                        None => {
-                            self.move_to(p0 + n1 * r);
-                            outside.move_to(p0 - n1 * r);
-                            first = Some((p0, n1));
-                        }
-                    }
-
-                    self.offset_line(p0, p1, r);
-                    outside.offset_line(p0, p1, -r);
-
+                    let (p1, n1) = self.push_line(&mut outside, p0, p1, n0, r, stroke, &mut first);
                     n0 = Some(n1);
                     p0 = p1;
                 }
@@ -435,9 +449,13 @@ impl Curve {
                     p0 = p3;
                 }
                 CurveSegment::Close => {
+                    let (pf, nf) = first.unwrap_or((p0, n0.unwrap()));
+                    let (p1, n1) = self.push_line(&mut outside, p0, pf, n0, r, stroke, &mut first);
+                    self.stroke_join(p1, n1, nf, r, stroke.join, stroke.miter);
+                    outside.stroke_join(p1, n1, nf, -r, stroke.join, stroke.miter);
+
                     self.close();
 
-                    let (pf, nf) = first.unwrap_or((p0, n0.unwrap()));
                     self.move_to(pf - nf * r);
                     self.append_reverse(&outside);
                     self.close();

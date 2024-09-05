@@ -1,0 +1,11 @@
+[package]
+name = "suspense"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ori = { path = "../..", features = ["image"] }
+reqwest = "0.12"
+tokio = { version = "1", features = ["full"] }

@@ -9,6 +9,8 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.libxkbcommon
     pkgs.xorg.libxcb
     pkgs.wayland
+    pkgs.openssl
+    pkgs.pkg-config
   ];
 
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";

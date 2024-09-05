@@ -141,9 +141,8 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         let contexts = &mut *self.base.contexts;
         let canvas = &mut *self.canvas;
 
-        contexts
-            .get_or_default::<Fonts>()
-            .draw_buffer(canvas, buffer, paint.into(), offset, scale);
+        let fonts = contexts.get_or_default::<Fonts>();
+        fonts.draw_buffer(canvas, buffer, paint.into(), offset, scale);
     }
 
     /// Draw a rectangle with rounded corners and a border.

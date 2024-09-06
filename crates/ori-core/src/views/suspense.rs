@@ -8,11 +8,11 @@ use crate::{
 };
 
 /// Create a new [`Suspense`] view.
-pub fn suspense<V, F>(fallback: V, future: F) -> Suspense<V, F>
+pub fn suspense<F>(future: F) -> Suspense<(), F>
 where
     F: Future + Send + 'static,
 {
-    Suspense::new(fallback, future)
+    Suspense::new(future)
 }
 
 /// A view that suspends rendering while a future is pending.
@@ -21,15 +21,25 @@ pub struct Suspense<V, F> {
     future: Option<F>,
 }
 
-impl<V, F> Suspense<V, F> {
+impl<F> Suspense<(), F> {
     /// Create a new [`Suspense`] view.
-    pub fn new(fallback: V, future: F) -> Self
+    pub fn new(future: F) -> Self
     where
         F: Future + Send + 'static,
     {
         Self {
-            fallback: Pod::new(fallback),
+            fallback: Pod::new(()),
             future: Some(future),
+        }
+    }
+}
+
+impl<F> Suspense<(), F> {
+    /// Set the fallback view to display while the future is pending.
+    pub fn fallback<V>(self, fallback: V) -> Suspense<V, F> {
+        Suspense {
+            fallback: Pod::new(fallback),
+            future: self.future,
         }
     }
 }

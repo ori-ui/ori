@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// Create a new [`Memo`].
-pub fn memo<T, V, D: PartialEq>(
+pub fn memo<T, V: View<T>, D: PartialEq>(
     data: impl FnOnce(&mut T) -> D + 'static,
     build: impl FnOnce(&mut T) -> V + 'static,
 ) -> Memo<T, V, D> {
@@ -23,7 +23,7 @@ pub struct Memo<T, V, D> {
     styles: Styles,
 }
 
-impl<T, V, D: PartialEq> Memo<T, V, D> {
+impl<T, V: View<T>, D: PartialEq> Memo<T, V, D> {
     /// Create a new [`Memo`].
     pub fn new(
         data: impl FnOnce(&mut T) -> D + 'static,

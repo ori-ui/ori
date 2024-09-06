@@ -11,37 +11,160 @@ use crate::{
 use super::focus;
 
 /// Create a new [`WithState`].
-pub fn with_state<T, S, V: View<(T, S)>>(
+///
+/// # Example
+/// ```rust
+/// # use ori_core::{view::View, views::{button, on_click, text, with_state}};
+/// struct Data {
+///     // ...
+/// }
+///
+/// fn ui() -> impl View<Data> {
+///     with_state(
+///         || 0,
+///         |_data, count| {
+///             on_click(
+///                 button(text!("Clicked {} time(s)", count)),
+///                 |cx, (_data, count)| {
+///                     *count += 1;
+///                     cx.rebuild();
+///                 },
+///             )
+///         }
+///     )
+/// }
+/// ```
+pub fn with_state<T, S, V>(
     build: impl Fn() -> S + 'static,
     view: impl FnMut(&mut T, &mut S) -> V + 'static,
-) -> WithState<T, S, V> {
+) -> WithState<T, S, V>
+where
+    V: View<(T, S)>,
+{
     WithState::new(build, view)
 }
 
 /// Create a new [`WithState`] using `S::default()`.
-pub fn with_state_default<T, S: Default + 'static, V: View<(T, S)>>(
+///
+/// # Example
+/// ```rust
+/// # use ori_core::{view::View, views::{button, on_click, text, with_state_default}};
+/// struct Data {
+///     // ...
+/// }
+///
+/// fn ui() -> impl View<Data> {
+///     with_state_default(
+///         |_data, count: &mut i32| {
+///             on_click(
+///                 button(text!("Clicked {} time(s)", count)),
+///                 |cx, (_data, count)| {
+///                     *count += 1;
+///                     cx.rebuild();
+///                 },
+///             )
+///         }
+///     )
+/// }
+/// ```
+pub fn with_state_default<T, S, V>(
     view: impl FnMut(&mut T, &mut S) -> V + 'static,
-) -> WithState<T, S, V> {
+) -> WithState<T, S, V>
+where
+    S: Default + 'static,
+    V: View<(T, S)>,
+{
     with_state(Default::default, view)
+}
+
+/// Create a new [`WithState`] that replaces the data with the state.
+///
+/// # Example
+/// ```rust
+/// # use ori_core::{view::View, views::{button, on_click, text, with_data}};
+/// struct Data {
+///     // ...
+/// }
+///
+/// fn ui() -> impl View<Data> {
+///     with_data(
+///         || 0,
+///         |count| {
+///             on_click(
+///                 button(text!("Clicked {} time(s)", count)),
+///                 |cx, count| {
+///                     *count += 1;
+///                     cx.rebuild();
+///                 },
+///             )
+///         }
+///     )
+/// }
+/// ```
+pub fn with_data<T, S, V>(
+    build: impl Fn() -> S + 'static,
+    mut view: impl FnMut(&mut S) -> V + 'static,
+) -> impl View<T>
+where
+    V: View<S>,
+{
+    with_state(build, move |_, state| without_data(view(state)))
+}
+
+/// Create a new [`WithState`] that replaces the data with the state using `S::default()`.
+///
+/// # Example
+/// ```rust
+/// # use ori_core::{view::View, views::{button, on_click, text, with_data_default}};
+/// struct Data {
+///     // ...
+/// }
+///
+/// fn ui() -> impl View<Data> {
+///     with_data_default(
+///         |count: &mut i32| {
+///             on_click(
+///                 button(text!("Clicked {} time(s)", count)),
+///                 |cx, count| {
+///                     *count += 1;
+///                     cx.rebuild();
+///                 },
+///             )
+///         }
+///     )
+/// }
+/// ```
+pub fn with_data_default<T, S, V>(view: impl FnMut(&mut S) -> V + 'static) -> impl View<T>
+where
+    S: Default + 'static,
+    V: View<S>,
+{
+    with_data(Default::default, view)
 }
 
 /// Create a new view unwrapping some state from the data.
 ///
 /// This is equivalent to `focus(|(data, _state), lens| lens(data), view)`.
-pub fn without_state<T, S, V: View<T>>(view: V) -> impl View<(T, S)> {
+pub fn without_state<T, S, V>(view: V) -> impl View<(T, S)>
+where
+    V: View<T>,
+{
     focus(|(data, _state), lens| lens(data), view)
 }
 
 /// Create a new view unwrapping some data from the state.
 ///
 /// This is equivalent to `focus(|(_data, state), lens| lens(state), view)`.
-pub fn without_data<T, S, V: View<S>>(view: V) -> impl View<(T, S)> {
+pub fn without_data<T, S, V>(view: V) -> impl View<(T, S)>
+where
+    V: View<S>,
+{
     focus(|(_data, state), lens| lens(state), view)
 }
 
 /// A view that stores some additional data.
 pub struct WithState<T, S, V> {
-    build: Box<dyn Fn() -> S>,
+    build: Box<dyn FnMut() -> S>,
     #[allow(clippy::type_complexity)]
     view: Box<dyn FnMut(&mut T, &mut S) -> V>,
     styles: Styles,
@@ -50,7 +173,7 @@ pub struct WithState<T, S, V> {
 impl<T, S, V> WithState<T, S, V> {
     /// Create a new [`WithState`].
     pub fn new(
-        build: impl Fn() -> S + 'static,
+        build: impl FnMut() -> S + 'static,
         view: impl FnMut(&mut T, &mut S) -> V + 'static,
     ) -> Self {
         Self {

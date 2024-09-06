@@ -10,34 +10,33 @@ async fn load_image(url: &str) -> Result<Image, Box<dyn Error>> {
 }
 
 fn ui() -> impl View {
-    with_state(
+    with_data(
         || String::from(IMAGE_URL),
-        |_, state| {
-            let url = text_input().text(state.clone()).on_submit(
-                |cx, (_, state): &mut (_, String), text| {
-                    *state = text;
-                    cx.rebuild();
-                },
-            );
-            let url = container(pad(8.0, min_width(400.0, url)));
+        |url| {
+            let input = text_input().text(url.clone());
+            let input = input.on_submit(|cx, url, text| {
+                *url = text;
+                cx.rebuild();
+            });
+
+            let input = container(pad(8.0, min_width(400.0, input)));
 
             let image = memo(
-                |(_, state): &mut (_, String)| state.clone(),
-                |(_, state): &mut (_, String)| {
-                    suspense(text!("Loading..."), {
-                        let url = state.clone();
+                |url| String::clone(url),
+                |url| {
+                    let url = url.clone();
 
-                        async move {
-                            match load_image(&url).await {
-                                Ok(image) => Ok(image),
-                                Err(err) => Err(text!("Error: {}", err)),
-                            }
+                    suspense(async move {
+                        match load_image(&url).await {
+                            Ok(image) => Ok(image),
+                            Err(err) => Err(text!("Error: {}", err)),
                         }
                     })
+                    .fallback(text!("Loading..."))
                 },
             );
 
-            center(vstack![url, image])
+            center(vstack![input, image])
         },
     )
 }

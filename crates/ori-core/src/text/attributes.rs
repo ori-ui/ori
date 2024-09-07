@@ -33,7 +33,7 @@ impl FontFamily {
             Self::Name(name) => fontdb::Family::Name(name),
             Self::Serif => fontdb::Family::Serif,
             Self::SansSerif => fontdb::Family::SansSerif,
-            Self::Monospace => fontdb::Family::Monospace,
+            Self::Monospace => fontdb::Family::Name("Roboto Mono"),
             Self::Cursive => fontdb::Family::Cursive,
             Self::Fantasy => fontdb::Family::Fantasy,
         }

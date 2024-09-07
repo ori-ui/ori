@@ -4,7 +4,7 @@ const ATTRIBUTION: &str = "\"Peony flowers (1843)\" by Swallowtail Garden Seeds 
 
 fn ui() -> impl View {
     center(vstack![
-        flex(include_image!("examples/flowers.jpg")),
+        expand(include_image!("examples/flowers.jpg")),
         max_width(300.0, text(ATTRIBUTION)),
     ])
 }

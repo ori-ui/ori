@@ -3,7 +3,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     image::Image,
-    layout::{Affine, Size, Space},
+    layout::{Affine, Size, Space, Vector},
     view::View,
 };
 
@@ -39,11 +39,13 @@ impl<T> View<T> for Image {
     }
 
     fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+        let scale = Vector::from(cx.size() / self.size());
+
         cx.fill_rect(
             cx.rect(),
             Pattern {
                 image: self.clone(),
-                transform: Affine::IDENTITY,
+                transform: Affine::scale(scale),
                 opacity: 1.0,
             },
         );

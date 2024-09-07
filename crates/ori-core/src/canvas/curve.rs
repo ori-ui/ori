@@ -364,10 +364,14 @@ impl Curve {
                 tl + Vector::new(r * 0.45, 0.0),
                 tl + Vector::new(r, 0.0),
             );
-            self.line_to(tr + Vector::new(-r, 0.0));
 
-            self.line_to(tr + Vector::new(-r, e));
+            if e > 0.0 {
+                self.line_to(tr + Vector::new(-r, 0.0));
+                self.line_to(tr + Vector::new(-r, e));
+            }
+
             self.line_to(tl + Vector::new(r, e));
+
             self.cubic_to(
                 tl + Vector::new((r + s) * 0.45, e),
                 tl + Vector::new(s, (r + e) * 0.45),
@@ -386,10 +390,14 @@ impl Curve {
                 tr + Vector::new(0.0, r * 0.45),
                 tr + Vector::new(0.0, r),
             );
-            self.line_to(br + Vector::new(0.0, -r));
 
-            self.line_to(br + Vector::new(-e, -r));
+            if e > 0.0 {
+                self.line_to(br + Vector::new(0.0, -r));
+                self.line_to(br + Vector::new(-e, -r));
+            }
+
             self.line_to(tr + Vector::new(-e, r));
+
             self.cubic_to(
                 tr + Vector::new(-e, (r + s) * 0.45),
                 tr + Vector::new(-(r + e) * 0.45, s),
@@ -408,10 +416,14 @@ impl Curve {
                 br + Vector::new(-r * 0.45, 0.0),
                 br + Vector::new(-r, 0.0),
             );
-            self.line_to(bl + Vector::new(r, 0.0));
 
-            self.line_to(bl + Vector::new(r, -e));
+            if e > 0.0 {
+                self.line_to(bl + Vector::new(r, 0.0));
+                self.line_to(bl + Vector::new(r, -e));
+            }
+
             self.line_to(br + Vector::new(-r, -e));
+
             self.cubic_to(
                 br + Vector::new(-(r + s) * 0.45, -e),
                 br + Vector::new(-s, -(r + e) * 0.45),
@@ -430,10 +442,14 @@ impl Curve {
                 bl + Vector::new(0.0, -r * 0.45),
                 bl + Vector::new(0.0, -r),
             );
-            self.line_to(tl + Vector::new(0.0, r));
 
-            self.line_to(tl + Vector::new(e, r));
+            if e > 0.0 {
+                self.line_to(tl + Vector::new(0.0, r));
+                self.line_to(tl + Vector::new(e, r));
+            }
+
             self.line_to(bl + Vector::new(e, -r));
+
             self.cubic_to(
                 bl + Vector::new(e, -(r + s) * 0.45),
                 bl + Vector::new((r + e) * 0.45, -s),

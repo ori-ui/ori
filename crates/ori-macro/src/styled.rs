@@ -26,6 +26,7 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let style_name = syn::Ident::new(&format!("{}Style", name), name.span());
+    let style_name_snake = pascal_to_snake(&name.to_string());
     let style_fields = style_fields(name, &data.fields);
     let style_styled_fields = style_styled_fields(&data.fields);
     let style_rebuild_fields = style_rebuild_fields(&data.fields);
@@ -33,6 +34,7 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let style_doc = format!("The derived style for [`{}`].", name);
     let style_styled_doc = format!("The style of [`{}`].", name);
     let style_rebuild_doc = format!("Rebuild the style of [`{}`].", name);
+    let style_into_styles_fields = style_into_styles_fields(&data.fields);
 
     let expanded = quote! {
         #[doc = #style_doc]
@@ -76,6 +78,16 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
 
                 if draw {
                     cx.draw();
+                }
+            }
+        }
+
+        impl ::std::convert::From<#style_name> for #ori_core::style::Styles {
+            fn from(style: #style_name) -> Self {
+                #ori_core::style! {
+                    #style_name_snake {
+                        #(#style_into_styles_fields,)*
+                    },
                 }
             }
         }
@@ -208,14 +220,14 @@ fn style_get_field(field: &syn::Field, styled: &syn::Expr, styles: &syn::Expr) -
     match default {
         Some(default) => parse_quote! {
             #ori_core::style::Styled::get_or_else(
-                ::std::clone::Clone::clone(&#styled.#ident),
+                &#styled.#ident,
                 #styles,
                 || #default
             )
         },
         None => parse_quote! {
             #ori_core::style::Styled::get(
-                ::std::clone::Clone::clone(&#styled.#ident),
+                &#styled.#ident,
                 #styles
             ).expect(concat!("missing style for `", stringify!(#ident), "`"))
         },
@@ -253,4 +265,30 @@ fn get_styled(ty: &syn::Type) -> Option<syn::Type> {
         }
         _ => None,
     }
+}
+
+fn style_into_styles_fields(fields: &syn::Fields) -> impl Iterator<Item = TokenStream> + '_ {
+    fields.iter().filter_map(move |field| {
+        let ident = field.ident.as_ref().unwrap();
+        let name = ident.to_string();
+        let _ = get_styled(&field.ty)?;
+
+        Some(quote! {
+            #name: style.#ident.clone()
+        })
+    })
+}
+
+fn pascal_to_snake(name: &str) -> String {
+    let mut snake = String::new();
+
+    for (i, c) in name.chars().enumerate() {
+        if c.is_uppercase() && i > 0 {
+            snake.push('_');
+        }
+
+        snake.push(c.to_ascii_lowercase());
+    }
+
+    snake
 }

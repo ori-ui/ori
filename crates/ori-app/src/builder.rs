@@ -40,7 +40,7 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a style to the application.
-    pub fn style(mut self, styles: Styles) -> Self {
+    pub fn style(mut self, styles: impl Into<Styles>) -> Self {
         self.styles.extend(styles);
         self
     }

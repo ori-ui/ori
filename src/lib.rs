@@ -58,7 +58,7 @@ pub mod prelude {
         log::{debug, error, info, trace, warn},
         rebuild::Rebuild,
         style,
-        style::{key, Styled, Styles, Theme},
+        style::{comp, key, val, Styled, Styles, Theme},
         text::{
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
             TextAlign, TextBuffer, TextWrap,

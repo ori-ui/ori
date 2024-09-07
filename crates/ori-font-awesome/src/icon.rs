@@ -3,7 +3,6 @@ use ori_core::{
     context::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    rebuild::Rebuild,
     style::{key, Styled},
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
     view::View,
@@ -21,16 +20,14 @@ pub fn icon(icon: impl Into<IconCode>) -> Icon {
 ///
 /// By default, the icon is rendered using the `icon.font` font family.
 /// This uses the [Font Awesome 6 Regular Free](https://fontawesome.com/) font by default.
-#[derive(Styled, Build, Rebuild, PartialEq)]
+#[derive(Styled, Build)]
 pub struct Icon {
     /// The codepoint of the icon to display.
-    #[rebuild(draw)]
     pub icon: IconCode,
 
     /// Whether the icon is solid or regular.
     ///
     /// This only affects the rendering of the icon if the icon is available in both styles.
-    #[rebuild(draw)]
     pub solid: bool,
 
     /// The size of the icon.
@@ -115,15 +112,18 @@ impl<T> View<T> for Icon {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
-        Rebuild::rebuild(self, cx, old);
-
         let size = state.style.size;
         let color = state.style.color;
 
         state.style.rebuild(self, cx);
 
-        if self != old || size != state.style.size || color != state.style.color {
+        if self.icon != old.icon
+            || self.solid != old.solid
+            || size != state.style.size
+            || color != state.style.color
+        {
             self.set_attributes(cx, &mut state.buffer, &state.style);
+            cx.layout();
         }
     }
 

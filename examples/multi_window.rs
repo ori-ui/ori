@@ -30,8 +30,8 @@ fn window(_data: &mut Data) -> impl View<Data> {
 
 fn open_window_button() -> impl View<Data> {
     let open_window = button(text("Open window"))
-        .fancy(4.0)
-        .color(key("palette.accent"));
+        .color(key("palette.accent"))
+        .fancy(4.0);
 
     on_click(open_window, |cx, _: &mut Data| {
         cx.cmd(OpenWindow);

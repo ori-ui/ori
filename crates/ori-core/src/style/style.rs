@@ -1,5 +1,5 @@
 use std::{
-    any::Any,
+    any::{Any, TypeId},
     collections::HashMap,
     fmt::Debug,
     hash::{BuildHasherDefault, Hasher},
@@ -47,7 +47,7 @@ macro_rules! style {
 
 #[derive(Clone)]
 enum StyleEntry {
-    Value(Arc<dyn Any>),
+    Value(TypeId, Arc<dyn Any>),
     Key(u64),
 }
 
@@ -55,8 +55,8 @@ enum StyleEntry {
 struct StylesHasher(u64);
 
 impl Hasher for StylesHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        self.0 = hash_style_key(bytes);
+    fn write(&mut self, _bytes: &[u8]) {
+        unreachable!()
     }
 
     fn write_u64(&mut self, i: u64) {
@@ -66,6 +66,11 @@ impl Hasher for StylesHasher {
     fn finish(&self) -> u64 {
         self.0
     }
+}
+
+enum GetRefError {
+    TypeMismatch,
+    KeyNotFound,
 }
 
 /// A collection of styles.
@@ -95,7 +100,8 @@ impl Styles {
     /// Insert a style.
     pub fn insert_value<T: 'static>(&mut self, key: &str, style: T) {
         let key = hash_style_key(key.as_bytes());
-        Arc::make_mut(&mut self.styles).insert(key, StyleEntry::Value(Arc::new(style)));
+        let entry = StyleEntry::Value(TypeId::of::<T>(), Arc::new(style));
+        Arc::make_mut(&mut self.styles).insert(key, entry);
     }
 
     /// Insert a style key.
@@ -118,11 +124,29 @@ impl Styles {
     }
 
     #[inline(always)]
-    fn get_ref(&self, key: u64) -> Option<&dyn Any> {
-        let style = self.styles.get(&key)?;
+    fn get_ref<T>(&self, key: u64) -> Result<&T, GetRefError>
+    where
+        T: 'static,
+    {
+        let style = self.styles.get(&key).ok_or(GetRefError::KeyNotFound)?;
 
         match style {
-            StyleEntry::Value(value) => Some(value.as_ref()),
+            StyleEntry::Value(type_id, value) => {
+                if *type_id != TypeId::of::<T>() {
+                    return Err(GetRefError::TypeMismatch);
+                }
+
+                debug_assert!(
+                    value.is::<T>(),
+                    "style is of type `{}",
+                    std::any::type_name::<T>()
+                );
+
+                let ptr = value.as_ref() as *const _ as *const _;
+
+                // SAFETY: The was just asserted to be of type `T`.
+                unsafe { Ok(&*ptr) }
+            }
             StyleEntry::Key(key) => self.get_ref(*key),
         }
     }
@@ -134,8 +158,16 @@ impl Styles {
     where
         T: Clone + 'static,
     {
-        let style = self.get_ref(key)?.downcast_ref::<T>();
-        Some(style.expect("style is of type `T`").clone())
+        match self.get_ref::<T>(key) {
+            Ok(value) => Some(value.clone()),
+            Err(GetRefError::TypeMismatch) => {
+                panic!(
+                    "style is of a different type than `{}`",
+                    std::any::type_name::<T>()
+                )
+            }
+            Err(GetRefError::KeyNotFound) => None,
+        }
     }
 
     /// Get a style, or a default value.

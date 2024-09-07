@@ -9,8 +9,8 @@ use crate::{
 };
 
 /// Create a view that applies a style to its content.
-pub fn with_style<V: View<T>, T>(style: Styles, content: V) -> WithStyle<V> {
-    WithStyle::new(content, style)
+pub fn with_style<V: View<T>, T>(style: impl Into<Styles>, content: V) -> WithStyle<V> {
+    WithStyle::new(style.into(), content)
 }
 
 /// A view that applies a style to its content.
@@ -24,7 +24,7 @@ pub struct WithStyle<V> {
 
 impl<V> WithStyle<V> {
     /// Create a new [`WithStyle`] view.
-    pub fn new(content: V, style: Styles) -> Self {
+    pub fn new(style: Styles, content: V) -> Self {
         Self { content, style }
     }
 }

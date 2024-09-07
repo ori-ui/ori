@@ -11,6 +11,7 @@ use ori_core::{
         WindowMaximized, WindowResized, WindowScaled,
     },
     layout::{Point, Size, Space, Vector},
+    log::trace,
     style::Styles,
     view::{any, AnyState, BoxedView, View, ViewState},
     views::opaque,
@@ -45,6 +46,8 @@ pub(crate) struct WindowState<T> {
 
 impl<T> WindowState<T> {
     fn rebuild(&mut self, data: &mut T, base: &mut BaseCx) {
+        let t = Instant::now();
+
         self.view_state.prepare();
 
         let mut cx = RebuildCx::new(base, &mut self.view_state);
@@ -56,9 +59,17 @@ impl<T> WindowState<T> {
         self.window = cx.remove_context().expect("Window context missing");
 
         self.view = new_view;
+
+        trace!(
+            window = ?self.window.id(),
+            elapsed = ?t.elapsed(),
+            "Window rebuilt"
+        );
     }
 
     fn event(&mut self, data: &mut T, base: &mut BaseCx, rebuild: &mut bool, event: &Event) {
+        let t = Instant::now();
+
         let hot = self.window.is_hovered(self.view_state.id());
         self.view_state.set_hot(hot);
         self.view_state.prepare();
@@ -68,9 +79,17 @@ impl<T> WindowState<T> {
         cx.insert_context(self.window.clone());
         self.view.event(&mut self.state, &mut cx, data, event);
         self.window = cx.remove_context().expect("Window context missing");
+
+        trace!(
+            window = ?self.window.id(),
+            elapsed = ?t.elapsed(),
+            "Window event"
+        );
     }
 
     fn layout(&mut self, data: &mut T, base: &mut BaseCx) {
+        let t = Instant::now();
+
         self.view_state.mark_layed_out();
 
         // we need to calculate the max size of the window
@@ -98,9 +117,17 @@ impl<T> WindowState<T> {
 
             self.window.size = size;
         }
+
+        trace!(
+            window = ?self.window.id(),
+            elapsed = ?t.elapsed(),
+            "Window layout"
+        );
     }
 
     fn draw(&mut self, data: &mut T, base: &mut BaseCx) {
+        let t = Instant::now();
+
         self.view_state.mark_drawn();
 
         self.canvas.clear();
@@ -110,6 +137,12 @@ impl<T> WindowState<T> {
         cx.insert_context(self.window.clone());
         self.view.draw(&mut self.state, &mut cx, data);
         self.window = cx.remove_context().expect("Window context missing");
+
+        trace!(
+            window = ?self.window.id(),
+            elapsed = ?t.elapsed(),
+            "Window draw"
+        );
     }
 
     fn animate(&mut self, animate: Instant) -> Vec<AppRequest<T>> {
@@ -558,7 +591,7 @@ impl<T> App<T> {
     ///
     /// Returns true if the event was handled by a delegate.
     pub fn event(&mut self, data: &mut T, event: &Event) -> bool {
-        ori_core::log::trace!(event = ?event, "Event");
+        trace!(event = ?event, "Event");
 
         // we need to animate the window before handling the event
         let animate = Instant::now();
@@ -599,7 +632,7 @@ impl<T> App<T> {
     ///
     /// Returns true if the event was handled by a delegate.
     pub fn window_event(&mut self, data: &mut T, window_id: WindowId, event: &Event) -> bool {
-        ori_core::log::trace!(event = ?event, window = ?window_id, "Window event");
+        trace!(event = ?event, window = ?window_id, "Window event");
 
         // we need to animate the window before handling the event
         let animate = Instant::now();
@@ -665,7 +698,7 @@ impl<T> App<T> {
         data: &mut T,
         window_id: WindowId,
     ) -> Option<WindowRenderState<'_>> {
-        ori_core::log::trace!(window = ?window_id, "Draw window");
+        trace!(window = ?window_id, "Draw window");
 
         // animate the window before drawing it
         //

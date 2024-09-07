@@ -56,7 +56,7 @@ struct StylesHasher(u64);
 
 impl Hasher for StylesHasher {
     fn write(&mut self, bytes: &[u8]) {
-        self.0 = seahash::hash(bytes);
+        self.0 = hash_style_key(bytes);
     }
 
     fn write_u64(&mut self, i: u64) {
@@ -85,7 +85,7 @@ impl Styles {
         match styled {
             Styled::Value(value) => self.insert_value(key, value),
             Styled::Key(style) => {
-                let key = seahash::hash(key.as_bytes());
+                let key = hash_style_key(key.as_bytes());
                 Arc::make_mut(&mut self.styles).insert(key, StyleEntry::Key(style));
             }
             Styled::Computed(derived) => self.insert_value(key, derived(self)),
@@ -94,14 +94,20 @@ impl Styles {
 
     /// Insert a style.
     pub fn insert_value<T: 'static>(&mut self, key: &str, style: T) {
-        let key = seahash::hash(key.as_bytes());
+        let key = hash_style_key(key.as_bytes());
         Arc::make_mut(&mut self.styles).insert(key, StyleEntry::Value(Arc::new(style)));
     }
 
     /// Insert a style key.
     pub fn insert_style(&mut self, key: &str, style: &str) {
-        let key = seahash::hash(key.as_bytes());
-        let style = seahash::hash(style.as_bytes());
+        self.insert_style_keys(
+            hash_style_key(key.as_bytes()),
+            hash_style_key(style.as_bytes()),
+        );
+    }
+
+    /// Insert a style key.
+    pub fn insert_style_keys(&mut self, key: u64, style: u64) {
         Arc::make_mut(&mut self.styles).insert(key, StyleEntry::Key(style));
     }
 
@@ -111,6 +117,7 @@ impl Styles {
         Arc::make_mut(&mut self.styles).extend(styles);
     }
 
+    #[inline(always)]
     fn get_ref(&self, key: u64) -> Option<&dyn Any> {
         let style = self.styles.get(&key)?;
 
@@ -122,6 +129,7 @@ impl Styles {
 
     /// Get a style.
     #[track_caller]
+    #[inline(always)]
     pub fn get_keyed<T>(&self, key: u64) -> Option<T>
     where
         T: Clone + 'static,
@@ -132,6 +140,7 @@ impl Styles {
 
     /// Get a style, or a default value.
     #[track_caller]
+    #[inline(always)]
     pub fn get_keyed_or<T>(&self, default: T, key: u64) -> T
     where
         T: Clone + 'static,
@@ -141,6 +150,7 @@ impl Styles {
 
     /// Get a style, or a default value.
     #[track_caller]
+    #[inline(always)]
     pub fn get_keyed_or_else<T, F>(&self, default: F, key: u64) -> T
     where
         T: Clone + 'static,
@@ -151,16 +161,18 @@ impl Styles {
 
     /// Get a style.
     #[track_caller]
+    #[inline(always)]
     pub fn get<T>(&self, key: &str) -> Option<T>
     where
         T: Clone + 'static,
     {
-        let key = seahash::hash(key.as_bytes());
+        let key = hash_style_key(key.as_bytes());
         self.get_keyed(key)
     }
 
     /// Get a style, or a default value.
     #[track_caller]
+    #[inline(always)]
     pub fn get_or<T>(&self, default: T, key: &str) -> T
     where
         T: Clone + 'static,
@@ -170,6 +182,7 @@ impl Styles {
 
     /// Get a style, or a default value.
     #[track_caller]
+    #[inline(always)]
     pub fn get_or_else<T, F>(&self, default: F, key: &str) -> T
     where
         T: Clone + 'static,
@@ -185,7 +198,7 @@ pub fn val<T>(val: impl Into<T>) -> Styled<T> {
 }
 
 /// Create a style key.
-pub fn key<T>(key: &str) -> Styled<T> {
+pub const fn key<T>(key: &str) -> Styled<T> {
     Styled::key(key)
 }
 
@@ -214,11 +227,13 @@ pub enum Styled<T> {
 
 impl<T> Styled<T> {
     /// Create a new styled value, from a style key.
-    pub fn key(key: &str) -> Self {
-        Self::Key(seahash::hash(key.as_bytes()))
+    #[inline(always)]
+    pub const fn key(key: &str) -> Self {
+        Self::Key(hash_style_key(key.as_bytes()))
     }
 
     /// Get the value, or a style from the styles.
+    #[inline(always)]
     pub fn get(&self, styles: &Styles) -> Option<T>
     where
         T: Clone + 'static,
@@ -231,6 +246,7 @@ impl<T> Styled<T> {
     }
 
     /// Get the value, or a style from the styles.
+    #[inline(always)]
     pub fn get_or(&self, styles: &Styles, default: T) -> T
     where
         T: Clone + 'static,
@@ -239,6 +255,7 @@ impl<T> Styled<T> {
     }
 
     /// Get the value, or a style from the styles.
+    #[inline(always)]
     pub fn get_or_else<F>(&self, styles: &Styles, default: F) -> T
     where
         T: Clone + 'static,
@@ -264,9 +281,25 @@ impl<T> From<T> for Styled<T> {
     }
 }
 
+/// Hash a style key.
+///
+/// This uses the FNV-1a hash algorithm, with a 64-bit seed.
+#[inline(always)]
+const fn hash_style_key(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf29ce484222325;
+
+    let mut index = 0;
+    while index < bytes.len() {
+        hash ^= bytes[index] as u64;
+        hash = hash.wrapping_mul(0x100000001b3);
+        index += 1;
+    }
+
+    hash
+}
+
 #[cfg(test)]
 mod tests {
-
     use crate::canvas::Color;
 
     #[test]

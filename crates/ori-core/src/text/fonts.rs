@@ -2,7 +2,7 @@ use std::{collections::HashMap, hash::BuildHasherDefault, io, sync::Arc};
 
 use cosmic_text::{Buffer, CacheKey, Command, FontSystem, SwashCache};
 use ori_macro::include_font;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::{
     canvas::{AntiAlias, Canvas, Curve, FillRule, Paint},
@@ -45,7 +45,7 @@ impl Fonts {
 
         for font in fonts.font_system.db().faces() {
             for (family, _) in &font.families {
-                debug!("Loaded font family: {}", family);
+                trace!("Loaded system font family: {}", family);
             }
         }
 

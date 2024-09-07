@@ -93,8 +93,15 @@ impl<T> View<T> for Checkbox {
         (style, 0.0)
     }
 
-    fn rebuild(&mut self, _: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+    fn rebuild(
+        &mut self,
+        (style, _): &mut Self::State,
+        cx: &mut RebuildCx,
+        _data: &mut T,
+        old: &Self,
+    ) {
         Rebuild::rebuild(self, cx, old);
+        style.rebuild(self, cx);
     }
 
     fn event(

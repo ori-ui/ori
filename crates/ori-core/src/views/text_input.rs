@@ -328,55 +328,53 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
-        if self.font_size != old.font_size || self.line_height != old.line_height {
+        let style = TextInputStyle::styled(self, cx.styles());
+
+        if style.font_size != state.style.font_size || style.line_height != state.style.line_height
+        {
             let metrics = Metrics {
-                font_size: state.style.font_size,
-                line_height: state.style.line_height * state.style.font_size,
+                font_size: style.font_size,
+                line_height: style.line_height * style.font_size,
             };
 
             (state.buffer_mut()).set_metrics(&mut cx.fonts().font_system, metrics);
-
-            (state.placeholder).set_metrics(
-                cx.fonts(),
-                state.style.font_size,
-                state.style.line_height,
-            );
+            (state.placeholder).set_metrics(cx.fonts(), style.font_size, style.line_height);
 
             cx.layout();
         }
 
-        if self.wrap != old.wrap {
-            let wrap = state.style.wrap.to_cosmic_text();
+        if style.wrap != state.style.wrap {
+            let wrap = style.wrap.to_cosmic_text();
             (state.buffer_mut()).set_wrap(&mut cx.fonts().font_system, wrap);
-            state.placeholder.set_wrap(cx.fonts(), state.style.wrap);
+            state.placeholder.set_wrap(cx.fonts(), style.wrap);
 
             cx.layout();
         }
 
-        if self.align != old.align {
-            let align = state.style.align.to_cosmic_text();
+        if style.align != state.style.align {
+            let align = style.align.to_cosmic_text();
 
             for line in state.buffer_mut().lines.iter_mut() {
                 line.set_align(Some(align));
             }
 
-            state.placeholder.set_align(state.style.align);
+            state.placeholder.set_align(style.align);
 
             cx.layout();
         }
 
-        let attrs_changed = self.font_family != old.font_family
-            || self.font_weight != old.font_weight
-            || self.font_stretch != old.font_stretch
-            || self.font_style != old.font_style;
+        let attrs_changed = style.font_family != state.style.font_family
+            || style.font_weight != state.style.font_weight
+            || style.font_stretch != state.style.font_stretch
+            || style.font_style != state.style.font_style;
 
         if self.text != Some(state.text()) && self.text.is_some() {
             if let Some(mut text) = self.text.clone() {
                 let attrs = TextAttributes {
-                    family: state.style.font_family.clone(),
-                    stretch: state.style.font_stretch,
-                    weight: state.style.font_weight,
-                    style: state.style.font_style,
+                    family: style.font_family.clone(),
+                    stretch: style.font_stretch,
+                    weight: style.font_weight,
+                    style: style.font_style,
                 };
 
                 if text.ends_with('\n') {
@@ -398,7 +396,7 @@ impl<T> View<T> for TextInput<T> {
                 _ => unreachable!(),
             };
 
-            self.set_attrs_list(buffer, &state.style);
+            self.set_attrs_list(buffer, &style);
 
             cx.layout();
         }
@@ -408,15 +406,17 @@ impl<T> View<T> for TextInput<T> {
                 cx.fonts(),
                 &self.placeholder,
                 TextAttributes {
-                    family: state.style.font_family.clone(),
-                    stretch: state.style.font_stretch,
-                    weight: state.style.font_weight,
-                    style: state.style.font_style,
+                    family: style.font_family.clone(),
+                    stretch: style.font_stretch,
+                    weight: style.font_weight,
+                    style: style.font_style,
                 },
             );
 
             cx.layout();
         }
+
+        state.style = style;
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {

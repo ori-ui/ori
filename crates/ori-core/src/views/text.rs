@@ -132,47 +132,52 @@ impl<T> View<T> for Text {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
-        if self.font_size != old.font_size || self.line_height != old.line_height {
-            (state.buffer).set_metrics(cx.fonts(), state.style.font_size, state.style.line_height);
+        let style = TextStyle::styled(self, cx.styles());
+
+        if style.font_size != state.style.font_size || style.line_height != state.style.line_height
+        {
+            (state.buffer).set_metrics(cx.fonts(), style.font_size, style.line_height);
 
             cx.layout();
         }
 
-        if self.wrap != old.wrap {
-            state.buffer.set_wrap(cx.fonts(), state.style.wrap);
+        if style.wrap != state.style.wrap {
+            state.buffer.set_wrap(cx.fonts(), style.wrap);
 
             cx.draw();
         }
 
-        if self.align != old.align {
-            state.buffer.set_align(state.style.align);
+        if style.align != state.style.align {
+            state.buffer.set_align(style.align);
 
             cx.draw();
         }
 
         if self.text != old.text
-            || self.font_family != old.font_family
-            || self.font_weight != old.font_weight
-            || self.font_stretch != old.font_stretch
-            || self.font_style != old.font_style
+            || style.font_family != state.style.font_family
+            || style.font_weight != state.style.font_weight
+            || style.font_stretch != state.style.font_stretch
+            || style.font_style != state.style.font_style
         {
             state.buffer.set_text(
                 cx.fonts(),
                 &self.text,
                 TextAttributes {
-                    family: state.style.font_family.clone(),
-                    stretch: state.style.font_stretch,
-                    weight: state.style.font_weight,
-                    style: state.style.font_style,
+                    family: style.font_family.clone(),
+                    stretch: style.font_stretch,
+                    weight: style.font_weight,
+                    style: style.font_style,
                 },
             );
 
             cx.layout();
         }
 
-        if self.color != old.color {
+        if style.color != state.style.color {
             cx.draw();
         }
+
+        state.style = style;
     }
 
     fn event(

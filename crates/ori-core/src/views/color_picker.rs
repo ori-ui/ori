@@ -208,6 +208,7 @@ impl<T> View<T> for ColorPicker<T> {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
+        state.style.rebuild(self, cx);
 
         let (_, _, l, a) = self.color.to_okhsla();
         let (_, _, old_l, old_a) = old.color.to_okhsla();

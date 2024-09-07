@@ -138,6 +138,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         }
 
         Rebuild::rebuild(self, cx, old);
+        state.style.rebuild(self, cx);
 
         (self.header).rebuild(&mut state.header, cx, data, &old.header);
         (self.content).rebuild(&mut state.content, cx, data, &old.content);

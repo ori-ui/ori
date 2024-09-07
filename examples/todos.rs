@@ -1,5 +1,4 @@
 use ori::prelude::*;
-use ori_macro::Styled;
 
 // the selection of the todos
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -81,15 +80,15 @@ fn input(border: bool) -> impl View<Data> {
 
 fn theme_button(data: &mut Data) -> impl View<Data> {
     let icon = if data.dark_mode {
-        fa::icon("moon").color(Palette::light().contrast)
+        fa::icon("moon").color(Theme::light().contrast)
     } else {
-        fa::icon("sun").color(Palette::dark().contrast)
+        fa::icon("sun").color(Theme::dark().contrast)
     };
 
     let color = if data.dark_mode {
-        Palette::light().background
+        Theme::light().background
     } else {
-        Palette::dark().background
+        Theme::dark().background
     };
 
     let button = button(icon).fancy(4.0).color(color);

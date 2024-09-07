@@ -43,27 +43,22 @@ pub struct Tooltip<V> {
     pub padding: Styled<Padding>,
 
     /// The font size of the text.
-    #[rebuild(layout)]
     #[styled(default = pt(10.0))]
     pub font_size: Styled<f32>,
 
     /// The font family of the text.
-    #[rebuild(layout)]
     #[styled(default)]
     pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
-    #[rebuild(layout)]
     #[styled(default)]
     pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
-    #[rebuild(layout)]
     #[styled(default)]
     pub font_stretch: Styled<FontStretch>,
 
     /// The font style of the text.
-    #[rebuild(layout)]
     #[styled(default)]
     pub font_style: Styled<FontStyle>,
 
@@ -73,17 +68,14 @@ pub struct Tooltip<V> {
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
-    #[rebuild(layout)]
     #[styled(default)]
     pub align: Styled<TextAlign>,
 
     /// The line height of the text.
-    #[rebuild(layout)]
     #[styled(default = 1.2)]
     pub line_height: Styled<f32>,
 
     /// The text wrap of the text.
-    #[rebuild(layout)]
     #[styled(default)]
     pub wrap: Styled<TextWrap>,
 
@@ -181,25 +173,35 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         data: &mut T,
         old: &Self,
     ) {
-        Rebuild::rebuild(self, cx, old);
+        let font_size = state.style.font_size;
+        let line_height = state.style.line_height;
+        let wrap = state.style.wrap;
+        let align = state.style.align;
+        let font_family = state.style.font_family.clone();
+        let font_stretch = state.style.font_stretch;
+        let font_weight = state.style.font_weight;
+        let font_style = state.style.font_style;
 
-        if self.font_size != old.font_size || self.line_height != old.line_height {
+        Rebuild::rebuild(self, cx, old);
+        state.style.rebuild(self, cx);
+
+        if state.style.font_size != font_size || state.style.line_height != line_height {
             (state.buffer).set_metrics(cx.fonts(), state.style.font_size, state.style.line_height);
         }
 
-        if self.wrap != old.wrap {
+        if state.style.wrap != wrap {
             state.buffer.set_wrap(cx.fonts(), state.style.wrap);
         }
 
-        if self.align != old.align {
+        if state.style.align != align {
             state.buffer.set_align(state.style.align);
         }
 
         if self.text != old.text
-            || self.font_family != old.font_family
-            || self.font_weight != old.font_weight
-            || self.font_stretch != old.font_stretch
-            || self.font_style != old.font_style
+            || state.style.font_family != font_family
+            || state.style.font_stretch != font_stretch
+            || state.style.font_weight != font_weight
+            || state.style.font_style != font_style
         {
             state.buffer.set_text(
                 cx.fonts(),

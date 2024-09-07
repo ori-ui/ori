@@ -58,6 +58,7 @@ pub struct Container<V> {
 
     /// Whether to mask the content.
     #[rebuild(draw)]
+    #[styled(default = false)]
     pub mask: Styled<bool>,
 }
 
@@ -86,12 +87,13 @@ impl<T, V: View<T>> View<T> for Container<V> {
 
     fn rebuild(
         &mut self,
-        (_, state): &mut Self::State,
+        (style, state): &mut Self::State,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
+        style.rebuild(self, cx);
 
         self.content.rebuild(state, cx, data, &old.content);
     }

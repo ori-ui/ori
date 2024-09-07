@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_quote, parse_quote_spanned};
 
-use crate::find_core;
+use crate::{find_core, rebuild};
 
 syn::custom_keyword!(or);
 syn::custom_keyword!(default);
@@ -26,20 +26,24 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let style_name = syn::Ident::new(&format!("{}Style", name), name.span());
-    let style_fields = style_fields(&name, &data.fields);
+    let style_fields = style_fields(name, &data.fields);
     let style_styled_fields = style_styled_fields(&data.fields);
+    let style_rebuild_fields = style_rebuild_fields(&data.fields);
 
     let style_doc = format!("The derived style for [`{}`].", name);
     let style_styled_doc = format!("The style of [`{}`].", name);
+    let style_rebuild_doc = format!("Rebuild the style of [`{}`].", name);
 
     let expanded = quote! {
         #[doc = #style_doc]
+        #[allow(unused)]
         #vis struct #style_name {
             #(#style_fields,)*
         }
 
         impl #style_name {
             #[doc = #style_styled_doc]
+            #[allow(unused)]
             #vis fn styled #impl_generics (
                 styled: &#name #ty_generics,
                 styles: &#ori_core::style::Styles
@@ -48,6 +52,30 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
             {
                 Self {
                     #(#style_styled_fields,)*
+                }
+            }
+
+            #[doc = #style_rebuild_doc]
+            #[allow(unused)]
+            #vis fn rebuild #impl_generics (
+                &mut self,
+                styled: &#name #ty_generics,
+                cx: &mut #ori_core::context::RebuildCx
+            )
+            #where_clause
+            {
+                let mut layout = false;
+                let mut draw = false;
+                let styles = cx.styles();
+
+                #(#style_rebuild_fields)*
+
+                if layout {
+                    cx.layout();
+                }
+
+                if draw {
+                    cx.draw();
                 }
             }
         }
@@ -75,63 +103,123 @@ fn style_fields<'a>(
 }
 
 fn style_styled_fields(fields: &syn::Fields) -> impl Iterator<Item = TokenStream> + '_ {
-    let ori_core = find_core();
-
     fields.iter().filter_map(move |field| {
         let ident = field.ident.as_ref().unwrap();
         let _ = get_styled(&field.ty)?;
 
-        let mut default = None;
+        let styled = parse_quote!(styled);
+        let styles = parse_quote!(styles);
 
-        for attr in &field.attrs {
-            if attr.path().is_ident("styled") {
-                attr.parse_args_with(|input: syn::parse::ParseStream| {
-                    input.parse::<default>()?;
+        let value = style_get_field(field, &styled, &styles);
 
-                    if input.peek(syn::Token![=]) {
-                        input.parse::<syn::Token![=]>()?;
-                        default = Some(input.parse::<syn::Expr>()?);
-                    } else if input.peek(syn::Token![->]) {
-                        input.parse::<syn::Token![->]>()?;
-                        let style = input.parse::<syn::LitStr>()?;
-
-                        if input.peek(or) {
-                            input.parse::<or>()?;
-                            let or_value = input.parse::<syn::Expr>()?;
-                            default = Some(parse_quote_spanned! { style.span() =>
-                                styles.get_or_else(|| #or_value, #style)
-                            });
-                        } else {
-                            default = Some(parse_quote_spanned! { style.span() =>
-                                styles.get(#style).expect(concat!("missing style for `", #style, "`"))
-                            });
-                        }
-                    } else {
-                        default = Some(parse_quote!(::std::default::Default::default()));
-                    }
-
-                    Ok(())
-                })
-                .unwrap();
-            }
-        }
-
-        match default {
-            Some(default) => Some(quote! {
-                #ident: #ori_core::style::Styled::get_or_else(
-                    ::std::clone::Clone::clone(&styled.#ident),
-                    styles,
-                    || #default
-                )
-            }),
-            None => Some(quote! {
-                #ident: #ori_core::style::Styled::get(
-                    ::std::clone::Clone::clone(&styled.#ident),
-                    styles
-                ).expect(concat!("missing style for `", stringify!(#ident), "`"))
-            }),
-        }
+        Some(quote! {
+            #ident: #value
+        })
     })
+}
+
+fn style_rebuild_fields(fields: &syn::Fields) -> impl Iterator<Item = TokenStream> + '_ {
+    fields.iter().filter_map(move |field| {
+        let ident = field.ident.as_ref().unwrap();
+        let _ = get_styled(&field.ty)?;
+
+        let attrs = rebuild::FieldAttributes::new(&field.attrs).unwrap();
+
+        if attrs.is_empty() {
+            return None;
+        }
+
+        let styled = parse_quote!(styled);
+        let styles = parse_quote!(styles);
+
+        let value = style_get_field(field, &styled, &styles);
+
+        let layout = match attrs.layout {
+            true => Some(quote! {
+                if self.#ident != value {
+                    self.#ident = value;
+                    layout = true;
+                }
+            }),
+            false => None,
+        };
+
+        let draw = match attrs.draw {
+            true => Some(quote! {
+                if self.#ident != value {
+                    self.#ident = value;
+                    draw = true;
+                }
+            }),
+            false => None,
+        };
+
+        Some(quote! {
+            let value = #value;
+
+            #layout
+            #draw
+        })
+    })
+}
+
+fn style_get_field(field: &syn::Field, styled: &syn::Expr, styles: &syn::Expr) -> syn::Expr {
+    let ori_core = find_core();
+    let ident = field.ident.as_ref().unwrap();
+    let mut default = None;
+
+    for attr in &field.attrs {
+        if attr.path().is_ident("styled") {
+            attr.parse_args_with(|input: syn::parse::ParseStream| {
+                if input.is_empty() {
+                    return Ok(());
+                }
+
+                input.parse::<default>()?;
+
+                if input.peek(syn::Token![=]) {
+                    input.parse::<syn::Token![=]>()?;
+                    default = Some(input.parse::<syn::Expr>()?);
+                } else if input.peek(syn::Token![->]) {
+                    input.parse::<syn::Token![->]>()?;
+                    let style = input.parse::<syn::LitStr>()?;
+
+                    if input.peek(or) {
+                        input.parse::<or>()?;
+                        let or_value = input.parse::<syn::Expr>()?;
+                        default = Some(parse_quote_spanned! { style.span() =>
+                            #styles.get_or_else(|| #or_value, #style)
+                        });
+                    } else {
+                        default = Some(parse_quote_spanned! { style.span() =>
+                            #styles.get(#style).expect(concat!("missing style for `", #style, "`"))
+                        });
+                    }
+                } else {
+                    default = Some(parse_quote!(::std::default::Default::default()));
+                }
+
+                Ok(())
+            })
+            .unwrap();
+        }
+    }
+
+    match default {
+        Some(default) => parse_quote! {
+            #ori_core::style::Styled::get_or_else(
+                ::std::clone::Clone::clone(&#styled.#ident),
+                #styles,
+                || #default
+            )
+        },
+        None => parse_quote! {
+            #ori_core::style::Styled::get(
+                ::std::clone::Clone::clone(&#styled.#ident),
+                #styles
+            ).expect(concat!("missing style for `", stringify!(#ident), "`"))
+        },
+    }
 }
 
 fn get_styled(ty: &syn::Type) -> Option<syn::Type> {

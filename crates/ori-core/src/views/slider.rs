@@ -117,8 +117,9 @@ impl<T> View<T> for Slider<T> {
         SliderStyle::styled(self, cx.styles())
     }
 
-    fn rebuild(&mut self, _state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+    fn rebuild(&mut self, style: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
+        style.rebuild(self, cx);
     }
 
     fn event(&mut self, style: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {

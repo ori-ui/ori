@@ -1,4 +1,9 @@
-use std::{any::Any, collections::HashMap, hash::BuildHasherDefault, sync::Arc};
+use std::{
+    any::Any,
+    collections::HashMap,
+    hash::{BuildHasherDefault, Hasher},
+    sync::Arc,
+};
 
 /// Create a collection of styles.
 #[macro_export]
@@ -39,10 +44,29 @@ macro_rules! style {
     };
 }
 
+type StylesEntry = Styled<Arc<dyn Any>>;
+
+#[derive(Clone, Default)]
+struct StylesHasher(u64);
+
+impl Hasher for StylesHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        self.0 = seahash::hash(bytes);
+    }
+
+    fn write_u64(&mut self, i: u64) {
+        self.0 = i;
+    }
+
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
+
 /// A collection of styles.
 #[derive(Clone, Default)]
 pub struct Styles {
-    styles: HashMap<u64, Styled<Arc<dyn Any>>, BuildHasherDefault<seahash::SeaHasher>>,
+    styles: Arc<HashMap<u64, StylesEntry, BuildHasherDefault<StylesHasher>>>,
 }
 
 impl Styles {
@@ -54,19 +78,19 @@ impl Styles {
     /// Insert a style.
     pub fn insert_value<T: 'static>(&mut self, key: &str, style: T) {
         let key = seahash::hash(key.as_bytes());
-        self.styles.insert(key, Styled::Value(Arc::new(style)));
+        Arc::make_mut(&mut self.styles).insert(key, Styled::Value(Arc::new(style)));
     }
 
     /// Insert a style key.
     pub fn insert_style(&mut self, key: &str, style: &str) {
         let key = seahash::hash(key.as_bytes());
         let style = Styled::key(style);
-        self.styles.insert(key, style);
+        Arc::make_mut(&mut self.styles).insert(key, style);
     }
 
     /// Extend the styles with another collection of styles.
     pub fn extend(&mut self, styles: Styles) {
-        self.styles.extend(styles.styles);
+        Arc::make_mut(&mut self.styles).extend(Arc::unwrap_or_clone(styles.styles));
     }
 
     fn get_ref(&self, key: u64) -> Option<&dyn Any> {
@@ -135,6 +159,11 @@ impl Styles {
     {
         self.get(key).unwrap_or_else(default)
     }
+}
+
+/// Create a style value.
+pub fn val<T>(value: impl Into<T>) -> Styled<T> {
+    Styled::Value(value.into())
 }
 
 /// Create a style key.

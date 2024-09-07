@@ -132,12 +132,13 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
     fn rebuild(
         &mut self,
-        (_state, content): &mut Self::State,
+        (state, content): &mut Self::State,
         cx: &mut RebuildCx,
         data: &mut T,
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
+        state.style.rebuild(self, cx);
 
         self.content.rebuild(content, cx, data, &old.content);
     }

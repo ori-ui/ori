@@ -30,6 +30,7 @@ mod tooltip;
 mod transform;
 mod trigger;
 mod with_state;
+mod with_style;
 mod wrap;
 mod zstack;
 
@@ -62,6 +63,7 @@ pub use tooltip::*;
 pub use transform::*;
 pub use trigger::*;
 pub use with_state::*;
+pub use with_style::*;
 pub use wrap::*;
 pub use zstack::*;
 

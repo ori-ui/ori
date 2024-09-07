@@ -29,13 +29,14 @@ impl syn::parse::Parse for FieldAttribute {
 }
 
 #[derive(Default)]
-struct FieldAttributes {
-    layout: bool,
-    draw: bool,
+pub struct FieldAttributes {
+    pub styled: bool,
+    pub layout: bool,
+    pub draw: bool,
 }
 
 impl FieldAttributes {
-    fn new(attrs: &[syn::Attribute]) -> manyhow::Result<Self> {
+    pub fn new(attrs: &[syn::Attribute]) -> manyhow::Result<Self> {
         let mut this = Self::default();
 
         for attr in attrs {
@@ -51,12 +52,16 @@ impl FieldAttributes {
                     }
                 }
             }
+
+            if attr.path().is_ident("styled") {
+                this.styled = true;
+            }
         }
 
         Ok(this)
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         !self.layout && !self.draw
     }
 
@@ -146,7 +151,7 @@ fn rebuild_fields<'a>(
 fn rebuild_field(name: TokenStream, field: &syn::Field) -> manyhow::Result<TokenStream> {
     let attributes = FieldAttributes::new(&field.attrs)?;
 
-    if attributes.is_empty() {
+    if attributes.is_empty() || attributes.styled {
         return Ok(quote!());
     }
 

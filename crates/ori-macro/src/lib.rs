@@ -80,7 +80,7 @@ pub fn include_font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macr
 
 /// Derive the `Rebuild` trait.
 #[manyhow::manyhow]
-#[proc_macro_derive(Rebuild, attributes(rebuild))]
+#[proc_macro_derive(Rebuild, attributes(styled, rebuild))]
 pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     rebuild::derive_rebuild(input)
 }
@@ -94,7 +94,7 @@ pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macr
 
 /// Derived the styled pattern.
 #[manyhow::manyhow]
-#[proc_macro_derive(Styled, attributes(styled))]
+#[proc_macro_derive(Styled, attributes(styled, rebuild))]
 pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     styled::derive_styled(input)
 }

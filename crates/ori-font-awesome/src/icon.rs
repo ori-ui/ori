@@ -117,7 +117,12 @@ impl<T> View<T> for Icon {
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
-        if self != old {
+        let size = state.style.size;
+        let color = state.style.color;
+
+        state.style.rebuild(self, cx);
+
+        if self != old || size != state.style.size || color != state.style.color {
             self.set_attributes(cx, &mut state.buffer, &state.style);
         }
     }

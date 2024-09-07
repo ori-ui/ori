@@ -35,7 +35,7 @@ use super::focus;
 /// }
 /// ```
 pub fn with_state<T, S, V>(
-    build: impl Fn() -> S + 'static,
+    build: impl FnMut() -> S + 'static,
     view: impl FnMut(&mut T, &mut S) -> V + 'static,
 ) -> WithState<T, S, V>
 where
@@ -102,7 +102,7 @@ where
 /// }
 /// ```
 pub fn with_data<T, S, V>(
-    build: impl Fn() -> S + 'static,
+    build: impl FnMut() -> S + 'static,
     mut view: impl FnMut(&mut S) -> V + 'static,
 ) -> impl View<T>
 where

@@ -9,34 +9,40 @@ async fn load_image(url: &str) -> Result<Image, Box<dyn Error>> {
     Ok(Image::try_load_data(image.to_vec())?)
 }
 
+fn url_input(url: &str) -> impl View<String> {
+    let input = text_input().text(url);
+    let input = input.on_submit(|cx, url, text| {
+        *url = text;
+        cx.rebuild();
+    });
+
+    container(pad(8.0, min_width(400.0, input)))
+}
+
+fn image() -> impl View<String> {
+    memo(
+        |url| String::clone(url),
+        |url| {
+            let url = url.clone();
+
+            suspense(async move {
+                match load_image(&url).await {
+                    Ok(image) => Ok(image),
+                    Err(err) => Err(text!("Error: {}", err)),
+                }
+            })
+            .fallback(text!("Loading..."))
+        },
+    )
+}
+
 fn ui() -> impl View {
     with_data(
         || String::from(IMAGE_URL),
         |url| {
-            let input = text_input().text(url.clone());
-            let input = input.on_submit(|cx, url, text| {
-                *url = text;
-                cx.rebuild();
-            });
+            let view = vstack![url_input(url), image()].gap(8.0);
 
-            let input = container(pad(8.0, min_width(400.0, input)));
-
-            let image = memo(
-                |url| String::clone(url),
-                |url| {
-                    let url = url.clone();
-
-                    suspense(async move {
-                        match load_image(&url).await {
-                            Ok(image) => Ok(image),
-                            Err(err) => Err(text!("Error: {}", err)),
-                        }
-                    })
-                    .fallback(text!("Loading..."))
-                },
-            );
-
-            center(vstack![input, image])
+            center(view)
         },
     )
 }

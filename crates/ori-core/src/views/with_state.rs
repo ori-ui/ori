@@ -181,8 +181,8 @@ impl<T, S, V> WithState<T, S, V> {
     }
 }
 
-impl<T, U, V: View<(T, U)>> View<T> for WithState<T, U, V> {
-    type State = (Pod<V>, U, State<(T, U), V>);
+impl<T, S, V: View<(T, S)>> View<T> for WithState<T, S, V> {
+    type State = (Pod<V>, S, State<(T, S), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut state = (self.build)();

@@ -121,8 +121,8 @@ impl<T> TextInput<T> {
     }
 
     /// Set the text of the input.
-    pub fn text(mut self, text: impl AsRef<str>) -> Self {
-        self.text = Some(text.as_ref().to_string());
+    pub fn text(mut self, text: impl ToString) -> Self {
+        self.text = Some(text.to_string());
         self
     }
 

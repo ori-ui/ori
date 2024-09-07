@@ -31,22 +31,17 @@ fn window(_data: &mut Data) -> impl View<Data> {
 fn open_window_button() -> impl View<Data> {
     let open_window = button(text("Open window"))
         .fancy(4.0)
-        .color(palette().accent);
+        .color(key("palette.accent"));
 
     on_click(open_window, |cx, _: &mut Data| {
         cx.cmd(OpenWindow);
     })
 }
 
-fn close_window_button(data: &mut Data) -> impl View<Data> {
-    let close_window = transition(ease(0.5), !data.windows.is_empty(), |_cx, _, t| {
-        let active = palette().primary;
-        let inactive = palette().surface;
-
-        button(text("Close window"))
-            .color(inactive.mix(active, t))
-            .fancy(4.0)
-    });
+fn close_window_button() -> impl View<Data> {
+    let close_window = button(text("Close window"))
+        .color(key("palette.danger"))
+        .fancy(4.0);
 
     on_click(close_window, |cx, data: &mut Data| {
         if let Some(window) = data.windows.pop() {
@@ -58,8 +53,8 @@ fn close_window_button(data: &mut Data) -> impl View<Data> {
     })
 }
 
-fn ui(data: &mut Data) -> impl View<Data> {
-    let stack = vstack![open_window_button(), close_window_button(data)].gap(8.0);
+fn ui(_data: &mut Data) -> impl View<Data> {
+    let stack = vstack![open_window_button(), close_window_button()].gap(8.0);
 
     center(stack)
 }

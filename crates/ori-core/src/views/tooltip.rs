@@ -1,4 +1,4 @@
-use ori_macro::example;
+use ori_macro::{example, Styled};
 use smol_str::SmolStr;
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{pt, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Style, Styles},
+    style::{key, Styled},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -15,92 +15,16 @@ use crate::{
     view::{Pod, State, View},
 };
 
-use super::TextStyle;
-
 /// Create a new [`Tooltip`] view.
 pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
     Tooltip::new(content, text)
-}
-
-/// The style of a tooltip.
-#[derive(Clone, Debug)]
-pub struct TooltipStyle {
-    /// The delay before the tooltip is displayed.
-    pub delay: f32,
-
-    /// The padding of the tooltip.
-    pub padding: Padding,
-
-    /// The font size of the text.
-    pub font_size: f32,
-
-    /// The font family of the text.
-    pub font_family: FontFamily,
-
-    /// The font weight of the text.
-    pub font_weight: FontWeight,
-
-    /// The font stretch of the text.
-    pub font_stretch: FontStretch,
-
-    /// The font style of the text.
-    pub font_style: FontStyle,
-
-    /// The color of the text.
-    pub color: Color,
-
-    /// The horizontal alignment of the text.
-    pub align: TextAlign,
-
-    /// The line height of the text.
-    pub line_height: f32,
-
-    /// The text wrap of the text.
-    pub wrap: TextWrap,
-
-    /// The background color of the text.
-    pub background: Color,
-
-    /// The border radius of the text.
-    pub border_radius: BorderRadius,
-
-    /// The border width of the text.
-    pub border_width: BorderWidth,
-
-    /// The border color of the text.
-    pub border_color: Color,
-}
-
-impl Style for TooltipStyle {
-    fn styled(style: &Styles) -> Self {
-        let text_style = style.get::<TextStyle>();
-        let palette = style.palette();
-
-        Self {
-            delay: 0.2,
-            padding: Padding::from([8.0, 4.0]),
-            font_size: pt(10.0),
-            font_family: text_style.font_family.clone(),
-            font_weight: text_style.font_weight,
-            font_stretch: text_style.font_stretch,
-            font_style: text_style.font_style,
-            color: text_style.color,
-            align: text_style.align,
-            line_height: text_style.line_height,
-            wrap: text_style.wrap,
-            background: palette.surface_higher,
-            border_radius: BorderRadius::all(4.0),
-            border_width: BorderWidth::all(1.0),
-            border_color: palette.outline,
-        }
-    }
 }
 
 /// A view that displays some text when the content is hovered.
 ///
 /// Can be styled using the [`TooltipStyle`].
 #[example(name = "tooltip", width = 400, height = 300)]
-#[derive(Rebuild)]
+#[derive(Styled, Rebuild)]
 pub struct Tooltip<V> {
     /// The content to display.
     pub content: Pod<V>,
@@ -110,105 +34,115 @@ pub struct Tooltip<V> {
     pub text: SmolStr,
 
     /// The delay before the tooltip is displayed.
-    pub delay: f32,
+    #[styled(default = 0.2)]
+    pub delay: Styled<f32>,
 
     /// The padding of the text.
     #[rebuild(layout)]
-    pub padding: Padding,
+    #[styled(default = Padding::all(4.0))]
+    pub padding: Styled<Padding>,
 
     /// The font size of the text.
     #[rebuild(layout)]
-    pub font_size: f32,
+    #[styled(default = pt(10.0))]
+    pub font_size: Styled<f32>,
 
     /// The font family of the text.
     #[rebuild(layout)]
-    pub font_family: FontFamily,
+    #[styled(default)]
+    pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
     #[rebuild(layout)]
-    pub font_weight: FontWeight,
+    #[styled(default)]
+    pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
     #[rebuild(layout)]
-    pub font_stretch: FontStretch,
+    #[styled(default)]
+    pub font_stretch: Styled<FontStretch>,
 
     /// The font style of the text.
     #[rebuild(layout)]
-    pub font_style: FontStyle,
+    #[styled(default)]
+    pub font_style: Styled<FontStyle>,
 
     /// The color of text.
     #[rebuild(draw)]
-    pub color: Color,
+    #[styled(default -> "palette.contrast" or Color::BLACK)]
+    pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
     #[rebuild(layout)]
-    pub align: TextAlign,
+    #[styled(default)]
+    pub align: Styled<TextAlign>,
 
     /// The line height of the text.
     #[rebuild(layout)]
-    pub line_height: f32,
+    #[styled(default = 1.2)]
+    pub line_height: Styled<f32>,
 
     /// The text wrap of the text.
     #[rebuild(layout)]
-    pub wrap: TextWrap,
+    #[styled(default)]
+    pub wrap: Styled<TextWrap>,
 
     /// The background color of the text.
     #[rebuild(draw)]
-    pub background: Color,
+    #[styled(default -> "palette.surface_higher" or Color::WHITE)]
+    pub background: Styled<Color>,
 
     /// The border radius of the text.
     #[rebuild(draw)]
-    pub border_radius: BorderRadius,
+    #[styled(default = BorderRadius::all(4.0))]
+    pub border_radius: Styled<BorderRadius>,
 
     /// The border width of the text.
     #[rebuild(draw)]
-    pub border_width: BorderWidth,
+    #[styled(default = BorderWidth::all(1.0))]
+    pub border_width: Styled<BorderWidth>,
 
     /// The border color of the text.
     #[rebuild(draw)]
-    pub border_color: Color,
+    #[styled(default -> "palette.outline" or Color::BLACK)]
+    pub border_color: Styled<Color>,
 }
 
 impl<V> Tooltip<V> {
     /// Create a new tooltip view.
     pub fn new(content: V, text: impl Into<SmolStr>) -> Self {
-        Self::styled(content, text, style())
-    }
-
-    /// Create a new tooltip view with a style.
-    pub fn styled(content: V, text: impl Into<SmolStr>, style: TooltipStyle) -> Self {
         Self {
             content: Pod::new(content),
             text: text.into(),
-            delay: style.delay,
-            padding: style.padding,
-            font_size: style.font_size,
-            font_family: style.font_family,
-            font_weight: style.font_weight,
-            font_stretch: style.font_stretch,
-            font_style: style.font_style,
-            color: style.color,
-            align: style.align,
-            line_height: style.line_height,
-            wrap: style.wrap,
-            background: style.background,
-            border_radius: style.border_radius,
-            border_width: style.border_width,
-            border_color: style.border_color,
+            delay: key("tooltip.delay"),
+            padding: key("tooltip.padding"),
+            font_size: key("tooltip.font_size"),
+            font_family: key("tooltip.font_family"),
+            font_weight: key("tooltip.font_weight"),
+            font_stretch: key("tooltip.font_stretch"),
+            font_style: key("tooltip.font_style"),
+            color: key("tooltip.color"),
+            align: key("tooltip.align"),
+            line_height: key("tooltip.line_height"),
+            wrap: key("tooltip.wrap"),
+            background: key("tooltip.background"),
+            border_radius: key("tooltip.border_radius"),
+            border_width: key("tooltip.border_width"),
+            border_color: key("tooltip.border_color"),
         }
     }
 
-    fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer) {
-        buffer.set_wrap(fonts, self.wrap);
-        buffer.set_align(self.align);
+    fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer, style: &TooltipStyle) {
+        buffer.set_wrap(fonts, style.wrap);
+        buffer.set_align(style.align);
         buffer.set_text(
             fonts,
             &self.text,
             TextAttributes {
-                family: self.font_family.clone(),
-                weight: self.font_weight,
-                stretch: self.font_stretch,
-                style: self.font_style,
+                family: style.font_family.clone(),
+                weight: style.font_weight,
+                stretch: style.font_stretch,
+                style: style.font_style,
             },
         );
     }
@@ -219,19 +153,23 @@ pub struct TooltipState {
     pub buffer: TextBuffer,
     pub timer: f32,
     pub position: Point,
+    pub style: TooltipStyle,
 }
 
 impl<T, V: View<T>> View<T> for Tooltip<V> {
     type State = (TooltipState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        let style = TooltipStyle::styled(self, cx.styles());
+
         let mut state = TooltipState {
-            buffer: TextBuffer::new(cx.fonts(), self.font_size, 1.0),
+            buffer: TextBuffer::new(cx.fonts(), style.font_size, 1.0),
             timer: 0.0,
             position: Point::ZERO,
+            style,
         };
 
-        self.set_attributes(cx.fonts(), &mut state.buffer);
+        self.set_attributes(cx.fonts(), &mut state.buffer, &state.style);
 
         (state, self.content.build(cx, data))
     }
@@ -246,15 +184,15 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         Rebuild::rebuild(self, cx, old);
 
         if self.font_size != old.font_size || self.line_height != old.line_height {
-            (state.buffer).set_metrics(cx.fonts(), self.font_size, self.line_height);
+            (state.buffer).set_metrics(cx.fonts(), state.style.font_size, state.style.line_height);
         }
 
         if self.wrap != old.wrap {
-            state.buffer.set_wrap(cx.fonts(), self.wrap);
+            state.buffer.set_wrap(cx.fonts(), state.style.wrap);
         }
 
         if self.align != old.align {
-            state.buffer.set_align(self.align);
+            state.buffer.set_align(state.style.align);
         }
 
         if self.text != old.text
@@ -267,10 +205,10 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 cx.fonts(),
                 &self.text,
                 TextAttributes {
-                    family: self.font_family.clone(),
-                    stretch: self.font_stretch,
-                    weight: self.font_weight,
-                    style: self.font_style,
+                    family: state.style.font_family.clone(),
+                    stretch: state.style.font_stretch,
+                    weight: state.style.font_weight,
+                    style: state.style.font_style,
                 },
             );
 
@@ -311,7 +249,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
             }
             Event::Animate(dt) => {
                 if content.has_hot() && state.timer < 1.0 {
-                    state.timer += dt / self.delay;
+                    state.timer += dt / state.style.delay;
                     cx.animate();
                 }
 
@@ -336,7 +274,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let window_size = cx.window().size - self.padding.size();
+        let window_size = cx.window().size - state.style.padding.size();
         state.buffer.set_bounds(cx.fonts(), window_size);
         self.content.layout(content, cx, data, space)
     }
@@ -357,7 +295,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         // we need to try to move the tooltip so it fits on the screen
         let window_rect = Rect::min_size(Point::ZERO, cx.window().size);
 
-        let size = state.buffer.size() + self.padding.size();
+        let size = state.buffer.size() + state.style.padding.size();
         let mut offset = Vector::new(-size.width / 2.0, 20.0);
 
         let rect = Rect::min_size(state.position + offset, size);
@@ -372,13 +310,17 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
             cx.translated(Vector::from(state.position + offset), |cx| {
                 cx.quad(
                     Rect::min_size(Point::ZERO, size),
-                    self.background.fade(alpha),
-                    self.border_radius,
-                    self.border_width,
-                    self.border_color.fade(alpha),
+                    state.style.background.fade(alpha),
+                    state.style.border_radius,
+                    state.style.border_width,
+                    state.style.border_color.fade(alpha),
                 );
 
-                cx.text(&state.buffer, self.color, self.padding.offset());
+                cx.text(
+                    &state.buffer,
+                    state.style.color,
+                    state.style.padding.offset(),
+                );
             });
         });
     }

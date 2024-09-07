@@ -1,12 +1,6 @@
-use crate::canvas::Color;
+use crate::{canvas::Color, style};
 
-use super::{style, Style, Styles};
-
-/// Get the palette of the style.
-#[track_caller]
-pub fn palette() -> Palette {
-    style()
-}
+use super::Styles;
 
 /// A theme.
 #[derive(Clone, Copy, Debug)]
@@ -80,108 +74,10 @@ impl Theme {
             info: Color::hex("#639ff7"),
         }
     }
-
-    /// Convert the theme to a palette.
-    pub fn to_palette(&self) -> Palette {
-        Palette::from_theme(*self)
-    }
 }
 
-impl Default for Theme {
-    fn default() -> Self {
-        Theme::dark()
-    }
-}
-
-/// A color palette.
-#[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Palette {
-    /// The background color.
-    pub background: Color,
-
-    /// The lower emphasis surface color.
-    pub surface_lower: Color,
-
-    /// The low emphasis surface color.
-    pub surface_low: Color,
-
-    /// The surface color.
-    pub surface: Color,
-
-    /// The high emphasis surface color.
-    pub surface_high: Color,
-
-    /// The higher emphasis surface color.
-    pub surface_higher: Color,
-
-    /// The highest emphasis surface color.
-    pub surface_highest: Color,
-
-    /// The outline color.
-    pub outline: Color,
-
-    /// The low emphasis outline color.
-    pub outline_low: Color,
-
-    /// The contrast color.
-    ///
-    /// Used for text and icons.
-    pub contrast: Color,
-
-    /// Low emphasis contrast color.
-    ///
-    /// Used for subtle text and icons.
-    pub contrast_low: Color,
-
-    /// The primary color.
-    pub primary: Color,
-
-    /// The low emphasis primary color.
-    pub primary_low: Color,
-
-    /// The secondary color.
-    pub secondary: Color,
-
-    /// The low emphasis secondary color.
-    pub secondary_low: Color,
-
-    /// The accent color.
-    pub accent: Color,
-
-    /// The low emphasis accent color.
-    pub accent_low: Color,
-
-    /// The danger color.
-    ///
-    /// Used for errors and destructive actions.
-    pub danger: Color,
-
-    /// The low emphasis danger color.
-    pub danger_low: Color,
-
-    /// The success color.
-    pub success: Color,
-
-    /// The low emphasis success color.
-    pub success_low: Color,
-
-    /// The warning color.
-    pub warning: Color,
-
-    /// The low emphasis warning color.
-    pub warning_low: Color,
-
-    /// The info color.
-    pub info: Color,
-
-    /// The low emphasis info color.
-    pub info_low: Color,
-}
-
-impl Palette {
-    /// Create a new palette, derived from a theme.
-    pub fn from_theme(theme: Theme) -> Self {
+impl From<Theme> for Styles {
+    fn from(theme: Theme) -> Self {
         fn emphasize(color: Color, is_light: bool, level: i32) -> Color {
             let level = level as f32;
 
@@ -210,54 +106,40 @@ impl Palette {
 
         let is_light = theme.background.luminocity() > 0.5;
 
-        Self {
-            background: theme.background,
-            surface_lower: emphasize(theme.surface, is_light, -2),
-            surface_low: emphasize(theme.surface, is_light, -1),
-            surface: theme.surface,
-            surface_high: emphasize(theme.surface, is_light, 1),
-            surface_higher: emphasize(theme.surface, is_light, 2),
-            surface_highest: emphasize(theme.surface, is_light, 3),
-            outline: theme.outline,
-            outline_low: low(theme.outline, is_light),
-            contrast: theme.contrast,
-            contrast_low: contrast_low(theme.contrast, is_light),
-            primary: theme.primary,
-            primary_low: low(theme.primary, is_light),
-            secondary: theme.secondary,
-            secondary_low: low(theme.secondary, is_light),
-            accent: theme.accent,
-            accent_low: low(theme.accent, is_light),
-            danger: theme.danger,
-            danger_low: low(theme.danger, is_light),
-            success: theme.success,
-            success_low: low(theme.success, is_light),
-            warning: theme.warning,
-            warning_low: low(theme.warning, is_light),
-            info: theme.info,
-            info_low: low(theme.info, is_light),
+        style! {
+            "palette" {
+                "background": theme.background,
+                "surface_lower": emphasize(theme.surface, is_light, -2),
+                "surface_low": emphasize(theme.surface, is_light, -1),
+                "surface": theme.surface,
+                "surface_high": emphasize(theme.surface, is_light, 1),
+                "surface_higher": emphasize(theme.surface, is_light, 2),
+                "surface_highest": emphasize(theme.surface, is_light, 3),
+                "outline": theme.outline,
+                "outline_low": low(theme.outline, is_light),
+                "contrast": theme.contrast,
+                "contrast_low": contrast_low(theme.contrast, is_light),
+                "primary": theme.primary,
+                "primary_low": low(theme.primary, is_light),
+                "secondary": theme.secondary,
+                "secondary_low": low(theme.secondary, is_light),
+                "accent": theme.accent,
+                "accent_low": low(theme.accent, is_light),
+                "danger": theme.danger,
+                "danger_low": low(theme.danger, is_light),
+                "success": theme.success,
+                "success_low": low(theme.success, is_light),
+                "warning": theme.warning,
+                "warning_low": low(theme.warning, is_light),
+                "info": theme.info,
+                "info_low": low(theme.info, is_light),
+            },
         }
     }
-
-    /// The default light palette.
-    pub fn light() -> Self {
-        Self::from_theme(Theme::light())
-    }
-
-    /// The default dark palette.
-    pub fn dark() -> Self {
-        Self::from_theme(Theme::dark())
-    }
 }
 
-impl Style for Palette {
-    fn styled(style: &Styles) -> Self {
-        Self::from_theme(style.get())
-    }
-}
-
-impl From<Theme> for Palette {
-    fn from(theme: Theme) -> Self {
-        Palette::from_theme(theme)
+impl Default for Theme {
+    fn default() -> Self {
+        Theme::dark()
     }
 }

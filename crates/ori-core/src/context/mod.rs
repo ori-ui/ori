@@ -16,7 +16,7 @@ pub use event::*;
 pub use layout::*;
 pub use rebuild::*;
 
-use crate::{view::ViewId, window::Window};
+use crate::{style::Styles, view::ViewId, window::Window};
 
 macro_rules! impl_context {
     ($ty:ty { $($impl:item)* }) => {
@@ -39,6 +39,11 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// Get the window mutably.
     pub fn window_mut(&mut self) -> &mut Window {
         self.context_mut()
+    }
+
+    /// Get the styles.
+    pub fn styles(&self) -> &Styles {
+        self.context()
     }
 
     /// Get the id of the view.

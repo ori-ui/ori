@@ -26,7 +26,7 @@ fn form() -> impl View<Data> {
             })
         ];
 
-        let submit = button(text("Submit")).color(palette().accent);
+        let submit = button(text("Submit")).color(key("palette.accent"));
 
         let submit = on_click(submit, |cx, (data, user): &mut (Data, User)| {
             data.users.push(user.clone());
@@ -45,7 +45,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
         let fields = hstack![text!("Name: {},", user.name), text!("Age: {}", user.age)].gap(16.0);
 
         let user = container(pad(16.0, fields))
-            .background(palette().surface)
+            .background(key("palette.surface"))
             .border_radius(8.0);
 
         users.push(center(user));

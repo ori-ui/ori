@@ -23,8 +23,10 @@ use crate::{AppBuilder, AppCommand, AppRequest, Delegate, DelegateCx, UiBuilder}
 pub struct WindowRenderState<'a> {
     /// The canvas to render.
     pub canvas: &'a Canvas,
+
     /// The size of the window.
     pub logical_size: Size,
+
     /// The clear color of the window.
     pub clear_color: Color,
 }
@@ -127,7 +129,6 @@ pub struct App<T> {
     pub(crate) delegates: Vec<Box<dyn Delegate<T>>>,
     pub(crate) proxy: CommandProxy,
     pub(crate) receiver: CommandReceiver,
-    pub(crate) style: Styles,
     pub(crate) requests: Vec<AppRequest<T>>,
     pub(crate) contexts: Contexts,
 }
@@ -355,7 +356,7 @@ impl<T> App<T> {
 impl<T> App<T> {
     /// Add a window to the application.
     pub fn add_window(&mut self, data: &mut T, mut ui: UiBuilder<T>, mut window: Window) {
-        let mut view = self.style.as_context(|| ui(data));
+        let mut view = ui(data);
         let mut view_state = ViewState::default();
 
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
@@ -363,13 +364,10 @@ impl<T> App<T> {
         let snapshot = window.snapshot();
 
         let mut cx = BuildCx::new(&mut base, &mut view_state);
-        let state = self.style.as_context(|| {
-            cx.insert_context(window.clone());
-            let state = view.build(&mut cx, data);
-            window = cx.remove_context().expect("Window context missing");
 
-            state
-        });
+        cx.insert_context(window.clone());
+        let state = view.build(&mut cx, data);
+        window = cx.remove_context().expect("Window context missing");
 
         let window_id = window.id();
         let window_state = WindowState {
@@ -552,7 +550,7 @@ impl<T> App<T> {
         let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
         for window_state in self.windows.values_mut() {
-            (self.style).as_context(|| window_state.rebuild(data, &mut base));
+            window_state.rebuild(data, &mut base);
         }
     }
 
@@ -575,9 +573,7 @@ impl<T> App<T> {
             for window_state in self.windows.values_mut() {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
-                self.style.as_context(|| {
-                    window_state.event(data, &mut base, &mut rebuild, event);
-                });
+                window_state.event(data, &mut base, &mut rebuild, event);
             }
         }
 
@@ -619,9 +615,7 @@ impl<T> App<T> {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
                 // we send the event to the window, remembering to set the style context
-                self.style.as_context(|| {
-                    window_state.event(data, &mut base, &mut rebuild, event);
-                });
+                window_state.event(data, &mut base, &mut rebuild, event);
             }
         }
 
@@ -689,12 +683,12 @@ impl<T> App<T> {
 
         // layout if needed
         if window_state.view_state.needs_layout() {
-            (self.style).as_context(|| window_state.layout(data, &mut base));
+            window_state.layout(data, &mut base);
         }
 
         // draw if needed
         if window_state.view_state.needs_draw() {
-            self.style.as_context(|| window_state.draw(data, &mut base));
+            window_state.draw(data, &mut base);
 
             // since hover state is determined by the scene, and since draw modifies the scene,
             // we must update the hover state, and send an UpdateHovered event if needed
@@ -720,7 +714,10 @@ impl<T> App<T> {
         // the clear color is the palette background color, but can be overridden by the window
         let clear_color = match window_state.window.color {
             Some(color) => color,
-            None => self.style.palette().background,
+            None => {
+                let styles = (self.contexts.get::<Styles>()).expect("app has styles context");
+                styles.get_or(Color::WHITE, "palette.background")
+            }
         };
 
         Some(WindowRenderState {

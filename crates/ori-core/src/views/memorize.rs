@@ -2,7 +2,6 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    style::Styles,
     view::View,
 };
 
@@ -20,7 +19,6 @@ pub struct Memo<T, V, D> {
     data: Option<Box<dyn FnOnce(&mut T) -> D>>,
     #[allow(clippy::type_complexity)]
     build: Option<Box<dyn FnOnce(&mut T) -> V>>,
-    styles: Styles,
 }
 
 impl<T, V: View<T>, D: PartialEq> Memo<T, V, D> {
@@ -32,16 +30,15 @@ impl<T, V: View<T>, D: PartialEq> Memo<T, V, D> {
         Self {
             data: Some(Box::new(data)),
             build: Some(Box::new(build)),
-            styles: Styles::snapshot(),
         }
     }
 
     fn data(&mut self, data: &mut T) -> D {
-        (self.styles).as_context(|| (self.data.take().expect("Memo::data called twice"))(data))
+        (self.data.take().expect("Memo::data called twice"))(data)
     }
 
     fn build(&mut self, data: &mut T) -> V {
-        (self.styles).as_context(|| (self.build.take().expect("Memo::build called twice"))(data))
+        (self.build.take().expect("Memo::build called twice"))(data)
     }
 }
 

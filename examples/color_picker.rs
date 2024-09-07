@@ -30,7 +30,7 @@ fn main() {
 
     let window = Window::new().title("Color Picker (examples/color_picker.rs)");
 
-    let app = App::build().window(window, ui).style(Palette::light());
+    let app = App::build().window(window, ui);
 
     ori::run(app, &mut Data::new()).unwrap();
 }

@@ -3,12 +3,9 @@ use ori::prelude::*;
 fn square(index: usize) -> impl View {
     size(
         100.0,
-        on_click(
-            button(text("Click me")).color(palette().surface),
-            move |_, _| {
-                info!("clicked {}", index);
-            },
-        ),
+        on_click(button(text("Click me")), move |_, _| {
+            info!("clicked {}", index);
+        }),
     )
 }
 

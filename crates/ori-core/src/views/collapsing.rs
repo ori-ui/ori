@@ -1,6 +1,6 @@
 use std::f32::consts::{PI, SQRT_2};
 
-use ori_macro::{example, Build};
+use ori_macro::{example, Build, Styled};
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color, Curve, FillRule},
@@ -8,7 +8,7 @@ use crate::{
     event::{Event, PointerButton},
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Style, Styles},
+    style::{key, Styled},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -18,44 +18,11 @@ pub fn collapsing<T, H, V>(header: H, content: V) -> Collapsing<T, H, V> {
     Collapsing::new(header, content)
 }
 
-/// The style of a collapsing view.
-#[derive(Clone, Debug)]
-pub struct CollapsingStyle {
-    /// The transition of the view.
-    pub transition: Transition,
-    /// The size of the icon.
-    pub icon_size: f32,
-    /// The color of the icon.
-    pub icon_color: Color,
-    /// The background color of the header.
-    pub background: Color,
-    /// The border width of the header.
-    pub border_width: BorderWidth,
-    /// The border radius of the header.
-    pub border_radius: BorderRadius,
-    /// The color of the border of the header.
-    pub border_color: Color,
-}
-
-impl Style for CollapsingStyle {
-    fn styled(style: &Styles) -> Self {
-        Self {
-            transition: Transition::ease(0.1),
-            icon_size: 16.0,
-            icon_color: style.palette().primary,
-            background: Color::TRANSPARENT,
-            border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
-            border_radius: BorderRadius::all(0.0),
-            border_color: style.palette().surface_higher,
-        }
-    }
-}
-
 /// A collapsing view.
 ///
 /// Can be styled using the [`CollapsingStyle`].
 #[example(name = "collapsing", width = 400, height = 300)]
-#[derive(Build, Rebuild)]
+#[derive(Styled, Build, Rebuild)]
 pub struct Collapsing<T, H, V> {
     /// The header.
     #[build(ignore)]
@@ -78,54 +45,56 @@ pub struct Collapsing<T, H, V> {
     pub default_open: bool,
 
     /// The transition of the view.
-    pub transition: Transition,
+    #[styled(default = Transition::ease(0.1))]
+    pub transition: Styled<Transition>,
 
     /// The size of the icon.
     #[rebuild(layout)]
-    pub icon_size: f32,
+    #[styled(default = 16.0)]
+    pub icon_size: Styled<f32>,
 
     /// The color of the icon.
     #[rebuild(draw)]
-    pub icon_color: Color,
+    #[styled(default -> "palette.primary" or Color::BLUE)]
+    pub icon_color: Styled<Color>,
 
     /// The background color of the header.
     #[rebuild(draw)]
-    pub background: Color,
+    #[styled(default = Color::TRANSPARENT)]
+    pub background: Styled<Color>,
 
     /// The border width of the header.
     #[rebuild(draw)]
-    pub border_width: BorderWidth,
+    #[styled(default = BorderWidth::new(0.0, 0.0, 1.0, 0.0))]
+    pub border_width: Styled<BorderWidth>,
 
     /// The border radius of the header.
     #[rebuild(draw)]
-    pub border_radius: BorderRadius,
+    #[styled(default = BorderRadius::all(0.0))]
+    pub border_radius: Styled<BorderRadius>,
 
     /// The color of the border of the header.
     #[rebuild(draw)]
-    pub border_color: Color,
+    #[styled(default -> "palette.outline" or Color::BLACK)]
+    pub border_color: Styled<Color>,
 }
 
 impl<T, H, V> Collapsing<T, H, V> {
     /// Create a new [`Collapsing`] view.
     pub fn new(header: H, content: V) -> Self {
-        Self::styled(header, content, style())
-    }
-
-    /// Create a new [`Collapsing`] view with a style.
-    pub fn styled(header: H, content: V, style: CollapsingStyle) -> Self {
         Self {
             header: Pod::new(header),
             content: Pod::new(content),
             on_open: None,
             open: None,
             default_open: false,
-            transition: style.transition,
-            icon_size: style.icon_size,
-            icon_color: style.icon_color,
-            background: style.background,
-            border_width: style.border_width,
-            border_radius: style.border_radius,
-            border_color: style.border_color,
+            transition: key("collapsing.transition"),
+            icon_size: key("collapsing.icon_size"),
+            icon_color: key("collapsing.icon_color"),
+            background: key("collapsing.background"),
+            border_width: key("collapsing.border_width"),
+            border_radius: key("collapsing.border_radius"),
+            border_color: key("collapsing.border_color"),
         }
     }
 
@@ -138,10 +107,11 @@ impl<T, H, V> Collapsing<T, H, V> {
 
 #[doc(hidden)]
 pub struct CollapsingState<T, H: View<T>, V: View<T>> {
-    pub header: State<T, H>,
-    pub content: State<T, V>,
-    pub open: bool,
-    pub t: f32,
+    style: CollapsingStyle,
+    header: State<T, H>,
+    content: State<T, V>,
+    open: bool,
+    t: f32,
 }
 
 impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
@@ -151,6 +121,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         let open = self.open.unwrap_or(self.default_open);
 
         CollapsingState {
+            style: CollapsingStyle::styled(self, cx.styles()),
             header: self.header.build(cx, data),
             content: self.content.build(cx, data),
             open,
@@ -191,7 +162,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
                 }
             }
             Event::Animate(dt) => {
-                if self.transition.step(&mut state.t, state.open, *dt) {
+                if state.style.transition.step(&mut state.t, state.open, *dt) {
                     cx.animate();
                     cx.layout();
                 }
@@ -207,16 +178,16 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        let t = self.transition.get(state.t);
+        let t = state.style.transition.get(state.t);
 
-        let header_space = space.loosen_height() - Size::new(self.icon_size, 0.0);
+        let header_space = space.loosen_height() - Size::new(state.style.icon_size, 0.0);
         let header_size = (self.header).layout(&mut state.header, cx, data, header_space);
 
-        let header_width = header_size.width + self.icon_size;
-        let header_height = header_size.height.max(self.icon_size);
+        let header_width = header_size.width + state.style.icon_size;
+        let header_height = header_size.height.max(state.style.icon_size);
 
         let header_offset = (header_height - header_size.height) / 2.0;
-        (state.header).translate(Vector::new(self.icon_size, header_offset));
+        (state.header).translate(Vector::new(state.style.icon_size, header_offset));
 
         let content_space = space - Size::new(0.0, header_size.height);
         let content_size = (self.content).layout(&mut state.content, cx, data, content_space);
@@ -230,26 +201,30 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        let t = self.transition.get(state.t);
+        let t = state.style.transition.get(state.t);
 
-        let header_height = self.icon_size.max(state.header.size().height);
+        let header_height = state.style.icon_size.max(state.header.size().height);
         let header_size = Size::new(cx.rect().width(), header_height);
         let header_rect = Rect::min_size(cx.rect().top_left(), header_size);
 
         cx.quad(
             header_rect,
-            self.background,
-            self.border_radius,
-            self.border_width,
-            self.border_color,
+            state.style.background,
+            state.style.border_radius,
+            state.style.border_width,
+            state.style.border_color,
         );
 
-        let transform = Affine::translate(Vector::new(self.icon_size / 2.0, header_height / 2.0))
-            * Affine::scale(Vector::all(self.icon_size))
-            * Affine::rotate(PI / 2.0 * t);
+        let mut transform = Affine::translate(Vector::new(
+            state.style.icon_size / 2.0,
+            header_height / 2.0,
+        ));
+
+        transform *= Affine::scale(Vector::all(state.style.icon_size));
+        transform *= Affine::rotate(PI / 2.0 * t);
 
         cx.transformed(transform, |cx| {
-            cx.fill(icon(), FillRule::EvenOdd, self.icon_color);
+            cx.fill(icon(), FillRule::EvenOdd, state.style.icon_color);
         });
 
         cx.canvas().trigger(state.header.rect(), state.header.id());

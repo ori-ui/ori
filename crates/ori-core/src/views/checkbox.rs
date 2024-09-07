@@ -1,4 +1,4 @@
-use ori_macro::{example, Build};
+use ori_macro::{example, Build, Styled};
 
 use crate::{
     canvas::Curve,
@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    style::{style, Style, Styles},
+    style::{key, Styled},
     transition::Transition,
     view::View,
 };
@@ -17,54 +17,11 @@ pub fn checkbox(checked: bool) -> Checkbox {
     Checkbox::new(checked)
 }
 
-/// The style of a [`Checkbox`].
-#[derive(Clone, Debug)]
-pub struct CheckboxStyle {
-    /// The transition of the checkbox.
-    pub transition: Transition,
-
-    /// The size of the checkbox.
-    pub size: f32,
-
-    /// The color of the checkbox.
-    pub color: Color,
-
-    /// The stroke width of the checkbox.
-    pub stroke: f32,
-
-    /// The background color.
-    pub background: Color,
-
-    /// The border radius.
-    pub border_radius: BorderRadius,
-
-    /// The border width.
-    pub border_width: BorderWidth,
-
-    /// The border color.
-    pub border_color: Color,
-}
-
-impl Style for CheckboxStyle {
-    fn styled(style: &Styles) -> Self {
-        Self {
-            transition: Transition::ease(0.1),
-            size: 24.0,
-            color: style.palette().primary,
-            stroke: 2.0,
-            background: Color::TRANSPARENT,
-            border_radius: BorderRadius::all(6.0),
-            border_width: BorderWidth::all(2.0),
-            border_color: style.palette().outline,
-        }
-    }
-}
-
 /// A checkbox.
 ///
 /// Can be styled using the [`CheckboxStyle`].
 #[example(name = "checkbox", width = 400, height = 300)]
-#[derive(Build, Rebuild)]
+#[derive(Styled, Build, Rebuild)]
 pub struct Checkbox {
     /// Whether the checkbox is checked.
     #[rebuild(draw)]
@@ -72,78 +29,88 @@ pub struct Checkbox {
 
     /// The transition of the checkbox.
     #[rebuild(draw)]
-    pub transition: Transition,
+    #[styled(default = Transition::ease(0.1))]
+    pub transition: Styled<Transition>,
 
     /// The size of the checkbox.
     #[rebuild(layout)]
-    pub size: f32,
+    #[styled(default = 24.0)]
+    pub size: Styled<f32>,
 
     /// The color of the checkbox.
     #[rebuild(draw)]
-    pub color: Color,
+    #[styled(default -> "palette.primary" or Color::BLUE)]
+    pub color: Styled<Color>,
 
     /// The stroke width of the checkbox.
     #[rebuild(draw)]
-    pub stroke: f32,
+    #[styled(default = 2.0)]
+    pub stroke: Styled<f32>,
 
     /// The background color.
     #[rebuild(draw)]
-    pub background: Color,
+    #[styled(default = Color::TRANSPARENT)]
+    pub background: Styled<Color>,
 
     /// The border radius.
     #[rebuild(draw)]
-    pub border_radius: BorderRadius,
+    #[styled(default = BorderRadius::all(6.0))]
+    pub border_radius: Styled<BorderRadius>,
 
     /// The border width.
     #[rebuild(draw)]
-    pub border_width: BorderWidth,
+    #[styled(default = BorderWidth::all(2.0))]
+    pub border_width: Styled<BorderWidth>,
 
     /// The border color.
     #[rebuild(draw)]
-    pub border_color: Color,
+    #[styled(default -> "palette.outline" or Color::BLACK)]
+    pub border_color: Styled<Color>,
 }
 
 impl Checkbox {
     /// Create a new [`Checkbox`].
     pub fn new(checked: bool) -> Self {
-        Self::styled(checked, style())
-    }
-
-    /// Create a new [`Checkbox`] with a style.
-    pub fn styled(checked: bool, style: CheckboxStyle) -> Self {
         Self {
             checked,
-            transition: style.transition,
-            size: style.size,
-            color: style.color,
-            stroke: style.stroke,
-            background: style.background,
-            border_radius: style.border_radius,
-            border_width: style.border_width,
-            border_color: style.border_color,
+            transition: key("checkbox.transition"),
+            size: key("checkbox.size"),
+            color: key("checkbox.color"),
+            stroke: key("checkbox.stroke"),
+            background: key("checkbox.background"),
+            border_radius: key("checkbox.border_radius"),
+            border_width: key("checkbox.border_width"),
+            border_color: key("checkbox.border_color"),
         }
     }
 }
 
 impl<T> View<T> for Checkbox {
-    type State = f32;
+    type State = (CheckboxStyle, f32);
 
-    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        0.0
+    fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        let style = CheckboxStyle::styled(self, cx.styles());
+        (style, 0.0)
     }
 
-    fn rebuild(&mut self, _t: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+    fn rebuild(&mut self, _: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
     }
 
-    fn event(&mut self, t: &mut Self::State, cx: &mut EventCx, _data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        (style, t): &mut Self::State,
+        cx: &mut EventCx,
+        _data: &mut T,
+        event: &Event,
+    ) {
         if cx.hot_changed() {
             cx.animate();
         }
 
         if let Event::Animate(dt) = event {
             let on = cx.is_hot() && !cx.is_active();
-            if self.transition.step(t, on, *dt) {
+            if style.transition.step(t, on, *dt) {
                 cx.animate();
             }
 
@@ -153,24 +120,24 @@ impl<T> View<T> for Checkbox {
 
     fn layout(
         &mut self,
-        _t: &mut Self::State,
+        (style, _t): &mut Self::State,
         _cx: &mut LayoutCx,
         _data: &mut T,
         space: Space,
     ) -> Size {
-        space.fit(Size::all(self.size))
+        space.fit(Size::all(style.size))
     }
 
-    fn draw(&mut self, t: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+    fn draw(&mut self, (style, t): &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         cx.hoverable(|cx| {
-            let bright = self.border_color.lighten(0.2);
+            let bright = style.border_color.lighten(0.2);
 
             cx.quad(
                 cx.rect(),
-                self.background,
-                self.border_radius,
-                self.border_width,
-                self.border_color.mix(bright, self.transition.get(*t)),
+                style.background,
+                style.border_radius,
+                style.border_width,
+                style.border_color.mix(bright, style.transition.get(*t)),
             );
 
             if self.checked {
@@ -179,7 +146,7 @@ impl<T> View<T> for Checkbox {
                 curve.line_to(Point::new(0.4, 0.7) * cx.size());
                 curve.line_to(Point::new(0.8, 0.3) * cx.size());
 
-                cx.stroke(curve, self.stroke, self.color);
+                cx.stroke(curve, style.stroke, style.color);
             }
         });
     }

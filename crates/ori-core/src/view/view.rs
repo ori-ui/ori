@@ -23,7 +23,7 @@ use crate::{
 /// - [`View::rebuild`] is called after a new `view-tree` has been built, on the
 ///     new tree. The view can then compare itself to the old tree and update it's
 ///     state accordingly. When a view differs from the old tree, it should call
-///     [`RebuildCx::request_layout`] or [`RebuildCx::request_draw`] when applicable.
+///     [`RebuildCx::layout`] or [`RebuildCx::draw`] when applicable.
 ///     This can be quite tedius to write out, so the [`Rebuild`] derive macro can be
 ///     used to generate this code.
 /// - [`View::event`] is called when an event occurs. The should then handle the

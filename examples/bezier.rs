@@ -32,7 +32,10 @@ impl Data {
 
 fn ui(data: &mut Data) -> impl View<Data> {
     let curve = painter(|cx, data: &mut Data| {
-        let palette = palette();
+        let styles = cx.styles();
+        let primary: Color = styles.get("palette.primary").unwrap();
+        let success: Color = styles.get("palette.success").unwrap();
+        let accent: Color = styles.get("palette.accent").unwrap();
 
         let mut curve = Curve::new();
 
@@ -48,7 +51,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
             }
         }
 
-        cx.stroke(curve.clone(), Stroke::from(2.0), palette.primary);
+        cx.stroke(curve.clone(), Stroke::from(2.0), primary);
 
         let mut stroke = Curve::new();
 
@@ -62,12 +65,12 @@ fn ui(data: &mut Data) -> impl View<Data> {
             },
         );
 
-        cx.stroke(stroke, Stroke::from(1.0), palette.success);
+        cx.stroke(stroke, Stroke::from(1.0), success);
 
         for point in &data.points {
             let curve = Curve::circle(*point, 5.0);
 
-            cx.stroke(curve, Stroke::from(2.0), palette.accent);
+            cx.stroke(curve, Stroke::from(2.0), accent);
         }
     });
 
@@ -155,7 +158,7 @@ fn main() {
 
     let window = Window::new().title("Bezier (examples/bezier.rs)");
 
-    let app = App::build().window(window, ui).style(Palette::light());
+    let app = App::build().window(window, ui);
 
     ori::run(app, &mut Data::new()).unwrap();
 }

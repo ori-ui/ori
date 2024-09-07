@@ -343,6 +343,7 @@ impl Curve {
         self.line_to(p1);
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn push_line(
         &mut self,
         outside: &mut Self,

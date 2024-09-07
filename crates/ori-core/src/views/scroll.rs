@@ -1,4 +1,4 @@
-use ori_macro::example;
+use ori_macro::{example, Styled};
 
 use crate::{
     canvas::{BorderRadius, Color},
@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::palette,
+    style::{key, Styled},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -23,7 +23,7 @@ pub fn vscroll<V>(content: V) -> Scroll<V> {
 
 /// A scrollable view.
 #[example(name = "scroll", width = 400, height = 300)]
-#[derive(Rebuild)]
+#[derive(Styled, Rebuild)]
 pub struct Scroll<V> {
     /// The content.
     pub content: Pod<V>,
@@ -49,11 +49,13 @@ pub struct Scroll<V> {
 
     /// The color of the scrollbar.
     #[rebuild(draw)]
-    pub color: Color,
+    #[styled(default -> "palette.surface_high" or Color::grayscale(0.9))]
+    pub color: Styled<Color>,
 
     /// The color of the scrollbar knob.
     #[rebuild(draw)]
-    pub knob_color: Color,
+    #[styled(default -> "palette.surface_higher" or Color::grayscale(0.8))]
+    pub knob_color: Styled<Color>,
 }
 
 impl<V> Scroll<V> {
@@ -66,8 +68,8 @@ impl<V> Scroll<V> {
             width: 6.0,
             inset: 8.0,
             border_radius: BorderRadius::all(3.0),
-            color: palette().surface_high,
-            knob_color: palette().surface_higher,
+            color: key("scroll.color"),
+            knob_color: key("scroll.knob_color"),
         }
     }
 
@@ -107,8 +109,8 @@ impl<V> Scroll<V> {
 }
 
 #[doc(hidden)]
-#[derive(Default)]
 pub struct ScrollState {
+    style: ScrollStyle,
     scrollbar_hot: bool,
     scroll: f32,
     t: f32,
@@ -118,7 +120,12 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
     type State = (ScrollState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let state = ScrollState::default();
+        let state = ScrollState {
+            style: ScrollStyle::styled(self, cx.styles()),
+            scrollbar_hot: false,
+            scroll: 0.0,
+            t: 0.0,
+        };
         let content = self.content.build(cx, data);
         (state, content)
     }
@@ -246,9 +253,12 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             return;
         }
 
+        let track_color = state.style.color.fade(0.7);
+        let knob_color = state.style.knob_color.fade(0.9);
+
         cx.quad(
             self.scrollbar_rect(cx.rect()),
-            self.color.fade(0.7).fade(self.transition.get(state.t)),
+            track_color.fade(self.transition.get(state.t)),
             self.border_radius,
             0.0,
             Color::TRANSPARENT,
@@ -256,7 +266,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         cx.quad(
             self.scrollbar_knob_rect(cx.rect(), overflow, state.scroll),
-            self.knob_color.fade(0.9).fade(self.transition.get(state.t)),
+            knob_color.fade(self.transition.get(state.t)),
             self.border_radius,
             0.0,
             Color::TRANSPARENT,

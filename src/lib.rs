@@ -57,7 +57,8 @@ pub mod prelude {
         },
         log::{debug, error, info, trace, warn},
         rebuild::Rebuild,
-        style::{palette, style, style_or, styled, try_style, Palette, Style, Styles, Theme},
+        style,
+        style::{key, Styled, Styles, Theme},
         text::{
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
             TextAlign, TextBuffer, TextWrap,
@@ -70,7 +71,7 @@ pub mod prelude {
         window::{Cursor, Pointer, Window, WindowId, WindowSizing},
     };
 
-    pub use ori_macro::{desktop, mobile, web, Build};
+    pub use ori_macro::{desktop, mobile, web, Build, Styled};
 
     #[cfg(feature = "font-awesome")]
     pub use ori_font_awesome as fa;

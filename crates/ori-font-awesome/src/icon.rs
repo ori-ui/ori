@@ -4,11 +4,11 @@ use ori_core::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::palette,
+    style::{key, Styled},
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
     view::View,
 };
-use ori_macro::{include_font, Build};
+use ori_macro::{include_font, Build, Styled};
 
 use crate::{IconCode, IconFont};
 
@@ -21,7 +21,7 @@ pub fn icon(icon: impl Into<IconCode>) -> Icon {
 ///
 /// By default, the icon is rendered using the `icon.font` font family.
 /// This uses the [Font Awesome 6 Regular Free](https://fontawesome.com/) font by default.
-#[derive(Build, Rebuild, PartialEq)]
+#[derive(Styled, Build, Rebuild, PartialEq)]
 pub struct Icon {
     /// The codepoint of the icon to display.
     #[rebuild(draw)]
@@ -35,11 +35,13 @@ pub struct Icon {
 
     /// The size of the icon.
     #[rebuild(layout)]
-    pub size: f32,
+    #[styled(default = 16.0)]
+    pub size: Styled<f32>,
 
     /// The color of the icon.
     #[rebuild(draw)]
-    pub color: Color,
+    #[styled(default -> "palette.contrast" or Color::BLACK)]
+    pub color: Styled<Color>,
 }
 
 impl Icon {
@@ -48,8 +50,8 @@ impl Icon {
         Self {
             icon: icon.into(),
             solid: false,
-            size: 16.0,
-            color: palette().contrast,
+            size: key("icon.size"),
+            color: key("icon.color"),
         }
     }
 
@@ -68,7 +70,7 @@ impl Icon {
         self.icon.fonts()[0]
     }
 
-    fn set_attributes(&self, cx: &mut BaseCx, buffer: &mut TextBuffer) {
+    fn set_attributes(&self, cx: &mut BaseCx, buffer: &mut TextBuffer, style: &IconStyle) {
         struct FontsLoaded;
 
         // ensure that all the fonts are loaded
@@ -80,7 +82,7 @@ impl Icon {
 
         let font = self.font();
 
-        buffer.set_metrics(cx.fonts(), self.size, 1.0);
+        buffer.set_metrics(cx.fonts(), style.size, 1.0);
         buffer.set_text(
             cx.fonts(),
             self.icon.as_str(),
@@ -96,6 +98,7 @@ impl Icon {
 
 #[doc(hidden)]
 pub struct IconState {
+    style: IconStyle,
     buffer: TextBuffer,
 }
 
@@ -103,18 +106,19 @@ impl<T> View<T> for Icon {
     type State = IconState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        let mut buffer = TextBuffer::new(cx.fonts(), self.size, 1.0);
+        let style = IconStyle::styled(self, cx.styles());
+        let mut buffer = TextBuffer::new(cx.fonts(), style.size, 1.0);
 
-        self.set_attributes(cx, &mut buffer);
+        self.set_attributes(cx, &mut buffer, &style);
 
-        IconState { buffer }
+        IconState { style, buffer }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
 
         if self != old {
-            self.set_attributes(cx, &mut state.buffer);
+            self.set_attributes(cx, &mut state.buffer, &state.style);
         }
     }
 
@@ -136,11 +140,11 @@ impl<T> View<T> for Icon {
     ) -> Size {
         state.buffer.set_bounds(cx.fonts(), space.max);
 
-        Size::all(self.size)
+        Size::all(state.style.size)
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let offset = cx.rect().center() - state.buffer.rect().center();
-        cx.text(&state.buffer, self.color, offset);
+        cx.text(&state.buffer, state.style.color, offset);
     }
 }

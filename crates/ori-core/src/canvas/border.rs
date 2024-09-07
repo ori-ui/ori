@@ -1,3 +1,5 @@
+use crate::style::Styled;
+
 /// Radi of the corners on a rounded rectangle.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -82,6 +84,24 @@ impl From<BorderRadius> for [f32; 4] {
     }
 }
 
+impl From<(f32, f32, f32, f32)> for Styled<BorderRadius> {
+    fn from(x: (f32, f32, f32, f32)) -> Self {
+        Self::Value(BorderRadius::from(x))
+    }
+}
+
+impl From<[f32; 4]> for Styled<BorderRadius> {
+    fn from(x: [f32; 4]) -> Self {
+        Self::Value(BorderRadius::from(x))
+    }
+}
+
+impl From<f32> for Styled<BorderRadius> {
+    fn from(x: f32) -> Self {
+        Self::Value(BorderRadius::from(x))
+    }
+}
+
 /// The border width of a rounded rectangle.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -154,5 +174,35 @@ impl From<f32> for BorderWidth {
 impl From<BorderWidth> for [f32; 4] {
     fn from(width: BorderWidth) -> Self {
         [width.top, width.right, width.bottom, width.left]
+    }
+}
+
+impl From<(f32, f32, f32, f32)> for Styled<BorderWidth> {
+    fn from(x: (f32, f32, f32, f32)) -> Self {
+        Self::Value(BorderWidth::from(x))
+    }
+}
+
+impl From<[f32; 4]> for Styled<BorderWidth> {
+    fn from(x: [f32; 4]) -> Self {
+        Self::Value(BorderWidth::from(x))
+    }
+}
+
+impl From<(f32, f32)> for Styled<BorderWidth> {
+    fn from(x: (f32, f32)) -> Self {
+        Self::Value(BorderWidth::from(x))
+    }
+}
+
+impl From<[f32; 2]> for Styled<BorderWidth> {
+    fn from(x: [f32; 2]) -> Self {
+        Self::Value(BorderWidth::from(x))
+    }
+}
+
+impl From<f32> for Styled<BorderWidth> {
+    fn from(x: f32) -> Self {
+        Self::Value(BorderWidth::from(x))
     }
 }

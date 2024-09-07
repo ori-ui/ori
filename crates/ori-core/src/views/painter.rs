@@ -6,7 +6,6 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::Styles,
     view::View,
 };
 
@@ -70,12 +69,9 @@ pub struct Painter<T> {
 
 impl<T> Painter<T> {
     /// Create a new [`Painter`] view.
-    pub fn new(mut draw: impl FnMut(&mut DrawCx, &mut T) + 'static) -> Self {
-        let mut snapshot = Styles::snapshot();
-
+    pub fn new(draw: impl FnMut(&mut DrawCx, &mut T) + 'static) -> Self {
         Self {
-            draw: Box::new(move |cx, data| snapshot.as_context(|| draw(cx, data))),
-
+            draw: Box::new(draw),
             size: None,
         }
     }

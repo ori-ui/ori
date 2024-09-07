@@ -2,14 +2,14 @@ use cosmic_text::{
     Action, Attrs, AttrsList, Buffer, BufferLine, BufferRef, Edit, Editor, LineEnding, Metrics,
     Motion, Shaping,
 };
-use ori_macro::{example, Build};
+use ori_macro::{example, Build, Styled};
 
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Event, Key, KeyPressed},
     layout::{Point, Rect, Size, Space, Vector},
-    style::{style, Palette, Style, Styles},
+    style::{key, Styled},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -18,72 +18,16 @@ use crate::{
     window::Cursor,
 };
 
-use super::TextStyle;
-
 /// Create a new [`TextInput`].
 pub fn text_input<T>() -> TextInput<T> {
     TextInput::new()
-}
-
-/// The style of a text input.
-#[derive(Clone, Debug)]
-pub struct TextInputStyle {
-    /// The font size of the text.
-    pub font_size: f32,
-
-    /// The font family of the text.
-    pub font_family: FontFamily,
-
-    /// The font weight of the text.
-    pub font_weight: FontWeight,
-
-    /// The font stretch of the text.
-    pub font_stretch: FontStretch,
-
-    /// The font style of the text.
-    pub font_style: FontStyle,
-
-    /// The color of the text.
-    pub color: Color,
-
-    /// The color of the placeholder text.
-    pub placeholder_color: Color,
-
-    /// The horizontal alignment of the text.
-    pub align: TextAlign,
-
-    /// The line height of the text.
-    pub line_height: f32,
-
-    /// The text wrap of the text.
-    pub wrap: TextWrap,
-}
-
-impl Style for TextInputStyle {
-    fn styled(style: &Styles) -> Self {
-        let text_style = style.get::<TextStyle>();
-        let palette = style.get::<Palette>();
-
-        Self {
-            font_size: text_style.font_size,
-            font_family: text_style.font_family,
-            font_weight: text_style.font_weight,
-            font_stretch: text_style.font_stretch,
-            font_style: text_style.font_style,
-            color: text_style.color,
-            placeholder_color: palette.surface_highest,
-            align: text_style.align,
-            line_height: text_style.line_height,
-            wrap: text_style.wrap,
-        }
-    }
 }
 
 /// A text input.
 ///
 /// Can be styled using the [`TextInputStyle`].
 #[example(name = "text_input", width = 400, height = 300)]
-#[derive(Build)]
+#[derive(Styled, Build)]
 pub struct TextInput<T> {
     /// The text.
     #[build(ignore)]
@@ -108,34 +52,44 @@ pub struct TextInput<T> {
     pub multiline: bool,
 
     /// The font size of the text.
-    pub font_size: f32,
+    #[styled(default = 16.0)]
+    pub font_size: Styled<f32>,
 
     /// The font family of the text.
-    pub font_family: FontFamily,
+    #[styled(default)]
+    pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
-    pub font_weight: FontWeight,
+    #[styled(default)]
+    pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
-    pub font_stretch: FontStretch,
+    #[styled(default)]
+    pub font_stretch: Styled<FontStretch>,
 
     /// The font.into of the text.
-    pub font_style: FontStyle,
+    #[styled(default)]
+    pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
-    pub color: Color,
+    #[styled(default -> "palette.contrast" or Color::BLACK)]
+    pub color: Styled<Color>,
 
     /// The color of the placeholder text.
-    pub placeholder_color: Color,
+    #[styled(default -> "palette.contrast" or Color::grayscale(0.9))]
+    pub placeholder_color: Styled<Color>,
 
     /// The vertical alignment of the text.
-    pub align: TextAlign,
+    #[styled(default)]
+    pub align: Styled<TextAlign>,
 
     /// The line height of the text.
-    pub line_height: f32,
+    #[styled(default = 1.2)]
+    pub line_height: Styled<f32>,
 
     /// The text wrap of the text.
-    pub wrap: TextWrap,
+    #[styled(default)]
+    pub wrap: Styled<TextWrap>,
 }
 
 impl<T> Default for TextInput<T> {
@@ -147,27 +101,22 @@ impl<T> Default for TextInput<T> {
 impl<T> TextInput<T> {
     /// Create a new text input view.
     pub fn new() -> Self {
-        Self::styled(style())
-    }
-
-    /// Create a new text input view with a style.
-    pub fn styled(style: TextInputStyle) -> Self {
         Self {
             text: None,
             on_input: None,
             on_submit: None,
             placeholder: String::from("..."),
             multiline: false,
-            font_size: style.font_size,
-            font_family: style.font_family,
-            font_weight: style.font_weight,
-            font_stretch: style.font_stretch,
-            font_style: style.font_style,
-            color: style.color,
-            placeholder_color: style.placeholder_color,
-            align: style.align,
-            line_height: style.line_height,
-            wrap: style.wrap,
+            font_size: key("text_input.font_size"),
+            font_family: key("text_input.font_family"),
+            font_weight: key("text_input.font_weight"),
+            font_stretch: key("text_input.font_stretch"),
+            font_style: key("text_input.font_style"),
+            color: key("text_input.color"),
+            placeholder_color: key("text_input.placeholder_color"),
+            align: key("text_input.align"),
+            line_height: key("text_input.line_height"),
+            wrap: key("text_input.wrap"),
         }
     }
 
@@ -199,25 +148,26 @@ impl<T> TextInput<T> {
 
     fn set_attributes(&self, fonts: &mut Fonts, state: &mut TextInputState) {
         let attrs = TextAttributes {
-            family: self.font_family.clone(),
-            stretch: self.font_stretch,
-            weight: self.font_weight,
-            style: self.font_style,
+            family: state.style.font_family.clone(),
+            stretch: state.style.font_stretch,
+            weight: state.style.font_weight,
+            style: state.style.font_style,
         };
         let placeholder_attrs = TextAttributes {
-            family: self.font_family.clone(),
-            stretch: self.font_stretch,
-            weight: self.font_weight,
-            style: self.font_style,
+            family: state.style.font_family.clone(),
+            stretch: state.style.font_stretch,
+            weight: state.style.font_weight,
+            style: state.style.font_style,
         };
         let metrics = Metrics {
-            font_size: self.font_size,
-            line_height: self.line_height * self.font_size,
+            font_size: state.style.font_size,
+            line_height: state.style.line_height * state.style.font_size,
         };
 
         /* editor */
+        let wrap = state.style.wrap.to_cosmic_text();
         let buffer = state.buffer_mut();
-        buffer.set_wrap(&mut fonts.font_system, self.wrap.to_cosmic_text());
+        buffer.set_wrap(&mut fonts.font_system, wrap);
         buffer.set_metrics(&mut fonts.font_system, metrics);
 
         let mut text = state.text();
@@ -234,17 +184,17 @@ impl<T> TextInput<T> {
         );
 
         /* placeholder */
-        state.placeholder.set_wrap(fonts, self.wrap);
-        (state.placeholder).set_metrics(fonts, self.font_size, self.line_height);
+        state.placeholder.set_wrap(fonts, state.style.wrap);
+        (state.placeholder).set_metrics(fonts, state.style.font_size, state.style.line_height);
         (state.placeholder).set_text(fonts, &self.placeholder, placeholder_attrs);
     }
 
-    fn set_attrs_list(&self, buffer: &mut Buffer) {
+    fn set_attrs_list(&self, buffer: &mut Buffer, style: &TextInputStyle) {
         let attrs = TextAttributes {
-            family: self.font_family.clone(),
-            stretch: self.font_stretch,
-            weight: self.font_weight,
-            style: self.font_style,
+            family: style.font_family.clone(),
+            stretch: style.font_stretch,
+            weight: style.font_weight,
+            style: style.font_style,
         };
 
         let attrs_list = AttrsList::new(attrs.to_cosmic_text());
@@ -257,6 +207,7 @@ impl<T> TextInput<T> {
 
 #[doc(hidden)]
 pub struct TextInputState {
+    style: TextInputStyle,
     editor: Editor<'static>,
     placeholder: TextBuffer,
     dragging: bool,
@@ -335,17 +286,20 @@ impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        let style = TextInputStyle::styled(self, cx.styles());
+
         let editor = Editor::new(Buffer::new(
             &mut cx.fonts().font_system,
             Metrics {
-                font_size: self.font_size,
-                line_height: self.line_height * self.font_size,
+                font_size: style.font_size,
+                line_height: style.line_height * style.font_size,
             },
         ));
 
-        let placeholder = TextBuffer::new(cx.fonts(), self.font_size, self.line_height);
+        let placeholder = TextBuffer::new(cx.fonts(), style.font_size, style.line_height);
 
         let mut state = TextInputState {
+            style,
             editor,
             placeholder,
             dragging: false,
@@ -354,10 +308,10 @@ impl<T> View<T> for TextInput<T> {
 
         if let Some(ref text) = self.text {
             let attrs = TextAttributes {
-                family: self.font_family.clone(),
-                stretch: self.font_stretch,
-                weight: self.font_weight,
-                style: self.font_style,
+                family: state.style.font_family.clone(),
+                stretch: state.style.font_stretch,
+                weight: state.style.font_weight,
+                style: state.style.font_style,
             };
 
             state.buffer_mut().set_text(
@@ -375,32 +329,38 @@ impl<T> View<T> for TextInput<T> {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         if self.font_size != old.font_size || self.line_height != old.line_height {
-            state.buffer_mut().set_metrics(
-                &mut cx.fonts().font_system,
-                Metrics {
-                    font_size: self.font_size,
-                    line_height: self.line_height * self.font_size,
-                },
-            );
+            let metrics = Metrics {
+                font_size: state.style.font_size,
+                line_height: state.style.line_height * state.style.font_size,
+            };
 
-            (state.placeholder).set_metrics(cx.fonts(), self.font_size, self.line_height);
+            (state.buffer_mut()).set_metrics(&mut cx.fonts().font_system, metrics);
+
+            (state.placeholder).set_metrics(
+                cx.fonts(),
+                state.style.font_size,
+                state.style.line_height,
+            );
 
             cx.layout();
         }
 
         if self.wrap != old.wrap {
-            (state.buffer_mut()).set_wrap(&mut cx.fonts().font_system, self.wrap.to_cosmic_text());
-            state.placeholder.set_wrap(cx.fonts(), self.wrap);
+            let wrap = state.style.wrap.to_cosmic_text();
+            (state.buffer_mut()).set_wrap(&mut cx.fonts().font_system, wrap);
+            state.placeholder.set_wrap(cx.fonts(), state.style.wrap);
 
             cx.layout();
         }
 
         if self.align != old.align {
+            let align = state.style.align.to_cosmic_text();
+
             for line in state.buffer_mut().lines.iter_mut() {
-                line.set_align(Some(self.align.to_cosmic_text()));
+                line.set_align(Some(align));
             }
 
-            state.placeholder.set_align(self.align);
+            state.placeholder.set_align(state.style.align);
 
             cx.layout();
         }
@@ -413,10 +373,10 @@ impl<T> View<T> for TextInput<T> {
         if self.text != Some(state.text()) && self.text.is_some() {
             if let Some(mut text) = self.text.clone() {
                 let attrs = TextAttributes {
-                    family: self.font_family.clone(),
-                    stretch: self.font_stretch,
-                    weight: self.font_weight,
-                    style: self.font_style,
+                    family: state.style.font_family.clone(),
+                    stretch: state.style.font_stretch,
+                    weight: state.style.font_weight,
+                    style: state.style.font_style,
                 };
 
                 if text.ends_with('\n') {
@@ -433,7 +393,12 @@ impl<T> View<T> for TextInput<T> {
                 cx.layout();
             }
         } else if attrs_changed {
-            self.set_attrs_list(state.buffer_mut());
+            let buffer = match state.editor.buffer_ref_mut() {
+                BufferRef::Owned(buffer) => buffer,
+                _ => unreachable!(),
+            };
+
+            self.set_attrs_list(buffer, &state.style);
 
             cx.layout();
         }
@@ -443,10 +408,10 @@ impl<T> View<T> for TextInput<T> {
                 cx.fonts(),
                 &self.placeholder,
                 TextAttributes {
-                    family: self.font_family.clone(),
-                    stretch: self.font_stretch,
-                    weight: self.font_weight,
-                    style: self.font_style,
+                    family: state.style.font_family.clone(),
+                    stretch: state.style.font_stretch,
+                    weight: state.style.font_weight,
+                    style: state.style.font_style,
                 },
             );
 
@@ -476,7 +441,12 @@ impl<T> View<T> for TextInput<T> {
                             (state.editor).action(&mut cx.fonts().font_system, Action::Insert(c));
                         }
 
-                        self.set_attrs_list(state.buffer_mut());
+                        let buffer = match state.editor.buffer_ref_mut() {
+                            BufferRef::Owned(buffer) => buffer,
+                            _ => unreachable!(),
+                        };
+
+                        self.set_attrs_list(buffer, &state.style);
 
                         cx.layout();
                         state.blink = 0.0;
@@ -643,7 +613,7 @@ impl<T> View<T> for TextInput<T> {
             state.placeholder.size()
         };
 
-        size.height = f32::max(size.height, self.font_size);
+        size.height = f32::max(size.height, state.style.font_size);
         space.fit(size)
     }
 
@@ -667,16 +637,17 @@ impl<T> View<T> for TextInput<T> {
                     if let Some((start, width)) = run.highlight(start, end) {
                         let min =
                             Point::new(cx.rect().min.x + start, cx.rect().min.y + run.line_top);
-                        let size = Size::new(width, self.font_size * self.line_height);
+                        let size =
+                            Size::new(width, state.style.font_size * state.style.line_height);
 
                         let highlight = Rect::min_size(min, size);
 
-                        cx.fill_rect(highlight, self.color.fade(0.2));
+                        cx.fill_rect(highlight, state.style.color.fade(0.2));
                     }
                 }
 
                 if i == cursor.line {
-                    let size = Size::new(1.0, self.font_size * self.line_height);
+                    let size = Size::new(1.0, state.style.font_size * state.style.line_height);
 
                     let min = match run.glyphs.get(cursor.index) {
                         Some(glyph) => {
@@ -694,15 +665,19 @@ impl<T> View<T> for TextInput<T> {
                     let cursor = Rect::min_size(min.round(), size);
 
                     let blink = state.blink.cos() * 0.5 + 0.5;
-                    cx.fill_rect(cursor, self.color.fade(blink));
+                    cx.fill_rect(cursor, state.style.color.fade(blink));
                 }
             }
 
             /* draw the text */
             if !state.text().is_empty() {
-                cx.text_raw(state.buffer(), self.color, Vector::ZERO)
+                cx.text_raw(state.buffer(), state.style.color, Vector::ZERO)
             } else {
-                cx.text(&state.placeholder, self.placeholder_color, Vector::ZERO)
+                cx.text(
+                    &state.placeholder,
+                    state.style.placeholder_color,
+                    Vector::ZERO,
+                )
             };
         });
     }

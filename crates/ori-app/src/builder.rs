@@ -1,9 +1,7 @@
-use std::any::Any;
-
 use ori_core::{
     command::{CommandProxy, CommandWaker},
     context::Contexts,
-    style::Styles,
+    style::{Styles, Theme},
     text::{FontSource, Fonts},
     window::Window,
 };
@@ -14,7 +12,7 @@ use crate::{App, AppRequest, Delegate, IntoUiBuilder};
 pub struct AppBuilder<T> {
     delegates: Vec<Box<dyn Delegate<T>>>,
     requests: Vec<AppRequest<T>>,
-    style: Styles,
+    styles: Styles,
     fonts: Fonts,
 }
 
@@ -30,7 +28,7 @@ impl<T> AppBuilder<T> {
         Self {
             delegates: Vec::new(),
             requests: Vec::new(),
-            style: Styles::new(),
+            styles: Styles::from(Theme::dark()),
             fonts: Fonts::new(),
         }
     }
@@ -42,14 +40,14 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a style to the application.
-    pub fn style(mut self, style: impl Any) -> Self {
-        self.style.set(style);
+    pub fn style(mut self, styles: Styles) -> Self {
+        self.styles.extend(styles);
         self
     }
 
-    /// Add a style builder to the application.
-    pub fn build_style<U: 'static>(mut self, builder: impl Fn(&Styles) -> U + 'static) -> Self {
-        self.style.builder(builder);
+    /// Add a theme to the application.
+    pub fn theme(mut self, theme: Theme) -> Self {
+        self.styles.extend(Styles::from(theme));
         self
     }
 
@@ -78,6 +76,7 @@ impl<T> AppBuilder<T> {
         let (proxy, receiver) = CommandProxy::new(waker);
 
         let mut contexts = Contexts::new();
+        contexts.insert(self.styles);
         contexts.insert(self.fonts);
 
         App {
@@ -86,7 +85,6 @@ impl<T> AppBuilder<T> {
             delegates: self.delegates,
             proxy,
             receiver,
-            style: self.style,
             requests: self.requests,
             contexts,
         }

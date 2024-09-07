@@ -1,6 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
-use ori_macro::Build;
+use ori_macro::{Build, Styled};
 
 use crate::{
     canvas::{Color, Curve, FillRule, Pattern},
@@ -9,7 +9,7 @@ use crate::{
     image::Image,
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{style, Style, Styles},
+    style::{key, Styled},
     view::View,
 };
 
@@ -18,45 +18,8 @@ pub fn color_picker<T>() -> ColorPicker<T> {
     ColorPicker::new()
 }
 
-/// The style of a color picker.
-#[derive(Clone, Debug)]
-pub struct ColorPickerStyle {
-    /// The size of the color picker.
-    pub size: f32,
-
-    /// The border width of the color picker.
-    pub border_width: f32,
-
-    /// The border color of the color picker.
-    pub border_color: Color,
-
-    /// The width of the sliders.
-    pub slider_width: f32,
-
-    /// The color of the lightness slider.
-    pub lightness_color: Color,
-
-    /// The color of the alpha slider.
-    pub alpha_color: Color,
-}
-
-impl Style for ColorPickerStyle {
-    fn styled(style: &Styles) -> Self {
-        let palette = style.palette();
-
-        Self {
-            size: 140.0,
-            border_width: 2.0,
-            border_color: palette.outline,
-            slider_width: 12.0,
-            lightness_color: palette.primary,
-            alpha_color: palette.secondary,
-        }
-    }
-}
-
 /// A color picker.
-#[derive(Build, Rebuild)]
+#[derive(Styled, Build, Rebuild)]
 pub struct ColorPicker<T> {
     /// The color of the color picker.
     #[rebuild(draw)]
@@ -69,27 +32,33 @@ pub struct ColorPicker<T> {
 
     /// The size of the color picker.
     #[rebuild(layout)]
-    pub size: f32,
+    #[styled(default = 128.0)]
+    pub size: Styled<f32>,
 
     /// The border width of the color picker.
     #[rebuild(draw)]
-    pub border_width: f32,
+    #[styled(default = 2.0)]
+    pub border_width: Styled<f32>,
 
     /// The border color of the color picker.
     #[rebuild(draw)]
-    pub border_color: Color,
+    #[styled(default -> "palette.outline" or Color::BLACK)]
+    pub border_color: Styled<Color>,
 
     /// The width of the sliders.
     #[rebuild(draw)]
-    pub slider_width: f32,
+    #[styled(default = 12.0)]
+    pub slider_width: Styled<f32>,
 
     /// The color of the lightness slider.
     #[rebuild(draw)]
-    pub lightness_color: Color,
+    #[styled(default -> "palette.primary" or Color::BLUE)]
+    pub lightness_color: Styled<Color>,
 
     /// The color of the alpha slider.
     #[rebuild(draw)]
-    pub alpha_color: Color,
+    #[styled(default -> "palette.accent" or Color::RED)]
+    pub alpha_color: Styled<Color>,
 }
 
 impl<T> Default for ColorPicker<T> {
@@ -105,20 +74,15 @@ impl<T> ColorPicker<T> {
 
     /// Create a new [`ColorPicker`].
     pub fn new() -> Self {
-        Self::styled(style())
-    }
-
-    /// Create a new [`ColorPicker`] with the given style.
-    pub fn styled(style: ColorPickerStyle) -> Self {
         Self {
-            color: Color::okhsl(0.0, 0.0, 0.5),
+            color: Color::WHITE,
             on_input: None,
-            size: style.size,
-            border_width: style.border_width,
-            border_color: style.border_color,
-            slider_width: style.slider_width,
-            lightness_color: style.lightness_color,
-            alpha_color: style.alpha_color,
+            size: key("color_picker.size"),
+            border_width: key("color_picker.border_width"),
+            border_color: key("color_picker.border_color"),
+            slider_width: key("color_picker.slider_width"),
+            lightness_color: key("color_picker.lightness_color"),
+            alpha_color: key("color_picker.alpha_color"),
         }
     }
 
@@ -164,7 +128,7 @@ impl<T> ColorPicker<T> {
         let local = cx.local(position) - cx.rect().center();
         let angle = local.angle();
         let radius = cx.size().min_element() / 2.0;
-        let wheel_radius = radius - self.slider_width;
+        let wheel_radius = radius - state.style.slider_width;
 
         let (h, s, l, a) = self.color.to_okhsla();
 
@@ -220,6 +184,7 @@ enum ColorPickerPart {
 
 #[doc(hidden)]
 pub struct ColorPickerState {
+    style: ColorPickerStyle,
     image: Option<Image>,
     edit: Option<ColorPickerPart>,
 }
@@ -233,8 +198,9 @@ impl ColorPickerState {
 impl<T> View<T> for ColorPicker<T> {
     type State = ColorPickerState;
 
-    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {
+    fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         ColorPickerState {
+            style: ColorPickerStyle::styled(self, cx.styles()),
             image: None,
             edit: None,
         }
@@ -271,17 +237,17 @@ impl<T> View<T> for ColorPicker<T> {
 
     fn layout(
         &mut self,
-        _state: &mut Self::State,
+        state: &mut Self::State,
         _cx: &mut LayoutCx,
         _data: &mut T,
         space: Space,
     ) -> Size {
-        space.fit(Size::all(self.size))
+        space.fit(Size::all(state.style.size))
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         let radius = cx.size().min_element() / 2.0;
-        let wheel_radius = radius - self.slider_width;
+        let wheel_radius = radius - state.style.slider_width;
 
         let (h, s, l, a) = self.color.to_okhsla();
 
@@ -297,12 +263,15 @@ impl<T> View<T> for ColorPicker<T> {
                     cx.quad(
                         Rect::center_size(
                             Point::new(-wheel_radius, 0.0),
-                            Size::new(self.slider_width * 2.0, self.slider_width * 1.5),
+                            Size::new(
+                                state.style.slider_width * 2.0,
+                                state.style.slider_width * 1.5,
+                            ),
                         ),
-                        self.lightness_color,
-                        self.slider_width / 2.0,
-                        self.border_width / 2.0,
-                        self.border_color,
+                        state.style.lightness_color,
+                        state.style.slider_width / 2.0,
+                        state.style.border_width / 2.0,
+                        state.style.border_color,
                     );
                 });
 
@@ -310,20 +279,23 @@ impl<T> View<T> for ColorPicker<T> {
                     cx.quad(
                         Rect::center_size(
                             Point::new(wheel_radius, 0.0),
-                            Size::new(self.slider_width * 2.0, self.slider_width * 1.5),
+                            Size::new(
+                                state.style.slider_width * 2.0,
+                                state.style.slider_width * 1.5,
+                            ),
                         ),
-                        self.alpha_color,
-                        self.slider_width / 2.0,
-                        self.border_width / 2.0,
-                        self.border_color,
+                        state.style.alpha_color,
+                        state.style.slider_width / 2.0,
+                        state.style.border_width / 2.0,
+                        state.style.border_color,
                     );
                 });
 
                 // draw the wheel
                 cx.fill(
-                    Curve::circle(Point::ZERO, wheel_radius + self.border_width),
+                    Curve::circle(Point::ZERO, wheel_radius + state.style.border_width),
                     FillRule::NonZero,
-                    self.border_color,
+                    state.style.border_color,
                 );
 
                 let pattern = Pattern {

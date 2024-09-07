@@ -8,6 +8,7 @@ mod example;
 mod font;
 mod rebuild;
 mod reload;
+mod styled;
 
 fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
     match krate {
@@ -89,6 +90,13 @@ pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_ma
 #[proc_macro_derive(Build, attributes(build))]
 pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     build::derive_build(input)
+}
+
+/// Derived the styled pattern.
+#[manyhow::manyhow]
+#[proc_macro_derive(Styled, attributes(styled))]
+pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
+    styled::derive_styled(input)
 }
 
 /// A macro to generate boilerplate for a hot-reloadable function.

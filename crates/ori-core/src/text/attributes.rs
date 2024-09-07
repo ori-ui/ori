@@ -1,6 +1,8 @@
 use cosmic_text::fontdb;
 use smol_str::SmolStr;
 
+use crate::style::Styled;
+
 /// A font family, by default [`FontFamily::SansSerif`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FontFamily {
@@ -53,6 +55,24 @@ impl From<String> for FontFamily {
 impl From<SmolStr> for FontFamily {
     fn from(name: SmolStr) -> Self {
         Self::Name(name)
+    }
+}
+
+impl From<&str> for Styled<FontFamily> {
+    fn from(name: &str) -> Self {
+        Styled::Value(FontFamily::from(name))
+    }
+}
+
+impl From<String> for Styled<FontFamily> {
+    fn from(name: String) -> Self {
+        Styled::Value(FontFamily::from(name))
+    }
+}
+
+impl From<SmolStr> for Styled<FontFamily> {
+    fn from(name: SmolStr) -> Self {
+        Styled::Value(FontFamily::from(name))
     }
 }
 

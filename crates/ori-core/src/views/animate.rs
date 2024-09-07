@@ -2,7 +2,6 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    style::Styles,
     transition::Transition,
     view::View,
 };
@@ -135,14 +134,10 @@ pub struct Animate<T, V, S = ()> {
 impl<T, V, S> Animate<T, V, S> {
     /// Create a new [`Animate`].
     pub fn new(
-        mut animate: impl FnMut(&mut S, &mut EventCx, &mut T, &Event) -> Option<V> + 'static,
+        animate: impl FnMut(&mut S, &mut EventCx, &mut T, &Event) -> Option<V> + 'static,
     ) -> Self {
-        let mut snapshot = Styles::snapshot();
-
         Self {
-            animate: Box::new(move |state, cx, data, event| {
-                snapshot.as_context(|| animate(state, cx, data, event))
-            }),
+            animate: Box::new(animate),
         }
     }
 }

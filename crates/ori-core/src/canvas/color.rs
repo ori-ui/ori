@@ -1112,13 +1112,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hex() {
+    fn hex() {
         let color = Color::hex("#ff00ff");
         assert_eq!(color, Color::MAGENTA);
     }
 
     #[test]
-    fn test_hex_display() {
+    fn hex_display() {
         let display = DisplayHex::new(0xa0, 0xb2, 0xcb, 0xd6);
         assert_eq!(display.as_ref(), "#a0b2cbd6");
     }

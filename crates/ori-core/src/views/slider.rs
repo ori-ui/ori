@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use ori_macro::Build;
+use ori_macro::{Build, Styled};
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color},
@@ -8,7 +8,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space},
     rebuild::Rebuild,
-    style::{style, Style, Styles},
+    style::{key, Styled},
     view::View,
 };
 
@@ -17,55 +17,10 @@ pub fn slider<T>(value: f32) -> Slider<T> {
     Slider::new(value)
 }
 
-/// The style of a slider.
-#[derive(Clone, Debug)]
-pub struct SliderStyle {
-    /// The axis of the slider.
-    pub axis: Axis,
-
-    /// The width of the slider.
-    pub width: f32,
-
-    /// The length of the slider.
-    pub length: f32,
-
-    /// The foreground color of the slider.
-    pub color: Color,
-
-    /// The background color of the slider.
-    pub background: Color,
-
-    /// The border radius of the slider.
-    pub border_radius: BorderRadius,
-
-    /// The border width of the slider.
-    pub border_width: BorderWidth,
-
-    /// The border color of the slider.
-    pub border_color: Color,
-}
-
-impl Style for SliderStyle {
-    fn styled(style: &Styles) -> Self {
-        let palette = style.palette();
-
-        Self {
-            axis: Axis::Horizontal,
-            width: 10.0,
-            length: 100.0,
-            color: palette.primary,
-            background: palette.surface_high,
-            border_radius: BorderRadius::all(5.0),
-            border_width: BorderWidth::all(0.0),
-            border_color: palette.outline,
-        }
-    }
-}
-
 /// A slider.
 ///
 /// Can be styled with a [`SliderStyle`].
-#[derive(Build, Rebuild)]
+#[derive(Styled, Build, Rebuild)]
 pub struct Slider<T> {
     /// The value of the slider.
     #[rebuild(draw)]
@@ -86,53 +41,55 @@ pub struct Slider<T> {
 
     /// The width of the slider.
     #[rebuild(layout)]
-    pub width: f32,
+    #[styled(default = 10.0)]
+    pub width: Styled<f32>,
 
     /// The length of the slider.
     #[rebuild(layout)]
-    pub length: f32,
+    #[styled(default = 100.0)]
+    pub length: Styled<f32>,
 
     /// The foreground color of the slider.
     #[rebuild(draw)]
-    pub color: Color,
+    #[styled(default -> "palette.primary" or Color::BLUE)]
+    pub color: Styled<Color>,
 
     /// The background color of the slider.
     #[rebuild(draw)]
-    pub background: Color,
+    #[styled(default -> "palette.surface_high" or Color::grayscale(0.9))]
+    pub background: Styled<Color>,
 
     /// The border radius of the slider.
     #[rebuild(draw)]
-    pub border_radius: BorderRadius,
+    #[styled(default = BorderRadius::all(5.0))]
+    pub border_radius: Styled<BorderRadius>,
 
     /// The border width of the slider.
     #[rebuild(draw)]
-    pub border_width: BorderWidth,
+    #[styled(default = BorderWidth::all(0.0))]
+    pub border_width: Styled<BorderWidth>,
 
     /// The border color of the slider.
     #[rebuild(draw)]
-    pub border_color: Color,
+    #[styled(default -> "palette.outline" or Color::BLACK)]
+    pub border_color: Styled<Color>,
 }
 
 impl<T> Slider<T> {
     /// Create a new [`Slider`].
     pub fn new(value: f32) -> Self {
-        Self::styled(value, style())
-    }
-
-    /// Create a new [`Slider`] with a style.
-    pub fn styled(value: f32, style: SliderStyle) -> Self {
         Self {
             value,
             range: 0.0..=1.0,
             on_input: None,
-            axis: style.axis,
-            width: style.width,
-            length: style.length,
-            color: style.color,
-            background: style.background,
-            border_radius: style.border_radius,
-            border_width: style.border_width,
-            border_color: style.border_color,
+            axis: Axis::Horizontal,
+            width: key("slider.width"),
+            length: key("slider.length"),
+            color: key("slider.color"),
+            background: key("slider.background"),
+            border_radius: key("slider.border_radius"),
+            border_width: key("slider.border_width"),
+            border_color: key("slider.border_color"),
         }
     }
 
@@ -154,21 +111,23 @@ fn denormalize(value: f32, range: &RangeInclusive<f32>) -> f32 {
 }
 
 impl<T> View<T> for Slider<T> {
-    type State = ();
+    type State = SliderStyle;
 
-    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {}
+    fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        SliderStyle::styled(self, cx.styles())
+    }
 
     fn rebuild(&mut self, _state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
     }
 
-    fn event(&mut self, _state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(&mut self, style: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         match event {
             Event::PointerPressed(e) => {
                 let local = cx.local(e.position);
 
                 if cx.is_hot() {
-                    let value = self.axis.unpack(local).0 / self.length;
+                    let value = self.axis.unpack(local).0 / style.length;
                     let value = denormalize(value, &self.range);
 
                     if let Some(on_input) = &mut self.on_input {
@@ -182,7 +141,7 @@ impl<T> View<T> for Slider<T> {
                 let local = cx.local(e.position);
 
                 if cx.is_active() {
-                    let value = self.axis.unpack(local).0 / self.length;
+                    let value = self.axis.unpack(local).0 / style.length;
                     let value = denormalize(value, &self.range);
 
                     if let Some(on_input) = &mut self.on_input {
@@ -201,38 +160,38 @@ impl<T> View<T> for Slider<T> {
 
     fn layout(
         &mut self,
-        _state: &mut Self::State,
+        style: &mut Self::State,
         _cx: &mut LayoutCx,
         _data: &mut T,
         space: Space,
     ) -> Size {
-        let size = self.axis.pack(self.length, self.width);
+        let size = self.axis.pack(style.length, style.width);
         space.fit(size)
     }
 
-    fn draw(&mut self, _state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+    fn draw(&mut self, style: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         cx.hoverable(|cx| {
             cx.quad(
                 cx.rect(),
-                self.background,
-                self.border_radius,
-                self.border_width,
-                self.border_color,
+                style.background,
+                style.border_radius,
+                style.border_width,
+                style.border_color,
             );
 
             let (length, width) = self.axis.unpack(cx.size());
             let value = normalize(self.value, &self.range);
 
-            let min_length = self.border_radius.max_element() * 2.0;
+            let min_length = style.border_radius.max_element() * 2.0;
             let length = f32::max(length * value, min_length);
             let size = self.axis.pack(length, width);
 
             cx.quad(
                 Rect::min_size(cx.rect().min, size),
-                self.color,
-                self.border_radius,
-                self.border_width,
-                self.border_color,
+                style.color,
+                style.border_radius,
+                style.border_width,
+                style.border_color,
             );
         });
     }

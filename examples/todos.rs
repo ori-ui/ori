@@ -1,4 +1,5 @@
 use ori::prelude::*;
+use ori_macro::Styled;
 
 // the selection of the todos
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -73,7 +74,7 @@ fn input(border: bool) -> impl View<Data> {
         .font_size(20.0);
 
     let border = border as i32 as f32 * 2.0;
-    let input = container(pad([64.0, 16.0], input)).border_bottom(border);
+    let input = container(pad([64.0, 16.0], input)).border_width([0.0, 0.0, border, 0.0]);
 
     width(28.0 * 16.0, input)
 }
@@ -108,9 +109,9 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = tooltip(completed, "Toggle whether the todo is completed");
 
     let title_color = if todo.completed {
-        palette().contrast_low
+        key("palette.contrast_low")
     } else {
-        palette().contrast
+        key("palette.contrast")
     };
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
@@ -118,7 +119,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
         .padding(5.0)
-        .color(palette().secondary);
+        .color(key("palette.danger"));
 
     let remove = on_click(remove, move |cx, _: &mut Todo| {
         // because we don't have access to the Data struct here
@@ -134,7 +135,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let container = container(pad(16.0, row));
 
     if index > 0 {
-        width(28.0 * 16.0, container.border_bottom(2.0))
+        width(28.0 * 16.0, container.border_width([0.0, 0.0, 2.0, 0.0]))
     } else {
         width(28.0 * 16.0, container)
     }
@@ -177,23 +178,23 @@ fn selection(data: &mut Data) -> impl View<Data> {
         return None;
     }
 
-    fn color(a: Selection, b: Selection) -> Color {
+    fn color(a: Selection, b: Selection) -> Styled<Color> {
         if a == b {
-            palette().accent
+            key("palette.accent")
         } else {
-            palette().primary
+            key("palette.primary")
         }
     }
 
-    let all = button(text("All").color(palette().surface))
+    let all = button(text("All").color(key("palette.surface")))
         .fancy(4.0)
         .color(color(data.selection, Selection::All))
         .padding([5.0, 3.0]);
-    let active = button(text("Active").color(palette().surface))
+    let active = button(text("Active").color(key("palette.surface")))
         .fancy(4.0)
         .color(color(data.selection, Selection::Active))
         .padding([5.0, 3.0]);
-    let completed = button(text("Completed").color(palette().surface))
+    let completed = button(text("Completed").color(key("palette.surface")))
         .fancy(4.0)
         .color(color(data.selection, Selection::Completed))
         .padding([5.0, 3.0]);
@@ -214,31 +215,23 @@ fn selection(data: &mut Data) -> impl View<Data> {
     let items = hstack![all, active, completed].gap(16.0);
     let row = hstack![active_count(data), items].justify(Justify::SpaceBetween);
 
-    let container = container(pad([16.0, 8.0], row)).border_top(2.0);
+    let container = container(pad([16.0, 8.0], row)).border_width([2.0, 0.0, 0.0, 0.0]);
 
     Some(width(26.0 * 16.0, container))
 }
 
 fn ui(data: &mut Data) -> impl View<Data> {
-    let style = if data.dark_mode {
-        Palette::light()
-    } else {
-        Palette::dark()
-    };
+    let rows = vstack![
+        input(!data.todos.is_empty()),
+        expand(vscroll(todos(data))),
+        selection(data)
+    ]
+    .gap(0.0);
 
-    styled(style, || {
-        let rows = vstack![
-            input(!data.todos.is_empty()),
-            expand(vscroll(todos(data))),
-            selection(data)
-        ]
-        .gap(0.0);
+    let stack = vstack![title(), expand(rows)].gap(16.0);
+    let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
 
-        let stack = vstack![title(), expand(rows)].gap(16.0);
-        let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
-
-        background(palette().background, pad(64.0, content))
-    })
+    background(key("palette.background"), pad(64.0, content))
 }
 
 struct AppDelegate;

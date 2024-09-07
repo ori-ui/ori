@@ -1,193 +1,213 @@
-use std::{
-    any::{Any, TypeId},
-    cell::RefCell,
-    collections::HashMap,
-    hash::BuildHasherDefault,
-    mem::{self, ManuallyDrop},
-    sync::Arc,
-};
+use std::{any::Any, collections::HashMap, hash::BuildHasherDefault, sync::Arc};
 
-use super::Palette;
-
-/// Get a value from the current style.
-#[track_caller]
-pub fn style<T: Clone + Style + Any>() -> T {
-    Styles::context(|style| style.get())
+/// Create a collection of styles.
+#[macro_export]
+macro_rules! style {
+    ($styles:expr, $prefix:expr, $key:literal : $style:expr) => {
+        $styles.insert_value(::std::concat!($prefix, $key), $style);
+    };
+    ($styles:expr, $prefix:expr, $key:literal -> $style:expr) => {
+        $styles.insert_style(::std::concat!($prefix, $key), $style);
+    };
+    ($styles:expr, $prefix:expr, $key:literal : $style:expr, $($rest:tt)*) => {
+        $crate::style! { $styles, $prefix, $key : $style }
+        $crate::style! { $styles, $prefix, $($rest)* }
+    };
+    ($styles:expr, $prefix:expr, $key:literal -> $style:expr, $($rest:tt)*) => {
+        $crate::style! { $styles, $prefix, $key -> $style }
+        $crate::style! { $styles, $prefix, $($rest)* }
+    };
+    ($styles:expr, $prefix:expr, $key:literal { $($inner:tt)* }) => {
+        $crate::style! { $styles, ::std::concat!($prefix, $key, "."), $($inner)* }
+    };
+    ($styles:expr, $prefix:expr, $key:literal { $($inner:tt)* }, $($rest:tt)*) => {
+        $crate::style! { $styles, ::std::concat!($prefix, $key, "."), $($inner)* }
+        $crate::style! { $styles, $prefix, $($rest)* }
+    };
+    ($styles:expr, $prefix:expr, ) => {};
+    ($styles:expr, $key:literal $($tt:tt)*) => {
+        $crate::style! { $styles, "", $key $($tt)* }
+    };
+    ($key:literal $($tt:tt)*) => {{
+        #[allow(unused_mut)]
+        let mut styles = $crate::style::Styles::new();
+        $crate::style! { styles, $key $($tt)* }
+        styles
+    }};
+    () => {
+        $crate::style::Styles::new()
+    };
 }
 
-/// Get a value from the current style or a default value.
-#[track_caller]
-pub fn style_or<T: Clone + Any>(default: T) -> T {
-    try_style().unwrap_or(default)
-}
-
-/// Try getting a value from the current style.
-#[track_caller]
-pub fn try_style<T: Clone + Any>() -> Option<T> {
-    Styles::context(|style| style.try_get())
-}
-
-/// Run a closure with the given style.
-pub fn styled<T>(style: impl Any, f: impl FnOnce() -> T) -> T {
-    let mut new_style = Styles::snapshot();
-    new_style.set(style);
-    new_style.as_context(f)
-}
-
-type Builder<T> = Box<dyn Fn(&Styles) -> T + 'static>;
-
-#[derive(Clone)]
-struct Entry {
-    value: Arc<dyn Any>,
-    is_builder: bool,
-}
-
-impl Entry {
-    unsafe fn value<T: Any>(&self) -> &T {
-        unsafe { &*Arc::as_ptr(&self.value).cast::<T>() }
-    }
-
-    unsafe fn builder<T: Any>(&self) -> &Builder<T> {
-        unsafe { &*Arc::as_ptr(&self.value).cast::<Builder<T>>() }
-    }
-}
-
-/// A map of style values.
+/// A collection of styles.
 #[derive(Clone, Default)]
 pub struct Styles {
-    items: Arc<HashMap<TypeId, Entry, BuildHasherDefault<seahash::SeaHasher>>>,
+    styles: HashMap<u64, Styled<Arc<dyn Any>>, BuildHasherDefault<seahash::SeaHasher>>,
 }
 
 impl Styles {
-    thread_local! {
-        static CONTEXT: RefCell<Styles> = RefCell::new(Styles::default());
-    }
-
-    /// Create a new style.
+    /// Create a new [`Styles`].
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Get the palette of the style.
-    pub fn palette(&self) -> Palette {
-        self.get()
+    /// Insert a style.
+    pub fn insert_value<T: 'static>(&mut self, key: &str, style: T) {
+        let key = seahash::hash(key.as_bytes());
+        self.styles.insert(key, Styled::Value(Arc::new(style)));
     }
 
-    /// Set a value in a style.
-    pub fn set<T: Any>(&mut self, item: T) {
-        // now this is all sorts of cursed but this is the only way to do this
-        if TypeId::of::<T>() == TypeId::of::<Self>() {
-            let styles = ManuallyDrop::new(item);
-
-            unsafe {
-                // SAFETY: we know that the type is Self
-                self.extend(mem::transmute_copy(&styles));
-            }
-
-            return;
-        }
-
-        let entry = Entry {
-            value: Arc::new(item),
-            is_builder: false,
-        };
-
-        Arc::make_mut(&mut self.items).insert(TypeId::of::<T>(), entry);
+    /// Insert a style key.
+    pub fn insert_style(&mut self, key: &str, style: &str) {
+        let key = seahash::hash(key.as_bytes());
+        let style = Styled::key(style);
+        self.styles.insert(key, style);
     }
 
-    /// Build a value in a style.
-    ///
-    /// This is useful for when the value is dependent on other values in the style, like a [`Palette`].
-    pub fn builder<T: Any>(&mut self, builder: impl Fn(&Styles) -> T + 'static) {
-        let builder: Builder<T> = Box::new(builder);
-
-        let entry = Entry {
-            value: Arc::new(builder),
-            is_builder: true,
-        };
-
-        Arc::make_mut(&mut self.items).insert(TypeId::of::<T>(), entry);
+    /// Extend the styles with another collection of styles.
+    pub fn extend(&mut self, styles: Styles) {
+        self.styles.extend(styles.styles);
     }
 
-    /// Set a value in a style returning the style.
-    pub fn with(mut self, item: impl Any) -> Self {
-        self.set(item);
-        self
-    }
+    fn get_ref(&self, key: u64) -> Option<&dyn Any> {
+        let style = self.styles.get(&key)?;
 
-    /// Set a value in a style returning the style.
-    ///
-    /// This is useful for when the value is dependent on other values in the style, like a [`Palette`].
-    pub fn build<T: Any>(mut self, builder: impl Fn(&Styles) -> T + 'static) -> Self {
-        self.builder(builder);
-        self
-    }
-
-    /// Get a value from the current style.
-    pub fn get<T: Clone + Style + Any>(&self) -> T {
-        match self.try_get::<T>() {
-            Some(value) => value,
-            None => T::styled(self),
+        match style {
+            Styled::Value(value) => Some(value.as_ref()),
+            Styled::Key(key) => self.get_ref(*key),
         }
     }
 
-    /// Try getting a value from the current style.
-    pub fn try_get<T: Clone + Any>(&self) -> Option<T> {
-        let value = self.items.get(&TypeId::of::<T>())?;
-
-        if value.is_builder {
-            unsafe { Some(value.builder::<T>()(self)) }
-        } else {
-            unsafe { Some(value.value::<T>().clone()) }
-        }
-    }
-
-    /// Extend the style with another style.
-    pub fn extend(&mut self, other: Self) {
-        Arc::make_mut(&mut self.items).extend(other.items.as_ref().clone());
-    }
-
-    /// Run a function with the given style as the current style.
-    pub fn as_context<T>(&mut self, f: impl FnOnce() -> T) -> T {
-        Self::CONTEXT.with_borrow_mut(|context| mem::swap(context, self));
-        let result = f();
-        Self::CONTEXT.with_borrow_mut(|context| mem::swap(context, self));
-        result
-    }
-
-    /// Get the current style.
+    /// Get a style.
     #[track_caller]
-    pub fn context<T>(f: impl FnOnce(&mut Self) -> T) -> T {
-        let result = Self::CONTEXT.with(|styles| {
-            // call the function with the current style
-            styles.try_borrow_mut().map(|mut styles| f(&mut styles))
-        });
-
-        match result {
-            Ok(result) => result,
-            Err(_) => panic!(
-                "Styles context not accessable. Are you perhaps calling `style`, `style_or`, `try_style` or `palette` in a `Style` impl?"
-            ),
-        }
+    pub fn get_keyed<T>(&self, key: u64) -> Option<T>
+    where
+        T: Clone + 'static,
+    {
+        let style = self.get_ref(key)?.downcast_ref::<T>();
+        Some(style.expect("style is of type `T`").clone())
     }
 
-    /// Get a snapshot of the current style.
+    /// Get a style, or a default value.
     #[track_caller]
-    pub fn snapshot() -> Self {
-        Self::context(|style| style.clone())
+    pub fn get_keyed_or<T>(&self, default: T, key: u64) -> T
+    where
+        T: Clone + 'static,
+    {
+        self.get_keyed(key).unwrap_or(default)
+    }
+
+    /// Get a style, or a default value.
+    #[track_caller]
+    pub fn get_keyed_or_else<T, F>(&self, default: F, key: u64) -> T
+    where
+        T: Clone + 'static,
+        F: FnOnce() -> T,
+    {
+        self.get_keyed(key).unwrap_or_else(default)
+    }
+
+    /// Get a style.
+    #[track_caller]
+    pub fn get<T>(&self, key: &str) -> Option<T>
+    where
+        T: Clone + 'static,
+    {
+        let key = seahash::hash(key.as_bytes());
+        self.get_keyed(key)
+    }
+
+    /// Get a style, or a default value.
+    #[track_caller]
+    pub fn get_or<T>(&self, default: T, key: &str) -> T
+    where
+        T: Clone + 'static,
+    {
+        self.get(key).unwrap_or(default)
+    }
+
+    /// Get a style, or a default value.
+    #[track_caller]
+    pub fn get_or_else<T, F>(&self, default: F, key: &str) -> T
+    where
+        T: Clone + 'static,
+        F: FnOnce() -> T,
+    {
+        self.get(key).unwrap_or_else(default)
     }
 }
 
-/// A trait for styling a value.
-///
-/// This is implemented for all types that are `Default`.
-pub trait Style: Sized {
-    /// Style a value.
-    fn styled(style: &Styles) -> Self;
+/// Create a style key.
+pub fn key<T>(key: &str) -> Styled<T> {
+    Styled::key(key)
 }
 
-impl<T: Default> Style for T {
-    fn styled(_: &Styles) -> Self {
-        T::default()
+/// A styled value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Styled<T> {
+    /// A value.
+    Value(T),
+
+    /// A style key.
+    Key(u64),
+}
+
+impl<T> Styled<T> {
+    /// Create a new styled value, from a style key.
+    pub fn key(key: &str) -> Self {
+        Self::Key(seahash::hash(key.as_bytes()))
+    }
+
+    /// Get the value, or a style from the styles.
+    pub fn get(self, styles: &Styles) -> Option<T>
+    where
+        T: Clone + 'static,
+    {
+        match self {
+            Self::Value(value) => Some(value),
+            Self::Key(key) => styles.get_keyed::<T>(key),
+        }
+    }
+
+    /// Get the value, or a style from the styles.
+    pub fn get_or(self, styles: &Styles, default: T) -> T
+    where
+        T: Clone + 'static,
+    {
+        self.get(styles).unwrap_or(default)
+    }
+
+    /// Get the value, or a style from the styles.
+    pub fn get_or_else<F>(self, styles: &Styles, default: F) -> T
+    where
+        T: Clone + 'static,
+        F: FnOnce() -> T,
+    {
+        self.get(styles).unwrap_or_else(default)
+    }
+}
+
+impl<T> From<T> for Styled<T> {
+    fn from(value: T) -> Self {
+        Self::Value(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::canvas::Color;
+
+    #[test]
+    fn style_macro() {
+        let styles = style! {
+            "primary": Color::BLUE,
+
+            "button" {
+                "color" -> "primary",
+            },
+        };
+
+        assert_eq!(styles.get("button.color"), Some(Color::BLUE));
     }
 }

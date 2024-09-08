@@ -12,7 +12,7 @@ use ori_core::{
     },
     layout::{Point, Size, Space, Vector},
     log::trace,
-    style::Styles,
+    style::{Styles, BACKGROUND},
     view::{any, AnyState, BoxedView, View, ViewState},
     views::opaque,
     window::{Cursor, Window, WindowId, WindowSizing, WindowSnapshot, WindowUpdate},
@@ -749,7 +749,7 @@ impl<T> App<T> {
             Some(color) => color,
             None => {
                 let styles = (self.contexts.get::<Styles>()).expect("app has styles context");
-                styles.get_or(Color::WHITE, "palette.background")
+                styles.get_or(Color::WHITE, BACKGROUND)
             }
         };
 

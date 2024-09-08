@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     hash::{BuildHasherDefault, Hasher},
+    marker::PhantomData,
     sync::Arc,
 };
 
@@ -89,9 +90,10 @@ impl Styles {
     pub fn insert<T: 'static>(&mut self, key: &str, styled: Styled<T>) {
         match styled {
             Styled::Value(value) => self.insert_value(key, value),
-            Styled::Key(style) => {
+            Styled::Style(style) => {
                 let key = hash_style_key(key.as_bytes());
-                Arc::make_mut(&mut self.styles).insert(key, StyleEntry::Key(style));
+                let value = StyleEntry::Key(style.key);
+                Arc::make_mut(&mut self.styles).insert(key, value);
             }
             Styled::Computed(derived) => self.insert_value(key, derived(self)),
         }
@@ -154,11 +156,11 @@ impl Styles {
     /// Get a style.
     #[track_caller]
     #[inline(always)]
-    pub fn get_keyed<T>(&self, key: u64) -> Option<T>
+    pub fn get<T>(&self, style: Style<T>) -> Option<T>
     where
         T: Clone + 'static,
     {
-        match self.get_ref::<T>(key) {
+        match self.get_ref::<T>(style.key) {
             Ok(value) => Some(value.clone()),
             Err(GetRefError::TypeMismatch) => {
                 panic!(
@@ -173,56 +175,49 @@ impl Styles {
     /// Get a style, or a default value.
     #[track_caller]
     #[inline(always)]
-    pub fn get_keyed_or<T>(&self, default: T, key: u64) -> T
+    pub fn get_or<T>(&self, default: T, style: Style<T>) -> T
     where
         T: Clone + 'static,
     {
-        self.get_keyed(key).unwrap_or(default)
+        self.get(style).unwrap_or(default)
     }
 
     /// Get a style, or a default value.
     #[track_caller]
     #[inline(always)]
-    pub fn get_keyed_or_else<T, F>(&self, default: F, key: u64) -> T
+    pub fn get_or_else<T, F>(&self, default: F, style: Style<T>) -> T
     where
         T: Clone + 'static,
         F: FnOnce() -> T,
     {
-        self.get_keyed(key).unwrap_or_else(default)
-    }
-
-    /// Get a style.
-    #[track_caller]
-    #[inline(always)]
-    pub fn get<T>(&self, key: &str) -> Option<T>
-    where
-        T: Clone + 'static,
-    {
-        let key = hash_style_key(key.as_bytes());
-        self.get_keyed(key)
-    }
-
-    /// Get a style, or a default value.
-    #[track_caller]
-    #[inline(always)]
-    pub fn get_or<T>(&self, default: T, key: &str) -> T
-    where
-        T: Clone + 'static,
-    {
-        self.get(key).unwrap_or(default)
-    }
-
-    /// Get a style, or a default value.
-    #[track_caller]
-    #[inline(always)]
-    pub fn get_or_else<T, F>(&self, default: F, key: &str) -> T
-    where
-        T: Clone + 'static,
-        F: FnOnce() -> T,
-    {
-        self.get(key).unwrap_or_else(default)
+        self.get(style).unwrap_or_else(default)
     }
 }
+
+/// A style.
+pub struct Style<T: ?Sized> {
+    key: u64,
+    marker: PhantomData<fn(&T)>,
+}
+
+impl<T: ?Sized> Style<T> {
+    /// Create a new style.
+    #[inline(always)]
+    pub const fn new(key: &str) -> Self {
+        Self {
+            key: hash_style_key(key.as_bytes()),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T: ?Sized> Clone for Style<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: ?Sized> Copy for Style<T> {}
 
 /// Create a style value.
 pub fn val<T>(val: impl Into<T>) -> Styled<T> {
@@ -231,7 +226,7 @@ pub fn val<T>(val: impl Into<T>) -> Styled<T> {
 
 /// Create a style key.
 pub const fn key<T>(key: &str) -> Styled<T> {
-    Styled::key(key)
+    Styled::Style(Style::new(key))
 }
 
 /// Create a computed style.
@@ -251,19 +246,13 @@ pub enum Styled<T> {
     Value(T),
 
     /// A style key.
-    Key(u64),
+    Style(Style<T>),
 
     /// A derived style.
     Computed(Computed<T>),
 }
 
 impl<T> Styled<T> {
-    /// Create a new styled value, from a style key.
-    #[inline(always)]
-    pub const fn key(key: &str) -> Self {
-        Self::Key(hash_style_key(key.as_bytes()))
-    }
-
     /// Get the value, or a style from the styles.
     #[inline(always)]
     pub fn get(&self, styles: &Styles) -> Option<T>
@@ -272,7 +261,7 @@ impl<T> Styled<T> {
     {
         match self {
             Self::Value(value) => Some(value.clone()),
-            Self::Key(key) => styles.get_keyed::<T>(*key),
+            Self::Style(style) => styles.get(*style),
             Self::Computed(derived) => Some(derived(styles)),
         }
     }
@@ -301,7 +290,7 @@ impl<T: Debug> Debug for Styled<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Value(value) => write!(f, "Styled::Value({:?})", value),
-            Self::Key(key) => write!(f, "Styled::Key({:?})", key),
+            Self::Style(style) => write!(f, "Styled::Style({:?})", style.key),
             Self::Computed(_) => write!(f, "Styled::Computed(...)"),
         }
     }
@@ -310,6 +299,12 @@ impl<T: Debug> Debug for Styled<T> {
 impl<T> From<T> for Styled<T> {
     fn from(value: T) -> Self {
         Self::Value(value)
+    }
+}
+
+impl<T> From<Style<T>> for Styled<T> {
+    fn from(style: Style<T>) -> Self {
+        Self::Style(style)
     }
 }
 
@@ -332,7 +327,7 @@ const fn hash_style_key(bytes: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::canvas::Color;
+    use crate::{canvas::Color, style::Style};
 
     #[test]
     fn style_macro() {
@@ -344,6 +339,6 @@ mod tests {
             },
         };
 
-        assert_eq!(styles.get("button.color"), Some(Color::BLUE));
+        assert_eq!(styles.get(Style::new("button.color")), Some(Color::BLUE));
     }
 }

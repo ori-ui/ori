@@ -8,7 +8,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, OUTLINE, PRIMARY, SURFACE_HIGH},
     view::View,
 };
 
@@ -51,12 +51,12 @@ pub struct Slider<T> {
 
     /// The foreground color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> "palette.primary" or Color::BLUE)]
+    #[styled(default -> PRIMARY or Color::BLUE)]
     pub color: Styled<Color>,
 
     /// The background color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> "palette.surface_high" or Color::grayscale(0.9))]
+    #[styled(default -> SURFACE_HIGH or Color::grayscale(0.9))]
     pub background: Styled<Color>,
 
     /// The border radius of the slider.
@@ -71,7 +71,7 @@ pub struct Slider<T> {
 
     /// The border color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> "palette.outline" or Color::BLACK)]
+    #[styled(default -> OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -83,13 +83,13 @@ impl<T> Slider<T> {
             range: 0.0..=1.0,
             on_input: None,
             axis: Axis::Horizontal,
-            width: key("slider.width"),
-            length: key("slider.length"),
-            color: key("slider.color"),
-            background: key("slider.background"),
-            border_radius: key("slider.border_radius"),
-            border_width: key("slider.border_width"),
-            border_color: key("slider.border_color"),
+            width: SliderStyle::WIDTH.into(),
+            length: SliderStyle::LENGTH.into(),
+            color: SliderStyle::COLOR.into(),
+            background: SliderStyle::BACKGROUND.into(),
+            border_radius: SliderStyle::BORDER_RADIUS.into(),
+            border_width: SliderStyle::BORDER_WIDTH.into(),
+            border_color: SliderStyle::BORDER_COLOR.into(),
         }
     }
 

@@ -9,7 +9,7 @@ use crate::{
     image::Image,
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, ACCENT, OUTLINE, PRIMARY},
     view::View,
 };
 
@@ -42,7 +42,7 @@ pub struct ColorPicker<T> {
 
     /// The border color of the color picker.
     #[rebuild(draw)]
-    #[styled(default -> "palette.outline" or Color::BLACK)]
+    #[styled(default -> OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 
     /// The width of the sliders.
@@ -52,12 +52,12 @@ pub struct ColorPicker<T> {
 
     /// The color of the lightness slider.
     #[rebuild(draw)]
-    #[styled(default -> "palette.primary" or Color::BLUE)]
+    #[styled(default -> PRIMARY or Color::BLUE)]
     pub lightness_color: Styled<Color>,
 
     /// The color of the alpha slider.
     #[rebuild(draw)]
-    #[styled(default -> "palette.accent" or Color::RED)]
+    #[styled(default -> ACCENT or Color::RED)]
     pub alpha_color: Styled<Color>,
 }
 
@@ -77,12 +77,12 @@ impl<T> ColorPicker<T> {
         Self {
             color: Color::WHITE,
             on_input: None,
-            size: key("color_picker.size"),
-            border_width: key("color_picker.border_width"),
-            border_color: key("color_picker.border_color"),
-            slider_width: key("color_picker.slider_width"),
-            lightness_color: key("color_picker.lightness_color"),
-            alpha_color: key("color_picker.alpha_color"),
+            size: ColorPickerStyle::SIZE.into(),
+            border_width: ColorPickerStyle::BORDER_WIDTH.into(),
+            border_color: ColorPickerStyle::BORDER_COLOR.into(),
+            slider_width: ColorPickerStyle::SLIDER_WIDTH.into(),
+            lightness_color: ColorPickerStyle::LIGHTNESS_COLOR.into(),
+            alpha_color: ColorPickerStyle::ALPHA_COLOR.into(),
         }
     }
 

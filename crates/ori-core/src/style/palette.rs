@@ -1,6 +1,6 @@
 use crate::{canvas::Color, style};
 
-use super::Styles;
+use super::{Style, Styles};
 
 /// A theme.
 #[derive(Clone, Copy, Debug)]
@@ -143,3 +143,78 @@ impl Default for Theme {
         Theme::dark()
     }
 }
+
+/// The background color.
+pub const BACKGROUND: Style<Color> = Style::new("palette.background");
+
+/// The surface color.
+pub const SURFACE_LOWER: Style<Color> = Style::new("palette.surface_lower");
+
+/// The surface color.
+pub const SURFACE_LOW: Style<Color> = Style::new("palette.surface_low");
+
+/// The surface color.
+pub const SURFACE: Style<Color> = Style::new("palette.surface");
+
+/// The surface color.
+pub const SURFACE_HIGH: Style<Color> = Style::new("palette.surface_high");
+
+/// The surface color.
+pub const SURFACE_HIGHER: Style<Color> = Style::new("palette.surface_higher");
+
+/// The surface color.
+pub const SURFACE_HIGHEST: Style<Color> = Style::new("palette.surface_highest");
+
+/// The outline color.
+pub const OUTLINE: Style<Color> = Style::new("palette.outline");
+
+/// The outline color.
+pub const OUTLINE_LOW: Style<Color> = Style::new("palette.outline_low");
+
+/// The contrast color.
+pub const CONTRAST: Style<Color> = Style::new("palette.contrast");
+
+/// The contrast color.
+pub const CONTRAST_LOW: Style<Color> = Style::new("palette.contrast_low");
+
+/// The primary color.
+pub const PRIMARY: Style<Color> = Style::new("palette.primary");
+
+/// The primary color.
+pub const PRIMARY_LOW: Style<Color> = Style::new("palette.primary_low");
+
+/// The secondary color.
+pub const SECONDARY: Style<Color> = Style::new("palette.secondary");
+
+/// The secondary color.
+pub const SECONDARY_LOW: Style<Color> = Style::new("palette.secondary_low");
+
+/// The accent color.
+pub const ACCENT: Style<Color> = Style::new("palette.accent");
+
+/// The accent color.
+pub const ACCENT_LOW: Style<Color> = Style::new("palette.accent_low");
+
+/// The danger color.
+pub const DANGER: Style<Color> = Style::new("palette.danger");
+
+/// The danger color.
+pub const DANGER_LOW: Style<Color> = Style::new("palette.danger_low");
+
+/// The success color.
+pub const SUCCESS: Style<Color> = Style::new("palette.success");
+
+/// The success color.
+pub const SUCCESS_LOW: Style<Color> = Style::new("palette.success_low");
+
+/// The warning color.
+pub const WARNING: Style<Color> = Style::new("palette.warning");
+
+/// The warning color.
+pub const WARNING_LOW: Style<Color> = Style::new("palette.warning_low");
+
+/// The info color.
+pub const INFO: Style<Color> = Style::new("palette.info");
+
+/// The info color.
+pub const INFO_LOW: Style<Color> = Style::new("palette.info_low");

@@ -29,9 +29,7 @@ fn window(_data: &mut Data) -> impl View<Data> {
 }
 
 fn open_window_button() -> impl View<Data> {
-    let open_window = button(text("Open window"))
-        .color(key("palette.accent"))
-        .fancy(4.0);
+    let open_window = button(text("Open window")).color(ACCENT).fancy(4.0);
 
     on_click(open_window, |cx, _: &mut Data| {
         cx.cmd(OpenWindow);
@@ -39,9 +37,7 @@ fn open_window_button() -> impl View<Data> {
 }
 
 fn close_window_button() -> impl View<Data> {
-    let close_window = button(text("Close window"))
-        .color(key("palette.danger"))
-        .fancy(4.0);
+    let close_window = button(text("Close window")).color(DANGER).fancy(4.0);
 
     on_click(close_window, |cx, data: &mut Data| {
         if let Some(window) = data.windows.pop() {

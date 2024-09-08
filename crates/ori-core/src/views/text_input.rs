@@ -9,7 +9,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Event, Key, KeyPressed},
     layout::{Point, Rect, Size, Space, Vector},
-    style::{key, Styled},
+    style::{Styled, CONTRAST, CONTRAST_LOW},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -72,11 +72,11 @@ pub struct TextInput<T> {
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
-    #[styled(default -> "palette.contrast" or Color::BLACK)]
+    #[styled(default -> CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 
     /// The color of the placeholder text.
-    #[styled(default -> "palette.contrast" or Color::grayscale(0.9))]
+    #[styled(default -> CONTRAST_LOW or Color::grayscale(0.9))]
     pub placeholder_color: Styled<Color>,
 
     /// The vertical alignment of the text.
@@ -107,16 +107,16 @@ impl<T> TextInput<T> {
             on_submit: None,
             placeholder: String::from("..."),
             multiline: false,
-            font_size: key("text_input.font_size"),
-            font_family: key("text_input.font_family"),
-            font_weight: key("text_input.font_weight"),
-            font_stretch: key("text_input.font_stretch"),
-            font_style: key("text_input.font_style"),
-            color: key("text_input.color"),
-            placeholder_color: key("text_input.placeholder_color"),
-            align: key("text_input.align"),
-            line_height: key("text_input.line_height"),
-            wrap: key("text_input.wrap"),
+            font_size: TextInputStyle::FONT_SIZE.into(),
+            font_family: TextInputStyle::FONT_FAMILY.into(),
+            font_weight: TextInputStyle::FONT_WEIGHT.into(),
+            font_stretch: TextInputStyle::FONT_STRETCH.into(),
+            font_style: TextInputStyle::FONT_STYLE.into(),
+            color: TextInputStyle::COLOR.into(),
+            placeholder_color: TextInputStyle::PLACEHOLDER_COLOR.into(),
+            align: TextInputStyle::ALIGN.into(),
+            line_height: TextInputStyle::LINE_HEIGHT.into(),
+            wrap: TextInputStyle::WRAP.into(),
         }
     }
 

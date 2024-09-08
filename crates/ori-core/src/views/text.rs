@@ -8,7 +8,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    style::{key, Styled},
+    style::{Styled, CONTRAST},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -65,7 +65,7 @@ pub struct Text {
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
-    #[styled(default -> "palette.contrast" or Color::BLACK)]
+    #[styled(default -> CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
@@ -86,15 +86,15 @@ impl Text {
     pub fn new(text: impl Into<SmolStr>) -> Self {
         Self {
             text: text.into(),
-            font_size: key("text.font_size"),
-            font_family: key("text.font_family"),
-            font_weight: key("text.font_weight"),
-            font_stretch: key("text.font_stretch"),
-            font_style: key("text.font_style"),
-            color: key("text.color"),
-            align: key("text.align"),
-            line_height: key("text.line_height"),
-            wrap: key("text.wrap"),
+            font_size: TextStyle::FONT_SIZE.into(),
+            font_family: TextStyle::FONT_FAMILY.into(),
+            font_weight: TextStyle::FONT_WEIGHT.into(),
+            font_stretch: TextStyle::FONT_STRETCH.into(),
+            font_style: TextStyle::FONT_STYLE.into(),
+            color: TextStyle::COLOR.into(),
+            align: TextStyle::ALIGN.into(),
+            line_height: TextStyle::LINE_HEIGHT.into(),
+            wrap: TextStyle::WRAP.into(),
         }
     }
 

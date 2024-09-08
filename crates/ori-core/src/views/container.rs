@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, OUTLINE, SURFACE},
     view::{Pod, State, View},
 };
 
@@ -38,7 +38,7 @@ pub struct Container<V> {
 
     /// The background color.
     #[rebuild(draw)]
-    #[styled(default -> "palette.surface" or Color::WHITE)]
+    #[styled(default -> SURFACE or Color::WHITE)]
     pub background: Styled<Color>,
 
     /// The border radius.
@@ -53,7 +53,7 @@ pub struct Container<V> {
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> "palette.outline" or Color::BLACK)]
+    #[styled(default -> OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 
     /// Whether to mask the content.
@@ -67,11 +67,11 @@ impl<V> Container<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            background: key("container.background"),
-            border_radius: key("container.border_radius"),
-            border_width: key("container.border_width"),
-            border_color: key("container.border_color"),
-            mask: key("container.mask"),
+            background: ContainerStyle::BACKGROUND.into(),
+            border_radius: ContainerStyle::BORDER_RADIUS.into(),
+            border_width: ContainerStyle::BORDER_WIDTH.into(),
+            border_color: ContainerStyle::BORDER_COLOR.into(),
+            mask: ContainerStyle::MASK.into(),
         }
     }
 }

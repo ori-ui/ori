@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{pt, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, CONTRAST, OUTLINE, SURFACE_HIGHER},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -64,7 +64,7 @@ pub struct Tooltip<V> {
 
     /// The color of text.
     #[rebuild(draw)]
-    #[styled(default -> "palette.contrast" or Color::BLACK)]
+    #[styled(default -> CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
@@ -81,7 +81,7 @@ pub struct Tooltip<V> {
 
     /// The background color of the text.
     #[rebuild(draw)]
-    #[styled(default -> "palette.surface_higher" or Color::WHITE)]
+    #[styled(default -> SURFACE_HIGHER or Color::WHITE)]
     pub background: Styled<Color>,
 
     /// The border radius of the text.
@@ -96,7 +96,7 @@ pub struct Tooltip<V> {
 
     /// The border color of the text.
     #[rebuild(draw)]
-    #[styled(default -> "palette.outline" or Color::BLACK)]
+    #[styled(default -> OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -106,21 +106,21 @@ impl<V> Tooltip<V> {
         Self {
             content: Pod::new(content),
             text: text.into(),
-            delay: key("tooltip.delay"),
-            padding: key("tooltip.padding"),
-            font_size: key("tooltip.font_size"),
-            font_family: key("tooltip.font_family"),
-            font_weight: key("tooltip.font_weight"),
-            font_stretch: key("tooltip.font_stretch"),
-            font_style: key("tooltip.font_style"),
-            color: key("tooltip.color"),
-            align: key("tooltip.align"),
-            line_height: key("tooltip.line_height"),
-            wrap: key("tooltip.wrap"),
-            background: key("tooltip.background"),
-            border_radius: key("tooltip.border_radius"),
-            border_width: key("tooltip.border_width"),
-            border_color: key("tooltip.border_color"),
+            delay: TooltipStyle::DELAY.into(),
+            padding: TooltipStyle::PADDING.into(),
+            font_size: TooltipStyle::FONT_SIZE.into(),
+            font_family: TooltipStyle::FONT_FAMILY.into(),
+            font_weight: TooltipStyle::FONT_WEIGHT.into(),
+            font_stretch: TooltipStyle::FONT_STRETCH.into(),
+            font_style: TooltipStyle::FONT_STYLE.into(),
+            color: TooltipStyle::COLOR.into(),
+            align: TooltipStyle::ALIGN.into(),
+            line_height: TooltipStyle::LINE_HEIGHT.into(),
+            wrap: TooltipStyle::WRAP.into(),
+            background: TooltipStyle::BACKGROUND.into(),
+            border_radius: TooltipStyle::BORDER_RADIUS.into(),
+            border_width: TooltipStyle::BORDER_WIDTH.into(),
+            border_color: TooltipStyle::BORDER_COLOR.into(),
         }
     }
 

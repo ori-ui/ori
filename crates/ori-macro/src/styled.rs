@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse_quote, parse_quote_spanned};
+use syn::{parse_quote, parse_quote_spanned, spanned::Spanned};
 
 use crate::{find_core, rebuild};
 
@@ -30,6 +30,7 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let style_fields = style_fields(name, &data.fields);
     let style_styled_fields = style_styled_fields(&data.fields);
     let style_rebuild_fields = style_rebuild_fields(&data.fields);
+    let style_style_key_fields = style_style_key_fields(&style_name_snake, &data.fields);
 
     let style_doc = format!("The derived style for [`{}`].", name);
     let style_styled_doc = format!("The style of [`{}`].", name);
@@ -44,6 +45,8 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
         }
 
         impl #style_name {
+            #(#style_style_key_fields)*
+
             #[doc = #style_styled_doc]
             #[allow(unused)]
             #vis fn styled #impl_generics (
@@ -194,7 +197,7 @@ fn style_get_field(field: &syn::Field, styled: &syn::Expr, styles: &syn::Expr) -
                     default = Some(input.parse::<syn::Expr>()?);
                 } else if input.peek(syn::Token![->]) {
                     input.parse::<syn::Token![->]>()?;
-                    let style = input.parse::<syn::LitStr>()?;
+                    let style = input.parse::<syn::Expr>()?;
 
                     if input.peek(or) {
                         input.parse::<or>()?;
@@ -232,6 +235,29 @@ fn style_get_field(field: &syn::Field, styled: &syn::Expr, styles: &syn::Expr) -
             ).expect(concat!("missing style for `", stringify!(#ident), "`"))
         },
     }
+}
+
+fn style_style_key_fields<'a>(
+    name: &'a str,
+    fields: &'a syn::Fields,
+) -> impl Iterator<Item = TokenStream> + 'a {
+    let ori_core = find_core();
+
+    fields.iter().filter_map(move |field| {
+        let vis = &field.vis;
+        let ident = field.ident.as_ref().unwrap();
+        let ident = syn::Ident::new(&ident.to_string().to_uppercase(), ident.span());
+        let ty = get_styled(&field.ty)?;
+
+        let name = format!("{}.{}", name, ident);
+
+        let doc = format!("The style key of [`{}::{}`].", name, ident);
+
+        Some(quote! {
+            #[doc = #doc]
+            #vis const #ident: #ori_core::style::Style<#ty> = #ori_core::style::Style::new(#name);
+        })
+    })
 }
 
 fn get_styled(ty: &syn::Type) -> Option<syn::Type> {

@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, SURFACE_HIGH, SURFACE_HIGHER},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -53,12 +53,12 @@ pub struct Scroll<V> {
 
     /// The color of the scrollbar.
     #[rebuild(draw)]
-    #[styled(default -> "palette.surface_high" or Color::grayscale(0.9))]
+    #[styled(default -> SURFACE_HIGH or Color::grayscale(0.9))]
     pub color: Styled<Color>,
 
     /// The color of the scrollbar knob.
     #[rebuild(draw)]
-    #[styled(default -> "palette.surface_higher" or Color::grayscale(0.8))]
+    #[styled(default -> SURFACE_HIGHER or Color::grayscale(0.8))]
     pub knob_color: Styled<Color>,
 }
 
@@ -68,12 +68,12 @@ impl<V> Scroll<V> {
         Self {
             content: Pod::new(content),
             axis,
-            transition: key("scroll.transition"),
-            width: key("scroll.width"),
-            inset: key("scroll.inset"),
-            border_radius: key("scroll.border_radius"),
-            color: key("scroll.color"),
-            knob_color: key("scroll.knob_color"),
+            transition: ScrollStyle::TRANSITION.into(),
+            inset: ScrollStyle::INSET.into(),
+            width: ScrollStyle::WIDTH.into(),
+            border_radius: ScrollStyle::BORDER_RADIUS.into(),
+            color: ScrollStyle::COLOR.into(),
+            knob_color: ScrollStyle::KNOB_COLOR.into(),
         }
     }
 

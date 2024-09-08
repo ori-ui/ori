@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, OUTLINE, SURFACE_HIGHER},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -43,7 +43,7 @@ pub struct Button<V> {
 
     /// The color of the button.
     #[rebuild(draw)]
-    #[styled(default -> "palette.surface_higher" or Color::WHITE)]
+    #[styled(default -> SURFACE_HIGHER or Color::WHITE)]
     pub color: Styled<Color>,
 
     /// The border radius.
@@ -58,7 +58,7 @@ pub struct Button<V> {
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> "palette.outline" or Color::BLACK)]
+    #[styled(default -> OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -67,13 +67,13 @@ impl<V> Button<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            padding: key("button.padding"),
-            fancy: key("button.fancy"),
-            transition: key("button.transition"),
-            color: key("button.color"),
-            border_radius: key("button.border_radius"),
-            border_width: key("button.border_width"),
-            border_color: key("button.border_color"),
+            padding: ButtonStyle::PADDING.into(),
+            fancy: ButtonStyle::FANCY.into(),
+            transition: ButtonStyle::TRANSITION.into(),
+            color: ButtonStyle::COLOR.into(),
+            border_radius: ButtonStyle::BORDER_RADIUS.into(),
+            border_width: ButtonStyle::BORDER_WIDTH.into(),
+            border_color: ButtonStyle::BORDER_COLOR.into(),
         }
     }
 }

@@ -8,7 +8,7 @@ use crate::{
     event::{Event, PointerButton},
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, OUTLINE, PRIMARY},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -55,7 +55,7 @@ pub struct Collapsing<T, H, V> {
 
     /// The color of the icon.
     #[rebuild(draw)]
-    #[styled(default -> "palette.primary" or Color::BLUE)]
+    #[styled(default -> PRIMARY or Color::BLUE)]
     pub icon_color: Styled<Color>,
 
     /// The background color of the header.
@@ -75,7 +75,7 @@ pub struct Collapsing<T, H, V> {
 
     /// The color of the border of the header.
     #[rebuild(draw)]
-    #[styled(default -> "palette.outline" or Color::BLACK)]
+    #[styled(default -> OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -88,13 +88,13 @@ impl<T, H, V> Collapsing<T, H, V> {
             on_open: None,
             open: None,
             default_open: false,
-            transition: key("collapsing.transition"),
-            icon_size: key("collapsing.icon_size"),
-            icon_color: key("collapsing.icon_color"),
-            background: key("collapsing.background"),
-            border_width: key("collapsing.border_width"),
-            border_radius: key("collapsing.border_radius"),
-            border_color: key("collapsing.border_color"),
+            transition: CollapsingStyle::TRANSITION.into(),
+            icon_size: CollapsingStyle::ICON_SIZE.into(),
+            icon_color: CollapsingStyle::ICON_COLOR.into(),
+            background: CollapsingStyle::BACKGROUND.into(),
+            border_width: CollapsingStyle::BORDER_WIDTH.into(),
+            border_radius: CollapsingStyle::BORDER_RADIUS.into(),
+            border_color: CollapsingStyle::BORDER_COLOR.into(),
         }
     }
 

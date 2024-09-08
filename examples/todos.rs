@@ -108,9 +108,9 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = tooltip(completed, "Toggle whether the todo is completed");
 
     let title_color = if todo.completed {
-        key("palette.contrast_low")
+        CONTRAST_LOW
     } else {
-        key("palette.contrast")
+        CONTRAST
     };
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
@@ -118,7 +118,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
         .padding(5.0)
-        .color(key("palette.danger"));
+        .color(DANGER);
 
     let remove = on_click(remove, move |cx, _: &mut Todo| {
         // because we don't have access to the Data struct here
@@ -179,21 +179,21 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
     fn color(a: Selection, b: Selection) -> Styled<Color> {
         if a == b {
-            key("palette.accent")
+            ACCENT.into()
         } else {
-            key("palette.primary")
+            PRIMARY.into()
         }
     }
 
-    let all = button(text("All").color(key("palette.surface")))
+    let all = button(text("All").color(SURFACE))
         .fancy(4.0)
         .color(color(data.selection, Selection::All))
         .padding([5.0, 3.0]);
-    let active = button(text("Active").color(key("palette.surface")))
+    let active = button(text("Active").color(SURFACE))
         .fancy(4.0)
         .color(color(data.selection, Selection::Active))
         .padding([5.0, 3.0]);
-    let completed = button(text("Completed").color(key("palette.surface")))
+    let completed = button(text("Completed").color(SURFACE))
         .fancy(4.0)
         .color(color(data.selection, Selection::Completed))
         .padding([5.0, 3.0]);
@@ -230,7 +230,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
     let stack = vstack![title(), expand(rows)].gap(16.0);
     let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
 
-    background(key("palette.background"), pad(64.0, content))
+    background(BACKGROUND, pad(64.0, content))
 }
 
 struct AppDelegate;

@@ -1,13 +1,12 @@
 use ori_macro::{example, Build, Styled};
 
 use crate::{
-    canvas::Curve,
-    canvas::{BorderRadius, BorderWidth, Color},
+    canvas::{BorderRadius, BorderWidth, Color, Curve},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    style::{key, Styled},
+    style::{Styled, OUTLINE, PRIMARY},
     transition::Transition,
     view::View,
 };
@@ -39,7 +38,7 @@ pub struct Checkbox {
 
     /// The color of the checkbox.
     #[rebuild(draw)]
-    #[styled(default -> "palette.primary" or Color::BLUE)]
+    #[styled(default -> PRIMARY or Color::BLUE)]
     pub color: Styled<Color>,
 
     /// The stroke width of the checkbox.
@@ -64,7 +63,7 @@ pub struct Checkbox {
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> "palette.outline" or Color::BLACK)]
+    #[styled(default -> OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -73,14 +72,14 @@ impl Checkbox {
     pub fn new(checked: bool) -> Self {
         Self {
             checked,
-            transition: key("checkbox.transition"),
-            size: key("checkbox.size"),
-            color: key("checkbox.color"),
-            stroke: key("checkbox.stroke"),
-            background: key("checkbox.background"),
-            border_radius: key("checkbox.border_radius"),
-            border_width: key("checkbox.border_width"),
-            border_color: key("checkbox.border_color"),
+            transition: CheckboxStyle::TRANSITION.into(),
+            size: CheckboxStyle::SIZE.into(),
+            color: CheckboxStyle::COLOR.into(),
+            stroke: CheckboxStyle::STROKE.into(),
+            background: CheckboxStyle::BACKGROUND.into(),
+            border_radius: CheckboxStyle::BORDER_RADIUS.into(),
+            border_width: CheckboxStyle::BORDER_WIDTH.into(),
+            border_color: CheckboxStyle::BORDER_COLOR.into(),
         }
     }
 }

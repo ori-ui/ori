@@ -75,6 +75,7 @@ pub fn max_height<V>(max_height: f32, content: V) -> Constrain<V> {
 pub struct Constrain<V> {
     /// The content to constrain.
     pub content: V,
+
     /// The space to constrain the content to.
     #[rebuild(layout)]
     pub space: Space,

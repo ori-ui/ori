@@ -33,19 +33,23 @@ pub struct Scroll<V> {
     pub axis: Axis,
 
     /// The transition of the scrollbar.
-    pub transition: Transition,
+    #[styled(default = Transition::ease(0.1))]
+    pub transition: Styled<Transition>,
 
     /// The inset of the scrollbar.
     #[rebuild(draw)]
-    pub inset: f32,
+    #[styled(default = 8.0)]
+    pub inset: Styled<f32>,
 
     /// The width of the scrollbar.
     #[rebuild(draw)]
-    pub width: f32,
+    #[styled(default = 6.0)]
+    pub width: Styled<f32>,
 
     /// The radius of the scrollbar.
     #[rebuild(draw)]
-    pub border_radius: BorderRadius,
+    #[styled(default = BorderRadius::all(3.0))]
+    pub border_radius: Styled<BorderRadius>,
 
     /// The color of the scrollbar.
     #[rebuild(draw)]
@@ -64,29 +68,38 @@ impl<V> Scroll<V> {
         Self {
             content: Pod::new(content),
             axis,
-            transition: Transition::ease(0.1),
-            width: 6.0,
-            inset: 8.0,
-            border_radius: BorderRadius::all(3.0),
+            transition: key("scroll.transition"),
+            width: key("scroll.width"),
+            inset: key("scroll.inset"),
+            border_radius: key("scroll.border_radius"),
             color: key("scroll.color"),
             knob_color: key("scroll.knob_color"),
         }
     }
 
-    fn scrollbar_rect(&self, rect: Rect) -> Rect {
+    fn scrollbar_rect(&self, style: &ScrollStyle, rect: Rect) -> Rect {
         let (major, minor) = self.axis.unpack(rect.size());
 
-        let length = major - self.inset * 2.0;
+        let length = major - style.inset * 2.0;
 
-        let major_min = self.inset;
-        let minor_min = minor - self.width - self.inset;
+        let major_min = style.inset;
+        let minor_min = minor - style.width - style.inset;
         let offset = self.axis.pack::<Vector>(major_min, minor_min);
 
-        Rect::min_size(rect.top_left() + offset, self.axis.pack(length, self.width))
+        Rect::min_size(
+            rect.top_left() + offset,
+            self.axis.pack(length, style.width),
+        )
     }
 
-    fn scrollbar_knob_rect(&self, rect: Rect, overflow: f32, scroll: f32) -> Rect {
-        let scrollbar_rect = self.scrollbar_rect(rect);
+    fn scrollbar_knob_rect(
+        &self,
+        style: &ScrollStyle,
+        rect: Rect,
+        overflow: f32,
+        scroll: f32,
+    ) -> Rect {
+        let scrollbar_rect = self.scrollbar_rect(style, rect);
 
         let (major_min, minor_min) = self.axis.unpack(scrollbar_rect.min);
         let (major_size, minor_size) = self.axis.unpack(scrollbar_rect.size());
@@ -156,7 +169,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         if let Event::PointerMoved(e) = event {
             let local = cx.local(e.position);
 
-            let scrollbar_rect = self.scrollbar_rect(cx.rect());
+            let scrollbar_rect = self.scrollbar_rect(&state.style, cx.rect());
             state.scrollbar_hot = scrollbar_rect.contains(local);
 
             if cx.is_active() {
@@ -189,12 +202,12 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
 
         let on = cx.is_hot() || cx.has_hot() || cx.is_active() || state.scrollbar_hot;
 
-        if !self.transition.complete(state.t, on) {
+        if !state.style.transition.complete(state.t, on) {
             cx.animate();
         }
 
         if let Event::Animate(dt) = event {
-            if (self.transition).step(&mut state.t, on, *dt) {
+            if (state.style.transition).step(&mut state.t, on, *dt) {
                 cx.animate();
                 cx.draw();
             }
@@ -258,17 +271,17 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let knob_color = state.style.knob_color.fade(0.9);
 
         cx.quad(
-            self.scrollbar_rect(cx.rect()),
-            track_color.fade(self.transition.get(state.t)),
-            self.border_radius,
+            self.scrollbar_rect(&state.style, cx.rect()),
+            track_color.fade(state.style.transition.get(state.t)),
+            state.style.border_radius,
             0.0,
             Color::TRANSPARENT,
         );
 
         cx.quad(
-            self.scrollbar_knob_rect(cx.rect(), overflow, state.scroll),
-            knob_color.fade(self.transition.get(state.t)),
-            self.border_radius,
+            self.scrollbar_knob_rect(&state.style, cx.rect(), overflow, state.scroll),
+            knob_color.fade(state.style.transition.get(state.t)),
+            state.style.border_radius,
             0.0,
             Color::TRANSPARENT,
         );

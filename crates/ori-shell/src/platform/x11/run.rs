@@ -47,10 +47,9 @@ use x11rb::{
     xcb_ffi::XCBConnection,
 };
 
-use crate::platform::linux::{
+use crate::platform::{
     egl::{EglContext, EglNativeDisplay, EglSurface},
-    xkb::{XkbContext, XkbKeyboard},
-    LIB_GL,
+    linux::xkb::{XkbContext, XkbKeyboard},
 };
 
 use super::{clipboard::X11ClipboardServer, X11Error};
@@ -617,8 +616,8 @@ impl<T> X11App<T> {
 
         let renderer = unsafe {
             GlowRenderer::new(|name| {
-                let name = std::ffi::CString::new(name).unwrap();
-                *LIB_GL.get(name.as_bytes_with_nul()).unwrap()
+                //
+                self.egl_context.get_proc_address(name)
             })
             .unwrap()
         };
@@ -813,6 +812,7 @@ impl<T> X11App<T> {
                         let x_window = window.x11_id;
                         self.set_cursor(x_window, cursor)?;
                     }
+                    WindowUpdate::Ime(_) => {}
                 }
             }
             AppRequest::Quit => self.running = false,

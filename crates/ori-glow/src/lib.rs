@@ -173,6 +173,10 @@ impl GlowRenderer {
         let default_data = ImageData::new(vec![255; 4], 1, 1);
         let default_image = Self::create_image(&gl, &default_data);
 
+        if gl.get_error() != glow::NO_ERROR {
+            panic!("OpenGL error");
+        }
+
         Ok(Self {
             gl,
             program,
@@ -240,6 +244,10 @@ impl GlowRenderer {
         }
 
         self.dispatch();
+
+        if self.gl.get_error() != glow::NO_ERROR {
+            panic!("OpenGL error");
+        }
 
         Ok(())
     }

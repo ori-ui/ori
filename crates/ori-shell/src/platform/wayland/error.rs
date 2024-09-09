@@ -1,6 +1,6 @@
 use wayland_client::protocol::wl_surface;
 
-use crate::platform::linux::egl::EglError;
+use crate::platform::egl::EglError;
 
 /// An error that can occur when working with Wayland.
 #[derive(Debug)]

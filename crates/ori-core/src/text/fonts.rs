@@ -165,14 +165,14 @@ impl Fonts {
         buffer: &Buffer,
         paint: Paint,
         offset: Vector,
-        scale: f32,
+        _scale: f32,
     ) {
         let mut paint = paint;
         paint.anti_alias = AntiAlias::Full;
 
         for run in buffer.layout_runs() {
             for glyph in run.glyphs {
-                let physical = glyph.physical((0.0, 0.0), scale);
+                let physical = glyph.physical((0.0, 0.0), 1.0);
                 let curve = self.get_glyphs(physical.cache_key);
                 let offset = Vector::new(
                     glyph.x + glyph.x_offset,

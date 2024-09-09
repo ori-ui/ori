@@ -21,6 +21,10 @@ pub enum RunError {
     #[cfg(wayland_platform)]
     Wayland(platform::wayland::WaylandError),
 
+    /// Android error.
+    #[cfg(android_platform)]
+    Android(platform::android::AndroidError),
+
     /// No platform feature enabled.
     NoPlatform,
 }
@@ -39,6 +43,13 @@ impl From<platform::wayland::WaylandError> for RunError {
     }
 }
 
+#[cfg(android_platform)]
+impl From<platform::android::AndroidError> for RunError {
+    fn from(err: platform::android::AndroidError) -> Self {
+        Self::Android(err)
+    }
+}
+
 impl std::fmt::Display for RunError {
     #[allow(unused_variables, unreachable_patterns)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -48,6 +59,9 @@ impl std::fmt::Display for RunError {
 
             #[cfg(wayland_platform)]
             RunError::Wayland(err) => write!(f, "{}", err),
+
+            #[cfg(android_platform)]
+            RunError::Android(err) => write!(f, "{}", err),
 
             RunError::NoPlatform => write!(f, "no platform feature enabled"),
 
@@ -127,6 +141,11 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), RunError> {
     #[cfg(x11_platform)]
     {
         return Ok(platform::x11::run(app, data)?);
+    }
+
+    #[cfg(android_platform)]
+    {
+        return Ok(platform::android::run(app, data)?);
     }
 
     #[allow(unreachable_code)]

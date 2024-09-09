@@ -46,16 +46,15 @@ fn find_reload() -> syn::Path {
     }
 }
 
-#[allow(dead_code)]
-fn find_winit() -> syn::Path {
-    match proc_macro_crate::crate_name("ori-winit") {
+fn find_shell() -> syn::Path {
+    match proc_macro_crate::crate_name("ori-shell") {
         Ok(krate) => found_crate(krate),
         Err(_) => match proc_macro_crate::crate_name("ori") {
             Ok(krate) => {
                 let ori = found_crate(krate);
-                syn::parse_quote!(#ori::winit)
+                syn::parse_quote!(#ori::shell)
             }
-            Err(_) => syn::parse_quote!(ori::winit),
+            Err(_) => syn::parse_quote!(ori::shell),
         },
     }
 }

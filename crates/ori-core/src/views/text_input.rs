@@ -7,7 +7,7 @@ use ori_macro::{example, Build, Styled};
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event, Key, KeyPressed},
+    event::{Event, Ime, Key, KeyPressed},
     layout::{Point, Rect, Size, Space, Vector},
     style::{Styled, CONTRAST, CONTRAST_LOW},
     text::{
@@ -538,6 +538,7 @@ impl<T> View<T> for TextInput<T> {
                     if cx.is_focused() {
                         (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                         cx.set_focused(false);
+                        cx.set_ime(None);
                         cx.draw();
                     }
 
@@ -545,6 +546,7 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 cx.set_focused(true);
+                cx.set_ime(Some(Ime::default()));
                 cx.animate();
 
                 state.blink = 0.0;

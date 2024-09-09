@@ -6,7 +6,7 @@ use std::{
 
 use libloading::Library;
 
-static LIB_EGL: LazyLock<Result<Library, Arc<libloading::Error>>> = LazyLock::new(|| {
+pub static LIB_EGL: LazyLock<Result<Library, Arc<libloading::Error>>> = LazyLock::new(|| {
     // load libEGL.so
     unsafe { Library::new("libEGL.so").map_err(Arc::new) }
 });
@@ -19,10 +19,14 @@ pub enum EglNativeDisplay {
 
     #[cfg(wayland_platform)]
     Wayland(*mut ffi::c_void),
+
+    #[cfg(android_platform)]
+    Android,
 }
 
 impl EglNativeDisplay {
     fn egl_platform(&self) -> i32 {
+        #[allow(unreachable_patterns)]
         match self {
             #[cfg(x11_platform)]
             Self::X11 => EGL_PLATFORM_X11,
@@ -30,17 +34,24 @@ impl EglNativeDisplay {
             #[cfg(wayland_platform)]
             Self::Wayland(_) => EGL_PLATFORM_WAYLAND,
 
+            #[cfg(android_platform)]
+            Self::Android => EGL_PLATFORM_ANDROID_KHR,
+
             _ => unreachable!(),
         }
     }
 
     fn as_ptr(&self) -> *mut ffi::c_void {
+        #[allow(unreachable_patterns)]
         match self {
             #[cfg(x11_platform)]
             Self::X11 => ptr::null_mut(),
 
             #[cfg(wayland_platform)]
             Self::Wayland(ptr) => *ptr,
+
+            #[cfg(android_platform)]
+            Self::Android => ptr::null_mut(),
 
             _ => unreachable!(),
         }
@@ -73,16 +84,16 @@ impl EglContext {
         };
 
         unsafe {
-            egl_bind_api(EGL_OPENGL_API)?;
+            egl_bind_api(EGL_OPENGL_ES_API)?;
         }
 
         let config_attribs = [
             EGL_SURFACE_TYPE,
             EGL_WINDOW_BIT,
             EGL_CONFORMANT,
-            EGL_OPENGL_BIT,
+            EGL_OPENGL_ES3_BIT,
             EGL_RENDERABLE_TYPE,
-            EGL_OPENGL_BIT,
+            EGL_OPENGL_ES3_BIT,
             EGL_RED_SIZE,
             8,
             EGL_GREEN_SIZE,
@@ -114,15 +125,15 @@ impl EglContext {
             EGL_CONTEXT_MAJOR_VERSION,
             3,
             EGL_CONTEXT_MINOR_VERSION,
-            3,
-            EGL_CONTEXT_OPENGL_PROFILE_MASK,
-            EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+            2,
             EGL_NONE,
         ];
 
         let context = unsafe {
             egl_create_context(display, config, ptr::null_mut(), context_attribs.as_ptr())?
         };
+
+        check_egl_error()?;
 
         let inner = Rc::new(EglContextInner {
             native: native_display,
@@ -132,6 +143,11 @@ impl EglContext {
         });
 
         Ok(Self { inner })
+    }
+
+    pub fn get_proc_address(&self, name: &str) -> *const ffi::c_void {
+        let name = ffi::CString::new(name).unwrap();
+        unsafe { egl_get_proc_address(name.as_ptr()) }
     }
 }
 
@@ -174,6 +190,7 @@ impl EglSurface {
         })
     }
 
+    #[allow(unused)]
     pub fn from_raw_surface(context: &EglContext, surface: *mut ffi::c_void) -> Self {
         Self {
             cx: context.inner.clone(),
@@ -216,23 +233,20 @@ impl Drop for EglSurface {
 
 const EGL_NONE: i32 = 0x3038;
 
-const EGL_OPENGL_API: i32 = 0x30A2;
+const EGL_OPENGL_ES_API: i32 = 0x30A0;
 
 const EGL_SURFACE_TYPE: i32 = 0x3033;
 const EGL_WINDOW_BIT: i32 = 0x0004;
 const EGL_CONFORMANT: i32 = 0x3042;
 const EGL_RENDERABLE_TYPE: i32 = 0x3040;
-const EGL_OPENGL_BIT: i32 = 0x0008;
+const EGL_OPENGL_ES3_BIT: i32 = 0x0040;
 const EGL_RED_SIZE: i32 = 0x3024;
 const EGL_GREEN_SIZE: i32 = 0x3023;
 const EGL_BLUE_SIZE: i32 = 0x3022;
 const EGL_ALPHA_SIZE: i32 = 0x3021;
-const EGL_STENCIL_SIZE: i32 = 0x3026;
 
 const EGL_CONTEXT_MAJOR_VERSION: i32 = 0x3098;
 const EGL_CONTEXT_MINOR_VERSION: i32 = 0x30FB;
-const EGL_CONTEXT_OPENGL_PROFILE_MASK: i32 = 0x30FD;
-const EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT: i32 = 0x00000001;
 
 #[cfg(x11_platform)]
 const EGL_PLATFORM_X11: i32 = 0x31D5;
@@ -240,8 +254,11 @@ const EGL_PLATFORM_X11: i32 = 0x31D5;
 #[cfg(wayland_platform)]
 const EGL_PLATFORM_WAYLAND: i32 = 0x31D8;
 
-const EGL_SUCCESS: i32 = 0x3000;
+#[cfg(android_platform)]
+const EGL_PLATFORM_ANDROID_KHR: i32 = 0x3141;
+
 const EGL_NOT_INITIALIZED: i32 = 0x3001;
+const EGL_SUCCESS: i32 = 0x3000;
 const EGL_BAD_ACCESS: i32 = 0x3002;
 const EGL_BAD_ALLOC: i32 = 0x3003;
 const EGL_BAD_ATTRIBUTE: i32 = 0x3004;
@@ -387,6 +404,18 @@ unsafe fn egl_terminate(display: *mut ffi::c_void) {
 
     if let Ok(egl_terminate) = egl_terminate {
         egl_terminate(display);
+    }
+}
+
+unsafe fn egl_get_proc_address(name: *const ffi::c_char) -> *const ffi::c_void {
+    let egl_get_proc_address = lib_egl_symbol::<
+        unsafe extern "C" fn(*const ffi::c_char) -> *const ffi::c_void,
+    >(b"eglGetProcAddress");
+
+    if let Ok(egl_get_proc_address) = egl_get_proc_address {
+        egl_get_proc_address(name)
+    } else {
+        ptr::null()
     }
 }
 

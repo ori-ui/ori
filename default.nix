@@ -11,6 +11,8 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.wayland
     pkgs.openssl
     pkgs.pkg-config
+    pkgs.lld
+    pkgs.llvm
   ];
 
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";

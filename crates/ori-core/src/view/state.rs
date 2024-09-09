@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::{
+    event::Ime,
     layout::{Affine, Point, Rect, Size, Vector},
     window::Cursor,
 };
@@ -122,6 +123,10 @@ pub struct ViewState {
     /* cursor */
     pub(crate) cursor: Option<Cursor>,
     pub(crate) inherited_cursor: Option<Cursor>,
+
+    /* ime */
+    pub(crate) ime: Option<Ime>,
+    pub(crate) inherited_ime: Option<Ime>,
 }
 
 impl Default for ViewState {
@@ -151,6 +156,10 @@ impl ViewState {
             /* cursor */
             cursor: None,
             inherited_cursor: None,
+
+            /* ime */
+            ime: None,
+            inherited_ime: None,
         }
     }
 
@@ -160,6 +169,7 @@ impl ViewState {
         self.flags |= self.flags.has();
 
         self.inherited_cursor = self.cursor;
+        self.inherited_ime = self.ime.clone();
     }
 
     /// Propagate the state of a child view.
@@ -167,6 +177,7 @@ impl ViewState {
         self.update |= child.update;
         self.flags |= child.flags.has();
         self.inherited_cursor = self.cursor().or(child.cursor());
+        self.inherited_ime = self.ime().or(child.ime()).cloned();
     }
 
     /// Get the id of the view.
@@ -371,6 +382,16 @@ impl ViewState {
     /// Set the cursor of the view.
     pub fn set_cursor(&mut self, cursor: Option<Cursor>) {
         self.cursor = cursor;
+    }
+
+    /// Get the IME of the view.
+    pub fn ime(&self) -> Option<&Ime> {
+        self.ime.as_ref().or(self.inherited_ime.as_ref())
+    }
+
+    /// Set the IME of the view.
+    pub fn set_ime(&mut self, ime: Option<Ime>) {
+        self.ime = ime;
     }
 }
 

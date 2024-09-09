@@ -9,7 +9,7 @@ authors.workspace = true
 license.workspace = true
 
 [workspace]
-members = ["crates/*", "examples/*"]
+members = ["crates/*", "examples/futures", "examples/mobile", "examples/suspense"]
 
 [workspace.package]
 version = "0.1.0-alpha.1"

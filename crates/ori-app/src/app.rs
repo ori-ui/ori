@@ -6,7 +6,7 @@ use ori_core::{
     command::{CommandProxy, CommandReceiver},
     context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
-        CloseRequested, Code, Event, Key, KeyPressed, KeyReleased, Modifiers, PointerButton,
+        CloseRequested, Code, Event, Ime, Key, KeyPressed, KeyReleased, Modifiers, PointerButton,
         PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
         WindowMaximized, WindowResized, WindowScaled,
     },
@@ -36,6 +36,7 @@ pub(crate) struct WindowState<T> {
     ui: UiBuilder<T>,
     view: BoxedView<T>,
     cursor: Cursor,
+    ime: Option<Ime>,
     state: AnyState,
     canvas: Canvas,
     view_state: ViewState,
@@ -248,9 +249,9 @@ impl<T> App<T> {
         window_id: WindowId,
         pointer_id: PointerId,
         position: Point,
-    ) {
+    ) -> bool {
         let Some(window_state) = self.windows.get_mut(&window_id) else {
-            return;
+            return false;
         };
 
         let delta = window_state.window.move_pointer(pointer_id, position);
@@ -263,7 +264,7 @@ impl<T> App<T> {
             delta,
         });
 
-        self.window_event(data, window_id, &event);
+        self.window_event(data, window_id, &event)
     }
 
     /// A pointer left the window.
@@ -315,7 +316,7 @@ impl<T> App<T> {
         pointer_id: PointerId,
         button: PointerButton,
         pressed: bool,
-    ) {
+    ) -> bool {
         let position = self
             .pointer_position(window_id, pointer_id)
             .unwrap_or(Point::ZERO);
@@ -332,7 +333,7 @@ impl<T> App<T> {
                 button,
             });
 
-            self.window_event(data, window_id, &event);
+            self.window_event(data, window_id, &event)
         } else {
             let clicked = (self.windows.get_mut(&window_id)).map_or(false, move |window_state| {
                 window_state.window.release_pointer(pointer_id, button)
@@ -346,7 +347,7 @@ impl<T> App<T> {
                 button,
             });
 
-            self.window_event(data, window_id, &event);
+            self.window_event(data, window_id, &event)
         }
     }
 
@@ -407,6 +408,7 @@ impl<T> App<T> {
             ui,
             view,
             cursor: Cursor::Default,
+            ime: None,
             state,
             canvas: Canvas::new(),
             view_state,
@@ -574,6 +576,13 @@ impl<T> App<T> {
                 self.requests.push(AppRequest::UpdateWindow(id, update));
 
                 window_state.cursor = cursor;
+            }
+
+            if window_state.ime.as_ref() != window_state.view_state.ime() {
+                let update = WindowUpdate::Ime(window_state.view_state.ime().cloned());
+                self.requests.push(AppRequest::UpdateWindow(id, update));
+
+                window_state.ime = window_state.view_state.ime().cloned();
             }
         }
     }

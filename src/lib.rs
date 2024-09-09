@@ -9,6 +9,12 @@ pub mod core {
     pub use ori_core::*;
 }
 
+pub mod app {
+    //! Ori [`app`](ori_app) module.
+
+    pub use ori_app::*;
+}
+
 #[doc(hidden)]
 #[cfg(feature = "reload")]
 pub use ori_reload as reload;
@@ -22,6 +28,13 @@ pub mod font_awesome {
 
 #[cfg(feature = "shell")]
 pub use ori_shell::{run, run_simple};
+
+#[cfg(feature = "shell")]
+pub mod shell {
+    //! Ori [`shell`](ori_shell) module.
+
+    pub use ori_shell::*;
+}
 
 pub mod log {
     //! Ori [`log`](ori_core::log) module.

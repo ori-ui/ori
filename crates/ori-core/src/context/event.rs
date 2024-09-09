@@ -1,6 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
+    event::Ime,
     layout::{Affine, Point, Rect, Size},
     view::{ViewFlags, ViewState},
     window::Cursor,
@@ -110,6 +111,11 @@ impl<'a, 'b> EventCx<'a, 'b> {
     /// Set the cursor of the view.
     pub fn set_cursor(&mut self, cursor: Option<Cursor>) {
         self.view_state.set_cursor(cursor);
+    }
+
+    /// Set the ime of the view.
+    pub fn set_ime(&mut self, ime: Option<Ime>) {
+        self.view_state.set_ime(ime);
     }
 
     /// Set whether the view is hot.

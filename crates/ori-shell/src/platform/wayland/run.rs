@@ -1,4 +1,4 @@
-use std::{ffi, mem, num::NonZero, sync::Arc, time::Duration};
+use std::{mem, num::NonZero, sync::Arc, time::Duration};
 
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
 use ori_core::{
@@ -64,10 +64,9 @@ use wayland_csd_frame::{
 use wayland_egl::WlEglSurface;
 use xkeysym::Keysym;
 
-use crate::platform::linux::{
+use crate::platform::{
     egl::{EglContext, EglNativeDisplay, EglSurface},
-    xkb::{XkbContext, XkbKeyboard},
-    LIB_GL,
+    linux::xkb::{XkbContext, XkbKeyboard},
 };
 
 use super::error::WaylandError;
@@ -296,6 +295,7 @@ fn handle_app_request<T>(
                     window.cursor_icon = cursor_icon(cursor);
                     window.set_cursor_icon = true;
                 }
+                WindowUpdate::Ime(_) => {}
             }
         }
 
@@ -961,8 +961,8 @@ impl WindowHandler for State {
 
                 let renderer = unsafe {
                     GlowRenderer::new(|symbol| {
-                        let symbol = ffi::CString::new(symbol).unwrap();
-                        *LIB_GL.get(symbol.as_bytes_with_nul()).unwrap()
+                        //
+                        self.egl_context.get_proc_address(symbol)
                     })
                     .unwrap()
                 };

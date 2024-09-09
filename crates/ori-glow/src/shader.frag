@@ -1,4 +1,6 @@
-#version 330
+#version 300 es
+precision highp float;
+precision highp int;
 
 flat in uint v_flags;
 flat in uint v_band_index;

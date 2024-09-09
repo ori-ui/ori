@@ -144,6 +144,7 @@ pub enum Key {
     PageDown,
     PageUp,
     Backspace,
+    Space,
     Clear,
     Copy,
     Cut,

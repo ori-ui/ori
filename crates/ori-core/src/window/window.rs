@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     canvas::Color,
-    event::{PointerButton, PointerId},
+    event::{Ime, PointerButton, PointerId},
     image::Image,
     layout::{Point, Size, Vector},
     view::ViewId,
@@ -353,6 +353,9 @@ pub enum WindowUpdate {
 
     /// Set the cursor of the window.
     Cursor(Cursor),
+
+    /// Set the ime state of the window.
+    Ime(Option<Ime>),
 }
 
 /// The state of a window.

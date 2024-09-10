@@ -6,11 +6,11 @@ use ori_core::{
     window::Window,
 };
 
-use crate::{App, AppRequest, Delegate, IntoUiBuilder};
+use crate::{App, AppRequest, AppDelegate, IntoUiBuilder};
 
 /// A builder for an [`App`].
 pub struct AppBuilder<T> {
-    delegates: Vec<Box<dyn Delegate<T>>>,
+    delegates: Vec<Box<dyn AppDelegate<T>>>,
     requests: Vec<AppRequest<T>>,
     styles: Styles,
     fonts: Fonts,
@@ -34,7 +34,7 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a delegate to the application.
-    pub fn delegate(mut self, delegate: impl Delegate<T> + 'static) -> Self {
+    pub fn delegate(mut self, delegate: impl AppDelegate<T> + 'static) -> Self {
         self.delegates.push(Box::new(delegate));
         self
     }

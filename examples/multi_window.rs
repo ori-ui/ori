@@ -55,9 +55,9 @@ fn ui(_data: &mut Data) -> impl View<Data> {
     center(stack)
 }
 
-struct AppDelegate;
+struct Delegate;
 
-impl Delegate<Data> for AppDelegate {
+impl AppDelegate<Data> for Delegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
         if let Some(request) = event.cmd::<CloseRequested>() {
             data.windows.retain(|w| *w != request.window);
@@ -102,7 +102,7 @@ fn main() {
 
     let window = Window::new().title("Multi Window (examples/multi_window.rs)");
 
-    let app = App::build().window(window, ui).delegate(AppDelegate);
+    let app = App::build().window(window, ui).delegate(Delegate);
 
     ori::run(app, &mut Data::default()).unwrap();
 }

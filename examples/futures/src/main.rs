@@ -26,9 +26,9 @@ fn ui(data: &mut Data) -> impl View<Data> {
     ])
 }
 
-struct AppDelegate;
+struct Delegate;
 
-impl Delegate<Data> for AppDelegate {
+impl AppDelegate<Data> for Delegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
         if let Some(msg) = event.cmd::<&str>() {
             info!("Future says: {}", msg);
@@ -45,7 +45,7 @@ fn main() {
 
     let window = Window::new().title("Futures (examples/futures.rs)");
 
-    let app = App::build().window(window, ui).delegate(AppDelegate);
+    let app = App::build().window(window, ui).delegate(Delegate);
 
     ori::run(app, &mut Data::default()).unwrap();
 }

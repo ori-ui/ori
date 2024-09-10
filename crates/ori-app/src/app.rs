@@ -18,7 +18,7 @@ use ori_core::{
     window::{Cursor, Window, WindowId, WindowSizing, WindowSnapshot, WindowUpdate},
 };
 
-use crate::{AppBuilder, AppCommand, AppRequest, Delegate, DelegateCx, UiBuilder};
+use crate::{AppBuilder, AppCommand, AppRequest, AppDelegate, DelegateCx, UiBuilder};
 
 /// Information needed to render a window.
 pub struct WindowRenderState<'a> {
@@ -160,7 +160,7 @@ impl<T> WindowState<T> {
 pub struct App<T> {
     pub(crate) windows: HashMap<WindowId, WindowState<T>>,
     pub(crate) modifiers: Modifiers,
-    pub(crate) delegates: Vec<Box<dyn Delegate<T>>>,
+    pub(crate) delegates: Vec<Box<dyn AppDelegate<T>>>,
     pub(crate) proxy: CommandProxy,
     pub(crate) receiver: CommandReceiver,
     pub(crate) requests: Vec<AppRequest<T>>,

@@ -70,7 +70,7 @@ impl<'a, 'b, T> DelegateCx<'a, 'b, T> {
 }
 
 /// A delegate for handling events in an application.
-pub trait Delegate<T> {
+pub trait AppDelegate<T> {
     /// Called when the application is initialized.
     fn init(&mut self, cx: &mut DelegateCx<T>, data: &mut T) {
         let _ = (cx, data);

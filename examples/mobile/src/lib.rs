@@ -13,9 +13,6 @@ fn ui() -> impl View {
 
 #[ori::main]
 pub fn main() {
-    let window = Window::new();
-
-    let app = App::build().window(window, ui);
-
-    ori::run(app, &mut ()).unwrap();
+    let window = Window::new().title("Mobile Example");
+    ori::run_simple(window, ui).unwrap();
 }

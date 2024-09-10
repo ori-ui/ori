@@ -233,9 +233,9 @@ fn ui(data: &mut Data) -> impl View<Data> {
     background(BACKGROUND, pad(64.0, content))
 }
 
-struct AppDelegate;
+struct Delegate;
 
-impl Delegate<Data> for AppDelegate {
+impl AppDelegate<Data> for Delegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
         if let Some(&RemoveTodo(index)) = event.cmd() {
             data.remove_todo(index);
@@ -253,7 +253,7 @@ fn main() {
 
     let window = Window::new().title("Todos (examples/todos.rs)");
 
-    let app = AppBuilder::new().window(window, ui).delegate(AppDelegate);
+    let app = AppBuilder::new().window(window, ui).delegate(Delegate);
 
     ori::run(app, &mut Data::default()).unwrap();
 }

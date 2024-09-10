@@ -246,10 +246,10 @@ fn style_style_key_fields<'a>(
     fields.iter().filter_map(move |field| {
         let vis = &field.vis;
         let ident = field.ident.as_ref().unwrap();
-        let ident = syn::Ident::new(&ident.to_string().to_uppercase(), ident.span());
         let ty = get_styled(&field.ty)?;
 
         let name = format!("{}.{}", name, ident);
+        let ident = syn::Ident::new(&ident.to_string().to_uppercase(), ident.span());
 
         let doc = format!("The style key of [`{}::{}`].", name, ident);
 

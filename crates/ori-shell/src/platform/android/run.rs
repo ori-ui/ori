@@ -112,6 +112,9 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
                 render_window(&mut state, data);
                 handle_requests(&mut state, data);
 
+                state.app.idle(data);
+                handle_requests(&mut state, data);
+
                 if matches!(
                     state.window,
                     Some(WindowState {

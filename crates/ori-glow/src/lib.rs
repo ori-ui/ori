@@ -211,7 +211,7 @@ impl GlowRenderer {
         height: u32,
         scale_factor: f32,
     ) -> Result<(), GlError> {
-        self.idle();
+        self.clean();
 
         if self.width != width || self.height != height {
             self.clear_masks();
@@ -387,7 +387,7 @@ impl GlowRenderer {
         Ok(vertex_array)
     }
 
-    unsafe fn idle(&mut self) {
+    unsafe fn clean(&mut self) {
         self.images.retain(|weak, &mut texture| {
             if weak.strong_count() == 0 {
                 self.gl.delete_texture(texture);

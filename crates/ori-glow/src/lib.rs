@@ -143,7 +143,7 @@ impl Drop for GlowRenderer {
 }
 
 impl GlowRenderer {
-    const TEXTURE_BUFFER_WIDTH: usize = 2048;
+    const TEXTURE_BUFFER_WIDTH: usize = 256;
     const MAX_INSTANCES: usize = 256;
     const MAX_BANDS: usize = 256;
 
@@ -680,7 +680,7 @@ impl GlowRenderer {
                 let offset_opacity = [
                     pattern.transform.translation.x,
                     pattern.transform.translation.y,
-                    pattern.opacity,
+                    1.0,
                 ];
 
                 (Some(*texture), transform, offset_opacity)
@@ -690,13 +690,17 @@ impl GlowRenderer {
 
         if self.active_image != image && !self.instances.is_empty() {
             self.dispatch();
+
+            let (index, count) = self.push_bands(curve);
+            band_index = index;
+            band_count = count;
         }
 
         self.active_image = image;
 
         let color = match paint.shader {
             Shader::Solid(color) => color,
-            _ => Color::WHITE,
+            Shader::Pattern(ref pattern) => pattern.color,
         };
 
         let mut flags = 0;

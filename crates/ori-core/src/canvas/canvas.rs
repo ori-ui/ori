@@ -22,15 +22,15 @@ pub struct Pattern {
     /// The transformation of the pattern.
     pub transform: Affine,
 
-    /// The opacity of the pattern.
-    pub opacity: f32,
+    /// The color of the pattern.
+    pub color: Color,
 }
 
 impl Hash for Pattern {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.image.hash(state);
         self.transform.hash(state);
-        self.opacity.to_bits().hash(state);
+        self.color.hash(state);
     }
 }
 
@@ -39,7 +39,7 @@ impl From<Image> for Pattern {
         Self {
             image: value,
             transform: Affine::IDENTITY,
-            opacity: 1.0,
+            color: Color::WHITE,
         }
     }
 }

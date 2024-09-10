@@ -14,7 +14,7 @@ in vec3 v_image_offset_opacity;
 
 out vec4 f_color;
 
-const uint TEXTURE_BUFFER_WIDTH = 2048u;
+const uint TEXTURE_BUFFER_WIDTH = 256u;
 
 const uint NON_ZERO_BIT = 1u << 31u;
 const uint AA_SAMPLES_MASK = 0x0000ff00u;

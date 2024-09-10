@@ -5,11 +5,11 @@ use ori_macro::include_font;
 use tracing::{debug, trace};
 
 use crate::{
-    canvas::{AntiAlias, Canvas, Curve, FillRule, Paint},
-    layout::{Affine, Point, Size, Vector},
+    canvas::{AntiAlias, Canvas, Color, Curve, FillRule, Paint, Pattern, Shader},
+    layout::{Affine, Point, Rect, Size, Vector},
 };
 
-use super::FontSource;
+use super::{FontAtlas, FontSource};
 
 /// A context for loading and rasterizing fonts.
 ///
@@ -25,7 +25,10 @@ pub struct Fonts {
     pub font_system: FontSystem,
 
     /// The glyph cache.
-    pub glyph_cache: HashMap<CacheKey, Arc<Curve>, BuildHasherDefault<seahash::SeaHasher>>,
+    pub curve_cache: HashMap<CacheKey, Arc<Curve>, BuildHasherDefault<seahash::SeaHasher>>,
+
+    /// The font atlas.
+    pub font_atlas: FontAtlas,
 }
 
 impl Default for Fonts {
@@ -40,7 +43,8 @@ impl Fonts {
         let mut fonts = Self {
             swash_cache: SwashCache::new(),
             font_system: FontSystem::new(),
-            glyph_cache: HashMap::default(),
+            curve_cache: HashMap::default(),
+            font_atlas: FontAtlas::new(1024),
         };
 
         for font in fonts.font_system.db().faces() {
@@ -111,7 +115,7 @@ impl Fonts {
     }
 
     fn get_glyphs(&mut self, cache_key: CacheKey) -> Arc<Curve> {
-        if let Some(curve) = self.glyph_cache.get(&cache_key).cloned() {
+        if let Some(curve) = self.curve_cache.get(&cache_key).cloned() {
             return curve;
         }
 
@@ -152,10 +156,24 @@ impl Fonts {
             }
         }
 
-        self.glyph_cache
+        self.curve_cache
             .entry(cache_key)
             .or_insert(Arc::new(curve))
             .clone()
+    }
+
+    /// Prepare a buffer for rendering.
+    pub fn prepare_buffer(&mut self, buffer: &Buffer, offet: Vector, scale: f32) {
+        for run in buffer.layout_runs() {
+            for glyph in run.glyphs {
+                let physical = glyph.physical((offet.x, offet.y), scale);
+                self.font_atlas.insert(
+                    &mut self.font_system,
+                    &mut self.swash_cache,
+                    physical.cache_key,
+                );
+            }
+        }
     }
 
     /// Rasterize a buffer.
@@ -163,11 +181,27 @@ impl Fonts {
         &mut self,
         canvas: &mut Canvas,
         buffer: &Buffer,
-        paint: Paint,
+        color: Color,
         offset: Vector,
-        _scale: f32,
+        scale: f32,
     ) {
-        let mut paint = paint;
+        let low_performance = cfg!(any(target_os = "android", target_os = "ios"));
+
+        if low_performance {
+            self.draw_buffer_bitmap(canvas, buffer, color, offset, scale);
+        } else {
+            self.draw_buffer_outline(canvas, buffer, color, offset);
+        }
+    }
+
+    fn draw_buffer_outline(
+        &mut self,
+        canvas: &mut Canvas,
+        buffer: &Buffer,
+        color: Color,
+        offset: Vector,
+    ) {
+        let mut paint = Paint::from(color);
         paint.anti_alias = AntiAlias::Full;
 
         for run in buffer.layout_runs() {
@@ -182,6 +216,54 @@ impl Fonts {
                 canvas.transformed(Affine::translate(offset), |canvas| {
                     canvas.fill(curve.clone(), FillRule::NonZero, paint.clone());
                 });
+            }
+        }
+    }
+
+    fn draw_buffer_bitmap(
+        &mut self,
+        canvas: &mut Canvas,
+        buffer: &Buffer,
+        color: Color,
+        offset: Vector,
+        scale: f32,
+    ) {
+        for run in buffer.layout_runs() {
+            for glyph in run.glyphs {
+                let physical = glyph.physical((offset.x, offset.y), scale);
+                let atlas = self
+                    .font_atlas
+                    .insert(
+                        &mut self.font_system,
+                        &mut self.swash_cache,
+                        physical.cache_key,
+                    )
+                    .unwrap();
+
+                let offset = Vector::new(
+                    physical.x as f32 + atlas.layout.min.x,
+                    physical.y as f32 + run.line_y * scale - atlas.layout.min.y,
+                );
+
+                let rect = Rect::min_size(offset.to_point() / scale, atlas.layout.size() / scale);
+
+                let mut transform = Affine::IDENTITY;
+                transform *= Affine::translate(-rect.min.to_vector() + atlas.uv.offset() / scale);
+                transform *= Affine::scale(Vector::all(1.0 / scale));
+
+                let pattern = Pattern {
+                    image: self.font_atlas.image().clone(),
+                    transform,
+                    color,
+                };
+
+                let paint = Paint {
+                    shader: Shader::Pattern(pattern),
+                    anti_alias: AntiAlias::None,
+                    ..Default::default()
+                };
+
+                canvas.rect(rect, paint);
             }
         }
     }

@@ -303,7 +303,7 @@ impl<T> View<T> for ColorPicker<T> {
                     image: image.clone(),
                     transform: Affine::translate(cx.rect().top_left() - cx.rect().center())
                         * Affine::scale(Vector::from(cx.size() / image.size())),
-                    opacity: 1.0,
+                    color: Color::WHITE,
                 };
 
                 cx.fill(

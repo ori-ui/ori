@@ -1,5 +1,5 @@
 use crate::{
-    canvas::Pattern,
+    canvas::{Color, Pattern},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     image::Image,
@@ -46,7 +46,7 @@ impl<T> View<T> for Image {
             Pattern {
                 image: self.clone(),
                 transform: Affine::scale(scale),
-                opacity: 1.0,
+                color: Color::WHITE,
             },
         );
     }

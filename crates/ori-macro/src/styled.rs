@@ -21,20 +21,21 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let ori_core = find_core();
 
     let vis = &input.vis;
-    let name = &input.ident;
+    let ident = &input.ident;
+    let name = ident.to_string();
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let style_name = syn::Ident::new(&format!("{}Style", name), name.span());
-    let style_name_snake = pascal_to_snake(&name.to_string());
-    let style_fields = style_fields(name, &data.fields);
+    let style_name = syn::Ident::new(&format!("{}Style", ident), ident.span());
+    let style_name_snake = pascal_to_snake(&ident.to_string());
+    let style_fields = style_fields(ident, &data.fields);
     let style_styled_fields = style_styled_fields(&data.fields);
     let style_rebuild_fields = style_rebuild_fields(&data.fields);
-    let style_style_key_fields = style_style_key_fields(&style_name_snake, &data.fields);
+    let style_style_key_fields = style_style_key_fields(&name, &data.fields);
 
-    let style_doc = format!("The derived style for [`{}`].", name);
-    let style_styled_doc = format!("The style of [`{}`].", name);
-    let style_rebuild_doc = format!("Rebuild the style of [`{}`].", name);
+    let style_doc = format!("The derived style for [`{}`].", ident);
+    let style_styled_doc = format!("The style of [`{}`].", ident);
+    let style_rebuild_doc = format!("Rebuild the style of [`{}`].", ident);
     let style_into_styles_fields = style_into_styles_fields(&data.fields);
 
     let expanded = quote! {
@@ -50,7 +51,7 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
             #[doc = #style_styled_doc]
             #[allow(unused)]
             #vis fn styled #impl_generics (
-                styled: &#name #ty_generics,
+                styled: &#ident #ty_generics,
                 styles: &#ori_core::style::Styles
             ) -> Self
             #where_clause
@@ -64,7 +65,7 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
             #[allow(unused)]
             #vis fn rebuild #impl_generics (
                 &mut self,
-                styled: &#name #ty_generics,
+                styled: &#ident #ty_generics,
                 cx: &mut #ori_core::context::RebuildCx
             )
             #where_clause

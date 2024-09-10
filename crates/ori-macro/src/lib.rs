@@ -167,6 +167,47 @@ pub fn web(
     expanded.into()
 }
 
+/// Check if the target platform is desktop.
+#[proc_macro]
+pub fn is_desktop(_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let expanded = quote::quote! {
+        ::std::cfg!(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux",
+            target_os = "freebsd",
+            target_os = "dragonfly",
+            target_os = "openbsd",
+            target_os = "netbsd",
+        ))
+    };
+
+    expanded.into()
+}
+
+/// Check if the target platform is mobile.
+#[proc_macro]
+pub fn is_mobile(_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let expanded = quote::quote! {
+        ::std::cfg!(any(
+            target_os = "android",
+            target_os = "ios",
+        ))
+    };
+
+    expanded.into()
+}
+
+/// Check if the target platform is web.
+#[proc_macro]
+pub fn is_web(_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let expanded = quote::quote! {
+        ::std::cfg!(target_arch = "wasm32")
+    };
+
+    expanded.into()
+}
+
 /// Embed an example in the documentation.
 ///
 /// This is an internal macro used by the `ori` crate.

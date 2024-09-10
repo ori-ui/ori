@@ -1,6 +1,8 @@
 //! Android platform specific implementations.
 
+mod clipboard;
 mod error;
+mod keyboard;
 mod run;
 
 pub use error::*;

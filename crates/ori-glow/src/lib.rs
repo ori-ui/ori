@@ -65,7 +65,7 @@ impl Mask {
             width as i32,
             height as i32,
             0,
-            glow::RGBA,
+            glow::RED,
             glow::UNSIGNED_BYTE,
             None,
         );

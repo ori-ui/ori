@@ -705,10 +705,18 @@ impl GlowRenderer {
             flags |= NON_ZERO_BIT;
         }
 
-        match paint.anti_alias {
-            AntiAlias::None => flags |= 0 << 8,
-            AntiAlias::Fast => flags |= 4 << 8,
-            AntiAlias::Full => flags |= 8 << 8,
+        if cfg!(any(target_os = "android", target_os = "ios")) {
+            match paint.anti_alias {
+                AntiAlias::None => flags |= 0 << 8,
+                AntiAlias::Fast => flags |= 1 << 8,
+                AntiAlias::Full => flags |= 2 << 8,
+            }
+        } else {
+            match paint.anti_alias {
+                AntiAlias::None => flags |= 0 << 8,
+                AntiAlias::Fast => flags |= 4 << 8,
+                AntiAlias::Full => flags |= 8 << 8,
+            }
         }
 
         flags |= band_count;

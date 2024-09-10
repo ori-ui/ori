@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, SURFACE_HIGH, SURFACE_HIGHER},
+    style::{Styled, Theme},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -53,12 +53,12 @@ pub struct Scroll<V> {
 
     /// The color of the scrollbar.
     #[rebuild(draw)]
-    #[styled(default -> SURFACE_HIGH or Color::grayscale(0.9))]
+    #[styled(default -> Theme::SURFACE_HIGH or Color::grayscale(0.9))]
     pub color: Styled<Color>,
 
     /// The color of the scrollbar knob.
     #[rebuild(draw)]
-    #[styled(default -> SURFACE_HIGHER or Color::grayscale(0.8))]
+    #[styled(default -> Theme::SURFACE_HIGHER or Color::grayscale(0.8))]
     pub knob_color: Styled<Color>,
 }
 

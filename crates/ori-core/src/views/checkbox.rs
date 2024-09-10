@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    style::{Styled, OUTLINE, PRIMARY},
+    style::{Styled, Theme},
     transition::Transition,
     view::View,
 };
@@ -38,7 +38,7 @@ pub struct Checkbox {
 
     /// The color of the checkbox.
     #[rebuild(draw)]
-    #[styled(default -> PRIMARY or Color::BLUE)]
+    #[styled(default -> Theme::PRIMARY or Color::BLUE)]
     pub color: Styled<Color>,
 
     /// The stroke width of the checkbox.
@@ -63,7 +63,7 @@ pub struct Checkbox {
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> OUTLINE or Color::BLACK)]
+    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 

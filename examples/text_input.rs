@@ -26,7 +26,7 @@ fn input(data: &mut Data) -> impl View<Data> {
         .multiline(data.multiline);
 
     container(pad(8.0, min_width(150.0, input)))
-        .background(SURFACE)
+        .background(Theme::SURFACE)
         .border_radius(6.0)
 }
 

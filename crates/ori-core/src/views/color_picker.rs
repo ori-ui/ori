@@ -9,7 +9,7 @@ use crate::{
     image::Image,
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, ACCENT, OUTLINE, PRIMARY},
+    style::{Styled, Theme},
     view::View,
 };
 
@@ -42,7 +42,7 @@ pub struct ColorPicker<T> {
 
     /// The border color of the color picker.
     #[rebuild(draw)]
-    #[styled(default -> OUTLINE or Color::BLACK)]
+    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 
     /// The width of the sliders.
@@ -52,12 +52,12 @@ pub struct ColorPicker<T> {
 
     /// The color of the lightness slider.
     #[rebuild(draw)]
-    #[styled(default -> PRIMARY or Color::BLUE)]
+    #[styled(default -> Theme::PRIMARY or Color::BLUE)]
     pub lightness_color: Styled<Color>,
 
     /// The color of the alpha slider.
     #[rebuild(draw)]
-    #[styled(default -> ACCENT or Color::RED)]
+    #[styled(default -> Theme::ACCENT or Color::RED)]
     pub alpha_color: Styled<Color>,
 }
 

@@ -8,7 +8,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space},
     rebuild::Rebuild,
-    style::{Styled, OUTLINE, PRIMARY, SURFACE_HIGH},
+    style::{Styled, Theme},
     view::View,
 };
 
@@ -51,12 +51,12 @@ pub struct Slider<T> {
 
     /// The foreground color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> PRIMARY or Color::BLUE)]
+    #[styled(default -> Theme::PRIMARY or Color::BLUE)]
     pub color: Styled<Color>,
 
     /// The background color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> SURFACE_HIGH or Color::grayscale(0.9))]
+    #[styled(default -> Theme::SURFACE_HIGH or Color::grayscale(0.9))]
     pub background: Styled<Color>,
 
     /// The border radius of the slider.
@@ -71,7 +71,7 @@ pub struct Slider<T> {
 
     /// The border color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> OUTLINE or Color::BLACK)]
+    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 

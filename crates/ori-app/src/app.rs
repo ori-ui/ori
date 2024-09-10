@@ -12,13 +12,13 @@ use ori_core::{
     },
     layout::{Point, Size, Space, Vector},
     log::trace,
-    style::{Styles, BACKGROUND},
+    style::{Styles, Theme},
     view::{any, AnyState, BoxedView, View, ViewState},
     views::opaque,
     window::{Cursor, Window, WindowId, WindowSizing, WindowSnapshot, WindowUpdate},
 };
 
-use crate::{AppBuilder, AppCommand, AppRequest, AppDelegate, DelegateCx, UiBuilder};
+use crate::{AppBuilder, AppCommand, AppDelegate, AppRequest, DelegateCx, UiBuilder};
 
 /// Information needed to render a window.
 pub struct WindowRenderState<'a> {
@@ -758,7 +758,7 @@ impl<T> App<T> {
             Some(color) => color,
             None => {
                 let styles = (self.contexts.get::<Styles>()).expect("app has styles context");
-                styles.get_or(Color::WHITE, BACKGROUND)
+                styles.get_or(Color::WHITE, Theme::BACKGROUND)
             }
         };
 

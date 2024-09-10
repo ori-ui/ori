@@ -144,77 +144,31 @@ impl Default for Theme {
     }
 }
 
-/// The background color.
-pub const BACKGROUND: Style<Color> = Style::new("palette.background");
-
-/// The surface color.
-pub const SURFACE_LOWER: Style<Color> = Style::new("palette.surface_lower");
-
-/// The surface color.
-pub const SURFACE_LOW: Style<Color> = Style::new("palette.surface_low");
-
-/// The surface color.
-pub const SURFACE: Style<Color> = Style::new("palette.surface");
-
-/// The surface color.
-pub const SURFACE_HIGH: Style<Color> = Style::new("palette.surface_high");
-
-/// The surface color.
-pub const SURFACE_HIGHER: Style<Color> = Style::new("palette.surface_higher");
-
-/// The surface color.
-pub const SURFACE_HIGHEST: Style<Color> = Style::new("palette.surface_highest");
-
-/// The outline color.
-pub const OUTLINE: Style<Color> = Style::new("palette.outline");
-
-/// The outline color.
-pub const OUTLINE_LOW: Style<Color> = Style::new("palette.outline_low");
-
-/// The contrast color.
-pub const CONTRAST: Style<Color> = Style::new("palette.contrast");
-
-/// The contrast color.
-pub const CONTRAST_LOW: Style<Color> = Style::new("palette.contrast_low");
-
-/// The primary color.
-pub const PRIMARY: Style<Color> = Style::new("palette.primary");
-
-/// The primary color.
-pub const PRIMARY_LOW: Style<Color> = Style::new("palette.primary_low");
-
-/// The secondary color.
-pub const SECONDARY: Style<Color> = Style::new("palette.secondary");
-
-/// The secondary color.
-pub const SECONDARY_LOW: Style<Color> = Style::new("palette.secondary_low");
-
-/// The accent color.
-pub const ACCENT: Style<Color> = Style::new("palette.accent");
-
-/// The accent color.
-pub const ACCENT_LOW: Style<Color> = Style::new("palette.accent_low");
-
-/// The danger color.
-pub const DANGER: Style<Color> = Style::new("palette.danger");
-
-/// The danger color.
-pub const DANGER_LOW: Style<Color> = Style::new("palette.danger_low");
-
-/// The success color.
-pub const SUCCESS: Style<Color> = Style::new("palette.success");
-
-/// The success color.
-pub const SUCCESS_LOW: Style<Color> = Style::new("palette.success_low");
-
-/// The warning color.
-pub const WARNING: Style<Color> = Style::new("palette.warning");
-
-/// The warning color.
-pub const WARNING_LOW: Style<Color> = Style::new("palette.warning_low");
-
-/// The info color.
-pub const INFO: Style<Color> = Style::new("palette.info");
-
-/// The info color.
-pub const INFO_LOW: Style<Color> = Style::new("palette.info_low");
+#[allow(missing_docs)]
+impl Theme {
+    pub const BACKGROUND: Style<Color> = Style::new("palette.background");
+    pub const SURFACE_LOWER: Style<Color> = Style::new("palette.surface_lower");
+    pub const SURFACE_LOW: Style<Color> = Style::new("palette.surface_low");
+    pub const SURFACE: Style<Color> = Style::new("palette.surface");
+    pub const SURFACE_HIGH: Style<Color> = Style::new("palette.surface_high");
+    pub const SURFACE_HIGHER: Style<Color> = Style::new("palette.surface_higher");
+    pub const SURFACE_HIGHEST: Style<Color> = Style::new("palette.surface_highest");
+    pub const OUTLINE: Style<Color> = Style::new("palette.outline");
+    pub const OUTLINE_LOW: Style<Color> = Style::new("palette.outline_low");
+    pub const CONTRAST: Style<Color> = Style::new("palette.contrast");
+    pub const CONTRAST_LOW: Style<Color> = Style::new("palette.contrast_low");
+    pub const PRIMARY: Style<Color> = Style::new("palette.primary");
+    pub const PRIMARY_LOW: Style<Color> = Style::new("palette.primary_low");
+    pub const SECONDARY: Style<Color> = Style::new("palette.secondary");
+    pub const SECONDARY_LOW: Style<Color> = Style::new("palette.secondary_low");
+    pub const ACCENT: Style<Color> = Style::new("palette.accent");
+    pub const ACCENT_LOW: Style<Color> = Style::new("palette.accent_low");
+    pub const DANGER: Style<Color> = Style::new("palette.danger");
+    pub const DANGER_LOW: Style<Color> = Style::new("palette.danger_low");
+    pub const SUCCESS: Style<Color> = Style::new("palette.success");
+    pub const SUCCESS_LOW: Style<Color> = Style::new("palette.success_low");
+    pub const WARNING: Style<Color> = Style::new("palette.warning");
+    pub const WARNING_LOW: Style<Color> = Style::new("palette.warning_low");
+    pub const INFO: Style<Color> = Style::new("palette.info");
+    pub const INFO_LOW: Style<Color> = Style::new("palette.info_low");
+}

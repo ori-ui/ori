@@ -8,7 +8,7 @@ use crate::{
     event::{Event, PointerButton},
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, OUTLINE, PRIMARY},
+    style::{Styled, Theme},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -55,7 +55,7 @@ pub struct Collapsing<T, H, V> {
 
     /// The color of the icon.
     #[rebuild(draw)]
-    #[styled(default -> PRIMARY or Color::BLUE)]
+    #[styled(default -> Theme::PRIMARY or Color::BLUE)]
     pub icon_color: Styled<Color>,
 
     /// The background color of the header.
@@ -75,7 +75,7 @@ pub struct Collapsing<T, H, V> {
 
     /// The color of the border of the header.
     #[rebuild(draw)]
-    #[styled(default -> OUTLINE or Color::BLACK)]
+    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 

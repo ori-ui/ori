@@ -9,7 +9,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Event, Ime, Key, KeyPressed},
     layout::{Point, Rect, Size, Space, Vector},
-    style::{Styled, CONTRAST, CONTRAST_LOW},
+    style::{Styled, Theme},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -72,11 +72,11 @@ pub struct TextInput<T> {
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
-    #[styled(default -> CONTRAST or Color::BLACK)]
+    #[styled(default -> Theme::CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 
     /// The color of the placeholder text.
-    #[styled(default -> CONTRAST_LOW or Color::grayscale(0.9))]
+    #[styled(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
     pub placeholder_color: Styled<Color>,
 
     /// The vertical alignment of the text.

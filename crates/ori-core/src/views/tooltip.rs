@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{pt, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, CONTRAST, OUTLINE, SURFACE_HIGHER},
+    style::{Styled, Theme},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -64,7 +64,7 @@ pub struct Tooltip<V> {
 
     /// The color of text.
     #[rebuild(draw)]
-    #[styled(default -> CONTRAST or Color::BLACK)]
+    #[styled(default -> Theme::CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
@@ -81,7 +81,7 @@ pub struct Tooltip<V> {
 
     /// The background color of the text.
     #[rebuild(draw)]
-    #[styled(default -> SURFACE_HIGHER or Color::WHITE)]
+    #[styled(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
     pub background: Styled<Color>,
 
     /// The border radius of the text.
@@ -96,7 +96,7 @@ pub struct Tooltip<V> {
 
     /// The border color of the text.
     #[rebuild(draw)]
-    #[styled(default -> OUTLINE or Color::BLACK)]
+    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 

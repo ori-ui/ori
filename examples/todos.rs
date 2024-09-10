@@ -108,9 +108,9 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let completed = tooltip(completed, "Toggle whether the todo is completed");
 
     let title_color = if todo.completed {
-        CONTRAST_LOW
+        Theme::CONTRAST_LOW
     } else {
-        CONTRAST
+        Theme::CONTRAST
     };
 
     let title = text(&todo.text).font_size(20.0).color(title_color);
@@ -118,7 +118,7 @@ fn todo(index: usize, todo: &mut Todo) -> impl View<Todo> {
     let remove = button(fa::icon("xmark"))
         .fancy(4.0)
         .padding(5.0)
-        .color(DANGER);
+        .color(Theme::DANGER);
 
     let remove = on_click(remove, move |cx, _: &mut Todo| {
         // because we don't have access to the Data struct here
@@ -179,21 +179,21 @@ fn selection(data: &mut Data) -> impl View<Data> {
 
     fn color(a: Selection, b: Selection) -> Styled<Color> {
         if a == b {
-            ACCENT.into()
+            Theme::ACCENT.into()
         } else {
-            PRIMARY.into()
+            Theme::PRIMARY.into()
         }
     }
 
-    let all = button(text("All").color(SURFACE))
+    let all = button(text("All").color(Theme::SURFACE))
         .fancy(4.0)
         .color(color(data.selection, Selection::All))
         .padding([5.0, 3.0]);
-    let active = button(text("Active").color(SURFACE))
+    let active = button(text("Active").color(Theme::SURFACE))
         .fancy(4.0)
         .color(color(data.selection, Selection::Active))
         .padding([5.0, 3.0]);
-    let completed = button(text("Completed").color(SURFACE))
+    let completed = button(text("Completed").color(Theme::SURFACE))
         .fancy(4.0)
         .color(color(data.selection, Selection::Completed))
         .padding([5.0, 3.0]);
@@ -230,7 +230,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
     let stack = vstack![title(), expand(rows)].gap(16.0);
     let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
 
-    background(BACKGROUND, pad(64.0, content))
+    background(Theme::BACKGROUND, pad(64.0, content))
 }
 
 struct Delegate;

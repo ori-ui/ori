@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, OUTLINE, SURFACE_HIGHER},
+    style::{Styled, Theme},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -43,7 +43,7 @@ pub struct Button<V> {
 
     /// The color of the button.
     #[rebuild(draw)]
-    #[styled(default -> SURFACE_HIGHER or Color::WHITE)]
+    #[styled(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
     pub color: Styled<Color>,
 
     /// The border radius.
@@ -58,7 +58,7 @@ pub struct Button<V> {
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> OUTLINE or Color::BLACK)]
+    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 

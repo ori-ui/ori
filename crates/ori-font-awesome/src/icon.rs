@@ -3,7 +3,7 @@ use ori_core::{
     context::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    style::{Styled, CONTRAST},
+    style::{Styled, Theme},
     text::{FontStretch, FontStyle, TextAttributes, TextBuffer},
     view::View,
 };
@@ -37,7 +37,7 @@ pub struct Icon {
 
     /// The color of the icon.
     #[rebuild(draw)]
-    #[styled(default -> CONTRAST or Color::BLACK)]
+    #[styled(default -> Theme::CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 }
 

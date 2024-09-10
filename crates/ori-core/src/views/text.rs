@@ -8,7 +8,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    style::{Styled, CONTRAST},
+    style::{Styled, Theme},
     text::{
         FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
         TextBuffer, TextWrap,
@@ -65,7 +65,7 @@ pub struct Text {
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
-    #[styled(default -> CONTRAST or Color::BLACK)]
+    #[styled(default -> Theme::CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.

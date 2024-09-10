@@ -71,12 +71,7 @@ pub mod prelude {
         log::{debug, error, info, trace, warn},
         rebuild::Rebuild,
         style,
-        style::{
-            comp, key, val, Style, Styled, Styles, Theme, ACCENT, ACCENT_LOW, BACKGROUND, CONTRAST,
-            CONTRAST_LOW, DANGER, DANGER_LOW, INFO, INFO_LOW, OUTLINE, OUTLINE_LOW, PRIMARY,
-            PRIMARY_LOW, SECONDARY, SECONDARY_LOW, SUCCESS, SUCCESS_LOW, SURFACE, SURFACE_HIGH,
-            SURFACE_HIGHER, SURFACE_HIGHEST, SURFACE_LOW, SURFACE_LOWER, WARNING, WARNING_LOW,
-        },
+        style::{comp, key, val, Style, Styled, Styles, Theme},
         text::{
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
             TextAlign, TextBuffer, TextWrap,

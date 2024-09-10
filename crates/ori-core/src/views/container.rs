@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::{Styled, OUTLINE, SURFACE},
+    style::{Styled, Theme},
     view::{Pod, State, View},
 };
 
@@ -38,7 +38,7 @@ pub struct Container<V> {
 
     /// The background color.
     #[rebuild(draw)]
-    #[styled(default -> SURFACE or Color::WHITE)]
+    #[styled(default -> Theme::SURFACE or Color::WHITE)]
     pub background: Styled<Color>,
 
     /// The border radius.
@@ -53,7 +53,7 @@ pub struct Container<V> {
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> OUTLINE or Color::BLACK)]
+    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 
     /// Whether to mask the content.

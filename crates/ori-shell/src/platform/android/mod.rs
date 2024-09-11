@@ -3,6 +3,7 @@
 mod clipboard;
 mod error;
 mod keyboard;
+mod permissions;
 mod run;
 
 pub use error::*;

@@ -18,7 +18,10 @@ use tracing::warn;
 
 use crate::platform::egl::{EglContext, EglNativeDisplay, EglSurface};
 
-use super::{clipboard::AndroidClipboard, keyboard::show_soft_input, AndroidError, ANDROID_APP};
+use super::{
+    clipboard::AndroidClipboard, keyboard::show_soft_input, permissions::request_permissions,
+    AndroidError, ANDROID_APP,
+};
 
 /// Run the app on Android.
 pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {

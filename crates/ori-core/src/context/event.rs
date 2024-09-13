@@ -118,12 +118,12 @@ impl<'a, 'b> EventCx<'a, 'b> {
         self.view_state.set_ime(ime);
     }
 
-    /// Set whether the view is hot.
+    /// Set whether the view is hovered.
     ///
-    /// Returns `true` if the hot state changed.
-    pub fn set_hot(&mut self, hot: bool) -> bool {
-        let updated = self.is_hot() != hot;
-        self.view_state.set_hot(hot);
+    /// Returns `true` if the hovered state changed.
+    pub fn set_hovered(&mut self, hovered: bool) -> bool {
+        let updated = self.is_hovered() != hovered;
+        self.view_state.set_hovered(hovered);
         updated
     }
 
@@ -145,9 +145,9 @@ impl<'a, 'b> EventCx<'a, 'b> {
         updated
     }
 
-    /// Get whether the view was hot last call.
-    pub fn was_hot(&self) -> bool {
-        self.view_state.prev_flags.contains(ViewFlags::HOT)
+    /// Get whether the view was hovered last call.
+    pub fn was_hovered(&self) -> bool {
+        self.view_state.prev_flags.contains(ViewFlags::HOVERED)
     }
 
     /// Get whether the view was focused last call.
@@ -160,9 +160,9 @@ impl<'a, 'b> EventCx<'a, 'b> {
         self.view_state.prev_flags.contains(ViewFlags::ACTIVE)
     }
 
-    /// Get whether a child view was hot last call.
-    pub fn had_hot(&self) -> bool {
-        let flags = self.view_state.prev_flags & (ViewFlags::HOT | ViewFlags::HAS_HOT);
+    /// Get whether a child view was hovered last call.
+    pub fn had_hovered(&self) -> bool {
+        let flags = self.view_state.prev_flags & (ViewFlags::HOVERED | ViewFlags::HAS_HOVERED);
         flags != ViewFlags::empty()
     }
 
@@ -178,9 +178,9 @@ impl<'a, 'b> EventCx<'a, 'b> {
         flags != ViewFlags::empty()
     }
 
-    /// Get whether the view's hot state changed.
-    pub fn hot_changed(&self) -> bool {
-        self.was_hot() != self.is_hot()
+    /// Get whether the view's hovered state changed.
+    pub fn hovered_changed(&self) -> bool {
+        self.was_hovered() != self.is_hovered()
     }
 
     /// Get whether the view's focused state changed.
@@ -193,9 +193,9 @@ impl<'a, 'b> EventCx<'a, 'b> {
         self.was_active() != self.is_active()
     }
 
-    /// Get whether a child view's hot state changed.
-    pub fn has_hot_changed(&self) -> bool {
-        self.had_hot() != self.has_hot()
+    /// Get whether a child view's hovered state changed.
+    pub fn has_hovered_changed(&self) -> bool {
+        self.had_hovered() != self.has_hovered()
     }
 
     /// Get whether a child view's focused state changed.

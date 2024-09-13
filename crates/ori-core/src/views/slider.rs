@@ -127,7 +127,7 @@ impl<T> View<T> for Slider<T> {
             Event::PointerPressed(e) => {
                 let local = cx.local(e.position);
 
-                if cx.is_hot() {
+                if cx.is_hovered() {
                     let value = self.axis.unpack(local).0 / style.length;
                     let value = denormalize(value, &self.range);
 

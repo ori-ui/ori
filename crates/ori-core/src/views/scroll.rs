@@ -126,7 +126,7 @@ impl<V> Scroll<V> {
 pub struct ScrollState {
     style: ScrollStyle,
     dragging: bool,
-    scrollbar_hot: bool,
+    scrollbar_hovered: bool,
     scroll: f32,
     t: f32,
 }
@@ -138,7 +138,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let state = ScrollState {
             style: ScrollStyle::styled(self, cx.styles()),
             dragging: false,
-            scrollbar_hot: false,
+            scrollbar_hovered: false,
             scroll: 0.0,
             t: 0.0,
         };
@@ -173,7 +173,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             let local = cx.local(e.position);
 
             let scrollbar_rect = self.scrollbar_rect(&state.style, cx.rect());
-            state.scrollbar_hot = scrollbar_rect.contains(local);
+            state.scrollbar_hovered = scrollbar_rect.contains(local);
 
             if cx.is_active() {
                 let scroll_start = self.axis.major(scrollbar_rect.min);
@@ -194,7 +194,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             }
         }
 
-        if matches!(event, Event::PointerPressed(_)) && cx.has_hot() && is_mobile!() {
+        if matches!(event, Event::PointerPressed(_)) && cx.has_hovered() && is_mobile!() {
             state.dragging = true;
         }
 
@@ -202,7 +202,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             state.dragging = false;
         }
 
-        if matches!(event, Event::PointerPressed(_)) && state.scrollbar_hot {
+        if matches!(event, Event::PointerPressed(_)) && state.scrollbar_hovered {
             cx.set_active(true);
             cx.draw();
         }
@@ -215,7 +215,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         // propagate event
         self.content.event(content, cx, data, event);
 
-        let on = cx.is_hot() || cx.has_hot() || cx.is_active() || state.scrollbar_hot;
+        let on = cx.is_hovered() || cx.has_hovered() || cx.is_active() || state.scrollbar_hovered;
 
         if !state.style.transition.complete(state.t, on) {
             cx.animate();

@@ -229,7 +229,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if !content.has_hot() && state.timer > 0.0 {
+        if !content.has_hovered() && state.timer > 0.0 {
             state.timer = 0.0;
             cx.draw();
         }
@@ -244,13 +244,13 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                     cx.draw();
                 }
 
-                if content.has_hot() {
+                if content.has_hovered() {
                     state.position = e.position;
                     cx.animate();
                 }
             }
             Event::Animate(dt) => {
-                if content.has_hot() && state.timer < 1.0 {
+                if content.has_hovered() && state.timer < 1.0 {
                     state.timer += dt / state.style.delay;
                     cx.animate();
                 }

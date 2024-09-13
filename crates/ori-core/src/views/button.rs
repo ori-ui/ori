@@ -80,7 +80,7 @@ impl<V> Button<V> {
 
 #[doc(hidden)]
 pub struct ButtonState {
-    pub hot: f32,
+    pub hovered: f32,
     pub active: f32,
     pub style: ButtonStyle,
 }
@@ -90,7 +90,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let state = ButtonState {
-            hot: 0.0,
+            hovered: 0.0,
             active: 0.0,
             style: ButtonStyle::styled(self, cx.styles()),
         };
@@ -120,12 +120,12 @@ impl<T, V: View<T>> View<T> for Button<V> {
     ) {
         self.content.event(content, cx, data, event);
 
-        if cx.hot_changed() || cx.active_changed() {
+        if cx.hovered_changed() || cx.active_changed() {
             cx.animate();
         }
 
         if let Event::Animate(dt) = event {
-            if (state.style.transition).step(&mut state.hot, cx.is_hot(), *dt)
+            if (state.style.transition).step(&mut state.hovered, cx.is_hovered(), *dt)
                 || (state.style.transition).step(&mut state.active, cx.is_active(), *dt)
             {
                 cx.animate();
@@ -156,10 +156,10 @@ impl<T, V: View<T>> View<T> for Button<V> {
             let dim = state.style.color.darken(0.025);
             let bright = state.style.color.lighten(0.05);
 
-            let hot = state.style.transition.get(state.hot);
+            let hovered = state.style.transition.get(state.hovered);
             let active = state.style.transition.get(state.active);
 
-            let face = state.style.color.mix(bright, hot).mix(dim, active);
+            let face = state.style.color.mix(bright, hovered).mix(dim, active);
 
             if state.style.fancy == 0.0 {
                 cx.quad(

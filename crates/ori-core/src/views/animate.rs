@@ -13,20 +13,20 @@ pub fn animate<T, V, S>(
     Animate::new(animate)
 }
 
-/// Animate a view when hot changes.
-pub fn transition_hot<T, V>(
+/// Animate a view when hovered changes.
+pub fn transition_hovered<T, V>(
     transition: Transition,
     mut view: impl FnMut(&mut EventCx, &mut T, f32) -> V + 'static,
 ) -> Animate<T, V, f32> {
     let mut built = false;
 
     animate(move |t: &mut f32, cx, data: &mut T, event| {
-        if cx.is_hot() || cx.has_hot_changed() {
+        if cx.is_hovered() || cx.has_hovered_changed() {
             cx.animate();
         }
 
         if let Event::Animate(dt) = event {
-            if transition.step(t, cx.is_hot() || cx.has_hot(), *dt) {
+            if transition.step(t, cx.is_hovered() || cx.has_hovered(), *dt) {
                 cx.animate();
                 return Some(view(cx, data, transition.get(*t)));
             }

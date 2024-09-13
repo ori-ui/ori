@@ -82,12 +82,12 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         self.view_state.set_cursor(cursor);
     }
 
-    /// Set whether the view is hot.
+    /// Set whether the view is hovered.
     ///
-    /// Returns `true` if the hot state changed.
-    pub fn set_hot(&mut self, hot: bool) -> bool {
-        let updated = self.is_hot() != hot;
-        self.view_state.set_hot(hot);
+    /// Returns `true` if the hovered state changed.
+    pub fn set_hovered(&mut self, hovered: bool) -> bool {
+        let updated = self.is_hovered() != hovered;
+        self.view_state.set_hovered(hovered);
         updated
     }
 

@@ -29,14 +29,14 @@ bitflags::bitflags! {
     /// Flags that indicate state of a view.
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
     pub struct ViewFlags: u8 {
-        /// The view is hot.
-        const HOT = 1 << 0;
+        /// The view is hovered.
+        const HOVERED = 1 << 0;
         /// The view is focused.
         const FOCUSED = 1 << 1;
         /// The view is active.
         const ACTIVE = 1 << 2;
-        /// The view has a hot child.
-        const HAS_HOT = 1 << 3;
+        /// The view has a hovered child.
+        const HAS_HOVERED = 1 << 3;
         /// The view has a focused child.
         const HAS_FOCUSED = 1 << 4;
         /// The view has an active child.
@@ -44,11 +44,11 @@ bitflags::bitflags! {
         /// The view is focusable.
         const FOCUSABLE = 1 << 6;
 
-        /// Equivalent to `Self::HOT | Self::FOCUSED | Self::ACTIVE`.
-        const IS = Self::HOT.bits() | Self::FOCUSED.bits() | Self::ACTIVE.bits();
+        /// Equivalent to `Self::HOVERED | Self::FOCUSED | Self::ACTIVE`.
+        const IS = Self::HOVERED.bits() | Self::FOCUSED.bits() | Self::ACTIVE.bits();
 
-        /// Equivalent to `Self::HAS_HOT | Self::HAS_FOCUSED | Self::HAS_ACTIVE`.
-        const HAS = Self::HAS_HOT.bits() | Self::HAS_FOCUSED.bits() | Self::HAS_ACTIVE.bits();
+        /// Equivalent to `Self::HAS_HOVERED | Self::HAS_FOCUSED | Self::HAS_ACTIVE`.
+        const HAS = Self::HAS_HOVERED.bits() | Self::HAS_FOCUSED.bits() | Self::HAS_ACTIVE.bits();
     }
 }
 
@@ -185,14 +185,14 @@ impl ViewState {
         self.id
     }
 
-    /// Get whether the view is hot.
-    pub fn is_hot(&self) -> bool {
-        self.flags.contains(ViewFlags::HOT)
+    /// Get whether the view is hovered.
+    pub fn is_hovered(&self) -> bool {
+        self.flags.contains(ViewFlags::HOVERED)
     }
 
-    /// Set whether the view is hot.
-    pub fn set_hot(&mut self, hot: bool) {
-        self.flags.set(ViewFlags::HOT, hot);
+    /// Set whether the view is hovered.
+    pub fn set_hovered(&mut self, hovered: bool) {
+        self.flags.set(ViewFlags::HOVERED, hovered);
     }
 
     /// Get whether the view is focused.
@@ -215,9 +215,9 @@ impl ViewState {
         self.flags.set(ViewFlags::ACTIVE, active);
     }
 
-    /// Get whether the view has a hot child.
-    pub fn has_hot(&self) -> bool {
-        let flags = self.flags & (ViewFlags::HOT | ViewFlags::HAS_HOT);
+    /// Get whether the view has a hovered child.
+    pub fn has_hovered(&self) -> bool {
+        let flags = self.flags & (ViewFlags::HOVERED | ViewFlags::HAS_HOVERED);
         flags != ViewFlags::empty()
     }
 
@@ -467,7 +467,7 @@ mod tests {
 
     #[test]
     fn test_propagate() {
-        assert_eq!(ViewFlags::HOT.has(), ViewFlags::HAS_HOT);
+        assert_eq!(ViewFlags::HOVERED.has(), ViewFlags::HAS_HOVERED);
         assert_eq!(ViewFlags::FOCUSED.has(), ViewFlags::HAS_FOCUSED);
         assert_eq!(ViewFlags::ACTIVE.has(), ViewFlags::HAS_ACTIVE);
     }

@@ -51,9 +51,9 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         self.view_state.id()
     }
 
-    /// Get whether the view is hot.
-    pub fn is_hot(&self) -> bool {
-        self.view_state.is_hot()
+    /// Get whether the view is hovered.
+    pub fn is_hovered(&self) -> bool {
+        self.view_state.is_hovered()
     }
 
     /// Get whether the view is focused.
@@ -66,9 +66,9 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         self.view_state.is_active()
     }
 
-    /// Get whether a child view is hot.
-    pub fn has_hot(&self) -> bool {
-        self.view_state.has_hot()
+    /// Get whether a child view is hovered.
+    pub fn has_hovered(&self) -> bool {
+        self.view_state.has_hovered()
     }
 
     /// Get whether a child view is focused.

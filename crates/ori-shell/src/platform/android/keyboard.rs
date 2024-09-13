@@ -68,54 +68,33 @@ pub fn show_soft_input(app: &AndroidApp, show: bool) {
         }
     };
 
-    let view = match env
-        .call_method(&jni_window, "getDecorView", "()Landroid/view/View;", &[])
+    let wic = env
+        .call_method(
+            jni_window,
+            "getInsetsController",
+            "()Landroid/view/WindowInsetsController;",
+            &[],
+        )
         .unwrap()
         .l()
-    {
-        Ok(view) => view,
-        Err(err) => {
-            error!("Failed to get view: {:?}", err);
-            return;
-        }
-    };
+        .unwrap();
+
+    let wit = env.find_class("android/view/WindowInsets$Type").unwrap();
+    let ime = env
+        .call_static_method(&wit, "ime", "()I", &[])
+        .unwrap()
+        .i()
+        .unwrap();
 
     if show {
-        let result = env
-            .call_method(
-                &im_manager,
-                "showSoftInput",
-                "(Landroid/view/View;I)Z",
-                &[JValue::Object(&view), 1i32.into()],
-            )
+        env.call_method(&wic, "show", "(I)V", &[ime.into()])
             .unwrap()
-            .z()
+            .v()
             .unwrap();
-
-        if !result {
-            error!("Failed to show soft input");
-        }
     } else {
-        let window_token = env
-            .call_method(view, "getWindowToken", "()Landroid/os/IBinder;", &[])
+        env.call_method(&wic, "hide", "(I)V", &[ime.into()])
             .unwrap()
-            .l()
+            .v()
             .unwrap();
-        let jvalue_window_token = JValue::Object(&window_token);
-
-        let result = env
-            .call_method(
-                &im_manager,
-                "hideSoftInputFromWindow",
-                "(Landroid/os/IBinder;I)Z",
-                &[jvalue_window_token, 1i32.into()],
-            )
-            .unwrap()
-            .z()
-            .unwrap();
-
-        if !result {
-            error!("Failed to hide soft input");
-        }
     }
 }

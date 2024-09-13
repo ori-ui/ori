@@ -1,7 +1,7 @@
 use ori::prelude::*;
 
 fn ui() -> impl View {
-    let click_me = transition_hot(ease(0.2), |_, _, t| {
+    let click_me = transition_hovered(ease(0.2), |_, _, t| {
         let border = Color::RED.mix(Color::GREEN, t);
 
         button(text("Click me"))

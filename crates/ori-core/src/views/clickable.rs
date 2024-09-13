@@ -120,10 +120,10 @@ where
     }
 
     fn event(&mut self, content: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        let is_hot = content.is_hot() || (content.has_hot() && self.descendants);
+        let is_hovered = content.is_hovered() || (content.has_hovered() && self.descendants);
 
         match event {
-            Event::PointerPressed(e) if is_hot && self.is_button(e.button) => {
+            Event::PointerPressed(e) if is_hovered && self.is_button(e.button) => {
                 if self.event == ClickEvent::Press {
                     (self.callback)(cx, data);
                 }

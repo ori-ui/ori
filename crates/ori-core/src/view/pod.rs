@@ -40,7 +40,7 @@ pub fn pod<V>(view: V) -> Pod<V> {
 ///
 /// When calling for example [`View::event`], an [`EventCx`] is passed to the
 /// function. This [`EventCx`] contains a mutable reference to a [`ViewState`] that is used to
-/// keep track of state like whether the view is hot or active. If a pod is not used when
+/// keep track of state like whether the view is hovered or active. If a pod is not used when
 /// implementing a view, the [`View`] and the content share the same [`ViewState`]. This is
 /// almost always an issue when the [`View`] wants to have a diffrent transform or size than
 /// the content. See for example the [`Pad`](crate::views::Pad) view.
@@ -134,7 +134,7 @@ impl<V> Pod<V> {
             view_state.request_layout();
         }
 
-        view_state.set_hot(cx.window().is_hovered(view_state.id()));
+        view_state.set_hovered(cx.window().is_hovered(view_state.id()));
         view_state.prepare();
 
         let mut new_cx = cx.child();

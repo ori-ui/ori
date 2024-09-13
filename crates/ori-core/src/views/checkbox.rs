@@ -110,12 +110,12 @@ impl<T> View<T> for Checkbox {
         _data: &mut T,
         event: &Event,
     ) {
-        if cx.hot_changed() {
+        if cx.hovered_changed() {
             cx.animate();
         }
 
         if let Event::Animate(dt) = event {
-            let on = cx.is_hot() && !cx.is_active();
+            let on = cx.is_hovered() && !cx.is_active();
             if style.transition.step(t, on, *dt) {
                 cx.animate();
             }

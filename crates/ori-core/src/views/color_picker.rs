@@ -221,7 +221,7 @@ impl<T> View<T> for ColorPicker<T> {
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         match event {
-            Event::PointerPressed(e) if cx.is_hot() => {
+            Event::PointerPressed(e) if cx.is_hovered() => {
                 self.input(state, cx, data, e.position);
                 cx.set_active(true);
             }

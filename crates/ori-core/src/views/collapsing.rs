@@ -149,7 +149,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         self.content.event(&mut state.content, cx, data, event);
 
         match event {
-            Event::PointerPressed(event) if state.header.has_hot() => {
+            Event::PointerPressed(event) if state.header.has_hovered() => {
                 if event.button != PointerButton::Primary {
                     return;
                 }

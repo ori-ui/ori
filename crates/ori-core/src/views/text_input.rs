@@ -420,7 +420,7 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if cx.is_hot() {
+        if cx.is_hovered() {
             cx.set_cursor(Some(Cursor::Text));
         } else {
             cx.set_cursor(None);
@@ -533,7 +533,7 @@ impl<T> View<T> for TextInput<T> {
                 }
             }
             Event::PointerPressed(e) => {
-                if !cx.is_hot() {
+                if !cx.is_hovered() {
                     if cx.is_focused() {
                         (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                         cx.set_focused(false);

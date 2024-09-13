@@ -71,8 +71,8 @@ impl<T> WindowState<T> {
     fn event(&mut self, data: &mut T, base: &mut BaseCx, rebuild: &mut bool, event: &Event) {
         let t = Instant::now();
 
-        let hot = self.window.is_hovered(self.view_state.id());
-        self.view_state.set_hot(hot);
+        let hovered = self.window.is_hovered(self.view_state.id());
+        self.view_state.set_hovered(hovered);
         self.view_state.prepare();
 
         let mut cx = EventCx::new(base, &mut self.view_state, rebuild);

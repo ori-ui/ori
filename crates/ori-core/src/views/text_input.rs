@@ -475,7 +475,6 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if e.is_key(Key::Enter) && !self.multiline {
-                    cx.set_focused(false);
                     submit = true;
                 }
 

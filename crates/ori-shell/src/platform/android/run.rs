@@ -440,9 +440,9 @@ fn to_logical(keychar: Option<KeyMapChar>, keycode: Keycode) -> Key {
     use Keycode::*;
 
     match keychar {
-        Some(KeyMapChar::Unicode(unicode)) => Key::Character(unicode),
+        Some(KeyMapChar::Unicode(unicode)) if !unicode.is_control() => Key::Character(unicode),
         Some(KeyMapChar::CombiningAccent(_)) => Key::Dead,
-        None | Some(KeyMapChar::None) => match keycode {
+        _ => match keycode {
             Keycode0 => Key::Character('0'),
             Keycode1 => Key::Character('1'),
             Keycode2 => Key::Character('2'),

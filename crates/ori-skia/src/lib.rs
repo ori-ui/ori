@@ -46,12 +46,7 @@ impl SkiaRenderer {
         self.update_surface(width, height);
 
         let skia_canvas = self.surface.as_mut().unwrap().canvas();
-        skia_canvas.clear(skia_safe::Color::from_argb(
-            (color.a * 255.0) as u8,
-            (color.r * 255.0) as u8,
-            (color.g * 255.0) as u8,
-            (color.b * 255.0) as u8,
-        ));
+        skia_canvas.clear(Self::skia_color(color));
 
         for primitive in canvas.primitives() {
             let transform = Affine::scale(Vector::all(scale_factor));
@@ -121,11 +116,11 @@ impl SkiaRenderer {
         });
 
         let color = match paint.shader {
-            Shader::Solid(color) => Self::skia_color_4f(color),
-            Shader::Pattern(ref pattern) => Self::skia_color_4f(pattern.color),
+            Shader::Solid(color) => color,
+            Shader::Pattern(ref pattern) => pattern.color,
         };
 
-        let mut skia_paint = skia_safe::Paint::new(color, None);
+        let mut skia_paint = skia_safe::Paint::new(Self::skia_color_4f(color), None);
 
         match paint.shader {
             Shader::Pattern(ref pattern) => {
@@ -160,6 +155,14 @@ impl SkiaRenderer {
                     ),
                     &skia_safe::SamplingOptions::default(),
                     &Self::skia_matrix(transform),
+                )
+                .unwrap()
+                .with_color_filter(
+                    skia_safe::color_filters::blend(
+                        Self::skia_color(color),
+                        skia_safe::BlendMode::Modulate,
+                    )
+                    .unwrap(),
                 );
 
                 skia_paint.set_shader(shader);
@@ -209,6 +212,15 @@ impl SkiaRenderer {
 
     fn skia_color_4f(color: Color) -> skia_safe::Color4f {
         skia_safe::Color4f::new(color.r, color.g, color.b, color.a)
+    }
+
+    fn skia_color(color: Color) -> skia_safe::Color {
+        skia_safe::Color::from_argb(
+            (color.a * 255.0) as u8,
+            (color.r * 255.0) as u8,
+            (color.g * 255.0) as u8,
+            (color.b * 255.0) as u8,
+        )
     }
 
     fn update_surface(&mut self, width: u32, height: u32) {

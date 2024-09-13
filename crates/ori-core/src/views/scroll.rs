@@ -1,4 +1,4 @@
-use ori_macro::{example, Styled};
+use ori_macro::{example, is_mobile, Build, Styled};
 
 use crate::{
     canvas::{BorderRadius, Color},
@@ -23,9 +23,10 @@ pub fn vscroll<V>(content: V) -> Scroll<V> {
 
 /// A scrollable view.
 #[example(name = "scroll", width = 400, height = 300)]
-#[derive(Styled, Rebuild)]
+#[derive(Styled, Build, Rebuild)]
 pub struct Scroll<V> {
     /// The content.
+    #[build(ignore)]
     pub content: Pod<V>,
 
     /// The axis of the scroll.
@@ -124,6 +125,7 @@ impl<V> Scroll<V> {
 #[doc(hidden)]
 pub struct ScrollState {
     style: ScrollStyle,
+    dragging: bool,
     scrollbar_hot: bool,
     scroll: f32,
     t: f32,
@@ -135,6 +137,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let state = ScrollState {
             style: ScrollStyle::styled(self, cx.styles()),
+            dragging: false,
             scrollbar_hot: false,
             scroll: 0.0,
             t: 0.0,
@@ -184,7 +187,19 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                 content.translate(self.axis.pack(-state.scroll, 0.0));
 
                 cx.draw();
+            } else if state.dragging {
+                state.scroll -= self.axis.major(e.delta);
+                state.scroll = state.scroll.clamp(0.0, overflow);
+                cx.draw();
             }
+        }
+
+        if matches!(event, Event::PointerPressed(_)) && cx.has_hot() && is_mobile!() {
+            state.dragging = true;
+        }
+
+        if matches!(event, Event::PointerReleased(_)) {
+            state.dragging = false;
         }
 
         if matches!(event, Event::PointerPressed(_)) && state.scrollbar_hot {

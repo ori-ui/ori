@@ -13,6 +13,8 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.pkg-config
     pkgs.lld
     pkgs.llvm
+    pkgs.fontconfig
+    pkgs.freetype
   ];
 
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";

@@ -25,6 +25,7 @@ ori-glow            = { path = "crates/ori-glow",           version = "0.1.0-alp
 ori-macro           = { path = "crates/ori-macro",          version = "0.1.0-alpha.1" }
 ori-reload          = { path = "crates/ori-reload",         version = "0.1.0-alpha.1" }
 ori-shell           = { path = "crates/ori-shell",          version = "0.1.0-alpha.1" }
+ori-skia            = { path = "crates/ori-skia",           version = "0.1.0-alpha.1" }
 
 [dependencies]
 # Internal dependencies

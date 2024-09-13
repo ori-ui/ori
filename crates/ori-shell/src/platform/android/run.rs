@@ -13,15 +13,12 @@ use ori_core::{
     layout::{Point, Size},
     window::{Window, WindowId, WindowUpdate},
 };
-use ori_glow::GlowRenderer;
+use ori_skia::SkiaRenderer;
 use tracing::warn;
 
 use crate::platform::egl::{EglContext, EglNativeDisplay, EglSurface};
 
-use super::{
-    clipboard::AndroidClipboard, keyboard::show_soft_input, permissions::request_permissions,
-    AndroidError, ANDROID_APP,
-};
+use super::{clipboard::AndroidClipboard, keyboard::show_soft_input, AndroidError, ANDROID_APP};
 
 /// Run the app on Android.
 pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
@@ -151,7 +148,7 @@ struct WindowState {
     scale_factor: f32,
     needs_redraw: bool,
     egl_surface: EglSurface,
-    renderer: GlowRenderer,
+    renderer: SkiaRenderer,
 }
 
 fn handle_requests<T>(state: &mut AppState<T>, data: &mut T) {
@@ -231,13 +228,7 @@ fn create_window<T>(state: &mut AppState<T>, data: &mut T, mut window: Window, u
     egl_surface.make_current().unwrap();
     egl_surface.swap_interval(1).unwrap();
 
-    let renderer = unsafe {
-        GlowRenderer::new(|name| {
-            //
-            state.egl_context.get_proc_address(name)
-        })
-        .unwrap()
-    };
+    let renderer = SkiaRenderer::new(|name| state.egl_context.get_proc_address(name));
 
     let window_state = WindowState {
         id: window.id(),
@@ -269,13 +260,7 @@ fn recreate_window<T>(state: &mut AppState<T>) {
         egl_surface.make_current().unwrap();
         egl_surface.swap_interval(1).unwrap();
 
-        let renderer = unsafe {
-            GlowRenderer::new(|name| {
-                //
-                state.egl_context.get_proc_address(name)
-            })
-            .unwrap()
-        };
+        let renderer = SkiaRenderer::new(|name| state.egl_context.get_proc_address(name));
 
         let window_state = WindowState {
             id: window.id,
@@ -302,18 +287,13 @@ fn render_window<T>(state: &mut AppState<T>, data: &mut T) {
         if let Some(draw) = state.app.draw_window(data, window.id) {
             window.egl_surface.make_current().unwrap();
 
-            unsafe {
-                window
-                    .renderer
-                    .render(
-                        draw.canvas,
-                        draw.clear_color,
-                        window.physical_width,
-                        window.physical_height,
-                        window.scale_factor,
-                    )
-                    .unwrap();
-            }
+            window.renderer.render(
+                draw.canvas,
+                draw.clear_color,
+                window.physical_width,
+                window.physical_height,
+                window.scale_factor,
+            );
 
             window.egl_surface.swap_buffers().unwrap();
         }

@@ -5,6 +5,7 @@ use jni::{
 };
 use tracing::error;
 
+#[allow(dead_code)]
 pub fn request_permissions(app: &AndroidApp, permissions: &[&str]) {
     if permissions.is_empty() {
         return;

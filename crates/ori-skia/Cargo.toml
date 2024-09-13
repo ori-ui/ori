@@ -1,0 +1,14 @@
+[package]
+name = "ori-skia"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+ori-core.workspace = true
+
+[dependencies.skia-safe]
+version = "0.78"
+default-features = false
+features = ["binary-cache", "gl"] }

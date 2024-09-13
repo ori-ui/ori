@@ -8,7 +8,6 @@ license.workspace = true
 [dependencies]
 ori-app.workspace = true
 ori-core.workspace = true
-ori-glow.workspace = true
 
 tracing     = "0.1"
 
@@ -46,6 +45,8 @@ wayland = [
 
 # Linux
 [target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
+ori-glow.workspace = true
+
 as-raw-xcb-connection   = { version = "1.0",    optional = true                              }
 libloading              = { version = "0.8",    optional = true                              }
 memmap                  = { version = "0.7",    optional = true                              }
@@ -74,6 +75,8 @@ features    = [
 
 # Android
 [target.'cfg(target_os = "android")'.dependencies]
+ori-skia.workspace = true
+
 android-activity = { version = "0.6", features = ["native-activity"] }
 jni = "0.21"
 libloading = "0.8"

@@ -6,7 +6,7 @@ use ori_core::{
     window::Window,
 };
 
-use crate::{App, AppRequest, AppDelegate, IntoUiBuilder};
+use crate::{App, AppDelegate, AppRequest, IntoUiBuilder};
 
 /// A builder for an [`App`].
 pub struct AppBuilder<T> {

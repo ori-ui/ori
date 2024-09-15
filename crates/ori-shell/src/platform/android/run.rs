@@ -1,8 +1,5 @@
 use android_activity::{
-    input::{
-        InputEvent, KeyAction, KeyEvent, KeyMapChar, Keycode, MotionAction, MotionEvent,
-        TextInputState, TextSpan,
-    },
+    input::{InputEvent, KeyAction, KeyEvent, KeyMapChar, Keycode, MotionAction, MotionEvent},
     AndroidApp, AndroidAppWaker, InputStatus, MainEvent, PollEvent,
 };
 use ori_app::{App, AppBuilder, AppRequest, UiBuilder};
@@ -18,7 +15,11 @@ use tracing::warn;
 
 use crate::platform::egl::{EglContext, EglNativeDisplay, EglSurface};
 
-use super::{clipboard::AndroidClipboard, keyboard::ImeState, AndroidError, ANDROID_APP};
+use super::{
+    clipboard::AndroidClipboard,
+    keyboard::{ImeEvent, ImeState},
+    AndroidError, ANDROID_APP,
+};
 
 /// Run the app on Android.
 pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
@@ -100,30 +101,8 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
                 state.app.handle_commands(data);
                 handle_requests(&mut state, data);
 
-                let mut inputs = android.input_events_iter().unwrap();
-
-                loop {
-                    if !inputs.next(|event| input_event(&mut state, data, event)) {
-                        break;
-                    }
-
-                    handle_requests(&mut state, data);
-                }
-
-                while let Some(commit) = state.ime_state.next_commit() {
-                    if let Some(ref window) = state.window {
-                        (state.app).keyboard_key(
-                            data,
-                            window.id,
-                            Key::Unidentified,
-                            None,
-                            Some(commit),
-                            true,
-                        );
-                    }
-
-                    handle_requests(&mut state, data);
-                }
+                handle_input_events(&mut state, &android, data);
+                handle_ime_events(&mut state, data);
 
                 render_window(&mut state, data);
                 handle_requests(&mut state, data);
@@ -166,6 +145,42 @@ struct WindowState {
     needs_redraw: bool,
     egl_surface: EglSurface,
     renderer: SkiaRenderer,
+}
+
+fn handle_input_events<T>(state: &mut AppState<T>, android: &AndroidApp, data: &mut T) {
+    let mut inputs = android.input_events_iter().unwrap();
+
+    loop {
+        if !inputs.next(|event| input_event(state, data, event)) {
+            break;
+        }
+
+        handle_requests(state, data);
+    }
+}
+
+fn handle_ime_events<T>(state: &mut AppState<T>, data: &mut T) {
+    while let Some(event) = state.ime_state.next_event() {
+        if let Some(ref window) = state.window {
+            match event {
+                ImeEvent::CommitText(commit) => {
+                    (state.app).keyboard_key(
+                        data,
+                        window.id,
+                        Key::Unidentified,
+                        None,
+                        Some(commit),
+                        true,
+                    );
+                }
+                ImeEvent::DeleteSurroundingText(_before, _after) => {
+                    (state.app).keyboard_key(data, window.id, Key::Backspace, None, None, true);
+                }
+            }
+        }
+
+        handle_requests(state, data);
+    }
 }
 
 fn handle_requests<T>(state: &mut AppState<T>, data: &mut T) {

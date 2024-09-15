@@ -7,7 +7,7 @@ use ori_macro::{example, Build, Styled};
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event, Ime, Key, KeyPressed},
+    event::{Capitalize, Event, Ime, Key, KeyPressed},
     layout::{Point, Rect, Size, Space, Vector},
     style::{Styled, Theme},
     text::{
@@ -50,6 +50,12 @@ pub struct TextInput<T> {
     ///
     /// When disabled (the default), the input will only accept a single line of text.
     pub multiline: bool,
+
+    /// How the text should be capitalized.
+    ///
+    /// This only affects text input from IMEs, eg. on-screen keyboards like the ones on mobile
+    /// devices.
+    pub capitalize: Capitalize,
 
     /// The font size of the text.
     #[styled(default = 16.0)]
@@ -107,6 +113,7 @@ impl<T> TextInput<T> {
             on_submit: None,
             placeholder: String::from("..."),
             multiline: false,
+            capitalize: Capitalize::Sentences,
             font_size: TextInputStyle::FONT_SIZE.into(),
             font_family: TextInputStyle::FONT_FAMILY.into(),
             font_weight: TextInputStyle::FONT_WEIGHT.into(),
@@ -243,7 +250,7 @@ impl TextInputState {
         text
     }
 
-    fn ime(&self) -> Ime {
+    fn ime(&self, multiline: bool, capitalize: Capitalize) -> Ime {
         let selection = match self.editor.selection_bounds() {
             Some((start, end)) => start.index..end.index,
             None => self.editor.cursor().index..self.editor.cursor().index,
@@ -253,6 +260,8 @@ impl TextInputState {
             text: self.text(),
             selection,
             compose: None,
+            multiline,
+            capitalize,
         }
     }
 
@@ -554,7 +563,7 @@ impl<T> View<T> for TextInput<T> {
                     }
                 }
 
-                cx.set_ime(Some(state.ime()));
+                cx.set_ime(Some(state.ime(self.multiline, self.capitalize)));
             }
             Event::PointerPressed(e) => {
                 if !cx.is_hovered() {
@@ -583,7 +592,7 @@ impl<T> View<T> for TextInput<T> {
                     },
                 );
 
-                cx.set_ime(Some(state.ime()));
+                cx.set_ime(Some(state.ime(self.multiline, self.capitalize)));
             }
             Event::PointerReleased(_) => {
                 state.dragging = false;

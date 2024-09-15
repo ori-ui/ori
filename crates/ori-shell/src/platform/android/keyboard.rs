@@ -4,17 +4,21 @@ use android_activity::AndroidApp;
 use crossbeam_channel::{Receiver, Sender};
 use jni::{
     objects::{JClass, JObject, JString, JValue},
-    sys::jobject,
     JNIEnv, JavaVM,
 };
-use ori_core::event::Ime;
+use ori_core::event::{Capitalize, Ime};
 
 use super::AndroidError;
 
-static TEXT_COMMITS: OnceLock<Sender<String>> = OnceLock::new();
+pub enum ImeEvent {
+    CommitText(String),
+    DeleteSurroundingText(usize, usize),
+}
+
+static IME_EVENTS: OnceLock<Sender<ImeEvent>> = OnceLock::new();
 
 pub struct ImeState {
-    receiver: Receiver<String>,
+    receiver: Receiver<ImeEvent>,
 }
 
 impl Default for ImeState {
@@ -26,7 +30,7 @@ impl Default for ImeState {
 impl ImeState {
     pub fn new() -> Self {
         let (sender, receiver) = crossbeam_channel::unbounded();
-        TEXT_COMMITS.set(sender).unwrap();
+        IME_EVENTS.set(sender).unwrap();
 
         Self { receiver }
     }
@@ -52,18 +56,22 @@ impl ImeState {
     }
 
     pub fn set(&mut self, app: &AndroidApp, ime: Ime) -> Result<(), AndroidError> {
+        // android expects the cursor position to be the number of characters from the start of the
+        // string, not the number of bytes
         fn cursor_index(text: &str, index: usize) -> usize {
             let mut cursor = 0;
+            let mut i = 0;
 
-            for (i, c) in text.chars().enumerate() {
+            for c in text.chars() {
                 if cursor >= index {
                     return i;
                 }
 
                 cursor += c.len_utf8();
+                i += 1;
             }
 
-            text.len()
+            i
         }
 
         let vm = unsafe { JavaVM::from_raw(app.vm_as_ptr() as _)? };
@@ -89,10 +97,49 @@ impl ImeState {
             &[JValue::Int(start as i32), JValue::Int(end as i32)],
         )?;
 
+        env.call_method(
+            &activity,
+            "setIMEMultiline",
+            "(Z)V",
+            &[JValue::Bool(ime.multiline as u8)],
+        )?;
+
+        let text_flaged = match ime.capitalize {
+            Capitalize::None => 0,
+            Capitalize::Words => env
+                .get_static_field("android/text/InputType", "TYPE_TEXT_FLAG_CAP_WORDS", "I")?
+                .i()?,
+            Capitalize::Sentences => env
+                .get_static_field(
+                    "android/text/InputType",
+                    "TYPE_TEXT_FLAG_CAP_SENTENCES",
+                    "I",
+                )?
+                .i()?,
+            Capitalize::All => env
+                .get_static_field(
+                    "android/text/InputType",
+                    "TYPE_TEXT_FLAG_CAP_CHARACTERS",
+                    "I",
+                )?
+                .i()?,
+        };
+
+        let input_type = env
+            .get_static_field("android/text/InputType", "TYPE_CLASS_TEXT", "I")?
+            .i()?;
+
+        env.call_method(
+            &activity,
+            "setIMEInputType",
+            "(I)V",
+            &[JValue::Int(input_type | text_flaged)],
+        )?;
+
         Ok(())
     }
 
-    pub fn next_commit(&mut self) -> Option<String> {
+    pub fn next_event(&mut self) -> Option<ImeEvent> {
         self.receiver.try_recv().ok()
     }
 }
@@ -102,9 +149,32 @@ pub unsafe extern "system" fn Java_ori_oriactivity_OriEditText_nativeCommitText<
     mut env: JNIEnv<'local>,
     _: JClass<'local>,
     text: JString<'local>,
-    new_cursor_position: jni::sys::jint,
+    _new_cursor_position: jni::sys::jint,
 ) {
     let text: String = env.get_string(&text).unwrap().into();
-    tracing::info!("IME committed text: {:?}", text);
-    TEXT_COMMITS.get().unwrap().send(text).unwrap();
+    let event = ImeEvent::CommitText(text);
+    IME_EVENTS.get().unwrap().send(event).unwrap();
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_ori_oriactivity_OriEditText_nativeSetComposingText<'local>(
+    _env: JNIEnv<'local>,
+    _: JClass<'local>,
+    _text: JString<'local>,
+    _new_cursor_position: jni::sys::jint,
+) {
+    // TODO
+}
+
+#[no_mangle]
+pub unsafe extern "system" fn Java_ori_oriactivity_OriEditText_nativeDeleteSurroundingText<
+    'local,
+>(
+    _env: JNIEnv<'local>,
+    _: JClass<'local>,
+    before_length: jni::sys::jint,
+    after_length: jni::sys::jint,
+) {
+    let event = ImeEvent::DeleteSurroundingText(before_length as usize, after_length as usize);
+    IME_EVENTS.get().unwrap().send(event).unwrap();
 }

@@ -1,6 +1,6 @@
 use cosmic_text::{
     Action, Attrs, AttrsList, Buffer, BufferLine, BufferRef, Edit, Editor, LineEnding, Metrics,
-    Motion, Shaping,
+    Motion, Selection, Shaping,
 };
 use ori_macro::{example, Build, Styled};
 
@@ -243,6 +243,19 @@ impl TextInputState {
         text
     }
 
+    fn ime(&self) -> Ime {
+        let selection = match self.editor.selection_bounds() {
+            Some((start, end)) => start.index..end.index,
+            None => self.editor.cursor().index..self.editor.cursor().index,
+        };
+
+        Ime {
+            text: self.text(),
+            selection,
+            compose: None,
+        }
+    }
+
     fn clear_text(&mut self) {
         self.buffer_mut().lines = vec![BufferLine::new(
             "",
@@ -455,6 +468,15 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if let Some(action) = delete_key(e) {
+                    // NOTE: this is a workaround for a bug where the editor can select nothing,
+                    // and will then delete the selection rather than the character at the cursor
+                    if let Some((start, end)) = state.editor.selection_bounds() {
+                        if start == end {
+                            state.editor.set_selection(Selection::None);
+                            state.editor.set_cursor(start);
+                        }
+                    }
+
                     state.editor.action(&mut cx.fonts().font_system, action);
                     cx.layout();
                     state.blink = 0.0;
@@ -531,6 +553,8 @@ impl<T> View<T> for TextInput<T> {
                         state.editor.set_cursor(cosmic_text::Cursor::default());
                     }
                 }
+
+                cx.set_ime(Some(state.ime()));
             }
             Event::PointerPressed(e) => {
                 if !cx.is_hovered() {
@@ -545,7 +569,6 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 cx.set_focused(true);
-                cx.set_ime(Some(Ime::default()));
                 cx.animate();
 
                 state.blink = 0.0;
@@ -559,6 +582,8 @@ impl<T> View<T> for TextInput<T> {
                         y: local.y as i32,
                     },
                 );
+
+                cx.set_ime(Some(state.ime()));
             }
             Event::PointerReleased(_) => {
                 state.dragging = false;

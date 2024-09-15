@@ -78,6 +78,7 @@ features    = [
 ori-skia.workspace = true
 
 android-activity = { version = "0.6", features = ["native-activity"] }
+crossbeam-channel = "0.5"
 jni = "0.21"
 libloading = "0.8"
 ndk = "0.9"

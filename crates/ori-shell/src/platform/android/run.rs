@@ -18,7 +18,7 @@ use tracing::warn;
 
 use crate::platform::egl::{EglContext, EglNativeDisplay, EglSurface};
 
-use super::{clipboard::AndroidClipboard, keyboard::show_soft_input, AndroidError, ANDROID_APP};
+use super::{clipboard::AndroidClipboard, keyboard::ImeState, AndroidError, ANDROID_APP};
 
 /// Run the app on Android.
 pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
@@ -45,6 +45,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
         android: android.clone(),
         waker: android.create_waker(),
         egl_context,
+        ime_state: ImeState::default(),
         window: None,
         combining: None,
     };
@@ -109,6 +110,21 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
                     handle_requests(&mut state, data);
                 }
 
+                while let Some(commit) = state.ime_state.next_commit() {
+                    if let Some(ref window) = state.window {
+                        (state.app).keyboard_key(
+                            data,
+                            window.id,
+                            Key::Unidentified,
+                            None,
+                            Some(commit),
+                            true,
+                        );
+                    }
+
+                    handle_requests(&mut state, data);
+                }
+
                 render_window(&mut state, data);
                 handle_requests(&mut state, data);
 
@@ -137,6 +153,7 @@ struct AppState<T> {
     android: AndroidApp,
     waker: AndroidAppWaker,
     egl_context: EglContext,
+    ime_state: ImeState,
     window: Option<WindowState>,
     combining: Option<char>,
 }
@@ -180,21 +197,11 @@ fn handle_request<T>(state: &mut AppState<T>, data: &mut T, request: AppRequest<
             WindowUpdate::Cursor(_) => warn!("Window cursor is not supported on Android"),
             WindowUpdate::Ime(ime) => match ime {
                 Some(ime) => {
-                    show_soft_input(&state.android, true);
-                    state.android.set_text_input_state(TextInputState {
-                        text: ime.text,
-                        selection: TextSpan {
-                            start: ime.selection.start,
-                            end: ime.selection.end,
-                        },
-                        compose_region: ime.compose.map(|region| TextSpan {
-                            start: region.start,
-                            end: region.end,
-                        }),
-                    });
+                    state.ime_state.show(&state.android).unwrap();
+                    state.ime_state.set(&state.android, ime).unwrap();
                 }
                 None => {
-                    show_soft_input(&state.android, false);
+                    state.ime_state.hide(&state.android).unwrap();
                 }
             },
         },

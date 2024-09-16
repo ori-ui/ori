@@ -15,5 +15,5 @@ ori-shell = { workspace = true, optional = true }
 
 [features]
 default = []
-debug-only = []
+always = []
 shell = ["dep:ori-shell"]

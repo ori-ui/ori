@@ -54,7 +54,7 @@ font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 serde = ["ori-core/serde"]
 dylib = ["dep:ori-dylib"]
-dylib-debug = ["dylib", "ori-dylib/debug-only"]
+dylib-always = ["dylib", "ori-dylib/always"]
 
 # All features
 full = ["font-awesome", "image", "serde"]

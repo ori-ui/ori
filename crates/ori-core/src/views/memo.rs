@@ -7,7 +7,7 @@ use crate::{
 
 /// Create a new [`Memo`].
 pub fn memo<T, V: View<T>, D: PartialEq>(
-    data: impl FnOnce(&mut T) -> D + 'static,
+    data: D,
     build: impl FnOnce(&mut T) -> V + 'static,
 ) -> Memo<T, V, D> {
     Memo::new(data, build)
@@ -15,26 +15,19 @@ pub fn memo<T, V: View<T>, D: PartialEq>(
 
 /// A view that only builds the inner view when certain data changes.
 pub struct Memo<T, V, D> {
-    #[allow(clippy::type_complexity)]
-    data: Option<Box<dyn FnOnce(&mut T) -> D>>,
+    data: Option<D>,
+
     #[allow(clippy::type_complexity)]
     build: Option<Box<dyn FnOnce(&mut T) -> V>>,
 }
 
 impl<T, V: View<T>, D: PartialEq> Memo<T, V, D> {
     /// Create a new [`Memo`].
-    pub fn new(
-        data: impl FnOnce(&mut T) -> D + 'static,
-        build: impl FnOnce(&mut T) -> V + 'static,
-    ) -> Self {
+    pub fn new(data: D, build: impl FnOnce(&mut T) -> V + 'static) -> Self {
         Self {
-            data: Some(Box::new(data)),
+            data: Some(data),
             build: Some(Box::new(build)),
         }
-    }
-
-    fn data(&mut self, data: &mut T) -> D {
-        (self.data.take().expect("Memo::data called twice"))(data)
     }
 
     fn build(&mut self, data: &mut T) -> V {
@@ -46,7 +39,7 @@ impl<T, V: View<T>, D: PartialEq> Memo<T, V, D> {
 pub struct MemoState<T, V: View<T>, D> {
     view: V,
     state: V::State,
-    data: D,
+    data: Option<D>,
 }
 
 impl<T, V: View<T>, D: PartialEq> View<T> for Memo<T, V, D> {
@@ -55,19 +48,18 @@ impl<T, V: View<T>, D: PartialEq> View<T> for Memo<T, V, D> {
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut view = self.build(data);
         let state = view.build(cx, data);
-        let data = self.data(data);
+        let data = self.data.take();
 
         MemoState { view, state, data }
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, _old: &Self) {
-        let new_data = self.data(data);
-        if new_data != state.data {
+        if self.data != state.data {
             let mut view = self.build(data);
             view.rebuild(&mut state.state, cx, data, &state.view);
 
             state.view = view;
-            state.data = new_data;
+            state.data = self.data.take();
         }
     }
 

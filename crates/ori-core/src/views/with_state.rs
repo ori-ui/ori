@@ -34,7 +34,7 @@ use super::focus;
 /// }
 /// ```
 pub fn with_state<T, S, V>(
-    build: impl FnMut() -> S + 'static,
+    build: impl FnOnce() -> S + 'static,
     view: impl FnMut(&mut T, &mut S) -> V + 'static,
 ) -> WithState<T, S, V>
 where
@@ -101,7 +101,7 @@ where
 /// }
 /// ```
 pub fn with_data<T, S, V>(
-    build: impl FnMut() -> S + 'static,
+    build: impl FnOnce() -> S + 'static,
     mut view: impl FnMut(&mut S) -> V + 'static,
 ) -> impl View<T>
 where
@@ -133,7 +133,7 @@ where
 ///     )
 /// }
 /// ```
-pub fn with_data_default<T, S, V>(view: impl FnMut(&mut S) -> V + 'static) -> impl View<T>
+pub fn with_data_default<T, S, V>(view: impl Fn(&mut S) -> V + 'static) -> impl View<T>
 where
     S: Default + 'static,
     V: View<S>,
@@ -163,7 +163,7 @@ where
 
 /// A view that stores some additional data.
 pub struct WithState<T, S, V> {
-    build: Box<dyn FnMut() -> S>,
+    build: Option<Box<dyn FnOnce() -> S>>,
     #[allow(clippy::type_complexity)]
     view: Box<dyn FnMut(&mut T, &mut S) -> V>,
 }
@@ -171,11 +171,11 @@ pub struct WithState<T, S, V> {
 impl<T, S, V> WithState<T, S, V> {
     /// Create a new [`WithState`].
     pub fn new(
-        build: impl FnMut() -> S + 'static,
+        build: impl FnOnce() -> S + 'static,
         view: impl FnMut(&mut T, &mut S) -> V + 'static,
     ) -> Self {
         Self {
-            build: Box::new(build),
+            build: Some(Box::new(build)),
             view: Box::new(view),
         }
     }
@@ -185,7 +185,8 @@ impl<T, S, V: View<(T, S)>> View<T> for WithState<T, S, V> {
     type State = (Pod<V>, S, State<(T, S), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let mut state = (self.build)();
+        let build = self.build.take().expect("Build should only be called once");
+        let mut state = build();
         let mut view = Pod::new((self.view)(data, &mut state));
 
         let content = with_data_state(data, &mut state, |data| view.build(cx, data));

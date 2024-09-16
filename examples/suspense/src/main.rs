@@ -19,28 +19,25 @@ fn url_input(url: &str) -> impl View<String> {
     container(pad(8.0, min_width(400.0, input)))
 }
 
-fn image() -> impl View<String> {
-    memo(
-        |url| String::clone(url),
-        |url| {
-            let url = url.clone();
+fn image(url: &str) -> impl View<String> {
+    memo(String::from(url), |url: &mut String| {
+        let url = url.clone();
 
-            suspense(async move {
-                match load_image(&url).await {
-                    Ok(image) => Ok(image),
-                    Err(err) => Err(text!("Error: {}", err)),
-                }
-            })
-            .fallback(text!("Loading..."))
-        },
-    )
+        suspense(async move {
+            match load_image(&url).await {
+                Ok(image) => Ok(image),
+                Err(err) => Err(text!("Error: {}", err)),
+            }
+        })
+        .fallback(text!("Loading..."))
+    })
 }
 
 fn ui() -> impl View {
     with_data(
         || String::from(IMAGE_URL),
         |url| {
-            let view = vstack![url_input(url), image()].gap(8.0);
+            let view = vstack![url_input(url), image(url)].gap(8.0);
 
             center(view)
         },

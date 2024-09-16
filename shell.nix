@@ -9,7 +9,6 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.libxkbcommon
     pkgs.xorg.libxcb
     pkgs.wayland
-    pkgs.openssl
     pkgs.fontconfig
     pkgs.freetype
   ];

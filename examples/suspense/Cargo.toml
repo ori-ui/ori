@@ -7,5 +7,5 @@ license.workspace = true
 
 [dependencies]
 ori = { path = "../..", features = ["image"] }
-reqwest = "0.12"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 tokio = { version = "1", features = ["full"] }

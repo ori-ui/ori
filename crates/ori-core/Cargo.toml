@@ -17,7 +17,7 @@ smol_str = "0.3.1"
 tracing = "0.1"
 
 [dependencies.image]
-version = "0.25"
+version = "0.24"
 default-features = false
 optional = true
 features = [

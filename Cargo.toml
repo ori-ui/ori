@@ -58,7 +58,7 @@ dylib-always = ["dylib", "ori-dylib/always"]
 full = ["font-awesome", "image", "serde"]
 
 # Backend features
-shell = ["dep:ori-shell"]
+shell = ["dep:ori-shell", "ori-dylib?/shell"]
 x11 = ["ori-shell?/x11"]
 wayland = ["ori-shell?/wayland"]
 

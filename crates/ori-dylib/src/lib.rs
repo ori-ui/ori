@@ -3,9 +3,6 @@
 //! Forces ori to be built as a dynamic library, which considerably reduces the
 //! compile times when iterating on the code.
 //!
-//! # Usage
-//!
-//!
 //! # Warning
 //! __Do not use this in production!__ This is only meant to be used during development.
 //! If used in production, would require you to ship the dylib with the binary.

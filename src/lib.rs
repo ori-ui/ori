@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-pub use ori_macro::{main, reloadable};
+pub use ori_macro::main;
 
 pub mod core {
     //! Ori [`core`](ori_core) module.
@@ -14,10 +14,6 @@ pub mod app {
 
     pub use ori_app::*;
 }
-
-#[doc(hidden)]
-#[cfg(feature = "reload")]
-pub use ori_reload as reload;
 
 #[cfg(feature = "font-awesome")]
 pub mod font_awesome {

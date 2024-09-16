@@ -7,7 +7,6 @@ mod entry;
 mod example;
 mod font;
 mod rebuild;
-mod reload;
 mod styled;
 
 fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
@@ -29,19 +28,6 @@ fn find_core() -> syn::Path {
                 syn::parse_quote!(#ori::core)
             }
             Err(_) => syn::parse_quote!(ori::core),
-        },
-    }
-}
-
-fn find_reload() -> syn::Path {
-    match proc_macro_crate::crate_name("ori-reload") {
-        Ok(krate) => found_crate(krate),
-        Err(_) => match proc_macro_crate::crate_name("ori") {
-            Ok(krate) => {
-                let ori = found_crate(krate);
-                syn::parse_quote!(#ori::reload)
-            }
-            Err(_) => syn::parse_quote!(ori::reload),
         },
     }
 }
@@ -96,16 +82,6 @@ pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macr
 #[proc_macro_derive(Styled, attributes(styled, rebuild))]
 pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     styled::derive_styled(input)
-}
-
-/// A macro to generate boilerplate for a hot-reloadable function.
-#[manyhow::manyhow]
-#[proc_macro_attribute]
-pub fn reloadable(
-    args: proc_macro::TokenStream,
-    input: proc_macro::TokenStream,
-) -> manyhow::Result<proc_macro::TokenStream> {
-    reload::reloadable(args, input)
 }
 
 /// Only include the annotated item on desktop platforms.

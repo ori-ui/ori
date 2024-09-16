@@ -7,10 +7,10 @@ use crate::{
 
 /// Create a new [`Focus`].
 pub fn focus<T, U, V: View<U>>(
-    focus: impl FnMut(&mut T, &mut Lens<U>) + 'static,
     content: V,
+    focus: impl FnMut(&mut T, &mut Lens<U>) + 'static,
 ) -> Focus<T, U, V> {
-    Focus::new(content, focus)
+    Focus::new(focus, content)
 }
 
 /// A lens used by [`Focus`].
@@ -27,7 +27,7 @@ pub struct Focus<T, U, V> {
 
 impl<T, U, V> Focus<T, U, V> {
     /// Create a new [`Focus`].
-    pub fn new(content: V, focus: impl FnMut(&mut T, &mut Lens<U>) + 'static) -> Self {
+    pub fn new(focus: impl FnMut(&mut T, &mut Lens<U>) + 'static, content: V) -> Self {
         Self {
             content,
             focus: Box::new(focus),

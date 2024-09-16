@@ -150,10 +150,9 @@ fn todos(data: &mut Data) -> impl View<Data> {
             _ => {}
         }
 
-        let todo = focus(
-            move |data: &mut Data, lens| lens(&mut data.todos[i]),
-            todo(i, item),
-        );
+        let todo = focus(todo(i, item), move |data: &mut Data, lens| {
+            lens(&mut data.todos[i])
+        });
         todos.push(todo);
     }
 

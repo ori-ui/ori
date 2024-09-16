@@ -148,7 +148,7 @@ pub fn without_state<S, T, V>(view: V) -> impl View<(S, T)>
 where
     V: View<T>,
 {
-    focus(|(_state, data), lens| lens(data), view)
+    focus(view, |(_state, data), lens| lens(data))
 }
 
 /// Create a new view unwrapping some data from the state.
@@ -158,7 +158,7 @@ pub fn without_data<S, T, V>(view: V) -> impl View<(S, T)>
 where
     V: View<S>,
 {
-    focus(|(state, _data), lens| lens(state), view)
+    focus(view, |(state, _data), lens| lens(state))
 }
 
 /// A view that stores some additional data.

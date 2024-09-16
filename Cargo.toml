@@ -67,6 +67,3 @@ shell = ["dep:ori-shell"]
 x11 = ["ori-shell?/x11"]
 wayland = ["ori-shell?/wayland"]
 
-[profile.dev]
-debug = "limited"
-opt-level = 1

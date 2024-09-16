@@ -12,6 +12,8 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.openssl
     pkgs.fontconfig
     pkgs.freetype
+    pkgs.cargo
+    pkgs.rustc
   ];
 
   LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath buildInputs}";

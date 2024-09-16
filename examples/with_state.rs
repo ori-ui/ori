@@ -13,14 +13,14 @@ struct Data {
 
 fn form() -> impl View<Data> {
     // the `with_state` view is used to store state that is not part of the data
-    with_state(User::default, |_data, user| {
+    with_state(User::default, |user, _data| {
         let name = text_input()
             .text(&user.name)
-            .on_input(|_, (_, user): &mut (_, User), text| user.name = text);
+            .on_input(|_, (user, _): &mut (User, _), text| user.name = text);
 
         let age = hstack![
             text!("Age: {}", user.age),
-            on_click(button(text("Add")), move |cx, (_, user): &mut (_, User)| {
+            on_click(button(text("Add")), move |cx, (user, _): &mut (User, _)| {
                 user.age += 1;
                 cx.rebuild();
             })
@@ -28,7 +28,7 @@ fn form() -> impl View<Data> {
 
         let submit = button(text("Submit")).color(Theme::ACCENT);
 
-        let submit = on_click(submit, |cx, (data, user): &mut (Data, User)| {
+        let submit = on_click(submit, |cx, (user, data): &mut (User, Data)| {
             data.users.push(user.clone());
             *user = User::default();
             cx.rebuild();

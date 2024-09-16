@@ -21,10 +21,10 @@ use super::focus;
 /// fn ui() -> impl View<Data> {
 ///     with_state(
 ///         || 0,
-///         |_data, count| {
+///         |count, _data| {
 ///             on_click(
 ///                 button(text!("Clicked {} time(s)", count)),
-///                 |cx, (_data, count)| {
+///                 |cx, (count, _data)| {
 ///                     *count += 1;
 ///                     cx.rebuild();
 ///                 },
@@ -33,12 +33,12 @@ use super::focus;
 ///     )
 /// }
 /// ```
-pub fn with_state<T, S, V>(
+pub fn with_state<S, T, V>(
     build: impl FnOnce() -> S + 'static,
-    view: impl FnMut(&mut T, &mut S) -> V + 'static,
-) -> WithState<T, S, V>
+    view: impl FnMut(&mut S, &mut T) -> V + 'static,
+) -> WithState<S, T, V>
 where
-    V: View<(T, S)>,
+    V: View<(S, T)>,
 {
     WithState::new(build, view)
 }
@@ -54,10 +54,10 @@ where
 ///
 /// fn ui() -> impl View<Data> {
 ///     with_state_default(
-///         |_data, count: &mut i32| {
+///         |count: &mut i32, _data| {
 ///             on_click(
 ///                 button(text!("Clicked {} time(s)", count)),
-///                 |cx, (_data, count)| {
+///                 |cx, (count, _data)| {
 ///                     *count += 1;
 ///                     cx.rebuild();
 ///                 },
@@ -66,12 +66,12 @@ where
 ///     )
 /// }
 /// ```
-pub fn with_state_default<T, S, V>(
-    view: impl FnMut(&mut T, &mut S) -> V + 'static,
-) -> WithState<T, S, V>
+pub fn with_state_default<S, T, V>(
+    view: impl FnMut(&mut S, &mut T) -> V + 'static,
+) -> WithState<S, T, V>
 where
     S: Default + 'static,
-    V: View<(T, S)>,
+    V: View<(S, T)>,
 {
     with_state(Default::default, view)
 }
@@ -100,14 +100,14 @@ where
 ///     )
 /// }
 /// ```
-pub fn with_data<T, S, V>(
+pub fn with_data<S, T, V>(
     build: impl FnOnce() -> S + 'static,
     mut view: impl FnMut(&mut S) -> V + 'static,
 ) -> impl View<T>
 where
     V: View<S>,
 {
-    with_state(build, move |_, state| without_data(view(state)))
+    with_state(build, move |state, _| without_data(view(state)))
 }
 
 /// Create a new [`WithState`] that replaces the data with the state using `S::default()`.
@@ -133,7 +133,7 @@ where
 ///     )
 /// }
 /// ```
-pub fn with_data_default<T, S, V>(view: impl Fn(&mut S) -> V + 'static) -> impl View<T>
+pub fn with_data_default<S, T, V>(view: impl Fn(&mut S) -> V + 'static) -> impl View<T>
 where
     S: Default + 'static,
     V: View<S>,
@@ -144,35 +144,35 @@ where
 /// Create a new view unwrapping some state from the data.
 ///
 /// This is equivalent to `focus(|(data, _state), lens| lens(data), view)`.
-pub fn without_state<T, S, V>(view: V) -> impl View<(T, S)>
+pub fn without_state<S, T, V>(view: V) -> impl View<(S, T)>
 where
     V: View<T>,
 {
-    focus(|(data, _state), lens| lens(data), view)
+    focus(|(_state, data), lens| lens(data), view)
 }
 
 /// Create a new view unwrapping some data from the state.
 ///
 /// This is equivalent to `focus(|(_data, state), lens| lens(state), view)`.
-pub fn without_data<T, S, V>(view: V) -> impl View<(T, S)>
+pub fn without_data<S, T, V>(view: V) -> impl View<(S, T)>
 where
     V: View<S>,
 {
-    focus(|(_data, state), lens| lens(state), view)
+    focus(|(state, _data), lens| lens(state), view)
 }
 
 /// A view that stores some additional data.
-pub struct WithState<T, S, V> {
+pub struct WithState<S, T, V> {
     build: Option<Box<dyn FnOnce() -> S>>,
     #[allow(clippy::type_complexity)]
-    view: Box<dyn FnMut(&mut T, &mut S) -> V>,
+    view: Box<dyn FnMut(&mut S, &mut T) -> V>,
 }
 
-impl<T, S, V> WithState<T, S, V> {
+impl<S, T, V> WithState<S, T, V> {
     /// Create a new [`WithState`].
     pub fn new(
         build: impl FnOnce() -> S + 'static,
-        view: impl FnMut(&mut T, &mut S) -> V + 'static,
+        view: impl FnMut(&mut S, &mut T) -> V + 'static,
     ) -> Self {
         Self {
             build: Some(Box::new(build)),
@@ -181,15 +181,15 @@ impl<T, S, V> WithState<T, S, V> {
     }
 }
 
-impl<T, S, V: View<(T, S)>> View<T> for WithState<T, S, V> {
-    type State = (Pod<V>, S, State<(T, S), V>);
+impl<S, T, V: View<(S, T)>> View<T> for WithState<S, T, V> {
+    type State = (Pod<V>, S, State<(S, T), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let build = self.build.take().expect("Build should only be called once");
         let mut state = build();
-        let mut view = Pod::new((self.view)(data, &mut state));
+        let mut view = Pod::new((self.view)(&mut state, data));
 
-        let content = with_data_state(data, &mut state, |data| view.build(cx, data));
+        let content = with_data_state(&mut state, data, |data| view.build(cx, data));
 
         (view, state, content)
     }
@@ -201,9 +201,9 @@ impl<T, S, V: View<(T, S)>> View<T> for WithState<T, S, V> {
         data: &mut T,
         _old: &Self,
     ) {
-        let mut new_view = Pod::new((self.view)(data, data_state));
+        let mut new_view = Pod::new((self.view)(data_state, data));
 
-        with_data_state(data, data_state, |data| {
+        with_data_state(data_state, data, |data| {
             new_view.rebuild(state, cx, data, view);
         });
 
@@ -217,7 +217,7 @@ impl<T, S, V: View<(T, S)>> View<T> for WithState<T, S, V> {
         data: &mut T,
         event: &Event,
     ) {
-        with_data_state(data, data_state, |data| view.event(state, cx, data, event));
+        with_data_state(data_state, data, |data| view.event(state, cx, data, event));
     }
 
     fn layout(
@@ -227,41 +227,41 @@ impl<T, S, V: View<(T, S)>> View<T> for WithState<T, S, V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        with_data_state(data, data_state, |data| view.layout(state, cx, data, space))
+        with_data_state(data_state, data, |data| view.layout(state, cx, data, space))
     }
 
     fn draw(&mut self, (view, data_state, state): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        with_data_state(data, data_state, |data| view.draw(state, cx, data));
+        with_data_state(data_state, data, |data| view.draw(state, cx, data));
     }
 }
 
-fn with_data_state<D, S, O>(data: &mut D, state: &mut S, f: impl FnOnce(&mut (D, S)) -> O) -> O {
+fn with_data_state<S, D, O>(state: &mut S, data: &mut D, f: impl FnOnce(&mut (S, D)) -> O) -> O {
     unsafe {
-        let state_ptr = state as *mut S;
         let data_ptr = data as *mut D;
+        let state_ptr = state as *mut S;
 
         let mut data_state = DataState {
             data_ptr,
             state_ptr,
-            data_state: ManuallyDrop::new((ptr::read(data_ptr), ptr::read(state_ptr))),
+            data_state: ManuallyDrop::new((ptr::read(state_ptr), ptr::read(data_ptr))),
         };
 
         f(&mut data_state.data_state)
     }
 }
 
-struct DataState<D, S> {
-    data_ptr: *mut D,
+struct DataState<S, D> {
     state_ptr: *mut S,
-    data_state: ManuallyDrop<(D, S)>,
+    data_ptr: *mut D,
+    data_state: ManuallyDrop<(S, D)>,
 }
 
-impl<D, S> Drop for DataState<D, S> {
+impl<S, D> Drop for DataState<S, D> {
     fn drop(&mut self) {
         unsafe {
-            let (data, state) = ptr::read(&*self.data_state);
-            ptr::write(self.data_ptr, data);
+            let (state, data) = ptr::read(&*self.data_state);
             ptr::write(self.state_ptr, state);
+            ptr::write(self.data_ptr, data);
         }
     }
 }

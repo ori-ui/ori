@@ -92,3 +92,7 @@ pub mod prelude {
     #[cfg(feature = "image")]
     pub use ori_core::include_image;
 }
+
+#[cfg(feature = "dylib")]
+#[allow(unused_imports, clippy::single_component_path_imports)]
+use ori_dylib;

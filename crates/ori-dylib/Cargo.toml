@@ -1,0 +1,19 @@
+[package]
+name = "ori-dylib"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+ori-core = { workspace = true }
+
+ori-shell = { workspace = true, optional = true }
+
+[features]
+default = []
+debug-only = []
+shell = ["dep:ori-shell"]

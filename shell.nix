@@ -10,9 +10,6 @@ pkgs.stdenv.mkDerivation rec {
     pkgs.xorg.libxcb
     pkgs.wayland
     pkgs.openssl
-    pkgs.pkg-config
-    pkgs.lld
-    pkgs.llvm
     pkgs.fontconfig
     pkgs.freetype
   ];

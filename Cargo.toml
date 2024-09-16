@@ -20,6 +20,7 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 ori-app             = { path = "crates/ori-app",            version = "0.1.0-alpha.1" }
 ori-core            = { path = "crates/ori-core",           version = "0.1.0-alpha.1" }
+ori-dylib           = { path = "crates/ori-dylib",          version = "0.1.0-alpha.1" }
 ori-font-awesome    = { path = "crates/ori-font-awesome",   version = "0.1.0-alpha.1" }
 ori-glow            = { path = "crates/ori-glow",           version = "0.1.0-alpha.1" }
 ori-macro           = { path = "crates/ori-macro",          version = "0.1.0-alpha.1" }
@@ -34,6 +35,7 @@ ori-core            = { workspace = true }
 ori-macro           = { workspace = true }
 
 # Optional dependencies
+ori-dylib           = { workspace = true, optional = true }
 ori-font-awesome    = { workspace = true, optional = true }
 ori-reload          = { workspace = true, optional = true }
 
@@ -51,6 +53,8 @@ default = ["shell", "x11", "wayland"]
 font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 serde = ["ori-core/serde"]
+dylib = ["dep:ori-dylib"]
+dylib-debug = ["dylib", "ori-dylib/debug-only"]
 
 # All features
 full = ["font-awesome", "image", "serde"]

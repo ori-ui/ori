@@ -229,7 +229,14 @@ fn ui(data: &mut Data) -> impl View<Data> {
     let stack = vstack![title(), expand(rows)].gap(16.0);
     let content = zstack![align((0.5, 0.2), stack), top_right(theme_button(data))];
 
-    background(Theme::BACKGROUND, pad(64.0, content))
+    let style = if data.dark_mode {
+        Theme::dark()
+    } else {
+        Theme::light()
+    };
+
+    let view = background(Theme::BACKGROUND, pad(64.0, content));
+    with_style(style, view)
 }
 
 struct Delegate;

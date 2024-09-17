@@ -12,11 +12,6 @@ pub use crate::zstack;
 /// Create a new [`ZStack`] view.
 #[macro_export]
 macro_rules! zstack {
-    (for $content:expr) => {
-        $crate::views::zstack(
-            <::std::vec::Vec<_> as ::std::iter::FromIterator<_>>::from_iter($iter)
-        )
-    };
     ($($child:expr),* $(,)?) => {
         $crate::views::zstack(($($child,)*))
     };

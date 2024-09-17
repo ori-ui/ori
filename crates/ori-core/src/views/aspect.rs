@@ -6,6 +6,11 @@ use crate::{
     view::{Pod, State, View},
 };
 
+/// Create a new [`Aspect`] view.
+pub fn aspect<T>(aspect: f32, view: impl View<T>) -> Aspect<impl View<T>> {
+    Aspect::new(aspect, view)
+}
+
 /// A view that lays out its content with a fixed aspect ratio.
 #[derive(Rebuild)]
 pub struct Aspect<V> {

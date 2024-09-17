@@ -13,18 +13,28 @@ enum StyleEntry {
     Key(u64),
 }
 
-#[derive(Clone, Default)]
+#[repr(transparent)]
+#[derive(Clone)]
 struct StylesHasher(u64);
+
+impl Default for StylesHasher {
+    #[inline(always)]
+    fn default() -> Self {
+        Self(0)
+    }
+}
 
 impl Hasher for StylesHasher {
     fn write(&mut self, _bytes: &[u8]) {
         unreachable!()
     }
 
+    #[inline(always)]
     fn write_u64(&mut self, i: u64) {
         self.0 = i;
     }
 
+    #[inline(always)]
     fn finish(&self) -> u64 {
         self.0
     }

@@ -19,7 +19,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Build
-      run: cargo build --verbose --no-default-features --features full
+      run: cargo build --verbose --all-features
 
   test:
     runs-on: ubuntu-latest
@@ -48,7 +48,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
  
     - name: Run clippy
-      run: cargo clippy --verbose --no-default-features --features full
+      run: cargo clippy --verbose --all-features
 
   rustfmt:
     runs-on: ubuntu-latest

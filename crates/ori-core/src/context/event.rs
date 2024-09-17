@@ -109,7 +109,7 @@ impl<'a, 'b> EventCx<'a, 'b> {
     }
 
     /// Request focus for the view.
-    pub fn request_focus(&mut self) {
+    pub fn focus(&mut self) {
         let cmd = RequestFocus(self.window().id(), self.id());
         self.cmd(cmd);
     }

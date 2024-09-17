@@ -70,6 +70,7 @@ fn input(border: bool) -> impl View<Data> {
         .on_submit(|cx, data: &mut Data, text| {
             data.input(text.to_string());
             cx.rebuild();
+            cx.focus();
         })
         .font_size(20.0);
 

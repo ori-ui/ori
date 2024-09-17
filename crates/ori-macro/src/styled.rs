@@ -27,7 +27,6 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let style_name = syn::Ident::new(&format!("{}Style", ident), ident.span());
-    let style_name_snake = pascal_to_snake(&ident.to_string());
     let style_fields = style_fields(ident, &data.fields);
     let style_styled_fields = style_styled_fields(&data.fields);
     let style_rebuild_fields = style_rebuild_fields(&data.fields);
@@ -36,7 +35,7 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let style_doc = format!("The derived style for [`{}`].", ident);
     let style_styled_doc = format!("The style of [`{}`].", ident);
     let style_rebuild_doc = format!("Rebuild the style of [`{}`].", ident);
-    let style_into_styles_fields = style_into_styles_fields(&data.fields);
+    let style_into_styles_fields = style_into_styles_fields(&style_name, &data.fields);
 
     let expanded = quote! {
         #[doc = #style_doc]
@@ -88,11 +87,11 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
 
         impl ::std::convert::From<#style_name> for #ori_core::style::Styles {
             fn from(style: #style_name) -> Self {
-                #ori_core::style! {
-                    #style_name_snake {
-                        #(#style_into_styles_fields,)*
-                    },
-                }
+                let mut styles = #ori_core::style::Styles::new();
+
+                #(#style_into_styles_fields)*
+
+                styles
             }
         }
     };
@@ -294,28 +293,18 @@ fn get_styled(ty: &syn::Type) -> Option<syn::Type> {
     }
 }
 
-fn style_into_styles_fields(fields: &syn::Fields) -> impl Iterator<Item = TokenStream> + '_ {
+fn style_into_styles_fields<'a>(
+    style_name: &'a syn::Ident,
+    fields: &'a syn::Fields,
+) -> impl Iterator<Item = TokenStream> + 'a {
     fields.iter().filter_map(move |field| {
         let ident = field.ident.as_ref().unwrap();
         let name = ident.to_string();
+        let style_ident = syn::Ident::new(&name.to_uppercase(), ident.span());
         let _ = get_styled(&field.ty)?;
 
         Some(quote! {
-            #name: style.#ident.clone()
+            styles.insert(#style_name::#style_ident, style.#ident);
         })
     })
-}
-
-fn pascal_to_snake(name: &str) -> String {
-    let mut snake = String::new();
-
-    for (i, c) in name.chars().enumerate() {
-        if c.is_uppercase() && i > 0 {
-            snake.push('_');
-        }
-
-        snake.push(c.to_ascii_lowercase());
-    }
-
-    snake
 }

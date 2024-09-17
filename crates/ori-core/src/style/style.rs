@@ -7,45 +7,6 @@ use std::{
     sync::Arc,
 };
 
-/// Create a collection of styles.
-#[macro_export]
-macro_rules! style {
-    ($styles:expr, $prefix:expr, $key:literal : $style:expr) => {
-        $styles.insert_value(::std::concat!($prefix, $key), $style);
-    };
-    ($styles:expr, $prefix:expr, $key:literal -> $style:expr) => {
-        $styles.insert_style(::std::concat!($prefix, $key), $style);
-    };
-    ($styles:expr, $prefix:expr, $key:literal : $style:expr, $($rest:tt)*) => {
-        $crate::style! { $styles, $prefix, $key : $style }
-        $crate::style! { $styles, $prefix, $($rest)* }
-    };
-    ($styles:expr, $prefix:expr, $key:literal -> $style:expr, $($rest:tt)*) => {
-        $crate::style! { $styles, $prefix, $key -> $style }
-        $crate::style! { $styles, $prefix, $($rest)* }
-    };
-    ($styles:expr, $prefix:expr, $key:literal { $($inner:tt)* }) => {
-        $crate::style! { $styles, ::std::concat!($prefix, $key, "."), $($inner)* }
-    };
-    ($styles:expr, $prefix:expr, $key:literal { $($inner:tt)* }, $($rest:tt)*) => {
-        $crate::style! { $styles, ::std::concat!($prefix, $key, "."), $($inner)* }
-        $crate::style! { $styles, $prefix, $($rest)* }
-    };
-    ($styles:expr, $prefix:expr, ) => {};
-    ($styles:expr, $key:literal $($tt:tt)*) => {
-        $crate::style! { $styles, "", $key $($tt)* }
-    };
-    ($key:literal $($tt:tt)*) => {{
-        #[allow(unused_mut)]
-        let mut styles = $crate::style::Styles::new();
-        $crate::style! { styles, $key $($tt)* }
-        styles
-    }};
-    () => {
-        $crate::style::Styles::new()
-    };
-}
-
 #[derive(Clone)]
 enum StyleEntry {
     Value(TypeId, Arc<dyn Any>),
@@ -86,32 +47,37 @@ impl Styles {
         Self::default()
     }
 
+    /// Get the number of styles.
+    pub fn len(&self) -> usize {
+        self.styles.len()
+    }
+
+    /// Check if the styles are empty.
+    pub fn is_empty(&self) -> bool {
+        self.styles.is_empty()
+    }
+
     /// Insert a styled value.
-    pub fn insert<T: 'static>(&mut self, key: &str, styled: Styled<T>) {
-        match styled {
+    pub fn insert<T: 'static>(&mut self, key: Style<T>, styled: impl Into<Styled<T>>) {
+        match styled.into() {
             Styled::Value(value) => self.insert_value(key, value),
             Styled::Style(style) => {
-                let key = hash_style_key(key.as_bytes());
                 let value = StyleEntry::Key(style.key);
-                Arc::make_mut(&mut self.styles).insert(key, value);
+                Arc::make_mut(&mut self.styles).insert(style.key, value);
             }
             Styled::Computed(derived) => self.insert_value(key, derived(self)),
         }
     }
 
     /// Insert a style.
-    pub fn insert_value<T: 'static>(&mut self, key: &str, style: T) {
-        let key = hash_style_key(key.as_bytes());
+    pub fn insert_value<T: 'static>(&mut self, key: Style<T>, style: T) {
         let entry = StyleEntry::Value(TypeId::of::<T>(), Arc::new(style));
-        Arc::make_mut(&mut self.styles).insert(key, entry);
+        Arc::make_mut(&mut self.styles).insert(key.key, entry);
     }
 
     /// Insert a style key.
-    pub fn insert_style(&mut self, key: &str, style: &str) {
-        self.insert_style_keys(
-            hash_style_key(key.as_bytes()),
-            hash_style_key(style.as_bytes()),
-        );
+    pub fn insert_style<T: 'static>(&mut self, key: Style<T>, style: Style<T>) {
+        self.insert_style_keys(key.key, style.key);
     }
 
     /// Insert a style key.
@@ -120,19 +86,19 @@ impl Styles {
     }
 
     /// Insert a style key.
-    pub fn with<T: 'static>(mut self, key: &str, styled: Styled<T>) -> Self {
+    pub fn with<T: 'static>(mut self, key: Style<T>, styled: impl Into<Styled<T>>) -> Self {
         self.insert(key, styled);
         self
     }
 
     /// Insert a styled value.
-    pub fn with_value<T: 'static>(mut self, key: &str, value: T) -> Self {
+    pub fn with_value<T: 'static>(mut self, key: Style<T>, value: T) -> Self {
         self.insert_value(key, value);
         self
     }
 
     /// Insert a style key.
-    pub fn with_style(mut self, key: &str, style: &str) -> Self {
+    pub fn with_style<T: 'static>(mut self, key: Style<T>, style: Style<T>) -> Self {
         self.insert_style(key, style);
         self
     }
@@ -330,7 +296,7 @@ impl<T> From<Style<T>> for Styled<T> {
 ///
 /// This uses the FNV-1a hash algorithm, with a 64-bit seed.
 #[inline(always)]
-const fn hash_style_key(bytes: &[u8]) -> u64 {
+pub const fn hash_style_key(bytes: &[u8]) -> u64 {
     let mut hash = 0xcbf29ce484222325;
 
     let mut index = 0;
@@ -345,18 +311,47 @@ const fn hash_style_key(bytes: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{canvas::Color, style::Style};
+    use super::*;
+
+    const KEY_A: Style<u32> = Style::new("a");
+    const KEY_B: Style<u32> = Style::new("b");
 
     #[test]
-    fn style_macro() {
-        let styles = style! {
-            "primary": Color::BLUE,
+    fn style_value() {
+        let mut styles = Styles::new();
 
-            "button" {
-                "color" -> "primary",
-            },
-        };
+        assert_eq!(
+            styles.get(KEY_A),
+            None,
+            "style should not exist before insertion"
+        );
 
-        assert_eq!(styles.get(Style::new("button.color")), Some(Color::BLUE));
+        styles.insert_value(KEY_A, 42);
+
+        assert_eq!(styles.get(KEY_A), Some(42));
+    }
+
+    #[test]
+    fn style_key() {
+        let mut styles = Styles::new();
+
+        assert_eq!(
+            styles.get(KEY_A),
+            None,
+            "style should not exist before insertion"
+        );
+
+        styles.insert_style(KEY_A, KEY_B);
+
+        assert_eq!(
+            styles.get(KEY_A),
+            None,
+            "style should not exist before insertion"
+        );
+
+        styles.insert_value(KEY_B, 42);
+
+        assert_eq!(styles.get(KEY_A), Some(42));
+        assert_eq!(styles.get(KEY_B), Some(42));
     }
 }

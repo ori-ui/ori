@@ -446,6 +446,13 @@ impl<T> View<T> for TextInput<T> {
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
         if cx.focused_changed() {
             cx.animate();
+
+            if !cx.is_focused() {
+                (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
+                cx.set_focused(false);
+                cx.set_ime(None);
+                cx.draw();
+            }
         }
 
         if cx.is_hovered() {
@@ -573,17 +580,6 @@ impl<T> View<T> for TextInput<T> {
                 cx.set_ime(Some(state.ime(self.multiline, self.capitalize)));
             }
             Event::PointerPressed(e) => {
-                if !cx.is_hovered() {
-                    if cx.is_focused() {
-                        (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
-                        cx.set_focused(false);
-                        cx.set_ime(None);
-                        cx.draw();
-                    }
-
-                    return;
-                }
-
                 cx.set_focused(true);
                 cx.animate();
 

@@ -49,12 +49,12 @@ pub fn vwrap_vec<V>() -> Wrap<Vec<V>> {
 }
 
 /// Create a horizontal [`Wrap`], with dynamic content.
-pub fn hwrap_any<'a, V>() -> Wrap<Vec<Box<dyn AnyView<V> + 'a>>> {
+pub fn hwrap_any<'a, T>() -> Wrap<Vec<Box<dyn AnyView<T> + 'a>>> {
     Wrap::horizontal_any()
 }
 
 /// Create a vertical [`Wrap`], with dynamic content.
-pub fn vwrap_any<'a, V>() -> Wrap<Vec<Box<dyn AnyView<V> + 'a>>> {
+pub fn vwrap_any<'a, T>() -> Wrap<Vec<Box<dyn AnyView<T> + 'a>>> {
     Wrap::vertical_any()
 }
 

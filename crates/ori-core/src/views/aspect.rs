@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// Create a new [`Aspect`] view.
-pub fn aspect<T>(aspect: f32, view: impl View<T>) -> Aspect<impl View<T>> {
+pub fn aspect<V>(aspect: f32, view: V) -> Aspect<V> {
     Aspect::new(aspect, view)
 }
 
@@ -24,7 +24,7 @@ pub struct Aspect<V> {
 
 impl<V> Aspect<V> {
     /// Creates a new `Aspect` view.
-    pub fn new(content: V, aspect: f32) -> Self {
+    pub fn new(aspect: f32, content: V) -> Self {
         Self {
             content: Pod::new(content),
             aspect,

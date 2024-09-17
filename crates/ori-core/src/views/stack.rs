@@ -51,12 +51,12 @@ pub fn vstack_vec<V>() -> Stack<Vec<V>> {
 }
 
 /// Create a horizontal [`Stack`], with dynamic content.
-pub fn hstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
+pub fn hstack_any<'a, T>() -> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
     Stack::any_horizontal()
 }
 
 /// Create a vertical [`Stack`], with dynamic content.
-pub fn vstack_any<'a, V>() -> Stack<Vec<Box<dyn AnyView<V> + 'a>>> {
+pub fn vstack_any<'a, T>() -> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
     Stack::any_vertical()
 }
 

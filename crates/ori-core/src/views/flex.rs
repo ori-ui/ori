@@ -8,16 +8,6 @@ use crate::{
     view::View,
 };
 
-/// The flex value of a view.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Flex {
-    /// The flex value.
-    pub amount: f32,
-
-    /// Whether the view is tight.
-    pub is_tight: bool,
-}
-
 /// Create a new [`Flexible`] view.
 pub fn flex<V>(content: V) -> Flexible<V> {
     Flexible::new(1.0, false, content)
@@ -26,6 +16,16 @@ pub fn flex<V>(content: V) -> Flexible<V> {
 /// Create a new expanded [`Flexible`] view.
 pub fn expand<V>(content: V) -> Flexible<V> {
     Flexible::new(1.0, true, content)
+}
+
+/// The flex value of a view.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Flex {
+    /// The flex value.
+    pub amount: f32,
+
+    /// Whether the view is tight.
+    pub is_tight: bool,
 }
 
 /// A flexible view.

@@ -1,6 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
+    event::RequestFocus,
     layout::{Point, Rect, Size},
     view::ViewState,
     window::Cursor,
@@ -77,6 +78,12 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
         self.view_state.request_animate();
     }
 
+    /// Request focus for the view.
+    pub fn request_focus(&mut self) {
+        let cmd = RequestFocus(self.window().id(), self.id());
+        self.cmd(cmd);
+    }
+
     /// Set the cursor of the view.
     pub fn set_cursor(&mut self, cursor: Option<Cursor>) {
         self.view_state.set_cursor(cursor);
@@ -106,6 +113,15 @@ impl<'a, 'b> RebuildCx<'a, 'b> {
     pub fn set_active(&mut self, active: bool) -> bool {
         let updated = self.is_active() != active;
         self.view_state.set_active(active);
+        updated
+    }
+
+    /// Set whether the view is focusable.
+    ///
+    /// Returns `true` if the focusable state changed.
+    pub fn set_focusable(&mut self, focusable: bool) -> bool {
+        let updated = self.is_focusable() != focusable;
+        self.view_state.set_focusable(focusable);
         updated
     }
 }

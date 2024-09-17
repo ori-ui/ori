@@ -308,6 +308,8 @@ impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.set_focusable(true);
+
         let style = TextInputStyle::styled(self, cx.styles());
 
         let editor = Editor::new(Buffer::new(
@@ -442,6 +444,10 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+        if cx.focused_changed() {
+            cx.animate();
+        }
+
         if cx.is_hovered() {
             cx.set_cursor(Some(Cursor::Text));
         } else {
@@ -506,6 +512,7 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if e.is_key(Key::Enter) && !self.multiline {
+                    cx.set_focused(false);
                     submit = true;
                 }
 

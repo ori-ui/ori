@@ -162,7 +162,7 @@ impl Rect {
     }
 
     /// Expand the rectangle by the given amount.
-    pub fn inflate(self, padding: f32) -> Self {
+    pub fn expand(self, padding: f32) -> Self {
         self.shrink(-padding)
     }
 

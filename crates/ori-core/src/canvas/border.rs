@@ -53,6 +53,16 @@ impl BorderRadius {
             .min(self.bottom_right)
             .min(self.bottom_left)
     }
+
+    /// Expand the radius of the corners.
+    pub fn expand(&self, radius: f32) -> Self {
+        Self {
+            top_left: self.top_left + radius,
+            top_right: self.top_right + radius,
+            bottom_right: self.bottom_right + radius,
+            bottom_left: self.bottom_left + radius,
+        }
+    }
 }
 
 impl From<(f32, f32, f32, f32)> for BorderRadius {
@@ -137,6 +147,26 @@ impl BorderWidth {
             right: width,
             bottom: width,
             left: width,
+        }
+    }
+
+    /// Get the maximum width of the borders.
+    pub fn max_element(&self) -> f32 {
+        self.top.max(self.right).max(self.bottom).max(self.left)
+    }
+
+    /// Get the minimum width of the borders.
+    pub fn min_element(&self) -> f32 {
+        self.top.min(self.right).min(self.bottom).min(self.left)
+    }
+
+    /// Expand the width of the borders.
+    pub fn expand(&self, width: f32) -> Self {
+        Self {
+            top: self.top + width,
+            right: self.right + width,
+            bottom: self.bottom + width,
+            left: self.left + width,
         }
     }
 }

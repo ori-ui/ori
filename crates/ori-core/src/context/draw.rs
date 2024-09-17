@@ -117,7 +117,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     pub fn stroke(&mut self, curve: Curve, stroke: impl Into<Stroke>, paint: impl Into<Paint>) {
         let stroke = stroke.into();
 
-        if !self.is_visible(curve.bounds().inflate(stroke.width * 2.0)) {
+        if !self.is_visible(curve.bounds().expand(stroke.width * 2.0)) {
             return;
         }
 

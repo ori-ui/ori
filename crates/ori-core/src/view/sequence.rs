@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::Event,
+    event::{Event, FocusTarget},
     layout::{Size, Space},
 };
 
@@ -419,7 +419,119 @@ impl<V> PodSeq<V> {
         });
     }
 
+    /// Handle an event.
+    pub fn event<T>(
+        &mut self,
+        state: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) where
+        V: ViewSeq<T>,
+    {
+        match event {
+            Event::FocusNext => {
+                Self::switch_focus(self, state, cx, data, event, 0..self.len(), true);
+            }
+            Event::FocusPrev => {
+                Self::switch_focus(self, state, cx, data, event, (0..self.len()).rev(), false);
+            }
+            Event::FocusGiven(FocusTarget::Next) => {
+                Self::give_focus(self, state, cx, data, event, 0..self.len());
+            }
+            Event::FocusGiven(FocusTarget::Prev) => {
+                Self::give_focus(self, state, cx, data, event, (0..self.len()).rev());
+            }
+            _ => {
+                for i in 0..self.len() {
+                    self.event_nth(i, state, cx, data, event);
+                }
+            }
+        }
+    }
+
+    fn switch_focus<T>(
+        &mut self,
+        content: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+        order: impl IntoIterator<Item = usize>,
+        forward: bool,
+    ) where
+        V: ViewSeq<T>,
+    {
+        enum State {
+            TakingFocus,
+            GivingFocus,
+            Propagating,
+        }
+
+        let mut state = State::TakingFocus;
+
+        for i in order {
+            match state {
+                State::TakingFocus => {
+                    if !content[i].has_focused() {
+                        cx.view_state.propagate(&mut content[i]);
+                        continue;
+                    }
+
+                    self.event_nth(i, content, cx, data, event);
+
+                    match content[i].has_focused() {
+                        false => state = State::GivingFocus,
+                        true => state = State::Propagating,
+                    }
+                }
+                State::GivingFocus => {
+                    let event = match forward {
+                        true => Event::FocusGiven(FocusTarget::Next),
+                        false => Event::FocusGiven(FocusTarget::Prev),
+                    };
+
+                    self.event_nth(i, content, cx, data, &event);
+
+                    if content[i].has_focused() {
+                        state = State::Propagating;
+                    }
+                }
+                State::Propagating => {
+                    cx.view_state.propagate(&mut content[i]);
+                }
+            }
+        }
+    }
+
+    fn give_focus<T>(
+        &mut self,
+        state: &mut SeqState<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+        content: impl IntoIterator<Item = usize>,
+    ) where
+        V: ViewSeq<T>,
+    {
+        let mut focus_given = false;
+
+        for i in content {
+            if focus_given {
+                cx.view_state.propagate(&mut state[i]);
+                continue;
+            }
+
+            self.event_nth(i, state, cx, data, event);
+
+            if state[i].has_focused() {
+                focus_given = true;
+            }
+        }
+    }
+
     /// Handle an event for the nth view.
+    ///
+    /// This is only useful if you need to handle events in a specific way, otherwise use [`Self::event`].
     pub fn event_nth<T>(
         &mut self,
         n: usize,

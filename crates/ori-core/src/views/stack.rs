@@ -238,9 +238,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         data: &mut T,
         event: &Event,
     ) {
-        for i in 0..self.content.len() {
-            self.content.event_nth(i, content, cx, data, event);
-        }
+        self.content.event(content, cx, data, event);
     }
 
     fn layout(

@@ -89,6 +89,8 @@ impl<T, V: View<T>> View<T> for Button<V> {
     type State = (ButtonState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_focusable(true);
+
         let state = ButtonState {
             hovered: 0.0,
             active: 0.0,
@@ -118,6 +120,10 @@ impl<T, V: View<T>> View<T> for Button<V> {
         data: &mut T,
         event: &Event,
     ) {
+        if cx.focused_changed() {
+            cx.draw();
+        }
+
         self.content.event(content, cx, data, event);
 
         if cx.hovered_changed() || cx.active_changed() {
@@ -160,6 +166,16 @@ impl<T, V: View<T>> View<T> for Button<V> {
             let active = state.style.transition.get(state.active);
 
             let face = state.style.color.mix(bright, hovered).mix(dim, active);
+
+            if cx.is_focused() {
+                cx.quad(
+                    cx.rect().expand(2.0),
+                    Color::TRANSPARENT,
+                    state.style.border_radius.expand(2.0),
+                    BorderWidth::all(2.0),
+                    cx.styles().get_or(Color::BLUE, Theme::INFO),
+                );
+            }
 
             if state.style.fancy == 0.0 {
                 cx.quad(

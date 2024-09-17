@@ -4,7 +4,7 @@ use crate::{layout::Size, window::WindowId};
 ///
 /// After this event is emitted, if it wasn't handled, the window will be closed.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
-pub struct CloseRequested {
+pub struct WindowCloseRequested {
     /// The window that wants to close.
     pub window: WindowId,
 }

@@ -66,6 +66,12 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
         self.view_state.is_active()
     }
 
+
+    /// Get whether the view is focusable.
+    pub fn is_focusable(&self) -> bool {
+        self.view_state.is_focusable()
+    }
+
     /// Get whether a child view is hovered.
     pub fn has_hovered(&self) -> bool {
         self.view_state.has_hovered()

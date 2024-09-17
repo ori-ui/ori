@@ -88,6 +88,8 @@ impl<T> View<T> for Checkbox {
     type State = (CheckboxStyle, f32);
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.set_focusable(true);
+
         let style = CheckboxStyle::styled(self, cx.styles());
         (style, 0.0)
     }
@@ -110,6 +112,10 @@ impl<T> View<T> for Checkbox {
         _data: &mut T,
         event: &Event,
     ) {
+        if cx.focused_changed() {
+            cx.draw();
+        }
+
         if cx.hovered_changed() {
             cx.animate();
         }
@@ -138,12 +144,17 @@ impl<T> View<T> for Checkbox {
         cx.hoverable(|cx| {
             let bright = style.border_color.lighten(0.2);
 
+            let border_color = match cx.is_focused() {
+                true => cx.styles().get_or(Color::BLUE, Theme::INFO),
+                false => style.border_color.mix(bright, style.transition.get(*t)),
+            };
+
             cx.quad(
                 cx.rect(),
                 style.background,
                 style.border_radius,
                 style.border_width,
-                style.border_color.mix(bright, style.transition.get(*t)),
+                border_color,
             );
 
             if self.checked {

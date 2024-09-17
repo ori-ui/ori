@@ -4,7 +4,7 @@ use ori_macro::Build;
 
 use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Event, PointerButton},
+    event::{Event, Key, PointerButton},
     layout::{Size, Space},
     rebuild::Rebuild,
     view::{Pod, State, View},
@@ -140,6 +140,24 @@ where
                 }
 
                 content.set_active(false);
+            }
+            Event::KeyPressed(e) if content.is_focused() => {
+                if e.is_key(Key::Enter) || e.is_key(' ') {
+                    if matches!(self.event, ClickEvent::Press | ClickEvent::Click) {
+                        (self.callback)(cx, data);
+                    }
+
+                    content.set_active(true);
+                }
+            }
+            Event::KeyReleased(e) if content.is_active() => {
+                if e.is_key(Key::Enter) || e.is_key(' ') {
+                    if self.event == ClickEvent::Release {
+                        (self.callback)(cx, data);
+                    }
+
+                    content.set_active(false);
+                }
             }
             _ => {}
         }

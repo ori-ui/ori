@@ -1,11 +1,28 @@
 use std::any::Any;
 
-use crate::command::Command;
+use crate::{command::Command, view::ViewId, window::WindowId};
 
 use super::{
-    CloseRequested, IsKey, KeyPressed, KeyReleased, PointerLeft, PointerMoved, PointerPressed,
-    PointerReleased, PointerScrolled, WindowMaximized, WindowResized, WindowScaled,
+    IsKey, KeyPressed, KeyReleased, PointerLeft, PointerMoved, PointerPressed, PointerReleased,
+    PointerScrolled, WindowCloseRequested, WindowMaximized, WindowResized, WindowScaled,
 };
+
+/// A request to focus a view.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RequestFocus(pub WindowId, pub ViewId);
+
+/// A target for focus.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FocusTarget {
+    /// Focus should be given to the next view in the focus chain.
+    Next,
+
+    /// Focus should be given to the previous view in the focus chain.
+    Prev,
+
+    /// Focus should be given to a specific view.
+    View(ViewId),
+}
 
 /// An event that can be sent to a view.
 #[derive(Debug)]
@@ -21,7 +38,7 @@ pub enum Event {
     WindowMaximized(WindowMaximized),
 
     /// The window requested to be close.
-    CloseRequested(CloseRequested),
+    WindowCloseRequested(WindowCloseRequested),
 
     /// A pointer moved.
     PointerMoved(PointerMoved),
@@ -43,6 +60,20 @@ pub enum Event {
 
     /// A keyboard key was released.
     KeyReleased(KeyReleased),
+
+    /// Focus should be switched to next view in the focus chain.
+    FocusNext,
+
+    /// Focus should be switched to previous view in the focus chain.
+    FocusPrev,
+
+    /// Focus is wanted by another view.
+    ///
+    /// A view receiving this event should give up focus.
+    FocusWanted,
+
+    /// Focus given to either a specific view or any focu
+    FocusGiven(FocusTarget),
 
     /// An animation frame has passed.
     Animate(f32),
@@ -87,5 +118,13 @@ impl Event {
             Event::KeyReleased(released) => released.is_key(key),
             _ => false,
         }
+    }
+
+    /// Check if the event wants to take focus.
+    ///
+    /// This is true for `FocusNext`, `FocusPrev`, and `FocusWanted`.
+    #[rustfmt::skip]
+    pub fn wants_focus(&self) -> bool {
+        matches!(self, Event::FocusNext | Event::FocusPrev | Event::FocusWanted)
     }
 }

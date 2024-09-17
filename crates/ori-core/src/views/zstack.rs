@@ -54,9 +54,7 @@ impl<T, V: ViewSeq<T>> View<T> for ZStack<V> {
     }
 
     fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        for i in (0..self.content.len()).rev() {
-            self.content.event_nth(i, state, cx, data, event);
-        }
+        self.content.event(state, cx, data, event);
     }
 
     fn layout(

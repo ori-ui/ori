@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{
     canvas::Canvas,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::Event,
+    event::{Event, FocusTarget},
     layout::{Rect, Size, Space},
 };
 
@@ -117,7 +117,7 @@ impl<V> Pod<V> {
         view_state: &mut ViewState,
         cx: &mut EventCx,
         event: &Event,
-        mut f: impl FnMut(&mut EventCx, &Event),
+        f: impl FnMut(&mut EventCx, &Event),
     ) {
         if matches!(event, Event::Animate(_)) {
             if !view_state.needs_animate() {
@@ -129,11 +129,37 @@ impl<V> Pod<V> {
             view_state.mark_animated();
         }
 
+        if event.wants_focus() && view_state.is_focused() {
+            view_state.set_focused(false);
+        }
+
+        if let Event::FocusGiven(view_id) = event {
+            let focus_given = match view_id {
+                FocusTarget::Next | FocusTarget::Prev => view_state.is_focusable(),
+                FocusTarget::View(id) => view_state.id() == *id,
+            };
+
+            if focus_given {
+                view_state.set_focused(true);
+                Self::event_with_inner(view_state, cx, &Event::Update, f);
+                return;
+            }
+        }
+
         // if the window was scaled or resized we need want to be layed out again
         if matches!(event, Event::WindowScaled(_) | Event::WindowResized(_)) {
             view_state.request_layout();
         }
 
+        Self::event_with_inner(view_state, cx, event, f);
+    }
+
+    fn event_with_inner(
+        view_state: &mut ViewState,
+        cx: &mut EventCx,
+        event: &Event,
+        f: impl FnOnce(&mut EventCx, &Event),
+    ) {
         view_state.set_hovered(cx.window().is_hovered(view_state.id()));
         view_state.prepare();
 

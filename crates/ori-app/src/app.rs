@@ -6,9 +6,9 @@ use ori_core::{
     command::{CommandProxy, CommandReceiver},
     context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{
-        CloseRequested, Code, Event, Ime, Key, KeyPressed, KeyReleased, Modifiers, PointerButton,
+        Code, Event, FocusTarget, Ime, Key, KeyPressed, KeyReleased, Modifiers, PointerButton,
         PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
-        WindowMaximized, WindowResized, WindowScaled,
+        RequestFocus, WindowCloseRequested, WindowMaximized, WindowResized, WindowScaled,
     },
     layout::{Point, Size, Space, Vector},
     log::trace,
@@ -177,7 +177,7 @@ impl<T> App<T> {
     ///
     /// Returns `true` if the window was closed, i.e. the event was not handled.
     pub fn close_requested(&mut self, data: &mut T, window_id: WindowId) -> bool {
-        let event = Event::CloseRequested(CloseRequested { window: window_id });
+        let event = Event::WindowCloseRequested(WindowCloseRequested { window: window_id });
 
         let handled = self.window_event(data, window_id, &event);
 
@@ -370,6 +370,18 @@ impl<T> App<T> {
             });
 
             self.window_event(data, window_id, &event);
+
+            if let (Some(window), Key::Tab) = (self.windows.get(&window_id), key) {
+                let event = match window.view_state.has_focused() {
+                    true if self.modifiers.shift => Event::FocusPrev,
+                    false if self.modifiers.shift => Event::FocusGiven(FocusTarget::Prev),
+
+                    true => Event::FocusNext,
+                    false => Event::FocusGiven(FocusTarget::Next),
+                };
+
+                self.window_event(data, window_id, &event);
+            }
         } else {
             let event = Event::KeyReleased(KeyReleased {
                 key,
@@ -472,6 +484,11 @@ impl<T> App<T> {
                 self.handle_app_command(data, *app_command);
 
                 continue;
+            }
+
+            if let Some(RequestFocus(window, view)) = command.get() {
+                self.window_event(data, *window, &Event::FocusWanted);
+                self.window_event(data, *window, &Event::FocusGiven(FocusTarget::View(*view)));
             }
 
             self.event(data, &Event::Command(command));

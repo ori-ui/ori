@@ -54,12 +54,12 @@ pub struct Scroll<V> {
 
     /// The color of the scrollbar.
     #[rebuild(draw)]
-    #[styled(default -> Theme::SURFACE_HIGH or Color::grayscale(0.9))]
+    #[styled(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
     pub color: Styled<Color>,
 
     /// The color of the scrollbar knob.
     #[rebuild(draw)]
-    #[styled(default -> Theme::SURFACE_HIGHER or Color::grayscale(0.8))]
+    #[styled(default -> Theme::CONTRAST or Color::grayscale(0.8))]
     pub knob_color: Styled<Color>,
 }
 

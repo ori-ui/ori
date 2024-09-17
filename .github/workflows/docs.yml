@@ -47,10 +47,8 @@ jobs:
             -p ori
             -p ori-app
             -p ori-core
-            -p ori-font-awesome
             -p ori-macro
             -p ori-shell
-            -p ori-reload
       - name: Add a redirect index page
         run: |
           cat > target/doc/index.html <<EOF

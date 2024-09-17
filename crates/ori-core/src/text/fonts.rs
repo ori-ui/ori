@@ -186,8 +186,9 @@ impl Fonts {
         scale: f32,
     ) {
         let low_performance = cfg!(any(target_os = "android", target_os = "ios"));
+        let size = buffer.metrics().font_size * scale;
 
-        if low_performance {
+        if low_performance && size < 64.0 {
             self.draw_buffer_bitmap(canvas, buffer, color, offset, scale);
         } else {
             self.draw_buffer_outline(canvas, buffer, color, offset);

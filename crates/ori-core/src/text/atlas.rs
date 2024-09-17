@@ -30,6 +30,67 @@ impl FontAtlas {
         &self.image
     }
 
+    fn grow(&mut self) {
+        let new_size = self.image.width() * 2;
+        let mut new_atlas = FontAtlas::new(new_size);
+
+        for (key, glyph) in self.glyphs.drain() {
+            let [rx, ry, _, _] = new_atlas.root.insert(glyph.width, glyph.height).unwrap();
+
+            new_atlas.image.modify(|data| {
+                Self::copy_sub_image(
+                    self.image.data(),
+                    data,
+                    glyph.x as usize,
+                    glyph.y as usize,
+                    glyph.width as usize,
+                    glyph.height as usize,
+                    rx as usize,
+                    ry as usize,
+                    new_size as usize,
+                );
+            });
+
+            let glyph = AtlasGlyph {
+                uv: Rect::min_size(
+                    Point::new(rx as f32, ry as f32),
+                    Size::new(glyph.width as f32, glyph.height as f32),
+                ),
+                layout: glyph.layout,
+                x: rx,
+                y: ry,
+                width: glyph.width,
+                height: glyph.height,
+            };
+
+            new_atlas.glyphs.insert(key, glyph);
+        }
+
+        *self = new_atlas;
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn copy_sub_image(
+        src: &[u8],
+        dst: &mut [u8],
+        src_x: usize,
+        src_y: usize,
+        src_w: usize,
+        src_h: usize,
+        dst_x: usize,
+        dst_y: usize,
+        dst_w: usize,
+    ) {
+        for y in 0..src_h {
+            for x in 0..src_w {
+                let src_i = ((src_y + y) * src_w + src_x + x) * 4;
+                let dst_i = ((dst_y + y) * dst_w + dst_x + x) * 4;
+
+                dst[dst_i..dst_i + 4].copy_from_slice(&src[src_i..src_i + 4]);
+            }
+        }
+    }
+
     /// Insert a physical glyph into the atlas.
     pub fn insert(
         &mut self,
@@ -41,15 +102,18 @@ impl FontAtlas {
             return Some(glyph);
         }
 
-        let image = swash_cache
-            .get_image(font_system, cache_key)
-            .as_ref()
-            .unwrap();
+        let image = swash_cache.get_image(font_system, cache_key).as_ref()?;
 
         let width = image.placement.width + 4;
         let height = image.placement.height + 4;
 
-        let [rx, ry, _, _] = self.root.insert(width, height)?;
+        // grow the atlas if necessary
+        let [rx, ry, _, _] = loop {
+            match self.root.insert(width, height) {
+                Some(rect) => break rect,
+                None => self.grow(),
+            }
+        };
 
         let image_width = self.image.width();
 
@@ -83,6 +147,10 @@ impl FontAtlas {
                 Point::new(image.placement.left as f32, image.placement.top as f32),
                 Size::new(image.placement.width as f32, image.placement.height as f32),
             ),
+            x: rx,
+            y: ry,
+            width,
+            height,
         };
 
         Some(*self.glyphs.entry(cache_key).or_insert(glyph))
@@ -97,6 +165,11 @@ pub struct AtlasGlyph {
 
     /// The layout rect of the glyph.
     pub layout: Rect,
+
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
 }
 
 #[derive(Debug)]

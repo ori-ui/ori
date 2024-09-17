@@ -119,6 +119,24 @@ impl Styles {
         Arc::make_mut(&mut self.styles).insert(key, StyleEntry::Key(style));
     }
 
+    /// Insert a style key.
+    pub fn with<T: 'static>(mut self, key: &str, styled: Styled<T>) -> Self {
+        self.insert(key, styled);
+        self
+    }
+
+    /// Insert a styled value.
+    pub fn with_value<T: 'static>(mut self, key: &str, value: T) -> Self {
+        self.insert_value(key, value);
+        self
+    }
+
+    /// Insert a style key.
+    pub fn with_style(mut self, key: &str, style: &str) -> Self {
+        self.insert_style(key, style);
+        self
+    }
+
     /// Extend the styles with another collection of styles.
     pub fn extend(&mut self, styles: impl Into<Styles>) {
         let styles = Arc::unwrap_or_clone(styles.into().styles);

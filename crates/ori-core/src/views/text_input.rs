@@ -579,8 +579,8 @@ impl<T> View<T> for TextInput<T> {
 
                 cx.set_ime(Some(state.ime(self.multiline, self.capitalize)));
             }
-            Event::PointerPressed(e) => {
-                cx.set_focused(true);
+            Event::PointerPressed(e) if cx.is_hovered() => {
+                cx.focus();
                 cx.animate();
 
                 state.blink = 0.0;

@@ -60,14 +60,14 @@ struct Delegate;
 
 impl AppDelegate<Data> for Delegate {
     fn event(&mut self, cx: &mut DelegateCx<Data>, data: &mut Data, event: &Event) -> bool {
-        if let Some(request) = event.cmd::<CloseRequested>() {
+        if let Some(request) = event.cmd::<WindowCloseRequested>() {
             data.windows.retain(|w| *w != request.window);
             cx.rebuild();
 
             info!("Window {} closed", request.window);
         }
 
-        if let Event::CloseRequested(e) = event {
+        if let Event::WindowCloseRequested(e) = event {
             data.windows.retain(|w| *w != e.window);
             cx.rebuild();
 

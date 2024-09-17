@@ -1,7 +1,7 @@
 # Ori
 [![Crates.io](https://img.shields.io/crates/v/ori)](https://crates.io/crates/ori)
 [![Documentation](https://img.shields.io/docsrs/ori)](https://docs.rs/ori/latest)
-[![license](https://img.shields.io/crates/l/ori)](https://github.com/ChangeCaps/ori/tree/main)
+[![license](https://img.shields.io/crates/l/ori)](https://github.com/ori-ui/ori/tree/main)
 
 Ori is a cross-platform declarative UI framework for Rust, with a focus on
 simplicity and performance.
@@ -12,10 +12,10 @@ provides the core functionality, and *ori_winit*, which provides
 a winit based shell, and supports both a wgpu, and glow based renderer.
 
 # Documentation
-Auto-generated documentation is available [`here`](https://changecaps.github.io/ori-docs/ori/).
+Auto-generated documentation is available [`here`](https://ori-ui.github.io/ori-docs/ori/).
 
 # Examples
-For more examples, see [`ori/examples`](https://github.com/ChangeCaps/ori/tree/main/examples).
+For more examples, see [`ori/examples`](https://github.com/ori-ui/ori/tree/main/examples).
 
 ```rust,no_run
 use ori::prelude::*;

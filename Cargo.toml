@@ -9,7 +9,7 @@ authors.workspace = true
 license.workspace = true
 
 [workspace]
-members = ["crates/*", "examples/futures", "examples/mobile", "examples/suspense"]
+members = ["crates/*", "examples/*"]
 
 [workspace.package]
 version = "0.1.0-alpha.1"
@@ -21,7 +21,6 @@ license = "MIT OR Apache-2.0"
 ori-app             = { path = "crates/ori-app",            version = "0.1.0-alpha.1" }
 ori-core            = { path = "crates/ori-core",           version = "0.1.0-alpha.1" }
 ori-dylib           = { path = "crates/ori-dylib",          version = "0.1.0-alpha.1" }
-ori-font-awesome    = { path = "crates/ori-font-awesome",   version = "0.1.0-alpha.1" }
 ori-glow            = { path = "crates/ori-glow",           version = "0.1.0-alpha.1" }
 ori-macro           = { path = "crates/ori-macro",          version = "0.1.0-alpha.1" }
 ori-shell           = { path = "crates/ori-shell",          version = "0.1.0-alpha.1" }
@@ -35,7 +34,6 @@ ori-macro           = { workspace = true }
 
 # Optional dependencies
 ori-dylib           = { workspace = true, optional = true }
-ori-font-awesome    = { workspace = true, optional = true }
 
 # Backend dependencies
 ori-shell           = { workspace = true, optional = true }
@@ -48,14 +46,13 @@ features = ["full"]
 
 [features]
 default = ["shell", "x11", "wayland"]
-font-awesome = ["dep:ori-font-awesome"]
 image = ["ori-core/image"]
 serde = ["ori-core/serde"]
 dylib = ["dep:ori-dylib"]
 dylib-always = ["dylib", "ori-dylib/always"]
 
 # All features
-full = ["font-awesome", "image", "serde"]
+full = ["image", "serde"]
 
 # Backend features
 shell = ["dep:ori-shell", "ori-dylib?/shell"]

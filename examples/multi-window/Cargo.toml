@@ -1,0 +1,9 @@
+[package]
+name = "multi-window"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+ori = { git = "https://github.com/ori-ui/ori" }
+ori-font-awesome = { git = "https://github.com/ori-ui/ori-font-awesome" }

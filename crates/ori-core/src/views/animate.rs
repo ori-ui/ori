@@ -124,7 +124,7 @@ pub fn transition<T, V>(
 
 /// A view that animates.
 ///
-/// For an example, see [`animate`](https://github.com/ChangeCaps/ori/blob/main/examples/animate.rs).
+/// For an example, see [`animate`](https://github.com/ori-ui/ori/blob/main/examples/animate.rs).
 pub struct Animate<T, V, S = ()> {
     /// The animation callback.
     #[allow(clippy::type_complexity)]

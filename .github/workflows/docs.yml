@@ -62,6 +62,6 @@ jobs:
         with:
           branch: gh-pages
           folder: target/doc
-          repository-name: ChangeCaps/ori-docs
+          repository-name: ori-ui/ori-docs
           ssh-key: ${{ secrets.DOCS_DEPLOY_KEY }}
 

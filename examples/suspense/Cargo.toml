@@ -1,9 +1,8 @@
 [package]
 name = "suspense"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
+version = "0.1.0"
+edition = "2021"
+publish = false
 
 [dependencies]
 ori = { path = "../..", features = ["image"] }

@@ -15,13 +15,6 @@ pub mod app {
     pub use ori_app::*;
 }
 
-#[cfg(feature = "font-awesome")]
-pub mod font_awesome {
-    //! Ori [`font-awesome`](ori_font_awesome) integration.
-
-    pub use ori_font_awesome::*;
-}
-
 #[cfg(feature = "shell")]
 pub use ori_shell::{run, run_simple};
 
@@ -81,9 +74,6 @@ pub mod prelude {
     };
 
     pub use ori_macro::{desktop, is_desktop, is_mobile, is_web, mobile, web, Build, Styled};
-
-    #[cfg(feature = "font-awesome")]
-    pub use ori_font_awesome as fa;
 
     #[cfg(feature = "image")]
     pub use ori_core::include_image;

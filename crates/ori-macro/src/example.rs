@@ -103,7 +103,7 @@ pub fn example(
 
     let iframe = format!(
         "<iframe 
-            src=\"https://changecaps.github.io/ori-examples/?example={}\"
+            src=\"https://ori-ui.github.io/ori-examples/?example={}\"
             style=\"width: {}px; height: {}px; border: none; overflow: hidden; border-radius: 6px;\"
         ></iframe>",
         args.name, args.width, args.height

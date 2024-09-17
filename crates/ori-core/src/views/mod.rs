@@ -155,8 +155,8 @@ mod testing {
 
     pub type SavedLayouts = HashMap<String, Rect>;
 
-    pub fn save_layout<V>(content: V, name: impl Into<String>) -> LayoutSaver<V> {
-        LayoutSaver::new(content, name)
+    pub fn save_layout<V>(view: V, name: impl Into<String>) -> LayoutSaver<V> {
+        LayoutSaver::new(view, name)
     }
 
     pub struct LayoutSaver<V> {

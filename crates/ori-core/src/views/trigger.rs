@@ -6,8 +6,8 @@ use crate::{
 };
 
 /// Create a new [`Trigger`] view.
-pub fn trigger<V>(content: V) -> Trigger<V> {
-    Trigger::new(content)
+pub fn trigger<V>(view: V) -> Trigger<V> {
+    Trigger::new(view)
 }
 
 /// A view that creates a trigger around the content.

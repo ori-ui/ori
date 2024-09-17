@@ -9,28 +9,28 @@ use crate::{
 };
 
 /// Create a new [`Transform`] view.
-pub fn transform<V>(transform: Affine, content: V) -> Transform<V> {
-    Transform::new(transform, content)
+pub fn transform<V>(transform: Affine, view: V) -> Transform<V> {
+    Transform::new(transform, view)
 }
 
 /// Create a new [`Transform`] view that translates its content.
-pub fn translate<V>(translation: impl Into<Vector>, content: V) -> Transform<V> {
-    Transform::new(Affine::translate(translation.into()), content)
+pub fn translate<V>(translation: impl Into<Vector>, view: V) -> Transform<V> {
+    Transform::new(Affine::translate(translation.into()), view)
 }
 
 /// Create a new [`Transform`] view that rotates its content.
-pub fn rotate<V>(degrees: f32, content: V) -> Transform<V> {
-    Transform::new(Affine::rotate(degrees), content)
+pub fn rotate<V>(degrees: f32, view: V) -> Transform<V> {
+    Transform::new(Affine::rotate(degrees), view)
 }
 
 /// Create a new [`Transform`] view that rotates its content in degrees.
-pub fn rotate_degrees<V>(degrees: f32, content: V) -> Transform<V> {
-    rotate(degrees.to_radians(), content)
+pub fn rotate_degrees<V>(degrees: f32, view: V) -> Transform<V> {
+    rotate(degrees.to_radians(), view)
 }
 
 /// Create a new [`Transform`] view that scales its content.
-pub fn scale<V>(scale: impl Into<Vector>, content: V) -> Transform<V> {
-    Transform::new(Affine::scale(scale.into()), content)
+pub fn scale<V>(scale: impl Into<Vector>, view: V) -> Transform<V> {
+    Transform::new(Affine::scale(scale.into()), view)
 }
 
 /// A view that transforms its content.

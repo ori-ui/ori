@@ -16,8 +16,8 @@ use crate::{
 };
 
 /// Create a new [`Tooltip`] view.
-pub fn tooltip<V>(content: V, text: impl Into<SmolStr>) -> Tooltip<V> {
-    Tooltip::new(content, text)
+pub fn tooltip<V>(view: V, text: impl Into<SmolStr>) -> Tooltip<V> {
+    Tooltip::new(view, text)
 }
 
 /// A view that displays some text when the content is hovered.

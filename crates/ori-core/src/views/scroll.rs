@@ -12,13 +12,13 @@ use crate::{
 };
 
 /// Create a new horizontal [`Scroll`].
-pub fn hscroll<V>(content: V) -> Scroll<V> {
-    Scroll::new(Axis::Horizontal, content)
+pub fn hscroll<V>(view: V) -> Scroll<V> {
+    Scroll::new(Axis::Horizontal, view)
 }
 
 /// Create a new vertical [`Scroll`].
-pub fn vscroll<V>(content: V) -> Scroll<V> {
-    Scroll::new(Axis::Vertical, content)
+pub fn vscroll<V>(view: V) -> Scroll<V> {
+    Scroll::new(Axis::Vertical, view)
 }
 
 /// A scrollable view.

@@ -29,13 +29,13 @@ macro_rules! vwrap {
 }
 
 /// Create a horizontal [`Wrap`].
-pub fn hwrap<V>(content: V) -> Wrap<V> {
-    Wrap::new(Axis::Horizontal, content)
+pub fn hwrap<V>(view: V) -> Wrap<V> {
+    Wrap::new(Axis::Horizontal, view)
 }
 
 /// Create a vertical [`Wrap`].
-pub fn vwrap<V>(content: V) -> Wrap<V> {
-    Wrap::new(Axis::Vertical, content)
+pub fn vwrap<V>(view: V) -> Wrap<V> {
+    Wrap::new(Axis::Vertical, view)
 }
 
 /// Create a horizontal [`Wrap`], with a vector of content.

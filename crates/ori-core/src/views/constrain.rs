@@ -7,65 +7,65 @@ use crate::{
 };
 
 /// Create a new [`Constrain`]ed view, constraining its content to a space.
-pub fn constrain<V>(space: impl Into<Space>, content: V) -> Constrain<V> {
-    Constrain::new(space.into(), content)
+pub fn constrain<V>(space: impl Into<Space>, view: V) -> Constrain<V> {
+    Constrain::new(space.into(), view)
 }
 
 /// Create a new [`Constrain`]ed view, cosntraining its content to a size.
-pub fn size<V>(size: impl Into<Size>, content: V) -> Constrain<V> {
-    Constrain::new(Space::from_size(size.into()), content)
+pub fn size<V>(size: impl Into<Size>, view: V) -> Constrain<V> {
+    Constrain::new(Space::from_size(size.into()), view)
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a minimum size.
-pub fn min_size<V>(min_size: impl Into<Size>, content: V) -> Constrain<V> {
-    Constrain::new(Space::new(min_size.into(), Size::FILL), content)
+pub fn min_size<V>(min_size: impl Into<Size>, view: V) -> Constrain<V> {
+    Constrain::new(Space::new(min_size.into(), Size::FILL), view)
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a maximum size.
-pub fn max_size<V>(max_size: impl Into<Size>, content: V) -> Constrain<V> {
-    Constrain::new(Space::new(Size::ZERO, max_size.into()), content)
+pub fn max_size<V>(max_size: impl Into<Size>, view: V) -> Constrain<V> {
+    Constrain::new(Space::new(Size::ZERO, max_size.into()), view)
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a width.
-pub fn width<V>(width: f32, content: V) -> Constrain<V> {
-    let mut constrain = Constrain::unbounded(content);
+pub fn width<V>(width: f32, view: V) -> Constrain<V> {
+    let mut constrain = Constrain::unbounded(view);
     constrain.space.min.width = width;
     constrain.space.max.width = width;
     constrain
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a height.
-pub fn height<V>(height: f32, content: V) -> Constrain<V> {
-    let mut constrain = Constrain::unbounded(content);
+pub fn height<V>(height: f32, view: V) -> Constrain<V> {
+    let mut constrain = Constrain::unbounded(view);
     constrain.space.min.height = height;
     constrain.space.max.height = height;
     constrain
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a minimum width.
-pub fn min_width<V>(min_width: f32, content: V) -> Constrain<V> {
-    let mut constrain = Constrain::unbounded(content);
+pub fn min_width<V>(min_width: f32, view: V) -> Constrain<V> {
+    let mut constrain = Constrain::unbounded(view);
     constrain.space.min.width = min_width;
     constrain
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a minimum height.
-pub fn min_height<V>(min_height: f32, content: V) -> Constrain<V> {
-    let mut constrain = Constrain::unbounded(content);
+pub fn min_height<V>(min_height: f32, view: V) -> Constrain<V> {
+    let mut constrain = Constrain::unbounded(view);
     constrain.space.min.height = min_height;
     constrain
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a maximum width.
-pub fn max_width<V>(max_width: f32, content: V) -> Constrain<V> {
-    let mut constrain = Constrain::unbounded(content);
+pub fn max_width<V>(max_width: f32, view: V) -> Constrain<V> {
+    let mut constrain = Constrain::unbounded(view);
     constrain.space.max.width = max_width;
     constrain
 }
 
 /// Create a new [`Constrain`]ed view, constraining its content to a maximum height.
-pub fn max_height<V>(max_height: f32, content: V) -> Constrain<V> {
-    let mut constrain = Constrain::unbounded(content);
+pub fn max_height<V>(max_height: f32, view: V) -> Constrain<V> {
+    let mut constrain = Constrain::unbounded(view);
     constrain.space.max.height = max_height;
     constrain
 }

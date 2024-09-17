@@ -11,28 +11,28 @@ use crate::{
 };
 
 /// Create a new [`Pad`] view.
-pub fn pad<V>(padding: impl Into<Padding>, content: V) -> Pad<V> {
-    Pad::new(padding, content)
+pub fn pad<V>(padding: impl Into<Padding>, view: V) -> Pad<V> {
+    Pad::new(padding, view)
 }
 
 /// Create a new [`Pad`] view adding padding to the top.
-pub fn pad_top<V>(padding: f32, content: V) -> Pad<V> {
-    Pad::new([padding, 0.0, 0.0, 0.0], content)
+pub fn pad_top<V>(padding: f32, view: V) -> Pad<V> {
+    Pad::new([padding, 0.0, 0.0, 0.0], view)
 }
 
 /// Create a new [`Pad`] view adding padding to the right.
-pub fn pad_right<V>(padding: f32, content: V) -> Pad<V> {
-    Pad::new([0.0, padding, 0.0, 0.0], content)
+pub fn pad_right<V>(padding: f32, view: V) -> Pad<V> {
+    Pad::new([0.0, padding, 0.0, 0.0], view)
 }
 
 /// Create a new [`Pad`] view adding padding to the bottom.
-pub fn pad_bottom<V>(padding: f32, content: V) -> Pad<V> {
-    Pad::new([0.0, 0.0, padding, 0.0], content)
+pub fn pad_bottom<V>(padding: f32, view: V) -> Pad<V> {
+    Pad::new([0.0, 0.0, padding, 0.0], view)
 }
 
 /// Create a new [`Pad`] view adding padding to the left.
-pub fn pad_left<V>(padding: f32, content: V) -> Pad<V> {
-    Pad::new([0.0, 0.0, 0.0, padding], content)
+pub fn pad_left<V>(padding: f32, view: V) -> Pad<V> {
+    Pad::new([0.0, 0.0, 0.0, padding], view)
 }
 
 /// A view that adds padding to its content.

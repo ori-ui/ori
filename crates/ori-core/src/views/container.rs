@@ -11,8 +11,8 @@ use crate::{
 };
 
 /// Create a new [`Container`].
-pub fn container<V>(content: V) -> Container<V> {
-    Container::new(content)
+pub fn container<V>(view: V) -> Container<V> {
+    Container::new(view)
 }
 
 /// Create a new [`Container`] with background.
@@ -24,8 +24,8 @@ pub fn container<V>(content: V) -> Container<V> {
 ///     background(Color::RED, text("Hello, World!"))
 /// }
 /// ````
-pub fn background<V>(background: impl Into<Styled<Color>>, content: V) -> Container<V> {
-    Container::new(content).background(background)
+pub fn background<V>(background: impl Into<Styled<Color>>, view: V) -> Container<V> {
+    Container::new(view).background(background)
 }
 
 /// A container view.

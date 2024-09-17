@@ -9,13 +9,13 @@ use crate::{
 };
 
 /// Create a new [`Flexible`] view.
-pub fn flex<V>(content: V) -> Flexible<V> {
-    Flexible::new(1.0, false, content)
+pub fn flex<V>(view: V) -> Flexible<V> {
+    Flexible::new(1.0, false, view)
 }
 
 /// Create a new expanded [`Flexible`] view.
-pub fn expand<V>(content: V) -> Flexible<V> {
-    Flexible::new(1.0, true, content)
+pub fn expand<V>(view: V) -> Flexible<V> {
+    Flexible::new(1.0, true, view)
 }
 
 /// The flex value of a view.

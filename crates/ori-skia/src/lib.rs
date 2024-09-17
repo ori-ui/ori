@@ -8,9 +8,10 @@ use ori_core::{
 };
 
 type Images = HashMap<WeakImage, skia_safe::Image>;
+type GlGetIntegerv = unsafe extern "C" fn(u32, *mut i32);
 
 pub struct SkiaRenderer {
-    gl_get_integerv: unsafe extern "C" fn(u32, *mut i32),
+    gl_get_integerv: GlGetIntegerv,
     skia: skia_safe::gpu::DirectContext,
     surface: Option<skia_safe::Surface>,
     images: HashMap<WeakImage, skia_safe::Image>,
@@ -23,7 +24,9 @@ impl SkiaRenderer {
         let interface = skia_safe::gpu::gl::Interface::new_load_with(&mut loader).unwrap();
         let skia = skia_safe::gpu::direct_contexts::make_gl(interface, None).unwrap();
 
-        let gl_get_integerv = unsafe { mem::transmute(loader("glGetIntegerv")) };
+        let gl_get_integerv = unsafe {
+            mem::transmute::<*const std::ffi::c_void, GlGetIntegerv>(loader("glGetIntegerv"))
+        };
 
         Self {
             gl_get_integerv,

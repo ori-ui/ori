@@ -12,8 +12,8 @@ use crate::{
 };
 
 /// Create a new [`Button`].
-pub fn button<V>(content: V) -> Button<V> {
-    Button::new(content)
+pub fn button<V>(view: V) -> Button<V> {
+    Button::new(view)
 }
 
 /// A button.

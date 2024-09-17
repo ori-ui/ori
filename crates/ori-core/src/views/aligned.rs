@@ -9,53 +9,53 @@ use crate::{
 };
 
 /// Create a new [`Aligned`] view.
-pub fn align<V>(alignment: impl Into<Alignment>, content: V) -> Aligned<V> {
-    Aligned::new(alignment.into(), content)
+pub fn align<V>(alignment: impl Into<Alignment>, view: V) -> Aligned<V> {
+    Aligned::new(alignment.into(), view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the center.
-pub fn center<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::CENTER, content)
+pub fn center<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::CENTER, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the top left.
-pub fn top_left<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::TOP_LEFT, content)
+pub fn top_left<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::TOP_LEFT, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the top.
-pub fn top<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::TOP, content)
+pub fn top<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::TOP, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the top right.
-pub fn top_right<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::TOP_RIGHT, content)
+pub fn top_right<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::TOP_RIGHT, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the left.
-pub fn left<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::LEFT, content)
+pub fn left<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::LEFT, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the right.
-pub fn right<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::RIGHT, content)
+pub fn right<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::RIGHT, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the bottom left.
-pub fn bottom_left<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::BOTTOM_LEFT, content)
+pub fn bottom_left<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::BOTTOM_LEFT, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the bottom.
-pub fn bottom<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::BOTTOM, content)
+pub fn bottom<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::BOTTOM, view)
 }
 
 /// Create a new [`Aligned`] view that aligns its content to the bottom right.
-pub fn bottom_right<V>(content: V) -> Aligned<V> {
-    Aligned::new(Alignment::BOTTOM_RIGHT, content)
+pub fn bottom_right<V>(view: V) -> Aligned<V> {
+    Aligned::new(Alignment::BOTTOM_RIGHT, view)
 }
 
 /// A view that aligns its content.

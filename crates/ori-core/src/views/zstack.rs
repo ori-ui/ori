@@ -18,8 +18,8 @@ macro_rules! zstack {
 }
 
 /// Create a new [`ZStack`] view.
-pub fn zstack<V>(content: V) -> ZStack<V> {
-    ZStack::new(content)
+pub fn zstack<V>(view: V) -> ZStack<V> {
+    ZStack::new(view)
 }
 
 /// A view that overlays its content on top of each other.

@@ -18,8 +18,10 @@ bitflags::bitflags! {
     pub struct Update: u8 {
         /// The view needs to be laid out.
         const LAYOUT = 1 << 1;
+
         /// The view needs to be drawn.
         const DRAW = 1 << 2;
+
         /// The view needs an animation frame.
         const ANIMATE = 1 << 3;
     }
@@ -31,16 +33,22 @@ bitflags::bitflags! {
     pub struct ViewFlags: u8 {
         /// The view is hovered.
         const HOVERED = 1 << 0;
+
         /// The view is focused.
         const FOCUSED = 1 << 1;
+
         /// The view is active.
         const ACTIVE = 1 << 2;
+
         /// The view has a hovered child.
         const HAS_HOVERED = 1 << 3;
+
         /// The view has a focused child.
         const HAS_FOCUSED = 1 << 4;
+
         /// The view has an active child.
         const HAS_ACTIVE = 1 << 5;
+
         /// The view is focusable.
         const FOCUSABLE = 1 << 6;
 

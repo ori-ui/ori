@@ -111,7 +111,7 @@ impl<T> View<T> for Checkbox {
         cx: &mut EventCx,
         _data: &mut T,
         event: &Event,
-    ) {
+    ) -> bool {
         if cx.focused_changed() {
             cx.draw();
         }
@@ -128,6 +128,8 @@ impl<T> View<T> for Checkbox {
 
             cx.draw();
         }
+
+        false
     }
 
     fn layout(

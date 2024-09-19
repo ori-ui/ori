@@ -216,8 +216,8 @@ impl<S, T, V: View<(S, T)>> View<T> for WithState<S, T, V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
-        with_data_state(data_state, data, |data| view.event(state, cx, data, event));
+    ) -> bool {
+        with_data_state(data_state, data, |data| view.event(state, cx, data, event))
     }
 
     fn layout(

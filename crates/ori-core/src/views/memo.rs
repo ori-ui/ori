@@ -63,8 +63,14 @@ impl<T, V: View<T>, D: PartialEq> View<T> for Memo<T, V, D> {
         }
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        state.view.event(&mut state.state, cx, data, event);
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        state.view.event(&mut state.state, cx, data, event)
     }
 
     fn layout(

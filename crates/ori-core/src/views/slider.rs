@@ -122,21 +122,27 @@ impl<T> View<T> for Slider<T> {
         style.rebuild(self, cx);
     }
 
-    fn event(&mut self, style: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        style: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         match event {
-            Event::PointerPressed(e) => {
+            Event::PointerPressed(e) if cx.is_hovered() => {
                 let local = cx.local(e.position);
 
-                if cx.is_hovered() {
-                    let value = self.axis.unpack(local).0 / style.length;
-                    let value = denormalize(value, &self.range);
+                let value = self.axis.unpack(local).0 / style.length;
+                let value = denormalize(value, &self.range);
 
-                    if let Some(on_input) = &mut self.on_input {
-                        on_input(cx, data, value);
-                    }
-
-                    cx.set_active(true);
+                if let Some(on_input) = &mut self.on_input {
+                    on_input(cx, data, value);
                 }
+
+                cx.set_active(true);
+
+                true
             }
             Event::PointerMoved(e) => {
                 let local = cx.local(e.position);
@@ -149,13 +155,15 @@ impl<T> View<T> for Slider<T> {
                         on_input(cx, data, value);
                     }
                 }
+
+                false
             }
-            Event::PointerReleased(_) => {
-                if cx.is_active() {
-                    cx.set_active(false);
-                }
+            Event::PointerReleased(_) if cx.is_active() => {
+                cx.set_active(false);
+
+                true
             }
-            _ => {}
+            _ => false,
         }
     }
 

@@ -54,10 +54,20 @@ impl<T, U, V: View<U>> View<T> for Focus<T, U, V> {
         });
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        let mut handled = false;
+
         (self.focus)(data, &mut |data| {
-            self.content.event(state, cx, data, event);
+            handled = self.content.event(state, cx, data, event);
         });
+
+        handled
     }
 
     fn layout(

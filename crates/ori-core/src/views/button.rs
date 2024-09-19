@@ -119,26 +119,29 @@ impl<T, V: View<T>> View<T> for Button<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
+    ) -> bool {
         if cx.focused_changed() {
             cx.draw();
         }
 
-        self.content.event(content, cx, data, event);
+        let handled = self.content.event(content, cx, data, event);
 
         if cx.hovered_changed() || cx.active_changed() {
             cx.animate();
         }
 
         if let Event::Animate(dt) = event {
-            if (state.style.transition).step(&mut state.hovered, cx.is_hovered(), *dt)
-                || (state.style.transition).step(&mut state.active, cx.is_active(), *dt)
-            {
+            let hover = (state.style.transition).step(&mut state.hovered, cx.is_hovered(), *dt);
+            let active = (state.style.transition).step(&mut state.active, cx.is_active(), *dt);
+
+            if hover || active {
                 cx.animate();
             }
 
             cx.draw();
         }
+
+        handled
     }
 
     fn layout(

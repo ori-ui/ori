@@ -41,7 +41,7 @@ pub trait ViewSeq<T> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    );
+    ) -> bool;
 
     /// Layout the nth view.
     fn layout_nth(
@@ -107,8 +107,8 @@ impl<T, V: View<T>> ViewSeq<T> for Vec<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
-        self[n].event(&mut state[n], cx, data, event);
+    ) -> bool {
+        self[n].event(&mut state[n], cx, data, event)
     }
 
     fn layout_nth(
@@ -158,7 +158,8 @@ impl<T> ViewSeq<T> for () {
         _cx: &mut EventCx,
         _data: &mut T,
         _event: &Event,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn layout_nth(
@@ -229,10 +230,10 @@ macro_rules! impl_tuple {
                 cx: &mut EventCx,
                 data: &mut T,
                 event: &Event,
-            ) {
+            ) -> bool {
                 match n {
                     $($index => self.$index.event(&mut state.$index, cx, data, event),)*
-                    _ => {},
+                    _ => false,
                 }
             }
 
@@ -426,26 +427,36 @@ impl<V> PodSeq<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) where
+    ) -> bool
+    where
         V: ViewSeq<T>,
     {
         match event {
             Event::FocusNext => {
-                Self::switch_focus(self, state, cx, data, event, 0..self.len(), true);
+                Self::switch_focus(self, state, cx, data, event, 0..self.len(), true)
             }
             Event::FocusPrev => {
-                Self::switch_focus(self, state, cx, data, event, (0..self.len()).rev(), false);
+                Self::switch_focus(self, state, cx, data, event, (0..self.len()).rev(), false)
             }
             Event::FocusGiven(FocusTarget::Next) => {
-                Self::give_focus(self, state, cx, data, event, 0..self.len());
+                Self::give_focus(self, state, cx, data, event, 0..self.len())
             }
             Event::FocusGiven(FocusTarget::Prev) => {
-                Self::give_focus(self, state, cx, data, event, (0..self.len()).rev());
+                Self::give_focus(self, state, cx, data, event, (0..self.len()).rev())
             }
             _ => {
+                let mut handled = false;
+
                 for i in 0..self.len() {
-                    self.event_nth(i, state, cx, data, event);
+                    if handled {
+                        cx.view_state.propagate(&mut state[i]);
+                        continue;
+                    }
+
+                    handled |= self.event_nth(i, state, cx, data, event);
                 }
+
+                handled
             }
         }
     }
@@ -458,7 +469,8 @@ impl<V> PodSeq<V> {
         event: &Event,
         order: impl IntoIterator<Item = usize>,
         forward: bool,
-    ) where
+    ) -> bool
+    where
         V: ViewSeq<T>,
     {
         enum State {
@@ -477,11 +489,9 @@ impl<V> PodSeq<V> {
                         continue;
                     }
 
-                    self.event_nth(i, content, cx, data, event);
-
-                    match content[i].has_focused() {
-                        false => state = State::GivingFocus,
-                        true => state = State::Propagating,
+                    match self.event_nth(i, content, cx, data, event) {
+                        true => state = State::GivingFocus,
+                        false => state = State::Propagating,
                     }
                 }
                 State::GivingFocus => {
@@ -490,9 +500,7 @@ impl<V> PodSeq<V> {
                         false => Event::FocusGiven(FocusTarget::Prev),
                     };
 
-                    self.event_nth(i, content, cx, data, &event);
-
-                    if content[i].has_focused() {
+                    if self.event_nth(i, content, cx, data, &event) {
                         state = State::Propagating;
                     }
                 }
@@ -501,6 +509,8 @@ impl<V> PodSeq<V> {
                 }
             }
         }
+
+        matches!(state, State::Propagating)
     }
 
     fn give_focus<T>(
@@ -510,23 +520,22 @@ impl<V> PodSeq<V> {
         data: &mut T,
         event: &Event,
         content: impl IntoIterator<Item = usize>,
-    ) where
+    ) -> bool
+    where
         V: ViewSeq<T>,
     {
-        let mut focus_given = false;
+        let mut handled = false;
 
         for i in content {
-            if focus_given {
+            if handled {
                 cx.view_state.propagate(&mut state[i]);
                 continue;
             }
 
-            self.event_nth(i, state, cx, data, event);
-
-            if state[i].has_focused() {
-                focus_given = true;
-            }
+            handled |= self.event_nth(i, state, cx, data, event);
         }
+
+        handled
     }
 
     /// Handle an event for the nth view.
@@ -539,12 +548,13 @@ impl<V> PodSeq<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) where
+    ) -> bool
+    where
         V: ViewSeq<T>,
     {
         Pod::<V>::event_with(&mut state.view_state[n], cx, event, |cx, event| {
-            (self.views).event_nth(n, &mut state.content, cx, data, event);
-        });
+            (self.views).event_nth(n, &mut state.content, cx, data, event)
+        })
     }
 
     /// Layout the nth view.

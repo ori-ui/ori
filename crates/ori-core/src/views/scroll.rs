@@ -165,7 +165,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
+    ) -> bool {
         let overflow = self.overflow(content.size(), cx.size());
 
         // handle ponter event
@@ -194,26 +194,32 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             }
         }
 
-        if matches!(event, Event::PointerPressed(_)) && cx.has_hovered() && is_mobile!() {
-            state.dragging = true;
-        }
-
-        if matches!(event, Event::PointerReleased(_)) {
-            state.dragging = false;
-        }
+        let mut handled = false;
 
         if matches!(event, Event::PointerPressed(_)) && state.scrollbar_hovered {
+            handled = true;
             cx.set_active(true);
             cx.draw();
         }
 
         if matches!(event, Event::PointerReleased(_)) && cx.is_active() {
+            handled = true;
             cx.set_active(false);
             cx.draw();
         }
 
         // propagate event
-        self.content.event(content, cx, data, event);
+        handled = self.content.event_maybe(handled, content, cx, data, event);
+
+        if is_mobile!() && !handled {
+            if matches!(event, Event::PointerPressed(_)) && cx.has_hovered() {
+                state.dragging = true;
+            }
+
+            if matches!(event, Event::PointerReleased(_)) && state.dragging {
+                state.dragging = false;
+            }
+        }
 
         let on = cx.is_hovered() || cx.has_hovered() || cx.is_active() || state.scrollbar_hovered;
 
@@ -229,7 +235,9 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         }
 
         if let Event::PointerScrolled(e) = event {
-            if on {
+            if on && !handled {
+                handled = true;
+
                 state.scroll -= e.delta.y * 10.0;
                 state.scroll = state.scroll.clamp(0.0, overflow);
 
@@ -238,6 +246,8 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
                 cx.draw();
             }
         }
+
+        handled
     }
 
     fn layout(

@@ -63,7 +63,13 @@ pub trait AnyView<T> {
     );
 
     /// Handle an event.
-    fn dyn_event(&mut self, state: &mut AnyState, cx: &mut EventCx, data: &mut T, event: &Event);
+    fn dyn_event(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool;
 
     /// Calculate the layout.
     fn dyn_layout(
@@ -99,10 +105,9 @@ where
         old: &dyn AnyView<T>,
     ) {
         if let Some(old) = old.as_any().downcast_ref::<V>() {
-            if let Some(state) = state.downcast_mut::<V::State>() {
-                self.rebuild(state, cx, data, old);
-            } else {
-                eprintln!("Failed to downcast state");
+            match state.downcast_mut::<V::State>() {
+                Some(state) => self.rebuild(state, cx, data, old),
+                None => eprintln!("Failed to downcast state"),
             }
         } else {
             *cx.view_state = Default::default();
@@ -110,11 +115,16 @@ where
         }
     }
 
-    fn dyn_event(&mut self, state: &mut AnyState, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if let Some(state) = state.downcast_mut::<V::State>() {
-            self.event(state, cx, data, event);
-        } else {
-            eprintln!("Failed to downcast state");
+    fn dyn_event(
+        &mut self,
+        state: &mut AnyState,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        match state.downcast_mut::<V::State>() {
+            Some(state) => self.event(state, cx, data, event),
+            None => false,
         }
     }
 
@@ -125,19 +135,16 @@ where
         data: &mut T,
         space: Space,
     ) -> Size {
-        if let Some(state) = state.downcast_mut::<V::State>() {
-            self.layout(state, cx, data, space)
-        } else {
-            eprintln!("Failed to downcast state");
-            Size::ZERO
+        match state.downcast_mut::<V::State>() {
+            Some(state) => self.layout(state, cx, data, space),
+            None => space.min,
         }
     }
 
     fn dyn_draw(&mut self, state: &mut AnyState, cx: &mut DrawCx, data: &mut T) {
-        if let Some(state) = state.downcast_mut::<V::State>() {
-            self.draw(state, cx, data);
-        } else {
-            eprintln!("Failed to downcast state");
+        match state.downcast_mut::<V::State>() {
+            Some(state) => self.draw(state, cx, data),
+            None => eprintln!("Failed to downcast state"),
         }
     }
 }
@@ -153,8 +160,14 @@ impl<T> View<T> for BoxedView<T> {
         self.as_mut().dyn_rebuild(state, cx, data, old.as_ref());
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        self.as_mut().dyn_event(state, cx, data, event);
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        self.as_mut().dyn_event(state, cx, data, event)
     }
 
     fn layout(

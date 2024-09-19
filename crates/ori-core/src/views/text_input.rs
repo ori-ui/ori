@@ -443,7 +443,13 @@ impl<T> View<T> for TextInput<T> {
         state.style = style;
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         if cx.focused_changed() {
             cx.animate();
 
@@ -462,11 +468,8 @@ impl<T> View<T> for TextInput<T> {
         }
 
         match event {
-            Event::KeyPressed(e) => {
-                if !cx.is_focused() {
-                    return;
-                }
-
+            Event::KeyPressed(e) if cx.is_focused() => {
+                let mut handled = false;
                 let mut changed = false;
                 let mut submit = false;
 
@@ -486,6 +489,7 @@ impl<T> View<T> for TextInput<T> {
                         cx.layout();
                         state.blink = 0.0;
                         changed = true;
+                        handled = true;
                     }
                 }
 
@@ -503,36 +507,47 @@ impl<T> View<T> for TextInput<T> {
                     cx.layout();
                     state.blink = 0.0;
                     changed = true;
+                    handled = true;
                 }
 
                 if e.is_key(Key::Escape) {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Escape);
                     cx.set_focused(false);
                     cx.draw();
+
+                    handled = true;
                 }
 
                 if e.is_key(Key::Enter) && self.multiline {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Enter);
                     cx.layout();
                     state.blink = 0.0;
+
                     changed = true;
+                    handled = true;
                 }
 
                 if e.is_key(Key::Enter) && !self.multiline {
                     cx.set_focused(false);
+
                     submit = true;
+                    handled = true;
                 }
 
                 if let Some(motion) = move_key(e) {
                     (state.editor).action(&mut cx.fonts().font_system, Action::Motion(motion));
                     cx.draw();
                     state.blink = 0.0;
+
+                    handled = true;
                 }
 
                 if e.is_key('c') && e.modifiers.ctrl {
                     if let Some(selection) = state.editor.copy_selection() {
                         cx.clipboard().set(selection);
                     }
+
+                    handled = true;
                 }
 
                 if e.is_key('x') && e.modifiers.ctrl {
@@ -542,7 +557,9 @@ impl<T> View<T> for TextInput<T> {
                     }
 
                     state.editor.delete_selection();
+
                     changed = true;
+                    handled = true;
                 }
 
                 if e.is_key('v') && e.modifiers.ctrl {
@@ -550,11 +567,13 @@ impl<T> View<T> for TextInput<T> {
                     state.editor.insert_string(&text, None);
 
                     cx.layout();
+
                     changed = true;
+                    handled = true;
                 }
 
                 if !(changed || submit) {
-                    return;
+                    return handled;
                 }
 
                 let text = state.text();
@@ -578,6 +597,8 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 cx.set_ime(Some(state.ime(self.multiline, self.capitalize)));
+
+                handled
             }
             Event::PointerPressed(e) if cx.is_hovered() => {
                 cx.focus();
@@ -596,24 +617,28 @@ impl<T> View<T> for TextInput<T> {
                 );
 
                 cx.set_ime(Some(state.ime(self.multiline, self.capitalize)));
+
+                true
             }
-            Event::PointerReleased(_) => {
+            Event::PointerReleased(_) if state.dragging => {
                 state.dragging = false;
+
+                true
             }
-            Event::PointerMoved(e) => {
+            Event::PointerMoved(e) if state.dragging => {
                 let local = cx.local(e.position);
 
-                if state.dragging {
-                    state.editor.action(
-                        &mut cx.fonts().font_system,
-                        Action::Drag {
-                            x: local.x as i32,
-                            y: local.y as i32,
-                        },
-                    );
+                state.editor.action(
+                    &mut cx.fonts().font_system,
+                    Action::Drag {
+                        x: local.x as i32,
+                        y: local.y as i32,
+                    },
+                );
 
-                    cx.draw();
-                }
+                cx.draw();
+
+                false
             }
             Event::Animate(dt) => {
                 if cx.is_focused() {
@@ -622,8 +647,10 @@ impl<T> View<T> for TextInput<T> {
 
                     state.blink += *dt * 10.0;
                 }
+
+                false
             }
-            _ => {}
+            _ => false,
         }
     }
 

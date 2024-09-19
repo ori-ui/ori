@@ -68,7 +68,14 @@ impl<T> WindowState<T> {
         );
     }
 
-    fn event(&mut self, data: &mut T, base: &mut BaseCx, rebuild: &mut bool, event: &Event) {
+    #[must_use]
+    fn event(
+        &mut self,
+        data: &mut T,
+        base: &mut BaseCx,
+        rebuild: &mut bool,
+        event: &Event,
+    ) -> bool {
         let t = Instant::now();
 
         let hovered = self.window.is_hovered(self.view_state.id());
@@ -78,7 +85,7 @@ impl<T> WindowState<T> {
         let mut cx = EventCx::new(base, &mut self.view_state, rebuild);
 
         cx.insert_context(self.window.clone());
-        self.view.event(&mut self.state, &mut cx, data, event);
+        let handled = self.view.event(&mut self.state, &mut cx, data, event);
         self.window = cx.remove_context().expect("Window context missing");
 
         trace!(
@@ -86,6 +93,8 @@ impl<T> WindowState<T> {
             elapsed = ?t.elapsed(),
             "Window event"
         );
+
+        handled
     }
 
     fn layout(&mut self, data: &mut T, base: &mut BaseCx) {
@@ -194,7 +203,13 @@ impl<T> App<T> {
     }
 
     /// A window was resized.
-    pub fn window_resized(&mut self, data: &mut T, window_id: WindowId, width: u32, height: u32) {
+    pub fn window_resized(
+        &mut self,
+        data: &mut T,
+        window_id: WindowId,
+        width: u32,
+        height: u32,
+    ) -> bool {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             window_state.view_state.request_layout();
             window_state.window.size = Size::new(width as f32, height as f32);
@@ -207,11 +222,11 @@ impl<T> App<T> {
             height,
         });
 
-        self.window_event(data, window_id, &event);
+        self.window_event(data, window_id, &event)
     }
 
     /// A window was scaled.
-    pub fn window_scaled(&mut self, data: &mut T, window_id: WindowId, scale: f32) {
+    pub fn window_scaled(&mut self, data: &mut T, window_id: WindowId, scale: f32) -> bool {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             window_state.view_state.request_layout();
             window_state.window.scale = scale;
@@ -223,11 +238,11 @@ impl<T> App<T> {
             scale_factor: scale,
         });
 
-        self.window_event(data, window_id, &event);
+        self.window_event(data, window_id, &event)
     }
 
     /// The maximized state of a window changed.
-    pub fn window_maximized(&mut self, data: &mut T, window_id: WindowId, maximized: bool) {
+    pub fn window_maximized(&mut self, data: &mut T, window_id: WindowId, maximized: bool) -> bool {
         if let Some(window_state) = self.windows.get_mut(&window_id) {
             window_state.view_state.request_layout();
             window_state.window.maximized = maximized;
@@ -239,7 +254,7 @@ impl<T> App<T> {
             maximized,
         });
 
-        self.window_event(data, window_id, &event);
+        self.window_event(data, window_id, &event)
     }
 
     /// A pointer moved.
@@ -268,16 +283,21 @@ impl<T> App<T> {
     }
 
     /// A pointer left the window.
-    pub fn pointer_left(&mut self, data: &mut T, window_id: WindowId, pointer_id: PointerId) {
+    pub fn pointer_left(
+        &mut self,
+        data: &mut T,
+        window_id: WindowId,
+        pointer_id: PointerId,
+    ) -> bool {
         let Some(window_state) = self.windows.get_mut(&window_id) else {
-            return;
+            return false;
         };
 
         window_state.window.remove_pointer(pointer_id);
 
         let event = Event::PointerLeft(PointerLeft { id: pointer_id });
 
-        self.window_event(data, window_id, &event);
+        self.window_event(data, window_id, &event)
     }
 
     fn pointer_position(&self, window_id: WindowId, pointer_id: PointerId) -> Option<Point> {
@@ -293,7 +313,7 @@ impl<T> App<T> {
         window_id: WindowId,
         pointer_id: PointerId,
         delta: Vector,
-    ) {
+    ) -> bool {
         let position = self
             .pointer_position(window_id, pointer_id)
             .unwrap_or(Point::ZERO);
@@ -305,7 +325,7 @@ impl<T> App<T> {
             delta,
         });
 
-        self.window_event(data, window_id, &event);
+        self.window_event(data, window_id, &event)
     }
 
     /// A pointer button was pressed or released.
@@ -362,7 +382,7 @@ impl<T> App<T> {
         code: Option<Code>,
         text: Option<String>,
         pressed: bool,
-    ) {
+    ) -> bool {
         if pressed {
             let event = Event::KeyPressed(KeyPressed {
                 key,
@@ -371,7 +391,7 @@ impl<T> App<T> {
                 modifiers: self.modifiers,
             });
 
-            self.window_event(data, window_id, &event);
+            let mut handled = self.window_event(data, window_id, &event);
 
             if let (Some(window), Key::Tab) = (self.windows.get(&window_id), key) {
                 let event = match window.view_state.has_focused() {
@@ -382,8 +402,10 @@ impl<T> App<T> {
                     false => Event::FocusGiven(FocusTarget::Next),
                 };
 
-                self.window_event(data, window_id, &event);
+                handled |= self.window_event(data, window_id, &event);
             }
+
+            handled
         } else {
             let event = Event::KeyReleased(KeyReleased {
                 key,
@@ -391,7 +413,7 @@ impl<T> App<T> {
                 modifiers: self.modifiers,
             });
 
-            self.window_event(data, window_id, &event);
+            self.window_event(data, window_id, &event)
         }
     }
 
@@ -625,16 +647,16 @@ impl<T> App<T> {
         let animate = Instant::now();
 
         // we first send the event to the delegates
-        let event_handled = self.delegate_event(data, event);
+        let mut handled = self.delegate_event(data, event);
 
         let mut rebuild = false;
 
         // if the event was handled by a delegate we don't send it to the windows
-        if !event_handled {
+        if !handled {
             for window_state in self.windows.values_mut() {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
-                window_state.event(data, &mut base, &mut rebuild, event);
+                handled |= window_state.event(data, &mut base, &mut rebuild, event);
             }
         }
 
@@ -653,7 +675,7 @@ impl<T> App<T> {
         self.handle_commands(data);
         self.handle_window_requests();
 
-        event_handled
+        handled
     }
 
     /// Handle an event for a single window.
@@ -666,17 +688,17 @@ impl<T> App<T> {
         let animate = Instant::now();
 
         // we first send the event to the delegates
-        let event_handled = self.delegate_event(data, event);
+        let mut handled = self.delegate_event(data, event);
 
         let mut rebuild = false;
 
         // if the event was handled by a delegate we don't send it to the window
-        if !event_handled {
+        if !handled {
             if let Some(window_state) = self.windows.get_mut(&window_id) {
                 let mut base = BaseCx::new(&mut self.contexts, &mut self.proxy);
 
                 // we send the event to the window, remembering to set the style context
-                window_state.event(data, &mut base, &mut rebuild, event);
+                handled |= window_state.event(data, &mut base, &mut rebuild, event);
             }
         }
 
@@ -695,7 +717,7 @@ impl<T> App<T> {
         self.handle_commands(data);
         self.handle_window_requests();
 
-        event_handled
+        handled
     }
 
     // animate the window if needed

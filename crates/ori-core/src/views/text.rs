@@ -186,7 +186,8 @@ impl<T> View<T> for Text {
         _cx: &mut EventCx,
         _data: &mut T,
         _event: &Event,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn layout(

@@ -53,8 +53,14 @@ impl<T, V: ViewSeq<T>> View<T> for ZStack<V> {
         }
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        self.content.event(state, cx, data, event);
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        self.content.event(state, cx, data, event)
     }
 
     fn layout(

@@ -92,7 +92,8 @@ impl<T> View<T> for Painter<T> {
         _cx: &mut EventCx,
         _data: &mut T,
         _event: &Event,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn layout(

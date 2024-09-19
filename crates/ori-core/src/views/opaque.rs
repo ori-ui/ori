@@ -58,8 +58,14 @@ impl<T, V: View> View<T> for Opaque<V> {
         self.content.rebuild(state, cx, &mut (), &old.content);
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, _data: &mut T, event: &Event) {
-        self.content.event(state, cx, &mut (), event);
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        _data: &mut T,
+        event: &Event,
+    ) -> bool {
+        self.content.event(state, cx, &mut (), event)
     }
 
     fn layout(

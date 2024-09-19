@@ -77,6 +77,27 @@ impl<V> Pod<V> {
         Self { view }
     }
 
+    /// Call the [`View::event`] method on the content, only if the event hasn't been handled.
+    pub fn event_maybe<T>(
+        &mut self,
+        handled: bool,
+        state: &mut State<T, V>,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool
+    where
+        V: View<T>,
+    {
+        match handled {
+            false => self.event(state, cx, data, event),
+            true => {
+                cx.propagate(&mut state.view_state);
+                true
+            }
+        }
+    }
+
     /// Call a closure with the [`BuildCx`] provided by a pod.
     ///
     /// This will create both `T` and the new [`ViewState`].
@@ -117,13 +138,13 @@ impl<V> Pod<V> {
         view_state: &mut ViewState,
         cx: &mut EventCx,
         event: &Event,
-        f: impl FnMut(&mut EventCx, &Event),
-    ) {
+        f: impl FnMut(&mut EventCx, &Event) -> bool,
+    ) -> bool {
         if matches!(event, Event::Animate(_)) {
             if !view_state.needs_animate() {
                 cx.view_state.propagate(view_state);
 
-                return;
+                return false;
             }
 
             view_state.mark_animated();
@@ -141,8 +162,8 @@ impl<V> Pod<V> {
 
             if focus_given {
                 view_state.set_focused(true);
-                Self::event_with_inner(view_state, cx, &Event::Update, f);
-                return;
+                cx.propagate(view_state);
+                return true;
             }
         }
 
@@ -151,15 +172,15 @@ impl<V> Pod<V> {
             view_state.request_layout();
         }
 
-        Self::event_with_inner(view_state, cx, event, f);
+        Self::event_with_inner(view_state, cx, event, f)
     }
 
     fn event_with_inner(
         view_state: &mut ViewState,
         cx: &mut EventCx,
         event: &Event,
-        f: impl FnOnce(&mut EventCx, &Event),
-    ) {
+        f: impl FnOnce(&mut EventCx, &Event) -> bool,
+    ) -> bool {
         view_state.set_hovered(cx.window().is_hovered(view_state.id()));
         view_state.prepare();
 
@@ -167,11 +188,13 @@ impl<V> Pod<V> {
         new_cx.transform *= view_state.transform;
         new_cx.view_state = view_state;
 
-        f(&mut new_cx, event);
+        let handled = f(&mut new_cx, event);
 
         view_state.prev_flags = view_state.flags;
 
         cx.view_state.propagate(view_state);
+
+        handled
     }
 
     /// Call a closure with the [`LayoutCx`] provided by a pod.
@@ -248,10 +271,16 @@ impl<T, V: View<T>> View<T> for Pod<V> {
         });
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         Self::event_with(&mut state.view_state, cx, event, |cx, event| {
-            (self.view).event(&mut state.content, cx, data, event);
-        });
+            (self.view).event(&mut state.content, cx, data, event)
+        })
     }
 
     fn layout(

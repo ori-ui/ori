@@ -19,7 +19,7 @@ pub use rebuild::*;
 use crate::{
     event::{Ime, RequestFocus},
     style::Styles,
-    view::ViewId,
+    view::{ViewId, ViewState},
     window::{Cursor, Window},
 };
 
@@ -134,6 +134,11 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
 }}
 
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
+    /// Propagate the view state of a child view.
+    pub fn propagate(&mut self, child: &mut ViewState) {
+        self.view_state.propagate(child);
+    }
+
     /// Request a layout of the view tree.
     pub fn layout(&mut self) {
         self.view_state.request_layout();

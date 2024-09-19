@@ -144,22 +144,27 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         (self.content).rebuild(&mut state.content, cx, data, &old.content);
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        self.header.event(&mut state.header, cx, data, event);
-        self.content.event(&mut state.content, cx, data, event);
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        let mut handled = false;
 
         match event {
             Event::PointerPressed(event) if state.header.has_hovered() => {
-                if event.button != PointerButton::Primary {
-                    return;
-                }
+                if matches!(event.button, PointerButton::Primary) {
+                    state.open = !state.open;
+                    cx.animate();
+                    cx.layout();
 
-                state.open = !state.open;
-                cx.animate();
-                cx.layout();
+                    if let Some(ref mut on_open) = self.on_open {
+                        on_open(cx, data, state.open);
+                    }
 
-                if let Some(ref mut on_open) = self.on_open {
-                    on_open(cx, data, state.open);
+                    handled = true;
                 }
             }
             Event::Animate(dt) => {
@@ -170,6 +175,11 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
             }
             _ => {}
         }
+
+        handled |= (self.header).event_maybe(handled, &mut state.header, cx, data, event);
+        handled |= (self.content).event_maybe(handled, &mut state.content, cx, data, event);
+
+        handled
     }
 
     fn layout(

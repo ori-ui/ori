@@ -27,7 +27,7 @@ use crate::{
 ///     This can be quite tedius to write out, so the [`Rebuild`] derive macro can be
 ///     used to generate this code.
 /// - [`View::event`] is called when an event occurs. The should then handle the
-///     event. Custom events can be send using [`BaseCx::cmd`].
+///     event and return whether it handled it. Command events can be send using [`BaseCx::cmd`].
 /// - [`View::layout`] is called when the view needs to be laid out. A leaf view
 ///     should compute it's own size in accordance with the given [`Space`], and
 ///     return it. A container view should pass an appropriate [`Space`] to it's
@@ -54,9 +54,17 @@ pub trait View<T: ?Sized = ()> {
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self);
 
     /// Handle an event, see top-level documentation for more information.
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event);
+    #[must_use]
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool;
 
     /// Layout the view, see top-level documentation for more information.
+    #[must_use]
     fn layout(
         &mut self,
         state: &mut Self::State,
@@ -90,9 +98,16 @@ impl<T, V: View<T>> View<T> for Option<V> {
         }
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if let Some(view) = self {
-            view.event(state.as_mut().unwrap(), cx, data, event);
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        match self {
+            Some(view) => view.event(state.as_mut().unwrap(), cx, data, event),
+            None => false,
         }
     }
 
@@ -137,7 +152,8 @@ impl<T> View<T> for () {
         _cx: &mut EventCx,
         _data: &mut T,
         _event: &Event,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn layout(
@@ -176,11 +192,17 @@ impl<T, V: View<T>, E: View<T>> View<T> for Result<V, E> {
         }
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         match (self, state) {
             (Ok(view), Ok(state)) => view.event(state, cx, data, event),
             (Err(view), Err(state)) => view.event(state, cx, data, event),
-            _ => {}
+            _ => false,
         }
     }
 

@@ -130,7 +130,7 @@ mod testing {
 
             let mut base_cx = BaseCx::new(&mut self.contexts, &mut self.command_proxy);
             let mut event_cx = EventCx::new(&mut base_cx, &mut self.view_state, &mut needs_rebuild);
-            view.event(&mut self.state, &mut event_cx, data, event);
+            let _ = view.event(&mut self.state, &mut event_cx, data, event);
 
             needs_rebuild
         }
@@ -196,12 +196,14 @@ mod testing {
             cx: &mut EventCx,
             data: &mut T,
             event: &Event,
-        ) {
-            self.content.event(state, cx, data, event);
+        ) -> bool {
+            let handled = self.content.event(state, cx, data, event);
 
             let layout_rect = cx.rect().transform(cx.transform());
             cx.context_or_default::<SavedLayouts>()
                 .insert(self.name.clone(), layout_rect);
+
+            handled
         }
 
         fn layout(

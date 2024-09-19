@@ -86,6 +86,8 @@ fn ui(data: &mut Data) -> impl View<Data> {
                     break;
                 }
             }
+
+            data.selected.is_some()
         }
         Event::PointerMoved(e) => {
             let local = cx.local(e.position);
@@ -95,11 +97,15 @@ fn ui(data: &mut Data) -> impl View<Data> {
                 cx.draw();
                 cx.rebuild();
             }
+
+            false
         }
         Event::PointerReleased(_) => {
             data.selected = None;
+
+            false
         }
-        _ => {}
+        _ => false,
     });
 
     let offset_slider = hstack![

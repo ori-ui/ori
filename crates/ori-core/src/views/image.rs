@@ -25,7 +25,8 @@ impl<T> View<T> for Image {
         _cx: &mut EventCx,
         _data: &mut T,
         _event: &Event,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn layout(

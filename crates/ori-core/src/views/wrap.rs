@@ -243,8 +243,8 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
-        self.content.event(content, cx, data, event);
+    ) -> bool {
+        self.content.event(content, cx, data, event)
     }
 
     fn layout(

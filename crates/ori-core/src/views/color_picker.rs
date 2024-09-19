@@ -219,20 +219,29 @@ impl<T> View<T> for ColorPicker<T> {
         }
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         match event {
             Event::PointerPressed(e) if cx.is_hovered() => {
                 self.input(state, cx, data, e.position);
                 cx.set_active(true);
+                true
             }
             Event::PointerMoved(e) if cx.is_active() => {
                 self.input(state, cx, data, e.position);
+                false
             }
-            Event::PointerReleased(_) => {
+            Event::PointerReleased(_) if cx.is_active() => {
                 cx.set_active(false);
                 state.edit = None;
+                true
             }
-            _ => {}
+            _ => false,
         }
     }
 

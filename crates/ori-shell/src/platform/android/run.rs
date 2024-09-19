@@ -346,22 +346,20 @@ fn window_resized<T>(state: &mut AppState<T>, data: &mut T) {
 
 fn input_event<T>(state: &mut AppState<T>, data: &mut T, event: &InputEvent) -> InputStatus {
     match event {
-        InputEvent::MotionEvent(event) => {
-            motion_event(state, data, event);
-
-            InputStatus::Handled
-        }
-        InputEvent::KeyEvent(event) => {
-            key_event(state, data, event);
-
-            InputStatus::Handled
-        }
+        InputEvent::MotionEvent(event) => match motion_event(state, data, event) {
+            true => InputStatus::Handled,
+            false => InputStatus::Unhandled,
+        },
+        InputEvent::KeyEvent(event) => match key_event(state, data, event) {
+            true => InputStatus::Handled,
+            false => InputStatus::Unhandled,
+        },
         InputEvent::TextEvent(_) => InputStatus::Unhandled,
         _ => InputStatus::Unhandled,
     }
 }
 
-fn motion_event<T>(state: &mut AppState<T>, data: &mut T, event: &MotionEvent) {
+fn motion_event<T>(state: &mut AppState<T>, data: &mut T, event: &MotionEvent) -> bool {
     let Some(ref mut window) = state.window else {
         return;
     };
@@ -378,26 +376,32 @@ fn motion_event<T>(state: &mut AppState<T>, data: &mut T, event: &MotionEvent) {
         MotionAction::Down | MotionAction::Up => {
             let pressed = matches!(event.action(), MotionAction::Down);
 
+            let mut handled = false;
+
             if pressed {
-                state.app.pointer_moved(data, window.id, pointer_id, point);
+                handled |= state.app.pointer_moved(data, window.id, pointer_id, point);
             }
 
-            state
-                .app
-                .pointer_button(data, window.id, pointer_id, PointerButton::Primary, pressed);
+            handled |= state.app.pointer_button(
+                data,
+                window.id,
+                pointer_id,
+                PointerButton::Primary,
+                pressed,
+            );
 
             if !pressed {
-                state.app.pointer_left(data, window.id, pointer_id);
+                handled |= state.app.pointer_left(data, window.id, pointer_id);
             }
+
+            handled
         }
-        MotionAction::Move => {
-            state.app.pointer_moved(data, window.id, pointer_id, point);
-        }
-        _ => {}
+        MotionAction::Move => state.app.pointer_moved(data, window.id, pointer_id, point),
+        _ => false,
     }
 }
 
-fn key_event<T>(state: &mut AppState<T>, data: &mut T, event: &KeyEvent) {
+fn key_event<T>(state: &mut AppState<T>, data: &mut T, event: &KeyEvent) -> bool {
     let Some(ref mut window) = state.window else {
         return;
     };
@@ -409,7 +413,7 @@ fn key_event<T>(state: &mut AppState<T>, data: &mut T, event: &KeyEvent) {
     let logical = to_logical(keychar, event.key_code());
     let text = logical.as_char().map(String::from);
 
-    (state.app).keyboard_key(data, window_id, logical, None, text, pressed);
+    (state.app).keyboard_key(data, window_id, logical, None, text, pressed)
 }
 
 fn get_key_event_keychar<T>(state: &mut AppState<T>, event: &KeyEvent) -> Option<KeyMapChar> {

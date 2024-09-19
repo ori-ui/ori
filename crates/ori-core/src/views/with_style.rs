@@ -74,10 +74,11 @@ impl<T, V: View<T>> View<T> for WithStyle<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
+    ) -> bool {
         mem::swap(&mut state.computed_styles, cx.context_mut());
-        self.content.event(content, cx, data, event);
+        let handled = self.content.event(content, cx, data, event);
         mem::swap(&mut state.computed_styles, cx.context_mut());
+        handled
     }
 
     fn layout(

@@ -170,25 +170,20 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
         cx.animate();
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
-        if let Some((ref mut state, ref mut view)) = state.view {
-            view.event(state, cx, data, event);
-        }
-
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         let new_view = (self.animate)(&mut state.animate_state, cx, data, event);
 
-        if let Some(mut new_view) = new_view {
-            match state.view {
-                Some((ref mut view_state, ref mut view)) => {
-                    new_view.rebuild(view_state, &mut cx.as_rebuild_cx(), data, view);
-                    *view = new_view;
-                }
-                None => {
-                    let mut view_state = new_view.build(&mut cx.as_build_cx(), data);
-                    new_view.event(&mut view_state, cx, data, event);
-                    state.view = Some((view_state, new_view));
-                }
-            }
+        match (state.view.as_mut(), new_view) {
+            (None, None) => false,
+            (None, Some(_)) => todo!(),
+            (Some(_), None) => todo!(),
+            (Some(_), Some(_)) => todo!(),
         }
     }
 
@@ -199,10 +194,9 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        if let Some((ref mut view_state, ref mut view)) = state.view {
-            view.layout(view_state, cx, data, space)
-        } else {
-            space.min
+        match state.view {
+            Some((ref mut view_state, ref mut view)) => view.layout(view_state, cx, data, space),
+            None => space.min,
         }
     }
 

@@ -226,8 +226,8 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
-        self.content.event(content, cx, data, event);
+    ) -> bool {
+        let handled = self.content.event(content, cx, data, event);
 
         if !content.has_hovered() && state.timer > 0.0 {
             state.timer = 0.0;
@@ -237,6 +237,8 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         match event {
             Event::WindowResized(_) => {
                 cx.layout();
+
+                handled
             }
             Event::PointerMoved(e) => {
                 if state.timer > 0.0 {
@@ -248,6 +250,8 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                     state.position = e.position;
                     cx.animate();
                 }
+
+                handled
             }
             Event::Animate(dt) => {
                 if content.has_hovered() && state.timer < 1.0 {
@@ -264,8 +268,10 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 if state.timer >= 0.9 {
                     cx.draw();
                 }
+
+                handled
             }
-            _ => {}
+            _ => handled,
         }
     }
 

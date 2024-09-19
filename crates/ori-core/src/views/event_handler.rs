@@ -8,7 +8,7 @@ use crate::{
 /// Create a new [`EventHandler`], with a before callback.
 pub fn on_event_before<T, V>(
     content: V,
-    handler: impl FnMut(&mut EventCx, &mut T, &Event) + 'static,
+    handler: impl FnMut(&mut EventCx, &mut T, &Event) -> bool + 'static,
 ) -> EventHandler<T, V> {
     EventHandler::new(content).before(handler)
 }
@@ -16,7 +16,7 @@ pub fn on_event_before<T, V>(
 /// Create a new [`EventHandler`], with an after callback.
 pub fn on_event<T, V>(
     content: V,
-    handler: impl FnMut(&mut EventCx, &mut T, &Event) + 'static,
+    handler: impl FnMut(&mut EventCx, &mut T, &Event) -> bool + 'static,
 ) -> EventHandler<T, V> {
     EventHandler::new(content).after(handler)
 }
@@ -28,11 +28,11 @@ pub struct EventHandler<T, V> {
 
     /// The callback before an event is propagated.
     #[allow(clippy::type_complexity)]
-    pub before: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) + 'static>>,
+    pub before: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) -> bool + 'static>>,
 
     /// The callback after an event is propagated.
     #[allow(clippy::type_complexity)]
-    pub after: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) + 'static>>,
+    pub after: Option<Box<dyn FnMut(&mut EventCx, &mut T, &Event) -> bool + 'static>>,
 }
 
 impl<T, V> EventHandler<T, V> {
@@ -46,13 +46,19 @@ impl<T, V> EventHandler<T, V> {
     }
 
     /// Set the callback for before an event is emitted.
-    pub fn before(mut self, before: impl FnMut(&mut EventCx, &mut T, &Event) + 'static) -> Self {
+    pub fn before(
+        mut self,
+        before: impl FnMut(&mut EventCx, &mut T, &Event) -> bool + 'static,
+    ) -> Self {
         self.before = Some(Box::new(before));
         self
     }
 
     /// Set the callback for when an event is emitted.
-    pub fn after(mut self, after: impl FnMut(&mut EventCx, &mut T, &Event) + 'static) -> Self {
+    pub fn after(
+        mut self,
+        after: impl FnMut(&mut EventCx, &mut T, &Event) -> bool + 'static,
+    ) -> Self {
         self.after = Some(Box::new(after));
         self
     }
@@ -69,16 +75,31 @@ impl<T, V: View<T>> View<T> for EventHandler<T, V> {
         self.content.rebuild(state, cx, data, &old.content);
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
+        let mut handled = false;
+
         if let Some(ref mut before) = self.before {
-            before(cx, data, event);
+            handled = before(cx, data, event);
         }
 
-        self.content.event(state, cx, data, event);
+        match handled {
+            true => _ = self.content.event(state, cx, data, &Event::Update),
+            false => handled = self.content.event(state, cx, data, event),
+        }
 
         if let Some(ref mut after) = self.after {
-            after(cx, data, event);
+            if !handled {
+                handled = after(cx, data, event);
+            }
         }
+
+        handled
     }
 
     fn layout(

@@ -94,19 +94,23 @@ where
         }
     }
 
-    fn event(&mut self, state: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         if let Some(completed) = event.cmd::<SuspenseCompleted<F::Output>>() {
-            if completed.id != state.id {
-                return;
+            if completed.id == state.id {
+                let mut view = completed.view.borrow_mut().take().map(Pod::new);
+                state.future_state = view.as_mut().map(|v| v.build(&mut cx.as_build_cx(), data));
+                state.future = view;
+
+                state.fallback_state.take();
+
+                cx.layout();
             }
-
-            let mut view = completed.view.borrow_mut().take().map(Pod::new);
-            state.future_state = view.as_mut().map(|v| v.build(&mut cx.as_build_cx(), data));
-            state.future = view;
-
-            state.fallback_state.take();
-
-            cx.layout();
         }
 
         match (
@@ -116,7 +120,7 @@ where
         ) {
             (None, Some(fut), Some(fut_state)) => fut.event(fut_state, cx, data, event),
             (Some(fallback_state), _, _) => self.fallback.event(fallback_state, cx, data, event),
-            _ => {}
+            _ => false,
         }
     }
 

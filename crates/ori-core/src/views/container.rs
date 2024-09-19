@@ -104,8 +104,8 @@ impl<T, V: View<T>> View<T> for Container<V> {
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
-    ) {
-        self.content.event(state, cx, data, event);
+    ) -> bool {
+        self.content.event(state, cx, data, event)
     }
 
     fn layout(

@@ -119,13 +119,21 @@ where
         self.content.rebuild(content, cx, data, &old.content);
     }
 
-    fn event(&mut self, content: &mut Self::State, cx: &mut EventCx, data: &mut T, event: &Event) {
+    fn event(
+        &mut self,
+        content: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
+    ) -> bool {
         let is_hovered = content.is_hovered() || (content.has_hovered() && self.descendants);
+        let mut handled = false;
 
         match event {
             Event::PointerPressed(e) if is_hovered && self.is_button(e.button) => {
                 if self.event == ClickEvent::Press {
                     (self.callback)(cx, data);
+                    handled = true;
                 }
 
                 content.set_active(true);
@@ -133,10 +141,12 @@ where
             Event::PointerReleased(e) if content.is_active() && self.is_button(e.button) => {
                 if self.event == ClickEvent::Release {
                     (self.callback)(cx, data);
+                    handled = true;
                 }
 
                 if e.clicked && self.event == ClickEvent::Click {
                     (self.callback)(cx, data);
+                    handled = true;
                 }
 
                 content.set_active(false);
@@ -145,6 +155,7 @@ where
                 if e.is_key(Key::Enter) || e.is_key(' ') {
                     if matches!(self.event, ClickEvent::Press | ClickEvent::Click) {
                         (self.callback)(cx, data);
+                        handled = true;
                     }
 
                     content.set_active(true);
@@ -154,6 +165,7 @@ where
                 if e.is_key(Key::Enter) || e.is_key(' ') {
                     if self.event == ClickEvent::Release {
                         (self.callback)(cx, data);
+                        handled = true;
                     }
 
                     content.set_active(false);
@@ -162,7 +174,7 @@ where
             _ => {}
         }
 
-        self.content.event(content, cx, data, event);
+        self.content.event_maybe(handled, content, cx, data, event)
     }
 
     fn layout(

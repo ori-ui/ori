@@ -54,16 +54,19 @@ use crate::platform::{
 
 use super::{clipboard::X11ClipboardServer, X11Error};
 
+/// Options for running an X11 application.
 #[derive(Debug, Default)]
 pub struct X11RunOptions {
     window_parents: HashMap<WindowId, u32>,
 }
 
 impl X11RunOptions {
+    /// Create a new set of X11 run options.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Set the X11 window parent for a window.
     pub fn with_window_parent(mut self, id: WindowId, x11_id: u32) -> Self {
         self.window_parents.insert(id, x11_id);
         self

@@ -54,6 +54,22 @@ use crate::platform::{
 
 use super::{clipboard::X11ClipboardServer, X11Error};
 
+#[derive(Debug, Default)]
+pub struct X11RunOptions {
+    window_parents: HashMap<WindowId, u32>,
+}
+
+impl X11RunOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_window_parent(mut self, id: WindowId, x11_id: u32) -> Self {
+        self.window_parents.insert(id, x11_id);
+        self
+    }
+}
+
 atom_manager! {
     pub Atoms: AtomsCookie {
         TARGETS,
@@ -350,7 +366,7 @@ impl X11Window {
 }
 
 /// Create a new X11 application.
-pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), X11Error> {
+pub fn run<T>(app: AppBuilder<T>, data: &mut T, options: X11RunOptions) -> Result<(), X11Error> {
     let (conn, screen_num) = XCBConnection::connect(None)?;
     let conn = Arc::new(conn);
 
@@ -408,6 +424,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), X11Error> {
     app.add_context(Clipboard::new(Box::new(clipboard)));
 
     let mut state = X11App {
+        options,
         app,
         conn,
         atoms,
@@ -466,6 +483,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), X11Error> {
 
 #[allow(unused)]
 struct X11App<T> {
+    options: X11RunOptions,
     app: App<T>,
     conn: Arc<XCBConnection>,
     atoms: Atoms,
@@ -538,10 +556,15 @@ impl<T> X11App<T> {
         let physical_width = (window.size.width * scale_factor) as u32;
         let physical_height = (window.size.height * scale_factor) as u32;
 
+        let parent = match self.options.window_parents.get(&window.id()) {
+            Some(&parent) => parent,
+            None => screen.root,
+        };
+
         self.conn.create_window(
             depth,
             win_id,
-            screen.root,
+            parent,
             0,
             0,
             physical_width as u16,

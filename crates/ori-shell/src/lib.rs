@@ -140,7 +140,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), RunError> {
 
     #[cfg(x11_platform)]
     {
-        return Ok(platform::x11::run(app, data)?);
+        return Ok(platform::x11::run(app, data, Default::default())?);
     }
 
     #[cfg(android_platform)]

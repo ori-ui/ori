@@ -181,9 +181,23 @@ impl<T, V: View<T>, S: Default> View<T> for Animate<T, V, S> {
 
         match (state.view.as_mut(), new_view) {
             (None, None) => false,
-            (None, Some(_)) => todo!(),
-            (Some(_), None) => todo!(),
-            (Some(_), Some(_)) => todo!(),
+            (None, Some(mut new_view)) => {
+                let mut new_state = new_view.build(&mut cx.as_build_cx(), data);
+
+                let handled = new_view.event(&mut new_state, cx, data, event);
+                state.view = Some((new_state, new_view));
+
+                handled
+            }
+            (Some((state, view)), None) => view.event(state, cx, data, event),
+            (Some((state, old_view)), Some(mut new_view)) => {
+                new_view.rebuild(state, &mut cx.as_rebuild_cx(), data, old_view);
+
+                let handled = new_view.event(state, cx, data, event);
+                *old_view = new_view;
+
+                handled
+            }
         }
     }
 

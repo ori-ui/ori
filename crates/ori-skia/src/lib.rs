@@ -124,6 +124,7 @@ impl SkiaRenderer {
         };
 
         let mut skia_paint = skia_safe::Paint::new(Self::skia_color_4f(color), None);
+        skia_paint.set_anti_alias(true);
 
         match paint.shader {
             Shader::Pattern(ref pattern) => {

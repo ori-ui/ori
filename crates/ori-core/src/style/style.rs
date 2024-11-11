@@ -228,10 +228,12 @@ pub fn comp<T>(f: impl Fn(&Styles) -> T + Send + Sync + 'static) -> Styled<T> {
     Styled::Computed(Arc::new(Box::new(f)))
 }
 
+/// A computed style.
+
 // Box<dyn Fn()> is 16 bytes large, however Arc<Box<dyn Fn()>> is only 8 bytes. since computed
 // styles are used so infrequently, compared to the other variants, it's worth the tradeoff to save
 // memory, even if it costs an extra indirection.
-type Computed<T> = Arc<Box<dyn Fn(&Styles) -> T + Send + Sync>>;
+pub type Computed<T> = Arc<Box<dyn Fn(&Styles) -> T + Send + Sync>>;
 
 /// A styled value.
 #[derive(Clone)]
@@ -243,6 +245,9 @@ pub enum Styled<T> {
     Style(Style<T>),
 
     /// A derived style.
+    ///
+    /// **Note:** This is by far the least efficient variant, and should only be used when
+    /// necessary.
     Computed(Computed<T>),
 }
 

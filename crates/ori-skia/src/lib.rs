@@ -15,8 +15,9 @@ use skia_safe::{
     textlayout::{
         FontCollection, Paragraph as SkiaParagraph, ParagraphBuilder, ParagraphStyle,
         TextAlign as SkiaTextAlign, TextDirection as SkiaTextDirection, TextStyle,
+        TypefaceFontProvider,
     },
-    FontMgr,
+    FontMgr, Typeface,
 };
 
 type Images = HashMap<WeakImage, skia_safe::Image>;
@@ -61,7 +62,7 @@ impl SkiaFonts {
                 FontFamily::Name(name) => name.as_str(),
                 FontFamily::Serif => "serif",
                 FontFamily::SansSerif => "sans-serif",
-                FontFamily::Monospace => "monospace",
+                FontFamily::Monospace => "Roboto Mono",
                 FontFamily::Cursive => "cursive",
                 FontFamily::Fantasy => "fantasy",
             };
@@ -106,9 +107,19 @@ impl Fonts for SkiaFonts {
     fn load(&mut self, source: FontSource<'_>) {
         let fonts = source.data().unwrap();
 
+        let mut provider = TypefaceFontProvider::new();
+
         for data in fonts {
-            let _ = self.manager.new_from_data(&data, None);
+            if let Some(typeface) = Typeface::from_data(&data, None) {
+                provider.register_typeface(typeface, None);
+            }
         }
+
+        for family in provider.family_names() {
+            println!("Family: {}", family);
+        }
+
+        self.collection.set_asset_font_manager((*provider).clone());
     }
 
     fn layout(&self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine> {

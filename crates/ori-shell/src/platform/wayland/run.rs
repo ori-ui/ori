@@ -6,9 +6,10 @@ use ori_core::{
     command::CommandWaker,
     event::{Code, Key, PointerButton, PointerId},
     layout::{Point, Vector},
+    text::Fonts,
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
-use ori_glow::GlowRenderer;
+use ori_skia::{SkiaFonts, SkiaRenderer};
 use sctk_adwaita::{AdwaitaFrame, FrameConfig};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, SurfaceData},
@@ -114,6 +115,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
 
     let mut app = app.build(waker);
     app.add_context(Clipboard::new(Box::new(clipboard)));
+    app.add_context(Box::new(SkiaFonts::new(Some("Roboto"))) as Box<dyn Fonts>);
     app.init(data);
 
     let mut state = State {
@@ -454,17 +456,16 @@ fn render_windows<T>(
 
             egl_surface.make_current()?;
 
-            unsafe {
-                renderer
-                    .render(
-                        draw_state.canvas,
-                        draw_state.clear_color,
-                        window.physical_width,
-                        window.physical_height,
-                        window.scale_factor,
-                    )
-                    .unwrap();
-            }
+            let fonts = app.contexts.get::<Box<dyn Fonts>>().unwrap();
+
+            renderer.render(
+                fonts.downcast_ref().unwrap(),
+                &draw_state.canvas,
+                draw_state.clear_color,
+                window.physical_width,
+                window.physical_height,
+                window.scale_factor,
+            );
 
             egl_surface.swap_buffers()?;
         }
@@ -713,7 +714,7 @@ struct WindowState {
 
     wl_egl_surface: Option<WlEglSurface>,
     egl_surface: Option<EglSurface>,
-    renderer: Option<GlowRenderer>,
+    renderer: Option<SkiaRenderer>,
 
     frame: Option<AdwaitaFrame<State>>,
     xdg_window: XdgWindow,
@@ -960,11 +961,7 @@ impl WindowHandler for State {
                 egl_surface.swap_interval(1).unwrap();
 
                 let renderer = unsafe {
-                    GlowRenderer::new(|symbol| {
-                        //
-                        self.egl_context.get_proc_address(symbol)
-                    })
-                    .unwrap()
+                    SkiaRenderer::new(|symbol| self.egl_context.get_proc_address(symbol))
                 };
 
                 set_resizable(window, window.resizable);

@@ -21,9 +21,9 @@ use ori_core::{
 use crate::{AppBuilder, AppCommand, AppDelegate, AppRequest, DelegateCx, UiBuilder};
 
 /// Information needed to render a window.
-pub struct WindowRenderState<'a> {
+pub struct WindowRenderState {
     /// The canvas to render.
-    pub canvas: &'a Canvas,
+    pub canvas: Canvas,
 
     /// The size of the window.
     pub logical_size: Size,
@@ -167,13 +167,17 @@ impl<T> WindowState<T> {
 
 /// The main application state.
 pub struct App<T> {
+    /// The command proxy of the application.
+    pub proxy: CommandProxy,
+
+    /// The contexts of the application.
+    pub contexts: Contexts,
+
     pub(crate) windows: HashMap<WindowId, WindowState<T>>,
     pub(crate) modifiers: Modifiers,
     pub(crate) delegates: Vec<Box<dyn AppDelegate<T>>>,
-    pub(crate) proxy: CommandProxy,
     pub(crate) receiver: CommandReceiver,
     pub(crate) requests: Vec<AppRequest<T>>,
-    pub(crate) contexts: Contexts,
 }
 
 impl<T> App<T> {
@@ -743,11 +747,7 @@ impl<T> App<T> {
     }
 
     /// Draw a single window, returning the scene if it needs to be rendered.
-    pub fn draw_window(
-        &mut self,
-        data: &mut T,
-        window_id: WindowId,
-    ) -> Option<WindowRenderState<'_>> {
+    pub fn draw_window(&mut self, data: &mut T, window_id: WindowId) -> Option<WindowRenderState> {
         trace!(window = ?window_id, "Draw window");
 
         // animate the window before drawing it
@@ -804,7 +804,7 @@ impl<T> App<T> {
         };
 
         Some(WindowRenderState {
-            canvas: &window_state.canvas,
+            canvas: window_state.canvas.clone(),
             logical_size: window_state.window.size,
             clear_color,
         })

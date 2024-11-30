@@ -16,9 +16,10 @@ use ori_core::{
     event::{Code, Modifiers, PointerButton, PointerId},
     image::Image,
     layout::{Point, Vector},
+    text::Fonts,
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
-use ori_glow::GlowRenderer;
+use ori_skia::SkiaRenderer;
 
 use tracing::warn;
 use x11rb::{
@@ -106,7 +107,7 @@ struct X11Window {
     physical_height: u32,
     scale_factor: f32,
     egl_surface: EglSurface,
-    renderer: GlowRenderer,
+    renderer: SkiaRenderer,
     needs_redraw: bool,
     sync_counter: Option<u32>,
 }
@@ -641,11 +642,10 @@ impl<T> X11App<T> {
         egl_surface.swap_interval(0)?;
 
         let renderer = unsafe {
-            GlowRenderer::new(|name| {
+            SkiaRenderer::new(|name| {
                 //
                 self.egl_context.get_proc_address(name)
             })
-            .unwrap()
         };
 
         let x11_window = X11Window {
@@ -698,22 +698,20 @@ impl<T> X11App<T> {
             window.needs_redraw = false;
 
             if let Some(state) = self.app.draw_window(data, window.ori_id) {
-                unsafe {
-                    window.egl_surface.make_current()?;
+                window.egl_surface.make_current()?;
 
-                    window
-                        .renderer
-                        .render(
-                            state.canvas,
-                            state.clear_color,
-                            window.physical_width,
-                            window.physical_height,
-                            window.scale_factor,
-                        )
-                        .unwrap();
+                let fonts = self.app.contexts.get::<Box<dyn Fonts>>().unwrap();
 
-                    window.egl_surface.swap_buffers()?;
-                }
+                window.renderer.render(
+                    fonts.downcast_ref().unwrap(),
+                    &state.canvas,
+                    state.clear_color,
+                    window.physical_width,
+                    window.physical_height,
+                    window.scale_factor,
+                );
+
+                window.egl_surface.swap_buffers()?;
             }
         }
 

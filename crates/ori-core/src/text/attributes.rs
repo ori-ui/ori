@@ -1,7 +1,6 @@
-use cosmic_text::fontdb;
 use smol_str::SmolStr;
 
-use crate::style::Styled;
+use crate::{canvas::Color, style::Styled};
 
 /// A font family, by default [`FontFamily::SansSerif`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -24,20 +23,6 @@ pub enum FontFamily {
 
     /// A fantasy font family.
     Fantasy,
-}
-
-impl FontFamily {
-    /// Convert the font family to a [`fontdb::Family`].
-    pub fn as_fontdb(&self) -> fontdb::Family<'_> {
-        match self {
-            Self::Name(name) => fontdb::Family::Name(name),
-            Self::Serif => fontdb::Family::Serif,
-            Self::SansSerif => fontdb::Family::SansSerif,
-            Self::Monospace => fontdb::Family::Name("Roboto Mono"),
-            Self::Cursive => fontdb::Family::Cursive,
-            Self::Fantasy => fontdb::Family::Fantasy,
-        }
-    }
 }
 
 impl From<&str> for FontFamily {
@@ -99,11 +84,6 @@ impl FontWeight {
     pub const EXTRA_BOLD: Self = Self(800);
     /// Black font weight (900), the boldest possible.
     pub const BLACK: Self = Self(900);
-
-    /// Convert the font weight to a [`fontdb::Weight`].
-    pub fn to_fontdb(self) -> fontdb::Weight {
-        fontdb::Weight(self.0)
-    }
 }
 
 impl Default for FontWeight {
@@ -144,23 +124,6 @@ pub enum FontStretch {
     UltraExpanded,
 }
 
-impl FontStretch {
-    /// Convert the font stretch to a [`fontdb::Stretch`].
-    pub fn to_fontdb(self) -> fontdb::Stretch {
-        match self {
-            Self::UltraCondensed => fontdb::Stretch::UltraCondensed,
-            Self::ExtraCondensed => fontdb::Stretch::ExtraCondensed,
-            Self::Condensed => fontdb::Stretch::Condensed,
-            Self::SemiCondensed => fontdb::Stretch::SemiCondensed,
-            Self::Normal => fontdb::Stretch::Normal,
-            Self::SemiExpanded => fontdb::Stretch::SemiExpanded,
-            Self::Expanded => fontdb::Stretch::Expanded,
-            Self::ExtraExpanded => fontdb::Stretch::ExtraExpanded,
-            Self::UltraExpanded => fontdb::Stretch::UltraExpanded,
-        }
-    }
-}
-
 /// A font style.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FontStyle {
@@ -173,17 +136,6 @@ pub enum FontStyle {
 
     /// Oblique font style.
     Oblique,
-}
-
-impl FontStyle {
-    /// Convert the font style to a [`fontdb::Style`].
-    pub fn to_fontdb(self) -> fontdb::Style {
-        match self {
-            Self::Normal => fontdb::Style::Normal,
-            Self::Italic => fontdb::Style::Italic,
-            Self::Oblique => fontdb::Style::Oblique,
-        }
-    }
 }
 
 /// Alignment of a section of text.
@@ -208,15 +160,6 @@ impl TextAlign {
     pub const Middle: Self = Self::Center;
     pub const Right: Self = Self::End;
     pub const Bottom: Self = Self::End;
-
-    /// Convert the text align to a [`cosmic_text::Align`].
-    pub fn to_cosmic_text(self) -> cosmic_text::Align {
-        match self {
-            TextAlign::Start => cosmic_text::Align::Left,
-            TextAlign::Center => cosmic_text::Align::Center,
-            TextAlign::End => cosmic_text::Align::Right,
-        }
-    }
 }
 
 /// Wrapping of a section of text.
@@ -231,44 +174,24 @@ pub enum TextWrap {
     Word,
 }
 
-impl TextWrap {
-    /// Convert the text wrap to a [`cosmic_text::Wrap`].
-    pub fn to_cosmic_text(self) -> cosmic_text::Wrap {
-        match self {
-            Self::None => cosmic_text::Wrap::None,
-            Self::Word => cosmic_text::Wrap::Word,
-        }
-    }
-}
-
 /// Attributes of a section of text.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct TextAttributes {
-    /// The font family of the text.
+pub struct FontAttributes {
+    /// The font size of the font.
+    pub size: f32,
+
+    /// The font family of the font.
     pub family: FontFamily,
 
-    /// The font size of the text.
+    /// The font stretch of the font.
     pub stretch: FontStretch,
 
-    /// The font weight of the text.
+    /// The font weight of the font.
     pub weight: FontWeight,
 
-    /// The font style of the text.
+    /// The font style of the font.
     pub style: FontStyle,
-}
 
-impl TextAttributes {
-    /// Convert the text attributes to a [`cosmic_text::Attrs`].
-    pub fn to_cosmic_text(&self) -> cosmic_text::Attrs<'_> {
-        cosmic_text::Attrs {
-            cache_key_flags: cosmic_text::CacheKeyFlags::empty(),
-            color_opt: None,
-            family: self.family.as_fontdb(),
-            stretch: self.stretch.to_fontdb(),
-            style: self.style.to_fontdb(),
-            weight: self.weight.to_fontdb(),
-            metadata: 0,
-            metrics_opt: None,
-        }
-    }
+    /// The color of the font.
+    pub color: Color,
 }

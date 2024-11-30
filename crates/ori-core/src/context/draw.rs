@@ -1,9 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::{
-    canvas::{BorderRadius, BorderWidth, Canvas, Color, Curve, FillRule, Mask, Paint, Stroke},
+    canvas::{BorderRadius, BorderWidth, Canvas, Curve, FillRule, Mask, Paint, Stroke},
     layout::{Affine, Point, Rect, Size, Vector},
-    text::{Fonts, TextBuffer},
+    text::Paragraph,
     view::ViewState,
 };
 
@@ -125,18 +125,8 @@ impl<'a, 'b> DrawCx<'a, 'b> {
     }
 
     /// Draw a text buffer.
-    pub fn text(&mut self, buffer: &TextBuffer, color: Color, offset: Vector) {
-        self.text_raw(buffer.raw(), color, offset);
-    }
-
-    /// Draw a raw text buffer.
-    pub fn text_raw(&mut self, buffer: &cosmic_text::Buffer, color: Color, offset: Vector) {
-        let scale = self.window().scale;
-        let contexts = &mut *self.base.contexts;
-        let canvas = &mut *self.canvas;
-
-        let fonts = contexts.get_or_default::<Fonts>();
-        fonts.draw_buffer(canvas, buffer, color, offset, scale);
+    pub fn text(&mut self, paragraph: &Paragraph, rect: Rect) {
+        self.canvas.text(paragraph.clone(), rect);
     }
 
     /// Draw a rectangle with rounded corners and a border.

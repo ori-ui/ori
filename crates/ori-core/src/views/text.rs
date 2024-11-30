@@ -8,10 +8,11 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
+    rebuild::Rebuild,
     style::{Styled, Theme},
     text::{
-        FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
-        TextBuffer, TextWrap,
+        FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
+        TextWrap,
     },
     view::View,
 };
@@ -39,45 +40,55 @@ pub fn text(text: impl Into<SmolStr>) -> Text {
 ///
 /// Can be styled using the [`TextStyle`].
 #[example(name = "text", width = 400, height = 300)]
-#[derive(Styled, Build)]
+#[derive(Styled, Build, Rebuild)]
 pub struct Text {
     /// The text.
+    #[rebuild(layout)]
     pub text: SmolStr,
 
     /// The font size of the text.
     #[styled(default = 16.0)]
+    #[rebuild(layout)]
     pub font_size: Styled<f32>,
 
     /// The font family of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_stretch: Styled<FontStretch>,
 
     /// The font.into of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
     #[styled(default -> Theme::CONTRAST or Color::BLACK)]
+    #[rebuild(draw)]
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub align: Styled<TextAlign>,
 
     /// The line height of the text.
     #[styled(default = 1.2)]
+    #[rebuild(layout)]
     pub line_height: Styled<f32>,
 
     /// The text wrap of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub wrap: Styled<TextWrap>,
 }
 
@@ -98,86 +109,39 @@ impl Text {
         }
     }
 
-    fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer, style: &TextStyle) {
-        buffer.set_wrap(fonts, style.wrap);
-        buffer.set_align(style.align);
-        buffer.set_text(
-            fonts,
-            &self.text,
-            TextAttributes {
-                family: style.font_family.clone(),
-                stretch: style.font_stretch,
-                weight: style.font_weight,
-                style: style.font_style,
-            },
-        );
+    fn font_attributes(&self, style: &TextStyle) -> FontAttributes {
+        FontAttributes {
+            size: style.font_size,
+            family: style.font_family.clone(),
+            stretch: style.font_stretch,
+            weight: style.font_weight,
+            style: style.font_style,
+            color: style.color,
+        }
     }
-}
-
-#[doc(hidden)]
-pub struct TextState {
-    style: TextStyle,
-    buffer: TextBuffer,
 }
 
 impl<T> View<T> for Text {
-    type State = TextState;
+    type State = Paragraph;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         let style = TextStyle::styled(self, cx.styles());
-        let mut buffer = TextBuffer::new(cx.fonts(), style.font_size, style.line_height);
-        self.set_attributes(cx.fonts(), &mut buffer, &style);
 
-        TextState { style, buffer }
+        let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);
+        paragraph.push_text(&self.text, self.font_attributes(&style));
+        paragraph
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
+        Rebuild::rebuild(self, cx, old);
+
         let style = TextStyle::styled(self, cx.styles());
 
-        if style.font_size != state.style.font_size || style.line_height != state.style.line_height
-        {
-            (state.buffer).set_metrics(cx.fonts(), style.font_size, style.line_height);
+        state.line_height = style.line_height;
+        state.align = style.align;
+        state.wrap = style.wrap;
 
-            cx.layout();
-        }
-
-        if style.wrap != state.style.wrap {
-            state.buffer.set_wrap(cx.fonts(), style.wrap);
-
-            cx.draw();
-        }
-
-        if style.align != state.style.align {
-            state.buffer.set_align(style.align);
-
-            cx.draw();
-        }
-
-        if self.text != old.text
-            || style.font_family != state.style.font_family
-            || style.font_weight != state.style.font_weight
-            || style.font_stretch != state.style.font_stretch
-            || style.font_style != state.style.font_style
-        {
-            state.buffer.set_text(
-                cx.fonts(),
-                &self.text,
-                TextAttributes {
-                    family: style.font_family.clone(),
-                    stretch: style.font_stretch,
-                    weight: style.font_weight,
-                    style: style.font_style,
-                },
-            );
-
-            cx.layout();
-        }
-
-        if style.color != state.style.color {
-            cx.draw();
-        }
-
-        state.style = style;
+        state.set_text(&self.text, self.font_attributes(&style));
     }
 
     fn event(
@@ -197,16 +161,11 @@ impl<T> View<T> for Text {
         _data: &mut T,
         space: Space,
     ) -> Size {
-        if state.buffer.bounds() != space.max {
-            state.buffer.set_bounds(cx.fonts(), space.max);
-        }
-
-        space.fit(state.buffer.size())
+        cx.fonts().measure(state, space.max.width)
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
-        let offset = cx.rect().center() - state.buffer.rect().center();
-        cx.text(&state.buffer, state.style.color, offset);
+        cx.text(state, cx.rect());
     }
 }
 

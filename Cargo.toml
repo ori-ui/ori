@@ -21,7 +21,6 @@ license = "MIT OR Apache-2.0"
 ori-app             = { path = "crates/ori-app",            version = "0.1.0-alpha.1" }
 ori-core            = { path = "crates/ori-core",           version = "0.1.0-alpha.1" }
 ori-dylib           = { path = "crates/ori-dylib",          version = "0.1.0-alpha.1" }
-ori-glow            = { path = "crates/ori-glow",           version = "0.1.0-alpha.1" }
 ori-macro           = { path = "crates/ori-macro",          version = "0.1.0-alpha.1" }
 ori-shell           = { path = "crates/ori-shell",          version = "0.1.0-alpha.1" }
 ori-skia            = { path = "crates/ori-skia",           version = "0.1.0-alpha.1" }

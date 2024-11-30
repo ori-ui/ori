@@ -63,7 +63,7 @@ pub mod prelude {
         style::{comp, key, val, Style, Styled, Styles, Theme},
         text::{
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
-            TextAlign, TextBuffer, TextWrap,
+            Paragraph, TextAlign, TextWrap,
         },
         transition::{ease, linear, Easing, Transition},
         view::{

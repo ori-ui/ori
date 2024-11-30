@@ -11,4 +11,4 @@ ori-core.workspace = true
 [dependencies.skia-safe]
 version = "0.78"
 default-features = false
-features = ["binary-cache", "gl"]
+features = ["binary-cache", "gl", "textlayout"]

@@ -9,8 +9,8 @@ use crate::{
     rebuild::Rebuild,
     style::{Styled, Theme},
     text::{
-        FontFamily, FontStretch, FontStyle, FontWeight, Fonts, TextAlign, TextAttributes,
-        TextBuffer, TextWrap,
+        FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
+        TextWrap,
     },
     view::{Pod, State, View},
 };
@@ -123,26 +123,11 @@ impl<V> Tooltip<V> {
             border_color: TooltipStyle::BORDER_COLOR.into(),
         }
     }
-
-    fn set_attributes(&self, fonts: &mut Fonts, buffer: &mut TextBuffer, style: &TooltipStyle) {
-        buffer.set_wrap(fonts, style.wrap);
-        buffer.set_align(style.align);
-        buffer.set_text(
-            fonts,
-            &self.text,
-            TextAttributes {
-                family: style.font_family.clone(),
-                weight: style.font_weight,
-                stretch: style.font_stretch,
-                style: style.font_style,
-            },
-        );
-    }
 }
 
 #[doc(hidden)]
 pub struct TooltipState {
-    pub buffer: TextBuffer,
+    pub paragraph: Paragraph,
     pub timer: f32,
     pub position: Point,
     pub style: TooltipStyle,
@@ -155,13 +140,23 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         let style = TooltipStyle::styled(self, cx.styles());
 
         let mut state = TooltipState {
-            buffer: TextBuffer::new(cx.fonts(), style.font_size, 1.0),
+            paragraph: Paragraph::new(style.line_height, style.align, style.wrap),
             timer: 0.0,
             position: Point::ZERO,
             style,
         };
 
-        self.set_attributes(cx.fonts(), &mut state.buffer, &state.style);
+        state.paragraph.set_text(
+            &self.text,
+            FontAttributes {
+                size: state.style.font_size,
+                family: state.style.font_family.clone(),
+                stretch: state.style.font_stretch,
+                weight: state.style.font_weight,
+                style: state.style.font_style,
+                color: state.style.color,
+            },
+        );
 
         (state, self.content.build(cx, data))
     }
@@ -173,49 +168,24 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         data: &mut T,
         old: &Self,
     ) {
-        let font_size = state.style.font_size;
-        let line_height = state.style.line_height;
-        let wrap = state.style.wrap;
-        let align = state.style.align;
-        let font_family = state.style.font_family.clone();
-        let font_stretch = state.style.font_stretch;
-        let font_weight = state.style.font_weight;
-        let font_style = state.style.font_style;
-
         Rebuild::rebuild(self, cx, old);
         state.style.rebuild(self, cx);
 
-        if state.style.font_size != font_size || state.style.line_height != line_height {
-            (state.buffer).set_metrics(cx.fonts(), state.style.font_size, state.style.line_height);
-        }
+        state.paragraph.line_height = state.style.line_height;
+        state.paragraph.align = state.style.align;
+        state.paragraph.wrap = state.style.wrap;
 
-        if state.style.wrap != wrap {
-            state.buffer.set_wrap(cx.fonts(), state.style.wrap);
-        }
-
-        if state.style.align != align {
-            state.buffer.set_align(state.style.align);
-        }
-
-        if self.text != old.text
-            || state.style.font_family != font_family
-            || state.style.font_stretch != font_stretch
-            || state.style.font_weight != font_weight
-            || state.style.font_style != font_style
-        {
-            state.buffer.set_text(
-                cx.fonts(),
-                &self.text,
-                TextAttributes {
-                    family: state.style.font_family.clone(),
-                    stretch: state.style.font_stretch,
-                    weight: state.style.font_weight,
-                    style: state.style.font_style,
-                },
-            );
-
-            cx.layout();
-        }
+        state.paragraph.set_text(
+            &self.text,
+            FontAttributes {
+                size: state.style.font_size,
+                family: state.style.font_family.clone(),
+                stretch: state.style.font_stretch,
+                weight: state.style.font_weight,
+                style: state.style.font_style,
+                color: state.style.color,
+            },
+        );
 
         (self.content).rebuild(content, cx, data, &old.content);
     }
@@ -277,13 +247,11 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
     fn layout(
         &mut self,
-        (state, content): &mut Self::State,
+        (_state, content): &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
-        let window_size = cx.window().size - state.style.padding.size();
-        state.buffer.set_bounds(cx.fonts(), window_size);
         self.content.layout(content, cx, data, space)
     }
 
@@ -302,8 +270,9 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
         // we need to try to move the tooltip so it fits on the screen
         let window_rect = Rect::min_size(Point::ZERO, cx.window().size);
+        let text_size = cx.fonts().measure(&state.paragraph, window_rect.width());
 
-        let size = state.buffer.size() + state.style.padding.size();
+        let size = text_size + state.style.padding.size();
         let mut offset = Vector::new(-size.width / 2.0, 20.0);
 
         let rect = Rect::min_size(state.position + offset, size);
@@ -325,9 +294,8 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 );
 
                 cx.text(
-                    &state.buffer,
-                    state.style.color,
-                    state.style.padding.offset(),
+                    &state.paragraph,
+                    Rect::min_size(state.style.padding.offset().to_point(), text_size),
                 );
             });
         });

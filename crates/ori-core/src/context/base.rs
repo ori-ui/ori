@@ -24,8 +24,13 @@ impl<'a> BaseCx<'a> {
     }
 
     /// Get the [`Fonts`].
-    pub fn fonts(&mut self) -> &mut Fonts {
-        self.context_or_default()
+    pub fn fonts(&self) -> &dyn Fonts {
+        self.context::<Box<dyn Fonts>>().as_ref()
+    }
+
+    /// Get the [`Fonts`] as a mutable reference.
+    pub fn fonts_mut(&mut self) -> &mut dyn Fonts {
+        self.context_mut::<Box<dyn Fonts>>().as_mut()
     }
 
     /// Get the [`Clipboard`].

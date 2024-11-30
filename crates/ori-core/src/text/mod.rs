@@ -1,13 +1,11 @@
 //! Text rendering and layouting.
 
-mod atlas;
 mod attributes;
-mod buffer;
 mod fonts;
+mod paragraph;
 mod source;
 
-pub use atlas::*;
 pub use attributes::*;
-pub use buffer::*;
 pub use fonts::*;
+pub use paragraph::*;
 pub use source::*;

@@ -8,6 +8,7 @@ use std::{
 use crate::{
     image::Image,
     layout::{Affine, Point, Rect, Vector},
+    text::Paragraph,
     view::ViewId,
 };
 
@@ -200,6 +201,15 @@ pub enum Primitive {
         paint: Paint,
     },
 
+    /// A paragraph on rich text.
+    Paragraph {
+        /// The paragraph to draw.
+        paragraph: Paragraph,
+
+        /// The rectangle to draw the paragraph in.
+        rect: Rect,
+    },
+
     /// A layer that can be transformed and masked.
     Layer {
         /// The primitives of the layer.
@@ -220,8 +230,7 @@ impl Primitive {
     /// Count the number of primitives.
     pub fn count(&self) -> usize {
         match self {
-            Primitive::Fill { .. } => 1,
-            Primitive::Stroke { .. } => 1,
+            Primitive::Fill { .. } | Primitive::Stroke { .. } | Primitive::Paragraph { .. } => 1,
             Primitive::Layer { primitives, .. } => primitives.iter().map(Self::count).sum(),
         }
     }
@@ -306,6 +315,12 @@ impl Canvas {
             stroke: stroke.into(),
             paint: paint.into(),
         });
+    }
+
+    /// Draw a paragraph.
+    pub fn text(&mut self, paragraph: Paragraph, rect: Rect) {
+        let primitives = Arc::make_mut(&mut self.primitives);
+        primitives.push(Primitive::Paragraph { paragraph, rect });
     }
 
     /// Draw a canvas.
@@ -402,6 +417,11 @@ impl Canvas {
                         }
                     }
                     Primitive::Stroke { .. } => {}
+                    Primitive::Paragraph { rect, .. } => {
+                        if rect.contains(point) {
+                            return view;
+                        }
+                    }
                     Primitive::Layer {
                         primitives,
                         transform,

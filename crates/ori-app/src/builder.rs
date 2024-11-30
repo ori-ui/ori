@@ -2,7 +2,7 @@ use ori_core::{
     command::{CommandProxy, CommandWaker},
     context::Contexts,
     style::{Styles, Theme},
-    text::{FontSource, Fonts},
+    text::FontSource,
     window::Window,
 };
 
@@ -13,7 +13,7 @@ pub struct AppBuilder<T> {
     delegates: Vec<Box<dyn AppDelegate<T>>>,
     requests: Vec<AppRequest<T>>,
     styles: Styles,
-    fonts: Fonts,
+    fonts: Vec<FontSource<'static>>,
 }
 
 impl<T> Default for AppBuilder<T> {
@@ -29,7 +29,7 @@ impl<T> AppBuilder<T> {
             delegates: Vec::new(),
             requests: Vec::new(),
             styles: Styles::from(Theme::dark()),
-            fonts: Fonts::new(),
+            fonts: Vec::new(),
         }
     }
 
@@ -52,11 +52,8 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a font to the application.
-    pub fn font<'a>(mut self, font: impl Into<FontSource<'a>>) -> Self {
-        if let Err(err) = self.fonts.load_font(font) {
-            eprintln!("Failed to load font: {}", err);
-        }
-
+    pub fn font(mut self, font: impl Into<FontSource<'static>>) -> Self {
+        self.fonts.push(font.into());
         self
     }
 

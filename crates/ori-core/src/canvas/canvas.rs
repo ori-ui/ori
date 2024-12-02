@@ -420,13 +420,32 @@ impl Canvas {
             for primitive in primitives.iter().rev() {
                 match primitive {
                     Primitive::Fill { curve, fill, .. } => {
-                        if view.is_some() && curve.contains(point, *fill) {
+                        if view.is_some() {
+                            continue;
+                        }
+
+                        if curve.contains(point, *fill) {
                             return view;
                         }
                     }
-                    Primitive::Stroke { .. } => {}
+                    Primitive::Stroke { curve, stroke, .. } => {
+                        if view.is_none() {
+                            continue;
+                        }
+
+                        if !curve.bounds().expand(stroke.width).contains(point) {
+                            continue;
+                        }
+
+                        let mut stroked = Curve::new();
+                        stroked.stroke_curve(curve, *stroke);
+
+                        if stroked.contains(point, FillRule::NonZero) {
+                            return view;
+                        }
+                    }
                     Primitive::Paragraph { bounds, .. } => {
-                        if bounds.contains(point) {
+                        if view.is_some() && bounds.contains(point) {
                             return view;
                         }
                     }

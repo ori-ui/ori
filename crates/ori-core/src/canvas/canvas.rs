@@ -420,7 +420,7 @@ impl Canvas {
             for primitive in primitives.iter().rev() {
                 match primitive {
                     Primitive::Fill { curve, fill, .. } => {
-                        if view.is_some() {
+                        if view.is_none() {
                             continue;
                         }
 
@@ -445,7 +445,11 @@ impl Canvas {
                         }
                     }
                     Primitive::Paragraph { bounds, .. } => {
-                        if view.is_some() && bounds.contains(point) {
+                        if view.is_none() {
+                            continue;
+                        }
+
+                        if bounds.contains(point) {
                             return view;
                         }
                     }

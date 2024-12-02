@@ -293,7 +293,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                     state.style.border_color.fade(alpha),
                 );
 
-                cx.text(
+                cx.paragraph(
                     &state.paragraph,
                     Rect::min_size(state.style.padding.offset().to_point(), text_size),
                 );

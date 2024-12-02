@@ -177,7 +177,7 @@ pub enum TextWrap {
 }
 
 /// Attributes of a section of text.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FontAttributes {
     /// The font size of the font.
     pub size: f32,
@@ -196,6 +196,19 @@ pub struct FontAttributes {
 
     /// The color of the font.
     pub color: Color,
+}
+
+impl Default for FontAttributes {
+    fn default() -> Self {
+        Self {
+            size: 16.0,
+            family: FontFamily::SansSerif,
+            stretch: FontStretch::Normal,
+            weight: FontWeight::NORMAL,
+            style: FontStyle::Normal,
+            color: Color::BLACK,
+        }
+    }
 }
 
 impl Eq for FontAttributes {}

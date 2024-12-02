@@ -165,7 +165,7 @@ impl<T> View<T> for Text {
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
-        cx.text(state, cx.rect());
+        cx.paragraph(state, cx.rect());
     }
 }
 

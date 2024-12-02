@@ -1,9 +1,12 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Curve, FillRule, Mask, Paint, Stroke},
     layout::{Affine, Point, Rect, Size, Vector},
-    text::Paragraph,
+    text::{FontAttributes, Paragraph, TextAlign, TextWrap},
     view::ViewState,
 };
 
@@ -124,8 +127,15 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         self.canvas.stroke(curve, stroke, paint.into());
     }
 
-    /// Draw a text buffer.
-    pub fn text(&mut self, paragraph: &Paragraph, rect: Rect) {
+    /// Draw some text.
+    pub fn text(&mut self, text: impl Display, rect: Rect, font: FontAttributes) {
+        let mut paragraph = Paragraph::new(1.2, TextAlign::Center, TextWrap::Word);
+        paragraph.set_text(text, font);
+        self.paragraph(&paragraph, rect);
+    }
+
+    /// Draw a paragraph.
+    pub fn paragraph(&mut self, paragraph: &Paragraph, rect: Rect) {
         let lines = self.fonts().layout(paragraph, rect.width());
 
         let mut bounds: Option<Rect> = None;
@@ -143,7 +153,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
             }
         }
 
-        (self.canvas).text(paragraph.clone(), rect, bounds.unwrap_or_default());
+        (self.canvas).paragraph(paragraph.clone(), rect, bounds.unwrap_or_default());
     }
 
     /// Draw a rectangle with rounded corners and a border.

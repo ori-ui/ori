@@ -321,7 +321,7 @@ impl Canvas {
     }
 
     /// Draw a paragraph.
-    pub fn text(&mut self, paragraph: Paragraph, rect: Rect, bounds: Rect) {
+    pub fn paragraph(&mut self, paragraph: Paragraph, rect: Rect, bounds: Rect) {
         let primitives = Arc::make_mut(&mut self.primitives);
 
         primitives.push(Primitive::Paragraph {

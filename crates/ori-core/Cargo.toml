@@ -11,7 +11,8 @@ ori-macro = { workspace = true }
 bitflags = "2.4"
 crossbeam-channel = "0.5"
 miniz_oxide = "0.8"
-seahash = "4.1"
+seahash = "4"
+smallvec = "1"
 smol_str = "0.3.1"
 tracing = "0.1"
 

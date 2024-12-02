@@ -3,6 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use smallvec::SmallVec;
 use smol_str::{format_smolstr, SmolStr};
 
 use super::{FontAttributes, TextAlign, TextWrap};
@@ -20,7 +21,7 @@ pub struct Paragraph {
     pub wrap: TextWrap,
 
     text: SmolStr,
-    segments: Vec<Segment>,
+    segments: SmallVec<[Segment; 1]>,
 }
 
 impl Paragraph {
@@ -31,7 +32,7 @@ impl Paragraph {
             align,
             wrap,
             text: SmolStr::default(),
-            segments: Vec::new(),
+            segments: SmallVec::new(),
         }
     }
 

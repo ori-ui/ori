@@ -13,10 +13,10 @@ pub trait Fonts: Any {
     fn load(&mut self, source: FontSource<'_>);
 
     /// Layout the given paragraph with the given max width.
-    fn layout(&self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine>;
+    fn layout(&mut self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine>;
 
     /// Measure the given paragraph with the given max width.
-    fn measure(&self, paragraph: &Paragraph, width: f32) -> Size;
+    fn measure(&mut self, paragraph: &Paragraph, width: f32) -> Size;
 }
 
 impl dyn Fonts {

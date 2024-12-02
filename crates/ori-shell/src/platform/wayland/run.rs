@@ -113,9 +113,11 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
         move || loop_signal.wakeup()
     });
 
-    let mut app = app.build(waker);
+    let fonts = Box::new(SkiaFonts::new(Some("Roboto")));
+
+    let mut app = app.build(waker, fonts);
     app.add_context(Clipboard::new(Box::new(clipboard)));
-    app.add_context(Box::new(SkiaFonts::new(Some("Roboto"))) as Box<dyn Fonts>);
+
     app.init(data);
 
     let mut state = State {
@@ -456,10 +458,10 @@ fn render_windows<T>(
 
             egl_surface.make_current()?;
 
-            let fonts = app.contexts.get::<Box<dyn Fonts>>().unwrap();
+            let fonts = app.contexts.get_mut::<Box<dyn Fonts>>().unwrap();
 
             renderer.render(
-                fonts.downcast_ref().unwrap(),
+                fonts.downcast_mut().unwrap(),
                 &draw_state.canvas,
                 draw_state.clear_color,
                 window.physical_width,

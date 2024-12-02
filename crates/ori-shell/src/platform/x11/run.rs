@@ -19,7 +19,7 @@ use ori_core::{
     text::Fonts,
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
-use ori_skia::SkiaRenderer;
+use ori_skia::{SkiaFonts, SkiaRenderer};
 
 use tracing::warn;
 use x11rb::{
@@ -424,7 +424,9 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T, options: X11RunOptions) -> Resul
     let xkb_context = unsafe { XkbContext::from_xcb(xcb_conn).unwrap() };
     let core_keyboard = unsafe { XkbKeyboard::new_xcb(&xkb_context, xcb_conn).unwrap() };
 
-    let mut app = app.build(waker);
+    let fonts = Box::new(SkiaFonts::new(Some("Roboto")));
+
+    let mut app = app.build(waker, fonts);
     app.add_context(Clipboard::new(Box::new(clipboard)));
 
     let mut state = X11App {
@@ -700,10 +702,10 @@ impl<T> X11App<T> {
             if let Some(state) = self.app.draw_window(data, window.ori_id) {
                 window.egl_surface.make_current()?;
 
-                let fonts = self.app.contexts.get::<Box<dyn Fonts>>().unwrap();
+                let fonts = self.app.contexts.get_mut::<Box<dyn Fonts>>().unwrap();
 
                 window.renderer.render(
-                    fonts.downcast_ref().unwrap(),
+                    fonts.downcast_mut().unwrap(),
                     &state.canvas,
                     state.clear_color,
                     window.physical_width,

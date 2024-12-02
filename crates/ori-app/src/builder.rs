@@ -2,7 +2,7 @@ use ori_core::{
     command::{CommandProxy, CommandWaker},
     context::Contexts,
     style::{Styles, Theme},
-    text::FontSource,
+    text::{FontSource, Fonts},
     window::Window,
 };
 
@@ -69,12 +69,16 @@ impl<T> AppBuilder<T> {
     }
 
     /// Build the application.
-    pub fn build(self, waker: CommandWaker) -> App<T> {
+    pub fn build(self, waker: CommandWaker, mut fonts: Box<dyn Fonts>) -> App<T> {
+        for font in self.fonts {
+            fonts.load(font);
+        }
+
         let (proxy, receiver) = CommandProxy::new(waker);
 
         let mut contexts = Contexts::new();
         contexts.insert(self.styles);
-        contexts.insert(self.fonts);
+        contexts.insert(fonts);
 
         App {
             windows: Default::default(),

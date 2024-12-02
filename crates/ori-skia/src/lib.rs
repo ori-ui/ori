@@ -17,7 +17,7 @@ use skia_safe::{
         TextAlign as SkiaTextAlign, TextDirection as SkiaTextDirection, TextStyle,
         TypefaceFontProvider,
     },
-    FontMgr, Typeface,
+    FontMgr,
 };
 
 type Images = HashMap<WeakImage, skia_safe::Image>;
@@ -26,23 +26,27 @@ type GlGetIntegerv = unsafe extern "C" fn(u32, *mut i32);
 #[allow(dead_code)]
 pub struct SkiaFonts {
     collection: FontCollection,
+    provider: TypefaceFontProvider,
     manager: FontMgr,
 }
 
 impl SkiaFonts {
     pub fn new(default_font: Option<&str>) -> Self {
         let mut collection = FontCollection::new();
+        let provider = TypefaceFontProvider::new();
         let manager = FontMgr::new();
 
+        collection.set_dynamic_font_manager(FontMgr::clone(&provider));
         collection.set_default_font_manager(manager.clone(), default_font);
 
         Self {
             collection,
+            provider,
             manager,
         }
     }
 
-    pub fn build_skia_paragraph(&self, paragraph: &Paragraph) -> SkiaParagraph {
+    pub fn build_skia_paragraph(&mut self, paragraph: &Paragraph) -> SkiaParagraph {
         let mut style = ParagraphStyle::new();
 
         let align = match paragraph.align {
@@ -67,6 +71,8 @@ impl SkiaFonts {
                 FontFamily::Fantasy => "fantasy",
             };
 
+            let weight = Weight::from(attributes.weight.0 as i32);
+
             let width = match attributes.stretch {
                 FontStretch::UltraCondensed => Width::ULTRA_CONDENSED,
                 FontStretch::ExtraCondensed => Width::EXTRA_CONDENSED,
@@ -85,13 +91,11 @@ impl SkiaFonts {
                 FontStyle::Oblique => Slant::Oblique,
             };
 
+            let font_style = SkiaFontStyle::new(weight, width, slant);
+
             style.set_font_size(attributes.size);
             style.set_font_families(&[family]);
-            style.set_font_style(SkiaFontStyle::new(
-                Weight::from(attributes.weight.0 as i32),
-                width,
-                slant,
-            ));
+            style.set_font_style(font_style);
             style.set_color(SkiaRenderer::skia_color(attributes.color));
 
             builder.push_style(&style);
@@ -107,22 +111,14 @@ impl Fonts for SkiaFonts {
     fn load(&mut self, source: FontSource<'_>) {
         let fonts = source.data().unwrap();
 
-        let mut provider = TypefaceFontProvider::new();
-
         for data in fonts {
-            if let Some(typeface) = Typeface::from_data(&data, None) {
-                provider.register_typeface(typeface, None);
+            if let Some(typeface) = self.manager.new_from_data(&data, None) {
+                self.provider.register_typeface(typeface, None);
             }
         }
-
-        for family in provider.family_names() {
-            println!("Family: {}", family);
-        }
-
-        self.collection.set_asset_font_manager((*provider).clone());
     }
 
-    fn layout(&self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine> {
+    fn layout(&mut self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine> {
         let mut skia_paragraph = self.build_skia_paragraph(paragraph);
         skia_paragraph.layout(width);
 
@@ -164,7 +160,7 @@ impl Fonts for SkiaFonts {
         lines
     }
 
-    fn measure(&self, paragraph: &Paragraph, width: f32) -> Size {
+    fn measure(&mut self, paragraph: &Paragraph, width: f32) -> Size {
         let mut skia_paragraph = self.build_skia_paragraph(paragraph);
         skia_paragraph.layout(width);
 
@@ -206,7 +202,7 @@ impl SkiaRenderer {
 
     pub fn render(
         &mut self,
-        fonts: &SkiaFonts,
+        fonts: &mut SkiaFonts,
         canvas: &Canvas,
         color: Color,
         width: u32,
@@ -227,7 +223,7 @@ impl SkiaRenderer {
     }
 
     fn draw_primitive(
-        fonts: &SkiaFonts,
+        fonts: &mut SkiaFonts,
         images: &mut Images,
         canvas: &skia_safe::Canvas,
         primitive: &Primitive,

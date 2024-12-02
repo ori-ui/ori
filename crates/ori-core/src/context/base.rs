@@ -23,13 +23,8 @@ impl<'a> BaseCx<'a> {
         Self { contexts, proxy }
     }
 
-    /// Get the [`Fonts`].
-    pub fn fonts(&self) -> &dyn Fonts {
-        self.context::<Box<dyn Fonts>>().as_ref()
-    }
-
     /// Get the [`Fonts`] as a mutable reference.
-    pub fn fonts_mut(&mut self) -> &mut dyn Fonts {
+    pub fn fonts(&mut self) -> &mut dyn Fonts {
         self.context_mut::<Box<dyn Fonts>>().as_mut()
     }
 

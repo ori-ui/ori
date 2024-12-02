@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+};
 
 use smol_str::{format_smolstr, SmolStr};
 
@@ -81,10 +84,22 @@ impl Paragraph {
     }
 }
 
+impl Eq for Paragraph {}
+
+impl Hash for Paragraph {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.line_height.to_bits().hash(state);
+        self.align.hash(state);
+        self.wrap.hash(state);
+        self.text.hash(state);
+        self.segments.hash(state);
+    }
+}
+
 /// A segment of a [`Paragraph`], that starts at the end of the previous segment, or at index 0,
 /// and ends at [`Segment::end`]. The purpose of a segment is to specify the text attributes for
 /// the range of the text that the segment covers.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash)]
 struct Segment {
     end: usize,
     attrs: FontAttributes,

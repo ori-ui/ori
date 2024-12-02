@@ -8,6 +8,9 @@ license.workspace = true
 [dependencies]
 ori-core.workspace = true
 
+lru = "0.12"
+seahash = "4.1"
+
 [dependencies.skia-safe]
 version = "0.80"
 default-features = false

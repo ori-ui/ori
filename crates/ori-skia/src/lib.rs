@@ -1,6 +1,7 @@
 use core::ffi;
-use std::{collections::HashMap, mem};
+use std::{collections::HashMap, hash::BuildHasherDefault, mem, num::NonZeroUsize};
 
+use lru::LruCache;
 use ori_core::{
     canvas::{Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive, Shader},
     image::WeakImage,
@@ -10,6 +11,7 @@ use ori_core::{
         TextDirection, TextLayoutLine,
     },
 };
+use seahash::SeaHasher;
 use skia_safe::{
     font_style::{FontStyle as SkiaFontStyle, Slant, Weight, Width},
     textlayout::{
@@ -28,6 +30,7 @@ pub struct SkiaFonts {
     collection: FontCollection,
     provider: TypefaceFontProvider,
     manager: FontMgr,
+    paragraph_cache: LruCache<Paragraph, SkiaParagraph, BuildHasherDefault<SeaHasher>>,
 }
 
 impl SkiaFonts {
@@ -39,14 +42,22 @@ impl SkiaFonts {
         collection.set_dynamic_font_manager(FontMgr::clone(&provider));
         collection.set_default_font_manager(manager.clone(), default_font);
 
+        let cache_size = NonZeroUsize::new(128).unwrap();
+        let paragraph_cache = LruCache::with_hasher(cache_size, Default::default());
+
         Self {
             collection,
             provider,
             manager,
+            paragraph_cache,
         }
     }
 
-    pub fn build_skia_paragraph(&mut self, paragraph: &Paragraph) -> SkiaParagraph {
+    pub fn build_skia_paragraph(&mut self, paragraph: &Paragraph) -> &mut SkiaParagraph {
+        if self.paragraph_cache.contains(paragraph) {
+            return self.paragraph_cache.get_mut(paragraph).unwrap();
+        }
+
         let mut style = ParagraphStyle::new();
 
         let align = match paragraph.align {
@@ -103,7 +114,8 @@ impl SkiaFonts {
             builder.pop();
         }
 
-        builder.build()
+        self.paragraph_cache.put(paragraph.clone(), builder.build());
+        self.paragraph_cache.get_mut(paragraph).unwrap()
     }
 }
 
@@ -119,7 +131,7 @@ impl Fonts for SkiaFonts {
     }
 
     fn layout(&mut self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine> {
-        let mut skia_paragraph = self.build_skia_paragraph(paragraph);
+        let skia_paragraph = self.build_skia_paragraph(paragraph);
         skia_paragraph.layout(width);
 
         let mut lines = Vec::new();
@@ -164,7 +176,7 @@ impl Fonts for SkiaFonts {
     }
 
     fn measure(&mut self, paragraph: &Paragraph, width: f32) -> Size {
-        let mut skia_paragraph = self.build_skia_paragraph(paragraph);
+        let skia_paragraph = self.build_skia_paragraph(paragraph);
         skia_paragraph.layout(width);
 
         let width = skia_paragraph.max_intrinsic_width();
@@ -248,7 +260,7 @@ impl SkiaRenderer {
             Primitive::Paragraph {
                 paragraph, rect, ..
             } => {
-                let mut skia_paragraph = fonts.build_skia_paragraph(paragraph);
+                let skia_paragraph = fonts.build_skia_paragraph(paragraph);
                 skia_paragraph.layout(rect.width() + 1.0);
 
                 skia_paragraph.paint(canvas, (rect.min.x, rect.min.y));

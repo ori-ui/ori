@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use smol_str::SmolStr;
 
 use crate::{canvas::Color, style::Styled};
@@ -194,4 +196,17 @@ pub struct FontAttributes {
 
     /// The color of the font.
     pub color: Color,
+}
+
+impl Eq for FontAttributes {}
+
+impl Hash for FontAttributes {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.size.to_bits().hash(state);
+        self.family.hash(state);
+        self.stretch.hash(state);
+        self.weight.hash(state);
+        self.style.hash(state);
+        self.color.hash(state);
+    }
 }

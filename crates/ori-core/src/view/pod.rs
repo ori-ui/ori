@@ -89,13 +89,12 @@ impl<V> Pod<V> {
     where
         V: View<T>,
     {
-        match handled {
-            false => self.event(state, cx, data, event),
-            true => {
-                cx.propagate(&mut state.view_state);
-                true
-            }
+        if !handled {
+            return self.event(state, cx, data, event);
         }
+
+        let _ = self.event(state, cx, data, &Event::Notify);
+        true
     }
 
     /// Call a closure with the [`BuildCx`] provided by a pod.

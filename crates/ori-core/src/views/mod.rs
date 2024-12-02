@@ -149,7 +149,7 @@ mod testing {
     pub fn test_layout<T>(view: &mut impl View<T>, data: &mut T, space: Space) -> SavedLayouts {
         let mut tester = ViewTester::new(view, data);
         tester.layout(view, data, space);
-        tester.event(view, data, &Event::Update);
+        tester.event(view, data, &Event::Notify);
         tester.contexts.get_or_default::<SavedLayouts>().clone()
     }
 

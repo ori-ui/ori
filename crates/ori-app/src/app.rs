@@ -776,7 +776,7 @@ impl<T> App<T> {
             // since hover state is determined by the scene, and since draw modifies the scene,
             // we must update the hover state, and send an UpdateHovered event if needed
             if self.update_hovered(window_id) {
-                self.window_event(data, window_id, &Event::Update);
+                self.window_event(data, window_id, &Event::Notify);
             }
         }
 

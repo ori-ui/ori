@@ -81,8 +81,8 @@ pub enum Event {
     /// A command was sent.
     Command(Command),
 
-    /// View state needs to be updated.
-    Update,
+    /// Event sent when something has changed and the view should be given a chance to update.
+    Notify,
 }
 
 impl Event {

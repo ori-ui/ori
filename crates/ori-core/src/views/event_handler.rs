@@ -89,7 +89,7 @@ impl<T, V: View<T>> View<T> for EventHandler<T, V> {
         }
 
         match handled {
-            true => _ = self.content.event(state, cx, data, &Event::Update),
+            true => _ = self.content.event(state, cx, data, &Event::Notify),
             false => handled = self.content.event(state, cx, data, event),
         }
 

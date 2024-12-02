@@ -2,7 +2,7 @@ use ori_core::{
     command::{CommandProxy, CommandWaker},
     context::Contexts,
     style::{Styles, Theme},
-    text::{FontSource, Fonts},
+    text::{include_font, FontSource, Fonts},
     window::Window,
 };
 
@@ -29,7 +29,7 @@ impl<T> AppBuilder<T> {
             delegates: Vec::new(),
             requests: Vec::new(),
             styles: Styles::from(Theme::dark()),
-            fonts: Vec::new(),
+            fonts: vec![include_font!("font")],
         }
     }
 

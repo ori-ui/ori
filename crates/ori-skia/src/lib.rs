@@ -64,11 +64,11 @@ impl SkiaFonts {
 
             let family = match &attributes.family {
                 FontFamily::Name(name) => name.as_str(),
-                FontFamily::Serif => "serif",
-                FontFamily::SansSerif => "sans-serif",
+                FontFamily::Serif => "Roboto",
+                FontFamily::SansSerif => "Roboto",
                 FontFamily::Monospace => "Roboto Mono",
-                FontFamily::Cursive => "cursive",
-                FontFamily::Fantasy => "fantasy",
+                FontFamily::Cursive => "Roboto",
+                FontFamily::Fantasy => "Roboto",
             };
 
             let weight = Weight::from(attributes.weight.0 as i32);

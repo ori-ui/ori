@@ -425,8 +425,8 @@ impl Canvas {
                         }
                     }
                     Primitive::Stroke { .. } => {}
-                    Primitive::Paragraph { rect, .. } => {
-                        if rect.contains(point) {
+                    Primitive::Paragraph { bounds, .. } => {
+                        if bounds.contains(point) {
                             return view;
                         }
                     }

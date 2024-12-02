@@ -126,6 +126,9 @@ impl Fonts for SkiaFonts {
 
         for metrics in skia_paragraph.get_line_metrics() {
             let mut line = TextLayoutLine {
+                left: metrics.left as f32,
+                ascent: metrics.ascent as f32,
+                descent: metrics.descent as f32,
                 width: metrics.width as f32,
                 height: metrics.height as f32,
                 baseline: metrics.baseline as f32,
@@ -242,7 +245,9 @@ impl SkiaRenderer {
                 stroked.stroke_curve(curve, *stroke);
                 Self::fill_curve(images, canvas, &stroked, &FillRule::NonZero, paint);
             }
-            Primitive::Paragraph { paragraph, rect } => {
+            Primitive::Paragraph {
+                paragraph, rect, ..
+            } => {
                 let mut skia_paragraph = fonts.build_skia_paragraph(paragraph);
                 skia_paragraph.layout(rect.width() + 1.0);
 

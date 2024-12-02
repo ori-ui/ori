@@ -206,6 +206,9 @@ pub enum Primitive {
         /// The paragraph to draw.
         paragraph: Paragraph,
 
+        /// The bounding rectangle of the paragraph.
+        bounds: Rect,
+
         /// The rectangle to draw the paragraph in.
         rect: Rect,
     },
@@ -318,9 +321,14 @@ impl Canvas {
     }
 
     /// Draw a paragraph.
-    pub fn text(&mut self, paragraph: Paragraph, rect: Rect) {
+    pub fn text(&mut self, paragraph: Paragraph, rect: Rect, bounds: Rect) {
         let primitives = Arc::make_mut(&mut self.primitives);
-        primitives.push(Primitive::Paragraph { paragraph, rect });
+
+        primitives.push(Primitive::Paragraph {
+            paragraph,
+            bounds,
+            rect,
+        });
     }
 
     /// Draw a canvas.

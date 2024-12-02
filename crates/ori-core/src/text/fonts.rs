@@ -48,6 +48,15 @@ impl dyn Fonts {
 /// A line of text layout.
 #[derive(Clone, Debug)]
 pub struct TextLayoutLine {
+    /// The ascent of the line.
+    pub ascent: f32,
+
+    /// The descent of the line.
+    pub descent: f32,
+
+    /// The left edge of the line.
+    pub left: f32,
+
     /// The width of the line.
     pub width: f32,
 

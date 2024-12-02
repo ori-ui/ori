@@ -126,7 +126,24 @@ impl<'a, 'b> DrawCx<'a, 'b> {
 
     /// Draw a text buffer.
     pub fn text(&mut self, paragraph: &Paragraph, rect: Rect) {
-        self.canvas.text(paragraph.clone(), rect);
+        let lines = self.fonts().layout(paragraph, rect.width());
+
+        let mut bounds: Option<Rect> = None;
+
+        for line in lines.iter() {
+            let line_rect = Rect::new(
+                Point::new(line.left, line.baseline - line.ascent),
+                Point::new(line.left + line.width, line.baseline + line.descent),
+            );
+
+            if let Some(ref mut rect) = bounds {
+                *rect = rect.union(line_rect);
+            } else {
+                bounds = Some(line_rect);
+            }
+        }
+
+        (self.canvas).text(paragraph.clone(), rect, bounds.unwrap_or_default());
     }
 
     /// Draw a rectangle with rounded corners and a border.

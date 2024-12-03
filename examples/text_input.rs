@@ -1,12 +1,18 @@
 use ori::prelude::*;
 
-#[derive(Default)]
 struct Data {
     text: String,
     multiline: bool,
 }
 
 impl Data {
+    fn new() -> Self {
+        Self {
+            text: String::from("Hello"),
+            multiline: false,
+        }
+    }
+
     fn toogle_multiline(&mut self) {
         self.multiline = !self.multiline;
     }
@@ -64,5 +70,5 @@ fn main() {
 
     let app = App::build().window(window, app);
 
-    ori::run(app, &mut Data::default()).unwrap();
+    ori::run(app, &mut Data::new()).unwrap();
 }

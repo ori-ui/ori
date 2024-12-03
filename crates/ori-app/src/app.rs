@@ -8,7 +8,8 @@ use ori_core::{
     event::{
         Code, Event, FocusTarget, Ime, Key, KeyPressed, KeyReleased, Modifiers, PointerButton,
         PointerId, PointerLeft, PointerMoved, PointerPressed, PointerReleased, PointerScrolled,
-        RequestFocus, WindowCloseRequested, WindowMaximized, WindowResized, WindowScaled,
+        RequestFocus, RequestFocusNext, RequestFocusPrev, WindowCloseRequested, WindowMaximized,
+        WindowResized, WindowScaled,
     },
     layout::{Point, Size, Space, Vector},
     log::trace,
@@ -517,6 +518,32 @@ impl<T> App<T> {
             if let Some(RequestFocus(window, view)) = command.get() {
                 self.window_event(data, *window, &Event::FocusWanted);
                 self.window_event(data, *window, &Event::FocusGiven(FocusTarget::View(*view)));
+            }
+
+            if let Some(RequestFocusNext(window)) = command.get() {
+                if let Some(window_state) = self.windows.get_mut(window) {
+                    match window_state.view_state.has_focused() {
+                        true => {
+                            self.window_event(data, *window, &Event::FocusNext);
+                        }
+                        false => {
+                            self.window_event(data, *window, &Event::FocusGiven(FocusTarget::Next));
+                        }
+                    }
+                }
+            }
+
+            if let Some(RequestFocusPrev(window)) = command.get() {
+                if let Some(window_state) = self.windows.get_mut(window) {
+                    match window_state.view_state.has_focused() {
+                        true => {
+                            self.window_event(data, *window, &Event::FocusPrev);
+                        }
+                        false => {
+                            self.window_event(data, *window, &Event::FocusGiven(FocusTarget::Prev));
+                        }
+                    }
+                }
             }
 
             self.event(data, &Event::Command(command));

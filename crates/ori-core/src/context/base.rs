@@ -6,7 +6,8 @@ use std::{
 use crate::{
     clipboard::Clipboard,
     command::{Command, CommandProxy},
-    text::Fonts,
+    layout::Size,
+    text::{Fonts, Paragraph, TextLayoutLine},
 };
 
 use super::Contexts;
@@ -26,6 +27,16 @@ impl<'a> BaseCx<'a> {
     /// Get the [`Fonts`] as a mutable reference.
     pub fn fonts(&mut self) -> &mut dyn Fonts {
         self.context_mut::<Box<dyn Fonts>>().as_mut()
+    }
+
+    /// Measure a paragraph.
+    pub fn measure_paragraph(&mut self, paragraph: &Paragraph, width: f32) -> Size {
+        self.fonts().measure(paragraph, width)
+    }
+
+    /// Layout a paragraph.
+    pub fn layout_paragraph(&mut self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine> {
+        self.fonts().layout(paragraph, width)
     }
 
     /// Get the [`Clipboard`].

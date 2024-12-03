@@ -194,6 +194,9 @@ pub struct FontAttributes {
     /// The font style of the font.
     pub style: FontStyle,
 
+    /// Whether to use ligatures.
+    pub ligatures: bool,
+
     /// The color of the font.
     pub color: Color,
 }
@@ -206,6 +209,7 @@ impl Default for FontAttributes {
             stretch: FontStretch::Normal,
             weight: FontWeight::NORMAL,
             style: FontStyle::Normal,
+            ligatures: true,
             color: Color::BLACK,
         }
     }
@@ -220,6 +224,7 @@ impl Hash for FontAttributes {
         self.stretch.hash(state);
         self.weight.hash(state);
         self.style.hash(state);
+        self.ligatures.hash(state);
         self.color.hash(state);
     }
 }

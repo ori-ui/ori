@@ -116,6 +116,7 @@ impl Text {
             stretch: style.font_stretch,
             weight: style.font_weight,
             style: style.font_style,
+            ligatures: true,
             color: style.color,
         }
     }

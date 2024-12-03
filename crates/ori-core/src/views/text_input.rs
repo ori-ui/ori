@@ -3,10 +3,13 @@ use ori_macro::{example, Build, Styled};
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Capitalize, Event},
-    layout::{Size, Space},
+    event::{Capitalize, Event, Key},
+    layout::{Point, Rect, Size, Space},
     style::{Styled, Theme},
-    text::{FontFamily, FontStretch, FontStyle, FontWeight, TextAlign, TextWrap},
+    text::{
+        FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
+        TextLayoutLine, TextWrap,
+    },
     view::View,
 };
 
@@ -51,30 +54,37 @@ pub struct TextInput<T> {
 
     /// The font size of the text.
     #[styled(default = 16.0)]
+    #[rebuild(layout)]
     pub font_size: Styled<f32>,
 
     /// The font family of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_stretch: Styled<FontStretch>,
 
     /// The font.into of the text.
     #[styled(default)]
+    #[rebuild(layout)]
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
     #[styled(default -> Theme::CONTRAST or Color::BLACK)]
+    #[rebuild(draw)]
     pub color: Styled<Color>,
 
     /// The color of the placeholder text.
     #[styled(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
+    #[rebuild(draw)]
     pub placeholder_color: Styled<Color>,
 
     /// The vertical alignment of the text.
@@ -147,47 +157,430 @@ impl<T> TextInput<T> {
 }
 
 #[doc(hidden)]
-pub struct TextInputState {}
+pub struct TextInputState {
+    // the style of the text input
+    style: TextInputStyle,
+
+    // the current text of the input
+    text: String,
+    paragraph: Paragraph,
+    lines: Vec<TextLayoutLine>,
+
+    move_offset: Option<f32>,
+
+    blink: f32,
+    cursor: usize,
+    selection: Option<usize>,
+}
+
+impl TextInputState {
+    fn set_cursor(&mut self, cursor: usize) {
+        self.cursor = cursor;
+        self.selection = None;
+        self.blink = 0.0;
+        self.move_offset = None;
+    }
+
+    fn move_right(&mut self) {
+        if self.cursor >= self.text.len() {
+            // if the cursor is at the end of the text, do nothing
+            return;
+        }
+
+        let next_char = self.text[self.cursor..].chars().next().unwrap();
+        self.set_cursor(self.cursor + next_char.len_utf8());
+    }
+
+    fn move_left(&mut self) {
+        if self.cursor == 0 {
+            // if the cursor is at the start of the text, do nothing
+            return;
+        }
+
+        // FIXME: this might be slow
+        let prev_char = self.text[..self.cursor].chars().next_back().unwrap();
+        self.set_cursor(self.cursor - prev_char.len_utf8());
+    }
+
+    fn move_up(&mut self) {
+        let line = self.current_line_number();
+        let next_line = line.saturating_sub(1);
+
+        if self.move_offset.is_none() {
+            self.move_offset = Some(self.get_cursor_offset());
+        }
+
+        let move_offset = self.move_offset.unwrap();
+        self.cursor = self.select_point_in_line(next_line, move_offset);
+        self.selection = None;
+        self.blink = 0.0;
+    }
+
+    fn move_down(&mut self) {
+        let line = self.current_line_number();
+        let next_line = usize::min(line + 1, self.lines.len() - 1);
+
+        if self.move_offset.is_none() {
+            self.move_offset = Some(self.get_cursor_offset());
+        }
+
+        let move_offset = self.move_offset.unwrap();
+        self.cursor = self.select_point_in_line(next_line, move_offset);
+        self.selection = None;
+        self.blink = 0.0;
+    }
+
+    fn get_cursor_offset(&self) -> f32 {
+        if self.lines.is_empty() {
+            return 0.0;
+        }
+
+        let line_index = self.current_line_number();
+
+        for glyph in &self.lines[line_index].glyphs {
+            if glyph.range.start == self.cursor {
+                return glyph.bounds.left();
+            }
+        }
+
+        self.lines[line_index].bounds().right()
+    }
+
+    fn current_line_number(&self) -> usize {
+        for (i, line) in self.lines.iter().enumerate() {
+            if self.cursor < line.range.end + 1 {
+                return i;
+            }
+        }
+
+        self.lines.len() - 1
+    }
+
+    fn select_point_in_line(&self, line_index: usize, offset: f32) -> usize {
+        let line = &self.lines[line_index];
+
+        for glyph in &line.glyphs {
+            if offset < glyph.bounds.center().x {
+                return glyph.range.start;
+            }
+        }
+
+        line.range.end
+    }
+
+    fn select_point(&self, point: Point) -> usize {
+        for (i, line) in self.lines.iter().enumerate() {
+            if point.y <= line.bottom() {
+                return self.select_point_in_line(i, point.x);
+            }
+        }
+
+        0
+    }
+}
 
 impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         cx.set_focusable(true);
-        todo!()
+
+        let style = TextInputStyle::styled(self, cx.styles());
+
+        let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);
+
+        paragraph.set_text(
+            self.text.as_deref().unwrap_or_default(),
+            FontAttributes {
+                size: style.font_size,
+                family: style.font_family.clone(),
+                weight: style.font_weight,
+                stretch: style.font_stretch,
+                style: style.font_style,
+                ligatures: false,
+                color: style.color,
+            },
+        );
+
+        TextInputState {
+            style,
+            text: self.text.clone().unwrap_or_default(),
+            paragraph,
+            lines: Vec::new(),
+            move_offset: None,
+            blink: 0.0,
+            cursor: 0,
+            selection: None,
+        }
     }
 
-    fn rebuild(
-        &mut self,
-        _state: &mut Self::State,
-        _cx: &mut RebuildCx,
-        _data: &mut T,
-        _old: &Self,
-    ) {
-        todo!()
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, _old: &Self) {
+        state.style.rebuild(self, cx);
+
+        if let Some(text) = &self.text {
+            state.text = text.clone();
+            state.lines.clear();
+
+            cx.layout();
+        }
+
+        if state.paragraph.line_height != state.style.line_height
+            || state.paragraph.align != state.style.align
+            || state.paragraph.wrap != state.style.wrap
+        {
+            state.paragraph.line_height = state.style.line_height;
+            state.paragraph.align = state.style.align;
+            state.paragraph.wrap = state.style.wrap;
+
+            cx.layout();
+        }
+
+        state.paragraph.set_text(
+            &state.text,
+            FontAttributes {
+                size: state.style.font_size,
+                family: state.style.font_family.clone(),
+                weight: state.style.font_weight,
+                stretch: state.style.font_stretch,
+                style: state.style.font_style,
+                ligatures: false,
+                color: state.style.color,
+            },
+        );
+
+        state.cursor = usize::min(state.cursor, state.text.len());
     }
 
     fn event(
         &mut self,
-        _state: &mut Self::State,
-        _cx: &mut EventCx,
-        _data: &mut T,
-        _event: &Event,
+        state: &mut Self::State,
+        cx: &mut EventCx,
+        data: &mut T,
+        event: &Event,
     ) -> bool {
-        todo!()
+        if cx.focused_changed() {
+            if cx.is_focused() {
+                state.blink = 0.0;
+                state.selection = None;
+            } else {
+                state.selection = None;
+            }
+
+            cx.draw();
+        }
+
+        if cx.is_focused() {
+            cx.animate();
+        }
+
+        match event {
+            Event::PointerPressed(e) if cx.is_hovered() => {
+                let local = cx.local(e.position);
+                state.set_cursor(state.select_point(local));
+
+                cx.focus();
+
+                true
+            }
+
+            Event::KeyPressed(e) if cx.is_focused() => {
+                let mut text_changed = false;
+
+                if let Some(ref text) = e.text {
+                    if !text.chars().any(char::is_control) && !e.modifiers.ctrl {
+                        state.text.insert_str(state.cursor, text);
+                        state.set_cursor(state.cursor + text.len());
+
+                        text_changed = true;
+                    }
+                }
+
+                if e.is_key(Key::Character('v')) && e.modifiers.ctrl {
+                    let text = cx.clipboard().get();
+
+                    state.text.insert_str(state.cursor, &text);
+                    state.set_cursor(state.cursor + text.len());
+
+                    text_changed = true;
+                }
+
+                if e.is_key(Key::Enter) && self.multiline {
+                    state.text.insert(state.cursor, '\n');
+                    state.set_cursor(state.cursor + 1);
+
+                    text_changed = true;
+                }
+
+                if e.is_key(Key::Enter) && !self.multiline {
+                    if let Some(on_submit) = &mut self.on_submit {
+                        on_submit(cx, data, state.text.clone());
+                    }
+
+                    cx.focus_next();
+
+                    text_changed = true;
+                }
+
+                if e.is_key(Key::Backspace) && state.cursor > 0 {
+                    state.move_left();
+                    state.text.remove(state.cursor);
+
+                    text_changed = true;
+                }
+
+                if e.is_key(Key::Right) {
+                    state.move_right();
+                    cx.draw();
+                }
+
+                if e.is_key(Key::Left) {
+                    state.move_left();
+                    cx.draw();
+                }
+
+                if e.is_key(Key::Up) {
+                    state.move_up();
+                    cx.draw();
+                }
+
+                if e.is_key(Key::Down) {
+                    state.move_down();
+                    cx.draw();
+                }
+
+                if text_changed {
+                    if let Some(on_input) = &mut self.on_input {
+                        on_input(cx, data, state.text.clone());
+                    }
+
+                    state.paragraph.set_text(
+                        &state.text,
+                        FontAttributes {
+                            size: state.style.font_size,
+                            family: state.style.font_family.clone(),
+                            weight: state.style.font_weight,
+                            stretch: state.style.font_stretch,
+                            style: state.style.font_style,
+                            ligatures: false,
+                            color: state.style.color,
+                        },
+                    );
+
+                    state.lines.clear();
+
+                    cx.layout();
+                }
+
+                true
+            }
+
+            Event::Animate(dt) => {
+                state.blink += *dt;
+
+                cx.draw();
+
+                false
+            }
+            _ => false,
+        }
     }
 
     fn layout(
         &mut self,
-        _state: &mut Self::State,
-        _cx: &mut LayoutCx,
+        state: &mut Self::State,
+        cx: &mut LayoutCx,
         _data: &mut T,
-        _space: Space,
+        space: Space,
     ) -> Size {
-        todo!()
+        if state.text.is_empty() {
+            state.lines.clear();
+
+            let mut placeholder = Paragraph::new(
+                // please, don't make this ugly rustfmt
+                state.style.line_height,
+                state.style.align,
+                state.style.wrap,
+            );
+
+            placeholder.set_text(
+                &self.placeholder,
+                FontAttributes {
+                    size: state.style.font_size,
+                    family: state.style.font_family.clone(),
+                    weight: state.style.font_weight,
+                    stretch: state.style.font_stretch,
+                    style: state.style.font_style,
+                    ligatures: false,
+                    color: state.style.placeholder_color,
+                },
+            );
+
+            let size = cx.measure_paragraph(&placeholder, space.max.width);
+            return space.fit(size);
+        }
+
+        state.lines = cx.layout_paragraph(&state.paragraph, space.max.width);
+        let size = cx.measure_paragraph(&state.paragraph, space.max.width);
+        space.fit(size)
     }
 
-    fn draw(&mut self, _state: &mut Self::State, _cx: &mut DrawCx, _data: &mut T) {
-        todo!()
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+        cx.trigger(cx.rect());
+
+        if !state.text.is_empty() {
+            cx.paragraph(&state.paragraph, cx.rect());
+        } else {
+            let mut placeholder = Paragraph::new(
+                // please, don't make this ugly rustfmt
+                state.style.line_height,
+                state.style.align,
+                state.style.wrap,
+            );
+
+            placeholder.set_text(
+                &self.placeholder,
+                FontAttributes {
+                    size: state.style.font_size,
+                    family: state.style.font_family.clone(),
+                    weight: state.style.font_weight,
+                    stretch: state.style.font_stretch,
+                    style: state.style.font_style,
+                    ligatures: false,
+                    color: state.style.placeholder_color,
+                },
+            );
+
+            cx.paragraph(&placeholder, cx.rect());
+        }
+
+        let contrast = cx.styles().get_or(Color::BLACK, Theme::CONTRAST);
+
+        // draw the cursor
+        if cx.is_focused() {
+            let color = f32::cos(state.blink * 5.0).abs();
+
+            draw_cursor(state, cx, contrast.fade(color));
+        }
     }
+}
+
+fn draw_cursor(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
+    if state.lines.is_empty() {
+        // if there are no lines, just draw the cursor at the start
+
+        let size = Size::new(1.0, cx.size().height);
+        let rect = Rect::min_size(cx.rect().top_left(), size);
+
+        cx.fill_rect(rect, color);
+
+        return;
+    }
+
+    let line = &state.lines[state.current_line_number()];
+    let offset = state.get_cursor_offset();
+
+    let size = Size::new(1.0, line.height());
+    let rect = Rect::min_size(Point::new(offset, line.top()), size);
+
+    cx.fill_rect(rect, color);
 }

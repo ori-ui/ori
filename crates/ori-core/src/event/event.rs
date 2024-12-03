@@ -11,6 +11,14 @@ use super::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct RequestFocus(pub WindowId, pub ViewId);
 
+/// A request to focus the next view in the focus chain.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RequestFocusNext(pub WindowId);
+
+/// A request to focus the previous view in the focus chain.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RequestFocusPrev(pub WindowId);
+
 /// A target for focus.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FocusTarget {

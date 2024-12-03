@@ -3,7 +3,7 @@ use std::{
     ops::Range,
 };
 
-use crate::layout::{Rect, Size};
+use crate::layout::{Point, Rect, Size};
 
 use super::{FontSource, Paragraph};
 
@@ -66,8 +66,62 @@ pub struct TextLayoutLine {
     /// The baseline of the line.
     pub baseline: f32,
 
+    /// The range of the line in the original text.
+    pub range: Range<usize>,
+
     /// The glyphs in the line.
     pub glyphs: Vec<GlyphCluster>,
+}
+
+impl TextLayoutLine {
+    /// The left edge of the line.
+    ///
+    /// This is the same as 'left'.
+    /// other edge methods.
+    pub fn left(&self) -> f32 {
+        self.left
+    }
+
+    /// The right edge of the line.
+    ///
+    /// This is the same as `left + width`.
+    pub fn right(&self) -> f32 {
+        self.left + self.width
+    }
+
+    /// The top edge of the line.
+    ///
+    /// This is the same as `baseline - ascent`.
+    pub fn top(&self) -> f32 {
+        self.baseline - self.ascent
+    }
+
+    /// The bottom edge of the line.
+    ///
+    /// This is the same as `baseline + descent`.
+    pub fn bottom(&self) -> f32 {
+        self.baseline + self.descent
+    }
+
+    /// The height of the line.
+    pub fn width(&self) -> f32 {
+        self.width
+    }
+
+    /// The height of the line.
+    ///
+    /// This is the same as `ascent + descent`.
+    pub fn height(&self) -> f32 {
+        self.height
+    }
+
+    /// The bounds of the line.
+    pub fn bounds(&self) -> Rect {
+        Rect::new(
+            Point::new(self.left(), self.top()),
+            Point::new(self.right(), self.bottom()),
+        )
+    }
 }
 
 /// A glyph cluster in a line of laid out text.

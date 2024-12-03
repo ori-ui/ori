@@ -8,7 +8,7 @@ use ori_core::{
     layout::{Affine, Point, Rect, Size, Vector},
     text::{
         FontFamily, FontSource, FontStretch, FontStyle, Fonts, GlyphCluster, Paragraph, TextAlign,
-        TextDirection, TextLayoutLine,
+        TextDirection, TextLayoutLine, TextWrap,
     },
 };
 use seahash::SeaHasher;
@@ -66,7 +66,12 @@ impl SkiaFonts {
             TextAlign::End => SkiaTextAlign::Right,
         };
 
+        style.set_height(paragraph.line_height);
         style.set_text_align(align);
+
+        if let TextWrap::None = paragraph.wrap {
+            style.set_max_lines(1);
+        }
 
         let mut builder = ParagraphBuilder::new(&style, &self.collection);
 
@@ -109,6 +114,12 @@ impl SkiaFonts {
             style.set_font_style(font_style);
             style.set_color(SkiaRenderer::skia_color(attributes.color));
 
+            if !attributes.ligatures {
+                // disable ligatures
+                style.add_font_feature("liga", 0);
+                style.add_font_feature("clig", 0);
+            }
+
             builder.push_style(&style);
             builder.add_text(text);
             builder.pop();
@@ -136,21 +147,55 @@ impl Fonts for SkiaFonts {
 
         let mut lines = Vec::new();
 
-        for metrics in skia_paragraph.get_line_metrics() {
+        let metrics = skia_paragraph.get_line_metrics();
+
+        for (i, metric) in metrics.iter().enumerate() {
+            // the following code is a revulting mess of special cases to handle
+            // i do not ever want to have to know that every line except the last
+            // has contains the newline character that caused it to wrap.
+            //
+            // this sucks and i hate it. thanks google. you wasted several hours of my
+            // life with this garbage.
+            //
+            //  - Hjalte, 2024-12-03
+
+            let text = &paragraph.text()[metric.start_index..metric.end_including_newline];
+            let has_newline = text.ends_with('\n');
+            let is_newline = text == "\n";
+            let is_last = i == metrics.len() - 1;
+
+            let range = if is_newline {
+                if is_last {
+                    metric.start_index + 1..metric.end_including_newline
+                } else {
+                    metric.start_index..metric.end_including_newline - 1
+                }
+            } else {
+                metric.start_index..metric.end_including_newline - has_newline as usize
+            };
+
             let mut line = TextLayoutLine {
-                left: metrics.left as f32,
-                ascent: metrics.ascent as f32,
-                descent: metrics.descent as f32,
-                width: metrics.width as f32,
-                height: metrics.height as f32,
-                baseline: metrics.baseline as f32,
+                left: metric.left as f32,
+                ascent: metric.ascent as f32,
+                descent: metric.descent as f32,
+                width: metric.width as f32,
+                height: metric.height as f32,
+                baseline: metric.baseline as f32,
+                range,
                 glyphs: Vec::new(),
             };
 
-            for i in metrics.start_index..metrics.end_index {
+            for i in metric.start_index..metric.end_index {
                 let Some(glyph) = skia_paragraph.get_glyph_cluster_at(i) else {
                     continue;
                 };
+
+                if &paragraph.text()[glyph.text_range.clone()] == "\n" {
+                    // we don't want to include newline characters in the glyph list
+                    // they just confuse everything.
+
+                    continue;
+                }
 
                 let bounds = Rect {
                     min: Point::new(glyph.bounds.left, glyph.bounds.top),

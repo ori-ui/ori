@@ -154,6 +154,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 stretch: state.style.font_stretch,
                 weight: state.style.font_weight,
                 style: state.style.font_style,
+                ligatures: true,
                 color: state.style.color,
             },
         );
@@ -183,6 +184,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 stretch: state.style.font_stretch,
                 weight: state.style.font_weight,
                 style: state.style.font_style,
+                ligatures: true,
                 color: state.style.color,
             },
         );

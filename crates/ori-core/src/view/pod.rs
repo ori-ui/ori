@@ -161,7 +161,7 @@ impl<V> Pod<V> {
 
             if focus_given {
                 view_state.set_focused(true);
-                cx.propagate(view_state);
+                Self::event_with_inner(view_state, cx, &Event::Notify, f);
                 return true;
             }
         }

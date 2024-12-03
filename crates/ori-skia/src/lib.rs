@@ -159,9 +159,15 @@ impl Fonts for SkiaFonts {
             //
             //  - Hjalte, 2024-12-03
 
-            let text = &paragraph.text()[metric.start_index..metric.end_including_newline];
-            let has_newline = text.ends_with('\n');
-            let is_newline = text == "\n";
+            let end = metric.end_including_newline.saturating_sub(1);
+
+            let has_newline = if paragraph.text().is_char_boundary(end) {
+                paragraph.text()[end..].starts_with('\n')
+            } else {
+                false
+            };
+
+            let is_newline = has_newline && metric.start_index != metric.end_including_newline - 1;
             let is_last = i == metrics.len() - 1;
 
             let range = if is_newline {
@@ -181,11 +187,11 @@ impl Fonts for SkiaFonts {
                 width: metric.width as f32,
                 height: metric.height as f32,
                 baseline: metric.baseline as f32,
-                range,
+                range: range.clone(),
                 glyphs: Vec::new(),
             };
 
-            for i in metric.start_index..metric.end_index {
+            for i in range {
                 let Some(glyph) = skia_paragraph.get_glyph_cluster_at(i) else {
                     continue;
                 };

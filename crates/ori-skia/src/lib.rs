@@ -335,9 +335,6 @@ impl SkiaRenderer {
                     image
                 });
 
-                let mut transform = pattern.transform;
-                transform.translation *= -1.0;
-
                 let shader = skia_safe::shaders::image(
                     image.clone(),
                     (
@@ -345,7 +342,7 @@ impl SkiaRenderer {
                         skia_safe::TileMode::default(),
                     ),
                     &skia_safe::SamplingOptions::default(),
-                    &Self::skia_matrix(transform),
+                    &Self::skia_matrix(pattern.transform),
                 )
                 .unwrap()
                 .with_color_filter(

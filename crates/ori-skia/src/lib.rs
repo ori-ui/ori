@@ -190,7 +190,7 @@ impl Fonts for SkiaFonts {
                 glyphs: Vec::new(),
             };
 
-            for i in range {
+            for i in metric.start_index..metric.end_index {
                 let Some(glyph) = skia_paragraph.get_glyph_cluster_at(i) else {
                     continue;
                 };

@@ -3,7 +3,7 @@ use ori_macro::{example, Build, Styled};
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
-    event::{Capitalize, Event, Key},
+    event::{Capitalize, Event, Ime, Key},
     layout::{Point, Rect, Size, Space},
     style::{Styled, Theme},
     text::{
@@ -187,6 +187,18 @@ impl TextInputState {
         self.move_offset = None;
     }
 
+    fn remove_selection(&mut self) {
+        if let Some(selection) = self.selection {
+            let start = usize::min(self.cursor, selection);
+            let end = usize::max(self.cursor, selection);
+
+            self.text.drain(start..end);
+            self.set_cursor(start, false);
+
+            self.selection = None;
+        }
+    }
+
     fn move_right(&mut self, select: bool) {
         if !select && self.selection.is_some() {
             // if the selection is active, clear it
@@ -295,7 +307,13 @@ impl TextInputState {
             }
         }
 
-        self.lines[line_index].bounds().right()
+        let line = &self.lines[line_index];
+
+        if let Some(glyph) = line.glyphs.last() {
+            glyph.bounds.right()
+        } else {
+            line.right()
+        }
     }
 
     fn current_line_number(&self) -> usize {
@@ -423,7 +441,22 @@ impl<T> View<T> for TextInput<T> {
         }
 
         if cx.is_focused() {
+            let selection = state.selection.unwrap_or(state.cursor);
+
+            let min = usize::min(state.cursor, selection);
+            let max = usize::max(state.cursor, selection);
+
+            cx.set_ime(Some(Ime {
+                text: state.text.clone(),
+                selection: min..max,
+                compose: None,
+                multiline: self.multiline,
+                capitalize: self.capitalize,
+            }));
+
             cx.animate();
+        } else {
+            cx.set_ime(None);
         }
 
         match event {
@@ -439,6 +472,7 @@ impl<T> View<T> for TextInput<T> {
 
             Event::PointerMoved(e) if state.dragging => {
                 let local = cx.local(e.position);
+                let local = cx.rect().contain(local);
                 let cursor = state.select_point(local);
                 state.set_cursor(cursor, true);
 
@@ -458,6 +492,7 @@ impl<T> View<T> for TextInput<T> {
 
                 if let Some(ref text) = e.text {
                     if !text.chars().any(char::is_control) && !e.modifiers.ctrl {
+                        state.remove_selection();
                         state.text.insert_str(state.cursor, text);
                         state.set_cursor(state.cursor + text.len(), false);
 
@@ -466,6 +501,8 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if e.is_key('v') && e.modifiers.ctrl {
+                    state.remove_selection();
+
                     let text = cx.clipboard().get();
 
                     state.text.insert_str(state.cursor, &text);
@@ -499,6 +536,7 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if e.is_key(Key::Enter) && self.multiline {
+                    state.remove_selection();
                     state.text.insert(state.cursor, '\n');
                     state.set_cursor(state.cursor + 1, false);
 
@@ -516,8 +554,12 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if e.is_key(Key::Backspace) && state.cursor > 0 {
-                    state.move_left(false);
-                    state.text.remove(state.cursor);
+                    if state.selection.is_some() {
+                        state.remove_selection();
+                    } else {
+                        state.move_left(false);
+                        state.text.remove(state.cursor);
+                    }
 
                     text_changed = true;
                 }
@@ -669,10 +711,13 @@ fn draw_highlight(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
         let end = usize::max(state.cursor, selection);
 
         for line in &state.lines {
+            let top = line.top();
+            let bottom = line.bottom();
+
             if line.glyphs.is_empty() && line.range.start >= start && line.range.end <= end {
                 let rect = Rect::new(
-                    Point::new(line.left(), line.top()),
-                    Point::new(line.left() + 4.0, line.bottom()),
+                    Point::new(line.left(), top),
+                    Point::new(line.left() + 2.0, bottom),
                 );
 
                 cx.fill_rect(rect, color);
@@ -697,11 +742,7 @@ fn draw_highlight(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
                 continue;
             }
 
-            let rect = Rect::new(
-                Point::new(left, line.top()),
-                Point::new(right, line.bottom()),
-            );
-
+            let rect = Rect::new(Point::new(left, top), Point::new(right, bottom));
             cx.fill_rect(rect, color);
         }
     }

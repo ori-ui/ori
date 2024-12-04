@@ -13,7 +13,7 @@ impl Data {
         }
     }
 
-    fn toogle_multiline(&mut self) {
+    fn toggle_multiline(&mut self) {
         self.multiline = !self.multiline;
     }
 }
@@ -47,7 +47,7 @@ fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
     hstack![
         text("Multiline"),
         on_click(checkbox(data.multiline), |cx, data: &mut Data| {
-            data.toogle_multiline();
+            data.toggle_multiline();
             cx.rebuild();
         })
     ]

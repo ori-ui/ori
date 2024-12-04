@@ -166,6 +166,7 @@ pub struct TextInputState {
     paragraph: Paragraph,
     lines: Vec<TextLayoutLine>,
 
+    dragging: bool,
     move_offset: Option<f32>,
 
     blink: f32,
@@ -174,24 +175,51 @@ pub struct TextInputState {
 }
 
 impl TextInputState {
-    fn set_cursor(&mut self, cursor: usize) {
+    fn set_cursor(&mut self, cursor: usize, select: bool) {
+        if !select {
+            self.selection = None;
+        } else if self.selection.is_none() {
+            self.selection = Some(self.cursor);
+        }
+
         self.cursor = cursor;
-        self.selection = None;
         self.blink = 0.0;
         self.move_offset = None;
     }
 
-    fn move_right(&mut self) {
+    fn move_right(&mut self, select: bool) {
+        if !select && self.selection.is_some() {
+            // if the selection is active, clear it
+
+            if self.cursor < self.selection.unwrap() {
+                self.cursor = self.selection.unwrap();
+            }
+
+            self.selection = None;
+            return;
+        }
+
         if self.cursor >= self.text.len() {
             // if the cursor is at the end of the text, do nothing
             return;
         }
 
         let next_char = self.text[self.cursor..].chars().next().unwrap();
-        self.set_cursor(self.cursor + next_char.len_utf8());
+        self.set_cursor(self.cursor + next_char.len_utf8(), select);
     }
 
-    fn move_left(&mut self) {
+    fn move_left(&mut self, select: bool) {
+        if !select && self.selection.is_some() {
+            // if the selection is active, clear it
+
+            if self.cursor > self.selection.unwrap() {
+                self.cursor = self.selection.unwrap();
+            }
+
+            self.selection = None;
+            return;
+        }
+
         if self.cursor == 0 {
             // if the cursor is at the start of the text, do nothing
             return;
@@ -199,10 +227,17 @@ impl TextInputState {
 
         // FIXME: this might be slow
         let prev_char = self.text[..self.cursor].chars().next_back().unwrap();
-        self.set_cursor(self.cursor - prev_char.len_utf8());
+        self.set_cursor(self.cursor - prev_char.len_utf8(), select);
     }
 
-    fn move_up(&mut self) {
+    fn move_up(&mut self, select: bool) {
+        if !select && self.selection.is_some() {
+            // if the selection is active, clear it
+
+            self.selection = None;
+            return;
+        }
+
         let line = self.current_line_number();
         let next_line = line.saturating_sub(1);
 
@@ -210,13 +245,25 @@ impl TextInputState {
             self.move_offset = Some(self.get_cursor_offset());
         }
 
+        if !select {
+            self.selection = None;
+        } else if self.selection.is_none() {
+            self.selection = Some(self.cursor);
+        }
+
         let move_offset = self.move_offset.unwrap();
         self.cursor = self.select_point_in_line(next_line, move_offset);
-        self.selection = None;
         self.blink = 0.0;
     }
 
-    fn move_down(&mut self) {
+    fn move_down(&mut self, select: bool) {
+        if !select && self.selection.is_some() {
+            // if the selection is active, clear it
+
+            self.selection = None;
+            return;
+        }
+
         let line = self.current_line_number();
         let next_line = usize::min(line + 1, self.lines.len() - 1);
 
@@ -224,9 +271,14 @@ impl TextInputState {
             self.move_offset = Some(self.get_cursor_offset());
         }
 
+        if !select {
+            self.selection = None;
+        } else if self.selection.is_none() {
+            self.selection = Some(self.cursor);
+        }
+
         let move_offset = self.move_offset.unwrap();
         self.cursor = self.select_point_in_line(next_line, move_offset);
-        self.selection = None;
         self.blink = 0.0;
     }
 
@@ -307,6 +359,7 @@ impl<T> View<T> for TextInput<T> {
             text: self.text.clone().unwrap_or_default(),
             paragraph,
             lines: Vec::new(),
+            dragging: false,
             move_offset: None,
             blink: 0.0,
             cursor: 0,
@@ -376,9 +429,26 @@ impl<T> View<T> for TextInput<T> {
         match event {
             Event::PointerPressed(e) if cx.is_hovered() => {
                 let local = cx.local(e.position);
-                state.set_cursor(state.select_point(local));
+                state.set_cursor(state.select_point(local), false);
+                state.dragging = true;
 
                 cx.focus();
+
+                true
+            }
+
+            Event::PointerMoved(e) if state.dragging => {
+                let local = cx.local(e.position);
+                let cursor = state.select_point(local);
+                state.set_cursor(cursor, true);
+
+                cx.draw();
+
+                true
+            }
+
+            Event::PointerReleased(_) if state.dragging => {
+                state.dragging = false;
 
                 true
             }
@@ -389,24 +459,48 @@ impl<T> View<T> for TextInput<T> {
                 if let Some(ref text) = e.text {
                     if !text.chars().any(char::is_control) && !e.modifiers.ctrl {
                         state.text.insert_str(state.cursor, text);
-                        state.set_cursor(state.cursor + text.len());
+                        state.set_cursor(state.cursor + text.len(), false);
 
                         text_changed = true;
                     }
                 }
 
-                if e.is_key(Key::Character('v')) && e.modifiers.ctrl {
+                if e.is_key('v') && e.modifiers.ctrl {
                     let text = cx.clipboard().get();
 
                     state.text.insert_str(state.cursor, &text);
-                    state.set_cursor(state.cursor + text.len());
+                    state.set_cursor(state.cursor + text.len(), false);
 
                     text_changed = true;
                 }
 
+                if e.is_key('c') && e.modifiers.ctrl {
+                    if let Some(selection) = state.selection {
+                        let start = usize::min(state.cursor, selection);
+                        let end = usize::max(state.cursor, selection);
+
+                        let text = state.text[start..end].to_string();
+                        cx.clipboard().set(text);
+                    }
+                }
+
+                if e.is_key('x') && e.modifiers.ctrl {
+                    if let Some(selection) = state.selection {
+                        let start = usize::min(state.cursor, selection);
+                        let end = usize::max(state.cursor, selection);
+
+                        let text = state.text.drain(start..end).collect::<String>();
+                        cx.clipboard().set(text);
+
+                        state.set_cursor(start, false);
+
+                        text_changed = true;
+                    }
+                }
+
                 if e.is_key(Key::Enter) && self.multiline {
                     state.text.insert(state.cursor, '\n');
-                    state.set_cursor(state.cursor + 1);
+                    state.set_cursor(state.cursor + 1, false);
 
                     text_changed = true;
                 }
@@ -422,29 +516,29 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if e.is_key(Key::Backspace) && state.cursor > 0 {
-                    state.move_left();
+                    state.move_left(false);
                     state.text.remove(state.cursor);
 
                     text_changed = true;
                 }
 
                 if e.is_key(Key::Right) {
-                    state.move_right();
+                    state.move_right(e.modifiers.shift);
                     cx.draw();
                 }
 
                 if e.is_key(Key::Left) {
-                    state.move_left();
+                    state.move_left(e.modifiers.shift);
                     cx.draw();
                 }
 
                 if e.is_key(Key::Up) {
-                    state.move_up();
+                    state.move_up(e.modifiers.shift);
                     cx.draw();
                 }
 
                 if e.is_key(Key::Down) {
-                    state.move_down();
+                    state.move_down(e.modifiers.shift);
                     cx.draw();
                 }
 
@@ -554,12 +648,61 @@ impl<T> View<T> for TextInput<T> {
         }
 
         let contrast = cx.styles().get_or(Color::BLACK, Theme::CONTRAST);
+        let info = cx.styles().get_or(Color::BLUE, Theme::INFO);
 
         // draw the cursor
         if cx.is_focused() {
             let color = f32::cos(state.blink * 5.0).abs();
 
-            draw_cursor(state, cx, contrast.fade(color));
+            draw_highlight(state, cx, info.fade(0.5));
+
+            if state.selection.is_none() {
+                draw_cursor(state, cx, contrast.fade(color));
+            }
+        }
+    }
+}
+
+fn draw_highlight(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
+    if let Some(selection) = state.selection {
+        let start = usize::min(state.cursor, selection);
+        let end = usize::max(state.cursor, selection);
+
+        for line in &state.lines {
+            if line.glyphs.is_empty() && line.range.start >= start && line.range.end <= end {
+                let rect = Rect::new(
+                    Point::new(line.left(), line.top()),
+                    Point::new(line.left() + 4.0, line.bottom()),
+                );
+
+                cx.fill_rect(rect, color);
+
+                continue;
+            }
+
+            let mut left = line.right();
+            let mut right = line.left();
+
+            for glyph in &line.glyphs {
+                if start <= glyph.range.start && end >= glyph.range.start {
+                    left = f32::min(left, glyph.bounds.left());
+                }
+
+                if start <= glyph.range.end && end >= glyph.range.end {
+                    right = f32::max(right, glyph.bounds.right());
+                }
+            }
+
+            if left >= right {
+                continue;
+            }
+
+            let rect = Rect::new(
+                Point::new(left, line.top()),
+                Point::new(right, line.bottom()),
+            );
+
+            cx.fill_rect(rect, color);
         }
     }
 }

@@ -167,17 +167,16 @@ impl Fonts for SkiaFonts {
                 false
             };
 
-            let is_newline = has_newline && metric.start_index != metric.end_including_newline - 1;
             let is_last = i == metrics.len() - 1;
 
-            let range = if is_newline {
+            let range = if has_newline {
                 if is_last {
                     metric.start_index + 1..metric.end_including_newline
                 } else {
-                    metric.start_index..metric.end_including_newline - 1
+                    metric.start_index..end
                 }
             } else {
-                metric.start_index..metric.end_including_newline - has_newline as usize
+                metric.start_index..metric.end_including_newline
             };
 
             let mut line = TextLayoutLine {

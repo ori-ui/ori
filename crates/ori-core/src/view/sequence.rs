@@ -489,7 +489,9 @@ impl<V> PodSeq<V> {
                         continue;
                     }
 
-                    match self.event_nth(i, content, cx, data, event) {
+                    let handled = self.event_nth(i, content, cx, data, event);
+
+                    match handled && !content[i].has_focused() {
                         true => state = State::GivingFocus,
                         false => state = State::Propagating,
                     }
@@ -500,7 +502,9 @@ impl<V> PodSeq<V> {
                         false => Event::FocusGiven(FocusTarget::Prev),
                     };
 
-                    if self.event_nth(i, content, cx, data, &event) {
+                    let handled = self.event_nth(i, content, cx, data, &event);
+
+                    if handled && content[i].has_focused() {
                         state = State::Propagating;
                     }
                 }
@@ -510,7 +514,7 @@ impl<V> PodSeq<V> {
             }
         }
 
-        matches!(state, State::Propagating)
+        matches!(state, State::GivingFocus | State::Propagating)
     }
 
     fn give_focus<T>(

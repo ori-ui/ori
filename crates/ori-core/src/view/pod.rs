@@ -151,6 +151,8 @@ impl<V> Pod<V> {
 
         if event.wants_focus() && view_state.is_focused() {
             view_state.set_focused(false);
+            Self::event_with_inner(view_state, cx, &Event::Notify, f);
+            return true;
         }
 
         if let Event::FocusGiven(view_id) = event {

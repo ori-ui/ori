@@ -496,6 +496,7 @@ impl<T> View<T> for TextInput<T> {
 
             Event::KeyPressed(e) if cx.is_focused() => {
                 let mut text_changed = false;
+                let mut text_submitted = false;
 
                 if let Some(ref text) = e.text {
                     if !text.chars().any(char::is_control) && !e.modifiers.ctrl {
@@ -551,13 +552,10 @@ impl<T> View<T> for TextInput<T> {
                 }
 
                 if e.is_key(Key::Enter) && !self.multiline {
-                    if let Some(on_submit) = &mut self.on_submit {
-                        on_submit(cx, data, state.text.clone());
-                    }
-
                     cx.focus_next();
 
                     text_changed = true;
+                    text_submitted = true;
                 }
 
                 if e.is_key(Key::Backspace) && state.cursor > 0 {
@@ -612,6 +610,12 @@ impl<T> View<T> for TextInput<T> {
                     state.lines.clear();
 
                     cx.layout();
+                }
+
+                if text_submitted {
+                    if let Some(on_submit) = &mut self.on_submit {
+                        on_submit(cx, data, state.text.clone());
+                    }
                 }
 
                 true

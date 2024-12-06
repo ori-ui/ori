@@ -158,7 +158,7 @@ impl<V> Pod<V> {
         if let Event::FocusGiven(view_id) = event {
             let focus_given = match view_id {
                 FocusTarget::Next | FocusTarget::Prev => view_state.is_focusable(),
-                FocusTarget::View(id) => view_state.id() == *id,
+                FocusTarget::View(id) => view_state.id() == *id && view_state.is_focusable(),
             };
 
             if focus_given {

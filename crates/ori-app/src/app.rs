@@ -515,35 +515,41 @@ impl<T> App<T> {
                 continue;
             }
 
-            if let Some(RequestFocus(window, view)) = command.get() {
-                self.window_event(data, *window, &Event::FocusWanted);
-                self.window_event(data, *window, &Event::FocusGiven(FocusTarget::View(*view)));
+            if let Some(&RequestFocus(window, view)) = command.get() {
+                self.window_event(data, window, &Event::FocusWanted);
+                self.window_event(data, window, &Event::FocusGiven(FocusTarget::View(view)));
+
+                continue;
             }
 
-            if let Some(RequestFocusNext(window)) = command.get() {
-                if let Some(window_state) = self.windows.get_mut(window) {
+            if let Some(&RequestFocusNext(window)) = command.get() {
+                if let Some(window_state) = self.windows.get_mut(&window) {
                     match window_state.view_state.has_focused() {
                         true => {
-                            self.window_event(data, *window, &Event::FocusNext);
+                            self.window_event(data, window, &Event::FocusNext);
                         }
                         false => {
-                            self.window_event(data, *window, &Event::FocusGiven(FocusTarget::Next));
+                            self.window_event(data, window, &Event::FocusGiven(FocusTarget::Next));
                         }
                     }
                 }
+
+                continue;
             }
 
-            if let Some(RequestFocusPrev(window)) = command.get() {
-                if let Some(window_state) = self.windows.get_mut(window) {
+            if let Some(&RequestFocusPrev(window)) = command.get() {
+                if let Some(window_state) = self.windows.get_mut(&window) {
                     match window_state.view_state.has_focused() {
                         true => {
-                            self.window_event(data, *window, &Event::FocusPrev);
+                            self.window_event(data, window, &Event::FocusPrev);
                         }
                         false => {
-                            self.window_event(data, *window, &Event::FocusGiven(FocusTarget::Prev));
+                            self.window_event(data, window, &Event::FocusGiven(FocusTarget::Prev));
                         }
                     }
                 }
+
+                continue;
             }
 
             self.event(data, &Event::Command(command));

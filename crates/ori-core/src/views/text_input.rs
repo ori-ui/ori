@@ -11,6 +11,7 @@ use crate::{
         TextLayoutLine, TextWrap,
     },
     view::View,
+    window::Cursor,
 };
 
 /// Create a new [`TextInput`].
@@ -438,6 +439,12 @@ impl<T> View<T> for TextInput<T> {
             }
 
             cx.draw();
+        }
+
+        if cx.is_hovered() {
+            cx.set_cursor(Some(Cursor::Text));
+        } else {
+            cx.set_cursor(None);
         }
 
         if cx.is_focused() {

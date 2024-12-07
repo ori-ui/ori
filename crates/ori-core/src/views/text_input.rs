@@ -548,6 +548,14 @@ impl<T> View<T> for TextInput<T> {
                     }
                 }
 
+                if e.is_key(Key::Escape) {
+                    if state.selection.is_some() {
+                        state.selection = None;
+                    } else {
+                        cx.set_focused(false);
+                    }
+                }
+
                 if e.is_key(Key::Enter) && self.multiline {
                     state.remove_selection();
                     state.text.insert(state.cursor, '\n');

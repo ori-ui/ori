@@ -373,15 +373,18 @@ impl<T> View<T> for TextInput<T> {
             },
         );
 
+        let text = self.text.clone().unwrap_or_default();
+        let cursor = text.len();
+
         TextInputState {
             style,
-            text: self.text.clone().unwrap_or_default(),
+            text,
             paragraph,
             lines: Vec::new(),
             dragging: false,
             move_offset: None,
             blink: 0.0,
-            cursor: 0,
+            cursor,
             selection: None,
         }
     }
@@ -390,6 +393,10 @@ impl<T> View<T> for TextInput<T> {
         state.style.rebuild(self, cx);
 
         if let Some(text) = &self.text {
+            if state.cursor >= state.text.len() {
+                state.cursor = text.len();
+            }
+
             state.text = text.clone();
             state.lines.clear();
 
@@ -419,8 +426,6 @@ impl<T> View<T> for TextInput<T> {
                 color: state.style.color,
             },
         );
-
-        state.cursor = usize::min(state.cursor, state.text.len());
     }
 
     fn event(

@@ -10,7 +10,7 @@ pub fn focus<T, U, V: View<U>>(
     content: V,
     focus: impl FnMut(&mut T, &mut Lens<U>) + 'static,
 ) -> Focus<T, U, V> {
-    Focus::new(focus, content)
+    Focus::new(content, focus)
 }
 
 /// A lens used by [`Focus`].
@@ -27,7 +27,7 @@ pub struct Focus<T, U, V> {
 
 impl<T, U, V> Focus<T, U, V> {
     /// Create a new [`Focus`].
-    pub fn new(focus: impl FnMut(&mut T, &mut Lens<U>) + 'static, content: V) -> Self {
+    pub fn new(content: V, focus: impl FnMut(&mut T, &mut Lens<U>) + 'static) -> Self {
         Self {
             content,
             focus: Box::new(focus),

@@ -173,44 +173,32 @@ fn active_count(data: &mut Data) -> impl View<Data> {
     text(active_text).font_size(16.0)
 }
 
+fn selection_button(data: &Data, selection: Selection) -> impl View<Data> {
+    let color = if data.selection == selection {
+        Theme::ACCENT
+    } else {
+        Theme::PRIMARY
+    };
+
+    let view = button(text!("{:?}", selection).color(Theme::SURFACE))
+        .fancy(4.0)
+        .color(color)
+        .padding([5.0, 3.0]);
+
+    on_click(view, move |cx, data: &mut Data| {
+        data.selection = selection;
+        cx.rebuild();
+    })
+}
+
 fn selection(data: &mut Data) -> impl View<Data> {
     if data.todos.is_empty() {
         return None;
     }
 
-    fn color(a: Selection, b: Selection) -> Styled<Color> {
-        if a == b {
-            Theme::ACCENT.into()
-        } else {
-            Theme::PRIMARY.into()
-        }
-    }
-
-    let all = button(text("All").color(Theme::SURFACE))
-        .fancy(4.0)
-        .color(color(data.selection, Selection::All))
-        .padding([5.0, 3.0]);
-    let active = button(text("Active").color(Theme::SURFACE))
-        .fancy(4.0)
-        .color(color(data.selection, Selection::Active))
-        .padding([5.0, 3.0]);
-    let completed = button(text("Completed").color(Theme::SURFACE))
-        .fancy(4.0)
-        .color(color(data.selection, Selection::Completed))
-        .padding([5.0, 3.0]);
-
-    let all = on_click(all, |cx, data: &mut Data| {
-        data.selection = Selection::All;
-        cx.rebuild();
-    });
-    let active = on_click(active, |cx, data: &mut Data| {
-        data.selection = Selection::Active;
-        cx.rebuild();
-    });
-    let completed = on_click(completed, |cx, data: &mut Data| {
-        data.selection = Selection::Completed;
-        cx.rebuild();
-    });
+    let all = selection_button(data, Selection::All);
+    let active = selection_button(data, Selection::Active);
+    let completed = selection_button(data, Selection::Completed);
 
     let items = hstack![all, active, completed].gap(16.0);
     let row = hstack![active_count(data), items].justify(Justify::SpaceBetween);

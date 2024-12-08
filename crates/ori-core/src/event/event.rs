@@ -80,7 +80,7 @@ pub enum Event {
     /// A view receiving this event should give up focus.
     FocusWanted,
 
-    /// Focus given to either a specific view or any focu
+    /// Focus given to either a specific target.
     FocusGiven(FocusTarget),
 
     /// An animation frame has passed.

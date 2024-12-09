@@ -20,7 +20,6 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 ori-app             = { path = "crates/ori-app",            version = "0.1.0-alpha.1" }
 ori-core            = { path = "crates/ori-core",           version = "0.1.0-alpha.1" }
-ori-dylib           = { path = "crates/ori-dylib",          version = "0.1.0-alpha.1" }
 ori-macro           = { path = "crates/ori-macro",          version = "0.1.0-alpha.1" }
 ori-shell           = { path = "crates/ori-shell",          version = "0.1.0-alpha.1" }
 ori-skia            = { path = "crates/ori-skia",           version = "0.1.0-alpha.1" }
@@ -30,9 +29,6 @@ ori-skia            = { path = "crates/ori-skia",           version = "0.1.0-alp
 ori-app             = { workspace = true }
 ori-core            = { workspace = true }
 ori-macro           = { workspace = true }
-
-# Optional dependencies
-ori-dylib           = { workspace = true, optional = true }
 
 # Backend dependencies
 ori-shell           = { workspace = true, optional = true }
@@ -47,14 +43,12 @@ features = ["full"]
 default = ["shell", "x11", "wayland"]
 image = ["ori-core/image"]
 serde = ["ori-core/serde"]
-dylib = ["dep:ori-dylib"]
-dylib-always = ["dylib", "ori-dylib/always"]
 
 # All features
 full = ["image", "serde"]
 
 # Backend features
-shell = ["dep:ori-shell", "ori-dylib?/shell"]
+shell = ["dep:ori-shell"]
 x11 = ["ori-shell?/x11"]
 wayland = ["ori-shell?/wayland"]
 

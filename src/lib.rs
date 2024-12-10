@@ -60,7 +60,7 @@ pub mod prelude {
         log::{debug, error, info, trace, warn},
         rebuild::Rebuild,
         style,
-        style::{comp, key, val, Style, Styled, Styles, Theme},
+        style::{comp, style, val, Style, Styled, Styles, Theme},
         text::{
             include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts,
             Paragraph, TextAlign, TextWrap,

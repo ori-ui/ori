@@ -14,7 +14,7 @@ enum StyleEntry {
 }
 
 #[repr(transparent)]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 struct StylesHasher(u64);
 
 impl Default for StylesHasher {
@@ -213,14 +213,40 @@ impl<T: ?Sized> Clone for Style<T> {
 
 impl<T: ?Sized> Copy for Style<T> {}
 
+impl<T: ?Sized> Debug for Style<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Style").field("key", &self.key).finish()
+    }
+}
+
+impl<T: ?Sized> PartialEq for Style<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl<T: ?Sized> Eq for Style<T> {}
+
+impl<T: ?Sized> From<&str> for Style<T> {
+    fn from(key: &str) -> Self {
+        Self::new(key)
+    }
+}
+
+impl<T: ?Sized> From<String> for Style<T> {
+    fn from(key: String) -> Self {
+        Self::new(&key)
+    }
+}
+
 /// Create a style value.
 pub fn val<T>(val: impl Into<T>) -> Styled<T> {
     Styled::Value(val.into())
 }
 
 /// Create a style key.
-pub const fn key<T>(key: &str) -> Styled<T> {
-    Styled::Style(Style::new(key))
+pub fn style<T>(key: impl Into<Style<T>>) -> Styled<T> {
+    Styled::Style(key.into())
 }
 
 /// Create a computed style.
@@ -252,6 +278,11 @@ pub enum Styled<T> {
 }
 
 impl<T> Styled<T> {
+    /// Create a new styled value.
+    pub fn new(style: impl Into<Styled<T>>) -> Self {
+        style.into()
+    }
+
     /// Get the value, or a style from the styles.
     #[inline(always)]
     pub fn get(&self, styles: &Styles) -> Option<T>

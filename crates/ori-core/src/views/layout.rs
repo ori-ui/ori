@@ -34,7 +34,9 @@ pub struct LayoutState<V: View<T>, T> {
 impl<V: View<T>, T> View<T> for Layout<V, T> {
     type State = LayoutState<V, T>;
 
-    fn build(&mut self, _cx: &mut BuildCx, _data: &mut T) -> Self::State {
+    fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.layout();
+
         LayoutState {
             view: None,
             space: None,
@@ -43,6 +45,10 @@ impl<V: View<T>, T> View<T> for Layout<V, T> {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, _old: &Self) {
         let Some(space) = state.space else {
+            // space is not set, which means the view somehow hasn't been laid out yet
+            // normally this should never happen, but just in case, we'll request a layout
+            cx.layout();
+
             return;
         };
 

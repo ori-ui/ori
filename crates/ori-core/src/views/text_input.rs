@@ -571,15 +571,15 @@ impl<T> View<T> for TextInput<T> {
                     text_submitted = true;
                 }
 
-                if e.is_key(Key::Backspace) && state.cursor > 0 {
+                if e.is_key(Key::Backspace) {
                     if state.selection.is_some() {
                         state.remove_selection();
-                    } else {
+                        text_changed = true;
+                    } else if state.cursor > 0 {
                         state.move_left(false);
                         state.text.remove(state.cursor);
+                        text_changed = true;
                     }
-
-                    text_changed = true;
                 }
 
                 if e.is_key(Key::Right) {

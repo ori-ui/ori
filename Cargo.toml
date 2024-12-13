@@ -51,4 +51,4 @@ full = ["image", "serde"]
 shell = ["dep:ori-shell"]
 x11 = ["ori-shell?/x11"]
 wayland = ["ori-shell?/wayland"]
-
+wayland-adwaita-frame = ["ori-shell?/wayland-adwaita-frame"]

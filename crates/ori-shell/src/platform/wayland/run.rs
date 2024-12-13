@@ -10,7 +10,6 @@ use ori_core::{
     window::{Cursor, Window, WindowId, WindowUpdate},
 };
 use ori_skia::{SkiaFonts, SkiaRenderer};
-use sctk_adwaita::{AdwaitaFrame, FrameConfig};
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState, SurfaceData},
     delegate_compositor, delegate_output, delegate_pointer, delegate_registry, delegate_seat,
@@ -22,14 +21,12 @@ use smithay_client_toolkit::{
             EventLoop, LoopHandle, RegistrationToken,
         },
         calloop_wayland_source::WaylandSource,
-        protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge,
     },
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{
         pointer::{
-            CursorIcon, PointerData, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec,
-            ThemedPointer,
+            CursorIcon, PointerEvent, PointerEventKind, PointerHandler, ThemeSpec, ThemedPointer,
         },
         Capability, SeatHandler, SeatState,
     },
@@ -44,7 +41,6 @@ use smithay_client_toolkit::{
         WaylandSurface,
     },
     shm::{Shm, ShmHandler},
-    subcompositor::SubcompositorState,
 };
 use tracing::{debug, warn};
 use wayland_client::{
@@ -59,11 +55,14 @@ use wayland_client::{
     },
     Connection, Dispatch, Proxy, QueueHandle, WEnum,
 };
-use wayland_csd_frame::{
-    DecorationsFrame, FrameAction, FrameClick, ResizeEdge, WindowState as CsdWindowState,
-};
+use wayland_csd_frame::WindowState as CsdWindowState;
 use wayland_egl::WlEglSurface;
 use xkeysym::Keysym;
+
+#[cfg(feature = "wayland-adwaita-frame")]
+use smithay_client_toolkit::subcompositor::SubcompositorState;
+#[cfg(feature = "wayland-adwaita-frame")]
+use wayland_csd_frame::DecorationsFrame;
 
 use crate::platform::{
     egl::{EglContext, EglNativeDisplay, EglSurface},
@@ -94,6 +93,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
     let clipboard = WaylandClipboard { clipboard };
 
     let compositor = CompositorState::bind(&globals, &qhandle).unwrap();
+    #[cfg(feature = "wayland-adwaita-frame")]
     let subcompositor = SubcompositorState::bind(
         // why do we need to clone the compositor here?
         compositor.wl_compositor().clone(),
@@ -130,6 +130,7 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), WaylandError> {
         loop_handle,
 
         compositor: Arc::new(compositor),
+        #[cfg(feature = "wayland-adwaita-frame")]
         subcompositor: Arc::new(subcompositor),
         xdg_shell,
         seat,
@@ -220,6 +221,7 @@ fn handle_app_request<T>(
 
             match update {
                 WindowUpdate::Title(title) => {
+                    #[cfg(feature = "wayland-adwaita-frame")]
                     if let Some(ref mut frame) = window.frame {
                         frame.set_title(&title);
                     }
@@ -273,6 +275,7 @@ fn handle_app_request<T>(
 
                     window.xdg_window.request_decoration_mode(Some(mode));
 
+                    #[cfg(feature = "wayland-adwaita-frame")]
                     if let Some(ref mut frame) = window.frame {
                         frame.set_hidden(!decorated);
 
@@ -405,6 +408,7 @@ fn open_window<T>(
         egl_surface: None,
         renderer: None,
 
+        #[cfg(feature = "wayland-adwaita-frame")]
         frame: None,
         xdg_window,
     };
@@ -440,6 +444,7 @@ fn render_windows<T>(
     state: &mut State,
 ) -> Result<(), WaylandError> {
     for window in &mut state.windows {
+        #[cfg(feature = "wayland-adwaita-frame")]
         if let Some(ref mut frame) = window.frame {
             if frame.is_dirty() && !frame.is_hidden() {
                 frame.draw();
@@ -602,6 +607,7 @@ struct State {
     loop_handle: LoopHandle<'static, State>,
 
     compositor: Arc<CompositorState>,
+    #[cfg(feature = "wayland-adwaita-frame")]
     subcompositor: Arc<SubcompositorState>,
     xdg_shell: XdgShell,
     seat: SeatState,
@@ -718,7 +724,8 @@ struct WindowState {
     egl_surface: Option<EglSurface>,
     renderer: Option<SkiaRenderer>,
 
-    frame: Option<AdwaitaFrame<State>>,
+    #[cfg(feature = "wayland-adwaita-frame")]
+    frame: Option<sctk_adwaita::AdwaitaFrame<State>>,
     xdg_window: XdgWindow,
 }
 
@@ -732,6 +739,7 @@ impl WindowState {
         let (width, height) = configure.new_size;
 
         match configure.decoration_mode {
+            #[cfg(feature = "wayland-adwaita-frame")]
             DecorationMode::Client if self.decorated => {
                 let Some(ref mut frame) = self.frame else {
                     warn!("No frame for window {}", self.id);
@@ -796,6 +804,7 @@ impl WindowState {
                 })
             }
             _ => {
+                #[cfg(feature = "wayland-adwaita-frame")]
                 if let Some(ref mut frame) = self.frame {
                     frame.set_hidden(true);
                 }
@@ -866,6 +875,7 @@ impl CompositorHandler for State {
         new_factor: i32,
     ) {
         if let Some(window) = window_by_surface(&mut self.windows, surface) {
+            #[cfg(feature = "wayland-adwaita-frame")]
             if let Some(ref mut frame) = window.frame {
                 frame.set_scaling_factor(new_factor as f64);
             }
@@ -940,7 +950,7 @@ impl WindowHandler for State {
     fn configure(
         &mut self,
         _conn: &Connection,
-        qh: &QueueHandle<Self>,
+        #[allow(unused)] qh: &QueueHandle<Self>,
         window: &XdgWindow,
         configure: WindowConfigure,
         _serial: u32,
@@ -978,17 +988,18 @@ impl WindowHandler for State {
                 state: configure.state,
             });
 
+            #[cfg(feature = "wayland-adwaita-frame")]
             if configure.decoration_mode == DecorationMode::Client
                 && window.decorated
                 && window.frame.is_none()
             {
-                let mut frame = AdwaitaFrame::new(
+                let mut frame = sctk_adwaita::AdwaitaFrame::new(
                     &window.xdg_window,
                     &self.shm,
                     self.compositor.clone(),
                     self.subcompositor.clone(),
                     qh.clone(),
-                    FrameConfig::auto(),
+                    sctk_adwaita::FrameConfig::auto(),
                 )
                 .unwrap();
 
@@ -1106,6 +1117,7 @@ impl PointerHandler for State {
             };
 
             match event.kind {
+                #[cfg(feature = "wayland-adwaita-frame")]
                 PointerEventKind::Enter { .. } | PointerEventKind::Motion { .. }
                     if surface != parent_surface =>
                 {
@@ -1123,12 +1135,14 @@ impl PointerHandler for State {
                     }
                 }
 
+                #[cfg(feature = "wayland-adwaita-frame")]
                 PointerEventKind::Leave { .. } if surface != parent_surface => {
                     if let Some(ref mut frame) = window.frame {
                         frame.click_point_left();
                     }
                 }
 
+                #[cfg(feature = "wayland-adwaita-frame")]
                 PointerEventKind::Press {
                     button,
                     serial,
@@ -1139,6 +1153,13 @@ impl PointerHandler for State {
                     serial,
                     time,
                 } if surface != parent_surface => {
+                    // holy crap, what a mess
+                    use smithay_client_toolkit::{
+                        reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge as XdgResizeEdge,
+                        seat::pointer::PointerData,
+                    };
+                    use wayland_csd_frame::{FrameAction, FrameClick, ResizeEdge};
+
                     let pressed = matches!(event.kind, PointerEventKind::Press { .. });
 
                     let click = match button {

@@ -41,23 +41,24 @@ wayland = [
     "dep:smithay-client-toolkit",
     "smithay-client-toolkit/calloop",
     "dep:smithay-clipboard",
-    "dep:sctk-adwaita",
 ]
+
+wayland-adwaita-frame = ["wayland", "dep:sctk-adwaita"]
 
 # Linux
 [target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd", target_os = "netbsd"))'.dependencies]
-as-raw-xcb-connection   = { version = "1.0",    optional = true                              }
-libloading              = { version = "0.8",    optional = true                              }
-memmap                  = { version = "0.7",    optional = true                              }
-xkeysym                 = { version = "0.2",    optional = true                              }
-xkbcommon-dl            = { version = "0.4",    optional = true                              }
-wayland-client          = { version = "0.31",   optional = true                              }
-wayland-egl             = { version = "0.32",   optional = true                              }
-wayland-csd-frame       = { version = "0.3",    optional = true                              }
-wayland-backend         = { version = "0.3",    optional = true                              }
-smithay-client-toolkit  = { version = "0.19",   optional = true,    default-features = false }
-smithay-clipboard       = { version = "0.7",    optional = true                              }
-sctk-adwaita            = { version = "0.10",   optional = true                              }
+as-raw-xcb-connection   = { version = "1.0",    optional = true                            }
+libloading              = { version = "0.8",    optional = true                            }
+memmap                  = { version = "0.7",    optional = true                            }
+xkeysym                 = { version = "0.2",    optional = true                            }
+xkbcommon-dl            = { version = "0.4",    optional = true                            }
+wayland-client          = { version = "0.31",   optional = true                            }
+wayland-egl             = { version = "0.32",   optional = true                            }
+wayland-csd-frame       = { version = "0.3",    optional = true                            }
+wayland-backend         = { version = "0.3",    optional = true                            }
+smithay-client-toolkit  = { version = "0.19",   optional = true,  default-features = false }
+smithay-clipboard       = { version = "0.7",    optional = true                            }
+sctk-adwaita            = { version = "0.10",   optional = true                            }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly", target_os = "openbsd", target_os = "netbsd"))'.dependencies.x11rb]
 git         = "https://github.com/psychon/x11rb"

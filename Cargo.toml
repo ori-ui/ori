@@ -37,7 +37,7 @@ ori-shell           = { workspace = true, optional = true }
 [dev-dependencies.ori]
 path = "."
 version = "0.1.0-alpha.1"
-features = ["full"]
+features = ["full", "wayland-adwaita-frame"]
 
 [features]
 default = ["shell", "x11", "wayland"]

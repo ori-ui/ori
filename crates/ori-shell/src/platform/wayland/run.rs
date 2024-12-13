@@ -539,6 +539,14 @@ fn handle_event<T>(
             }
         }
 
+        Event::Decorated { id, decorated } => {
+            if let Some(window) = app.get_window(id) {
+                if window.decorated != decorated {
+                    app.window_decorated(data, id, decorated);
+                }
+            }
+        }
+
         Event::CloseRequested { id } => {
             if let Some(index) = window_index_by_id(&state.windows, id) {
                 if app.close_requested(data, id) {
@@ -662,6 +670,12 @@ enum Event {
     State {
         id: WindowId,
         state: CsdWindowState,
+    },
+
+    #[allow(dead_code)]
+    Decorated {
+        id: WindowId,
+        decorated: bool,
     },
 
     CloseRequested {
@@ -1005,6 +1019,16 @@ impl WindowHandler for State {
 
                 frame.set_title(&window.title);
                 window.frame = Some(frame);
+            }
+
+            #[cfg(not(feature = "wayland-adwaita-frame"))]
+            if configure.decoration_mode == DecorationMode::Client && window.decorated {
+                window.decorated = false;
+
+                self.events.push(Event::Decorated {
+                    id: window.id,
+                    decorated: false,
+                });
             }
 
             if let Some(event) = window.resize() {

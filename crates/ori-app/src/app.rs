@@ -262,6 +262,19 @@ impl<T> App<T> {
         self.window_event(data, window_id, &event)
     }
 
+    /// The decorations state of a window changed.
+    pub fn window_decorated(&mut self, data: &mut T, window_id: WindowId, decorated: bool) -> bool {
+        if let Some(window_state) = self.windows.get_mut(&window_id) {
+            window_state.view_state.request_layout();
+            window_state.window.decorated = decorated;
+            window_state.snapshot.decorated = decorated;
+        }
+
+        let event = Event::Notify;
+
+        self.window_event(data, window_id, &event)
+    }
+
     /// A pointer moved.
     pub fn pointer_moved(
         &mut self,

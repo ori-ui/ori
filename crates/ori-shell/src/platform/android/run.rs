@@ -10,7 +10,7 @@ use ori_core::{
     layout::{Point, Size},
     window::{Window, WindowId, WindowUpdate},
 };
-use ori_skia::SkiaRenderer;
+use ori_skia::{SkiaFonts, SkiaRenderer};
 use tracing::warn;
 
 use crate::platform::egl::{EglContext, EglNativeDisplay, EglSurface};
@@ -35,7 +35,10 @@ pub fn run<T>(app: AppBuilder<T>, data: &mut T) -> Result<(), AndroidError> {
 
     let egl_context = EglContext::new(EglNativeDisplay::Android).unwrap();
 
-    let mut app = app.build(waker);
+    let fonts = Box::new(SkiaFonts::new(Some("Roboto")));
+
+    let mut app = app.build(waker, fonts);
+
     app.add_context(Clipboard::new(Box::new(AndroidClipboard {
         app: android.clone(),
     })));
@@ -250,7 +253,7 @@ fn create_window<T>(state: &mut AppState<T>, data: &mut T, mut window: Window, u
     egl_surface.make_current().unwrap();
     egl_surface.swap_interval(1).unwrap();
 
-    let renderer = SkiaRenderer::new(|name| state.egl_context.get_proc_address(name));
+    let renderer = unsafe { SkiaRenderer::new(|name| state.egl_context.get_proc_address(name)) };
 
     let window_state = WindowState {
         id: window.id(),
@@ -282,7 +285,10 @@ fn recreate_window<T>(state: &mut AppState<T>) {
         egl_surface.make_current().unwrap();
         egl_surface.swap_interval(1).unwrap();
 
-        let renderer = SkiaRenderer::new(|name| state.egl_context.get_proc_address(name));
+        let renderer = unsafe {
+            // SAFETY: The EGL context is current
+            SkiaRenderer::new(|name| state.egl_context.get_proc_address(name))
+        };
 
         let window_state = WindowState {
             id: window.id,
@@ -309,8 +315,11 @@ fn render_window<T>(state: &mut AppState<T>, data: &mut T) {
         if let Some(draw) = state.app.draw_window(data, window.id) {
             window.egl_surface.make_current().unwrap();
 
+            let fonts = app.contexts.get_mut::<Box<dyn Fonts>>().unwrap();
+
             window.renderer.render(
-                draw.canvas,
+                fonts.downcast_mut().unwrap(),
+                &draw.canvas,
                 draw.clear_color,
                 window.physical_width,
                 window.physical_height,
@@ -361,7 +370,7 @@ fn input_event<T>(state: &mut AppState<T>, data: &mut T, event: &InputEvent) -> 
 
 fn motion_event<T>(state: &mut AppState<T>, data: &mut T, event: &MotionEvent) -> bool {
     let Some(ref mut window) = state.window else {
-        return;
+        return false;
     };
 
     let [b0, b1, b2, b3] = event.device_id().to_le_bytes();

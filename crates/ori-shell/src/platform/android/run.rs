@@ -8,6 +8,7 @@ use ori_core::{
     command::CommandWaker,
     event::{Key, PointerButton, PointerId},
     layout::{Point, Size},
+    text::Fonts,
     window::{Window, WindowId, WindowUpdate},
 };
 use ori_skia::{SkiaFonts, SkiaRenderer};
@@ -315,7 +316,7 @@ fn render_window<T>(state: &mut AppState<T>, data: &mut T) {
         if let Some(draw) = state.app.draw_window(data, window.id) {
             window.egl_surface.make_current().unwrap();
 
-            let fonts = app.contexts.get_mut::<Box<dyn Fonts>>().unwrap();
+            let fonts = state.app.contexts.get_mut::<Box<dyn Fonts>>().unwrap();
 
             window.renderer.render(
                 fonts.downcast_mut().unwrap(),
@@ -412,7 +413,7 @@ fn motion_event<T>(state: &mut AppState<T>, data: &mut T, event: &MotionEvent) -
 
 fn key_event<T>(state: &mut AppState<T>, data: &mut T, event: &KeyEvent) -> bool {
     let Some(ref mut window) = state.window else {
-        return;
+        return false;
     };
 
     let window_id = window.id;

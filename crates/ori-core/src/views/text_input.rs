@@ -474,7 +474,9 @@ impl<T> View<T> for TextInput<T> {
         match event {
             Event::PointerPressed(e) if cx.is_hovered() => {
                 let local = cx.local(e.position);
-                state.set_cursor(state.select_point(local), false);
+                let cursor = state.select_point(local);
+
+                state.set_cursor(cursor, false);
                 state.dragging = true;
 
                 cx.focus();
@@ -486,7 +488,10 @@ impl<T> View<T> for TextInput<T> {
                 let local = cx.local(e.position);
                 let local = cx.rect().contain(local);
                 let cursor = state.select_point(local);
-                state.set_cursor(cursor, true);
+
+                if state.cursor != cursor {
+                    state.set_cursor(cursor, true);
+                }
 
                 cx.draw();
 

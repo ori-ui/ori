@@ -71,7 +71,7 @@ impl<T> AppBuilder<T> {
     /// Build the application.
     pub fn build(self, waker: CommandWaker, mut fonts: Box<dyn Fonts>) -> App<T> {
         for font in self.fonts {
-            fonts.load(font);
+            fonts.load(font, None);
         }
 
         let (proxy, receiver) = CommandProxy::new(waker);

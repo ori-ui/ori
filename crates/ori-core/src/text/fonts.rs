@@ -10,7 +10,10 @@ use super::{FontSource, Paragraph};
 /// A trait for managing fonts and text layout.
 pub trait Fonts: Any {
     /// Load the given font source.
-    fn load(&mut self, source: FontSource<'_>);
+    ///
+    /// If `name` is provided, the fonts will be registered under that name
+    /// instead of the default name provided by the source.
+    fn load(&mut self, source: FontSource<'_>, name: Option<&str>);
 
     /// Layout the given paragraph with the given max width.
     fn layout(&mut self, paragraph: &Paragraph, width: f32) -> Vec<TextLayoutLine>;

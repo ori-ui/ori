@@ -696,7 +696,11 @@ impl<T> View<T> for TextInput<T> {
 
         state.lines = cx.layout_paragraph(&state.paragraph, space.max.width);
 
-        let size = cx.measure_paragraph(&state.paragraph, space.max.width);
+        let mut size = cx.measure_paragraph(&state.paragraph, space.max.width);
+
+        let min_height = state.style.font_size * state.style.line_height;
+        size.height = size.height.max(min_height);
+
         space.fit(size)
     }
 

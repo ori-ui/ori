@@ -138,6 +138,11 @@ where
 
                 content.set_active(true);
             }
+
+            Event::PointerPressed(_) if !is_hovered => {
+                content.set_focused(false);
+            }
+
             Event::PointerReleased(e) if content.is_active() && self.is_button(e.button) => {
                 if self.event == ClickEvent::Release {
                     (self.callback)(cx, data);
@@ -151,6 +156,7 @@ where
 
                 content.set_active(false);
             }
+
             Event::KeyPressed(e) if content.is_focused() => {
                 if e.is_key(Key::Enter) || e.is_key(' ') {
                     if matches!(self.event, ClickEvent::Press | ClickEvent::Click) {
@@ -161,6 +167,7 @@ where
                     content.set_active(true);
                 }
             }
+
             Event::KeyReleased(e) if content.is_active() => {
                 if e.is_key(Key::Enter) || e.is_key(' ') {
                     if self.event == ClickEvent::Release {
@@ -171,6 +178,7 @@ where
                     content.set_active(false);
                 }
             }
+
             _ => {}
         }
 

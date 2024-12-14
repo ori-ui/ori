@@ -360,8 +360,6 @@ impl<T> App<T> {
             .unwrap_or(Point::ZERO);
 
         if pressed {
-            self.window_event(data, window_id, &Event::FocusWanted);
-
             if let Some(window_state) = self.windows.get_mut(&window_id) {
                 window_state.window.press_pointer(pointer_id, button);
             }

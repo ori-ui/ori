@@ -484,6 +484,12 @@ impl<T> View<T> for TextInput<T> {
                 true
             }
 
+            Event::PointerPressed(_) => {
+                cx.set_focused(false);
+
+                false
+            }
+
             Event::PointerMoved(e) if state.dragging => {
                 let local = cx.local(e.position);
                 let local = cx.rect().contain(local);

@@ -156,8 +156,10 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
 
     /// Request focus for the view.
     pub fn focus(&mut self) {
-        let cmd = RequestFocus(self.window().id(), self.id());
-        self.cmd(cmd);
+        if !self.is_focused() {
+            let cmd = RequestFocus(self.window().id(), self.id());
+            self.cmd(cmd);
+        }
     }
 
     /// Request the next focusable view to be focused.

@@ -686,17 +686,17 @@ impl<T> View<T> for TextInput<T> {
                 },
             );
 
-            let size = cx.measure_paragraph(&placeholder, space.max.width);
+            let mut size = cx.measure_paragraph(&placeholder, space.max.width);
+
+            let min_height = state.style.font_size * state.style.line_height;
+            size.height = size.height.max(min_height);
+
             return space.fit(size);
         }
 
         state.lines = cx.layout_paragraph(&state.paragraph, space.max.width);
 
-        let mut size = cx.measure_paragraph(&state.paragraph, space.max.width);
-
-        let min_height = state.style.font_size * state.style.line_height;
-        size.height = size.height.max(min_height);
-
+        let size = cx.measure_paragraph(&state.paragraph, space.max.width);
         space.fit(size)
     }
 

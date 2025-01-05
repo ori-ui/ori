@@ -131,6 +131,11 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     pub fn property_or_default<T: 'static + Default>(&mut self) -> &mut T {
         self.view_state.property_or_default()
     }
+
+    /// Get the class of the view.
+    pub fn class(&self) -> Option<&str> {
+        self.view_state.class()
+    }
 }}
 
 impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
@@ -218,5 +223,20 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
         let updated = self.is_focusable() != focusable;
         self.view_state.set_focusable(focusable);
         updated
+    }
+
+    /// Set the class of the view.
+    ///
+    /// This should be called before trying to get any style properties.
+    pub fn set_class(&mut self, class: impl Into<String>) {
+        let class = class.into();
+
+        if self.view_state.class().is_some() {
+            self.context_mut::<Styles>().pop_class();
+        }
+
+        self.context_mut::<Styles>().push_class(&class);
+
+        self.view_state.set_class(class);
     }
 }}

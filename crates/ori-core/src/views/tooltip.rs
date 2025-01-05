@@ -106,21 +106,21 @@ impl<V> Tooltip<V> {
         Self {
             content: Pod::new(content),
             text: text.into(),
-            delay: TooltipStyle::DELAY.into(),
-            padding: TooltipStyle::PADDING.into(),
-            font_size: TooltipStyle::FONT_SIZE.into(),
-            font_family: TooltipStyle::FONT_FAMILY.into(),
-            font_weight: TooltipStyle::FONT_WEIGHT.into(),
-            font_stretch: TooltipStyle::FONT_STRETCH.into(),
-            font_style: TooltipStyle::FONT_STYLE.into(),
-            color: TooltipStyle::COLOR.into(),
-            align: TooltipStyle::ALIGN.into(),
-            line_height: TooltipStyle::LINE_HEIGHT.into(),
-            wrap: TooltipStyle::WRAP.into(),
-            background: TooltipStyle::BACKGROUND.into(),
-            border_radius: TooltipStyle::BORDER_RADIUS.into(),
-            border_width: TooltipStyle::BORDER_WIDTH.into(),
-            border_color: TooltipStyle::BORDER_COLOR.into(),
+            delay: Styled::style("delay"),
+            padding: Styled::style("padding"),
+            font_size: Styled::style("font-size"),
+            font_family: Styled::style("font-family"),
+            font_weight: Styled::style("font-weight"),
+            font_stretch: Styled::style("font-stretch"),
+            font_style: Styled::style("font-style"),
+            color: Styled::style("color"),
+            align: Styled::style("align"),
+            line_height: Styled::style("line-height"),
+            wrap: Styled::style("wrap"),
+            background: Styled::style("background"),
+            border_radius: Styled::style("border-radius"),
+            border_width: Styled::style("border-width"),
+            border_color: Styled::style("border-color"),
         }
     }
 }
@@ -137,6 +137,8 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
     type State = (TooltipState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class("tooltip");
+
         let style = TooltipStyle::styled(self, cx.styles());
 
         let mut state = TooltipState {

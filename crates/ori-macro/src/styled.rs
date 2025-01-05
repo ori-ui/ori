@@ -22,7 +22,6 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
 
     let vis = &input.vis;
     let ident = &input.ident;
-    let name = ident.to_string();
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -30,12 +29,10 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
     let style_fields = style_fields(ident, &data.fields);
     let style_styled_fields = style_styled_fields(&data.fields);
     let style_rebuild_fields = style_rebuild_fields(&data.fields);
-    let style_style_key_fields = style_style_key_fields(&name, &data.fields);
 
     let style_doc = format!("The derived style for [`{}`].", ident);
     let style_styled_doc = format!("The style of [`{}`].", ident);
     let style_rebuild_doc = format!("Rebuild the style of [`{}`].", ident);
-    let style_into_styles_fields = style_into_styles_fields(&style_name, &data.fields);
 
     let expanded = quote! {
         #[doc = #style_doc]
@@ -45,8 +42,6 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
         }
 
         impl #style_name {
-            #(#style_style_key_fields)*
-
             #[doc = #style_styled_doc]
             #[allow(unused)]
             #vis fn styled #impl_generics (
@@ -82,16 +77,6 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
                 if draw {
                     cx.draw();
                 }
-            }
-        }
-
-        impl ::std::convert::From<#style_name> for #ori_core::style::Styles {
-            fn from(style: #style_name) -> Self {
-                let mut styles = #ori_core::style::Styles::new();
-
-                #(#style_into_styles_fields)*
-
-                styles
             }
         }
     };
@@ -237,29 +222,6 @@ fn style_get_field(field: &syn::Field, styled: &syn::Expr, styles: &syn::Expr) -
     }
 }
 
-fn style_style_key_fields<'a>(
-    name: &'a str,
-    fields: &'a syn::Fields,
-) -> impl Iterator<Item = TokenStream> + 'a {
-    let ori_core = find_core();
-
-    fields.iter().filter_map(move |field| {
-        let vis = &field.vis;
-        let ident = field.ident.as_ref().unwrap();
-        let ty = get_styled(&field.ty)?;
-
-        let name = format!("{}.{}", name, ident);
-        let ident = syn::Ident::new(&ident.to_string().to_uppercase(), ident.span());
-
-        let doc = format!("The style key of [`{}::{}`].", name, ident);
-
-        Some(quote! {
-            #[doc = #doc]
-            #vis const #ident: #ori_core::style::Style<#ty> = #ori_core::style::Style::new(#name);
-        })
-    })
-}
-
 fn get_styled(ty: &syn::Type) -> Option<syn::Type> {
     let syn::Type::Path(ty) = ty else {
         return None;
@@ -291,20 +253,4 @@ fn get_styled(ty: &syn::Type) -> Option<syn::Type> {
         }
         _ => None,
     }
-}
-
-fn style_into_styles_fields<'a>(
-    style_name: &'a syn::Ident,
-    fields: &'a syn::Fields,
-) -> impl Iterator<Item = TokenStream> + 'a {
-    fields.iter().filter_map(move |field| {
-        let ident = field.ident.as_ref().unwrap();
-        let name = ident.to_string();
-        let style_ident = syn::Ident::new(&name.to_uppercase(), ident.span());
-        let _ = get_styled(&field.ty)?;
-
-        Some(quote! {
-            styles.insert(#style_name::#style_ident, style.#ident);
-        })
-    })
 }

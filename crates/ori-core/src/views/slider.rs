@@ -83,13 +83,13 @@ impl<T> Slider<T> {
             range: 0.0..=1.0,
             on_input: None,
             axis: Axis::Horizontal,
-            width: SliderStyle::WIDTH.into(),
-            length: SliderStyle::LENGTH.into(),
-            color: SliderStyle::COLOR.into(),
-            background: SliderStyle::BACKGROUND.into(),
-            border_radius: SliderStyle::BORDER_RADIUS.into(),
-            border_width: SliderStyle::BORDER_WIDTH.into(),
-            border_color: SliderStyle::BORDER_COLOR.into(),
+            width: Styled::style("width"),
+            length: Styled::style("length"),
+            color: Styled::style("color"),
+            background: Styled::style("background"),
+            border_radius: Styled::style("border-radius"),
+            border_width: Styled::style("border-width"),
+            border_color: Styled::style("border-color"),
         }
     }
 
@@ -114,6 +114,8 @@ impl<T> View<T> for Slider<T> {
     type State = SliderStyle;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.set_class("slider");
+
         SliderStyle::styled(self, cx.styles())
     }
 

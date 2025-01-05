@@ -72,14 +72,14 @@ impl Checkbox {
     pub fn new(checked: bool) -> Self {
         Self {
             checked,
-            transition: CheckboxStyle::TRANSITION.into(),
-            size: CheckboxStyle::SIZE.into(),
-            color: CheckboxStyle::COLOR.into(),
-            stroke: CheckboxStyle::STROKE.into(),
-            background: CheckboxStyle::BACKGROUND.into(),
-            border_radius: CheckboxStyle::BORDER_RADIUS.into(),
-            border_width: CheckboxStyle::BORDER_WIDTH.into(),
-            border_color: CheckboxStyle::BORDER_COLOR.into(),
+            transition: Styled::style("transition"),
+            size: Styled::style("size"),
+            color: Styled::style("color"),
+            stroke: Styled::style("stroke"),
+            background: Styled::style("background"),
+            border_radius: Styled::style("border-radius"),
+            border_width: Styled::style("border-width"),
+            border_color: Styled::style("border-color"),
         }
     }
 }
@@ -88,6 +88,7 @@ impl<T> View<T> for Checkbox {
     type State = (CheckboxStyle, f32);
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.set_class("checkbox");
         cx.set_focusable(true);
 
         let style = CheckboxStyle::styled(self, cx.styles());

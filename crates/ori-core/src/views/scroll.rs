@@ -69,12 +69,12 @@ impl<V> Scroll<V> {
         Self {
             content: Pod::new(content),
             axis,
-            transition: ScrollStyle::TRANSITION.into(),
-            inset: ScrollStyle::INSET.into(),
-            width: ScrollStyle::WIDTH.into(),
-            border_radius: ScrollStyle::BORDER_RADIUS.into(),
-            color: ScrollStyle::COLOR.into(),
-            knob_color: ScrollStyle::KNOB_COLOR.into(),
+            transition: Styled::style("transition"),
+            inset: Styled::style("inset"),
+            width: Styled::style("width"),
+            border_radius: Styled::style("border-radius"),
+            color: Styled::style("color"),
+            knob_color: Styled::style("knob-color"),
         }
     }
 
@@ -135,6 +135,8 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
     type State = (ScrollState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class("scroll");
+
         let state = ScrollState {
             style: ScrollStyle::styled(self, cx.styles()),
             dragging: false,
@@ -142,7 +144,9 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             scroll: 0.0,
             t: 0.0,
         };
+
         let content = self.content.build(cx, data);
+
         (state, content)
     }
 

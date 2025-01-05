@@ -6,8 +6,8 @@ use std::{
     hash::{BuildHasherDefault, Hasher},
     marker::PhantomData,
     mem,
-    rc::Rc,
-    sync::Mutex,
+    str::FromStr,
+    sync::{Arc, Mutex},
 };
 
 #[repr(transparent)]
@@ -76,10 +76,10 @@ impl StyleSet {
 }
 
 type BuildStyleHasher = BuildHasherDefault<StylesHasher>;
-type StyleEntry = Styled<Rc<dyn Any>>;
-type StyleConverter = Rc<dyn Fn(Rc<dyn Any>) -> Rc<dyn Any>>;
+type StyleEntry = Styled<Arc<dyn Any + Send + Sync>>;
+type StyleConverter = Arc<dyn Fn(Arc<dyn Any + Send + Sync>) -> Arc<dyn Any + Send + Sync>>;
 type StyleKey = (u64, TypeId);
-type CacheEntry = Rc<dyn Any>;
+type CacheEntry = Arc<dyn Any + Send + Sync>;
 
 impl Styles {
     /// Create a new set of styles.
@@ -98,13 +98,13 @@ impl Styles {
     /// Add a conversion function.
     pub fn add_conversion<T, U>(&mut self, f: impl Fn(T) -> U + 'static)
     where
-        T: Clone + 'static,
-        U: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
+        U: Clone + Send + Sync + 'static,
     {
-        let f = Rc::new(move |value: Rc<dyn Any>| {
+        let f = Arc::new(move |value: Arc<dyn Any + Send + Sync>| {
             let value = value.downcast::<T>().unwrap();
             let value = f(value.as_ref().clone());
-            Rc::new(value) as Rc<dyn Any>
+            Arc::new(value) as Arc<dyn Any + Send + Sync>
         });
 
         let signature = (TypeId::of::<T>(), TypeId::of::<U>());
@@ -136,10 +136,10 @@ impl Styles {
     /// Insert a style into the styles.
     pub fn insert<T>(&mut self, style: Style<T>, value: impl Into<Styled<T>>)
     where
-        T: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
     {
         let entry: StyleEntry = match value.into() {
-            Styled::Value(value) => Styled::Value(Rc::new(value)),
+            Styled::Value(value) => Styled::Value(Arc::new(value)),
             Styled::Style(style) => Styled::Style(Style {
                 hash: style.hash,
                 key: style.key,
@@ -169,7 +169,7 @@ impl Styles {
     /// Insert a style into the styles.
     pub fn with<T>(mut self, style: Style<T>, value: impl Into<Styled<T>>) -> Self
     where
-        T: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
     {
         self.insert(style, value);
         self
@@ -186,7 +186,10 @@ impl Styles {
 
     /// Get a value from the styles.
     #[inline(always)]
-    pub fn get<T: Clone + 'static>(&self, style: &Style<T>) -> Option<T> {
+    pub fn get<T>(&self, style: &Style<T>) -> Option<T>
+    where
+        T: Clone + Send + Sync + 'static,
+    {
         let stack_hash = hash_style_key_u64(self.stack.as_slice());
         let key = (style.hash ^ stack_hash, TypeId::of::<T>());
 
@@ -232,7 +235,7 @@ impl Styles {
             Styled::Computed(..) => todo!(),
         };
 
-        let cache_entry: CacheEntry = Rc::new(style.clone());
+        let cache_entry: CacheEntry = Arc::new(style.clone());
         self.cache.lock().unwrap().insert(key, cache_entry);
 
         Some(style)
@@ -242,7 +245,7 @@ impl Styles {
     #[inline(always)]
     pub fn get_or<T>(&self, default: T, style: &Style<T>) -> T
     where
-        T: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
     {
         self.get(style).unwrap_or(default)
     }
@@ -251,7 +254,7 @@ impl Styles {
     #[inline(always)]
     pub fn get_or_else<T, F>(&self, default: F, style: &Style<T>) -> T
     where
-        T: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
         F: FnOnce() -> T,
     {
         self.get(style).unwrap_or_else(default)
@@ -284,6 +287,18 @@ impl Clone for Styles {
             root: self.root.clone(),
             converters: self.converters.clone(),
             cache: Mutex::new(HashMap::default()),
+        }
+    }
+}
+
+impl From<&str> for Styles {
+    fn from(s: &str) -> Self {
+        match Styles::from_str(s) {
+            Ok(styles) => styles,
+            Err(err) => {
+                tracing::error!("failed to parse styles: {}", err);
+                Styles::new()
+            }
         }
     }
 }
@@ -370,15 +385,15 @@ pub fn style<T>(key: impl Into<Style<T>>) -> Styled<T> {
 
 /// Create a computed style.
 pub fn comp<T>(f: impl Fn(&Styles) -> T + Send + Sync + 'static) -> Styled<T> {
-    Styled::Computed(Rc::new(Box::new(f)))
+    Styled::Computed(Arc::new(Box::new(f)))
 }
 
 /// A computed style.
 ///
-// Box<dyn Fn()> is 16 bytes large, however Rc<Box<dyn Fn()>> is only 8 bytes. since computed
+// Box<dyn Fn()> is 16 bytes large, however Arc<Box<dyn Fn()>> is only 8 bytes. since computed
 // styles are used so infrequently, compared to the other variants, it's worth the tradeoff to save
 // memory, even if it costs an extra indirection.
-pub type Computed<T> = Rc<Box<dyn Fn(&Styles) -> T + Send + Sync>>;
+pub type Computed<T> = Arc<Box<dyn Fn(&Styles) -> T + Send + Sync>>;
 
 /// A styled value.
 #[derive(Clone)]
@@ -402,11 +417,16 @@ impl<T> Styled<T> {
         style.into()
     }
 
+    /// Create a new styled from a style key.
+    pub fn style(key: impl Into<Style<T>>) -> Self {
+        Self::Style(key.into())
+    }
+
     /// Get the value, or a style from the styles.
     #[inline(always)]
     pub fn get(&self, styles: &Styles) -> Option<T>
     where
-        T: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
     {
         match self {
             Self::Value(value) => Some(value.clone()),
@@ -419,7 +439,7 @@ impl<T> Styled<T> {
     #[inline(always)]
     pub fn get_or(&self, styles: &Styles, default: T) -> T
     where
-        T: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
     {
         self.get(styles).unwrap_or(default)
     }
@@ -428,7 +448,7 @@ impl<T> Styled<T> {
     #[inline(always)]
     pub fn get_or_else<F>(&self, styles: &Styles, default: F) -> T
     where
-        T: Clone + 'static,
+        T: Clone + Send + Sync + 'static,
         F: FnOnce() -> T,
     {
         self.get(styles).unwrap_or_else(default)

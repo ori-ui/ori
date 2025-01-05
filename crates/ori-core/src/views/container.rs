@@ -67,11 +67,11 @@ impl<V> Container<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            background: ContainerStyle::BACKGROUND.into(),
-            border_radius: ContainerStyle::BORDER_RADIUS.into(),
-            border_width: ContainerStyle::BORDER_WIDTH.into(),
-            border_color: ContainerStyle::BORDER_COLOR.into(),
-            mask: ContainerStyle::MASK.into(),
+            background: Styled::style("background"),
+            border_radius: Styled::style("border-radius"),
+            border_width: Styled::style("border-width"),
+            border_color: Styled::style("border-color"),
+            mask: Styled::style("mask"),
         }
     }
 }
@@ -80,6 +80,8 @@ impl<T, V: View<T>> View<T> for Container<V> {
     type State = (ContainerStyle, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class("container");
+
         let style = ContainerStyle::styled(self, cx.styles());
 
         (style, self.content.build(cx, data))

@@ -34,10 +34,7 @@ impl<T, V: View<T>> View<T> for Class<V> {
     type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.context_mut::<Styles>().push_class(&self.name);
-        let state = self.content.build(cx, data);
-        cx.context_mut::<Styles>().pop_class();
-        state
+        self.content.build(cx, data)
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {

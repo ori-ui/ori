@@ -77,12 +77,12 @@ impl<T> ColorPicker<T> {
         Self {
             color: Color::WHITE,
             on_input: None,
-            size: ColorPickerStyle::SIZE.into(),
-            border_width: ColorPickerStyle::BORDER_WIDTH.into(),
-            border_color: ColorPickerStyle::BORDER_COLOR.into(),
-            slider_width: ColorPickerStyle::SLIDER_WIDTH.into(),
-            lightness_color: ColorPickerStyle::LIGHTNESS_COLOR.into(),
-            alpha_color: ColorPickerStyle::ALPHA_COLOR.into(),
+            size: Styled::style("size"),
+            border_width: Styled::style("border-width"),
+            border_color: Styled::style("border-color"),
+            slider_width: Styled::style("slider-width"),
+            lightness_color: Styled::style("lightness-color"),
+            alpha_color: Styled::style("alpha-color"),
         }
     }
 
@@ -199,6 +199,8 @@ impl<T> View<T> for ColorPicker<T> {
     type State = ColorPickerState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.set_class("color-picker");
+
         ColorPickerState {
             style: ColorPickerStyle::styled(self, cx.styles()),
             image: None,

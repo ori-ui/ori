@@ -88,13 +88,13 @@ impl<T, H, V> Collapsing<T, H, V> {
             on_open: None,
             open: None,
             default_open: false,
-            transition: CollapsingStyle::TRANSITION.into(),
-            icon_size: CollapsingStyle::ICON_SIZE.into(),
-            icon_color: CollapsingStyle::ICON_COLOR.into(),
-            background: CollapsingStyle::BACKGROUND.into(),
-            border_width: CollapsingStyle::BORDER_WIDTH.into(),
-            border_radius: CollapsingStyle::BORDER_RADIUS.into(),
-            border_color: CollapsingStyle::BORDER_COLOR.into(),
+            transition: Styled::style("transition"),
+            icon_size: Styled::style("icon-size"),
+            icon_color: Styled::style("icon-color"),
+            background: Styled::style("background"),
+            border_width: Styled::style("border-width"),
+            border_radius: Styled::style("border-radius"),
+            border_color: Styled::style("border-color"),
         }
     }
 
@@ -118,6 +118,8 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
     type State = CollapsingState<T, H, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class("collapsing");
+
         let open = self.open.unwrap_or(self.default_open);
 
         CollapsingState {

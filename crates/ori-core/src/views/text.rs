@@ -97,15 +97,15 @@ impl Text {
     pub fn new(text: impl Into<SmolStr>) -> Self {
         Self {
             text: text.into(),
-            font_size: TextStyle::FONT_SIZE.into(),
-            font_family: TextStyle::FONT_FAMILY.into(),
-            font_weight: TextStyle::FONT_WEIGHT.into(),
-            font_stretch: TextStyle::FONT_STRETCH.into(),
-            font_style: TextStyle::FONT_STYLE.into(),
-            color: TextStyle::COLOR.into(),
-            align: TextStyle::ALIGN.into(),
-            line_height: TextStyle::LINE_HEIGHT.into(),
-            wrap: TextStyle::WRAP.into(),
+            font_size: Styled::style("font-size"),
+            font_family: Styled::style("font-family"),
+            font_weight: Styled::style("font-weight"),
+            font_stretch: Styled::style("font-stretch"),
+            font_style: Styled::style("font-style"),
+            color: Styled::style("color"),
+            align: Styled::style("align"),
+            line_height: Styled::style("line-height"),
+            wrap: Styled::style("wrap"),
         }
     }
 
@@ -126,6 +126,8 @@ impl<T> View<T> for Text {
     type State = Paragraph;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.set_class("text");
+
         let style = TextStyle::styled(self, cx.styles());
 
         let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);

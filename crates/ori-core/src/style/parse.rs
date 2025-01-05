@@ -1,11 +1,14 @@
 use std::{
     any::Any,
-    fmt::{self, Debug},
+    error::Error,
+    fmt::{self, Debug, Display},
     iter::Peekable,
     ops::Range,
-    rc::Rc,
     str::FromStr,
+    sync::Arc,
 };
+
+use crate::canvas::Color;
 
 use super::{Style, Styled, Styles};
 
@@ -28,11 +31,22 @@ impl Debug for ParseError {
     }
 }
 
+impl Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Parse error: {}", self.message)
+    }
+}
+
+impl Error for ParseError {}
+
 #[derive(Debug, PartialEq)]
 enum TokenKind<'a> {
     Ident(&'a str),
     String(&'a str),
     Number(f32),
+    Color(Color),
+    True,
+    False,
     Colon,
     Dot,
     Comma,
@@ -82,10 +96,13 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
                 chars.next();
             }
 
-            tokens.push(Token {
-                kind: TokenKind::Ident(&s[lo..hi]),
-                span: lo..hi,
-            });
+            let kind = match &s[lo..hi] {
+                "true" => TokenKind::True,
+                "false" => TokenKind::False,
+                ident => TokenKind::Ident(ident),
+            };
+
+            tokens.push(Token { kind, span: lo..hi });
 
             continue;
         }
@@ -106,6 +123,27 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
 
             tokens.push(Token {
                 kind: TokenKind::Number(number),
+                span: lo..hi,
+            });
+
+            continue;
+        }
+
+        if c == '#' {
+            let mut hi = lo + c.len_utf8();
+
+            for (c, idx) in chars.by_ref() {
+                if !c.is_ascii_hexdigit() {
+                    break;
+                }
+
+                hi = idx + c.len_utf8();
+            }
+
+            let color = Color::hex(&s[lo + 1..hi]);
+
+            tokens.push(Token {
+                kind: TokenKind::Color(color),
                 span: lo..hi,
             });
 
@@ -214,6 +252,7 @@ where
 
             Ok(())
         }
+
         TokenKind::OpenBrace => {
             while !is(tokens, TokenKind::CloseBrace) {
                 parse_item(tokens, &key, styles)?;
@@ -223,19 +262,28 @@ where
 
             Ok(())
         }
+
         _ => Err(ParseError {
             message: format!("expected ':' or '{{', found {:?}", token.kind),
         }),
     }
 }
 
-fn parse_value<'a, I>(tokens: &mut Peekable<I>) -> Result<Styled<Rc<dyn Any>>, ParseError>
+fn parse_value<'a, I>(
+    tokens: &mut Peekable<I>,
+) -> Result<Styled<Arc<dyn Any + Send + Sync>>, ParseError>
 where
     I: Iterator<Item = Token<'a>>,
 {
     let token = next(tokens)?;
 
     match token.kind {
+        TokenKind::String(s) => Ok(Styled::Value(Arc::new(s.to_string()))),
+        TokenKind::Number(n) => Ok(Styled::Value(Arc::new(n))),
+        TokenKind::True => Ok(Styled::Value(Arc::new(true))),
+        TokenKind::False => Ok(Styled::Value(Arc::new(false))),
+        TokenKind::Color(color) => Ok(Styled::Value(Arc::new(color))),
+
         TokenKind::Ident(ident) => {
             let mut key = String::from(ident);
 
@@ -248,8 +296,38 @@ where
 
             Ok(Styled::Style(Style::from_string(key)))
         }
-        TokenKind::String(s) => Ok(Styled::Value(Rc::new(s.to_string()))),
-        TokenKind::Number(n) => Ok(Styled::Value(Rc::new(n))),
+
+        TokenKind::OpenBracket => {
+            let mut v = Vec::new();
+
+            while !is(tokens, TokenKind::CloseBracket) {
+                let token = next(tokens)?;
+
+                match token.kind {
+                    TokenKind::Number(n) => v.push(n),
+                    _ => {
+                        return Err(ParseError {
+                            message: format!("expected number, found {:?}", token.kind),
+                        });
+                    }
+                }
+
+                if is(tokens, TokenKind::Comma) {
+                    next(tokens)?;
+                }
+            }
+
+            next(tokens)?;
+
+            match v.len() {
+                2 => Ok(Styled::Value(Arc::new([v[0], v[1]]))),
+                4 => Ok(Styled::Value(Arc::new([v[0], v[1], v[2], v[3]]))),
+                _ => Err(ParseError {
+                    message: format!("expected 2 or 4 numbers, found {}", v.len()),
+                }),
+            }
+        }
+
         _ => Err(ParseError {
             message: format!("expected string or number, found {:?}", token.kind),
         }),

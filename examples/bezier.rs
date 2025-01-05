@@ -164,7 +164,7 @@ fn main() {
 
     let window = Window::new().title("Bezier (examples/bezier.rs)");
 
-    let app = App::build().window(window, ui).theme(Theme::light());
+    let app = App::build().window(window, ui).style(Theme::light());
 
     ori::run(app, &mut Data::new()).unwrap();
 }

@@ -67,13 +67,13 @@ impl<V> Button<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            padding: ButtonStyle::PADDING.into(),
-            fancy: ButtonStyle::FANCY.into(),
-            transition: ButtonStyle::TRANSITION.into(),
-            color: ButtonStyle::COLOR.into(),
-            border_radius: ButtonStyle::BORDER_RADIUS.into(),
-            border_width: ButtonStyle::BORDER_WIDTH.into(),
-            border_color: ButtonStyle::BORDER_COLOR.into(),
+            padding: Styled::style("padding"),
+            fancy: Styled::style("fancy"),
+            transition: Styled::style("transition"),
+            color: Styled::style("color"),
+            border_radius: Styled::style("border-radius"),
+            border_width: Styled::style("border-width"),
+            border_color: Styled::style("border-color"),
         }
     }
 }
@@ -89,6 +89,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
     type State = (ButtonState, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class("button");
         cx.set_focusable(true);
 
         let state = ButtonState {

@@ -117,16 +117,16 @@ impl<T> TextInput<T> {
             placeholder: String::from("..."),
             multiline: false,
             capitalize: Capitalize::Sentences,
-            font_size: TextInputStyle::FONT_SIZE.into(),
-            font_family: TextInputStyle::FONT_FAMILY.into(),
-            font_weight: TextInputStyle::FONT_WEIGHT.into(),
-            font_stretch: TextInputStyle::FONT_STRETCH.into(),
-            font_style: TextInputStyle::FONT_STYLE.into(),
-            color: TextInputStyle::COLOR.into(),
-            placeholder_color: TextInputStyle::PLACEHOLDER_COLOR.into(),
-            align: TextInputStyle::ALIGN.into(),
-            line_height: TextInputStyle::LINE_HEIGHT.into(),
-            wrap: TextInputStyle::WRAP.into(),
+            font_size: Styled::style("font-size"),
+            font_family: Styled::style("font-family"),
+            font_weight: Styled::style("font-weight"),
+            font_stretch: Styled::style("font-stretch"),
+            font_style: Styled::style("font-style"),
+            color: Styled::style("color"),
+            placeholder_color: Styled::style("placeholder-color"),
+            align: Styled::style("align"),
+            line_height: Styled::style("line-height"),
+            wrap: Styled::style("wrap"),
         }
     }
 
@@ -354,6 +354,7 @@ impl<T> View<T> for TextInput<T> {
     type State = TextInputState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
+        cx.set_class("text-input");
         cx.set_focusable(true);
 
         let style = TextInputStyle::styled(self, cx.styles());

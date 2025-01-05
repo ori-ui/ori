@@ -65,12 +65,6 @@ impl<T> AppBuilder<T> {
         self
     }
 
-    /// Add a theme to the application.
-    pub fn theme(mut self, theme: Theme) -> Self {
-        self.styles.extend(Styles::from(theme));
-        self
-    }
-
     /// Add a font to the application.
     pub fn font(mut self, font: impl Into<FontSource<'static>>) -> Self {
         self.fonts.push(font.into());

@@ -199,6 +199,12 @@ impl Styles {
             return Some(entry.downcast_ref::<T>().unwrap().clone());
         }
 
+        tracing::trace!(
+            "cache miss for {:?}, {}",
+            style.key,
+            std::any::type_name::<T>()
+        );
+
         let classes = style
             .key
             .split('.')

@@ -229,7 +229,6 @@ where
     I: Iterator<Item = Token<'a>>,
 {
     let name = expect_ident(next(tokens)?)?;
-    let token = next(tokens)?;
 
     let mut key = match key.is_empty() {
         true => name.to_string(),
@@ -242,6 +241,8 @@ where
         key.push('.');
         key.push_str(ident);
     }
+
+    let token = next(tokens)?;
 
     match token.kind {
         TokenKind::Colon => {

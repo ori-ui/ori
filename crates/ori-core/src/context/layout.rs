@@ -10,7 +10,7 @@ pub struct LayoutCx<'a, 'b> {
     pub(crate) view_state: &'a mut ViewState,
 }
 
-impl<'a, 'b> Deref for LayoutCx<'a, 'b> {
+impl<'b> Deref for LayoutCx<'_, 'b> {
     type Target = BaseCx<'b>;
 
     fn deref(&self) -> &Self::Target {
@@ -18,7 +18,7 @@ impl<'a, 'b> Deref for LayoutCx<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DerefMut for LayoutCx<'a, 'b> {
+impl DerefMut for LayoutCx<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.base
     }

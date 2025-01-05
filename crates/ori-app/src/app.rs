@@ -843,7 +843,7 @@ impl<T> App<T> {
             Some(color) => color,
             None => {
                 let styles = (self.contexts.get::<Styles>()).expect("app has styles context");
-                styles.get_or(Color::WHITE, Theme::BACKGROUND)
+                styles.get_or(Color::WHITE, &Theme::BACKGROUND)
             }
         };
 

@@ -203,11 +203,11 @@ fn style_get_field(field: &syn::Field, styled: &syn::Expr, styles: &syn::Expr) -
                         input.parse::<or>()?;
                         let or_value = input.parse::<syn::Expr>()?;
                         default = Some(parse_quote_spanned! { style.span() =>
-                            #styles.get_or_else(|| #or_value, #style)
+                            #styles.get_or_else(|| #or_value, &#style)
                         });
                     } else {
                         default = Some(parse_quote_spanned! { style.span() =>
-                            #styles.get(#style).expect(concat!("missing style for `", #style, "`"))
+                            #styles.get(&#style).expect(concat!("missing style for `", #style, "`"))
                         });
                     }
                 } else {

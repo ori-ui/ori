@@ -733,8 +733,8 @@ impl<T> View<T> for TextInput<T> {
             cx.paragraph(&placeholder, cx.rect());
         }
 
-        let contrast = cx.styles().get_or(Color::BLACK, Theme::CONTRAST);
-        let info = cx.styles().get_or(Color::BLUE, Theme::INFO);
+        let contrast = cx.styles().get_or(Color::BLACK, &Theme::CONTRAST);
+        let info = cx.styles().get_or(Color::BLUE, &Theme::INFO);
 
         // draw the cursor
         if cx.is_focused() {

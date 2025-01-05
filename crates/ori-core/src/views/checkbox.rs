@@ -147,7 +147,7 @@ impl<T> View<T> for Checkbox {
             let bright = style.border_color.lighten(0.2);
 
             let border_color = match cx.is_focused() {
-                true => cx.styles().get_or(Color::BLUE, Theme::INFO),
+                true => cx.styles().get_or(Color::BLUE, &Theme::INFO),
                 false => style.border_color.mix(bright, style.transition.get(*t)),
             };
 

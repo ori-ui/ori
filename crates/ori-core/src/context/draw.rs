@@ -21,7 +21,7 @@ pub struct DrawCx<'a, 'b> {
     pub(crate) visible: Rect,
 }
 
-impl<'a, 'b> Deref for DrawCx<'a, 'b> {
+impl<'b> Deref for DrawCx<'_, 'b> {
     type Target = BaseCx<'b>;
 
     fn deref(&self) -> &Self::Target {
@@ -29,7 +29,7 @@ impl<'a, 'b> Deref for DrawCx<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DerefMut for DrawCx<'a, 'b> {
+impl DerefMut for DrawCx<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.base
     }

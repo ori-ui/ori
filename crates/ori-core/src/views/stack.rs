@@ -146,7 +146,7 @@ impl<T> Stack<Vec<T>> {
     }
 }
 
-impl<'a, T> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
+impl<T> Stack<Vec<Box<dyn AnyView<T> + '_>>> {
     /// Create a new [`Stack`], with dynamic content.
     pub fn any(axis: Axis) -> Self {
         Self::new(axis, Vec::new())

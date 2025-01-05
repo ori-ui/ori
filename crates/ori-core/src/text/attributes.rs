@@ -94,6 +94,35 @@ impl Default for FontWeight {
     }
 }
 
+impl From<u16> for FontWeight {
+    fn from(weight: u16) -> Self {
+        Self(weight)
+    }
+}
+
+impl From<&str> for FontWeight {
+    fn from(weight: &str) -> Self {
+        match weight {
+            "thin" => Self::THIN,
+            "extra-light" => Self::EXTRA_LIGHT,
+            "light" => Self::LIGHT,
+            "normal" => Self::NORMAL,
+            "medium" => Self::MEDIUM,
+            "semi-bold" => Self::SEMI_BOLD,
+            "bold" => Self::BOLD,
+            "extra-bold" => Self::EXTRA_BOLD,
+            "black" => Self::BLACK,
+            _ => Self::NORMAL,
+        }
+    }
+}
+
+impl From<String> for FontWeight {
+    fn from(weight: String) -> Self {
+        Self::from(weight.as_str())
+    }
+}
+
 /// A font stretch.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FontStretch {
@@ -126,6 +155,29 @@ pub enum FontStretch {
     UltraExpanded,
 }
 
+impl From<&str> for FontStretch {
+    fn from(stretch: &str) -> Self {
+        match stretch {
+            "ultra-condensed" => Self::UltraCondensed,
+            "extra-condensed" => Self::ExtraCondensed,
+            "condensed" => Self::Condensed,
+            "semi-condensed" => Self::SemiCondensed,
+            "normal" => Self::Normal,
+            "semi-expanded" => Self::SemiExpanded,
+            "expanded" => Self::Expanded,
+            "extra-expanded" => Self::ExtraExpanded,
+            "ultra-expanded" => Self::UltraExpanded,
+            _ => Self::Normal,
+        }
+    }
+}
+
+impl From<String> for FontStretch {
+    fn from(stretch: String) -> Self {
+        Self::from(stretch.as_str())
+    }
+}
+
 /// A font style.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FontStyle {
@@ -138,6 +190,23 @@ pub enum FontStyle {
 
     /// Oblique font style.
     Oblique,
+}
+
+impl From<&str> for FontStyle {
+    fn from(style: &str) -> Self {
+        match style {
+            "normal" => Self::Normal,
+            "italic" => Self::Italic,
+            "oblique" => Self::Oblique,
+            _ => Self::Normal,
+        }
+    }
+}
+
+impl From<String> for FontStyle {
+    fn from(style: String) -> Self {
+        Self::from(style.as_str())
+    }
 }
 
 /// Alignment of a section of text.
@@ -164,6 +233,28 @@ impl TextAlign {
     pub const Bottom: Self = Self::End;
 }
 
+impl From<&str> for TextAlign {
+    fn from(align: &str) -> Self {
+        match align {
+            "start" => Self::Start,
+            "center" => Self::Center,
+            "end" => Self::End,
+            "left" => Self::Start,
+            "top" => Self::Start,
+            "middle" => Self::Center,
+            "right" => Self::End,
+            "bottom" => Self::End,
+            _ => Self::Start,
+        }
+    }
+}
+
+impl From<String> for TextAlign {
+    fn from(align: String) -> Self {
+        Self::from(align.as_str())
+    }
+}
+
 /// Wrapping of a section of text.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -174,6 +265,22 @@ pub enum TextWrap {
     /// Wrap text at the word boundary.
     #[default]
     Word,
+}
+
+impl From<&str> for TextWrap {
+    fn from(wrap: &str) -> Self {
+        match wrap {
+            "none" => Self::None,
+            "word" => Self::Word,
+            _ => Self::Word,
+        }
+    }
+}
+
+impl From<String> for TextWrap {
+    fn from(wrap: String) -> Self {
+        Self::from(wrap.as_str())
+    }
 }
 
 /// Attributes of a section of text.

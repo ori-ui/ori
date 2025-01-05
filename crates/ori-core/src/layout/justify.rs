@@ -94,7 +94,7 @@ pub struct JustifyIterator<'a> {
     gap: f32,
 }
 
-impl<'a> Iterator for JustifyIterator<'a> {
+impl Iterator for JustifyIterator<'_> {
     type Item = f32;
 
     fn next(&mut self) -> Option<Self::Item> {

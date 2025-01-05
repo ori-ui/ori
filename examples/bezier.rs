@@ -33,9 +33,9 @@ impl Data {
 fn ui(data: &mut Data) -> impl View<Data> {
     let curve = painter(|cx, data: &mut Data| {
         let styles = cx.styles();
-        let primary: Color = styles.get(Theme::PRIMARY).unwrap();
-        let success: Color = styles.get(Theme::SUCCESS).unwrap();
-        let accent: Color = styles.get(Theme::ACCENT).unwrap();
+        let primary: Color = styles.get(&Theme::PRIMARY).unwrap();
+        let success: Color = styles.get(&Theme::SUCCESS).unwrap();
+        let accent: Color = styles.get(&Theme::ACCENT).unwrap();
 
         let mut curve = Curve::new();
 

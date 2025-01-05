@@ -16,7 +16,7 @@ pub struct DelegateCx<'a, 'b, T> {
     rebuild: &'a mut bool,
 }
 
-impl<'a, 'b, T> Deref for DelegateCx<'a, 'b, T> {
+impl<'b, T> Deref for DelegateCx<'_, 'b, T> {
     type Target = BaseCx<'b>;
 
     fn deref(&self) -> &Self::Target {
@@ -24,7 +24,7 @@ impl<'a, 'b, T> Deref for DelegateCx<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, T> DerefMut for DelegateCx<'a, 'b, T> {
+impl<T> DerefMut for DelegateCx<'_, '_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.base
     }

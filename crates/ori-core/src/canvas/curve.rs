@@ -812,7 +812,7 @@ pub struct CurveIter<'a> {
     point: usize,
 }
 
-impl<'a> Iterator for CurveIter<'a> {
+impl Iterator for CurveIter<'_> {
     type Item = CurveSegment;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -13,7 +13,7 @@ pub struct RebuildCx<'a, 'b> {
     pub(crate) view_state: &'a mut ViewState,
 }
 
-impl<'a, 'b> Deref for RebuildCx<'a, 'b> {
+impl<'b> Deref for RebuildCx<'_, 'b> {
     type Target = BaseCx<'b>;
 
     fn deref(&self) -> &Self::Target {
@@ -21,7 +21,7 @@ impl<'a, 'b> Deref for RebuildCx<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DerefMut for RebuildCx<'a, 'b> {
+impl DerefMut for RebuildCx<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.base
     }

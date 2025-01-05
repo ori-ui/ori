@@ -1,7 +1,8 @@
 //! Styleing and theming.
 
-mod palette;
+mod parse;
 mod style;
+mod theme;
 
-pub use palette::*;
 pub use style::*;
+pub use theme::*;

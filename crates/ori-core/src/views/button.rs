@@ -176,7 +176,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
                     Color::TRANSPARENT,
                     state.style.border_radius.expand(2.0),
                     BorderWidth::all(2.0),
-                    cx.styles().get_or(Color::BLUE, Theme::INFO),
+                    cx.styles().get_or(Color::BLUE, &Theme::INFO),
                 );
             }
 

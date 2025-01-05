@@ -1,8 +1,12 @@
 use ori_core::{
+    canvas::{BorderRadius, BorderWidth},
     command::{CommandProxy, CommandWaker},
     context::Contexts,
     style::{Styles, Theme},
-    text::{include_font, FontSource, Fonts},
+    text::{
+        include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, TextAlign,
+        TextWrap,
+    },
     window::Window,
 };
 
@@ -25,10 +29,26 @@ impl<T> Default for AppBuilder<T> {
 impl<T> AppBuilder<T> {
     /// Create a new application builder.
     pub fn new() -> Self {
+        let mut styles = Styles::from(Theme::dark());
+
+        styles.add_conversion::<f32, _>(BorderWidth::from);
+        styles.add_conversion::<[f32; 2], _>(BorderWidth::from);
+        styles.add_conversion::<[f32; 4], _>(BorderWidth::from);
+
+        styles.add_conversion::<f32, _>(BorderRadius::from);
+        styles.add_conversion::<[f32; 4], _>(BorderRadius::from);
+
+        styles.add_conversion::<String, _>(FontFamily::from);
+        styles.add_conversion::<String, _>(FontWeight::from);
+        styles.add_conversion::<String, _>(FontStretch::from);
+        styles.add_conversion::<String, _>(FontStyle::from);
+        styles.add_conversion::<String, _>(TextAlign::from);
+        styles.add_conversion::<String, _>(TextWrap::from);
+
         Self {
             delegates: Vec::new(),
             requests: Vec::new(),
-            styles: Styles::from(Theme::dark()),
+            styles,
             fonts: vec![include_font!("font")],
         }
     }

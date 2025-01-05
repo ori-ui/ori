@@ -163,7 +163,7 @@ impl<T> Wrap<Vec<T>> {
     }
 }
 
-impl<'a, T> Wrap<Vec<Box<dyn AnyView<T> + 'a>>> {
+impl<T> Wrap<Vec<Box<dyn AnyView<T> + '_>>> {
     /// Create a new [`Wrap`], with dynamic content.
     pub fn any(axis: Axis) -> Self {
         Self::new(axis, Vec::new())

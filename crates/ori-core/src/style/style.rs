@@ -1,17 +1,14 @@
 use std::{
     any::{Any, TypeId},
+    borrow::Cow,
     collections::HashMap,
     fmt::Debug,
     hash::{BuildHasherDefault, Hasher},
     marker::PhantomData,
-    sync::Arc,
+    mem,
+    rc::Rc,
+    sync::Mutex,
 };
-
-#[derive(Clone)]
-enum StyleEntry {
-    Value(TypeId, Arc<dyn Any>),
-    Key(u64),
-}
 
 #[repr(transparent)]
 #[derive(Clone, Copy)]
@@ -40,178 +37,300 @@ impl Hasher for StylesHasher {
     }
 }
 
-enum GetRefError {
-    TypeMismatch,
-    KeyNotFound,
+/// A collection of styles.
+#[derive(Default)]
+pub struct Styles {
+    /// The stack of current classes.
+    stack: Vec<u64>,
+
+    /// The root style set.
+    root: StyleSet,
+
+    /// The set of style converters.
+    converters: HashMap<(TypeId, TypeId), StyleConverter>,
+
+    /// The style cache.
+    cache: Mutex<HashMap<StyleKey, CacheEntry, BuildStyleHasher>>,
 }
 
-/// A collection of styles.
-#[derive(Clone, Default)]
-pub struct Styles {
-    styles: Arc<HashMap<u64, StyleEntry, BuildHasherDefault<StylesHasher>>>,
+impl Debug for Styles {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Styles").field("root", &self.root).finish()
+    }
 }
+
+#[derive(Clone, Debug, Default)]
+struct StyleSet {
+    classes: HashMap<u64, StyleSet, BuildStyleHasher>,
+    styles: HashMap<u64, StyleEntry, BuildStyleHasher>,
+}
+
+impl StyleSet {
+    fn extend(&mut self, other: StyleSet) {
+        for (key, value) in other.classes {
+            self.classes.entry(key).or_default().extend(value);
+        }
+
+        self.styles.extend(other.styles);
+    }
+}
+
+type BuildStyleHasher = BuildHasherDefault<StylesHasher>;
+type StyleEntry = Styled<Rc<dyn Any>>;
+type StyleConverter = Rc<dyn Fn(Rc<dyn Any>) -> Rc<dyn Any>>;
+type StyleKey = (u64, TypeId);
+type CacheEntry = Rc<dyn Any>;
 
 impl Styles {
-    /// Create a new [`Styles`].
+    /// Create a new set of styles.
     pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Get the number of styles.
-    pub fn len(&self) -> usize {
-        self.styles.len()
-    }
-
-    /// Check if the styles are empty.
-    pub fn is_empty(&self) -> bool {
-        self.styles.is_empty()
-    }
-
-    /// Insert a styled value.
-    pub fn insert<T: 'static>(&mut self, key: Style<T>, styled: impl Into<Styled<T>>) {
-        match styled.into() {
-            Styled::Value(value) => self.insert_value(key, value),
-            Styled::Style(style) => {
-                let value = StyleEntry::Key(style.key);
-                Arc::make_mut(&mut self.styles).insert(style.key, value);
-            }
-            Styled::Computed(derived) => self.insert_value(key, derived(self)),
+        Self {
+            stack: Vec::new(),
+            root: StyleSet {
+                classes: HashMap::default(),
+                styles: HashMap::default(),
+            },
+            converters: HashMap::default(),
+            cache: Mutex::new(HashMap::default()),
         }
     }
 
-    /// Insert a style.
-    pub fn insert_value<T: 'static>(&mut self, key: Style<T>, style: T) {
-        let entry = StyleEntry::Value(TypeId::of::<T>(), Arc::new(style));
-        Arc::make_mut(&mut self.styles).insert(key.key, entry);
-    }
-
-    /// Insert a style key.
-    pub fn insert_style<T: 'static>(&mut self, key: Style<T>, style: Style<T>) {
-        self.insert_style_keys(key.key, style.key);
-    }
-
-    /// Insert a style key.
-    pub fn insert_style_keys(&mut self, key: u64, style: u64) {
-        Arc::make_mut(&mut self.styles).insert(key, StyleEntry::Key(style));
-    }
-
-    /// Insert a style key.
-    pub fn with<T: 'static>(mut self, key: Style<T>, styled: impl Into<Styled<T>>) -> Self {
-        self.insert(key, styled);
-        self
-    }
-
-    /// Insert a styled value.
-    pub fn with_value<T: 'static>(mut self, key: Style<T>, value: T) -> Self {
-        self.insert_value(key, value);
-        self
-    }
-
-    /// Insert a style key.
-    pub fn with_style<T: 'static>(mut self, key: Style<T>, style: Style<T>) -> Self {
-        self.insert_style(key, style);
-        self
-    }
-
-    /// Extend the styles with another collection of styles.
-    pub fn extend(&mut self, styles: impl Into<Styles>) {
-        let styles = Arc::unwrap_or_clone(styles.into().styles);
-        Arc::make_mut(&mut self.styles).extend(styles);
-    }
-
-    #[inline(always)]
-    fn get_ref<T>(&self, key: u64) -> Result<&T, GetRefError>
+    /// Add a conversion function.
+    pub fn add_conversion<T, U>(&mut self, f: impl Fn(T) -> U + 'static)
     where
-        T: 'static,
+        T: Clone + 'static,
+        U: Clone + 'static,
     {
-        let style = self.styles.get(&key).ok_or(GetRefError::KeyNotFound)?;
+        let f = Rc::new(move |value: Rc<dyn Any>| {
+            let value = value.downcast::<T>().unwrap();
+            let value = f(value.as_ref().clone());
+            Rc::new(value) as Rc<dyn Any>
+        });
 
-        match style {
-            StyleEntry::Value(type_id, value) => {
-                if *type_id != TypeId::of::<T>() {
-                    return Err(GetRefError::TypeMismatch);
-                }
-
-                debug_assert!(
-                    value.is::<T>(),
-                    "style is of type `{}",
-                    std::any::type_name::<T>()
-                );
-
-                let ptr = value.as_ref() as *const _ as *const _;
-
-                // SAFETY: The was just asserted to be of type `T`.
-                unsafe { Ok(&*ptr) }
-            }
-            StyleEntry::Key(key) => self.get_ref(*key),
-        }
+        let signature = (TypeId::of::<T>(), TypeId::of::<U>());
+        self.converters.insert(signature, f);
     }
 
-    /// Get a style.
-    #[track_caller]
-    #[inline(always)]
-    pub fn get<T>(&self, style: Style<T>) -> Option<T>
+    /// Push a class onto the stack.
+    pub fn push_class(&mut self, class: &str) {
+        let class = hash_style_key(class.as_bytes());
+        self.stack.push(class);
+    }
+
+    /// Pop a class from the stack.
+    pub fn pop_class(&mut self) -> bool {
+        self.stack.pop().is_some()
+    }
+
+    /// Run a closure within a context of a class.
+    pub fn with_class<T>(&mut self, class: &str, f: impl FnOnce(&mut Self) -> T) -> T {
+        let class = hash_style_key(class.as_bytes());
+
+        self.stack.push(class);
+        let result = f(self);
+        self.stack.pop();
+
+        result
+    }
+
+    /// Insert a style into the styles.
+    pub fn insert<T>(&mut self, style: Style<T>, value: impl Into<Styled<T>>)
     where
         T: Clone + 'static,
     {
-        match self.get_ref::<T>(style.key) {
-            Ok(value) => Some(value.clone()),
-            Err(GetRefError::TypeMismatch) => {
-                panic!(
-                    "style is of a different type than `{}`",
-                    std::any::type_name::<T>()
-                )
-            }
-            Err(GetRefError::KeyNotFound) => None,
-        }
+        let entry: StyleEntry = match value.into() {
+            Styled::Value(value) => Styled::Value(Rc::new(value)),
+            Styled::Style(style) => Styled::Style(Style {
+                hash: style.hash,
+                key: style.key,
+                marker: PhantomData,
+            }),
+            Styled::Computed(..) => todo!(),
+        };
+
+        self.insert_entry(&style.key, entry);
     }
 
-    /// Get a style, or a default value.
-    #[track_caller]
+    pub(crate) fn insert_entry(&mut self, key: &str, entry: StyleEntry) {
+        let mut classes = key.split('.').map(str::as_bytes).map(hash_style_key);
+
+        let last = classes.next_back().unwrap();
+
+        let mut current = &mut self.root;
+
+        for class in classes {
+            current = current.classes.entry(class).or_default();
+        }
+
+        current.styles.insert(last, entry);
+        let _ = self.cache.get_mut().map(HashMap::clear);
+    }
+
+    /// Insert a style into the styles.
+    pub fn with<T>(mut self, style: Style<T>, value: impl Into<Styled<T>>) -> Self
+    where
+        T: Clone + 'static,
+    {
+        self.insert(style, value);
+        self
+    }
+
+    /// Extend the styles with another set of styles.
+    pub fn extend(&mut self, other: impl Into<Styles>) {
+        let other = other.into();
+
+        self.root.extend(other.root);
+        self.converters.extend(other.converters);
+        let _ = self.cache.get_mut().map(HashMap::clear);
+    }
+
+    /// Get a value from the styles.
     #[inline(always)]
-    pub fn get_or<T>(&self, default: T, style: Style<T>) -> T
+    pub fn get<T: Clone + 'static>(&self, style: &Style<T>) -> Option<T> {
+        let stack_hash = hash_style_key_u64(self.stack.as_slice());
+        let key = (style.hash ^ stack_hash, TypeId::of::<T>());
+
+        if let Some(entry) = self.cache.lock().unwrap().get(&key) {
+            return Some(entry.downcast_ref::<T>().unwrap().clone());
+        }
+
+        let classes = style.key.split('.').map(str::as_bytes).map(hash_style_key);
+
+        let classes = self
+            .stack
+            .iter()
+            .copied()
+            .chain(classes)
+            .collect::<Vec<_>>();
+
+        let entry = Self::get_uncached(&self.root, classes.iter().copied())?;
+
+        let style = match entry {
+            Styled::Value(value) => match value.downcast_ref::<T>() {
+                Some(value) => value.clone(),
+                None => {
+                    let signature = (value.as_ref().type_id(), TypeId::of::<T>());
+
+                    match self.converters.get(&signature) {
+                        Some(converter) => {
+                            let value = converter(value.clone());
+                            let value = value.downcast_ref::<T>().unwrap();
+                            value.clone()
+                        }
+                        None => {
+                            tracing::error!(
+                                "style could not be converted to '{}'",
+                                std::any::type_name::<T>()
+                            );
+
+                            return None;
+                        }
+                    }
+                }
+            },
+            Styled::Style(style) => self.get(style.cast())?,
+            Styled::Computed(..) => todo!(),
+        };
+
+        let cache_entry: CacheEntry = Rc::new(style.clone());
+        self.cache.lock().unwrap().insert(key, cache_entry);
+
+        Some(style)
+    }
+
+    /// Get a value from the styles.
+    #[inline(always)]
+    pub fn get_or<T>(&self, default: T, style: &Style<T>) -> T
     where
         T: Clone + 'static,
     {
         self.get(style).unwrap_or(default)
     }
 
-    /// Get a style, or a default value.
-    #[track_caller]
+    /// Get a value from the styles.
     #[inline(always)]
-    pub fn get_or_else<T, F>(&self, default: F, style: Style<T>) -> T
+    pub fn get_or_else<T, F>(&self, default: F, style: &Style<T>) -> T
     where
         T: Clone + 'static,
         F: FnOnce() -> T,
     {
         self.get(style).unwrap_or_else(default)
     }
+
+    fn get_uncached(
+        style_set: &StyleSet,
+        mut classes: impl DoubleEndedIterator<Item = u64> + ExactSizeIterator + Clone,
+    ) -> Option<&StyleEntry> {
+        let class = classes.next()?;
+
+        if classes.len() == 0 {
+            return style_set.styles.get(&class);
+        }
+
+        if let Some(next_set) = style_set.classes.get(&class) {
+            if let Some(entry) = Self::get_uncached(next_set, classes.clone()) {
+                return Some(entry);
+            }
+        }
+
+        Self::get_uncached(style_set, classes)
+    }
+}
+
+impl Clone for Styles {
+    fn clone(&self) -> Self {
+        Self {
+            stack: self.stack.clone(),
+            root: self.root.clone(),
+            converters: self.converters.clone(),
+            cache: Mutex::new(HashMap::default()),
+        }
+    }
 }
 
 /// A style.
 pub struct Style<T: ?Sized> {
-    key: u64,
+    key: Cow<'static, str>,
+    hash: u64,
     marker: PhantomData<fn(&T)>,
 }
 
 impl<T: ?Sized> Style<T> {
     /// Create a new style.
     #[inline(always)]
-    pub const fn new(key: &str) -> Self {
+    pub const fn new(key: &'static str) -> Self {
         Self {
-            key: hash_style_key(key.as_bytes()),
+            key: Cow::Borrowed(key),
+            hash: hash_style_key(key.as_bytes()),
             marker: PhantomData,
         }
+    }
+
+    /// Create a new style from a string.
+    #[inline(always)]
+    pub fn from_string(key: String) -> Self {
+        Self {
+            hash: hash_style_key(key.as_bytes()),
+            key: Cow::Owned(key),
+            marker: PhantomData,
+        }
+    }
+
+    fn cast<U: ?Sized>(&self) -> &Style<U> {
+        // SAFETY: the marker is used to ensure that the type is correct.
+        unsafe { mem::transmute(self) }
     }
 }
 
 impl<T: ?Sized> Clone for Style<T> {
     fn clone(&self) -> Self {
-        *self
+        Self {
+            key: self.key.clone(),
+            hash: self.hash,
+            marker: PhantomData,
+        }
     }
 }
-
-impl<T: ?Sized> Copy for Style<T> {}
 
 impl<T: ?Sized> Debug for Style<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -221,21 +340,21 @@ impl<T: ?Sized> Debug for Style<T> {
 
 impl<T: ?Sized> PartialEq for Style<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.key == other.key
+        self.hash == other.hash
     }
 }
 
 impl<T: ?Sized> Eq for Style<T> {}
 
-impl<T: ?Sized> From<&str> for Style<T> {
-    fn from(key: &str) -> Self {
+impl<T: ?Sized> From<&'static str> for Style<T> {
+    fn from(key: &'static str) -> Self {
         Self::new(key)
     }
 }
 
 impl<T: ?Sized> From<String> for Style<T> {
     fn from(key: String) -> Self {
-        Self::new(&key)
+        Self::from_string(key)
     }
 }
 
@@ -251,15 +370,15 @@ pub fn style<T>(key: impl Into<Style<T>>) -> Styled<T> {
 
 /// Create a computed style.
 pub fn comp<T>(f: impl Fn(&Styles) -> T + Send + Sync + 'static) -> Styled<T> {
-    Styled::Computed(Arc::new(Box::new(f)))
+    Styled::Computed(Rc::new(Box::new(f)))
 }
 
 /// A computed style.
-
-// Box<dyn Fn()> is 16 bytes large, however Arc<Box<dyn Fn()>> is only 8 bytes. since computed
+///
+// Box<dyn Fn()> is 16 bytes large, however Rc<Box<dyn Fn()>> is only 8 bytes. since computed
 // styles are used so infrequently, compared to the other variants, it's worth the tradeoff to save
 // memory, even if it costs an extra indirection.
-pub type Computed<T> = Arc<Box<dyn Fn(&Styles) -> T + Send + Sync>>;
+pub type Computed<T> = Rc<Box<dyn Fn(&Styles) -> T + Send + Sync>>;
 
 /// A styled value.
 #[derive(Clone)]
@@ -291,7 +410,7 @@ impl<T> Styled<T> {
     {
         match self {
             Self::Value(value) => Some(value.clone()),
-            Self::Style(style) => styles.get(*style),
+            Self::Style(style) => styles.get(style),
             Self::Computed(derived) => Some(derived(styles)),
         }
     }
@@ -321,7 +440,7 @@ impl<T: Debug> Debug for Styled<T> {
         match self {
             Self::Value(value) => write!(f, "Styled::Value({:?})", value),
             Self::Style(style) => write!(f, "Styled::Style({:?})", style.key),
-            Self::Computed(_) => write!(f, "Styled::Computed(...)"),
+            Self::Computed(_) => write!(f, "Styled::Computed(..)"),
         }
     }
 }
@@ -355,49 +474,15 @@ pub const fn hash_style_key(bytes: &[u8]) -> u64 {
     hash
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+const fn hash_style_key_u64(bytes: &[u64]) -> u64 {
+    let mut hash = 0xcbf29ce484222325;
 
-    const KEY_A: Style<u32> = Style::new("a");
-    const KEY_B: Style<u32> = Style::new("b");
-
-    #[test]
-    fn style_value() {
-        let mut styles = Styles::new();
-
-        assert_eq!(
-            styles.get(KEY_A),
-            None,
-            "style should not exist before insertion"
-        );
-
-        styles.insert_value(KEY_A, 42);
-
-        assert_eq!(styles.get(KEY_A), Some(42));
+    let mut index = 0;
+    while index < bytes.len() {
+        hash ^= bytes[index];
+        hash = hash.wrapping_mul(0x100000001b3);
+        index += 1;
     }
 
-    #[test]
-    fn style_key() {
-        let mut styles = Styles::new();
-
-        assert_eq!(
-            styles.get(KEY_A),
-            None,
-            "style should not exist before insertion"
-        );
-
-        styles.insert_style(KEY_A, KEY_B);
-
-        assert_eq!(
-            styles.get(KEY_A),
-            None,
-            "style should not exist before insertion"
-        );
-
-        styles.insert_value(KEY_B, 42);
-
-        assert_eq!(styles.get(KEY_A), Some(42));
-        assert_eq!(styles.get(KEY_B), Some(42));
-    }
+    hash
 }

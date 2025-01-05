@@ -15,7 +15,7 @@ pub struct EventCx<'a, 'b> {
     pub(crate) transform: Affine,
 }
 
-impl<'a, 'b> Deref for EventCx<'a, 'b> {
+impl<'b> Deref for EventCx<'_, 'b> {
     type Target = BaseCx<'b>;
 
     fn deref(&self) -> &Self::Target {
@@ -23,7 +23,7 @@ impl<'a, 'b> Deref for EventCx<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DerefMut for EventCx<'a, 'b> {
+impl DerefMut for EventCx<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.base
     }

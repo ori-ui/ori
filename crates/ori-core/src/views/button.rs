@@ -67,13 +67,13 @@ impl<V> Button<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            padding: Styled::style("padding"),
-            fancy: Styled::style("fancy"),
-            transition: Styled::style("transition"),
-            color: Styled::style("color"),
-            border_radius: Styled::style("border-radius"),
-            border_width: Styled::style("border-width"),
-            border_color: Styled::style("border-color"),
+            padding: Styled::style("button.padding"),
+            fancy: Styled::style("button.fancy"),
+            transition: Styled::style("button.transition"),
+            color: Styled::style("button.color"),
+            border_radius: Styled::style("button.border-radius"),
+            border_width: Styled::style("button.border-width"),
+            border_color: Styled::style("button.border-color"),
         }
     }
 }

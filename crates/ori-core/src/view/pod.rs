@@ -114,6 +114,10 @@ impl<V> Pod<V> {
 
         cx.view_state.propagate(&mut view_state);
 
+        if view_state.class().is_some() {
+            cx.context_mut::<Styles>().pop_class();
+        }
+
         (state, view_state)
     }
 

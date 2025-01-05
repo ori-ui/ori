@@ -204,6 +204,7 @@ impl Styles {
 
         tracing::trace!(
             key = %key.0,
+            stack = ?self.stack,
             type = ?std::any::type_name::<T>(),
             "cache miss for {:?}",
             style.key

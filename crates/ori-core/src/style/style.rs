@@ -236,7 +236,7 @@ impl Styles {
 
     fn get_inner<T>(&self, classes: &[(u64, bool)]) -> Option<T>
     where
-        T: Clone + Any + Send + Sync,
+        T: Clone + Send + Sync + 'static,
     {
         let entry = Self::get_uncached(&self.root, classes.iter().copied())?;
 
@@ -264,7 +264,7 @@ impl Styles {
                     }
                 }
             }
-            Styled::Style(style) => self.get(style.cast())?,
+            Styled::Style(style) => self.get(style.cast()),
             Styled::Computed(..) => todo!(),
         }
     }

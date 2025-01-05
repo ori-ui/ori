@@ -10,6 +10,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use seahash::SeaHasher;
+
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 struct StylesHasher(u64);
@@ -50,7 +52,7 @@ pub struct Styles {
     converters: HashMap<(TypeId, TypeId), StyleConverter>,
 
     /// The style cache.
-    cache: Mutex<HashMap<StyleKey, CacheEntry, BuildStyleHasher>>,
+    cache: Mutex<HashMap<StyleKey, CacheEntry, BuildHasherDefault<SeaHasher>>>,
 }
 
 impl Debug for Styles {

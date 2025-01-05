@@ -1,12 +1,13 @@
 use std::ops::{Deref, Range};
 
-use ori_macro::{example, Build};
+use ori_macro::{example, Build, Styled};
 
 use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
+    style::{Styled, Styles},
     view::{AnyView, PodSeq, SeqState, View, ViewSeq},
 };
 
@@ -62,7 +63,7 @@ pub fn vwrap_any<'a, T>() -> Wrap<Vec<Box<dyn AnyView<T> + 'a>>> {
 ///
 /// Note that unlike [`Stack`](super::Stack) this view does not care about flex.
 #[example(name = "wrap", width = 400, height = 600)]
-#[derive(Build, Rebuild)]
+#[derive(Styled, Build, Rebuild)]
 pub struct Wrap<V> {
     /// The content.
     #[build(ignore)]
@@ -74,23 +75,28 @@ pub struct Wrap<V> {
 
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
-    pub justify: Justify,
+    #[styled(default)]
+    pub justify: Styled<Justify>,
 
     /// How to align the content along the cross axis.
     #[rebuild(layout)]
-    pub align: Align,
+    #[styled(default)]
+    pub align: Styled<Align>,
 
     /// How to justify the content along the cross axis.
     #[rebuild(layout)]
-    pub justify_cross: Justify,
+    #[styled(default)]
+    pub justify_cross: Styled<Justify>,
 
     /// The gap between each row.
     #[rebuild(layout)]
-    pub row_gap: f32,
+    #[styled(default)]
+    pub row_gap: Styled<f32>,
 
     /// The gap between each column.
     #[rebuild(layout)]
-    pub column_gap: f32,
+    #[styled(default)]
+    pub column_gap: Styled<f32>,
 }
 
 impl<V> Wrap<V> {
@@ -99,11 +105,11 @@ impl<V> Wrap<V> {
         Self {
             content: PodSeq::new(content),
             axis,
-            justify: Justify::Start,
-            align: Align::Center,
-            justify_cross: Justify::Start,
-            row_gap: 0.0,
-            column_gap: 0.0,
+            justify: Styled::style("wrap.justify"),
+            align: Styled::style("wrap.align"),
+            justify_cross: Styled::style("wrap.justify-cross"),
+            row_gap: Styled::style("wrap.row-gap"),
+            column_gap: Styled::style("wrap.column-gap"),
         }
     }
 
@@ -118,9 +124,9 @@ impl<V> Wrap<V> {
     }
 
     /// Set the gap for both the rows and columns.
-    pub fn gap(mut self, gap: f32) -> Self {
-        self.row_gap = gap;
-        self.column_gap = gap;
+    pub fn gap(mut self, gap: impl Into<Styled<f32>>) -> Self {
+        self.row_gap = gap.into();
+        self.column_gap = self.row_gap.clone();
         self
     }
 }
@@ -181,17 +187,18 @@ impl<T> Wrap<Vec<Box<dyn AnyView<T> + '_>>> {
 }
 
 #[doc(hidden)]
-#[derive(Debug)]
 pub struct WrapState {
+    style: WrapStyle,
     majors: Vec<f32>,
     runs: Vec<Range<usize>>,
     run_minors: Vec<f32>,
 }
 
 impl WrapState {
-    fn new(len: usize) -> Self {
+    fn new<T, V: ViewSeq<T>>(wrap: &Wrap<V>, styles: &Styles) -> Self {
         Self {
-            majors: vec![0.0; len],
+            style: WrapStyle::styled(wrap, styles),
+            majors: vec![0.0; wrap.content.len()],
             runs: Vec::new(),
             run_minors: Vec::new(),
         }
@@ -211,7 +218,7 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         (
-            WrapState::new(self.content.len()),
+            WrapState::new(self, cx.styles()),
             self.content.build(cx, data),
         )
     }
@@ -262,7 +269,8 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
             state.majors[i] = self.axis.major(size);
         }
 
-        let (major_gap, minor_gap) = self.axis.unpack((self.row_gap, self.column_gap));
+        let gaps = (state.style.row_gap, state.style.column_gap);
+        let (major_gap, minor_gap) = self.axis.unpack(gaps);
 
         let mut major = 0.0;
 
@@ -301,19 +309,19 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
         let major = f32::clamp(major, min_major, max_major);
         let minor = f32::clamp(state.minor() + total_minor_gap, min_minor, max_minor);
 
-        for (i, run_position) in (self.justify_cross)
+        for (i, run_position) in (state.style.justify_cross)
             .layout(&state.run_minors, minor, minor_gap)
             .enumerate()
         {
             let run = state.runs[i].clone();
             let run_minor = state.run_minors[i];
 
-            for (child_position, j) in (self.justify)
+            for (child_position, j) in (state.style.justify)
                 .layout(&state.majors[run.clone()], major, major_gap)
                 .zip(run)
             {
                 let child_minor = self.axis.minor(content[j].size());
-                let child_align = self.align.align(run_minor, child_minor);
+                let child_align = state.style.align.align(run_minor, child_minor);
                 let offset = self.axis.pack(child_position, run_position + child_align);
                 content[j].translate(offset);
             }

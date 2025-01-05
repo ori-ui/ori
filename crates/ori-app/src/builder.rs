@@ -2,6 +2,7 @@ use ori_core::{
     canvas::{BorderRadius, BorderWidth},
     command::{CommandProxy, CommandWaker},
     context::Contexts,
+    layout::{Align, Justify},
     style::{Styles, Theme},
     text::{
         include_font, FontFamily, FontSource, FontStretch, FontStyle, FontWeight, Fonts, TextAlign,
@@ -44,6 +45,9 @@ impl<T> AppBuilder<T> {
         styles.add_conversion::<String, _>(FontStyle::from);
         styles.add_conversion::<String, _>(TextAlign::from);
         styles.add_conversion::<String, _>(TextWrap::from);
+
+        styles.add_conversion::<String, _>(Align::from);
+        styles.add_conversion::<String, _>(Justify::from);
 
         Self {
             delegates: Vec::new(),

@@ -1,12 +1,13 @@
 use std::ops::Deref;
 
-use ori_macro::{example, Build};
+use ori_macro::{example, Build, Styled};
 
 use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
+    style::{Styled, Styles},
     view::{AnyView, PodSeq, SeqState, View, ViewSeq},
 };
 
@@ -62,7 +63,7 @@ pub fn vstack_any<'a, T>() -> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
 
 /// A view that stacks it's content in a line.
 #[example(name = "stack", width = 400, height = 600)]
-#[derive(Build, Rebuild)]
+#[derive(Styled, Build, Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.
     #[build(ignore)]
@@ -74,15 +75,18 @@ pub struct Stack<V> {
 
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
-    pub justify: Justify,
+    #[styled(default)]
+    pub justify: Styled<Justify>,
 
     /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
-    pub align: Align,
+    #[styled(default)]
+    pub align: Styled<Align>,
 
     /// The gap between children.
     #[rebuild(layout)]
-    pub gap: f32,
+    #[styled(default)]
+    pub gap: Styled<f32>,
 }
 
 impl<V> Stack<V> {
@@ -91,9 +95,9 @@ impl<V> Stack<V> {
         Self {
             content: PodSeq::new(content),
             axis,
-            justify: Justify::Start,
-            align: Align::Center,
-            gap: 0.0,
+            justify: Styled::style("stack.justify"),
+            align: Styled::style("stack.align"),
+            gap: Styled::style("stack.gap"),
         }
     }
 
@@ -164,19 +168,20 @@ impl<T> Stack<Vec<Box<dyn AnyView<T> + '_>>> {
 }
 
 #[doc(hidden)]
-#[derive(Debug)]
 pub struct StackState {
+    style: StackStyle,
     flex_sum: f32,
     majors: Vec<f32>,
     minors: Vec<f32>,
 }
 
 impl StackState {
-    fn new(len: usize) -> Self {
+    fn new<T, V: ViewSeq<T>>(stack: &Stack<V>, styles: &Styles) -> Self {
         Self {
+            style: StackStyle::styled(stack, styles),
             flex_sum: 0.0,
-            majors: vec![0.0; len],
-            minors: vec![0.0; len],
+            majors: vec![0.0; stack.content.len()],
+            minors: vec![0.0; stack.content.len()],
         }
     }
 
@@ -205,7 +210,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         (
-            StackState::new(self.content.len()),
+            StackState::new(self, cx.styles()),
             self.content.build(cx, data),
         )
     }
@@ -255,11 +260,13 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         let min_major = min_major.min(max_major);
         let min_minor = min_minor.min(max_minor);
 
-        let total_gap = self.gap * (self.content.len() as f32 - 1.0);
+        let total_gap = state.style.gap * (self.content.len() as f32 - 1.0);
 
         /* measure the content */
 
-        if self.align == Align::Fill || (self.align == Align::Stretch && min_minor == max_minor) {
+        let stretch_full = state.style.align == Align::Stretch && min_minor == max_minor;
+
+        if state.style.align == Align::Fill || stretch_full {
             layout(
                 self, cx, content, state, data, max_major, max_minor, max_minor, total_gap,
             );
@@ -270,7 +277,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
 
             /* stretch the content */
 
-            if self.align == Align::Stretch {
+            if state.style.align == Align::Stretch {
                 let minor = f32::clamp(state.minor(), min_minor, max_minor);
                 layout(
                     self, cx, content, state, data, max_major, minor, minor, total_gap,
@@ -283,11 +290,11 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         let major = f32::clamp(state.major() + total_gap, min_major, max_major);
         let minor = f32::clamp(state.minor(), min_minor, max_minor);
 
-        for (i, child_major) in (self.justify)
-            .layout(&state.majors, major, self.gap)
+        for (i, child_major) in (state.style.justify)
+            .layout(&state.majors, major, state.style.gap)
             .enumerate()
         {
-            let child_align = self.align.align(minor, state.minors[i]);
+            let child_align = state.style.align.align(minor, state.minors[i]);
             let offset = self.axis.pack(child_major, child_align);
             content[i].translate(offset);
         }

@@ -33,6 +33,31 @@ impl Align {
     }
 }
 
+impl Default for Align {
+    fn default() -> Self {
+        Self::Start
+    }
+}
+
+impl From<&str> for Align {
+    fn from(value: &str) -> Self {
+        match value {
+            "start" => Self::Start,
+            "end" => Self::End,
+            "center" => Self::Center,
+            "stretch" => Self::Stretch,
+            "fill" => Self::Fill,
+            _ => Self::Start,
+        }
+    }
+}
+
+impl From<String> for Align {
+    fn from(value: String) -> Self {
+        Align::from(value.as_str())
+    }
+}
+
 /// The justify content of a stack container.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -84,6 +109,32 @@ impl Justify {
             position,
             gap,
         }
+    }
+}
+
+impl Default for Justify {
+    fn default() -> Self {
+        Self::Start
+    }
+}
+
+impl From<&str> for Justify {
+    fn from(value: &str) -> Self {
+        match value {
+            "start" => Self::Start,
+            "end" => Self::End,
+            "center" => Self::Center,
+            "space-between" => Self::SpaceBetween,
+            "space-around" => Self::SpaceAround,
+            "space-evenly" => Self::SpaceEvenly,
+            _ => Self::Start,
+        }
+    }
+}
+
+impl From<String> for Justify {
+    fn from(value: String) -> Self {
+        Justify::from(value.as_str())
     }
 }
 

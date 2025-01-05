@@ -231,11 +231,17 @@ where
     let name = expect_ident(next(tokens)?)?;
     let token = next(tokens)?;
 
-    let key = if key.is_empty() {
-        name.to_string()
-    } else {
-        format!("{}.{}", key, name)
+    let mut key = match key.is_empty() {
+        true => name.to_string(),
+        false => format!("{}.{}", key, name),
     };
+
+    while is(tokens, TokenKind::Dot) {
+        next(tokens)?;
+        let ident = expect_ident(next(tokens)?)?;
+        key.push('.');
+        key.push_str(ident);
+    }
 
     match token.kind {
         TokenKind::Colon => {

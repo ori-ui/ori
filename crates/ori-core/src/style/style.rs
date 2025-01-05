@@ -81,7 +81,7 @@ type BuildStyleHasher = BuildHasherDefault<StylesHasher>;
 type StyleEntry = Styled<Arc<dyn Any + Send + Sync>>;
 type StyleConverter = Arc<dyn Fn(Arc<dyn Any + Send + Sync>) -> Arc<dyn Any + Send + Sync>>;
 type StyleKey = (u64, TypeId);
-type CacheEntry = Arc<dyn Any + Send + Sync>;
+type CacheEntry = Option<Arc<dyn Any + Send + Sync>>;
 
 impl Styles {
     /// Create a new set of styles.
@@ -196,7 +196,10 @@ impl Styles {
         let key = (style.hash ^ stack_hash, TypeId::of::<T>());
 
         if let Some(entry) = self.cache.lock().unwrap().get(&key) {
-            return Some(entry.downcast_ref::<T>().unwrap().clone());
+            let entry = entry.as_ref()?;
+            let style = entry.downcast_ref::<T>()?;
+
+            return Some(style.clone());
         }
 
         tracing::trace!(
@@ -220,39 +223,50 @@ impl Styles {
             .chain(classes)
             .collect::<Vec<_>>();
 
-        let entry = Self::get_uncached(&self.root, classes.iter().copied())?;
-
-        let style = match entry {
-            Styled::Value(value) => match value.downcast_ref::<T>() {
-                Some(value) => value.clone(),
-                None => {
-                    let signature = (value.as_ref().type_id(), TypeId::of::<T>());
-
-                    match self.converters.get(&signature) {
-                        Some(converter) => {
-                            let value = converter(value.clone());
-                            let value = value.downcast_ref::<T>().unwrap();
-                            value.clone()
-                        }
-                        None => {
-                            tracing::error!(
-                                "style could not be converted to '{}'",
-                                std::any::type_name::<T>()
-                            );
-
-                            return None;
-                        }
-                    }
-                }
-            },
-            Styled::Style(style) => self.get(style.cast())?,
-            Styled::Computed(..) => todo!(),
+        let Some(style) = self.get_inner::<T>(&classes) else {
+            self.cache.lock().unwrap().insert(key, None);
+            return None;
         };
 
-        let cache_entry: CacheEntry = Arc::new(style.clone());
+        let cache_entry: CacheEntry = Some(Arc::new(style.clone()));
         self.cache.lock().unwrap().insert(key, cache_entry);
 
         Some(style)
+    }
+
+    fn get_inner<T>(&self, classes: &[(u64, bool)]) -> Option<T>
+    where
+        T: Clone + Any + Send + Sync,
+    {
+        let entry = Self::get_uncached(&self.root, classes.iter().copied())?;
+
+        match entry {
+            Styled::Value(value) => {
+                if let Some(value) = value.downcast_ref::<T>() {
+                    return Some(value.clone());
+                }
+
+                let signature = (value.as_ref().type_id(), TypeId::of::<T>());
+
+                match self.converters.get(&signature) {
+                    Some(converter) => {
+                        let value = converter(value.clone());
+                        let value = value.downcast_ref::<T>().unwrap();
+                        Some(value.clone())
+                    }
+                    None => {
+                        tracing::error!(
+                            "style could not be converted to '{}'",
+                            std::any::type_name::<T>()
+                        );
+
+                        None
+                    }
+                }
+            }
+            Styled::Style(style) => self.get(style.cast())?,
+            Styled::Computed(..) => todo!(),
+        }
     }
 
     /// Get a value from the styles.

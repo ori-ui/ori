@@ -34,13 +34,12 @@ impl<T, V: View<T>> View<T> for Class<V> {
     type State = V::State;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class(&self.name);
         self.content.build(cx, data)
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
-        cx.context_mut::<Styles>().push_class(&self.name);
         self.content.rebuild(state, cx, data, &old.content);
-        cx.context_mut::<Styles>().pop_class();
     }
 
     fn event(
@@ -50,10 +49,7 @@ impl<T, V: View<T>> View<T> for Class<V> {
         data: &mut T,
         event: &Event,
     ) -> bool {
-        cx.context_mut::<Styles>().push_class(&self.name);
-        let handled = self.content.event(state, cx, data, event);
-        cx.context_mut::<Styles>().pop_class();
-        handled
+        self.content.event(state, cx, data, event)
     }
 
     fn layout(
@@ -63,15 +59,10 @@ impl<T, V: View<T>> View<T> for Class<V> {
         data: &mut T,
         space: Space,
     ) -> Size {
-        cx.context_mut::<Styles>().push_class(&self.name);
-        let size = self.content.layout(state, cx, data, space);
-        cx.context_mut::<Styles>().pop_class();
-        size
+        self.content.layout(state, cx, data, space)
     }
 
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
-        cx.context_mut::<Styles>().push_class(&self.name);
         self.content.draw(state, cx, data);
-        cx.context_mut::<Styles>().pop_class();
     }
 }

@@ -72,14 +72,14 @@ impl Checkbox {
     pub fn new(checked: bool) -> Self {
         Self {
             checked,
-            transition: Styled::style("transition"),
-            size: Styled::style("size"),
-            color: Styled::style("color"),
-            stroke: Styled::style("stroke"),
-            background: Styled::style("background"),
-            border_radius: Styled::style("border-radius"),
-            border_width: Styled::style("border-width"),
-            border_color: Styled::style("border-color"),
+            transition: Styled::style("checkbox.transition"),
+            size: Styled::style("checkbox.size"),
+            color: Styled::style("checkbox.color"),
+            stroke: Styled::style("checkbox.stroke"),
+            background: Styled::style("checkbox.background"),
+            border_radius: Styled::style("checkbox.border-radius"),
+            border_width: Styled::style("checkbox.border-width"),
+            border_color: Styled::style("checkbox.border-color"),
         }
     }
 }

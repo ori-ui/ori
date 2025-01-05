@@ -83,13 +83,13 @@ impl<T> Slider<T> {
             range: 0.0..=1.0,
             on_input: None,
             axis: Axis::Horizontal,
-            width: Styled::style("width"),
-            length: Styled::style("length"),
-            color: Styled::style("color"),
-            background: Styled::style("background"),
-            border_radius: Styled::style("border-radius"),
-            border_width: Styled::style("border-width"),
-            border_color: Styled::style("border-color"),
+            width: Styled::style("slider.width"),
+            length: Styled::style("slider.length"),
+            color: Styled::style("slider.color"),
+            background: Styled::style("slider.background"),
+            border_radius: Styled::style("slider.border-radius"),
+            border_width: Styled::style("slider.border-width"),
+            border_color: Styled::style("slider.border-color"),
         }
     }
 

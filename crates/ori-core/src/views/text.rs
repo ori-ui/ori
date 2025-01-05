@@ -97,15 +97,15 @@ impl Text {
     pub fn new(text: impl Into<SmolStr>) -> Self {
         Self {
             text: text.into(),
-            font_size: Styled::style("font-size"),
-            font_family: Styled::style("font-family"),
-            font_weight: Styled::style("font-weight"),
-            font_stretch: Styled::style("font-stretch"),
-            font_style: Styled::style("font-style"),
-            color: Styled::style("color"),
-            align: Styled::style("align"),
-            line_height: Styled::style("line-height"),
-            wrap: Styled::style("wrap"),
+            font_size: Styled::style("text.font-size"),
+            font_family: Styled::style("text.font-family"),
+            font_weight: Styled::style("text.font-weight"),
+            font_stretch: Styled::style("text.font-stretch"),
+            font_style: Styled::style("text.font-style"),
+            color: Styled::style("text.color"),
+            align: Styled::style("text.align"),
+            line_height: Styled::style("text.line-height"),
+            wrap: Styled::style("text.wrap"),
         }
     }
 

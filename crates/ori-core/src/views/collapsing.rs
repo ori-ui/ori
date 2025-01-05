@@ -88,13 +88,13 @@ impl<T, H, V> Collapsing<T, H, V> {
             on_open: None,
             open: None,
             default_open: false,
-            transition: Styled::style("transition"),
-            icon_size: Styled::style("icon-size"),
-            icon_color: Styled::style("icon-color"),
-            background: Styled::style("background"),
-            border_width: Styled::style("border-width"),
-            border_radius: Styled::style("border-radius"),
-            border_color: Styled::style("border-color"),
+            transition: Styled::style("collapsing.transition"),
+            icon_size: Styled::style("collapsing.icon-size"),
+            icon_color: Styled::style("collapsing.icon-color"),
+            background: Styled::style("collapsing.background"),
+            border_width: Styled::style("collapsing.border-width"),
+            border_radius: Styled::style("collapsing.border-radius"),
+            border_color: Styled::style("collapsing.border-color"),
         }
     }
 

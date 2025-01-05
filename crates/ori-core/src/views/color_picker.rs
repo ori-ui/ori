@@ -77,12 +77,12 @@ impl<T> ColorPicker<T> {
         Self {
             color: Color::WHITE,
             on_input: None,
-            size: Styled::style("size"),
-            border_width: Styled::style("border-width"),
-            border_color: Styled::style("border-color"),
-            slider_width: Styled::style("slider-width"),
-            lightness_color: Styled::style("lightness-color"),
-            alpha_color: Styled::style("alpha-color"),
+            size: Styled::style("color-picker.size"),
+            border_width: Styled::style("color-picker.border-width"),
+            border_color: Styled::style("color-picker.border-color"),
+            slider_width: Styled::style("color-picker.slider-width"),
+            lightness_color: Styled::style("color-picker.lightness-color"),
+            alpha_color: Styled::style("color-picker.alpha-color"),
         }
     }
 

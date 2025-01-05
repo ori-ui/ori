@@ -67,11 +67,11 @@ impl<V> Container<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            background: Styled::style("background"),
-            border_radius: Styled::style("border-radius"),
-            border_width: Styled::style("border-width"),
-            border_color: Styled::style("border-color"),
-            mask: Styled::style("mask"),
+            background: Styled::style("container.background"),
+            border_radius: Styled::style("container.border-radius"),
+            border_width: Styled::style("container.border-width"),
+            border_color: Styled::style("container.border-color"),
+            mask: Styled::style("container.mask"),
         }
     }
 }

@@ -197,12 +197,17 @@ impl Styles {
             return Some(entry.downcast_ref::<T>().unwrap().clone());
         }
 
-        let classes = style.key.split('.').map(str::as_bytes).map(hash_style_key);
+        let classes = style
+            .key
+            .split('.')
+            .map(str::as_bytes)
+            .map(hash_style_key)
+            .map(|class| (class, true));
 
         let classes = self
             .stack
             .iter()
-            .copied()
+            .map(|&class| (class, false))
             .chain(classes)
             .collect::<Vec<_>>();
 
@@ -262,9 +267,9 @@ impl Styles {
 
     fn get_uncached(
         style_set: &StyleSet,
-        mut classes: impl DoubleEndedIterator<Item = u64> + ExactSizeIterator + Clone,
+        mut classes: impl ExactSizeIterator<Item = (u64, bool)> + Clone,
     ) -> Option<&StyleEntry> {
-        let class = classes.next()?;
+        let (class, required) = classes.next()?;
 
         if classes.len() == 0 {
             return style_set.styles.get(&class);
@@ -274,6 +279,10 @@ impl Styles {
             if let Some(entry) = Self::get_uncached(next_set, classes.clone()) {
                 return Some(entry);
             }
+        }
+
+        if required {
+            return None;
         }
 
         Self::get_uncached(style_set, classes)

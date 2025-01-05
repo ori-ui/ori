@@ -69,12 +69,12 @@ impl<V> Scroll<V> {
         Self {
             content: Pod::new(content),
             axis,
-            transition: Styled::style("transition"),
-            inset: Styled::style("inset"),
-            width: Styled::style("width"),
-            border_radius: Styled::style("border-radius"),
-            color: Styled::style("color"),
-            knob_color: Styled::style("knob-color"),
+            transition: Styled::style("scroll.transition"),
+            inset: Styled::style("scroll.inset"),
+            width: Styled::style("scroll.width"),
+            border_radius: Styled::style("scroll.border-radius"),
+            color: Styled::style("scroll.color"),
+            knob_color: Styled::style("scroll.knob-color"),
         }
     }
 

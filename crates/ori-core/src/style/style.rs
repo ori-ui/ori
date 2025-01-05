@@ -200,9 +200,10 @@ impl Styles {
         }
 
         tracing::trace!(
-            "cache miss for {:?}, {}",
-            style.key,
-            std::any::type_name::<T>()
+            key = %key.0,
+            type = ?std::any::type_name::<T>(),
+            "cache miss for {:?}",
+            style.key
         );
 
         let classes = style

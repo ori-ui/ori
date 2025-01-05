@@ -761,6 +761,12 @@ impl<T> App<T> {
             self.requests.extend(requests);
         }
 
+        if let Some(styles) = self.contexts.get_mut::<Styles>() {
+            if styles.pop_class() {
+                panic!("Class stack is not empty after handling event");
+            }
+        }
+
         // handle any pending commands
         self.handle_commands(data);
         self.handle_window_requests();

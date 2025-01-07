@@ -80,7 +80,7 @@ pub struct Wrap<V> {
 
     /// How to align the content along the cross axis.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[styled(default = Align::Center)]
     pub align: Styled<Align>,
 
     /// How to justify the content along the cross axis.

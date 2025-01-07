@@ -229,14 +229,6 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
     ///
     /// This should be called before trying to get any style properties.
     pub fn set_class(&mut self, class: impl Into<String>) {
-        let class = class.into();
-
-        if self.view_state.class().is_some() {
-            self.context_mut::<Styles>().pop_class();
-        }
-
-        self.context_mut::<Styles>().push_class(&class);
-
-        self.view_state.set_class(class);
+        self.view_state.set_class(class.into());
     }
 }}

@@ -2,7 +2,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    view::View,
+    view::{Pod, State, View},
 };
 
 /// Wrap a view in a class.
@@ -13,7 +13,7 @@ pub fn class<V>(name: impl ToString, view: V) -> Class<V> {
 /// A view styled as a class.
 pub struct Class<V> {
     /// The content.
-    pub content: V,
+    pub content: Pod<V>,
 
     /// The name of the class.
     pub name: String,
@@ -23,14 +23,14 @@ impl<V> Class<V> {
     /// Create a new [`Class`].
     pub fn new(name: impl ToString, content: V) -> Self {
         Self {
-            content,
+            content: Pod::new(content),
             name: name.to_string(),
         }
     }
 }
 
 impl<T, V: View<T>> View<T> for Class<V> {
-    type State = V::State;
+    type State = State<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class(&self.name);
@@ -38,6 +38,7 @@ impl<T, V: View<T>> View<T> for Class<V> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        cx.set_class(&self.name);
         self.content.rebuild(state, cx, data, &old.content);
     }
 

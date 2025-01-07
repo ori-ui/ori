@@ -116,6 +116,11 @@ impl Styles {
     /// Push a class onto the stack.
     pub fn push_class(&mut self, class: &str) {
         let class = hash_style_key(class.as_bytes());
+        self.push_class_hash(class);
+    }
+
+    /// Push a class hash onto the stack.
+    pub fn push_class_hash(&mut self, class: u64) {
         self.stack.push(class);
     }
 

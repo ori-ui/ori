@@ -5,7 +5,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Event, FocusTarget},
     layout::{Rect, Size, Space},
-    style::Styles,
+    style::{hash_style_key, Styles},
 };
 
 use super::{View, ViewState};
@@ -107,6 +107,11 @@ impl<V> Pod<V> {
     ) -> (T, ViewState) {
         let mut view_state = ViewState::default();
 
+        if let Some(class) = cx.view_state.class() {
+            let hash = hash_style_key(class.as_bytes());
+            cx.context_mut::<Styles>().push_class_hash(hash);
+        }
+
         let mut new_cx = cx.child();
         new_cx.view_state = &mut view_state;
 
@@ -114,7 +119,7 @@ impl<V> Pod<V> {
 
         cx.view_state.propagate(&mut view_state);
 
-        if view_state.class().is_some() {
+        if cx.view_state.class().is_some() {
             cx.context_mut::<Styles>().pop_class();
         }
 
@@ -129,8 +134,9 @@ impl<V> Pod<V> {
     ) {
         view_state.prepare();
 
-        if let Some(class) = view_state.class() {
-            cx.context_mut::<Styles>().push_class(class);
+        if let Some(class) = cx.view_state.class() {
+            let hash = hash_style_key(class.as_bytes());
+            cx.context_mut::<Styles>().push_class_hash(hash);
         }
 
         let mut new_cx = cx.child();
@@ -140,7 +146,7 @@ impl<V> Pod<V> {
 
         cx.view_state.propagate(view_state);
 
-        if view_state.class().is_some() {
+        if cx.view_state.class().is_some() {
             cx.context_mut::<Styles>().pop_class();
         }
     }
@@ -198,8 +204,9 @@ impl<V> Pod<V> {
         view_state.set_hovered(cx.window().is_hovered(view_state.id()));
         view_state.prepare();
 
-        if let Some(class) = view_state.class() {
-            cx.context_mut::<Styles>().push_class(class);
+        if let Some(class) = cx.view_state.class() {
+            let hash = hash_style_key(class.as_bytes());
+            cx.context_mut::<Styles>().push_class_hash(hash);
         }
 
         let mut new_cx = cx.child();
@@ -212,7 +219,7 @@ impl<V> Pod<V> {
 
         cx.view_state.propagate(view_state);
 
-        if view_state.class().is_some() {
+        if cx.view_state.class().is_some() {
             cx.context_mut::<Styles>().pop_class();
         }
 
@@ -227,8 +234,9 @@ impl<V> Pod<V> {
     ) -> Size {
         view_state.mark_layed_out();
 
-        if let Some(class) = view_state.class() {
-            cx.context_mut::<Styles>().push_class(class);
+        if let Some(class) = cx.view_state.class() {
+            let hash = hash_style_key(class.as_bytes());
+            cx.context_mut::<Styles>().push_class_hash(hash);
         }
 
         let mut new_cx = cx.child();
@@ -236,7 +244,7 @@ impl<V> Pod<V> {
 
         view_state.size = f(&mut new_cx);
 
-        if view_state.class().is_some() {
+        if cx.view_state.class().is_some() {
             cx.context_mut::<Styles>().pop_class();
         }
 
@@ -251,8 +259,9 @@ impl<V> Pod<V> {
     ) {
         view_state.mark_drawn();
 
-        if let Some(class) = view_state.class() {
-            cx.context_mut::<Styles>().push_class(class);
+        if let Some(class) = cx.view_state.class() {
+            let hash = hash_style_key(class.as_bytes());
+            cx.context_mut::<Styles>().push_class_hash(hash);
         }
 
         // create the draw context
@@ -264,7 +273,7 @@ impl<V> Pod<V> {
             f(cx);
         });
 
-        if view_state.class().is_some() {
+        if cx.view_state.class().is_some() {
             cx.context_mut::<Styles>().pop_class();
         }
     }

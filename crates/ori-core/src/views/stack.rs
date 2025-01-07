@@ -80,7 +80,7 @@ pub struct Stack<V> {
 
     /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[styled(default = Align::Center)]
     pub align: Styled<Align>,
 
     /// The gap between children.

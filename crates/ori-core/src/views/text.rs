@@ -126,8 +126,6 @@ impl<T> View<T> for Text {
     type State = Paragraph;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        cx.set_class("text");
-
         let style = TextStyle::styled(self, cx.styles());
 
         let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);

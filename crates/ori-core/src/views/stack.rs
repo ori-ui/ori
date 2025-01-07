@@ -209,6 +209,8 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
     type State = (StackState, SeqState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class("stack");
+
         (
             StackState::new(self, cx.styles()),
             self.content.build(cx, data),

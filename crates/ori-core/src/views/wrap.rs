@@ -217,6 +217,8 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
     type State = (WrapState, SeqState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
+        cx.set_class("wrap");
+
         (
             WrapState::new(self, cx.styles()),
             self.content.build(cx, data),

@@ -1,3 +1,5 @@
+use std::{fmt::Debug, io, path::Path, str::FromStr};
+
 use ori_core::{
     canvas::{BorderRadius, BorderWidth},
     command::{CommandProxy, CommandWaker},
@@ -64,8 +66,16 @@ impl<T> AppBuilder<T> {
     }
 
     /// Add a style to the application.
-    pub fn style(mut self, styles: impl Into<Styles>) -> Self {
-        self.styles.extend(styles);
+    pub fn style<L>(mut self, styles: L) -> Self
+    where
+        L: LoadStyle,
+        L::Err: Debug,
+    {
+        match styles.load_style() {
+            Ok(styles) => self.styles.extend(styles),
+            Err(e) => ori_core::log::error!("Failed to load style: {:?}", e),
+        }
+
         self
     }
 
@@ -107,5 +117,47 @@ impl<T> AppBuilder<T> {
             requests: self.requests,
             contexts,
         }
+    }
+}
+
+/// A trait for loading styles.
+pub trait LoadStyle {
+    /// The error type.
+    type Err;
+
+    /// Load a style.
+    fn load_style(self) -> Result<Styles, Self::Err>;
+}
+
+impl LoadStyle for Styles {
+    type Err = ();
+
+    fn load_style(self) -> Result<Styles, Self::Err> {
+        Ok(self)
+    }
+}
+
+impl LoadStyle for Theme {
+    type Err = ();
+
+    fn load_style(self) -> Result<Styles, Self::Err> {
+        Ok(self.into())
+    }
+}
+
+impl LoadStyle for &str {
+    type Err = ori_core::style::ParseError;
+
+    fn load_style(self) -> Result<Styles, Self::Err> {
+        FromStr::from_str(self)
+    }
+}
+
+impl LoadStyle for &Path {
+    type Err = io::Error;
+
+    fn load_style(self) -> Result<Styles, Self::Err> {
+        let s = std::fs::read_to_string(self)?;
+        FromStr::from_str(&s).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 }

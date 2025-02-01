@@ -9,44 +9,54 @@ use crate::{
 };
 
 /// Create a view that applies a style to its content.
-pub fn with_style<V: View<T>, T>(style: impl Into<Styles>, content: V) -> WithStyle<V> {
-    WithStyle::new(style.into(), content)
+pub fn with_styles<V, T>(styles: impl Into<Styles>, content: V) -> WithStyles<V>
+where
+    V: View<T>,
+{
+    WithStyles::new(styles.into(), content)
 }
 
 /// A view that applies a style to its content.
-pub struct WithStyle<V> {
+pub struct WithStyles<V> {
     /// The content view.
     pub content: V,
 
     /// The style to apply.
-    pub style: Styles,
+    pub styles: Styles,
 }
 
-impl<V> WithStyle<V> {
+impl<V> WithStyles<V> {
     /// Create a new [`WithStyle`] view.
-    pub fn new(style: Styles, content: V) -> Self {
-        Self { content, style }
+    pub fn new(styles: Styles, content: V) -> Self {
+        Self { content, styles }
     }
 }
 
 #[doc(hidden)]
 pub struct WithStyleState {
+    base_version: u64,
+    extra_version: u64,
     computed_styles: Styles,
 }
 
-impl<T, V: View<T>> View<T> for WithStyle<V> {
+impl<T, V: View<T>> View<T> for WithStyles<V> {
     type State = (WithStyleState, V::State);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let mut styles = cx.styles().clone();
 
-        styles.extend(mem::take(&mut self.style));
+        let base_version = styles.version();
+        let extra_version = self.styles.version();
+
+        styles.extend(mem::take(&mut self.styles));
 
         mem::swap(&mut styles, cx.context_mut());
         let content = self.content.build(cx, data);
         mem::swap(&mut styles, cx.context_mut());
 
         let state = WithStyleState {
+            base_version,
+            extra_version,
             computed_styles: styles,
         };
 
@@ -60,8 +70,15 @@ impl<T, V: View<T>> View<T> for WithStyle<V> {
         data: &mut T,
         old: &Self,
     ) {
-        state.computed_styles = cx.styles().clone();
-        state.computed_styles.extend(mem::take(&mut self.style));
+        if state.base_version != cx.styles().version()
+            || state.extra_version != old.styles.version()
+        {
+            state.base_version = cx.styles().version();
+            state.extra_version = old.styles.version();
+
+            state.computed_styles = cx.styles().clone();
+            state.computed_styles.extend(mem::take(&mut self.styles));
+        }
 
         mem::swap(&mut state.computed_styles, cx.context_mut());
         self.content.rebuild(content, cx, data, &old.content);

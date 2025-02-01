@@ -7,7 +7,10 @@ use std::{
     marker::PhantomData,
     mem,
     str::FromStr,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
 };
 
 use seahash::SeaHasher;
@@ -53,6 +56,9 @@ pub struct Styles {
 
     /// The style cache.
     cache: Mutex<HashMap<StyleKey, CacheEntry, BuildHasherDefault<SeaHasher>>>,
+
+    /// The current version of the styles.
+    version: AtomicU64,
 }
 
 impl Debug for Styles {
@@ -84,17 +90,25 @@ type StyleKey = (u64, TypeId);
 type CacheEntry = Option<Arc<dyn Any + Send + Sync>>;
 
 impl Styles {
+    fn next_version() -> u64 {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    }
+
     /// Create a new set of styles.
     pub fn new() -> Self {
         Self {
             stack: Vec::new(),
-            root: StyleSet {
-                classes: HashMap::default(),
-                styles: HashMap::default(),
-            },
+            root: StyleSet::default(),
             converters: HashMap::default(),
             cache: Mutex::new(HashMap::default()),
+            version: AtomicU64::new(Self::next_version()),
         }
+    }
+
+    /// Get the current version of the styles.
+    pub fn version(&self) -> u64 {
+        self.version.load(Ordering::Relaxed)
     }
 
     /// Add a conversion function.
@@ -175,7 +189,12 @@ impl Styles {
         }
 
         current.styles.insert(last, entry.inner);
+        self.invalidate();
+    }
+
+    fn invalidate(&mut self) {
         let _ = self.cache.get_mut().map(HashMap::clear);
+        self.version.store(Self::next_version(), Ordering::Relaxed);
     }
 
     /// Insert a style into the styles.
@@ -193,7 +212,7 @@ impl Styles {
 
         self.root.extend(other.root);
         self.converters.extend(other.converters);
-        let _ = self.cache.get_mut().map(HashMap::clear);
+        self.invalidate();
     }
 
     /// Get a value from the styles.
@@ -330,12 +349,26 @@ impl Styles {
 
 impl Clone for Styles {
     fn clone(&self) -> Self {
+        let cache = match self.cache.lock() {
+            Ok(cache) => cache.clone(),
+            Err(_) => HashMap::default(),
+        };
+
+        let version = self.version.load(Ordering::Relaxed);
+
         Self {
             stack: self.stack.clone(),
             root: self.root.clone(),
             converters: self.converters.clone(),
-            cache: Mutex::new(HashMap::default()),
+            cache: Mutex::new(cache),
+            version: AtomicU64::new(version),
         }
+    }
+}
+
+impl PartialEq for Styles {
+    fn eq(&self, other: &Self) -> bool {
+        self.version.load(Ordering::Relaxed) == other.version.load(Ordering::Relaxed)
     }
 }
 

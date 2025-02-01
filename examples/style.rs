@@ -57,7 +57,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
 
     let view = center(vstack![title, subtitle, style, error]);
 
-    with_style(data.styles.clone(), view)
+    with_styles(data.styles.clone(), view)
 }
 
 struct Delegate;

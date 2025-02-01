@@ -8,10 +8,10 @@ license.workspace = true
 [dependencies]
 ori-core.workspace = true
 
-lru = "0.12"
+lru = "0.13"
 seahash = "4.1"
 
 [dependencies.skia-safe]
-version = "0.80"
+version = "0.81"
 default-features = false
 features = ["binary-cache", "gl", "textlayout"]

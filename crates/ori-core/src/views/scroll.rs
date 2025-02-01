@@ -299,20 +299,22 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
         let track_color = state.style.color.fade(0.7);
         let knob_color = state.style.knob_color.fade(0.9);
 
-        cx.quad(
-            self.scrollbar_rect(&state.style, cx.rect()),
-            track_color.fade(state.style.transition.get(state.t)),
-            state.style.border_radius,
-            0.0,
-            Color::TRANSPARENT,
-        );
+        cx.hoverable(|cx| {
+            cx.quad(
+                self.scrollbar_rect(&state.style, cx.rect()),
+                track_color.fade(state.style.transition.get(state.t)),
+                state.style.border_radius,
+                0.0,
+                Color::TRANSPARENT,
+            );
 
-        cx.quad(
-            self.scrollbar_knob_rect(&state.style, cx.rect(), overflow, state.scroll),
-            knob_color.fade(state.style.transition.get(state.t)),
-            state.style.border_radius,
-            0.0,
-            Color::TRANSPARENT,
-        );
+            cx.quad(
+                self.scrollbar_knob_rect(&state.style, cx.rect(), overflow, state.scroll),
+                knob_color.fade(state.style.transition.get(state.t)),
+                state.style.border_radius,
+                0.0,
+                Color::TRANSPARENT,
+            );
+        });
     }
 }

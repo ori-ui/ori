@@ -232,6 +232,7 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
         data: &mut T,
         old: &Self,
     ) {
+        Rebuild::rebuild(self, cx, old);
         state.style.rebuild(self, cx);
 
         if self.content.len() != old.content.len() {

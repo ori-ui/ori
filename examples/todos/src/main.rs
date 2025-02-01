@@ -226,7 +226,7 @@ fn ui(data: &mut Data) -> impl View<Data> {
     };
 
     let view = background(Theme::BACKGROUND, pad(64.0, content));
-    with_style(style, view)
+    with_styles(style, view)
 }
 
 struct Delegate;

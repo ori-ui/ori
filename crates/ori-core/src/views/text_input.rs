@@ -653,7 +653,7 @@ impl<T> View<T> for TextInput<T> {
                 true
             }
 
-            Event::Animate(dt) => {
+            Event::Animate(dt) if cx.is_focused() => {
                 state.blink += *dt;
 
                 cx.draw();

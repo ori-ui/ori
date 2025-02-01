@@ -137,9 +137,8 @@ impl<T, V: View<T>> View<T> for Button<V> {
 
             if hover || active {
                 cx.animate();
+                cx.draw();
             }
-
-            cx.draw();
         }
 
         handled

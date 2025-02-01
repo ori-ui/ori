@@ -228,6 +228,8 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
                 handled
             }
             Event::Animate(dt) => {
+                let old_timer = state.timer;
+
                 if content.has_hovered() && state.timer < 1.0 {
                     state.timer += dt / state.style.delay;
                     cx.animate();
@@ -239,7 +241,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
 
                 state.timer = f32::clamp(state.timer, 0.0, 1.0);
 
-                if state.timer >= 0.9 {
+                if state.timer >= 0.9 && state.timer != old_timer {
                     cx.draw();
                 }
 

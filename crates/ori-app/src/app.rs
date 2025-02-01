@@ -90,7 +90,7 @@ impl<T> WindowState<T> {
         self.window = cx.remove_context().expect("Window context missing");
 
         trace!(
-            window = ?self.window.id(),
+            window = %self.window.id(),
             elapsed = ?t.elapsed(),
             "Window event"
         );
@@ -130,7 +130,7 @@ impl<T> WindowState<T> {
         }
 
         trace!(
-            window = ?self.window.id(),
+            window = %self.window.id(),
             elapsed = ?t.elapsed(),
             "Window layout"
         );
@@ -150,7 +150,7 @@ impl<T> WindowState<T> {
         self.window = cx.remove_context().expect("Window context missing");
 
         trace!(
-            window = ?self.window.id(),
+            window = %self.window.id(),
             elapsed = ?t.elapsed(),
             "Window draw"
         );
@@ -746,7 +746,7 @@ impl<T> App<T> {
     ///
     /// Returns true if the event was handled by a delegate.
     pub fn window_event(&mut self, data: &mut T, window_id: WindowId, event: &Event) -> bool {
-        trace!(event = ?event, window = ?window_id, "Window event");
+        trace!(event = ?event, window = %window_id, "Window event");
 
         // we need to animate the window before handling the event
         let animate = Instant::now();
@@ -813,7 +813,7 @@ impl<T> App<T> {
 
     /// Draw a single window, returning the scene if it needs to be rendered.
     pub fn draw_window(&mut self, data: &mut T, window_id: WindowId) -> Option<WindowRenderState> {
-        trace!(window = ?window_id, "Draw window");
+        trace!(window = %window_id, "Draw window");
 
         // animate the window before drawing it
         //

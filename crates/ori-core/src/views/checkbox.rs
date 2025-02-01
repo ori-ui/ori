@@ -123,11 +123,11 @@ impl<T> View<T> for Checkbox {
 
         if let Event::Animate(dt) = event {
             let on = cx.is_hovered() && !cx.is_active();
+
             if style.transition.step(t, on, *dt) {
                 cx.animate();
+                cx.draw();
             }
-
-            cx.draw();
         }
 
         false

@@ -123,26 +123,30 @@ impl Text {
 }
 
 impl<T> View<T> for Text {
-    type State = Paragraph;
+    type State = (TextStyle, Paragraph);
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         let style = TextStyle::styled(self, cx.styles());
 
         let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);
         paragraph.push_text(&self.text, self.font_attributes(&style));
-        paragraph
+        (style, paragraph)
     }
 
-    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
-        Rebuild::rebuild(self, cx, old);
+    fn rebuild(
+        &mut self,
+        (style, paragraph): &mut Self::State,
+        cx: &mut RebuildCx,
+        _data: &mut T,
+        _old: &Self,
+    ) {
+        style.rebuild(self, cx);
 
-        let style = TextStyle::styled(self, cx.styles());
+        paragraph.line_height = style.line_height;
+        paragraph.align = style.align;
+        paragraph.wrap = style.wrap;
 
-        state.line_height = style.line_height;
-        state.align = style.align;
-        state.wrap = style.wrap;
-
-        state.set_text(&self.text, self.font_attributes(&style));
+        paragraph.set_text(&self.text, self.font_attributes(style));
     }
 
     fn event(
@@ -157,16 +161,16 @@ impl<T> View<T> for Text {
 
     fn layout(
         &mut self,
-        state: &mut Self::State,
+        (_, paragraph): &mut Self::State,
         cx: &mut LayoutCx,
         _data: &mut T,
         space: Space,
     ) -> Size {
-        cx.fonts().measure(state, space.max.width)
+        cx.fonts().measure(paragraph, space.max.width)
     }
 
-    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
-        cx.paragraph(state, cx.rect());
+    fn draw(&mut self, (_, paragraph): &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
+        cx.paragraph(paragraph, cx.rect());
     }
 }
 

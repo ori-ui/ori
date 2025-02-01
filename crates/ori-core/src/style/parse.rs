@@ -50,6 +50,7 @@ enum TokenKind<'a> {
     Colon,
     Dot,
     Comma,
+    Dollar,
     OpenBrace,
     OpenBracket,
     CloseBrace,
@@ -80,10 +81,12 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
     let mut tokens = Vec::new();
 
     while let Some((c, lo)) = chars.next() {
+        // skip whitespace
         if c.is_whitespace() {
             continue;
         }
 
+        // parse an identifier token
         if is_ident_start(c) {
             let mut hi = lo + c.len_utf8();
 
@@ -107,6 +110,7 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
             continue;
         }
 
+        // parse a number token
         if c.is_ascii_digit() {
             let mut hi = lo + c.len_utf8();
 
@@ -129,6 +133,18 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
             continue;
         }
 
+        // parse a comment token
+        if c == '/' && chars.peek().map_or(false, |&(c, _)| c == '/') {
+            for (c, _) in chars.by_ref() {
+                if c == '\n' {
+                    break;
+                }
+            }
+
+            continue;
+        }
+
+        // parse a hex color token
         if c == '#' {
             let mut hi = lo + c.len_utf8();
 
@@ -140,7 +156,11 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
                 hi = idx + c.len_utf8();
             }
 
-            let color = Color::hex(&s[lo + 1..hi]);
+            let Some(color) = Color::try_hex(&s[lo + 1..hi]) else {
+                return Err(ParseError {
+                    message: format!("invalid color: {:?}", &s[lo..hi]),
+                });
+            };
 
             tokens.push(Token {
                 kind: TokenKind::Color(color),
@@ -150,14 +170,23 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
             continue;
         }
 
+        // parse a string token
         if c == '"' {
+            let mut terminated = false;
             let mut hi = lo + c.len_utf8();
 
             for (c, idx) in chars.by_ref() {
                 if c == '"' {
                     hi = idx + c.len_utf8();
+                    terminated = true;
                     break;
                 }
+            }
+
+            if !terminated {
+                return Err(ParseError {
+                    message: "unterminated string".to_string(),
+                });
             }
 
             tokens.push(Token {
@@ -168,6 +197,7 @@ fn tokenize(s: &str) -> Result<impl ExactSizeIterator<Item = Token>, ParseError>
             continue;
         }
 
+        // parse a symbol token
         if let Some(kind) = get_symbol(c) {
             tokens.push(Token {
                 kind,
@@ -198,6 +228,7 @@ fn get_symbol(c: char) -> Option<TokenKind<'static>> {
         ':' => Some(TokenKind::Colon),
         '.' => Some(TokenKind::Dot),
         ',' => Some(TokenKind::Comma),
+        '$' => Some(TokenKind::Dollar),
         '{' => Some(TokenKind::OpenBrace),
         '}' => Some(TokenKind::CloseBrace),
         '[' => Some(TokenKind::OpenBracket),
@@ -247,7 +278,7 @@ where
     match token.kind {
         TokenKind::Colon => {
             let value = parse_value(tokens)?;
-            styles.insert_entry(&key, value);
+            styles.insert_any(&key, value);
 
             if !is(tokens, TokenKind::Comma) {
                 return Err(ParseError {
@@ -285,23 +316,24 @@ where
     let token = next(tokens)?;
 
     match token.kind {
-        TokenKind::String(s) => Ok(Styled::Value(Arc::new(s.to_string()))),
-        TokenKind::Number(n) => Ok(Styled::Value(Arc::new(n))),
-        TokenKind::True => Ok(Styled::Value(Arc::new(true))),
-        TokenKind::False => Ok(Styled::Value(Arc::new(false))),
-        TokenKind::Color(color) => Ok(Styled::Value(Arc::new(color))),
+        TokenKind::String(s) | TokenKind::Ident(s) => Ok(Styled::value(Arc::new(s.to_string()))),
+        TokenKind::Number(n) => Ok(Styled::value(Arc::new(n))),
+        TokenKind::True => Ok(Styled::value(Arc::new(true))),
+        TokenKind::False => Ok(Styled::value(Arc::new(false))),
+        TokenKind::Color(color) => Ok(Styled::value(Arc::new(color))),
 
-        TokenKind::Ident(ident) => {
-            let mut key = String::from(ident);
+        TokenKind::Dollar => {
+            let root = expect_ident(next(tokens)?)?;
+            let mut key = String::from(root);
 
             while is(tokens, TokenKind::Dot) {
                 next(tokens)?;
-                let ident = expect_ident(next(tokens)?)?;
+                let segment = expect_ident(next(tokens)?)?;
                 key.push('.');
-                key.push_str(ident);
+                key.push_str(segment);
             }
 
-            Ok(Styled::Style(Style::from_string(key)))
+            Ok(Styled::style(Style::from_string(key)))
         }
 
         TokenKind::OpenBracket => {
@@ -327,8 +359,8 @@ where
             next(tokens)?;
 
             match v.len() {
-                2 => Ok(Styled::Value(Arc::new([v[0], v[1]]))),
-                4 => Ok(Styled::Value(Arc::new([v[0], v[1], v[2], v[3]]))),
+                2 => Ok(Styled::value(Arc::new([v[0], v[1]]))),
+                4 => Ok(Styled::value(Arc::new([v[0], v[1], v[2], v[3]]))),
                 _ => Err(ParseError {
                     message: format!("expected 2 or 4 numbers, found {}", v.len()),
                 }),

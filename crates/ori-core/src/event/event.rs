@@ -69,6 +69,9 @@ pub enum Event {
     /// A keyboard key was released.
     KeyReleased(KeyReleased),
 
+    /// All views need to be laid out.
+    ForceLayout,
+
     /// Focus should be switched to next view in the focus chain.
     FocusNext,
 

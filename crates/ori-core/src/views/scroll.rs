@@ -242,7 +242,7 @@ impl<T, V: View<T>> View<T> for Scroll<V> {
             if on && !handled {
                 handled = true;
 
-                state.scroll -= e.delta.y * 10.0;
+                state.scroll -= e.delta.y;
                 state.scroll = state.scroll.clamp(0.0, overflow);
 
                 content.translate(self.axis.pack(-state.scroll, 0.0));

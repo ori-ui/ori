@@ -19,7 +19,7 @@ use ori_core::{
     window::{Cursor, Window, WindowId, WindowSizing, WindowSnapshot, WindowUpdate},
 };
 
-use crate::{AppBuilder, AppCommand, AppDelegate, AppRequest, DelegateCx, UiBuilder};
+use crate::{AppBuilder, AppCommand, AppDelegate, AppRequest, DelegateCx, StyleLoader, UiBuilder};
 
 /// Information needed to render a window.
 pub struct WindowRenderState {
@@ -179,6 +179,7 @@ pub struct App<T> {
     pub(crate) delegates: Vec<Box<dyn AppDelegate<T>>>,
     pub(crate) receiver: CommandReceiver,
     pub(crate) requests: Vec<AppRequest<T>>,
+    pub(crate) style_loader: StyleLoader,
 }
 
 impl<T> App<T> {
@@ -409,7 +410,7 @@ impl<T> App<T> {
 
             let mut handled = self.window_event(data, window_id, &event);
 
-            if let (Some(window), Key::Tab) = (self.windows.get(&window_id), key) {
+            if let (Some(window), Key::Tab, false) = (self.windows.get(&window_id), key, handled) {
                 let event = match window.view_state.has_focused() {
                     true if self.modifiers.shift => Event::FocusPrev,
                     false if self.modifiers.shift => Event::FocusGiven(FocusTarget::Prev),
@@ -503,12 +504,26 @@ impl<T> App<T> {
                 let builder: UiBuilder<T> = Box::new(move |_| any(opaque(ui())));
                 self.add_window(data, builder, window);
             }
+
             AppCommand::CloseWindow(window_id) => {
                 self.requests.push(AppRequest::CloseWindow(window_id));
             }
+
             AppCommand::DragWindow(window_id) => {
                 self.requests.push(AppRequest::DragWindow(window_id));
             }
+
+            AppCommand::ReloadStyles => match self.style_loader.load() {
+                Ok(styles) => {
+                    self.contexts.insert(styles);
+                    self.rebuild(data);
+                }
+
+                Err(error) => {
+                    ori_core::log::error!("Failed to reload styles: {}", error);
+                }
+            },
+
             AppCommand::Quit => {
                 self.requests.push(AppRequest::Quit);
             }
@@ -565,6 +580,8 @@ impl<T> App<T> {
 
             self.event(data, &Event::Command(command));
         }
+
+        self.handle_window_requests();
     }
 
     /// Update the hovered state of a window.
@@ -721,7 +738,6 @@ impl<T> App<T> {
 
         // handle any pending commands
         self.handle_commands(data);
-        self.handle_window_requests();
 
         handled
     }
@@ -769,7 +785,6 @@ impl<T> App<T> {
 
         // handle any pending commands
         self.handle_commands(data);
-        self.handle_window_requests();
 
         handled
     }
@@ -840,7 +855,6 @@ impl<T> App<T> {
 
         // handle any pending commands
         self.handle_commands(data);
-        self.handle_window_requests();
 
         let window_state = self.windows.get(&window_id)?;
 

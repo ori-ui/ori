@@ -57,11 +57,11 @@ pub struct Styles {
 
 impl Debug for Styles {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Styles").field("root", &self.root).finish()
+        f.debug_struct("Styles").finish()
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 struct StyleSet {
     classes: HashMap<u64, StyleSet, BuildStyleHasher>,
     styles: HashMap<u64, StyleEntry, BuildStyleHasher>,
@@ -78,7 +78,7 @@ impl StyleSet {
 }
 
 type BuildStyleHasher = BuildHasherDefault<StylesHasher>;
-type StyleEntry = Styled<Arc<dyn Any + Send + Sync>>;
+type StyleEntry = StyledInner<Arc<dyn Any + Send + Sync>>;
 type StyleConverter = Arc<dyn Fn(Arc<dyn Any + Send + Sync>) -> Arc<dyn Any + Send + Sync>>;
 type StyleKey = (u64, TypeId);
 type CacheEntry = Option<Arc<dyn Any + Send + Sync>>;
@@ -145,20 +145,25 @@ impl Styles {
     where
         T: Clone + Send + Sync + 'static,
     {
-        let entry: StyleEntry = match value.into() {
-            Styled::Value(value) => Styled::Value(Arc::new(value)),
-            Styled::Style(style) => Styled::Style(Style {
+        let entry = match value.into().inner {
+            StyledInner::Value(value) => {
+                let value: Arc<dyn Any + Send + Sync> = Arc::new(value);
+                Styled::value(value)
+            }
+            StyledInner::Style(style) => Styled::style(Style {
                 hash: style.hash,
                 key: style.key,
                 marker: PhantomData,
             }),
-            Styled::Computed(..) => todo!(),
+            StyledInner::Computed(computed) => Styled::computed(move |styles| {
+                Arc::new(computed(styles)) as Arc<dyn Any + Send + Sync>
+            }),
         };
 
-        self.insert_entry(&style.key, entry);
+        self.insert_any(&style.key, entry);
     }
 
-    pub(crate) fn insert_entry(&mut self, key: &str, entry: StyleEntry) {
+    pub(crate) fn insert_any(&mut self, key: &str, entry: Styled<Arc<dyn Any + Send + Sync>>) {
         let mut classes = key.split('.').map(str::as_bytes).map(hash_style_key);
 
         let last = classes.next_back().unwrap();
@@ -169,7 +174,7 @@ impl Styles {
             current = current.classes.entry(class).or_default();
         }
 
-        current.styles.insert(last, entry);
+        current.styles.insert(last, entry.inner);
         let _ = self.cache.get_mut().map(HashMap::clear);
     }
 
@@ -247,31 +252,36 @@ impl Styles {
         let entry = Self::get_uncached(&self.root, classes.iter().copied())?;
 
         match entry {
-            Styled::Value(value) => {
-                if let Some(value) = value.downcast_ref::<T>() {
-                    return Some(value.clone());
-                }
+            StyledInner::Value(value) => self.convert(value),
+            StyledInner::Style(style) => self.get(style.cast()),
+            StyledInner::Computed(computed) => self.convert(&computed(self)),
+        }
+    }
 
-                let signature = (value.as_ref().type_id(), TypeId::of::<T>());
+    fn convert<T>(&self, value: &Arc<dyn Any + Send + Sync>) -> Option<T>
+    where
+        T: Clone + Send + Sync + 'static,
+    {
+        if let Some(value) = value.downcast_ref::<T>() {
+            return Some(value.clone());
+        }
 
-                match self.converters.get(&signature) {
-                    Some(converter) => {
-                        let value = converter(value.clone());
-                        let value = value.downcast_ref::<T>().unwrap();
-                        Some(value.clone())
-                    }
-                    None => {
-                        tracing::error!(
-                            "style could not be converted to '{}'",
-                            std::any::type_name::<T>()
-                        );
+        let signature = (value.as_ref().type_id(), TypeId::of::<T>());
 
-                        None
-                    }
-                }
+        match self.converters.get(&signature) {
+            Some(converter) => {
+                let value = converter(value.clone());
+                let value = value.downcast_ref::<T>().unwrap();
+                Some(value.clone())
             }
-            Styled::Style(style) => self.get(style.cast()),
-            Styled::Computed(..) => todo!(),
+            None => {
+                tracing::error!(
+                    "style could not be converted to '{}'",
+                    std::any::type_name::<T>()
+                );
+
+                None
+            }
         }
     }
 
@@ -411,19 +421,24 @@ impl<T: ?Sized> From<String> for Style<T> {
     }
 }
 
-/// Create a style value.
+/// Create a style value, shorthand for [`Styled::new`].
+#[inline(always)]
 pub fn val<T>(val: impl Into<T>) -> Styled<T> {
-    Styled::Value(val.into())
+    Styled::new(val.into())
 }
 
-/// Create a style key.
+/// Create a style key, shorthand for [`Styled::style`].
+#[inline(always)]
 pub fn style<T>(key: impl Into<Style<T>>) -> Styled<T> {
-    Styled::Style(key.into())
+    Styled::style(key.into())
 }
 
-/// Create a computed style.
+/// Create a computed style, shorthand for [`Styled::computed`].
+///
+/// **Note:** This is by far the least efficient variant, and should only be used when necessary.
+#[inline(always)]
 pub fn comp<T>(f: impl Fn(&Styles) -> T + Send + Sync + 'static) -> Styled<T> {
-    Styled::Computed(Arc::new(Box::new(f)))
+    Styled::computed(f)
 }
 
 /// A computed style.
@@ -433,9 +448,8 @@ pub fn comp<T>(f: impl Fn(&Styles) -> T + Send + Sync + 'static) -> Styled<T> {
 // memory, even if it costs an extra indirection.
 pub type Computed<T> = Arc<Box<dyn Fn(&Styles) -> T + Send + Sync>>;
 
-/// A styled value.
 #[derive(Clone)]
-pub enum Styled<T> {
+enum StyledInner<T> {
     /// A value.
     Value(T),
 
@@ -443,21 +457,46 @@ pub enum Styled<T> {
     Style(Style<T>),
 
     /// A derived style.
-    ///
-    /// **Note:** This is by far the least efficient variant, and should only be used when
-    /// necessary.
     Computed(Computed<T>),
+}
+
+/// A styled value.
+#[derive(Clone)]
+pub struct Styled<T> {
+    inner: StyledInner<T>,
 }
 
 impl<T> Styled<T> {
     /// Create a new styled value.
+    #[inline(always)]
     pub fn new(style: impl Into<Styled<T>>) -> Self {
         style.into()
     }
 
+    /// Create a new styled from a value.
+    pub fn value(val: T) -> Self {
+        Self {
+            inner: StyledInner::Value(val),
+        }
+    }
+
     /// Create a new styled from a style key.
+    #[inline(always)]
     pub fn style(key: impl Into<Style<T>>) -> Self {
-        Self::Style(key.into())
+        Self {
+            inner: StyledInner::Style(key.into()),
+        }
+    }
+
+    /// Create a new computed styled value.
+    ///
+    /// **Note:** This is by far the least efficient variant, and should only be used when
+    /// necessary.
+    #[inline(always)]
+    pub fn computed(f: impl Fn(&Styles) -> T + Send + Sync + 'static) -> Self {
+        Self {
+            inner: StyledInner::Computed(Arc::new(Box::new(f))),
+        }
     }
 
     /// Get the value, or a style from the styles.
@@ -466,10 +505,10 @@ impl<T> Styled<T> {
     where
         T: Clone + Send + Sync + 'static,
     {
-        match self {
-            Self::Value(value) => Some(value.clone()),
-            Self::Style(style) => styles.get(style),
-            Self::Computed(derived) => Some(derived(styles)),
+        match self.inner {
+            StyledInner::Value(ref value) => Some(value.clone()),
+            StyledInner::Style(ref style) => styles.get(style),
+            StyledInner::Computed(ref comp) => Some(comp(styles)),
         }
     }
 
@@ -495,23 +534,27 @@ impl<T> Styled<T> {
 
 impl<T: Debug> Debug for Styled<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Value(value) => write!(f, "Styled::Value({:?})", value),
-            Self::Style(style) => write!(f, "Styled::Style({:?})", style.key),
-            Self::Computed(_) => write!(f, "Styled::Computed(..)"),
+        match self.inner {
+            StyledInner::Value(ref value) => f.debug_tuple("Styled::Value").field(value).finish(),
+            StyledInner::Style(ref style) => f.debug_tuple("Styled::Style").field(style).finish(),
+            StyledInner::Computed(..) => f.debug_tuple("Styled::Computed").finish(),
         }
     }
 }
 
 impl<T> From<T> for Styled<T> {
     fn from(value: T) -> Self {
-        Self::Value(value)
+        Self {
+            inner: StyledInner::Value(value),
+        }
     }
 }
 
 impl<T> From<Style<T>> for Styled<T> {
     fn from(style: Style<T>) -> Self {
-        Self::Style(style)
+        Self {
+            inner: StyledInner::Style(style),
+        }
     }
 }
 

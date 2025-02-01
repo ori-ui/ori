@@ -37,7 +37,7 @@ pub mod log {
 pub mod prelude {
     //! Convenient imports for Ori.
 
-    pub use ori_app::{App, AppBuilder, AppCommand, AppDelegate, DelegateCx};
+    pub use ori_app::{include_style, App, AppBuilder, AppCommand, AppDelegate, DelegateCx};
 
     pub use ori_core::{
         canvas::{

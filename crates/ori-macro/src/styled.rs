@@ -60,7 +60,7 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
             #vis fn rebuild #impl_generics (
                 &mut self,
                 styled: &#ident #ty_generics,
-                cx: &mut #ori_core::context::RebuildCx
+                cx: &mut #ori_core::context::RebuildCx,
             )
             #where_clause
             {

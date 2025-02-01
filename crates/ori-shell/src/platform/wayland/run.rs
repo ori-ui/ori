@@ -1290,7 +1290,13 @@ impl PointerHandler for State {
                     vertical,
                     ..
                 } => {
-                    let delta = Vector::new(-horizontal.discrete as f32, -vertical.discrete as f32);
+                    let horizontal = horizontal.absolute as f32 / window.scale_factor
+                        + horizontal.discrete as f32 * 10.0;
+
+                    let vertical = vertical.absolute as f32 / window.scale_factor
+                        + vertical.discrete as f32 * 10.0;
+
+                    let delta = Vector::new(-horizontal, -vertical);
 
                     self.events.push(Event::PointerScroll {
                         id: window.id,

@@ -161,8 +161,8 @@ mod testing {
 
     pub type SavedLayouts = HashMap<String, Rect>;
 
-    pub fn save_layout<V>(view: V, name: impl Into<String>) -> LayoutSaver<V> {
-        LayoutSaver::new(view, name)
+    pub fn save_layout<V>(name: impl Into<String>, view: V) -> LayoutSaver<V> {
+        LayoutSaver::new(name, view)
     }
 
     pub struct LayoutSaver<V> {
@@ -171,7 +171,7 @@ mod testing {
     }
 
     impl<V> LayoutSaver<V> {
-        pub fn new(content: V, name: impl Into<String>) -> Self {
+        pub fn new(name: impl Into<String>, content: V) -> Self {
             Self {
                 content,
                 name: name.into(),

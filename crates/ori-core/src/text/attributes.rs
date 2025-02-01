@@ -47,19 +47,19 @@ impl From<SmolStr> for FontFamily {
 
 impl From<&str> for Styled<FontFamily> {
     fn from(name: &str) -> Self {
-        Styled::Value(FontFamily::from(name))
+        Styled::value(FontFamily::from(name))
     }
 }
 
 impl From<String> for Styled<FontFamily> {
     fn from(name: String) -> Self {
-        Styled::Value(FontFamily::from(name))
+        Styled::value(FontFamily::from(name))
     }
 }
 
 impl From<SmolStr> for Styled<FontFamily> {
     fn from(name: SmolStr) -> Self {
-        Styled::Value(FontFamily::from(name))
+        Styled::value(FontFamily::from(name))
     }
 }
 

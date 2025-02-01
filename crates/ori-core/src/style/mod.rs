@@ -1,4 +1,4 @@
-//! Styleing and theming.
+//! Styling and theming.
 
 mod parse;
 mod style;

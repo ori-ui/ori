@@ -223,7 +223,7 @@ impl Fonts for SkiaFonts {
 
     fn measure(&mut self, paragraph: &Paragraph, width: f32) -> Size {
         let skia_paragraph = self.build_skia_paragraph(paragraph);
-        skia_paragraph.layout(width);
+        skia_paragraph.layout(width + 1.0);
 
         let width = skia_paragraph.max_intrinsic_width();
         let height = skia_paragraph.height();

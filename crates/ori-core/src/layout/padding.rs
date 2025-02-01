@@ -75,30 +75,30 @@ impl From<f32> for Padding {
 
 impl From<(f32, f32, f32, f32)> for Styled<Padding> {
     fn from(value: (f32, f32, f32, f32)) -> Self {
-        Self::Value(Padding::from(value))
+        Self::value(Padding::from(value))
     }
 }
 
 impl From<[f32; 4]> for Styled<Padding> {
     fn from(value: [f32; 4]) -> Self {
-        Self::Value(Padding::from(value))
+        Self::value(Padding::from(value))
     }
 }
 
 impl From<(f32, f32)> for Styled<Padding> {
     fn from(value: (f32, f32)) -> Self {
-        Self::Value(Padding::from(value))
+        Self::value(Padding::from(value))
     }
 }
 
 impl From<[f32; 2]> for Styled<Padding> {
     fn from(value: [f32; 2]) -> Self {
-        Self::Value(Padding::from(value))
+        Self::value(Padding::from(value))
     }
 }
 
 impl From<f32> for Styled<Padding> {
     fn from(value: f32) -> Self {
-        Self::Value(Padding::from(value))
+        Self::value(Padding::from(value))
     }
 }

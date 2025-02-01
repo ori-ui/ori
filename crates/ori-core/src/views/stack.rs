@@ -225,6 +225,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
+        state.style.rebuild(self, cx);
 
         if self.content.len() != old.content.len() {
             state.resize(self.content.len());

@@ -238,7 +238,6 @@ impl TextInputState {
             return;
         }
 
-        // FIXME: this might be slow
         let prev_char = self.text[..self.cursor].chars().next_back().unwrap();
         self.set_cursor(self.cursor - prev_char.len_utf8(), select);
     }
@@ -566,6 +565,14 @@ impl<T> View<T> for TextInput<T> {
                     } else {
                         cx.set_focused(false);
                     }
+                }
+
+                if e.is_key(Key::Tab) {
+                    state.remove_selection();
+                    state.text.insert(state.cursor, ' ');
+                    state.set_cursor(state.cursor + 1, false);
+
+                    text_changed = true;
                 }
 
                 if e.is_key(Key::Enter) && self.multiline {

@@ -188,7 +188,7 @@ impl<V> Pod<V> {
         }
 
         // if the window was scaled or resized we need want to be layed out again
-        if matches!(event, Event::WindowScaled(_) | Event::WindowResized(_)) {
+        if let Event::WindowScaled(_) | Event::WindowResized(_) | Event::ForceLayout = event {
             view_state.request_layout();
         }
 

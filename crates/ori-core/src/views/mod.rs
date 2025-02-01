@@ -85,6 +85,7 @@ mod testing {
         context::{BaseCx, BuildCx, Contexts, DrawCx, EventCx, LayoutCx, RebuildCx},
         event::Event,
         layout::{Rect, Size, Space},
+        style::Styles,
         view::{View, ViewState},
         window::Window,
     };
@@ -105,6 +106,7 @@ mod testing {
 
             let mut contexts = Contexts::new();
             contexts.insert(window);
+            contexts.insert(Styles::new());
 
             let (mut proxy, rx) = CommandProxy::new(waker);
 

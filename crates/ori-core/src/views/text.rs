@@ -138,8 +138,9 @@ impl<T> View<T> for Text {
         (style, paragraph): &mut Self::State,
         cx: &mut RebuildCx,
         _data: &mut T,
-        _old: &Self,
+        old: &Self,
     ) {
+        Rebuild::rebuild(self, cx, old);
         style.rebuild(self, cx);
 
         paragraph.line_height = style.line_height;

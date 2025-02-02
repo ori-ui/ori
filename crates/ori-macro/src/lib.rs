@@ -54,11 +54,11 @@ pub fn lowercase_ident(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
     quote::quote!(#ident).into()
 }
 
-#[manyhow::manyhow]
-#[proc_macro]
 /// Load a font from a file or directory.
 ///
 /// The path is relative to the `Cargo.toml` file.
+#[manyhow::manyhow]
+#[proc_macro]
 pub fn include_font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     font::include_font(input)
 }

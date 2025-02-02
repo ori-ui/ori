@@ -8,6 +8,7 @@ use crate::{
     layout::{Affine, Point, Rect, Size, Vector},
     text::{FontAttributes, Paragraph, TextAlign, TextWrap},
     view::ViewState,
+    window::Window,
 };
 
 use super::BaseCx;
@@ -44,12 +45,15 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         view_state: &'a mut ViewState,
         canvas: &'a mut Canvas,
     ) -> Self {
+        let window_size = base.context::<Window>().size;
+        let visible = Rect::min_size(Point::ZERO, window_size);
+
         Self {
             base,
             view_state,
             transform: Affine::IDENTITY,
             canvas,
-            visible: Self::EVERYTHING,
+            visible,
         }
     }
 

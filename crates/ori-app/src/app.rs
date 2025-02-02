@@ -52,15 +52,14 @@ impl<T> WindowState<T> {
 
         self.view_state.prepare();
 
+        base.insert_context(self.window.clone());
+
         let mut cx = RebuildCx::new(base, &mut self.view_state);
-
         let mut new_view = (self.ui)(data);
-
-        cx.insert_context(self.window.clone());
         new_view.rebuild(&mut self.state, &mut cx, data, &self.view);
-        self.window = cx.remove_context().expect("Window context missing");
-
         self.view = new_view;
+
+        self.window = base.remove_context().expect("Window context missing");
 
         trace!(
             window = ?self.window.id(),
@@ -83,11 +82,12 @@ impl<T> WindowState<T> {
         self.view_state.set_hovered(hovered);
         self.view_state.prepare();
 
-        let mut cx = EventCx::new(base, &mut self.view_state, rebuild);
+        base.insert_context(self.window.clone());
 
-        cx.insert_context(self.window.clone());
+        let mut cx = EventCx::new(base, &mut self.view_state, rebuild);
         let handled = self.view.event(&mut self.state, &mut cx, data, event);
-        self.window = cx.remove_context().expect("Window context missing");
+
+        self.window = base.remove_context().expect("Window context missing");
 
         trace!(
             window = %self.window.id(),
@@ -103,6 +103,8 @@ impl<T> WindowState<T> {
 
         self.view_state.mark_layed_out();
 
+        base.insert_context(self.window.clone());
+
         // we need to calculate the max size of the window
         // depending on the sizing of the window
         let max_size = match self.window.sizing {
@@ -112,10 +114,9 @@ impl<T> WindowState<T> {
 
         let space = Space::new(Size::ZERO, max_size);
         let mut cx = LayoutCx::new(base, &mut self.view_state);
-
-        cx.insert_context(self.window.clone());
         let size = self.view.layout(&mut self.state, &mut cx, data, space);
-        self.window = cx.remove_context().expect("Window context missing");
+
+        self.window = base.remove_context().expect("Window context missing");
 
         self.view_state.set_size(size);
 
@@ -143,11 +144,12 @@ impl<T> WindowState<T> {
 
         self.canvas.clear();
 
-        let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.canvas);
+        base.insert_context(self.window.clone());
 
-        cx.insert_context(self.window.clone());
+        let mut cx = DrawCx::new(base, &mut self.view_state, &mut self.canvas);
         self.view.draw(&mut self.state, &mut cx, data);
-        self.window = cx.remove_context().expect("Window context missing");
+
+        self.window = base.remove_context().expect("Window context missing");
 
         trace!(
             window = %self.window.id(),

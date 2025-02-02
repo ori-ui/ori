@@ -1,16 +1,25 @@
-use core::ffi;
-use std::{collections::HashMap, mem};
+use std::{
+    collections::HashMap,
+    ffi,
+    hash::{BuildHasherDefault, Hash, Hasher},
+    mem,
+    num::NonZeroUsize,
+};
 
+use lru::LruCache;
 use ori_core::{
     canvas::{BlendMode, Canvas, Color, Curve, CurveSegment, FillRule, Paint, Primitive, Shader},
     image::WeakImage,
     layout::{Affine, Vector},
 };
+use seahash::SeaHasher;
 
 use crate::SkiaFonts;
 
 type Images = HashMap<WeakImage, skia_safe::Image>;
 type GlGetIntegerv = unsafe extern "C" fn(u32, *mut i32);
+type PathCache = LruCache<(u64, FillRule), skia_safe::Path, BuildHasherDefault<SeaHasher>>;
+type PaintCache = LruCache<u64, skia_safe::Paint, BuildHasherDefault<SeaHasher>>;
 
 pub struct SkiaRenderer {
     gl_get_integerv: GlGetIntegerv,
@@ -19,6 +28,9 @@ pub struct SkiaRenderer {
     images: HashMap<WeakImage, skia_safe::Image>,
     width: u32,
     height: u32,
+
+    paths: PathCache,
+    paints: PaintCache,
 }
 
 impl SkiaRenderer {
@@ -32,6 +44,10 @@ impl SkiaRenderer {
         let gl_get_integerv =
             mem::transmute::<*const std::ffi::c_void, GlGetIntegerv>(loader("glGetIntegerv"));
 
+        let cache_size = NonZeroUsize::new(256).unwrap();
+        let paths = LruCache::with_hasher(cache_size, Default::default());
+        let paints = LruCache::with_hasher(cache_size, Default::default());
+
         Self {
             gl_get_integerv,
             skia,
@@ -39,6 +55,9 @@ impl SkiaRenderer {
             images: HashMap::new(),
             width: 0,
             height: 0,
+
+            paths,
+            paints,
         }
     }
 
@@ -58,7 +77,15 @@ impl SkiaRenderer {
 
         for primitive in canvas.primitives() {
             let transform = Affine::scale(Vector::all(scale_factor));
-            Self::draw_primitive(fonts, &mut self.images, skia_canvas, primitive, transform);
+            Self::draw_primitive(
+                fonts,
+                &mut self.images,
+                &mut self.paths,
+                &mut self.paints,
+                skia_canvas,
+                primitive,
+                transform,
+            );
         }
 
         self.skia.flush_and_submit();
@@ -67,13 +94,15 @@ impl SkiaRenderer {
     fn draw_primitive(
         fonts: &mut SkiaFonts,
         images: &mut Images,
+        paths: &mut PathCache,
+        paints: &mut PaintCache,
         canvas: &skia_safe::Canvas,
         primitive: &Primitive,
         transform: Affine,
     ) {
         match primitive {
             Primitive::Fill { curve, fill, paint } => {
-                Self::fill_curve(images, canvas, curve, fill, paint)
+                Self::fill_curve(images, paths, paints, canvas, curve, fill, paint)
             }
             Primitive::Stroke {
                 curve,
@@ -82,7 +111,15 @@ impl SkiaRenderer {
             } => {
                 let mut stroked = Curve::new();
                 stroked.stroke_curve(curve, *stroke);
-                Self::fill_curve(images, canvas, &stroked, &FillRule::NonZero, paint);
+                Self::fill_curve(
+                    images,
+                    paths,
+                    paints,
+                    canvas,
+                    &stroked,
+                    &FillRule::NonZero,
+                    paint,
+                );
             }
             Primitive::Paragraph {
                 paragraph, rect, ..
@@ -110,7 +147,9 @@ impl SkiaRenderer {
                 canvas.set_matrix(&Self::skia_matrix(transform).into());
 
                 for primitive in primitives.iter() {
-                    Self::draw_primitive(fonts, images, canvas, primitive, transform);
+                    Self::draw_primitive(
+                        fonts, images, paths, paints, canvas, primitive, transform,
+                    );
                 }
 
                 canvas.restore();
@@ -120,18 +159,61 @@ impl SkiaRenderer {
 
     fn fill_curve(
         images: &mut Images,
+        paths: &mut PathCache,
+        paints: &mut PaintCache,
         canvas: &skia_safe::Canvas,
         curve: &Curve,
         fill: &FillRule,
         paint: &Paint,
     ) {
-        let mut skia_path = Self::skia_path(curve);
+        let path_key = (curve.get_hash(), *fill);
+        let skia_path = paths.get_or_insert_mut(path_key, || {
+            let mut path = Self::skia_path(curve);
 
-        skia_path.set_fill_type(match fill {
-            FillRule::NonZero => skia_safe::PathFillType::Winding,
-            FillRule::EvenOdd => skia_safe::PathFillType::EvenOdd,
+            path.set_fill_type(match fill {
+                FillRule::NonZero => skia_safe::PathFillType::Winding,
+                FillRule::EvenOdd => skia_safe::PathFillType::EvenOdd,
+            });
+
+            path
         });
 
+        let mut hasher = SeaHasher::new();
+        paint.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let skia_paint = paints.get_or_insert_mut(hash, || Self::skia_paint(images, paint));
+
+        canvas.draw_path(skia_path, skia_paint);
+    }
+
+    fn skia_path(curve: &Curve) -> skia_safe::Path {
+        let mut skia_path = skia_safe::Path::new();
+
+        for segment in curve.iter() {
+            match segment {
+                CurveSegment::Move(p) => {
+                    skia_path.move_to((p.x, p.y));
+                }
+                CurveSegment::Line(p) => {
+                    skia_path.line_to((p.x, p.y));
+                }
+                CurveSegment::Quad(p0, p1) => {
+                    skia_path.quad_to((p0.x, p0.y), (p1.x, p1.y));
+                }
+                CurveSegment::Cubic(p0, p1, p2) => {
+                    skia_path.cubic_to((p0.x, p0.y), (p1.x, p1.y), (p2.x, p2.y));
+                }
+                CurveSegment::Close => {
+                    skia_path.close();
+                }
+            }
+        }
+
+        skia_path
+    }
+
+    fn skia_paint(images: &mut Images, paint: &Paint) -> skia_safe::Paint {
         let color = match paint.shader {
             Shader::Solid(color) => color,
             Shader::Pattern(ref pattern) => pattern.color,
@@ -194,33 +276,7 @@ impl SkiaRenderer {
             Shader::Solid(_) => {}
         }
 
-        canvas.draw_path(&skia_path, &skia_paint);
-    }
-
-    fn skia_path(curve: &Curve) -> skia_safe::Path {
-        let mut skia_path = skia_safe::Path::new();
-
-        for segment in curve.iter() {
-            match segment {
-                CurveSegment::Move(p) => {
-                    skia_path.move_to((p.x, p.y));
-                }
-                CurveSegment::Line(p) => {
-                    skia_path.line_to((p.x, p.y));
-                }
-                CurveSegment::Quad(p0, p1) => {
-                    skia_path.quad_to((p0.x, p0.y), (p1.x, p1.y));
-                }
-                CurveSegment::Cubic(p0, p1, p2) => {
-                    skia_path.cubic_to((p0.x, p0.y), (p1.x, p1.y), (p2.x, p2.y));
-                }
-                CurveSegment::Close => {
-                    skia_path.close();
-                }
-            }
-        }
-
-        skia_path
+        skia_paint
     }
 
     fn skia_matrix(affine: Affine) -> skia_safe::Matrix {

@@ -90,11 +90,13 @@ impl<'a> BaseCx<'a> {
     }
 
     /// Get a context.
+    #[inline(always)]
     pub fn get_context<T: Any>(&self) -> Option<&T> {
         self.contexts.get::<T>()
     }
 
     /// Get a mutable context.
+    #[inline(always)]
     pub fn get_context_mut<T: Any>(&mut self) -> Option<&mut T> {
         self.contexts.get_mut::<T>()
     }
@@ -104,6 +106,7 @@ impl<'a> BaseCx<'a> {
     /// # Panics
     /// - If the context is not found.
     #[track_caller]
+    #[inline(always)]
     pub fn context<T: Any>(&self) -> &T {
         match self.get_context::<T>() {
             Some(context) => context,
@@ -116,6 +119,7 @@ impl<'a> BaseCx<'a> {
     /// # Panics
     /// - If the context is not found.
     #[track_caller]
+    #[inline(always)]
     pub fn context_mut<T: Any>(&mut self) -> &mut T {
         match self.get_context_mut::<T>() {
             Some(context) => context,

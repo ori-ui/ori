@@ -1,4 +1,11 @@
-use std::f32::consts::{PI, SQRT_2};
+use std::{
+    f32::consts::{PI, SQRT_2},
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+    sync::atomic::{AtomicU64, Ordering},
+};
+
+use seahash::SeaHasher;
 
 use crate::layout::{Affine, Point, Rect, Size, Vector};
 
@@ -37,11 +44,44 @@ impl CurveVerb {
 }
 
 /// A bezier curve.
-#[derive(Clone, Debug, PartialEq, Hash)]
 pub struct Curve {
     verbs: Vec<CurveVerb>,
     points: Vec<Point>,
     bounds: Rect,
+    hash: AtomicU64,
+}
+
+impl Debug for Curve {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Curve")
+            .field("verbs", &self.verbs)
+            .field("points", &self.points)
+            .field("bounds", &self.bounds)
+            .finish()
+    }
+}
+
+impl Clone for Curve {
+    fn clone(&self) -> Self {
+        Self {
+            verbs: self.verbs.clone(),
+            points: self.points.clone(),
+            bounds: self.bounds,
+            hash: AtomicU64::new(self.hash.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl Hash for Curve {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.get_hash().hash(state);
+    }
+}
+
+impl PartialEq for Curve {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_hash() == other.get_hash()
+    }
 }
 
 impl Default for Curve {
@@ -57,6 +97,7 @@ impl Curve {
             verbs: Vec::new(),
             points: Vec::new(),
             bounds: Rect::ZERO,
+            hash: AtomicU64::new(0),
         }
     }
 
@@ -77,6 +118,31 @@ impl Curve {
     /// Create a curve from a cicrle.
     pub fn circle(center: Point, radius: f32) -> Self {
         Self::ellipse(Rect::center_size(center, Size::all(radius * 2.0)))
+    }
+
+    /// Get the hash of the curve.
+    ///
+    /// This is a non-cryptographic fast hash, and is cached.
+    #[inline]
+    pub fn get_hash(&self) -> u64 {
+        let hash = self.hash.load(Ordering::Relaxed);
+
+        if hash == 0 {
+            let hash = self.compute_hash();
+            self.hash.store(hash, Ordering::Relaxed);
+            hash
+        } else {
+            hash
+        }
+    }
+
+    fn compute_hash(&self) -> u64 {
+        let mut hasher = SeaHasher::new();
+
+        self.verbs.hash(&mut hasher);
+        self.points.hash(&mut hasher);
+
+        hasher.finish()
     }
 
     /// Get the number of verbs in the curve.

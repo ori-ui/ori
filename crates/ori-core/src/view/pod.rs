@@ -158,43 +158,55 @@ impl<V> Pod<V> {
         event: &Event,
         f: impl FnMut(&mut EventCx, &Event) -> bool,
     ) -> bool {
-        if matches!(event, Event::Animate(_)) {
-            if !view_state.needs_animate() {
-                cx.view_state.propagate(view_state);
+        match event {
+            Event::Animate(_) => {
+                if !view_state.needs_animate() {
+                    cx.view_state.propagate(view_state);
 
-                return false;
+                    return false;
+                }
+
+                view_state.mark_animated();
+
+                Self::event_with_inner(view_state, cx, event, f)
             }
 
-            view_state.mark_animated();
-        }
+            Event::FocusNext | Event::FocusPrev | Event::FocusWanted if view_state.is_focused() => {
+                view_state.set_focused(false);
 
-        if event.wants_focus() && view_state.is_focused() {
-            view_state.set_focused(false);
-            Self::event_with_inner(view_state, cx, &Event::Notify, f);
-            return true;
-        }
-
-        if let Event::FocusGiven(target) = event {
-            let focus_given = match target {
-                FocusTarget::Next | FocusTarget::Prev => view_state.is_focusable(),
-                FocusTarget::View(id) => view_state.id() == *id && view_state.is_focusable(),
-            };
-
-            if focus_given {
-                view_state.set_focused(true);
                 Self::event_with_inner(view_state, cx, &Event::Notify, f);
-                return true;
+
+                true
             }
-        }
 
-        // if the window was scaled or resized we need want to be layed out again
-        if let Event::WindowScaled(_) | Event::WindowResized(_) | Event::ForceLayout = event {
-            view_state.request_layout();
-        }
+            Event::FocusGiven(target) => {
+                let focus_given = match target {
+                    FocusTarget::Next | FocusTarget::Prev => view_state.is_focusable(),
+                    FocusTarget::View(id) => view_state.id() == *id && view_state.is_focusable(),
+                };
 
-        Self::event_with_inner(view_state, cx, event, f)
+                if !focus_given {
+                    return Self::event_with_inner(view_state, cx, event, f);
+                }
+
+                view_state.set_focused(true);
+
+                Self::event_with_inner(view_state, cx, &Event::Notify, f);
+
+                true
+            }
+
+            Event::WindowScaled(_) | Event::WindowResized(_) | Event::ForceLayout => {
+                view_state.request_layout();
+
+                Self::event_with_inner(view_state, cx, event, f)
+            }
+
+            event => Self::event_with_inner(view_state, cx, event, f),
+        }
     }
 
+    #[inline]
     fn event_with_inner(
         view_state: &mut ViewState,
         cx: &mut EventCx,

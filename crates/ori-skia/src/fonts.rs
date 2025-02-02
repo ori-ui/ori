@@ -38,7 +38,7 @@ impl SkiaFonts {
         collection.set_dynamic_font_manager(FontMgr::clone(&provider));
         collection.set_default_font_manager(manager.clone(), default_font);
 
-        let cache_size = NonZeroUsize::new(128).unwrap();
+        let cache_size = NonZeroUsize::new(256).unwrap();
         let paragraph_cache = LruCache::with_hasher(cache_size, Default::default());
 
         Self {

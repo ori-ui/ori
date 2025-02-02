@@ -4,7 +4,7 @@ use crate::{
     canvas::{BorderRadius, BorderWidth, Color, Curve, FillRule, Mask},
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
-    layout::{Size, Space},
+    layout::{Padding, Size, Space},
     rebuild::Rebuild,
     style::{Styled, Theme},
     view::{Pod, State, View},
@@ -60,6 +60,11 @@ pub struct Container<V> {
     #[rebuild(draw)]
     #[styled(default = false)]
     pub mask: Styled<bool>,
+
+    /// The padding.
+    #[rebuild(layout)]
+    #[styled(default)]
+    pub padding: Styled<Padding>,
 }
 
 impl<V> Container<V> {
@@ -72,6 +77,7 @@ impl<V> Container<V> {
             border_width: Styled::style("container.border-width"),
             border_color: Styled::style("container.border-color"),
             mask: Styled::style("container.mask"),
+            padding: Styled::style("container.padding"),
         }
     }
 }
@@ -112,12 +118,17 @@ impl<T, V: View<T>> View<T> for Container<V> {
 
     fn layout(
         &mut self,
-        (_, state): &mut Self::State,
+        (style, state): &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
-        self.content.layout(state, cx, data, space)
+        let content_space = space.shrink(style.padding.size());
+        let content_size = self.content.layout(state, cx, data, content_space);
+
+        state.translate(style.padding.offset());
+
+        space.fit(content_size + style.padding.size())
     }
 
     fn draw(&mut self, (style, state): &mut Self::State, cx: &mut DrawCx, data: &mut T) {

@@ -144,28 +144,28 @@ impl Default for Theme {
 #[allow(missing_docs)]
 impl Theme {
     pub const BACKGROUND: Style<Color> = Style::new("theme.background");
-    pub const SURFACE_LOWER: Style<Color> = Style::new("theme.surface_lower");
-    pub const SURFACE_LOW: Style<Color> = Style::new("theme.surface_low");
+    pub const SURFACE_LOWER: Style<Color> = Style::new("theme.surface-lower");
+    pub const SURFACE_LOW: Style<Color> = Style::new("theme.surface-low");
     pub const SURFACE: Style<Color> = Style::new("theme.surface");
-    pub const SURFACE_HIGH: Style<Color> = Style::new("theme.surface_high");
-    pub const SURFACE_HIGHER: Style<Color> = Style::new("theme.surface_higher");
-    pub const SURFACE_HIGHEST: Style<Color> = Style::new("theme.surface_highest");
+    pub const SURFACE_HIGH: Style<Color> = Style::new("theme.surface-high");
+    pub const SURFACE_HIGHER: Style<Color> = Style::new("theme.surface-higher");
+    pub const SURFACE_HIGHEST: Style<Color> = Style::new("theme.surface-highest");
     pub const OUTLINE: Style<Color> = Style::new("theme.outline");
-    pub const OUTLINE_LOW: Style<Color> = Style::new("theme.outline_low");
+    pub const OUTLINE_LOW: Style<Color> = Style::new("theme.outline-low");
     pub const CONTRAST: Style<Color> = Style::new("theme.contrast");
-    pub const CONTRAST_LOW: Style<Color> = Style::new("theme.contrast_low");
+    pub const CONTRAST_LOW: Style<Color> = Style::new("theme.contrast-low");
     pub const PRIMARY: Style<Color> = Style::new("theme.primary");
-    pub const PRIMARY_LOW: Style<Color> = Style::new("theme.primary_low");
+    pub const PRIMARY_LOW: Style<Color> = Style::new("theme.primary-low");
     pub const SECONDARY: Style<Color> = Style::new("theme.secondary");
-    pub const SECONDARY_LOW: Style<Color> = Style::new("theme.secondary_low");
+    pub const SECONDARY_LOW: Style<Color> = Style::new("theme.secondary-low");
     pub const ACCENT: Style<Color> = Style::new("theme.accent");
-    pub const ACCENT_LOW: Style<Color> = Style::new("theme.accent_low");
+    pub const ACCENT_LOW: Style<Color> = Style::new("theme.accent-low");
     pub const DANGER: Style<Color> = Style::new("theme.danger");
-    pub const DANGER_LOW: Style<Color> = Style::new("theme.danger_low");
+    pub const DANGER_LOW: Style<Color> = Style::new("theme.danger-low");
     pub const SUCCESS: Style<Color> = Style::new("theme.success");
-    pub const SUCCESS_LOW: Style<Color> = Style::new("theme.success_low");
+    pub const SUCCESS_LOW: Style<Color> = Style::new("theme.success-low");
     pub const WARNING: Style<Color> = Style::new("theme.warning");
-    pub const WARNING_LOW: Style<Color> = Style::new("theme.warning_low");
+    pub const WARNING_LOW: Style<Color> = Style::new("theme.warning-low");
     pub const INFO: Style<Color> = Style::new("theme.info");
-    pub const INFO_LOW: Style<Color> = Style::new("theme.info_low");
+    pub const INFO_LOW: Style<Color> = Style::new("theme.info-low");
 }

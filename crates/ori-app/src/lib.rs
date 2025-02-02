@@ -41,12 +41,12 @@ where
     }
 }
 
-impl<V, F> IntoUiBuilder<V, ()> for F
+impl<T, V, F> IntoUiBuilder<V, (T,)> for F
 where
     F: FnMut() -> V + 'static,
-    V: AnyView<()> + 'static,
+    V: AnyView<T> + 'static,
 {
-    type Data = ();
+    type Data = T;
 
     fn into_ui_builder(mut self) -> UiBuilder<Self::Data> {
         Box::new(move |_| Box::new(self()))

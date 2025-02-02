@@ -8,6 +8,7 @@ use super::{Affine, Point, Size, Vector};
 pub struct Rect {
     /// The minimum point of the rectangle.
     pub min: Point,
+
     /// The maximum point of the rectangle.
     pub max: Point,
 }
@@ -151,6 +152,16 @@ impl Rect {
     /// Get the bottom edge of the rectangle.
     pub fn bottom(self) -> f32 {
         self.max.y
+    }
+
+    /// Check if the rectangle is finite.
+    pub fn is_finite(self) -> bool {
+        self.min.is_finite() && self.max.is_finite()
+    }
+
+    /// Check if the rectangle is infinite.
+    pub fn is_infinite(self) -> bool {
+        self.min.is_infinite() || self.max.is_infinite()
     }
 
     /// Shrink the rectangle by the given amount.

@@ -212,7 +212,7 @@ impl<'a, 'b> DrawCx<'a, 'b> {
                 view_state: self.view_state,
                 transform: self.transform,
                 canvas,
-                visible: Self::EVERYTHING,
+                visible: self.visible,
             };
 
             f(&mut cx)
@@ -225,7 +225,10 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         transform: Affine,
         f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
     ) -> T {
-        let visible = self.visible.transform(transform.inverse());
+        let visible = match self.visible.is_infinite() {
+            false => self.visible.transform(transform.inverse()),
+            true => self.visible,
+        };
 
         self.canvas.layer(transform, None, None, |canvas| {
             let mut cx = DrawCx {

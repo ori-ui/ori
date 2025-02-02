@@ -1,6 +1,6 @@
 use std::f32::consts::{PI, SQRT_2};
 
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color, Curve, FillRule},
@@ -8,7 +8,7 @@ use crate::{
     event::{Event, PointerButton},
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -22,7 +22,7 @@ pub fn collapsing<T, H, V>(header: H, content: V) -> Collapsing<T, H, V> {
 ///
 /// Can be styled using the [`CollapsingStyle`].
 #[example(name = "collapsing", width = 400, height = 300)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Collapsing<T, H, V> {
     /// The header.
     #[build(ignore)]
@@ -45,37 +45,37 @@ pub struct Collapsing<T, H, V> {
     pub default_open: bool,
 
     /// The transition of the view.
-    #[styled(default = Transition::ease(0.1))]
+    #[style(default = Transition::ease(0.1))]
     pub transition: Styled<Transition>,
 
     /// The size of the icon.
     #[rebuild(layout)]
-    #[styled(default = 16.0)]
+    #[style(default = 16.0)]
     pub icon_size: Styled<f32>,
 
     /// The color of the icon.
     #[rebuild(draw)]
-    #[styled(default -> Theme::PRIMARY or Color::BLUE)]
+    #[style(default -> Theme::PRIMARY or Color::BLUE)]
     pub icon_color: Styled<Color>,
 
     /// The background color of the header.
     #[rebuild(draw)]
-    #[styled(default = Color::TRANSPARENT)]
+    #[style(default = Color::TRANSPARENT)]
     pub background: Styled<Color>,
 
     /// The border width of the header.
     #[rebuild(draw)]
-    #[styled(default = BorderWidth::new(0.0, 0.0, 1.0, 0.0))]
+    #[style(default = BorderWidth::new(0.0, 0.0, 1.0, 0.0))]
     pub border_width: Styled<BorderWidth>,
 
     /// The border radius of the header.
     #[rebuild(draw)]
-    #[styled(default = BorderRadius::all(0.0))]
+    #[style(default = BorderRadius::all(0.0))]
     pub border_radius: Styled<BorderRadius>,
 
     /// The color of the border of the header.
     #[rebuild(draw)]
-    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
+    #[style(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -107,7 +107,7 @@ impl<T, H, V> Collapsing<T, H, V> {
 
 #[doc(hidden)]
 pub struct CollapsingState<T, H: View<T>, V: View<T>> {
-    style: CollapsingStyle,
+    style: CollapsingStyle<T, H, V>,
     header: State<T, H>,
     content: State<T, V>,
     open: bool,
@@ -123,7 +123,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         let open = self.open.unwrap_or(self.default_open);
 
         CollapsingState {
-            style: CollapsingStyle::styled(self, cx.styles()),
+            style: self.style(cx.styles()),
             header: self.header.build(cx, data),
             content: self.content.build(cx, data),
             open,

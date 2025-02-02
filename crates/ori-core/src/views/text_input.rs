@@ -1,11 +1,11 @@
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Capitalize, Event, Ime, Key},
     layout::{Point, Rect, Size, Space},
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     text::{
         FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
         TextLayoutLine, TextWrap,
@@ -23,7 +23,7 @@ pub fn text_input<T>() -> TextInput<T> {
 ///
 /// Can be styled using the [`TextInputStyle`].
 #[example(name = "text_input", width = 400, height = 300)]
-#[derive(Styled, Build)]
+#[derive(Stylable, Build)]
 pub struct TextInput<T> {
     /// The text.
     #[build(ignore)]
@@ -54,50 +54,50 @@ pub struct TextInput<T> {
     pub capitalize: Capitalize,
 
     /// The font size of the text.
-    #[styled(default = 16.0)]
+    #[style(default = 16.0)]
     #[rebuild(layout)]
     pub font_size: Styled<f32>,
 
     /// The font family of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_stretch: Styled<FontStretch>,
 
     /// The font.into of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
-    #[styled(default -> Theme::CONTRAST or Color::BLACK)]
+    #[style(default -> Theme::CONTRAST or Color::BLACK)]
     #[rebuild(draw)]
     pub color: Styled<Color>,
 
     /// The color of the placeholder text.
-    #[styled(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
+    #[style(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
     #[rebuild(draw)]
     pub placeholder_color: Styled<Color>,
 
     /// The vertical alignment of the text.
-    #[styled(default)]
+    #[style(default)]
     pub align: Styled<TextAlign>,
 
     /// The line height of the text.
-    #[styled(default = 1.2)]
+    #[style(default = 1.2)]
     pub line_height: Styled<f32>,
 
     /// The text wrap of the text.
-    #[styled(default)]
+    #[style(default)]
     pub wrap: Styled<TextWrap>,
 }
 
@@ -158,9 +158,9 @@ impl<T> TextInput<T> {
 }
 
 #[doc(hidden)]
-pub struct TextInputState {
+pub struct TextInputState<T> {
     // the style of the text input
-    style: TextInputStyle,
+    style: TextInputStyle<T>,
 
     // the current text of the input
     text: String,
@@ -175,7 +175,7 @@ pub struct TextInputState {
     selection: Option<usize>,
 }
 
-impl TextInputState {
+impl<T> TextInputState<T> {
     fn set_cursor(&mut self, cursor: usize, select: bool) {
         if !select {
             self.selection = None;
@@ -350,13 +350,13 @@ impl TextInputState {
 }
 
 impl<T> View<T> for TextInput<T> {
-    type State = TextInputState;
+    type State = TextInputState<T>;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         cx.set_class("text-input");
         cx.set_focusable(true);
 
-        let style = TextInputStyle::styled(self, cx.styles());
+        let style = self.style(cx.styles());
 
         let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);
 
@@ -757,7 +757,7 @@ impl<T> View<T> for TextInput<T> {
     }
 }
 
-fn draw_highlight(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
+fn draw_highlight<T>(state: &mut TextInputState<T>, cx: &mut DrawCx, color: Color) {
     if let Some(selection) = state.selection {
         let start = usize::min(state.cursor, selection);
         let end = usize::max(state.cursor, selection);
@@ -800,7 +800,7 @@ fn draw_highlight(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
     }
 }
 
-fn draw_cursor(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
+fn draw_cursor<T>(state: &mut TextInputState<T>, cx: &mut DrawCx, color: Color) {
     if state.lines.is_empty() {
         // if there are no lines, just draw the cursor at the start
 

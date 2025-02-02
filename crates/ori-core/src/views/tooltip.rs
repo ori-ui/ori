@@ -1,4 +1,4 @@
-use ori_macro::{example, Styled};
+use ori_macro::example;
 use smol_str::SmolStr;
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{pt, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     text::{
         FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
         TextWrap,
@@ -24,7 +24,7 @@ pub fn tooltip<V>(view: V, text: impl Into<SmolStr>) -> Tooltip<V> {
 ///
 /// Can be styled using the [`TooltipStyle`].
 #[example(name = "tooltip", width = 400, height = 300)]
-#[derive(Styled, Rebuild)]
+#[derive(Stylable, Rebuild)]
 pub struct Tooltip<V> {
     /// The content to display.
     pub content: Pod<V>,
@@ -34,69 +34,69 @@ pub struct Tooltip<V> {
     pub text: SmolStr,
 
     /// The delay before the tooltip is displayed.
-    #[styled(default = 0.2)]
+    #[style(default = 0.2)]
     pub delay: Styled<f32>,
 
     /// The padding of the text.
     #[rebuild(layout)]
-    #[styled(default = Padding::all(4.0))]
+    #[style(default = Padding::all(4.0))]
     pub padding: Styled<Padding>,
 
     /// The font size of the text.
-    #[styled(default = pt(10.0))]
+    #[style(default = pt(10.0))]
     pub font_size: Styled<f32>,
 
     /// The font family of the text.
-    #[styled(default)]
+    #[style(default)]
     pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
-    #[styled(default)]
+    #[style(default)]
     pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
-    #[styled(default)]
+    #[style(default)]
     pub font_stretch: Styled<FontStretch>,
 
     /// The font style of the text.
-    #[styled(default)]
+    #[style(default)]
     pub font_style: Styled<FontStyle>,
 
     /// The color of text.
     #[rebuild(draw)]
-    #[styled(default -> Theme::CONTRAST or Color::BLACK)]
+    #[style(default -> Theme::CONTRAST or Color::BLACK)]
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
-    #[styled(default)]
+    #[style(default)]
     pub align: Styled<TextAlign>,
 
     /// The line height of the text.
-    #[styled(default = 1.2)]
+    #[style(default = 1.2)]
     pub line_height: Styled<f32>,
 
     /// The text wrap of the text.
-    #[styled(default)]
+    #[style(default)]
     pub wrap: Styled<TextWrap>,
 
     /// The background color of the text.
     #[rebuild(draw)]
-    #[styled(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
+    #[style(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
     pub background: Styled<Color>,
 
     /// The border radius of the text.
     #[rebuild(draw)]
-    #[styled(default = BorderRadius::all(4.0))]
+    #[style(default = BorderRadius::all(4.0))]
     pub border_radius: Styled<BorderRadius>,
 
     /// The border width of the text.
     #[rebuild(draw)]
-    #[styled(default = BorderWidth::all(1.0))]
+    #[style(default = BorderWidth::all(1.0))]
     pub border_width: Styled<BorderWidth>,
 
     /// The border color of the text.
     #[rebuild(draw)]
-    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
+    #[style(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -126,20 +126,20 @@ impl<V> Tooltip<V> {
 }
 
 #[doc(hidden)]
-pub struct TooltipState {
+pub struct TooltipState<V> {
     pub paragraph: Paragraph,
     pub timer: f32,
     pub position: Point,
-    pub style: TooltipStyle,
+    pub style: TooltipStyle<V>,
 }
 
 impl<T, V: View<T>> View<T> for Tooltip<V> {
-    type State = (TooltipState, State<T, V>);
+    type State = (TooltipState<V>, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("tooltip");
 
-        let style = TooltipStyle::styled(self, cx.styles());
+        let style = self.style(cx.styles());
 
         let mut state = TooltipState {
             paragraph: Paragraph::new(style.line_height, style.align, style.wrap),

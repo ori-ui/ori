@@ -1,4 +1,4 @@
-use ori_macro::{example, is_mobile, Build, Styled};
+use ori_macro::{example, is_mobile, Build};
 
 use crate::{
     canvas::{BorderRadius, Color},
@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -23,7 +23,7 @@ pub fn vscroll<V>(view: V) -> Scroll<V> {
 
 /// A scrollable view.
 #[example(name = "scroll", width = 400, height = 300)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Scroll<V> {
     /// The content.
     #[build(ignore)]
@@ -34,32 +34,32 @@ pub struct Scroll<V> {
     pub axis: Axis,
 
     /// The transition of the scrollbar.
-    #[styled(default = Transition::ease(0.1))]
+    #[style(default = Transition::ease(0.1))]
     pub transition: Styled<Transition>,
 
     /// The inset of the scrollbar.
     #[rebuild(draw)]
-    #[styled(default = 8.0)]
+    #[style(default = 8.0)]
     pub inset: Styled<f32>,
 
     /// The width of the scrollbar.
     #[rebuild(draw)]
-    #[styled(default = 6.0)]
+    #[style(default = 6.0)]
     pub width: Styled<f32>,
 
     /// The radius of the scrollbar.
     #[rebuild(draw)]
-    #[styled(default = BorderRadius::all(3.0))]
+    #[style(default = BorderRadius::all(3.0))]
     pub border_radius: Styled<BorderRadius>,
 
     /// The color of the scrollbar.
     #[rebuild(draw)]
-    #[styled(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
+    #[style(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
     pub color: Styled<Color>,
 
     /// The color of the scrollbar knob.
     #[rebuild(draw)]
-    #[styled(default -> Theme::CONTRAST or Color::grayscale(0.8))]
+    #[style(default -> Theme::CONTRAST or Color::grayscale(0.8))]
     pub knob_color: Styled<Color>,
 }
 
@@ -78,7 +78,7 @@ impl<V> Scroll<V> {
         }
     }
 
-    fn scrollbar_rect(&self, style: &ScrollStyle, rect: Rect) -> Rect {
+    fn scrollbar_rect(&self, style: &ScrollStyle<V>, rect: Rect) -> Rect {
         let (major, minor) = self.axis.unpack(rect.size());
 
         let length = major - style.inset * 2.0;
@@ -95,7 +95,7 @@ impl<V> Scroll<V> {
 
     fn scrollbar_knob_rect(
         &self,
-        style: &ScrollStyle,
+        style: &ScrollStyle<V>,
         rect: Rect,
         overflow: f32,
         scroll: f32,
@@ -123,8 +123,8 @@ impl<V> Scroll<V> {
 }
 
 #[doc(hidden)]
-pub struct ScrollState {
-    style: ScrollStyle,
+pub struct ScrollState<V> {
+    style: ScrollStyle<V>,
     dragging: bool,
     scrollbar_hovered: bool,
     scroll: f32,
@@ -132,13 +132,13 @@ pub struct ScrollState {
 }
 
 impl<T, V: View<T>> View<T> for Scroll<V> {
-    type State = (ScrollState, State<T, V>);
+    type State = (ScrollState<V>, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("scroll");
 
         let state = ScrollState {
-            style: ScrollStyle::styled(self, cx.styles()),
+            style: self.style(cx.styles()),
             dragging: false,
             scrollbar_hovered: false,
             scroll: 0.0,

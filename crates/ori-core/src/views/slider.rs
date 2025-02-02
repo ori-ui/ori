@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use ori_macro::{Build, Styled};
+use ori_macro::Build;
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color},
@@ -8,7 +8,7 @@ use crate::{
     event::Event,
     layout::{Axis, Rect, Size, Space},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     view::View,
 };
 
@@ -20,7 +20,7 @@ pub fn slider<T>(value: f32) -> Slider<T> {
 /// A slider.
 ///
 /// Can be styled with a [`SliderStyle`].
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Slider<T> {
     /// The value of the slider.
     #[rebuild(draw)]
@@ -41,37 +41,37 @@ pub struct Slider<T> {
 
     /// The width of the slider.
     #[rebuild(layout)]
-    #[styled(default = 10.0)]
+    #[style(default = 10.0)]
     pub width: Styled<f32>,
 
     /// The length of the slider.
     #[rebuild(layout)]
-    #[styled(default = 100.0)]
+    #[style(default = 100.0)]
     pub length: Styled<f32>,
 
     /// The foreground color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> Theme::PRIMARY or Color::BLUE)]
+    #[style(default -> Theme::PRIMARY or Color::BLUE)]
     pub color: Styled<Color>,
 
     /// The background color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> Theme::SURFACE_HIGH or Color::grayscale(0.9))]
+    #[style(default -> Theme::SURFACE_HIGH or Color::grayscale(0.9))]
     pub background: Styled<Color>,
 
     /// The border radius of the slider.
     #[rebuild(draw)]
-    #[styled(default = BorderRadius::all(5.0))]
+    #[style(default = BorderRadius::all(5.0))]
     pub border_radius: Styled<BorderRadius>,
 
     /// The border width of the slider.
     #[rebuild(draw)]
-    #[styled(default = BorderWidth::all(0.0))]
+    #[style(default = BorderWidth::all(0.0))]
     pub border_width: Styled<BorderWidth>,
 
     /// The border color of the slider.
     #[rebuild(draw)]
-    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
+    #[style(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -111,12 +111,12 @@ fn denormalize(value: f32, range: &RangeInclusive<f32>) -> f32 {
 }
 
 impl<T> View<T> for Slider<T> {
-    type State = SliderStyle;
+    type State = SliderStyle<T>;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
         cx.set_class("slider");
 
-        SliderStyle::styled(self, cx.styles())
+        self.style(cx.styles())
     }
 
     fn rebuild(&mut self, style: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {

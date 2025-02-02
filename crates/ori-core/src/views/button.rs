@@ -1,4 +1,4 @@
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color},
@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     transition::Transition,
     view::{Pod, State, View},
 };
@@ -20,7 +20,7 @@ pub fn button<V>(view: V) -> Button<V> {
 ///
 /// Can be styled using the [`ButtonStyle`].
 #[example(name = "button", width = 400, height = 300)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Button<V> {
     /// The content.
     #[build(ignore)]
@@ -28,37 +28,37 @@ pub struct Button<V> {
 
     /// The padding.
     #[rebuild(layout)]
-    #[styled(default = Padding::all(8.0))]
+    #[style(default = Padding::all(8.0))]
     pub padding: Styled<Padding>,
 
     /// The distance of the fancy effect.
     #[rebuild(draw)]
-    #[styled(default = 0.0)]
+    #[style(default = 0.0)]
     pub fancy: Styled<f32>,
 
     /// The transition of the button.
     #[rebuild(draw)]
-    #[styled(default = Transition::ease(0.1))]
+    #[style(default = Transition::ease(0.1))]
     pub transition: Styled<Transition>,
 
     /// The color of the button.
     #[rebuild(draw)]
-    #[styled(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
+    #[style(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
     pub color: Styled<Color>,
 
     /// The border radius.
     #[rebuild(draw)]
-    #[styled(default = BorderRadius::all(4.0))]
+    #[style(default = BorderRadius::all(4.0))]
     pub border_radius: Styled<BorderRadius>,
 
     /// The border width.
     #[rebuild(draw)]
-    #[styled(default)]
+    #[style(default)]
     pub border_width: Styled<BorderWidth>,
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
+    #[style(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -79,14 +79,14 @@ impl<V> Button<V> {
 }
 
 #[doc(hidden)]
-pub struct ButtonState {
+pub struct ButtonState<V> {
     pub hovered: f32,
     pub active: f32,
-    pub style: ButtonStyle,
+    pub style: ButtonStyle<V>,
 }
 
 impl<T, V: View<T>> View<T> for Button<V> {
-    type State = (ButtonState, State<T, V>);
+    type State = (ButtonState<V>, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("button");
@@ -95,7 +95,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
         let state = ButtonState {
             hovered: 0.0,
             active: 0.0,
-            style: ButtonStyle::styled(self, cx.styles()),
+            style: self.style(cx.styles()),
         };
 
         (state, self.content.build(cx, data))

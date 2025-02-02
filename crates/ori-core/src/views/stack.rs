@@ -1,13 +1,13 @@
 use std::ops::Deref;
 
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 
 use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
-    style::{Styled, Styles},
+    style::{Stylable, Styled, Styles},
     view::{AnyView, PodSeq, SeqState, View, ViewSeq},
 };
 
@@ -63,7 +63,7 @@ pub fn vstack_any<'a, T>() -> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
 
 /// A view that stacks it's content in a line.
 #[example(name = "stack", width = 400, height = 600)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.
     #[build(ignore)]
@@ -75,17 +75,17 @@ pub struct Stack<V> {
 
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[style(default)]
     pub justify: Styled<Justify>,
 
     /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
-    #[styled(default = Align::Center)]
+    #[style(default = Align::Center)]
     pub align: Styled<Align>,
 
     /// The gap between children.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[style(default)]
     pub gap: Styled<f32>,
 }
 
@@ -168,17 +168,20 @@ impl<T> Stack<Vec<Box<dyn AnyView<T> + '_>>> {
 }
 
 #[doc(hidden)]
-pub struct StackState {
-    style: StackStyle,
+pub struct StackState<V> {
+    style: StackStyle<V>,
     flex_sum: f32,
     majors: Vec<f32>,
     minors: Vec<f32>,
 }
 
-impl StackState {
-    fn new<T, V: ViewSeq<T>>(stack: &Stack<V>, styles: &Styles) -> Self {
+impl<V> StackState<V> {
+    fn new<T>(stack: &Stack<V>, styles: &Styles) -> Self
+    where
+        V: ViewSeq<T>,
+    {
         Self {
-            style: StackStyle::styled(stack, styles),
+            style: stack.style(styles),
             flex_sum: 0.0,
             majors: vec![0.0; stack.content.len()],
             minors: vec![0.0; stack.content.len()],
@@ -206,7 +209,7 @@ impl StackState {
 }
 
 impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
-    type State = (StackState, SeqState<T, V>);
+    type State = (StackState<V>, SeqState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("stack");
@@ -317,7 +320,7 @@ fn layout<T, V: ViewSeq<T>>(
     stack: &mut Stack<V>,
     cx: &mut LayoutCx,
     content: &mut SeqState<T, V>,
-    state: &mut StackState,
+    state: &mut StackState<V>,
     data: &mut T,
     max_major: f32,
     min_minor: f32,

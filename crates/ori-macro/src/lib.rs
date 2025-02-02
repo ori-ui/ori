@@ -7,7 +7,7 @@ mod entry;
 mod example;
 mod font;
 mod rebuild;
-mod styled;
+mod stylable;
 
 fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
     match krate {
@@ -65,7 +65,7 @@ pub fn include_font(input: proc_macro::TokenStream) -> manyhow::Result<proc_macr
 
 /// Derive the `Rebuild` trait.
 #[manyhow::manyhow]
-#[proc_macro_derive(Rebuild, attributes(styled, rebuild))]
+#[proc_macro_derive(Rebuild, attributes(style, rebuild))]
 pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     rebuild::derive_rebuild(input)
 }
@@ -79,9 +79,9 @@ pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macr
 
 /// Derived the styled pattern.
 #[manyhow::manyhow]
-#[proc_macro_derive(Styled, attributes(styled, rebuild))]
-pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
-    styled::derive_styled(input)
+#[proc_macro_derive(Stylable, attributes(style, rebuild))]
+pub fn derive_stylable(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
+    stylable::derive_stylable(input)
 }
 
 /// Only include the annotated item on desktop platforms.

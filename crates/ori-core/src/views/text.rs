@@ -1,6 +1,6 @@
 use std::fmt::{self, Write};
 
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 use smol_str::SmolStr;
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
     event::Event,
     layout::{Size, Space},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     text::{
         FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
         TextWrap,
@@ -40,54 +40,54 @@ pub fn text(text: impl Into<SmolStr>) -> Text {
 ///
 /// Can be styled using the [`TextStyle`].
 #[example(name = "text", width = 400, height = 300)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Text {
     /// The text.
     #[rebuild(layout)]
     pub text: SmolStr,
 
     /// The font size of the text.
-    #[styled(default = 16.0)]
+    #[style(default = 16.0)]
     #[rebuild(layout)]
     pub font_size: Styled<f32>,
 
     /// The font family of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_family: Styled<FontFamily>,
 
     /// The font weight of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_weight: Styled<FontWeight>,
 
     /// The font stretch of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_stretch: Styled<FontStretch>,
 
     /// The font.into of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub font_style: Styled<FontStyle>,
 
     /// The color of the text.
-    #[styled(default -> Theme::CONTRAST or Color::BLACK)]
+    #[style(default -> Theme::CONTRAST or Color::BLACK)]
     #[rebuild(draw)]
     pub color: Styled<Color>,
 
     /// The horizontal alignment of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub align: Styled<TextAlign>,
 
     /// The line height of the text.
-    #[styled(default = 1.2)]
+    #[style(default = 1.2)]
     #[rebuild(layout)]
     pub line_height: Styled<f32>,
 
     /// The text wrap of the text.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub wrap: Styled<TextWrap>,
 }
@@ -126,7 +126,7 @@ impl<T> View<T> for Text {
     type State = (TextStyle, Paragraph);
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        let style = TextStyle::styled(self, cx.styles());
+        let style = self.style(cx.styles());
 
         let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);
         paragraph.push_text(&self.text, self.font_attributes(&style));

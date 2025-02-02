@@ -7,7 +7,7 @@ use crate::{find_core, rebuild};
 syn::custom_keyword!(or);
 syn::custom_keyword!(default);
 
-pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
+pub fn derive_stylable(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     let input = syn::parse::<syn::DeriveInput>(input)?;
 
     let syn::Data::Struct(ref data) = input.data else {
@@ -27,43 +27,28 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
 
     let style_name = syn::Ident::new(&format!("{}Style", ident), ident.span());
     let style_fields = style_fields(ident, &data.fields);
-    let style_styled_fields = style_styled_fields(&data.fields);
+    let style_styled_fields = style_style_fields(&data.fields);
     let style_rebuild_fields = style_rebuild_fields(&data.fields);
 
     let style_doc = format!("The derived style for [`{}`].", ident);
-    let style_styled_doc = format!("The style of [`{}`].", ident);
     let style_rebuild_doc = format!("Rebuild the style of [`{}`].", ident);
 
     let expanded = quote! {
         #[doc = #style_doc]
         #[allow(unused)]
-        #vis struct #style_name {
+        #vis struct #style_name #impl_generics #where_clause {
             #(#style_fields,)*
+            marker: ::std::marker::PhantomData<#ident #ty_generics>,
         }
 
-        impl #style_name {
-            #[doc = #style_styled_doc]
-            #[allow(unused)]
-            #vis fn styled #impl_generics (
-                styled: &#ident #ty_generics,
-                styles: &#ori_core::style::Styles
-            ) -> Self
-            #where_clause
-            {
-                Self {
-                    #(#style_styled_fields,)*
-                }
-            }
-
+        impl #impl_generics #style_name #ty_generics #where_clause {
             #[doc = #style_rebuild_doc]
             #[allow(unused)]
-            #vis fn rebuild #impl_generics (
+            #vis fn rebuild(
                 &mut self,
                 styled: &#ident #ty_generics,
                 cx: &mut #ori_core::context::RebuildCx,
-            )
-            #where_clause
-            {
+            ) {
                 let mut layout = false;
                 let mut draw = false;
                 let styles = cx.styles();
@@ -78,6 +63,22 @@ pub fn derive_styled(input: proc_macro::TokenStream) -> manyhow::Result<proc_mac
                     cx.draw();
                 }
             }
+        }
+
+        impl #impl_generics #ori_core::style::Stylable for #ident #ty_generics #where_clause {
+            type Style = #style_name #ty_generics;
+
+            #[allow(unused)]
+            fn style(
+                &self,
+                styles: &#ori_core::style::Styles,
+            ) -> Self::Style {
+                #style_name {
+                    #(#style_styled_fields,)*
+                    marker: ::std::marker::PhantomData,
+                }
+            }
+
         }
     };
 
@@ -102,12 +103,12 @@ fn style_fields<'a>(
     })
 }
 
-fn style_styled_fields(fields: &syn::Fields) -> impl Iterator<Item = TokenStream> + '_ {
+fn style_style_fields(fields: &syn::Fields) -> impl Iterator<Item = TokenStream> + '_ {
     fields.iter().filter_map(move |field| {
         let ident = field.ident.as_ref().unwrap();
         let _ = get_styled(&field.ty)?;
 
-        let styled = parse_quote!(styled);
+        let styled = parse_quote!(self);
         let styles = parse_quote!(styles);
 
         let value = style_get_field(field, &styled, &styles);
@@ -169,7 +170,7 @@ fn style_get_field(field: &syn::Field, styled: &syn::Expr, styles: &syn::Expr) -
     let mut default = None;
 
     for attr in &field.attrs {
-        if attr.path().is_ident("styled") {
+        if attr.path().is_ident("style") {
             attr.parse_args_with(|input: syn::parse::ParseStream| {
                 if input.is_empty() {
                     return Ok(());

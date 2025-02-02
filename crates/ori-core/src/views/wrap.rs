@@ -1,13 +1,13 @@
 use std::ops::{Deref, Range};
 
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 
 use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
-    style::{Styled, Styles},
+    style::{Stylable, Styled, Styles},
     view::{AnyView, PodSeq, SeqState, View, ViewSeq},
 };
 
@@ -63,7 +63,7 @@ pub fn vwrap_any<'a, T>() -> Wrap<Vec<Box<dyn AnyView<T> + 'a>>> {
 ///
 /// Note that unlike [`Stack`](super::Stack) this view does not care about flex.
 #[example(name = "wrap", width = 400, height = 600)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Wrap<V> {
     /// The content.
     #[build(ignore)]
@@ -75,27 +75,27 @@ pub struct Wrap<V> {
 
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[style(default)]
     pub justify: Styled<Justify>,
 
     /// How to align the content along the cross axis.
     #[rebuild(layout)]
-    #[styled(default = Align::Center)]
+    #[style(default = Align::Center)]
     pub align: Styled<Align>,
 
     /// How to justify the content along the cross axis.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[style(default)]
     pub justify_cross: Styled<Justify>,
 
     /// The gap between each row.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[style(default)]
     pub row_gap: Styled<f32>,
 
     /// The gap between each column.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[style(default)]
     pub column_gap: Styled<f32>,
 }
 
@@ -187,17 +187,20 @@ impl<T> Wrap<Vec<Box<dyn AnyView<T> + '_>>> {
 }
 
 #[doc(hidden)]
-pub struct WrapState {
-    style: WrapStyle,
+pub struct WrapState<V> {
+    style: WrapStyle<V>,
     majors: Vec<f32>,
     runs: Vec<Range<usize>>,
     run_minors: Vec<f32>,
 }
 
-impl WrapState {
-    fn new<T, V: ViewSeq<T>>(wrap: &Wrap<V>, styles: &Styles) -> Self {
+impl<V> WrapState<V> {
+    fn new<T>(wrap: &Wrap<V>, styles: &Styles) -> Self
+    where
+        V: ViewSeq<T>,
+    {
         Self {
-            style: WrapStyle::styled(wrap, styles),
+            style: wrap.style(styles),
             majors: vec![0.0; wrap.content.len()],
             runs: Vec::new(),
             run_minors: Vec::new(),
@@ -214,7 +217,7 @@ impl WrapState {
 }
 
 impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
-    type State = (WrapState, SeqState<T, V>);
+    type State = (WrapState<V>, SeqState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("wrap");

@@ -53,7 +53,7 @@ impl FieldAttributes {
                 }
             }
 
-            if attr.path().is_ident("styled") {
+            if attr.path().is_ident("style") {
                 this.styled = true;
             }
         }

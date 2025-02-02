@@ -1,4 +1,4 @@
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color, Curve},
@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     transition::Transition,
     view::View,
 };
@@ -20,7 +20,7 @@ pub fn checkbox(checked: bool) -> Checkbox {
 ///
 /// Can be styled using the [`CheckboxStyle`].
 #[example(name = "checkbox", width = 400, height = 300)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Checkbox {
     /// Whether the checkbox is checked.
     #[rebuild(draw)]
@@ -28,42 +28,42 @@ pub struct Checkbox {
 
     /// The transition of the checkbox.
     #[rebuild(draw)]
-    #[styled(default = Transition::ease(0.1))]
+    #[style(default = Transition::ease(0.1))]
     pub transition: Styled<Transition>,
 
     /// The size of the checkbox.
     #[rebuild(layout)]
-    #[styled(default = 24.0)]
+    #[style(default = 24.0)]
     pub size: Styled<f32>,
 
     /// The color of the checkbox.
     #[rebuild(draw)]
-    #[styled(default -> Theme::PRIMARY or Color::BLUE)]
+    #[style(default -> Theme::PRIMARY or Color::BLUE)]
     pub color: Styled<Color>,
 
     /// The stroke width of the checkbox.
     #[rebuild(draw)]
-    #[styled(default = 2.0)]
+    #[style(default = 2.0)]
     pub stroke: Styled<f32>,
 
     /// The background color.
     #[rebuild(draw)]
-    #[styled(default = Color::TRANSPARENT)]
+    #[style(default = Color::TRANSPARENT)]
     pub background: Styled<Color>,
 
     /// The border radius.
     #[rebuild(draw)]
-    #[styled(default = BorderRadius::all(6.0))]
+    #[style(default = BorderRadius::all(6.0))]
     pub border_radius: Styled<BorderRadius>,
 
     /// The border width.
     #[rebuild(draw)]
-    #[styled(default = BorderWidth::all(2.0))]
+    #[style(default = BorderWidth::all(2.0))]
     pub border_width: Styled<BorderWidth>,
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
+    #[style(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 }
 
@@ -91,8 +91,7 @@ impl<T> View<T> for Checkbox {
         cx.set_class("checkbox");
         cx.set_focusable(true);
 
-        let style = CheckboxStyle::styled(self, cx.styles());
-        (style, 0.0)
+        (self.style(cx.styles()), 0.0)
     }
 
     fn rebuild(

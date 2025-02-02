@@ -1,4 +1,4 @@
-use ori_macro::{example, Build, Styled};
+use ori_macro::{example, Build};
 
 use crate::{
     canvas::{BorderRadius, BorderWidth, Color, Curve, FillRule, Mask},
@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
-    style::{Styled, Theme},
+    style::{Stylable, Styled, Theme},
     view::{Pod, State, View},
 };
 
@@ -30,7 +30,7 @@ pub fn background<V>(background: impl Into<Styled<Color>>, view: V) -> Container
 
 /// A container view.
 #[example(name = "container", width = 400, height = 300)]
-#[derive(Styled, Build, Rebuild)]
+#[derive(Stylable, Build, Rebuild)]
 pub struct Container<V> {
     /// The content.
     #[build(ignore)]
@@ -38,32 +38,32 @@ pub struct Container<V> {
 
     /// The background color.
     #[rebuild(draw)]
-    #[styled(default -> Theme::SURFACE or Color::WHITE)]
+    #[style(default -> Theme::SURFACE or Color::WHITE)]
     pub background: Styled<Color>,
 
     /// The border radius.
     #[rebuild(draw)]
-    #[styled(default)]
+    #[style(default)]
     pub border_radius: Styled<BorderRadius>,
 
     /// The border width.
     #[rebuild(draw)]
-    #[styled(default)]
+    #[style(default)]
     pub border_width: Styled<BorderWidth>,
 
     /// The border color.
     #[rebuild(draw)]
-    #[styled(default -> Theme::OUTLINE or Color::BLACK)]
+    #[style(default -> Theme::OUTLINE or Color::BLACK)]
     pub border_color: Styled<Color>,
 
     /// Whether to mask the content.
     #[rebuild(draw)]
-    #[styled(default = false)]
+    #[style(default = false)]
     pub mask: Styled<bool>,
 
     /// The padding.
     #[rebuild(layout)]
-    #[styled(default)]
+    #[style(default)]
     pub padding: Styled<Padding>,
 }
 
@@ -83,13 +83,12 @@ impl<V> Container<V> {
 }
 
 impl<T, V: View<T>> View<T> for Container<V> {
-    type State = (ContainerStyle, State<T, V>);
+    type State = (ContainerStyle<V>, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("container");
 
-        let style = ContainerStyle::styled(self, cx.styles());
-
+        let style = self.style(cx.styles());
         (style, self.content.build(cx, data))
     }
 

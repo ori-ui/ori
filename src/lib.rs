@@ -60,7 +60,7 @@ pub mod prelude {
         log::{debug, error, info, trace, warn},
         rebuild::Rebuild,
         style,
-        style::{comp, style, val, Style, Styled, Styles, Theme},
+        style::{comp, style, val, Stylable, Style, Styled, Styles, Theme},
         text::{
             include_font, FontAttributes, FontFamily, FontSource, FontStretch, FontStyle,
             FontWeight, Fonts, Paragraph, TextAlign, TextWrap,
@@ -73,7 +73,7 @@ pub mod prelude {
         window::{Cursor, Pointer, Window, WindowId, WindowSizing},
     };
 
-    pub use ori_macro::{desktop, is_desktop, is_mobile, is_web, mobile, web, Build, Styled};
+    pub use ori_macro::{desktop, is_desktop, is_mobile, is_web, mobile, web, Build};
 
     #[cfg(feature = "image")]
     pub use ori_core::include_image;

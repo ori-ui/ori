@@ -1,13 +1,13 @@
 use std::ops::{Deref, DerefMut};
 
-use ori_macro::{example, Styled};
+use ori_macro::example;
 
 use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
-    style::Styled,
+    style::{Stylable, Styled},
     view::{Pod, State, View},
 };
 
@@ -43,13 +43,13 @@ pub fn pad_left<V>(padding: f32, view: V) -> Pad<V> {
 
 /// A view that adds padding to its content.
 #[example(name = "pad", width = 400, height = 300)]
-#[derive(Styled, Rebuild)]
+#[derive(Stylable, Rebuild)]
 pub struct Pad<V> {
     /// The content.
     pub content: Pod<V>,
 
     /// The padding.
-    #[styled(default)]
+    #[style(default)]
     #[rebuild(layout)]
     pub padding: Styled<Padding>,
 }
@@ -79,10 +79,10 @@ impl<V> DerefMut for Pad<V> {
 }
 
 impl<T, V: View<T>> View<T> for Pad<V> {
-    type State = (PadStyle, State<T, V>);
+    type State = (PadStyle<V>, State<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let style = PadStyle::styled(self, cx.styles());
+        let style = self.style(cx.styles());
         let state = self.content.build(cx, data);
 
         (style, state)

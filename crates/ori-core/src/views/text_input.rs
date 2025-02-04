@@ -486,6 +486,7 @@ impl<T> View<T> for TextInput<T> {
 
             Event::PointerPressed(_) => {
                 cx.set_focused(false);
+                cx.draw();
 
                 false
             }

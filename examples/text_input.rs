@@ -18,22 +18,24 @@ impl Data {
     }
 }
 
-fn input(data: &mut Data) -> impl View<Data> {
-    let font = if data.multiline {
-        FontFamily::Monospace
-    } else {
-        FontFamily::SansSerif
-    };
+fn input() -> impl View<Data> {
+    build(|cx, data: &mut Data| {
+        let font = if data.multiline {
+            FontFamily::Monospace
+        } else {
+            FontFamily::SansSerif
+        };
 
-    let input = text_input()
-        .text(&data.text)
-        .on_input(|_, data: &mut Data, text| data.text = text)
-        .font_family(font)
-        .multiline(data.multiline);
+        let input = text_input()
+            .text(&data.text)
+            .on_input(|_, data: &mut Data, text| data.text = text)
+            .font_family(font)
+            .multiline(data.multiline);
 
-    container(pad(8.0, min_width(150.0, input)))
-        .background(Theme::SURFACE)
-        .border_radius(6.0)
+        container(pad(8.0, min_width(150.0, input)))
+            .background(cx.theme().surface)
+            .border_radius(6.0)
+    })
 }
 
 fn clear_button() -> impl View<Data> {
@@ -54,13 +56,7 @@ fn multiline_checkbox(data: &mut Data) -> impl View<Data> {
 }
 
 fn app(data: &mut Data) -> impl View<Data> {
-    center(
-        vstack![
-            multiline_checkbox(data),
-            hstack![input(data), clear_button()],
-        ]
-        .align(Align::Start),
-    )
+    center(vstack![multiline_checkbox(data), hstack![input(), clear_button()]].align(Align::Start))
 }
 
 fn main() {

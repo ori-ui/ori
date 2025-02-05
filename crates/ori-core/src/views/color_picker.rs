@@ -9,7 +9,7 @@ use crate::{
     image::Image,
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Stylable, Styled, Theme},
+    style::{Stylable, Style, StyleBuilder, Theme},
     view::View,
 };
 
@@ -18,8 +18,49 @@ pub fn color_picker<T>() -> ColorPicker<T> {
     ColorPicker::new()
 }
 
+/// The style of a color picker.
+#[derive(Clone, Rebuild)]
+pub struct ColorPickerStyle {
+    /// The size of the color picker.
+    #[rebuild(layout)]
+    pub size: f32,
+
+    /// The border width of the color picker.
+    #[rebuild(draw)]
+    pub border_width: f32,
+
+    /// The border color of the color picker.
+    #[rebuild(draw)]
+    pub border_color: Color,
+
+    /// The width of the sliders.
+    #[rebuild(draw)]
+    pub slider_width: f32,
+
+    /// The color of the lightness slider.
+    #[rebuild(draw)]
+    pub lightness_color: Color,
+
+    /// The color of the alpha slider.
+    #[rebuild(draw)]
+    pub alpha_color: Color,
+}
+
+impl Style for ColorPickerStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|theme: &Theme| ColorPickerStyle {
+            size: 128.0,
+            border_width: 2.0,
+            border_color: theme.outline,
+            slider_width: 12.0,
+            lightness_color: theme.primary,
+            alpha_color: theme.accent,
+        })
+    }
+}
+
 /// A color picker.
-#[derive(Stylable, Build, Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct ColorPicker<T> {
     /// The color of the color picker.
     #[rebuild(draw)]
@@ -31,34 +72,22 @@ pub struct ColorPicker<T> {
     pub on_input: Option<Box<dyn FnMut(&mut EventCx, &mut T, Color)>>,
 
     /// The size of the color picker.
-    #[rebuild(layout)]
-    #[style(default = 128.0)]
-    pub size: Styled<f32>,
+    pub size: Option<f32>,
 
     /// The border width of the color picker.
-    #[rebuild(draw)]
-    #[style(default = 2.0)]
-    pub border_width: Styled<f32>,
+    pub border_width: Option<f32>,
 
     /// The border color of the color picker.
-    #[rebuild(draw)]
-    #[style(default -> Theme::OUTLINE or Color::BLACK)]
-    pub border_color: Styled<Color>,
+    pub border_color: Option<Color>,
 
     /// The width of the sliders.
-    #[rebuild(draw)]
-    #[style(default = 12.0)]
-    pub slider_width: Styled<f32>,
+    pub slider_width: Option<f32>,
 
     /// The color of the lightness slider.
-    #[rebuild(draw)]
-    #[style(default -> Theme::PRIMARY or Color::BLUE)]
-    pub lightness_color: Styled<Color>,
+    pub lightness_color: Option<Color>,
 
     /// The color of the alpha slider.
-    #[rebuild(draw)]
-    #[style(default -> Theme::ACCENT or Color::RED)]
-    pub alpha_color: Styled<Color>,
+    pub alpha_color: Option<Color>,
 }
 
 impl<T> Default for ColorPicker<T> {
@@ -77,12 +106,12 @@ impl<T> ColorPicker<T> {
         Self {
             color: Color::WHITE,
             on_input: None,
-            size: Styled::style("color-picker.size"),
-            border_width: Styled::style("color-picker.border-width"),
-            border_color: Styled::style("color-picker.border-color"),
-            slider_width: Styled::style("color-picker.slider-width"),
-            lightness_color: Styled::style("color-picker.lightness-color"),
-            alpha_color: Styled::style("color-picker.alpha-color"),
+            size: None,
+            border_width: None,
+            border_color: None,
+            slider_width: None,
+            lightness_color: None,
+            alpha_color: None,
         }
     }
 
@@ -120,7 +149,7 @@ impl<T> ColorPicker<T> {
 
     fn input(
         &mut self,
-        state: &mut ColorPickerState<T>,
+        state: &mut ColorPickerState,
         cx: &mut EventCx,
         data: &mut T,
         position: Point,
@@ -182,27 +211,40 @@ enum ColorPickerPart {
     Alpha,
 }
 
+impl<T> Stylable for ColorPicker<T> {
+    type Style = ColorPickerStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        ColorPickerStyle {
+            size: self.size.unwrap_or(style.size),
+            border_width: self.border_width.unwrap_or(style.border_width),
+            border_color: self.border_color.unwrap_or(style.border_color),
+            slider_width: self.slider_width.unwrap_or(style.slider_width),
+            lightness_color: self.lightness_color.unwrap_or(style.lightness_color),
+            alpha_color: self.alpha_color.unwrap_or(style.alpha_color),
+        }
+    }
+}
+
 #[doc(hidden)]
-pub struct ColorPickerState<T> {
-    style: ColorPickerStyle<T>,
+pub struct ColorPickerState {
+    style: ColorPickerStyle,
     image: Option<Image>,
     edit: Option<ColorPickerPart>,
 }
 
-impl<T> ColorPickerState<T> {
+impl ColorPickerState {
     fn can_edit(&self, part: ColorPickerPart, inside: bool) -> bool {
         self.edit.map_or(inside, |edit| edit == part)
     }
 }
 
 impl<T> View<T> for ColorPicker<T> {
-    type State = ColorPickerState<T>;
+    type State = ColorPickerState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        cx.set_class("color-picker");
-
         ColorPickerState {
-            style: self.style(cx.styles()),
+            style: self.style(cx.style()),
             image: None,
             edit: None,
         }
@@ -210,7 +252,7 @@ impl<T> View<T> for ColorPicker<T> {
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, old: &Self) {
         Rebuild::rebuild(self, cx, old);
-        state.style.rebuild(self, cx);
+        self.rebuild_style(cx, &mut state.style);
 
         let (_, _, l, a) = self.color.to_okhsla();
         let (_, _, old_l, old_a) = old.color.to_okhsla();

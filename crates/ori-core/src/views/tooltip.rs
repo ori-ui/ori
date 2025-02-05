@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{pt, Padding, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Stylable, Styled, Theme},
+    style::{Stylable, Style, StyleBuilder, Theme},
     text::{
         FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
         TextWrap,
@@ -20,11 +20,88 @@ pub fn tooltip<V>(view: V, text: impl Into<SmolStr>) -> Tooltip<V> {
     Tooltip::new(view, text)
 }
 
+/// The style of a [`Tooltip`].
+#[derive(Clone, Rebuild)]
+pub struct TooltipStyle {
+    /// The delay before the tooltip is displayed.
+    pub delay: f32,
+
+    /// The padding of the text.
+    #[rebuild(layout)]
+    pub padding: Padding,
+
+    /// The font size of the text.
+    pub font_size: f32,
+
+    /// The font family of the text.
+    pub font_family: FontFamily,
+
+    /// The font weight of the text.
+    pub font_weight: FontWeight,
+
+    /// The font stretch of the text.
+    pub font_stretch: FontStretch,
+
+    /// The font style of the text.
+    pub font_style: FontStyle,
+
+    /// The color of text.
+    #[rebuild(draw)]
+    pub color: Color,
+
+    /// The horizontal alignment of the text.
+    pub align: TextAlign,
+
+    /// The line height of the text.
+    pub line_height: f32,
+
+    /// The text wrap of the text.
+    pub wrap: TextWrap,
+
+    /// The background color of the text.
+    #[rebuild(draw)]
+    pub background: Color,
+
+    /// The border radius of the text.
+    #[rebuild(draw)]
+    pub border_radius: BorderRadius,
+
+    /// The border width of the text.
+    #[rebuild(draw)]
+    pub border_width: BorderWidth,
+
+    /// The border color of the text.
+    #[rebuild(draw)]
+    pub border_color: Color,
+}
+
+impl Style for TooltipStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|theme: &Theme| Self {
+            delay: 0.2,
+            padding: Padding::all(4.0),
+            font_size: pt(10.0),
+            font_family: FontFamily::default(),
+            font_weight: FontWeight::NORMAL,
+            font_stretch: FontStretch::Normal,
+            font_style: FontStyle::Normal,
+            color: theme.contrast,
+            align: TextAlign::Left,
+            line_height: 1.2,
+            wrap: TextWrap::None,
+            background: theme.surface(2),
+            border_radius: BorderRadius::all(4.0),
+            border_width: BorderWidth::all(1.0),
+            border_color: theme.outline,
+        })
+    }
+}
+
 /// A view that displays some text when the content is hovered.
 ///
 /// Can be styled using the [`TooltipStyle`].
 #[example(name = "tooltip", width = 400, height = 300)]
-#[derive(Stylable, Rebuild)]
+#[derive(Rebuild)]
 pub struct Tooltip<V> {
     /// The content to display.
     pub content: Pod<V>,
@@ -35,69 +112,69 @@ pub struct Tooltip<V> {
 
     /// The delay before the tooltip is displayed.
     #[style(default = 0.2)]
-    pub delay: Styled<f32>,
+    pub delay: Option<f32>,
 
     /// The padding of the text.
     #[rebuild(layout)]
     #[style(default = Padding::all(4.0))]
-    pub padding: Styled<Padding>,
+    pub padding: Option<Padding>,
 
     /// The font size of the text.
     #[style(default = pt(10.0))]
-    pub font_size: Styled<f32>,
+    pub font_size: Option<f32>,
 
     /// The font family of the text.
     #[style(default)]
-    pub font_family: Styled<FontFamily>,
+    pub font_family: Option<FontFamily>,
 
     /// The font weight of the text.
     #[style(default)]
-    pub font_weight: Styled<FontWeight>,
+    pub font_weight: Option<FontWeight>,
 
     /// The font stretch of the text.
     #[style(default)]
-    pub font_stretch: Styled<FontStretch>,
+    pub font_stretch: Option<FontStretch>,
 
     /// The font style of the text.
     #[style(default)]
-    pub font_style: Styled<FontStyle>,
+    pub font_style: Option<FontStyle>,
 
     /// The color of text.
     #[rebuild(draw)]
     #[style(default -> Theme::CONTRAST or Color::BLACK)]
-    pub color: Styled<Color>,
+    pub color: Option<Color>,
 
     /// The horizontal alignment of the text.
     #[style(default)]
-    pub align: Styled<TextAlign>,
+    pub align: Option<TextAlign>,
 
     /// The line height of the text.
     #[style(default = 1.2)]
-    pub line_height: Styled<f32>,
+    pub line_height: Option<f32>,
 
     /// The text wrap of the text.
     #[style(default)]
-    pub wrap: Styled<TextWrap>,
+    pub wrap: Option<TextWrap>,
 
     /// The background color of the text.
     #[rebuild(draw)]
     #[style(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
-    pub background: Styled<Color>,
+    pub background: Option<Color>,
 
     /// The border radius of the text.
     #[rebuild(draw)]
     #[style(default = BorderRadius::all(4.0))]
-    pub border_radius: Styled<BorderRadius>,
+    pub border_radius: Option<BorderRadius>,
 
     /// The border width of the text.
     #[rebuild(draw)]
     #[style(default = BorderWidth::all(1.0))]
-    pub border_width: Styled<BorderWidth>,
+    pub border_width: Option<BorderWidth>,
 
     /// The border color of the text.
     #[rebuild(draw)]
     #[style(default -> Theme::OUTLINE or Color::BLACK)]
-    pub border_color: Styled<Color>,
+    pub border_color: Option<Color>,
 }
 
 impl<V> Tooltip<V> {
@@ -106,40 +183,62 @@ impl<V> Tooltip<V> {
         Self {
             content: Pod::new(content),
             text: text.into(),
-            delay: Styled::style("tooltip.delay"),
-            padding: Styled::style("tooltip.padding"),
-            font_size: Styled::style("tooltip.font-size"),
-            font_family: Styled::style("tooltip.font-family"),
-            font_weight: Styled::style("tooltip.font-weight"),
-            font_stretch: Styled::style("tooltip.font-stretch"),
-            font_style: Styled::style("tooltip.font-style"),
-            color: Styled::style("tooltip.color"),
-            align: Styled::style("tooltip.align"),
-            line_height: Styled::style("tooltip.line-height"),
-            wrap: Styled::style("tooltip.wrap"),
-            background: Styled::style("tooltip.background"),
-            border_radius: Styled::style("tooltip.border-radius"),
-            border_width: Styled::style("tooltip.border-width"),
-            border_color: Styled::style("tooltip.border-color"),
+            delay: None,
+            padding: None,
+            font_size: None,
+            font_family: None,
+            font_weight: None,
+            font_stretch: None,
+            font_style: None,
+            color: None,
+            align: None,
+            line_height: None,
+            wrap: None,
+            background: None,
+            border_radius: None,
+            border_width: None,
+            border_color: None,
+        }
+    }
+}
+
+impl<V> Stylable for Tooltip<V> {
+    type Style = TooltipStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        TooltipStyle {
+            delay: self.delay.unwrap_or(style.delay),
+            padding: self.padding.unwrap_or(style.padding),
+            font_size: self.font_size.unwrap_or(style.font_size),
+            font_family: (self.font_family.clone()).unwrap_or(style.font_family.clone()),
+            font_weight: self.font_weight.unwrap_or(style.font_weight),
+            font_stretch: self.font_stretch.unwrap_or(style.font_stretch),
+            font_style: self.font_style.unwrap_or(style.font_style),
+            color: self.color.unwrap_or(style.color),
+            align: self.align.unwrap_or(style.align),
+            line_height: self.line_height.unwrap_or(style.line_height),
+            wrap: self.wrap.unwrap_or(style.wrap),
+            background: self.background.unwrap_or(style.background),
+            border_radius: self.border_radius.unwrap_or(style.border_radius),
+            border_width: self.border_width.unwrap_or(style.border_width),
+            border_color: self.border_color.unwrap_or(style.border_color),
         }
     }
 }
 
 #[doc(hidden)]
-pub struct TooltipState<V> {
+pub struct TooltipState {
     pub paragraph: Paragraph,
     pub timer: f32,
     pub position: Point,
-    pub style: TooltipStyle<V>,
+    pub style: TooltipStyle,
 }
 
 impl<T, V: View<T>> View<T> for Tooltip<V> {
-    type State = (TooltipState<V>, PodState<T, V>);
+    type State = (TooltipState, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.set_class("tooltip");
-
-        let style = self.style(cx.styles());
+        let style = self.style(cx.style());
 
         let mut state = TooltipState {
             paragraph: Paragraph::new(style.line_height, style.align, style.wrap),
@@ -172,7 +271,7 @@ impl<T, V: View<T>> View<T> for Tooltip<V> {
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
-        state.style.rebuild(self, cx);
+        self.rebuild_style(cx, &mut state.style);
 
         state.paragraph.line_height = state.style.line_height;
         state.paragraph.align = state.style.align;

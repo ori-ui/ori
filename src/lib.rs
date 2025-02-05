@@ -37,7 +37,7 @@ pub mod log {
 pub mod prelude {
     //! Convenient imports for Ori.
 
-    pub use ori_app::{include_style, App, AppBuilder, AppCommand, AppDelegate, DelegateCx};
+    pub use ori_app::{App, AppBuilder, AppCommand, AppDelegate, DelegateCx};
 
     pub use ori_core::{
         canvas::{
@@ -60,14 +60,14 @@ pub mod prelude {
         log::{debug, error, info, trace, warn},
         rebuild::Rebuild,
         style,
-        style::{comp, style, val, Stylable, Style, Styled, Styles, Theme},
+        style::{Stylable, Style, StyleBuilder, Styles, Theme},
         text::{
             include_font, FontAttributes, FontFamily, FontSource, FontStretch, FontStyle,
             FontWeight, Fonts, Paragraph, TextAlign, TextWrap,
         },
         transition::{ease, linear, Easing, Transition},
         view::{
-            any, pod, AnyView, BoxedView, Pod, PodSeq, SeqState, PodState, View, ViewSeq, ViewState,
+            any, pod, AnyView, BoxedView, Pod, PodSeq, PodState, SeqState, View, ViewSeq, ViewState,
         },
         views::*,
         window::{Cursor, Pointer, Window, WindowId, WindowSizing},

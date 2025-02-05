@@ -1,6 +1,6 @@
 use crate::canvas::Color;
 
-use super::{Style, Styles};
+use super::{Style, StyleBuilder};
 
 /// A theme.
 #[derive(Clone, Copy, Debug)]
@@ -74,98 +74,85 @@ impl Theme {
             info: Color::hex("#639ff7"),
         }
     }
-}
 
-impl From<Theme> for Styles {
-    fn from(theme: Theme) -> Self {
-        fn surf(color: Color, is_light: bool, level: i32) -> Color {
-            let level = level as f32;
+    /// Get the surface color with a specific level.
+    ///
+    /// Common levels are:
+    /// - `-2`: very low
+    /// - `-1`: low
+    /// - `0`: normal
+    /// - `1`: high
+    /// - `2`: very high
+    pub fn surface(&self, level: i8) -> Color {
+        let level = level as f32;
 
-            if is_light {
-                color.darken(level * 0.025).saturate(level * 0.015)
-            } else {
-                color.lighten(level * 0.04).saturate(level * 0.02)
-            }
+        if self.is_light() {
+            self.surface.darken(level * 0.025).saturate(level * 0.015)
+        } else {
+            self.surface.lighten(level * 0.04).saturate(level * 0.02)
         }
+    }
 
-        fn low(color: Color, is_light: bool) -> Color {
-            if is_light {
-                color.lighten(0.2).desaturate(0.1)
-            } else {
-                color.darken(0.2).desaturate(0.1)
-            }
+    /// Get the low contrast outline color.
+    pub fn outline_low(&self) -> Color {
+        Self::low(self.outline, self.is_light())
+    }
+
+    /// Get the low contrast contrast color.
+    pub fn contrast_low(&self) -> Color {
+        Self::low(self.contrast, self.is_light())
+    }
+
+    /// Get the low contrast primary color.
+    pub fn primary_low(&self) -> Color {
+        Self::low(self.primary, self.is_light())
+    }
+
+    /// Get the low contrast secondary color.
+    pub fn secondary_low(&self) -> Color {
+        Self::low(self.secondary, self.is_light())
+    }
+
+    /// Get the low contrast accent color.
+    pub fn accent_low(&self) -> Color {
+        Self::low(self.accent, self.is_light())
+    }
+
+    /// Get the low contrast danger color.
+    pub fn danger_low(&self) -> Color {
+        Self::low(self.danger, self.is_light())
+    }
+
+    /// Get the low contrast success color.
+    pub fn success_low(&self) -> Color {
+        Self::low(self.success, self.is_light())
+    }
+
+    /// Get the low contrast warning color.
+    pub fn warning_low(&self) -> Color {
+        Self::low(self.warning, self.is_light())
+    }
+
+    /// Get the low contrast info color.
+    pub fn info_low(&self) -> Color {
+        Self::low(self.info, self.is_light())
+    }
+
+    fn low(color: Color, is_light: bool) -> Color {
+        if is_light {
+            color.lighten(0.2).desaturate(0.1)
+        } else {
+            color.darken(0.2).desaturate(0.1)
         }
+    }
 
-        fn contrast_low(color: Color, is_light: bool) -> Color {
-            if is_light {
-                color.lighten(0.2).desaturate(0.1)
-            } else {
-                color.darken(0.2).desaturate(0.1)
-            }
-        }
-
-        let is_light = theme.background.luminocity() > 0.5;
-
-        Styles::new()
-            .with(Theme::BACKGROUND, theme.background)
-            .with(Theme::SURFACE_LOWER, surf(theme.surface, is_light, -2))
-            .with(Theme::SURFACE_LOW, surf(theme.surface, is_light, -1))
-            .with(Theme::SURFACE, theme.surface)
-            .with(Theme::SURFACE_HIGH, surf(theme.surface, is_light, 1))
-            .with(Theme::SURFACE_HIGHER, surf(theme.surface, is_light, 2))
-            .with(Theme::SURFACE_HIGHEST, surf(theme.surface, is_light, 3))
-            .with(Theme::OUTLINE, theme.outline)
-            .with(Theme::OUTLINE_LOW, low(theme.outline, is_light))
-            .with(Theme::CONTRAST, theme.contrast)
-            .with(Theme::CONTRAST_LOW, contrast_low(theme.contrast, is_light))
-            .with(Theme::PRIMARY, theme.primary)
-            .with(Theme::PRIMARY_LOW, low(theme.primary, is_light))
-            .with(Theme::SECONDARY, theme.secondary)
-            .with(Theme::SECONDARY_LOW, low(theme.secondary, is_light))
-            .with(Theme::ACCENT, theme.accent)
-            .with(Theme::ACCENT_LOW, low(theme.accent, is_light))
-            .with(Theme::DANGER, theme.danger)
-            .with(Theme::DANGER_LOW, low(theme.danger, is_light))
-            .with(Theme::SUCCESS, theme.success)
-            .with(Theme::SUCCESS_LOW, low(theme.success, is_light))
-            .with(Theme::WARNING, theme.warning)
-            .with(Theme::WARNING_LOW, low(theme.warning, is_light))
-            .with(Theme::INFO, theme.info)
-            .with(Theme::INFO_LOW, low(theme.info, is_light))
+    fn is_light(&self) -> bool {
+        self.background.luminocity() > 0.5
     }
 }
 
-impl Default for Theme {
-    fn default() -> Self {
-        Theme::dark()
+impl Style for Theme {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(Theme::dark)
     }
-}
-
-#[allow(missing_docs)]
-impl Theme {
-    pub const BACKGROUND: Style<Color> = Style::new("theme.background");
-    pub const SURFACE_LOWER: Style<Color> = Style::new("theme.surface-lower");
-    pub const SURFACE_LOW: Style<Color> = Style::new("theme.surface-low");
-    pub const SURFACE: Style<Color> = Style::new("theme.surface");
-    pub const SURFACE_HIGH: Style<Color> = Style::new("theme.surface-high");
-    pub const SURFACE_HIGHER: Style<Color> = Style::new("theme.surface-higher");
-    pub const SURFACE_HIGHEST: Style<Color> = Style::new("theme.surface-highest");
-    pub const OUTLINE: Style<Color> = Style::new("theme.outline");
-    pub const OUTLINE_LOW: Style<Color> = Style::new("theme.outline-low");
-    pub const CONTRAST: Style<Color> = Style::new("theme.contrast");
-    pub const CONTRAST_LOW: Style<Color> = Style::new("theme.contrast-low");
-    pub const PRIMARY: Style<Color> = Style::new("theme.primary");
-    pub const PRIMARY_LOW: Style<Color> = Style::new("theme.primary-low");
-    pub const SECONDARY: Style<Color> = Style::new("theme.secondary");
-    pub const SECONDARY_LOW: Style<Color> = Style::new("theme.secondary-low");
-    pub const ACCENT: Style<Color> = Style::new("theme.accent");
-    pub const ACCENT_LOW: Style<Color> = Style::new("theme.accent-low");
-    pub const DANGER: Style<Color> = Style::new("theme.danger");
-    pub const DANGER_LOW: Style<Color> = Style::new("theme.danger-low");
-    pub const SUCCESS: Style<Color> = Style::new("theme.success");
-    pub const SUCCESS_LOW: Style<Color> = Style::new("theme.success-low");
-    pub const WARNING: Style<Color> = Style::new("theme.warning");
-    pub const WARNING_LOW: Style<Color> = Style::new("theme.warning-low");
-    pub const INFO: Style<Color> = Style::new("theme.info");
-    pub const INFO_LOW: Style<Color> = Style::new("theme.info-low");
 }

@@ -5,7 +5,8 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Capitalize, Event, Ime, Key},
     layout::{Point, Rect, Size, Space},
-    style::{Stylable, Styled, Theme},
+    rebuild::Rebuild,
+    style::{Stylable, Style, StyleBuilder, Theme},
     text::{
         FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
         TextLayoutLine, TextWrap,
@@ -19,11 +20,72 @@ pub fn text_input<T>() -> TextInput<T> {
     TextInput::new()
 }
 
+/// The style of a [`TextInput`].
+#[derive(Clone, Rebuild)]
+pub struct TextInputStyle {
+    /// The font size of the text.
+    #[rebuild(layout)]
+    pub font_size: f32,
+
+    /// The font family of the text.
+    #[rebuild(layout)]
+    pub font_family: FontFamily,
+
+    /// The font weight of the text.
+    #[rebuild(layout)]
+    pub font_weight: FontWeight,
+
+    /// The font stretch of the text.
+    #[rebuild(layout)]
+    pub font_stretch: FontStretch,
+
+    /// The font style of the text.
+    #[rebuild(layout)]
+    pub font_style: FontStyle,
+
+    /// The color of the text.
+    #[rebuild(draw)]
+    pub color: Color,
+
+    /// The color of the placeholder text.
+    #[rebuild(draw)]
+    pub placeholder_color: Color,
+
+    /// The vertical alignment of the text.
+    #[rebuild(layout)]
+    pub align: TextAlign,
+
+    /// The line height of the text.
+    #[rebuild(layout)]
+    pub line_height: f32,
+
+    /// The text wrap of the text.
+    #[rebuild(layout)]
+    pub wrap: TextWrap,
+}
+
+impl Style for TextInputStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|theme: &Theme| Self {
+            font_size: 16.0,
+            font_family: FontFamily::default(),
+            font_weight: FontWeight::NORMAL,
+            font_stretch: FontStretch::Normal,
+            font_style: FontStyle::Normal,
+            color: theme.contrast,
+            placeholder_color: theme.contrast_low(),
+            align: TextAlign::Start,
+            line_height: 1.5,
+            wrap: TextWrap::Word,
+        })
+    }
+}
+
 /// A text input.
 ///
 /// Can be styled using the [`TextInputStyle`].
 #[example(name = "text_input", width = 400, height = 300)]
-#[derive(Stylable, Build)]
+#[derive(Build)]
 pub struct TextInput<T> {
     /// The text.
     #[build(ignore)]
@@ -54,51 +116,34 @@ pub struct TextInput<T> {
     pub capitalize: Capitalize,
 
     /// The font size of the text.
-    #[style(default = 16.0)]
-    #[rebuild(layout)]
-    pub font_size: Styled<f32>,
+    pub font_size: Option<f32>,
 
     /// The font family of the text.
-    #[style(default)]
-    #[rebuild(layout)]
-    pub font_family: Styled<FontFamily>,
+    pub font_family: Option<FontFamily>,
 
     /// The font weight of the text.
-    #[style(default)]
-    #[rebuild(layout)]
-    pub font_weight: Styled<FontWeight>,
+    pub font_weight: Option<FontWeight>,
 
     /// The font stretch of the text.
-    #[style(default)]
-    #[rebuild(layout)]
-    pub font_stretch: Styled<FontStretch>,
+    pub font_stretch: Option<FontStretch>,
 
     /// The font.into of the text.
-    #[style(default)]
-    #[rebuild(layout)]
-    pub font_style: Styled<FontStyle>,
+    pub font_style: Option<FontStyle>,
 
     /// The color of the text.
-    #[style(default -> Theme::CONTRAST or Color::BLACK)]
-    #[rebuild(draw)]
-    pub color: Styled<Color>,
+    pub color: Option<Color>,
 
     /// The color of the placeholder text.
-    #[style(default -> Theme::CONTRAST_LOW or Color::grayscale(0.9))]
-    #[rebuild(draw)]
-    pub placeholder_color: Styled<Color>,
+    pub placeholder_color: Option<Color>,
 
     /// The vertical alignment of the text.
-    #[style(default)]
-    pub align: Styled<TextAlign>,
+    pub align: Option<TextAlign>,
 
     /// The line height of the text.
-    #[style(default = 1.2)]
-    pub line_height: Styled<f32>,
+    pub line_height: Option<f32>,
 
     /// The text wrap of the text.
-    #[style(default)]
-    pub wrap: Styled<TextWrap>,
+    pub wrap: Option<TextWrap>,
 }
 
 impl<T> Default for TextInput<T> {
@@ -117,16 +162,16 @@ impl<T> TextInput<T> {
             placeholder: String::from("..."),
             multiline: false,
             capitalize: Capitalize::Sentences,
-            font_size: Styled::style("text-input.font-size"),
-            font_family: Styled::style("text-input.font-family"),
-            font_weight: Styled::style("text-input.font-weight"),
-            font_stretch: Styled::style("text-input.font-stretch"),
-            font_style: Styled::style("text-input.font-style"),
-            color: Styled::style("text-input.color"),
-            placeholder_color: Styled::style("text-input.placeholder-color"),
-            align: Styled::style("text-input.align"),
-            line_height: Styled::style("text-input.line-height"),
-            wrap: Styled::style("text-input.wrap"),
+            font_size: None,
+            font_family: None,
+            font_weight: None,
+            font_stretch: None,
+            font_style: None,
+            color: None,
+            placeholder_color: None,
+            align: None,
+            line_height: None,
+            wrap: None,
         }
     }
 
@@ -158,9 +203,9 @@ impl<T> TextInput<T> {
 }
 
 #[doc(hidden)]
-pub struct TextInputState<T> {
+pub struct TextInputState {
     // the style of the text input
-    style: TextInputStyle<T>,
+    style: TextInputStyle,
 
     // the current text of the input
     text: String,
@@ -175,7 +220,7 @@ pub struct TextInputState<T> {
     selection: Option<usize>,
 }
 
-impl<T> TextInputState<T> {
+impl TextInputState {
     fn set_cursor(&mut self, cursor: usize, select: bool) {
         if !select {
             self.selection = None;
@@ -349,14 +394,32 @@ impl<T> TextInputState<T> {
     }
 }
 
+impl<T> Stylable for TextInput<T> {
+    type Style = TextInputStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        TextInputStyle {
+            font_size: self.font_size.unwrap_or(style.font_size),
+            font_family: (self.font_family.clone()).unwrap_or_else(|| style.font_family.clone()),
+            font_weight: self.font_weight.unwrap_or(style.font_weight),
+            font_stretch: self.font_stretch.unwrap_or(style.font_stretch),
+            font_style: self.font_style.unwrap_or(style.font_style),
+            color: self.color.unwrap_or(style.color),
+            placeholder_color: self.placeholder_color.unwrap_or(style.placeholder_color),
+            align: self.align.unwrap_or(style.align),
+            line_height: self.line_height.unwrap_or(style.line_height),
+            wrap: self.wrap.unwrap_or(style.wrap),
+        }
+    }
+}
+
 impl<T> View<T> for TextInput<T> {
-    type State = TextInputState<T>;
+    type State = TextInputState;
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        cx.set_class("text-input");
         cx.set_focusable(true);
 
-        let style = self.style(cx.styles());
+        let style = self.style(cx.style());
 
         let mut paragraph = Paragraph::new(style.line_height, style.align, style.wrap);
 
@@ -390,7 +453,7 @@ impl<T> View<T> for TextInput<T> {
     }
 
     fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, _data: &mut T, _old: &Self) {
-        state.style.rebuild(self, cx);
+        self.rebuild_style(cx, &mut state.style);
 
         if let Some(text) = &self.text {
             if state.cursor >= state.text.len() {
@@ -743,8 +806,8 @@ impl<T> View<T> for TextInput<T> {
             cx.paragraph(&placeholder, cx.rect());
         }
 
-        let contrast = cx.styles().get_or(Color::BLACK, &Theme::CONTRAST);
-        let info = cx.styles().get_or(Color::BLUE, &Theme::INFO);
+        let contrast = cx.theme().contrast;
+        let info = cx.theme().info;
 
         // draw the cursor
         if cx.is_focused() {
@@ -759,7 +822,7 @@ impl<T> View<T> for TextInput<T> {
     }
 }
 
-fn draw_highlight<T>(state: &mut TextInputState<T>, cx: &mut DrawCx, color: Color) {
+fn draw_highlight(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
     if let Some(selection) = state.selection {
         let start = usize::min(state.cursor, selection);
         let end = usize::max(state.cursor, selection);
@@ -802,7 +865,7 @@ fn draw_highlight<T>(state: &mut TextInputState<T>, cx: &mut DrawCx, color: Colo
     }
 }
 
-fn draw_cursor<T>(state: &mut TextInputState<T>, cx: &mut DrawCx, color: Color) {
+fn draw_cursor(state: &mut TextInputState, cx: &mut DrawCx, color: Color) {
     if state.lines.is_empty() {
         // if there are no lines, just draw the cursor at the start
 

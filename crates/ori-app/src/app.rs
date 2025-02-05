@@ -19,7 +19,7 @@ use ori_core::{
     window::{Cursor, Window, WindowId, WindowSizing, WindowSnapshot, WindowUpdate},
 };
 
-use crate::{AppBuilder, AppCommand, AppDelegate, AppRequest, DelegateCx, StyleLoader, UiBuilder};
+use crate::{AppBuilder, AppCommand, AppDelegate, AppRequest, DelegateCx, UiBuilder};
 
 /// Information needed to render a window.
 pub struct WindowRenderState {
@@ -181,7 +181,6 @@ pub struct App<T> {
     pub(crate) delegates: Vec<Box<dyn AppDelegate<T>>>,
     pub(crate) receiver: CommandReceiver,
     pub(crate) requests: Vec<AppRequest<T>>,
-    pub(crate) style_loader: StyleLoader,
 }
 
 impl<T> App<T> {
@@ -515,17 +514,6 @@ impl<T> App<T> {
                 self.requests.push(AppRequest::DragWindow(window_id));
             }
 
-            AppCommand::ReloadStyles => match self.style_loader.load() {
-                Ok(styles) => {
-                    self.contexts.insert(styles);
-                    self.rebuild(data);
-                }
-
-                Err(error) => {
-                    ori_core::log::error!("Failed to reload styles: {}", error);
-                }
-            },
-
             AppCommand::Quit => {
                 self.requests.push(AppRequest::Quit);
             }
@@ -779,12 +767,6 @@ impl<T> App<T> {
             self.requests.extend(requests);
         }
 
-        if let Some(styles) = self.contexts.get_mut::<Styles>() {
-            if styles.pop_class() {
-                panic!("Class stack is not empty after handling event");
-            }
-        }
-
         // handle any pending commands
         self.handle_commands(data);
 
@@ -864,8 +846,8 @@ impl<T> App<T> {
         let clear_color = match window_state.window.color {
             Some(color) => color,
             None => {
-                let styles = (self.contexts.get::<Styles>()).expect("app has styles context");
-                styles.get_or(Color::WHITE, &Theme::BACKGROUND)
+                let styles = (self.contexts.get_mut::<Styles>()).expect("app has styles context");
+                styles.style::<Theme>().background
             }
         };
 

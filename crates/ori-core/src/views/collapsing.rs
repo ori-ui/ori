@@ -8,7 +8,7 @@ use crate::{
     event::{Event, PointerButton},
     layout::{Affine, Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Stylable, Styled, Theme},
+    style::{Stylable, Style, StyleBuilder, Theme},
     transition::Transition,
     view::{Pod, PodState, View},
 };
@@ -18,11 +18,57 @@ pub fn collapsing<T, H, V>(header: H, content: V) -> Collapsing<T, H, V> {
     Collapsing::new(header, content)
 }
 
+/// The style of a collapsing view.
+#[derive(Clone, Rebuild)]
+pub struct CollapsingStyle {
+    /// The transition of the view.
+    #[rebuild(draw)]
+    pub transition: Transition,
+
+    /// The size of the icon.
+    #[rebuild(layout)]
+    pub icon_size: f32,
+
+    /// The color of the icon.
+    #[rebuild(draw)]
+    pub icon_color: Color,
+
+    /// The background color of the header.
+    #[rebuild(draw)]
+    pub background: Color,
+
+    /// The border width of the header.
+    #[rebuild(draw)]
+    pub border_width: BorderWidth,
+
+    /// The border radius of the header.
+    #[rebuild(draw)]
+    pub border_radius: BorderRadius,
+
+    /// The color of the border of the header.
+    #[rebuild(draw)]
+    pub border_color: Color,
+}
+
+impl Style for CollapsingStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|theme: &Theme| CollapsingStyle {
+            transition: Transition::ease(0.1),
+            icon_size: 16.0,
+            icon_color: theme.primary,
+            background: Color::TRANSPARENT,
+            border_width: BorderWidth::new(0.0, 0.0, 1.0, 0.0),
+            border_radius: BorderRadius::all(0.0),
+            border_color: theme.outline,
+        })
+    }
+}
+
 /// A collapsing view.
 ///
 /// Can be styled using the [`CollapsingStyle`].
 #[example(name = "collapsing", width = 400, height = 300)]
-#[derive(Stylable, Build, Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Collapsing<T, H, V> {
     /// The header.
     #[build(ignore)]
@@ -45,38 +91,25 @@ pub struct Collapsing<T, H, V> {
     pub default_open: bool,
 
     /// The transition of the view.
-    #[style(default = Transition::ease(0.1))]
-    pub transition: Styled<Transition>,
+    pub transition: Option<Transition>,
 
     /// The size of the icon.
-    #[rebuild(layout)]
-    #[style(default = 16.0)]
-    pub icon_size: Styled<f32>,
+    pub icon_size: Option<f32>,
 
     /// The color of the icon.
-    #[rebuild(draw)]
-    #[style(default -> Theme::PRIMARY or Color::BLUE)]
-    pub icon_color: Styled<Color>,
+    pub icon_color: Option<Color>,
 
     /// The background color of the header.
-    #[rebuild(draw)]
-    #[style(default = Color::TRANSPARENT)]
-    pub background: Styled<Color>,
+    pub background: Option<Color>,
 
     /// The border width of the header.
-    #[rebuild(draw)]
-    #[style(default = BorderWidth::new(0.0, 0.0, 1.0, 0.0))]
-    pub border_width: Styled<BorderWidth>,
+    pub border_width: Option<BorderWidth>,
 
     /// The border radius of the header.
-    #[rebuild(draw)]
-    #[style(default = BorderRadius::all(0.0))]
-    pub border_radius: Styled<BorderRadius>,
+    pub border_radius: Option<BorderRadius>,
 
     /// The color of the border of the header.
-    #[rebuild(draw)]
-    #[style(default -> Theme::OUTLINE or Color::BLACK)]
-    pub border_color: Styled<Color>,
+    pub border_color: Option<Color>,
 }
 
 impl<T, H, V> Collapsing<T, H, V> {
@@ -88,13 +121,13 @@ impl<T, H, V> Collapsing<T, H, V> {
             on_open: None,
             open: None,
             default_open: false,
-            transition: Styled::style("collapsing.transition"),
-            icon_size: Styled::style("collapsing.icon-size"),
-            icon_color: Styled::style("collapsing.icon-color"),
-            background: Styled::style("collapsing.background"),
-            border_width: Styled::style("collapsing.border-width"),
-            border_radius: Styled::style("collapsing.border-radius"),
-            border_color: Styled::style("collapsing.border-color"),
+            transition: None,
+            icon_size: None,
+            icon_color: None,
+            background: None,
+            border_width: None,
+            border_radius: None,
+            border_color: None,
         }
     }
 
@@ -105,9 +138,25 @@ impl<T, H, V> Collapsing<T, H, V> {
     }
 }
 
+impl<T, H, V> Stylable for Collapsing<T, H, V> {
+    type Style = CollapsingStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        CollapsingStyle {
+            transition: self.transition.unwrap_or(style.transition),
+            icon_size: self.icon_size.unwrap_or(style.icon_size),
+            icon_color: self.icon_color.unwrap_or(style.icon_color),
+            background: self.background.unwrap_or(style.background),
+            border_width: self.border_width.unwrap_or(style.border_width),
+            border_radius: self.border_radius.unwrap_or(style.border_radius),
+            border_color: self.border_color.unwrap_or(style.border_color),
+        }
+    }
+}
+
 #[doc(hidden)]
 pub struct CollapsingState<T, H: View<T>, V: View<T>> {
-    style: CollapsingStyle<T, H, V>,
+    style: CollapsingStyle,
     header: PodState<T, H>,
     content: PodState<T, V>,
     open: bool,
@@ -118,12 +167,10 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
     type State = CollapsingState<T, H, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.set_class("collapsing");
-
         let open = self.open.unwrap_or(self.default_open);
 
         CollapsingState {
-            style: self.style(cx.styles()),
+            style: self.style(cx.style()),
             header: self.header.build(cx, data),
             content: self.content.build(cx, data),
             open,
@@ -140,7 +187,7 @@ impl<T, H: View<T>, V: View<T>> View<T> for Collapsing<T, H, V> {
         }
 
         Rebuild::rebuild(self, cx, old);
-        state.style.rebuild(self, cx);
+        self.rebuild_style(cx, &mut state.style);
 
         (self.header).rebuild(&mut state.header, cx, data, &old.header);
         (self.content).rebuild(&mut state.content, cx, data, &old.content);

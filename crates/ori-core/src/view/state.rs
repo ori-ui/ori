@@ -124,9 +124,6 @@ pub struct ViewState {
     /* properties */
     pub(crate) properties: Properties,
 
-    /* styling */
-    pub(crate) class: Option<String>,
-
     /* layout */
     pub(crate) size: Size,
     pub(crate) transform: Affine,
@@ -159,9 +156,6 @@ impl ViewState {
 
             /* properties */
             properties: Properties::new(),
-
-            /* styling */
-            class: None,
 
             /* layout */
             size: Size::ZERO,
@@ -295,16 +289,6 @@ impl ViewState {
     /// Get the property `T` of the view or insert it with a default value.
     pub fn property_or_default<T: 'static + Default>(&mut self) -> &mut T {
         self.properties.get_or_default()
-    }
-
-    /// Get the class of the view.
-    pub fn class(&self) -> Option<&str> {
-        self.class.as_deref()
-    }
-
-    /// Set the class of the view.
-    pub fn set_class(&mut self, class: impl Into<Option<String>>) {
-        self.class = class.into();
     }
 
     /// Set the size of the view.

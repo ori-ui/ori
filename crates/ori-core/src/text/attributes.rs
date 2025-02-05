@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use smol_str::SmolStr;
 
-use crate::{canvas::Color, style::Styled};
+use crate::canvas::Color;
 
 /// A font family, by default [`FontFamily::SansSerif`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -42,24 +42,6 @@ impl From<String> for FontFamily {
 impl From<SmolStr> for FontFamily {
     fn from(name: SmolStr) -> Self {
         Self::Name(name)
-    }
-}
-
-impl From<&str> for Styled<FontFamily> {
-    fn from(name: &str) -> Self {
-        Styled::value(FontFamily::from(name))
-    }
-}
-
-impl From<String> for Styled<FontFamily> {
-    fn from(name: String) -> Self {
-        Styled::value(FontFamily::from(name))
-    }
-}
-
-impl From<SmolStr> for Styled<FontFamily> {
-    fn from(name: SmolStr) -> Self {
-        Styled::value(FontFamily::from(name))
     }
 }
 

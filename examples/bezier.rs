@@ -32,10 +32,9 @@ impl Data {
 
 fn ui(data: &mut Data) -> impl View<Data> {
     let curve = painter(|cx, data: &mut Data| {
-        let styles = cx.styles();
-        let primary: Color = styles.get(&Theme::PRIMARY).unwrap();
-        let success: Color = styles.get(&Theme::SUCCESS).unwrap();
-        let accent: Color = styles.get(&Theme::ACCENT).unwrap();
+        let primary = cx.theme().primary;
+        let success = cx.theme().success;
+        let accent = cx.theme().accent;
 
         let mut curve = Curve::new();
 
@@ -164,7 +163,7 @@ fn main() {
 
     let window = Window::new().title("Bezier (examples/bezier.rs)");
 
-    let app = App::build().window(window, ui).style(Theme::light());
+    let app = App::build().window(window, ui).style(Theme::light);
 
     ori::run(app, &mut Data::new()).unwrap();
 }

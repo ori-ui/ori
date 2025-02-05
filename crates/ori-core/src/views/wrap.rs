@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
-    style::{Stylable, Styled, Styles},
+    style::{Stylable, Style, StyleBuilder},
     view::{AnyView, PodSeq, SeqState, View, ViewSeq},
 };
 
@@ -59,11 +59,52 @@ pub fn vwrap_any<'a, T>() -> Wrap<Vec<Box<dyn AnyView<T> + 'a>>> {
     Wrap::vertical_any()
 }
 
+/// The style of a [`Wrap`].
+#[derive(Clone, Rebuild)]
+pub struct WrapStyle {
+    /// The axis.
+    #[rebuild(layout)]
+    pub axis: Axis,
+
+    /// How to justify the content along the main axis.
+    #[rebuild(layout)]
+    pub justify: Justify,
+
+    /// How to align the content along the cross axis.
+    #[rebuild(layout)]
+    pub align: Align,
+
+    /// How to justify the content along the cross axis.
+    #[rebuild(layout)]
+    pub justify_cross: Justify,
+
+    /// The gap between each row.
+    #[rebuild(layout)]
+    pub row_gap: f32,
+
+    /// The gap between each column.
+    #[rebuild(layout)]
+    pub column_gap: f32,
+}
+
+impl Style for WrapStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|| Self {
+            axis: Axis::Horizontal,
+            justify: Justify::Start,
+            align: Align::Start,
+            justify_cross: Justify::Start,
+            row_gap: 0.0,
+            column_gap: 0.0,
+        })
+    }
+}
+
 /// A view that lays out it's content in a line wrapping if it doesn't fit.
 ///
 /// Note that unlike [`Stack`](super::Stack) this view does not care about flex.
 #[example(name = "wrap", width = 400, height = 600)]
-#[derive(Stylable, Build, Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Wrap<V> {
     /// The content.
     #[build(ignore)]
@@ -74,29 +115,19 @@ pub struct Wrap<V> {
     pub axis: Axis,
 
     /// How to justify the content along the main axis.
-    #[rebuild(layout)]
-    #[style(default)]
-    pub justify: Styled<Justify>,
+    pub justify: Option<Justify>,
 
     /// How to align the content along the cross axis.
-    #[rebuild(layout)]
-    #[style(default = Align::Center)]
-    pub align: Styled<Align>,
+    pub align: Option<Align>,
 
     /// How to justify the content along the cross axis.
-    #[rebuild(layout)]
-    #[style(default)]
-    pub justify_cross: Styled<Justify>,
+    pub justify_cross: Option<Justify>,
 
     /// The gap between each row.
-    #[rebuild(layout)]
-    #[style(default)]
-    pub row_gap: Styled<f32>,
+    pub row_gap: Option<f32>,
 
     /// The gap between each column.
-    #[rebuild(layout)]
-    #[style(default)]
-    pub column_gap: Styled<f32>,
+    pub column_gap: Option<f32>,
 }
 
 impl<V> Wrap<V> {
@@ -105,11 +136,11 @@ impl<V> Wrap<V> {
         Self {
             content: PodSeq::new(content),
             axis,
-            justify: Styled::style("wrap.justify"),
-            align: Styled::style("wrap.align"),
-            justify_cross: Styled::style("wrap.justify-cross"),
-            row_gap: Styled::style("wrap.row-gap"),
-            column_gap: Styled::style("wrap.column-gap"),
+            justify: None,
+            align: None,
+            justify_cross: None,
+            row_gap: None,
+            column_gap: None,
         }
     }
 
@@ -124,9 +155,9 @@ impl<V> Wrap<V> {
     }
 
     /// Set the gap for both the rows and columns.
-    pub fn gap(mut self, gap: impl Into<Styled<f32>>) -> Self {
+    pub fn gap(mut self, gap: impl Into<Option<f32>>) -> Self {
         self.row_gap = gap.into();
-        self.column_gap = self.row_gap.clone();
+        self.column_gap = self.row_gap;
         self
     }
 }
@@ -186,21 +217,33 @@ impl<T> Wrap<Vec<Box<dyn AnyView<T> + '_>>> {
     }
 }
 
+impl<V> Stylable for Wrap<V> {
+    type Style = WrapStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        WrapStyle {
+            axis: self.axis,
+            justify: self.justify.unwrap_or(style.justify),
+            align: self.align.unwrap_or(style.align),
+            justify_cross: self.justify_cross.unwrap_or(style.justify_cross),
+            row_gap: self.row_gap.unwrap_or(style.row_gap),
+            column_gap: self.column_gap.unwrap_or(style.column_gap),
+        }
+    }
+}
+
 #[doc(hidden)]
-pub struct WrapState<V> {
-    style: WrapStyle<V>,
+pub struct WrapState {
+    style: WrapStyle,
     majors: Vec<f32>,
     runs: Vec<Range<usize>>,
     run_minors: Vec<f32>,
 }
 
-impl<V> WrapState<V> {
-    fn new<T>(wrap: &Wrap<V>, styles: &Styles) -> Self
-    where
-        V: ViewSeq<T>,
-    {
+impl WrapState {
+    fn new<T, V: ViewSeq<T>>(wrap: &Wrap<V>, style: &WrapStyle) -> Self {
         Self {
-            style: wrap.style(styles),
+            style: wrap.style(style),
             majors: vec![0.0; wrap.content.len()],
             runs: Vec::new(),
             run_minors: Vec::new(),
@@ -217,15 +260,12 @@ impl<V> WrapState<V> {
 }
 
 impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
-    type State = (WrapState<V>, SeqState<T, V>);
+    type State = (WrapState, SeqState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.set_class("wrap");
-
-        (
-            WrapState::new(self, cx.styles()),
-            self.content.build(cx, data),
-        )
+        let state = WrapState::new(self, cx.style());
+        let content = self.content.build(cx, data);
+        (state, content)
     }
 
     fn rebuild(
@@ -236,7 +276,7 @@ impl<T, V: ViewSeq<T>> View<T> for Wrap<V> {
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
-        state.style.rebuild(self, cx);
+        self.rebuild_style(cx, &mut state.style);
 
         if self.content.len() != old.content.len() {
             state.resize(self.content.len());

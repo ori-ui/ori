@@ -27,9 +27,6 @@ pub enum AppCommand {
     /// Drag a window.
     DragWindow(WindowId),
 
-    /// Reload the styles.
-    ReloadStyles,
-
     /// Quit the application.
     Quit,
 }

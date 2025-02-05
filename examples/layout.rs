@@ -2,15 +2,17 @@ use ori::prelude::*;
 
 fn ui() -> impl View {
     layout(|_, space| {
-        let box_count = if space.max.width > 800.0 { 2 } else { 1 };
+        build(move |cx, _| {
+            let box_count = if space.max.width > 800.0 { 2 } else { 1 };
 
-        let mut boxes = hstack_vec().gap(100.0);
+            let mut boxes = hstack_vec().gap(100.0);
 
-        for _ in 0..box_count {
-            boxes.push(background(Theme::PRIMARY, size(100.0, ())));
-        }
+            for _ in 0..box_count {
+                boxes.push(background(cx.theme().primary, size(100.0, ())));
+            }
 
-        center(vstack![text!("Space: {}", space.max), boxes].gap(50.0))
+            center(vstack![text!("Space: {}", space.max), boxes].gap(50.0))
+        })
     })
 }
 

@@ -7,17 +7,11 @@ use crate::{
     event::Event,
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
-    style::{Stylable, Styled},
     view::{Pod, PodState, View},
 };
 
-/// Create a new [`Pad`] view with padding from the `padding` style tag.
-pub fn padded<V>(view: V) -> Pad<V> {
-    Pad::new(Styled::style("padding"), view)
-}
-
 /// Create a new [`Pad`] view.
-pub fn pad<V>(padding: impl Into<Styled<Padding>>, view: V) -> Pad<V> {
+pub fn pad<V>(padding: impl Into<Padding>, view: V) -> Pad<V> {
     Pad::new(padding.into(), view)
 }
 
@@ -43,20 +37,19 @@ pub fn pad_left<V>(padding: f32, view: V) -> Pad<V> {
 
 /// A view that adds padding to its content.
 #[example(name = "pad", width = 400, height = 300)]
-#[derive(Stylable, Rebuild)]
+#[derive(Rebuild)]
 pub struct Pad<V> {
     /// The content.
     pub content: Pod<V>,
 
     /// The padding.
-    #[style(default)]
     #[rebuild(layout)]
-    pub padding: Styled<Padding>,
+    pub padding: Padding,
 }
 
 impl<V> Pad<V> {
     /// Create a new [`Pad`] view.
-    pub fn new(padding: impl Into<Styled<Padding>>, content: V) -> Self {
+    pub fn new(padding: impl Into<Padding>, content: V) -> Self {
         Self {
             content: Pod::new(content),
             padding: padding.into(),
@@ -79,29 +72,20 @@ impl<V> DerefMut for Pad<V> {
 }
 
 impl<T, V: View<T>> View<T> for Pad<V> {
-    type State = (PadStyle<V>, PodState<T, V>);
+    type State = PodState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        let style = self.style(cx.styles());
-        let state = self.content.build(cx, data);
-
-        (style, state)
+        self.content.build(cx, data)
     }
 
-    fn rebuild(
-        &mut self,
-        (style, state): &mut Self::State,
-        cx: &mut RebuildCx,
-        data: &mut T,
-        old: &Self,
-    ) {
-        style.rebuild(self, cx);
+    fn rebuild(&mut self, state: &mut Self::State, cx: &mut RebuildCx, data: &mut T, old: &Self) {
+        Rebuild::rebuild(self, cx, old);
         self.content.rebuild(state, cx, data, &old.content);
     }
 
     fn event(
         &mut self,
-        (_, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
@@ -111,20 +95,20 @@ impl<T, V: View<T>> View<T> for Pad<V> {
 
     fn layout(
         &mut self,
-        (style, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut LayoutCx,
         data: &mut T,
         space: Space,
     ) -> Size {
-        let content_space = space.shrink(style.padding.size());
+        let content_space = space.shrink(self.padding.size());
         let content_size = self.content.layout(state, cx, data, content_space);
 
-        state.translate(style.padding.offset());
+        state.translate(self.padding.offset());
 
-        space.fit(content_size + style.padding.size())
+        space.fit(content_size + self.padding.size())
     }
 
-    fn draw(&mut self, (_, state): &mut Self::State, cx: &mut DrawCx, data: &mut T) {
+    fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, data: &mut T) {
         self.content.draw(state, cx, data);
     }
 }

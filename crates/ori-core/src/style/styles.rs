@@ -1,387 +1,213 @@
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
-    fmt::Debug,
-    hash::{BuildHasherDefault, Hasher},
-    marker::PhantomData,
-    str::FromStr,
-    sync::{
-        atomic::{AtomicU64, Ordering},
-        Arc, Mutex,
-    },
+    hash::BuildHasherDefault,
 };
 
 use seahash::SeaHasher;
 
-use crate::style::hash_style_key_u64;
+use crate::{context::RebuildCx, rebuild::Rebuild};
 
-use super::{hash_style_key, Style, Styled, StyledInner};
-
-#[repr(transparent)]
-#[derive(Clone, Copy)]
-struct StylesHasher(u64);
-
-impl Default for StylesHasher {
-    #[inline(always)]
-    fn default() -> Self {
-        Self(0)
-    }
+/// A trait for styles.
+pub trait Style: Sized {
+    /// The default style builder.
+    fn builder() -> StyleBuilder<Self>;
 }
 
-impl Hasher for StylesHasher {
-    fn write(&mut self, _bytes: &[u8]) {
-        unreachable!()
-    }
+/// A trait for stylable objects.
+pub trait Stylable {
+    /// The style type.
+    type Style: Style;
 
-    #[inline(always)]
-    fn write_u64(&mut self, i: u64) {
-        self.0 = i;
-    }
+    /// Style the object.
+    ///
+    /// This is done by creating a new style based on the given base style.
+    fn style(&self, base: &Self::Style) -> Self::Style;
 
-    #[inline(always)]
-    fn finish(&self) -> u64 {
-        self.0
+    /// Rebuild the style of the object.
+    fn rebuild_style(&self, cx: &mut RebuildCx, style: &mut Self::Style)
+    where
+        Self::Style: Rebuild,
+    {
+        let new = self.style(style);
+        new.rebuild(cx, style);
+        *style = new;
     }
 }
 
 /// A collection of styles.
 #[derive(Default)]
 pub struct Styles {
-    /// The stack of current classes.
-    stack: Vec<u64>,
-
-    /// The root style set.
-    root: StyleSet,
-
-    /// The set of style converters.
-    converters: HashMap<(TypeId, TypeId), StyleConverter>,
-
-    /// The style cache.
-    cache: Mutex<HashMap<StyleKey, CacheEntry, BuildHasherDefault<SeaHasher>>>,
-
-    /// The current version of the styles.
-    version: AtomicU64,
+    builders: HashMap<TypeId, StyleBuilder<Box<dyn Any>>, StylesHasher>,
+    cache: HashMap<TypeId, Box<dyn Any>, StylesHasher>,
 }
 
-impl Debug for Styles {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Styles").finish()
-    }
-}
-
-#[derive(Clone, Default)]
-struct StyleSet {
-    classes: HashMap<u64, StyleSet, BuildStyleHasher>,
-    styles: HashMap<u64, StyleEntry, BuildStyleHasher>,
-}
-
-impl StyleSet {
-    fn extend(&mut self, other: StyleSet) {
-        for (key, value) in other.classes {
-            self.classes.entry(key).or_default().extend(value);
-        }
-
-        self.styles.extend(other.styles);
-    }
-}
-
-type BuildStyleHasher = BuildHasherDefault<StylesHasher>;
-type StyleEntry = StyledInner<Arc<dyn Any + Send + Sync>>;
-type StyleConverter = Arc<dyn Fn(Arc<dyn Any + Send + Sync>) -> Arc<dyn Any + Send + Sync>>;
-type StyleKey = (u64, TypeId);
-type CacheEntry = Option<Arc<dyn Any + Send + Sync>>;
+type StylesHasher = BuildHasherDefault<SeaHasher>;
 
 impl Styles {
-    fn next_version() -> u64 {
-        static NEXT: AtomicU64 = AtomicU64::new(0);
-        NEXT.fetch_add(1, Ordering::Relaxed)
+    /// Create a new collection of styles.
+    pub fn new() -> Styles {
+        Styles::default()
     }
 
-    /// Create a new set of styles.
-    pub fn new() -> Self {
-        Self {
-            stack: Vec::new(),
-            root: StyleSet::default(),
-            converters: HashMap::default(),
-            cache: Mutex::new(HashMap::default()),
-            version: AtomicU64::new(Self::next_version()),
-        }
+    /// Check if a style is contained in the collection.
+    pub fn contains<T: Any>(&self) -> bool {
+        let type_id = TypeId::of::<T>();
+        self.cache.contains_key(&type_id) || self.builders.contains_key(&type_id)
     }
 
-    /// Get the current version of the styles.
-    pub fn version(&self) -> u64 {
-        self.version.load(Ordering::Relaxed)
-    }
-
-    /// Add a conversion function.
-    pub fn add_conversion<T, U>(&mut self, f: impl Fn(T) -> U + 'static)
+    /// Insert a style builder into the collection.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use ori_core::{style::{Styles, Theme}, views::ButtonStyle};
+    /// Styles::new().insert(|theme: &Theme| ButtonStyle {
+    ///     color: theme.accent,
+    ///     ..todo!()
+    /// });
+    /// ```
+    pub fn insert<T, B>(&mut self, builder: B) -> bool
     where
-        T: Clone + Send + Sync + 'static,
-        U: Clone + Send + Sync + 'static,
+        B: IntoStyleBuilder<T> + 'static,
+        B::Output: Any,
     {
-        let f = Arc::new(move |value: Arc<dyn Any + Send + Sync>| {
-            let value = value.downcast::<T>().unwrap();
-            let value = f(value.as_ref().clone());
-            Arc::new(value) as Arc<dyn Any + Send + Sync>
-        });
+        let type_id = TypeId::of::<B::Output>();
 
-        let signature = (TypeId::of::<T>(), TypeId::of::<U>());
-        self.converters.insert(signature, f);
-    }
-
-    /// Push a class onto the stack.
-    pub fn push_class(&mut self, class: &str) {
-        let class = hash_style_key(class.as_bytes());
-        self.push_class_hash(class);
-    }
-
-    /// Push a class hash onto the stack.
-    pub fn push_class_hash(&mut self, class: u64) {
-        self.stack.push(class);
-    }
-
-    /// Pop a class from the stack.
-    pub fn pop_class(&mut self) -> bool {
-        self.stack.pop().is_some()
-    }
-
-    /// Run a closure within a context of a class.
-    pub fn with_class<T>(&mut self, class: &str, f: impl FnOnce(&mut Self) -> T) -> T {
-        let class = hash_style_key(class.as_bytes());
-
-        self.stack.push(class);
-        let result = f(self);
-        self.stack.pop();
-
-        result
-    }
-
-    /// Insert a style into the styles.
-    pub fn insert<T>(&mut self, style: Style<T>, value: impl Into<Styled<T>>)
-    where
-        T: Clone + Send + Sync + 'static,
-    {
-        let entry = match value.into().inner {
-            StyledInner::Value(value) => {
-                let value: Arc<dyn Any + Send + Sync> = Arc::new(value);
-                Styled::value(value)
-            }
-            StyledInner::Style(style) => Styled::style(Style {
-                hash: style.hash,
-                key: style.key,
-                marker: PhantomData,
-            }),
-            StyledInner::Computed(computed) => Styled::computed(move |styles| {
-                Arc::new(computed(styles)) as Arc<dyn Any + Send + Sync>
-            }),
+        let dyn_builder = StyleBuilder {
+            builder: Box::new(move |styles| Box::new(builder.build(styles)) as Box<dyn Any>),
+            dependencies: B::dependencies(),
         };
 
-        self.insert_any(&style.key, entry);
-    }
-
-    pub(crate) fn insert_any(&mut self, key: &str, entry: Styled<Arc<dyn Any + Send + Sync>>) {
-        let mut classes = key.split('.').map(str::as_bytes).map(hash_style_key);
-
-        let last = classes.next_back().unwrap();
-
-        let mut current = &mut self.root;
-
-        for class in classes {
-            current = current.classes.entry(class).or_default();
+        if self.builders.contains_key(&type_id) {
+            self.cache.clear();
         }
 
-        current.styles.insert(last, entry.inner);
-        self.invalidate();
+        self.builders.insert(type_id, dyn_builder).is_some()
     }
 
-    fn invalidate(&mut self) {
-        let _ = self.cache.get_mut().map(HashMap::clear);
-        self.version.store(Self::next_version(), Ordering::Relaxed);
-    }
-
-    /// Insert a style into the styles.
-    pub fn with<T>(mut self, style: Style<T>, value: impl Into<Styled<T>>) -> Self
+    /// Insert a style builder into the collection.
+    ///
+    /// See [`Styles::insert`] for more information.
+    pub fn with<T, B>(mut self, builder: B) -> Self
     where
-        T: Clone + Send + Sync + 'static,
+        B: IntoStyleBuilder<T> + 'static,
+        B::Output: Any,
     {
-        self.insert(style, value);
+        self.insert(builder);
         self
     }
 
-    /// Extend the styles with another set of styles.
-    pub fn extend(&mut self, other: impl Into<Styles>) {
-        let other = other.into();
+    /// Extend the collection with another collection of styles.
+    pub fn extend(&mut self, other: Styles) {
+        for (type_id, builder) in other.builders {
+            self.builders.insert(type_id, builder);
+        }
 
-        self.root.extend(other.root);
-        self.converters.extend(other.converters);
-        self.invalidate();
+        self.cache.clear();
     }
 
-    /// Get a value from the styles.
-    #[inline(always)]
-    pub fn get<T>(&self, style: &Style<T>) -> Option<T>
-    where
-        T: Clone + Send + Sync + 'static,
-    {
-        let stack_hash = hash_style_key_u64(self.stack.as_slice());
-        let key = (style.hash ^ stack_hash, TypeId::of::<T>());
-
-        if let Some(entry) = self.cache.lock().unwrap().get(&key) {
-            let entry = entry.as_ref()?;
-            let style = entry.downcast_ref::<T>()?;
-
-            return Some(style.clone());
+    /// Get a style from the collection.
+    pub fn style<T: Style + Any>(&mut self) -> &T {
+        if self.contains::<T>() {
+            return self.get::<T>().unwrap();
         }
 
-        tracing::trace!(
-            key = %key.0,
-            stack = ?self.stack,
-            type = ?std::any::type_name::<T>(),
-            "cache miss for {:?}",
-            style.key
-        );
-
-        let classes = style
-            .key
-            .split('.')
-            .map(str::as_bytes)
-            .map(hash_style_key)
-            .map(|class| (class, true));
-
-        let classes = self
-            .stack
-            .iter()
-            .map(|&class| (class, false))
-            .chain(classes)
-            .collect::<Vec<_>>();
-
-        let Some(style) = self.get_inner::<T>(&classes) else {
-            self.cache.lock().unwrap().insert(key, None);
-            return None;
-        };
-
-        let cache_entry: CacheEntry = Some(Arc::new(style.clone()));
-        self.cache.lock().unwrap().insert(key, cache_entry);
-
-        Some(style)
+        let builder = T::builder().into_dyn();
+        self.builders.insert(TypeId::of::<T>(), builder);
+        self.get::<T>().unwrap()
     }
 
-    fn get_inner<T>(&self, classes: &[(u64, bool)]) -> Option<T>
-    where
-        T: Clone + Send + Sync + 'static,
-    {
-        let entry = Self::get_uncached(&self.root, classes.iter().copied())?;
+    /// Get a style from the collection.
+    pub fn get<T: Any>(&mut self) -> Option<&T> {
+        let type_id = TypeId::of::<T>();
 
-        match entry {
-            StyledInner::Value(value) => self.convert(value),
-            StyledInner::Style(style) => self.get(style.cast()),
-            StyledInner::Computed(computed) => self.convert(&computed(self)),
+        if self.cache.contains_key(&type_id) {
+            return self.cache.get(&type_id)?.downcast_ref();
         }
+
+        if let Some(builder) = self.builders.remove(&type_id) {
+            let value = (builder.builder)(self);
+            self.cache.insert(type_id, value);
+            self.builders.insert(type_id, builder);
+            return self.cache.get(&type_id)?.downcast_ref();
+        }
+
+        None
     }
 
-    fn convert<T>(&self, value: &Arc<dyn Any + Send + Sync>) -> Option<T>
-    where
-        T: Clone + Send + Sync + 'static,
-    {
-        if let Some(value) = value.downcast_ref::<T>() {
-            return Some(value.clone());
-        }
-
-        let signature = (value.as_ref().type_id(), TypeId::of::<T>());
-
-        match self.converters.get(&signature) {
-            Some(converter) => {
-                let value = converter(value.clone());
-                let value = value.downcast_ref::<T>().unwrap();
-                Some(value.clone())
-            }
-            None => {
-                tracing::error!(
-                    "style could not be converted to '{}'",
-                    std::any::type_name::<T>()
-                );
-
-                None
-            }
-        }
-    }
-
-    /// Get a value from the styles.
-    #[inline(always)]
-    pub fn get_or<T>(&self, default: T, style: &Style<T>) -> T
-    where
-        T: Clone + Send + Sync + 'static,
-    {
-        self.get(style).unwrap_or(default)
-    }
-
-    /// Get a value from the styles.
-    #[inline(always)]
-    pub fn get_or_else<T, F>(&self, default: F, style: &Style<T>) -> T
-    where
-        T: Clone + Send + Sync + 'static,
-        F: FnOnce() -> T,
-    {
-        self.get(style).unwrap_or_else(default)
-    }
-
-    fn get_uncached(
-        style_set: &StyleSet,
-        mut classes: impl ExactSizeIterator<Item = (u64, bool)> + Clone,
-    ) -> Option<&StyleEntry> {
-        let (class, required) = classes.next()?;
-
-        if classes.len() == 0 {
-            return style_set.styles.get(&class);
-        }
-
-        if let Some(next_set) = style_set.classes.get(&class) {
-            if let Some(entry) = Self::get_uncached(next_set, classes.clone()) {
-                return Some(entry);
-            }
-        }
-
-        if required {
-            return None;
-        }
-
-        Self::get_uncached(style_set, classes)
+    fn get_cached<T: Any>(&self) -> Option<&T> {
+        let type_id = TypeId::of::<T>();
+        self.cache.get(&type_id)?.downcast_ref()
     }
 }
 
-impl Clone for Styles {
-    fn clone(&self) -> Self {
-        let cache = match self.cache.lock() {
-            Ok(cache) => cache.clone(),
-            Err(_) => HashMap::default(),
-        };
+/// A style builder.
+pub struct StyleBuilder<T> {
+    builder: Box<dyn Fn(&mut Styles) -> T>,
+    dependencies: Vec<TypeId>,
+}
 
-        let version = self.version.load(Ordering::Relaxed);
-
+impl<T: Any> StyleBuilder<T> {
+    /// Create a new style builder.
+    pub fn new<U, B>(builder: B) -> Self
+    where
+        B: IntoStyleBuilder<U, Output = T> + 'static,
+    {
         Self {
-            stack: self.stack.clone(),
-            root: self.root.clone(),
-            converters: self.converters.clone(),
-            cache: Mutex::new(cache),
-            version: AtomicU64::new(version),
+            builder: Box::new(move |styles| builder.build(styles)),
+            dependencies: B::dependencies(),
+        }
+    }
+
+    fn into_dyn(self) -> StyleBuilder<Box<dyn Any>> {
+        StyleBuilder {
+            builder: Box::new(move |styles| Box::new((self.builder)(styles))),
+            dependencies: self.dependencies,
         }
     }
 }
 
-impl PartialEq for Styles {
-    fn eq(&self, other: &Self) -> bool {
-        self.version.load(Ordering::Relaxed) == other.version.load(Ordering::Relaxed)
+/// A trait for converting a function into a style builder.
+pub trait IntoStyleBuilder<T> {
+    /// The output type.
+    type Output;
+
+    /// Build the style.
+    fn build(&self, styles: &mut Styles) -> Self::Output;
+
+    /// Get the dependencies of the style builder.
+    fn dependencies() -> Vec<TypeId> {
+        Vec::new()
     }
 }
 
-impl From<&str> for Styles {
-    fn from(s: &str) -> Self {
-        match Styles::from_str(s) {
-            Ok(styles) => styles,
-            Err(err) => {
-                tracing::error!("failed to parse styles: {}", err);
-                Styles::new()
+macro_rules! impl_style_builder {
+    (@) => {};
+    (@ $last:ident $(, $ty:ident)*) => {
+        impl_style_builder!($($ty),*);
+    };
+    ($($ty:ident),*) => {
+        impl_style_builder!(@ $($ty),*);
+
+        impl<$($ty: Style + Any,)* FN, R> IntoStyleBuilder<fn($($ty,)*) -> R> for FN
+        where
+            FN: Fn($(&$ty,)*) -> R,
+        {
+            type Output = R;
+
+            #[allow(non_snake_case, unused_variables)]
+            fn build(&self, styles: &mut Styles) -> Self::Output {
+                $(styles.style::<$ty>();)*
+                $(let $ty = styles.get_cached::<$ty>().unwrap();)*
+                (self)($($ty.clone(),)*)
+            }
+
+            fn dependencies() -> Vec<TypeId> {
+                vec![$(TypeId::of::<$ty>()),*]
             }
         }
-    }
+    };
 }
+
+impl_style_builder!(A, B, C, D, E, F, G, H, I, J, K, L);

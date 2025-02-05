@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Padding, Size, Space, Vector},
     rebuild::Rebuild,
-    style::{Stylable, Styled, Theme},
+    style::{Stylable, Style, StyleBuilder, Theme},
     transition::Transition,
     view::{Pod, PodState, View},
 };
@@ -16,50 +16,82 @@ pub fn button<V>(view: V) -> Button<V> {
     Button::new(view)
 }
 
+/// The style of a button.
+#[derive(Clone, Rebuild)]
+pub struct ButtonStyle {
+    /// The padding.
+    #[rebuild(layout)]
+    pub padding: Padding,
+
+    /// The distance of the fancy effect.
+    #[rebuild(draw)]
+    pub fancy: f32,
+
+    /// The transition of the button.
+    #[rebuild(draw)]
+    pub transition: Transition,
+
+    /// The color of the button.
+    #[rebuild(draw)]
+    pub color: Color,
+
+    /// The border radius.
+    #[rebuild(draw)]
+    pub border_radius: BorderRadius,
+
+    /// The border width.
+    #[rebuild(draw)]
+    pub border_width: BorderWidth,
+
+    /// The border color.
+    #[rebuild(draw)]
+    pub border_color: Color,
+}
+
+impl Style for ButtonStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|theme: &Theme| ButtonStyle {
+            padding: Padding::all(8.0),
+            fancy: 0.0,
+            transition: Transition::ease(0.1),
+            color: theme.surface(2),
+            border_radius: BorderRadius::all(4.0),
+            border_width: BorderWidth::all(0.0),
+            border_color: theme.outline,
+        })
+    }
+}
+
 /// A button.
 ///
 /// Can be styled using the [`ButtonStyle`].
 #[example(name = "button", width = 400, height = 300)]
-#[derive(Stylable, Build, Rebuild)]
+#[derive(Build)]
 pub struct Button<V> {
     /// The content.
     #[build(ignore)]
     pub content: Pod<V>,
 
     /// The padding.
-    #[rebuild(layout)]
-    #[style(default = Padding::all(8.0))]
-    pub padding: Styled<Padding>,
+    pub padding: Option<Padding>,
 
     /// The distance of the fancy effect.
-    #[rebuild(draw)]
-    #[style(default = 0.0)]
-    pub fancy: Styled<f32>,
+    pub fancy: Option<f32>,
 
     /// The transition of the button.
-    #[rebuild(draw)]
-    #[style(default = Transition::ease(0.1))]
-    pub transition: Styled<Transition>,
+    pub transition: Option<Transition>,
 
     /// The color of the button.
-    #[rebuild(draw)]
-    #[style(default -> Theme::SURFACE_HIGHER or Color::WHITE)]
-    pub color: Styled<Color>,
+    pub color: Option<Color>,
 
     /// The border radius.
-    #[rebuild(draw)]
-    #[style(default = BorderRadius::all(4.0))]
-    pub border_radius: Styled<BorderRadius>,
+    pub border_radius: Option<BorderRadius>,
 
     /// The border width.
-    #[rebuild(draw)]
-    #[style(default)]
-    pub border_width: Styled<BorderWidth>,
+    pub border_width: Option<BorderWidth>,
 
     /// The border color.
-    #[rebuild(draw)]
-    #[style(default -> Theme::OUTLINE or Color::BLACK)]
-    pub border_color: Styled<Color>,
+    pub border_color: Option<Color>,
 }
 
 impl<V> Button<V> {
@@ -67,35 +99,50 @@ impl<V> Button<V> {
     pub fn new(content: V) -> Self {
         Self {
             content: Pod::new(content),
-            padding: Styled::style("button.padding"),
-            fancy: Styled::style("button.fancy"),
-            transition: Styled::style("button.transition"),
-            color: Styled::style("button.color"),
-            border_radius: Styled::style("button.border-radius"),
-            border_width: Styled::style("button.border-width"),
-            border_color: Styled::style("button.border-color"),
+            padding: None,
+            fancy: None,
+            transition: None,
+            color: None,
+            border_radius: None,
+            border_width: None,
+            border_color: None,
+        }
+    }
+}
+
+impl<V> Stylable for Button<V> {
+    type Style = ButtonStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        ButtonStyle {
+            padding: self.padding.unwrap_or(style.padding),
+            fancy: self.fancy.unwrap_or(style.fancy),
+            transition: self.transition.unwrap_or(style.transition),
+            color: self.color.unwrap_or(style.color),
+            border_radius: self.border_radius.unwrap_or(style.border_radius),
+            border_width: self.border_width.unwrap_or(style.border_width),
+            border_color: self.border_color.unwrap_or(style.border_color),
         }
     }
 }
 
 #[doc(hidden)]
-pub struct ButtonState<V> {
+pub struct ButtonState {
     pub hovered: f32,
     pub active: f32,
-    pub style: ButtonStyle<V>,
+    pub style: ButtonStyle,
 }
 
 impl<T, V: View<T>> View<T> for Button<V> {
-    type State = (ButtonState<V>, PodState<T, V>);
+    type State = (ButtonState, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.set_class("button");
         cx.set_focusable(true);
 
         let state = ButtonState {
             hovered: 0.0,
             active: 0.0,
-            style: self.style(cx.styles()),
+            style: self.style(cx.style()),
         };
 
         (state, self.content.build(cx, data))
@@ -108,9 +155,7 @@ impl<T, V: View<T>> View<T> for Button<V> {
         data: &mut T,
         old: &Self,
     ) {
-        Rebuild::rebuild(self, cx, old);
-        state.style.rebuild(self, cx);
-
+        self.rebuild_style(cx, &mut state.style);
         self.content.rebuild(content, cx, data, &old.content);
     }
 
@@ -171,12 +216,14 @@ impl<T, V: View<T>> View<T> for Button<V> {
             let face = state.style.color.mix(bright, hovered).mix(dim, active);
 
             if cx.is_focused() {
+                let info = cx.theme().info;
+
                 cx.quad(
                     cx.rect().expand(2.0),
                     Color::TRANSPARENT,
                     state.style.border_radius.expand(2.0),
                     BorderWidth::all(2.0),
-                    cx.styles().get_or(Color::BLUE, &Theme::INFO),
+                    info,
                 );
             }
 

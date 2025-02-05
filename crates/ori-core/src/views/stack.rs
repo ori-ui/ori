@@ -7,7 +7,7 @@ use crate::{
     event::Event,
     layout::{Align, Axis, Justify, Size, Space},
     rebuild::Rebuild,
-    style::{Stylable, Styled, Styles},
+    style::{Stylable, Style, StyleBuilder},
     view::{AnyView, PodSeq, SeqState, View, ViewSeq},
 };
 
@@ -61,9 +61,35 @@ pub fn vstack_any<'a, T>() -> Stack<Vec<Box<dyn AnyView<T> + 'a>>> {
     Stack::any_vertical()
 }
 
+/// A style for a [`Stack`].
+#[derive(Clone, Rebuild)]
+pub struct StackStyle {
+    /// How to justify the content along the main axis.
+    #[rebuild(layout)]
+    pub justify: Justify,
+
+    /// How to align the content along the cross axis, within each line.
+    #[rebuild(layout)]
+    pub align: Align,
+
+    /// The gap between children.
+    #[rebuild(layout)]
+    pub gap: f32,
+}
+
+impl Style for StackStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|| Self {
+            justify: Justify::Start,
+            align: Align::Center,
+            gap: 0.0,
+        })
+    }
+}
+
 /// A view that stacks it's content in a line.
 #[example(name = "stack", width = 400, height = 600)]
-#[derive(Stylable, Build, Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Stack<V> {
     /// The content of the stack.
     #[build(ignore)]
@@ -76,17 +102,17 @@ pub struct Stack<V> {
     /// How to justify the content along the main axis.
     #[rebuild(layout)]
     #[style(default)]
-    pub justify: Styled<Justify>,
+    pub justify: Option<Justify>,
 
     /// How to align the content along the cross axis, within each line.
     #[rebuild(layout)]
     #[style(default = Align::Center)]
-    pub align: Styled<Align>,
+    pub align: Option<Align>,
 
     /// The gap between children.
     #[rebuild(layout)]
     #[style(default)]
-    pub gap: Styled<f32>,
+    pub gap: Option<f32>,
 }
 
 impl<V> Stack<V> {
@@ -95,9 +121,9 @@ impl<V> Stack<V> {
         Self {
             content: PodSeq::new(content),
             axis,
-            justify: Styled::style("stack.justify"),
-            align: Styled::style("stack.align"),
-            gap: Styled::style("stack.gap"),
+            justify: None,
+            align: None,
+            gap: None,
         }
     }
 
@@ -167,21 +193,30 @@ impl<T> Stack<Vec<Box<dyn AnyView<T> + '_>>> {
     }
 }
 
+impl<V> Stylable for Stack<V> {
+    type Style = StackStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        StackStyle {
+            justify: self.justify.unwrap_or(style.justify),
+            align: self.align.unwrap_or(style.align),
+            gap: self.gap.unwrap_or(style.gap),
+        }
+    }
+}
+
 #[doc(hidden)]
-pub struct StackState<V> {
-    style: StackStyle<V>,
+pub struct StackState {
+    style: StackStyle,
     flex_sum: f32,
     majors: Vec<f32>,
     minors: Vec<f32>,
 }
 
-impl<V> StackState<V> {
-    fn new<T>(stack: &Stack<V>, styles: &Styles) -> Self
-    where
-        V: ViewSeq<T>,
-    {
+impl StackState {
+    fn new<T, V: ViewSeq<T>>(stack: &Stack<V>, style: &StackStyle) -> Self {
         Self {
-            style: stack.style(styles),
+            style: stack.style(style),
             flex_sum: 0.0,
             majors: vec![0.0; stack.content.len()],
             minors: vec![0.0; stack.content.len()],
@@ -209,13 +244,11 @@ impl<V> StackState<V> {
 }
 
 impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
-    type State = (StackState<V>, SeqState<T, V>);
+    type State = (StackState, SeqState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.set_class("stack");
-
         (
-            StackState::new(self, cx.styles()),
+            StackState::new(self, cx.style()),
             self.content.build(cx, data),
         )
     }
@@ -228,7 +261,7 @@ impl<T, V: ViewSeq<T>> View<T> for Stack<V> {
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
-        state.style.rebuild(self, cx);
+        self.rebuild_style(cx, &mut state.style);
 
         if self.content.len() != old.content.len() {
             state.resize(self.content.len());
@@ -320,7 +353,7 @@ fn layout<T, V: ViewSeq<T>>(
     stack: &mut Stack<V>,
     cx: &mut LayoutCx,
     content: &mut SeqState<T, V>,
-    state: &mut StackState<V>,
+    state: &mut StackState,
     data: &mut T,
     max_major: f32,
     min_minor: f32,

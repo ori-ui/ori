@@ -34,7 +34,6 @@ where
     type State = (PodState<T, V>, PodState<T, P>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
-        cx.set_class("popup");
         cx.set_focusable(true);
 
         let content = self.content.build(cx, data);

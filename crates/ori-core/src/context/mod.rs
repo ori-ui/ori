@@ -8,6 +8,8 @@ mod event;
 mod layout;
 mod rebuild;
 
+use std::any::Any;
+
 pub use base::*;
 pub use build::*;
 pub use contexts::*;
@@ -18,7 +20,7 @@ pub use rebuild::*;
 
 use crate::{
     event::{Ime, RequestFocus, RequestFocusNext, RequestFocusPrev},
-    style::Styles,
+    style::{Style, Styles, Theme},
     view::{ViewId, ViewState},
     window::{Cursor, Window},
 };
@@ -47,8 +49,18 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     }
 
     /// Get the styles.
-    pub fn styles(&self) -> &Styles {
-        self.context()
+    pub fn styles(&mut self) -> &mut Styles {
+        self.context_mut()
+    }
+
+    /// Get the style `T`.
+    pub fn style<T: Style + Any>(&mut self) -> &T {
+        self.styles().style::<T>()
+    }
+
+    /// Get the [`Theme`] of the context.
+    pub fn theme(&mut self) -> &Theme {
+        self.style()
     }
 
     /// Get the id of the view.
@@ -130,11 +142,6 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_>, LayoutCx<'_,
     /// Get the property `T` of the view or insert it with a default value.
     pub fn property_or_default<T: 'static + Default>(&mut self) -> &mut T {
         self.view_state.property_or_default()
-    }
-
-    /// Get the class of the view.
-    pub fn class(&self) -> Option<&str> {
-        self.view_state.class()
     }
 }}
 
@@ -223,12 +230,5 @@ impl_context! {BuildCx<'_, '_>, RebuildCx<'_, '_>, EventCx<'_, '_> {
         let updated = self.is_focusable() != focusable;
         self.view_state.set_focusable(focusable);
         updated
-    }
-
-    /// Set the class of the view.
-    ///
-    /// This should be called before trying to get any style properties.
-    pub fn set_class(&mut self, class: impl Into<String>) {
-        self.view_state.set_class(class.into());
     }
 }}

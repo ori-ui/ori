@@ -6,7 +6,7 @@ use crate::{
     event::Event,
     layout::{Point, Size, Space},
     rebuild::Rebuild,
-    style::{Stylable, Styled, Theme},
+    style::{Stylable, Style, StyleBuilder, Theme},
     transition::Transition,
     view::View,
 };
@@ -16,55 +16,90 @@ pub fn checkbox(checked: bool) -> Checkbox {
     Checkbox::new(checked)
 }
 
+/// The style of a checkbox.
+#[derive(Clone, Rebuild)]
+pub struct CheckboxStyle {
+    /// The transition of the checkbox.
+    #[rebuild(draw)]
+    pub transition: Transition,
+
+    /// The size of the checkbox.
+    #[rebuild(layout)]
+    pub size: f32,
+
+    /// The color of the checkbox.
+    #[rebuild(draw)]
+    pub color: Color,
+
+    /// The stroke width of the checkbox.
+    #[rebuild(draw)]
+    pub stroke: f32,
+
+    /// The background color.
+    #[rebuild(draw)]
+    pub background: Color,
+
+    /// The border radius.
+    #[rebuild(draw)]
+    pub border_radius: BorderRadius,
+
+    /// The border width.
+    #[rebuild(draw)]
+    pub border_width: BorderWidth,
+
+    /// The border color.
+    #[rebuild(draw)]
+    pub border_color: Color,
+}
+
+impl Style for CheckboxStyle {
+    fn builder() -> StyleBuilder<Self> {
+        StyleBuilder::new(|theme: &Theme| CheckboxStyle {
+            transition: Transition::ease(0.1),
+            size: 24.0,
+            color: theme.primary,
+            stroke: 2.0,
+            background: Color::TRANSPARENT,
+            border_radius: BorderRadius::all(6.0),
+            border_width: BorderWidth::all(2.0),
+            border_color: theme.outline,
+        })
+    }
+}
+
 /// A checkbox.
 ///
 /// Can be styled using the [`CheckboxStyle`].
 #[example(name = "checkbox", width = 400, height = 300)]
-#[derive(Stylable, Build, Rebuild)]
+#[derive(Build, Rebuild)]
 pub struct Checkbox {
     /// Whether the checkbox is checked.
     #[rebuild(draw)]
     pub checked: bool,
 
     /// The transition of the checkbox.
-    #[rebuild(draw)]
-    #[style(default = Transition::ease(0.1))]
-    pub transition: Styled<Transition>,
+    pub transition: Option<Transition>,
 
     /// The size of the checkbox.
-    #[rebuild(layout)]
-    #[style(default = 24.0)]
-    pub size: Styled<f32>,
+    pub size: Option<f32>,
 
     /// The color of the checkbox.
-    #[rebuild(draw)]
-    #[style(default -> Theme::PRIMARY or Color::BLUE)]
-    pub color: Styled<Color>,
+    pub color: Option<Color>,
 
     /// The stroke width of the checkbox.
-    #[rebuild(draw)]
-    #[style(default = 2.0)]
-    pub stroke: Styled<f32>,
+    pub stroke: Option<f32>,
 
     /// The background color.
-    #[rebuild(draw)]
-    #[style(default = Color::TRANSPARENT)]
-    pub background: Styled<Color>,
+    pub background: Option<Color>,
 
     /// The border radius.
-    #[rebuild(draw)]
-    #[style(default = BorderRadius::all(6.0))]
-    pub border_radius: Styled<BorderRadius>,
+    pub border_radius: Option<BorderRadius>,
 
     /// The border width.
-    #[rebuild(draw)]
-    #[style(default = BorderWidth::all(2.0))]
-    pub border_width: Styled<BorderWidth>,
+    pub border_width: Option<BorderWidth>,
 
     /// The border color.
-    #[rebuild(draw)]
-    #[style(default -> Theme::OUTLINE or Color::BLACK)]
-    pub border_color: Styled<Color>,
+    pub border_color: Option<Color>,
 }
 
 impl Checkbox {
@@ -72,14 +107,31 @@ impl Checkbox {
     pub fn new(checked: bool) -> Self {
         Self {
             checked,
-            transition: Styled::style("checkbox.transition"),
-            size: Styled::style("checkbox.size"),
-            color: Styled::style("checkbox.color"),
-            stroke: Styled::style("checkbox.stroke"),
-            background: Styled::style("checkbox.background"),
-            border_radius: Styled::style("checkbox.border-radius"),
-            border_width: Styled::style("checkbox.border-width"),
-            border_color: Styled::style("checkbox.border-color"),
+            transition: None,
+            size: None,
+            color: None,
+            stroke: None,
+            background: None,
+            border_radius: None,
+            border_width: None,
+            border_color: None,
+        }
+    }
+}
+
+impl Stylable for Checkbox {
+    type Style = CheckboxStyle;
+
+    fn style(&self, style: &Self::Style) -> Self::Style {
+        CheckboxStyle {
+            transition: self.transition.unwrap_or(style.transition),
+            size: self.size.unwrap_or(style.size),
+            color: self.color.unwrap_or(style.color),
+            stroke: self.stroke.unwrap_or(style.stroke),
+            background: self.background.unwrap_or(style.background),
+            border_radius: self.border_radius.unwrap_or(style.border_radius),
+            border_width: self.border_width.unwrap_or(style.border_width),
+            border_color: self.border_color.unwrap_or(style.border_color),
         }
     }
 }
@@ -88,10 +140,9 @@ impl<T> View<T> for Checkbox {
     type State = (CheckboxStyle, f32);
 
     fn build(&mut self, cx: &mut BuildCx, _data: &mut T) -> Self::State {
-        cx.set_class("checkbox");
         cx.set_focusable(true);
 
-        (self.style(cx.styles()), 0.0)
+        (self.style(cx.style()), 0.0)
     }
 
     fn rebuild(
@@ -102,7 +153,7 @@ impl<T> View<T> for Checkbox {
         old: &Self,
     ) {
         Rebuild::rebuild(self, cx, old);
-        style.rebuild(self, cx);
+        self.rebuild_style(cx, style);
     }
 
     fn event(
@@ -147,7 +198,7 @@ impl<T> View<T> for Checkbox {
             let bright = style.border_color.lighten(0.2);
 
             let border_color = match cx.is_focused() {
-                true => cx.styles().get_or(Color::BLUE, &Theme::INFO),
+                true => cx.theme().info,
                 false => style.border_color.mix(bright, style.transition.get(*t)),
             };
 

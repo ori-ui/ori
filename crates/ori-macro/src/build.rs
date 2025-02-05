@@ -2,6 +2,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse::ParseStream, punctuated::Punctuated, DeriveInput};
 
+use crate::get_option_type;
+
 syn::custom_keyword!(ignore);
 
 enum FieldAttribute {
@@ -108,7 +110,6 @@ fn build_field(name: TokenStream, field: &syn::Field) -> manyhow::Result<TokenSt
         return Ok(quote!());
     }
 
-    let ty = &field.ty;
     let doc = format!("Set `self.{}`.", name);
 
     let mut field_doc = Vec::new();
@@ -119,13 +120,28 @@ fn build_field(name: TokenStream, field: &syn::Field) -> manyhow::Result<TokenSt
         }
     }
 
-    Ok(quote! {
-        #[doc = #doc]
-        #[doc = ""]
-        #(#field_doc)*
-        pub fn #name(mut self, #name: impl Into<#ty>) -> Self {
-            self.#name = ::std::convert::Into::into(#name);
-            self
+    match get_option_type(&field.ty) {
+        Some(ty) => Ok(quote! {
+            #[doc = #doc]
+            #[doc = ""]
+            #(#field_doc)*
+            pub fn #name(mut self, #name: impl Into<#ty>) -> Self {
+                self.#name = ::std::option::Option::Some(::std::convert::Into::into(#name));
+                self
+            }
+        }),
+        None => {
+            let ty = &field.ty;
+
+            Ok(quote! {
+                #[doc = #doc]
+                #[doc = ""]
+                #(#field_doc)*
+                pub fn #name(mut self, #name: impl Into<#ty>) -> Self {
+                    self.#name = ::std::convert::Into::into(#name);
+                    self
+                }
+            })
         }
-    })
+    }
 }

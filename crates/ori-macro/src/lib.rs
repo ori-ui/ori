@@ -7,7 +7,6 @@ mod entry;
 mod example;
 mod font;
 mod rebuild;
-mod stylable;
 
 fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
     match krate {
@@ -45,6 +44,69 @@ fn find_shell() -> syn::Path {
     }
 }
 
+/// Get the inner type of an option.
+///
+/// Works for:
+///  - `Option<T>`
+///  - `option::Option<T>`
+///  - `::std::option::Option<T>`
+///  - `::core::option::Option<T>`
+///  - `std::option::Option<T>`
+///  - `core::option::Option<T>`
+fn get_option_type(ty: &syn::Type) -> Option<&syn::Type> {
+    const ALLOWED: &[&str] = &[
+        "Option",
+        "option::Option",
+        "std::option::Option",
+        "core::option::Option",
+    ];
+
+    let path = match ty {
+        syn::Type::Path(path) => path,
+        _ => return None,
+    };
+
+    let segments = &path.path.segments;
+
+    let mut path_allowed = false;
+
+    'outer: for allowed in ALLOWED {
+        let allowed = allowed.split("::").collect::<Vec<_>>();
+
+        if segments.len() != allowed.len() {
+            continue;
+        }
+
+        for (segment, allowed) in segments.iter().zip(&allowed) {
+            if segment.ident != allowed {
+                continue 'outer;
+            }
+        }
+
+        path_allowed = true;
+    }
+
+    if !path_allowed {
+        return None;
+    }
+
+    let args = &segments.last()?.arguments;
+
+    if let syn::PathArguments::AngleBracketed(args) = args {
+        let args = &args.args;
+
+        if args.len() != 1 {
+            return None;
+        }
+
+        if let syn::GenericArgument::Type(ty) = args.first()? {
+            return Some(ty);
+        }
+    }
+
+    None
+}
+
 #[doc(hidden)]
 #[proc_macro]
 pub fn lowercase_ident(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -75,13 +137,6 @@ pub fn derive_rebuild(input: proc_macro::TokenStream) -> manyhow::Result<proc_ma
 #[proc_macro_derive(Build, attributes(build))]
 pub fn derive_build(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
     build::derive_build(input)
-}
-
-/// Derived the styled pattern.
-#[manyhow::manyhow]
-#[proc_macro_derive(Stylable, attributes(style, rebuild))]
-pub fn derive_stylable(input: proc_macro::TokenStream) -> manyhow::Result<proc_macro::TokenStream> {
-    stylable::derive_stylable(input)
 }
 
 /// Only include the annotated item on desktop platforms.

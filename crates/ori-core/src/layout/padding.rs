@@ -1,5 +1,3 @@
-use crate::style::Styled;
-
 use super::{Size, Vector};
 
 /// A padding of a rectangle.
@@ -70,35 +68,5 @@ impl From<[f32; 2]> for Padding {
 impl From<f32> for Padding {
     fn from(value: f32) -> Self {
         Self::all(value)
-    }
-}
-
-impl From<(f32, f32, f32, f32)> for Styled<Padding> {
-    fn from(value: (f32, f32, f32, f32)) -> Self {
-        Self::value(Padding::from(value))
-    }
-}
-
-impl From<[f32; 4]> for Styled<Padding> {
-    fn from(value: [f32; 4]) -> Self {
-        Self::value(Padding::from(value))
-    }
-}
-
-impl From<(f32, f32)> for Styled<Padding> {
-    fn from(value: (f32, f32)) -> Self {
-        Self::value(Padding::from(value))
-    }
-}
-
-impl From<[f32; 2]> for Styled<Padding> {
-    fn from(value: [f32; 2]) -> Self {
-        Self::value(Padding::from(value))
-    }
-}
-
-impl From<f32> for Styled<Padding> {
-    fn from(value: f32) -> Self {
-        Self::value(Padding::from(value))
     }
 }

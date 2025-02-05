@@ -67,7 +67,7 @@ pub mod prelude {
         },
         transition::{ease, linear, Easing, Transition},
         view::{
-            any, pod, AnyView, BoxedView, Pod, PodSeq, SeqState, State, View, ViewSeq, ViewState,
+            any, pod, AnyView, BoxedView, Pod, PodSeq, SeqState, PodState, View, ViewSeq, ViewState,
         },
         views::*,
         window::{Cursor, Pointer, Window, WindowId, WindowSizing},

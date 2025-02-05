@@ -5,7 +5,7 @@ use crate::{
     event::Event,
     layout::{Alignment, Size, Space},
     rebuild::Rebuild,
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Aligned`] view.
@@ -80,7 +80,7 @@ impl<V> Aligned<V> {
 }
 
 impl<T, V: View<T>> View<T> for Aligned<V> {
-    type State = State<T, V>;
+    type State = PodState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         self.content.build(cx, data)

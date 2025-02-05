@@ -82,7 +82,7 @@ impl Mul<Vector> for Affine {
     type Output = Vector;
 
     fn mul(self, rhs: Vector) -> Self::Output {
-        self.matrix * rhs
+        self.matrix * rhs + self.translation
     }
 }
 

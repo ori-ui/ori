@@ -10,7 +10,7 @@ use crate::{
     rebuild::Rebuild,
     style::{Stylable, Styled, Theme},
     transition::Transition,
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Collapsing`].
@@ -108,8 +108,8 @@ impl<T, H, V> Collapsing<T, H, V> {
 #[doc(hidden)]
 pub struct CollapsingState<T, H: View<T>, V: View<T>> {
     style: CollapsingStyle<T, H, V>,
-    header: State<T, H>,
-    content: State<T, V>,
+    header: PodState<T, H>,
+    content: PodState<T, V>,
     open: bool,
     t: f32,
 }

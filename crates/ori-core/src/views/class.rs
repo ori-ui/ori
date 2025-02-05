@@ -2,7 +2,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Wrap a view in a class.
@@ -30,7 +30,7 @@ impl<V> Class<V> {
 }
 
 impl<T, V: View<T>> View<T> for Class<V> {
-    type State = State<T, V>;
+    type State = PodState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class(&self.name);

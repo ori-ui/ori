@@ -12,7 +12,7 @@ use crate::{
         FontAttributes, FontFamily, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign,
         TextWrap,
     },
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Tooltip`] view.
@@ -134,7 +134,7 @@ pub struct TooltipState<V> {
 }
 
 impl<T, V: View<T>> View<T> for Tooltip<V> {
-    type State = (TooltipState<V>, State<T, V>);
+    type State = (TooltipState<V>, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("tooltip");

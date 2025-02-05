@@ -42,6 +42,11 @@ impl Space {
         Self { min, max }
     }
 
+    /// Create a new space from a maximum size.
+    pub const fn max(max: Size) -> Self {
+        Self::new(Size::ZERO, max)
+    }
+
     /// Create a new space with the same minimum and maximum size.
     pub fn from_size(size: Size) -> Self {
         Self::new(size, size)

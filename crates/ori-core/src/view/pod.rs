@@ -11,14 +11,14 @@ use crate::{
 use super::{View, ViewState};
 
 /// The state of a [`Pod`].
-pub struct State<T, V: View<T> + ?Sized> {
+pub struct PodState<T, V: View<T> + ?Sized> {
     content: V::State,
     view_state: ViewState,
     prev_canvas: Canvas,
     prev_visible: Rect,
 }
 
-impl<T, V: View<T> + ?Sized> Deref for State<T, V> {
+impl<T, V: View<T> + ?Sized> Deref for PodState<T, V> {
     type Target = ViewState;
 
     fn deref(&self) -> &Self::Target {
@@ -26,7 +26,7 @@ impl<T, V: View<T> + ?Sized> Deref for State<T, V> {
     }
 }
 
-impl<T, V: View<T> + ?Sized> DerefMut for State<T, V> {
+impl<T, V: View<T> + ?Sized> DerefMut for PodState<T, V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.view_state
     }
@@ -82,7 +82,7 @@ impl<V> Pod<V> {
     pub fn event_maybe<T>(
         &mut self,
         handled: bool,
-        state: &mut State<T, V>,
+        state: &mut PodState<T, V>,
         cx: &mut EventCx,
         data: &mut T,
         event: &Event,
@@ -312,12 +312,12 @@ impl<V> DerefMut for Pod<V> {
 }
 
 impl<T, V: View<T>> View<T> for Pod<V> {
-    type State = State<T, V>;
+    type State = PodState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let (content, view_state) = Self::build_with(cx, |cx| self.view.build(cx, data));
 
-        State {
+        PodState {
             content,
             view_state,
             prev_canvas: Canvas::new(),

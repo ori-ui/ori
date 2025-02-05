@@ -8,7 +8,7 @@ use crate::{
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
     style::{Stylable, Styled},
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Pad`] view with padding from the `padding` style tag.
@@ -79,7 +79,7 @@ impl<V> DerefMut for Pad<V> {
 }
 
 impl<T, V: View<T>> View<T> for Pad<V> {
-    type State = (PadStyle<V>, State<T, V>);
+    type State = (PadStyle<V>, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let style = self.style(cx.styles());

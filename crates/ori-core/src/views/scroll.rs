@@ -8,7 +8,7 @@ use crate::{
     rebuild::Rebuild,
     style::{Stylable, Styled, Theme},
     transition::Transition,
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new horizontal [`Scroll`].
@@ -132,7 +132,7 @@ pub struct ScrollState<V> {
 }
 
 impl<T, V: View<T>> View<T> for Scroll<V> {
-    type State = (ScrollState<V>, State<T, V>);
+    type State = (ScrollState<V>, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("scroll");

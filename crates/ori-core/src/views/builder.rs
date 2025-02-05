@@ -2,7 +2,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Build a view from a closure.
@@ -35,7 +35,7 @@ where
     V: View<T>,
     F: FnOnce(&mut BuildCx, &mut T) -> V,
 {
-    type State = (Pod<V>, State<T, V>);
+    type State = (Pod<V>, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let builder = self.builder.take().unwrap();

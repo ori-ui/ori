@@ -4,7 +4,7 @@ use crate::{
     context::{BaseCx, BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Suspense`] view.
@@ -52,9 +52,9 @@ where
     F::Output: View<T>,
 {
     id: SuspenseId,
-    fallback_state: Option<State<T, V>>,
+    fallback_state: Option<PodState<T, V>>,
     future: Option<Pod<F::Output>>,
-    future_state: Option<State<T, F::Output>>,
+    future_state: Option<PodState<T, F::Output>>,
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]

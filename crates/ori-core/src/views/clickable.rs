@@ -7,7 +7,7 @@ use crate::{
     event::{Event, Key, PointerButton},
     layout::{Size, Space},
     rebuild::Rebuild,
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Clickable`], that calls `on_press` when pressed.
@@ -107,7 +107,7 @@ where
     V: View<T>,
     F: FnMut(&mut EventCx, &mut T) + 'static,
 {
-    type State = State<T, V>;
+    type State = PodState<T, V>;
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         self.content.build(cx, data)

@@ -4,7 +4,7 @@ use crate::{
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::Event,
     layout::{Size, Space},
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 use super::focus;
@@ -182,7 +182,7 @@ impl<S, T, V> WithState<S, T, V> {
 }
 
 impl<S, T, V: View<(S, T)>> View<T> for WithState<S, T, V> {
-    type State = (Pod<V>, S, State<(S, T), V>);
+    type State = (Pod<V>, S, PodState<(S, T), V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         let build = self.build.take().expect("Build should only be called once");

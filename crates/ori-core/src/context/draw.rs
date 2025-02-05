@@ -7,7 +7,7 @@ use crate::{
     canvas::{BorderRadius, BorderWidth, Canvas, Curve, FillRule, Mask, Paint, Stroke},
     layout::{Affine, Point, Rect, Size, Vector},
     text::{FontAttributes, Paragraph, TextAlign, TextWrap},
-    view::ViewState,
+    view::{ViewId, ViewState},
     window::Window,
 };
 
@@ -204,19 +204,40 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         })
     }
 
-    /// Draw a hoverable layer.
-    pub fn hoverable<T>(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
-        self.canvas.hoverable(self.id(), |canvas| {
+    /// Draw a layer, with a transform, mask, and view.
+    pub fn layer<T>(
+        &mut self,
+        transform: Affine,
+        mask: Option<Mask>,
+        view: Option<ViewId>,
+        f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
+    ) -> T {
+        let visible = match self.visible.is_infinite() {
+            false => self.visible.transform(transform.inverse()),
+            true => self.visible,
+        };
+
+        let visible = match mask {
+            Some(ref mask) => visible.intersection(mask.curve.bounds()),
+            None => visible,
+        };
+
+        self.canvas.layer(transform, mask, view, |canvas| {
             let mut cx = DrawCx {
                 base: self.base,
                 view_state: self.view_state,
-                transform: self.transform,
+                transform: self.transform * transform,
                 canvas,
-                visible: self.visible,
+                visible,
             };
 
             f(&mut cx)
         })
+    }
+
+    /// Draw a hoverable layer.
+    pub fn hoverable<T>(&mut self, f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T) -> T {
+        self.layer(Affine::IDENTITY, None, Some(self.id()), f)
     }
 
     /// Draw a layer with a transform.
@@ -268,19 +289,6 @@ impl<'a, 'b> DrawCx<'a, 'b> {
         mask: impl Into<Mask>,
         f: impl FnOnce(&mut DrawCx<'_, 'b>) -> T,
     ) -> T {
-        let mask = mask.into();
-        let visible = self.visible.intersection(mask.curve.bounds());
-
-        (self.canvas).layer(Affine::IDENTITY, Some(mask), None, |canvas| {
-            let mut cx = DrawCx {
-                base: self.base,
-                view_state: self.view_state,
-                transform: self.transform,
-                canvas,
-                visible,
-            };
-
-            f(&mut cx)
-        })
+        self.layer(Affine::IDENTITY, Some(mask.into()), None, f)
     }
 }

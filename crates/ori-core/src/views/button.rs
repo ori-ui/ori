@@ -8,7 +8,7 @@ use crate::{
     rebuild::Rebuild,
     style::{Stylable, Styled, Theme},
     transition::Transition,
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Button`].
@@ -86,7 +86,7 @@ pub struct ButtonState<V> {
 }
 
 impl<T, V: View<T>> View<T> for Button<V> {
-    type State = (ButtonState<V>, State<T, V>);
+    type State = (ButtonState<V>, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("button");

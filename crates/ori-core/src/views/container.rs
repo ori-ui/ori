@@ -7,7 +7,7 @@ use crate::{
     layout::{Padding, Size, Space},
     rebuild::Rebuild,
     style::{Stylable, Styled, Theme},
-    view::{Pod, State, View},
+    view::{Pod, PodState, View},
 };
 
 /// Create a new [`Container`].
@@ -83,7 +83,7 @@ impl<V> Container<V> {
 }
 
 impl<T, V: View<T>> View<T> for Container<V> {
-    type State = (ContainerStyle<V>, State<T, V>);
+    type State = (ContainerStyle<V>, PodState<T, V>);
 
     fn build(&mut self, cx: &mut BuildCx, data: &mut T) -> Self::State {
         cx.set_class("container");

@@ -472,7 +472,7 @@ impl<T> View<T> for TextInput<T> {
         }
 
         match event {
-            Event::PointerPressed(e) if cx.is_hovered() => {
+            Event::PointerReleased(e) if e.clicked && cx.is_hovered() => {
                 let local = cx.local(e.position);
                 let cursor = state.select_point(local);
 
@@ -661,6 +661,7 @@ impl<T> View<T> for TextInput<T> {
 
                 false
             }
+
             _ => false,
         }
     }

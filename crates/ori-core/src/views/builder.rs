@@ -57,6 +57,7 @@ where
             let new_view = builder(&mut cx.as_build_cx(), data);
             let mut new_view = Pod::new(new_view);
             new_view.rebuild(state, cx, data, view);
+            *view = new_view;
         }
     }
 

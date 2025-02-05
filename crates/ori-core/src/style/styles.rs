@@ -27,9 +27,9 @@ pub trait Stylable {
     /// Rebuild the style of the object.
     fn rebuild_style(&self, cx: &mut RebuildCx, style: &mut Self::Style)
     where
-        Self::Style: Rebuild,
+        Self::Style: Rebuild + 'static,
     {
-        let new = self.style(style);
+        let new = self.style(cx.style());
         new.rebuild(cx, style);
         *style = new;
     }

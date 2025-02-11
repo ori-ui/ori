@@ -6,10 +6,10 @@
 Ori is a cross-platform declarative UI framework for Rust, with a focus on
 simplicity and performance.
 
-Ori is heavily inspired by SwiftUI and xilem, and uses a similar approach
-to building user interfaces. It is built on top of *ori_core*, which
-provides the core functionality, and *ori_winit*, which provides
-a winit based shell, and supports both a wgpu, and glow based renderer.
+Ori is heavily inspired by SwiftUI and xilem, and uses a similar approach to
+building user interfaces. It is built on top of *ori_core*, which provides the
+core functionality, a custom windowing shell in *ori_shell* and rendering with
+skia.
 
 # Documentation
 Auto-generated documentation is available [`here`](https://ori-ui.github.io/ori-docs/ori/).
@@ -67,6 +67,6 @@ fn main() {
     let app = App::build().window(window, ui);
 
     // Finally we launch the app.
-    ori::run(app, &mut Data::default());
+    ori::run(app, &mut Data::default()).unwrap();
 }
 ```

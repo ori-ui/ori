@@ -20,3 +20,7 @@ pub mod window;
 pub mod views;
 
 pub use tracing as log;
+
+// this is a workaround for proc-macros in doc tests
+//  - https://github.com/bkchr/proc-macro-crate/issues/14
+extern crate self as ori_core;

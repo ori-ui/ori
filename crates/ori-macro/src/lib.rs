@@ -11,17 +11,11 @@ mod rebuild;
 fn found_crate(krate: proc_macro_crate::FoundCrate, name: &str) -> syn::Path {
     match krate {
         proc_macro_crate::FoundCrate::Itself => {
-            let is_test = std::env::vars().any(|(key, _)| key.contains("RUSTDOC"));
-
-            if is_test {
-                let ident = proc_macro2::Ident::new(name, proc_macro2::Span::call_site());
-                syn::parse_quote!(::#ident)
-            } else {
-                syn::parse_quote!(crate)
-            }
+            let ident = proc_macro2::Ident::new(name, proc_macro2::Span::call_site());
+            syn::parse_quote!(::#ident)
         }
-        proc_macro_crate::FoundCrate::Name(name) => {
-            let ident = proc_macro2::Ident::new(&name, proc_macro2::Span::call_site());
+        proc_macro_crate::FoundCrate::Name(ref name) => {
+            let ident = proc_macro2::Ident::new(name, proc_macro2::Span::call_site());
             syn::parse_quote!(::#ident)
         }
     }

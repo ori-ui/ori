@@ -4,7 +4,7 @@ use crate::{
     canvas::Color,
     context::{BuildCx, DrawCx, EventCx, LayoutCx, RebuildCx},
     event::{Capitalize, Event, Ime, Key},
-    layout::{Point, Rect, Size, Space},
+    layout::{Point, Rect, Size, Space, Vector},
     rebuild::Rebuild,
     style::{Stylable, Style, StyleBuilder, Theme},
     text::{
@@ -780,45 +780,50 @@ impl<T> View<T> for TextInput<T> {
     fn draw(&mut self, state: &mut Self::State, cx: &mut DrawCx, _data: &mut T) {
         cx.trigger(cx.rect());
 
-        if !state.text.is_empty() {
-            cx.paragraph(&state.paragraph, cx.rect());
-        } else {
-            let mut placeholder = Paragraph::new(
-                // please, don't make this ugly rustfmt
-                state.style.line_height,
-                state.style.align,
-                state.style.wrap,
-            );
+        let width = cx.size().width;
+        let size = cx.measure_paragraph(&state.paragraph, width);
 
-            placeholder.set_text(
-                &self.placeholder,
-                FontAttributes {
-                    size: state.style.font_size,
-                    family: state.style.font_family.clone(),
-                    weight: state.style.font_weight,
-                    stretch: state.style.font_stretch,
-                    style: state.style.font_style,
-                    ligatures: false,
-                    color: state.style.placeholder_color,
-                },
-            );
+        cx.translated(Vector::from(cx.size() - size) / 2.0, |cx| {
+            if !state.text.is_empty() {
+                cx.paragraph(&state.paragraph, cx.rect());
+            } else {
+                let mut placeholder = Paragraph::new(
+                    // please, don't make this ugly rustfmt
+                    state.style.line_height,
+                    state.style.align,
+                    state.style.wrap,
+                );
 
-            cx.paragraph(&placeholder, cx.rect());
-        }
+                placeholder.set_text(
+                    &self.placeholder,
+                    FontAttributes {
+                        size: state.style.font_size,
+                        family: state.style.font_family.clone(),
+                        weight: state.style.font_weight,
+                        stretch: state.style.font_stretch,
+                        style: state.style.font_style,
+                        ligatures: false,
+                        color: state.style.placeholder_color,
+                    },
+                );
 
-        let contrast = cx.theme().contrast;
-        let info = cx.theme().info;
-
-        // draw the cursor
-        if cx.is_focused() {
-            let color = f32::cos(state.blink * 5.0).abs();
-
-            draw_highlight(state, cx, info.fade(0.5));
-
-            if state.selection.is_none() {
-                draw_cursor(state, cx, contrast.fade(color));
+                cx.paragraph(&placeholder, cx.rect());
             }
-        }
+
+            let contrast = cx.theme().contrast;
+            let info = cx.theme().info;
+
+            // draw the cursor
+            if cx.is_focused() {
+                let color = f32::cos(state.blink * 5.0).abs();
+
+                draw_highlight(state, cx, info.fade(0.5));
+
+                if state.selection.is_none() {
+                    draw_cursor(state, cx, contrast.fade(color));
+                }
+            }
+        });
     }
 }
 

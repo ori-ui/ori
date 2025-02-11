@@ -69,7 +69,12 @@ where
 
         match event {
             Event::PointerReleased(e) if e.clicked && content.is_hovered() => {
-                cx.focus();
+                if !cx.is_focused() {
+                    cx.focus();
+                } else {
+                    cx.set_focused(false);
+                }
+
                 cx.draw();
 
                 true

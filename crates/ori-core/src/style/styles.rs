@@ -28,9 +28,11 @@ use crate::{context::RebuildCx, rebuild::Rebuild};
 ///
 /// impl Style for MyStyle {
 ///     fn default_style() -> StyleBuilder<Self> {
-///         StyleBuilder::new(|theme: &Theme, button: &ButtonStyle| MyStyle {
-///             my_color: theme.accent,
-///             my_padding: button.padding,
+///         StyleBuilder::new(|theme: &Theme, button: &ButtonStyle| {
+///             MyStyle {
+///                 my_color: theme.accent,
+///                 my_padding: button.padding,
+///             }
 ///         })
 ///     }
 /// }

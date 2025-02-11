@@ -8,9 +8,18 @@ mod example;
 mod font;
 mod rebuild;
 
-fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
+fn found_crate(krate: proc_macro_crate::FoundCrate, name: &str) -> syn::Path {
     match krate {
-        proc_macro_crate::FoundCrate::Itself => syn::parse_quote!(crate),
+        proc_macro_crate::FoundCrate::Itself => {
+            let is_test = std::env::vars().any(|(key, _)| key.contains("RUSTDOC"));
+
+            if is_test {
+                let ident = proc_macro2::Ident::new(name, proc_macro2::Span::call_site());
+                syn::parse_quote!(::#ident)
+            } else {
+                syn::parse_quote!(crate)
+            }
+        }
         proc_macro_crate::FoundCrate::Name(name) => {
             let ident = proc_macro2::Ident::new(&name, proc_macro2::Span::call_site());
             syn::parse_quote!(::#ident)
@@ -20,10 +29,10 @@ fn found_crate(krate: proc_macro_crate::FoundCrate) -> syn::Path {
 
 fn find_core() -> syn::Path {
     match proc_macro_crate::crate_name("ori-core") {
-        Ok(krate) => found_crate(krate),
+        Ok(krate) => found_crate(krate, "ori_core"),
         Err(_) => match proc_macro_crate::crate_name("ori") {
             Ok(krate) => {
-                let ori = found_crate(krate);
+                let ori = found_crate(krate, "ori");
                 syn::parse_quote!(#ori::core)
             }
             Err(_) => syn::parse_quote!(ori::core),
@@ -33,10 +42,10 @@ fn find_core() -> syn::Path {
 
 fn find_shell() -> syn::Path {
     match proc_macro_crate::crate_name("ori-shell") {
-        Ok(krate) => found_crate(krate),
+        Ok(krate) => found_crate(krate, "ori_shell"),
         Err(_) => match proc_macro_crate::crate_name("ori") {
             Ok(krate) => {
-                let ori = found_crate(krate);
+                let ori = found_crate(krate, "ori");
                 syn::parse_quote!(#ori::shell)
             }
             Err(_) => syn::parse_quote!(ori::shell),

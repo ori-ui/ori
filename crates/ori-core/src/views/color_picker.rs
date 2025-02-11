@@ -47,7 +47,7 @@ pub struct ColorPickerStyle {
 }
 
 impl Style for ColorPickerStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| ColorPickerStyle {
             size: 128.0,
             border_width: 2.0,

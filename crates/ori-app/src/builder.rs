@@ -3,7 +3,7 @@ use std::any::Any;
 use ori_core::{
     command::{CommandProxy, CommandWaker},
     context::Contexts,
-    style::{IntoStyleBuilder, Styles},
+    style::{IntoStyleBuilder, Style, Styles},
     text::{include_font, FontSource, Fonts},
     window::Window,
 };
@@ -45,7 +45,7 @@ impl<T> AppBuilder<T> {
     pub fn style<U, B>(mut self, loader: B) -> Self
     where
         B: IntoStyleBuilder<U> + 'static,
-        B::Output: Any,
+        B::Output: Style + Any,
     {
         self.styles.insert(loader);
         self

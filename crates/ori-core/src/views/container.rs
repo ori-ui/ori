@@ -53,7 +53,7 @@ pub struct ContainerStyle {
 }
 
 impl Style for ContainerStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| ContainerStyle {
             background: theme.surface(0),
             border_radius: BorderRadius::all(4.0),

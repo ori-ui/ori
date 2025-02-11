@@ -1,6 +1,7 @@
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
+    fmt::{self, Debug},
     hash::BuildHasherDefault,
 };
 
@@ -8,10 +9,50 @@ use seahash::SeaHasher;
 
 use crate::{context::RebuildCx, rebuild::Rebuild};
 
-/// A trait for styles.
+/// A trait implemented by styles.
+///
+/// This will allow the style to be used in the arguments of [`StyleBuilder`] functions.
+///
+/// # Example
+/// ```rust
+/// # use ori_core::{
+/// #    style::{Style, Styles, StyleBuilder, Theme},
+/// #    views::ButtonStyle,
+/// #    canvas::Color,
+/// #    layout::Padding,
+/// # };
+/// struct MyStyle {
+///     my_color: Color,
+///     my_padding: Padding,
+/// }
+///
+/// impl Style for MyStyle {
+///     fn default_style() -> StyleBuilder<Self> {
+///         StyleBuilder::new(|theme: &Theme, button: &ButtonStyle| MyStyle {
+///             my_color: theme.accent,
+///             my_padding: button.padding,
+///         })
+///     }
+/// }
+///
+/// let mut styles = Styles::new()
+///     .with(|| Theme {
+///         accent: Color::rgb(1.0, 0.0, 0.0),
+///         ..Theme::default()
+///     })
+///     .with(|theme: &Theme| ButtonStyle {
+///         padding: Padding::all(10.0),
+///         ..Default::default()
+///     });
+///
+/// let my_style = styles.style::<MyStyle>();
+///
+/// assert_eq!(my_style.my_color, Color::rgb(1.0, 0.0, 0.0));
+/// assert_eq!(my_style.my_padding, Padding::all(10.0));
+/// ```
 pub trait Style: Sized {
-    /// The default style builder.
-    fn builder() -> StyleBuilder<Self>;
+    /// The default style of the object.
+    fn default_style() -> StyleBuilder<Self>;
 }
 
 /// A trait for stylable objects.
@@ -35,11 +76,19 @@ pub trait Stylable {
     }
 }
 
-/// A collection of styles.
+/// A collection of [`Style`]s.
 #[derive(Default)]
 pub struct Styles {
     builders: HashMap<TypeId, StyleBuilder<Box<dyn Any>>, StylesHasher>,
     cache: HashMap<TypeId, Box<dyn Any>, StylesHasher>,
+}
+
+impl Debug for Styles {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Styles")
+            .field("builders", &self.builders)
+            .finish()
+    }
 }
 
 type StylesHasher = BuildHasherDefault<SeaHasher>;
@@ -58,26 +107,24 @@ impl Styles {
 
     /// Insert a style builder into the collection.
     ///
+    /// See [`StyleBuilder::new`] for more information.
+    ///
     /// # Example
     ///
     /// ```rust
     /// # use ori_core::{style::{Styles, Theme}, views::ButtonStyle};
     /// Styles::new().insert(|theme: &Theme| ButtonStyle {
     ///     color: theme.accent,
-    ///     ..todo!()
+    ///     ..Default::default()
     /// });
     /// ```
     pub fn insert<T, B>(&mut self, builder: B) -> bool
     where
         B: IntoStyleBuilder<T> + 'static,
-        B::Output: Any,
+        B::Output: Style + Any,
     {
         let type_id = TypeId::of::<B::Output>();
-
-        let dyn_builder = StyleBuilder {
-            builder: Box::new(move |styles| Box::new(builder.build(styles)) as Box<dyn Any>),
-            dependencies: B::dependencies(),
-        };
+        let dyn_builder = StyleBuilder::new(builder).into_dyn();
 
         if self.builders.contains_key(&type_id) {
             self.cache.clear();
@@ -88,11 +135,21 @@ impl Styles {
 
     /// Insert a style builder into the collection.
     ///
-    /// See [`Styles::insert`] for more information.
+    /// See [`StyleBuilder::new`] for more information.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use ori_core::{style::{Styles, Theme}, views::ButtonStyle};
+    /// let styles = Styles::new().with(|theme: &Theme| ButtonStyle {
+    ///    color: theme.accent,
+    ///    ..Default::default()
+    /// });
+    /// ```
     pub fn with<T, B>(mut self, builder: B) -> Self
     where
         B: IntoStyleBuilder<T> + 'static,
-        B::Output: Any,
+        B::Output: Style + Any,
     {
         self.insert(builder);
         self
@@ -113,7 +170,7 @@ impl Styles {
             return self.get::<T>().unwrap();
         }
 
-        let builder = T::builder().into_dyn();
+        let builder = T::default_style().into_dyn();
         self.builders.insert(TypeId::of::<T>(), builder);
         self.get::<T>().unwrap()
     }
@@ -143,42 +200,75 @@ impl Styles {
 }
 
 /// A style builder.
+///
+/// See the [`Style`] trait for an example.
 pub struct StyleBuilder<T> {
+    type_name: &'static str,
     builder: Box<dyn Fn(&mut Styles) -> T>,
     dependencies: Vec<TypeId>,
 }
 
 impl<T: Any> StyleBuilder<T> {
     /// Create a new style builder.
+    ///
+    /// This takes a function that takes any number of references to [`Style`]s and returns a style.
+    /// Each [`Style`] referenced will be created if not already present in the [`Styles`] collection.
+    /// If a style is dependent on this style, it will be rebuilt when this style is rebuilt.
+    ///
+    /// __Note:__ Cyclic dependencies are not allowed and will result in a panic.
     pub fn new<U, B>(builder: B) -> Self
     where
         B: IntoStyleBuilder<U, Output = T> + 'static,
     {
         Self {
+            type_name: std::any::type_name::<T>(),
+            dependencies: B::dependencies(&builder),
             builder: Box::new(move |styles| builder.build(styles)),
-            dependencies: B::dependencies(),
         }
     }
 
     fn into_dyn(self) -> StyleBuilder<Box<dyn Any>> {
         StyleBuilder {
+            type_name: self.type_name,
             builder: Box::new(move |styles| Box::new((self.builder)(styles))),
             dependencies: self.dependencies,
         }
     }
 }
 
+impl<T> Debug for StyleBuilder<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StyleBuilder")
+            .field("type_name", &self.type_name)
+            .finish()
+    }
+}
+
 /// A trait for converting a function into a style builder.
+///
+/// See [`StyleBuilder::new`] for more information.
 pub trait IntoStyleBuilder<T> {
-    /// The output type.
+    /// The type of style built by the builder.
     type Output;
 
     /// Build the style.
     fn build(&self, styles: &mut Styles) -> Self::Output;
 
     /// Get the dependencies of the style builder.
-    fn dependencies() -> Vec<TypeId> {
+    fn dependencies(&self) -> Vec<TypeId> {
         Vec::new()
+    }
+}
+
+impl<T> IntoStyleBuilder<StyleBuilder<T>> for StyleBuilder<T> {
+    type Output = T;
+
+    fn build(&self, styles: &mut Styles) -> Self::Output {
+        (self.builder)(styles)
+    }
+
+    fn dependencies(&self) -> Vec<TypeId> {
+        self.dependencies.clone()
     }
 }
 
@@ -203,7 +293,7 @@ macro_rules! impl_style_builder {
                 (self)($($ty.clone(),)*)
             }
 
-            fn dependencies() -> Vec<TypeId> {
+            fn dependencies(&self) -> Vec<TypeId> {
                 vec![$(TypeId::of::<$ty>()),*]
             }
         }

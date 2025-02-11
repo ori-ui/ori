@@ -51,7 +51,7 @@ pub struct CollapsingStyle {
 }
 
 impl Style for CollapsingStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| CollapsingStyle {
             transition: Transition::ease(0.1),
             icon_size: 16.0,

@@ -17,7 +17,7 @@ pub fn button<V>(view: V) -> Button<V> {
 }
 
 /// The style of a button.
-#[derive(Clone, Rebuild)]
+#[derive(Clone, Default, Rebuild)]
 pub struct ButtonStyle {
     /// The padding.
     #[rebuild(layout)]
@@ -49,7 +49,7 @@ pub struct ButtonStyle {
 }
 
 impl Style for ButtonStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| ButtonStyle {
             padding: Padding::all(8.0),
             fancy: 0.0,

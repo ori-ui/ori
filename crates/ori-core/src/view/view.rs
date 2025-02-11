@@ -16,8 +16,10 @@ use crate::{
 /// it in a tuple `(MyState, State)`.
 ///
 /// In case a view contains another view the contents should always be wrapped in
-/// either [`State`] or [`SeqState`]. If this is not done strange issues
+/// either [`PodState`] or [`SeqState`]. If this is not done strange issues
 /// are _very_ likely to occur.
+///
+/// For information on styling see [`style`].
 ///
 /// [`View`] has four primary methods:
 /// - [`View::rebuild`] is called after a new `view-tree` has been built, on the
@@ -37,12 +39,13 @@ use crate::{
 /// For examples see the implementation of views like [`Button`] or [`Checkbox`].
 ///
 /// [`BaseCx::cmd`]: crate::context::BaseCx::cmd
-/// [`State`]: super::State
+/// [`PodState`]: super::PodState
 /// [`SeqState`]: super::SeqState
 /// [`ViewState`]: super::ViewState
 /// [`Rebuild`]: crate::rebuild::Rebuild
 /// [`Button`]: crate::views::Button
 /// [`Checkbox`]: crate::views::Checkbox
+/// [`style`]: crate::style
 pub trait View<T: ?Sized = ()> {
     /// The state of the view, see top-level documentation for more information.
     type State;

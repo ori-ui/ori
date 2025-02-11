@@ -88,7 +88,7 @@ pub struct WrapStyle {
 }
 
 impl Style for WrapStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|| Self {
             axis: Axis::Horizontal,
             justify: Justify::Start,

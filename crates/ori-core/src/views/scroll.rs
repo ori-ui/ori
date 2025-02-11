@@ -50,7 +50,7 @@ pub struct ScrollStyle {
 }
 
 impl Style for ScrollStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| ScrollStyle {
             transition: Transition::ease(0.1),
             inset: 8.0,

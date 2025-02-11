@@ -53,7 +53,7 @@ pub struct CheckboxStyle {
 }
 
 impl Style for CheckboxStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| CheckboxStyle {
             transition: Transition::ease(0.1),
             size: 24.0,

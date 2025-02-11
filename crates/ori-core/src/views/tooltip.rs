@@ -76,7 +76,7 @@ pub struct TooltipStyle {
 }
 
 impl Style for TooltipStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| Self {
             delay: 0.2,
             padding: Padding::all(4.0),

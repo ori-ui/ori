@@ -151,8 +151,14 @@ impl Theme {
     }
 }
 
+impl Default for Theme {
+    fn default() -> Self {
+        Self::dark()
+    }
+}
+
 impl Style for Theme {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(Theme::dark)
     }
 }

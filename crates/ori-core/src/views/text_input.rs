@@ -65,7 +65,7 @@ pub struct TextInputStyle {
 }
 
 impl Style for TextInputStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| Self {
             font_size: 16.0,
             font_family: FontFamily::default(),

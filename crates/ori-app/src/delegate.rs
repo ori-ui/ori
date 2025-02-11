@@ -9,7 +9,7 @@ use ori_core::{
 
 use crate::{AppRequest, UiBuilder};
 
-/// The context passed to the [`Delegate`] trait.
+/// The context passed to the [`AppDelegate`] trait.
 pub struct DelegateCx<'a, 'b, T> {
     base: &'a mut BaseCx<'b>,
     requests: &'a mut Vec<AppRequest<T>>,

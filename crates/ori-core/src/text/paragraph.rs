@@ -8,7 +8,7 @@ use smol_str::{format_smolstr, SmolStr};
 
 use super::{FontAttributes, TextAlign, TextWrap};
 
-/// A paragraph of rich text, that can contain multiple segments with different [`TextAttributes`].
+/// A paragraph of rich text, that can contain multiple segments with different [`FontAttributes`].
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Paragraph {
     /// The line height of the text.
@@ -55,6 +55,12 @@ impl Paragraph {
             end: self.text.len(),
             attrs,
         });
+    }
+
+    /// Push a new segment of text with the given [`FontAttributes`] to the paragraph.
+    pub fn with_text(mut self, text: impl Display, attrs: FontAttributes) -> Self {
+        self.push_text(text, attrs);
+        self
     }
 
     /// Get the text of the paragraph.

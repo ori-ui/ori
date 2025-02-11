@@ -43,7 +43,7 @@ pub struct SliderStyle {
 }
 
 impl Style for SliderStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|theme: &Theme| Self {
             length: 100.0,
             width: 10.0,

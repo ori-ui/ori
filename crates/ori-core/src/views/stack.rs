@@ -78,7 +78,7 @@ pub struct StackStyle {
 }
 
 impl Style for StackStyle {
-    fn builder() -> StyleBuilder<Self> {
+    fn default_style() -> StyleBuilder<Self> {
         StyleBuilder::new(|| Self {
             justify: Justify::Start,
             align: Align::Center,

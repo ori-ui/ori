@@ -571,7 +571,7 @@ impl<T> View<T> for TextInput<T> {
             Event::PointerReleased(_) if state.dragging => {
                 state.dragging = false;
 
-                true
+                false
             }
 
             Event::KeyPressed(e) if cx.is_focused() => {

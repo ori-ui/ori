@@ -77,7 +77,7 @@ where
 
                 cx.draw();
 
-                true
+                false
             }
 
             Event::PointerReleased(e) if e.clicked && !popup.has_hovered() => {

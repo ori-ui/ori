@@ -1,0 +1,87 @@
+use crate::{Action, Event, View};
+
+pub fn memo<C, T, V, F, D>(data: D, build: F) -> Memo<F, D>
+where
+    F: FnOnce(&mut T) -> V,
+    V: View<C, T>,
+{
+    Memo::new(data, build)
+}
+
+#[must_use]
+pub struct Memo<F, D> {
+    data: D,
+    build: Option<F>,
+}
+
+impl<F, D> Memo<F, D> {
+    pub fn new<C, T, V>(data: D, build: F) -> Self
+    where
+        F: FnOnce(&mut T) -> V,
+        V: View<C, T>,
+    {
+        Self {
+            data,
+            build: Some(build),
+        }
+    }
+}
+
+impl<C, T, V, F, D> View<C, T> for Memo<F, D>
+where
+    F: FnOnce(&mut T) -> V,
+    V: View<C, T>,
+    D: PartialEq,
+{
+    type Element = V::Element;
+    type State = (V, V::State);
+
+    fn build(
+        &mut self,
+        cx: &mut C,
+        data: &mut T,
+    ) -> (Self::Element, Self::State) {
+        let build = self.build.take().unwrap();
+        let mut view = build(data);
+        let (element, state) = view.build(cx, data);
+        (element, (view, state))
+    }
+
+    fn rebuild(
+        &mut self,
+        element: &mut Self::Element,
+        (view, state): &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+        old: &mut Self,
+    ) {
+        if self.data != old.data {
+            if let Some(build) = self.build.take() {
+                let mut new_view = build(data);
+                new_view.rebuild(element, state, cx, data, view);
+                *view = new_view;
+            }
+        }
+    }
+
+    fn teardown(
+        &mut self,
+        element: &mut Self::Element,
+        (view, state): &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+    ) {
+        view.teardown(element, state, cx, data);
+    }
+
+    fn event(
+        &mut self,
+        element: &mut Self::Element,
+        (view, state): &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+        event: &mut Event,
+    ) -> Action {
+        view.event(element, state, cx, data, event)
+    }
+}

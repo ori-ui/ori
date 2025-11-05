@@ -1,0 +1,27 @@
+[package]
+name = "ori-gtk4"
+version = "0.1.0"
+edition.workspace = true
+
+[dev-dependencies.ori-gtk4]
+workspace = true
+features = ["layer-shell"]
+
+[dependencies]
+ori.workspace = true
+
+gtk4 = "0.10"
+notify = "8.2"
+thiserror = "2"
+
+[dependencies.tokio]
+version = "1"
+default-features = false
+features = ["sync"]
+
+[dependencies.gtk4-layer-shell]
+version = "0.7"
+optional = true
+
+[features]
+layer-shell = ["dep:gtk4-layer-shell"]

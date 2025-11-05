@@ -1,0 +1,10 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+
+[workspace.dependencies]
+ori      = { path = "crates/ori" }
+ori-gtk4 = { path = "crates/ori-gtk4" }

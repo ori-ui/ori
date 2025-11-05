@@ -1,0 +1,21 @@
+use ori_gtk4::{App, View, Window, button, center, label};
+
+struct Data {
+    count: u32,
+}
+
+fn ui(data: &mut Data) -> impl View<Data> + use<> {
+    let text = label(format!("clicked {} times", data.count));
+
+    let button = button(text, |data: &mut Data| data.count += 1);
+
+    center(button)
+}
+
+fn main() {
+    let data = Data { count: 0 };
+
+    let window = Window::new().title("counter");
+
+    App::new().window(window, ui).run(data).unwrap();
+}

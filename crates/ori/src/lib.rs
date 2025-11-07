@@ -4,6 +4,7 @@
 
 mod action;
 mod any;
+mod context;
 mod element;
 mod event;
 mod seq;
@@ -12,6 +13,7 @@ mod views;
 
 pub use action::*;
 pub use any::*;
+pub use context::*;
 pub use element::*;
 pub use event::*;
 pub use seq::*;

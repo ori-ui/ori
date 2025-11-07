@@ -47,10 +47,6 @@ impl Context {
         }
     }
 
-    pub(crate) fn action(&self, action: Action) {
-        self.sender.send(Event::Action(action)).expect("channel not closed");
-    }
-
     pub(crate) fn activate(&self) {
         self.sender.send(Event::Activate).expect("channel not closed");
     }
@@ -69,6 +65,12 @@ impl Context {
 
     pub(crate) fn sender(&self) -> &UnboundedSender<Event> {
         &self.sender
+    }
+}
+
+impl ori::Context for Context {
+    fn action(&mut self, action: Action) {
+        self.sender.send(Event::Action(action)).expect("channel not closed");
     }
 }
 

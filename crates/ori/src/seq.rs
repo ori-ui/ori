@@ -1,7 +1,7 @@
-use crate::{Action, Event, Super, View};
+use crate::{Action, Context, Event, Super, View};
 
 /// A sequence of [`View`]s.
-pub trait ViewSeq<C, E, T> {
+pub trait ViewSeq<C: Context, E, T> {
     /// State of the sequence.
     type SeqState;
 
@@ -44,6 +44,7 @@ pub trait ViewSeq<C, E, T> {
 
 impl<C, T, V> ViewSeq<C, V::Element, T> for Vec<V>
 where
+    C: Context,
     V: View<C, T>,
 {
     type SeqState = Vec<V::State>;
@@ -147,6 +148,7 @@ macro_rules! impl_tuple {
         #[allow(unused)]
         impl<C, E, T, $($name),*> ViewSeq<C, E, T> for ($($name,)*)
         where
+            C: Context,
             $($name: View<C, T>,)*
             $(E: Super<C, $name::Element>,)*
         {

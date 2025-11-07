@@ -14,7 +14,7 @@ use gtk4::{
     prelude::{GtkWindowExt as _, WidgetExt as _},
 };
 use notify::Watcher as _;
-use ori::View as _;
+use ori::{Context as _, View as _};
 
 use crate::{AnyView, Context, Event, Window, WindowEvent};
 

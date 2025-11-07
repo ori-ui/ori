@@ -1,10 +1,11 @@
-use crate::{Action, Event, View};
+use crate::{Action, Context, Event, View};
 
 /// [`View`] that doesn't rebuild when state changes.
 pub fn freeze<C, T, F, V>(build: F) -> Freeze<F>
 where
-    F: FnOnce() -> V,
+    C: Context,
     V: View<C, T>,
+    F: FnOnce() -> V,
 {
     Freeze::new(build)
 }
@@ -19,8 +20,9 @@ impl<F> Freeze<F> {
     /// Crate a new [`Freeze`].
     pub fn new<C, T, V>(build: F) -> Self
     where
-        F: FnOnce() -> V,
+        C: Context,
         V: View<C, T>,
+        F: FnOnce() -> V,
     {
         Self { build: Some(build) }
     }
@@ -28,8 +30,9 @@ impl<F> Freeze<F> {
 
 impl<C, T, F, V> View<C, T> for Freeze<F>
 where
-    F: FnOnce() -> V,
+    C: Context,
     V: View<C, T>,
+    F: FnOnce() -> V,
 {
     type Element = V::Element;
     type State = (V, V::State);

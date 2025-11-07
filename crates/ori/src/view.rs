@@ -1,7 +1,7 @@
-use crate::{Action, Event};
+use crate::{Action, Context, Event};
 
 /// Snapshot of the state of a retained UI.
-pub trait View<C, T> {
+pub trait View<C: Context, T> {
     /// The element this view produces.
     type Element;
 
@@ -48,3 +48,6 @@ pub trait View<C, T> {
         event: &mut Event,
     ) -> Action;
 }
+
+/// Not an element.
+pub struct NoElement;

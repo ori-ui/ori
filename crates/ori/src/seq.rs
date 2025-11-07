@@ -42,9 +42,10 @@ pub trait ViewSeq<C, E, T> {
     ) -> Action;
 }
 
-impl<C, T, V> ViewSeq<C, V::Element, T> for Vec<V>
+impl<C, E, T, V> ViewSeq<C, E, T> for Vec<V>
 where
     V: View<C, T>,
+    E: Super<C, V::Element>,
 {
     type SeqState = Vec<V::State>;
 
@@ -52,13 +53,13 @@ where
         &mut self,
         cx: &mut C,
         data: &mut T,
-    ) -> (Vec<V::Element>, Self::SeqState) {
+    ) -> (Vec<E>, Self::SeqState) {
         let mut elements = Vec::with_capacity(self.len());
         let mut states = Vec::with_capacity(self.len());
 
         for view in self {
             let (element, state) = view.build(cx, data);
-            elements.push(element);
+            elements.push(E::upcast(cx, element));
             states.push(state);
         }
 
@@ -67,7 +68,7 @@ where
 
     fn seq_rebuild(
         &mut self,
-        elements: &mut Vec<V::Element>,
+        elements: &mut Vec<E>,
         states: &mut Self::SeqState,
         cx: &mut C,
         data: &mut T,
@@ -80,7 +81,7 @@ where
                 .zip(elements.drain(self.len()..))
                 .zip(states.drain(self.len()..))
             {
-                old.teardown(element, state, cx, data);
+                old.teardown(element.downcast(), state, cx, data);
             }
 
             elements.truncate(self.len());
@@ -89,16 +90,12 @@ where
 
         for (i, view) in self.iter_mut().enumerate() {
             if let Some(old) = old.get_mut(i) {
-                view.rebuild(
-                    &mut elements[i],
-                    &mut states[i],
-                    cx,
-                    data,
-                    old,
-                );
+                elements[i].downcast_with(|element| {
+                    view.rebuild(element, &mut states[i], cx, data, old)
+                });
             } else {
                 let (element, state) = view.build(cx, data);
-                elements.push(element);
+                elements.push(E::upcast(cx, element));
                 states.push(state);
             }
         }
@@ -106,7 +103,7 @@ where
 
     fn seq_teardown(
         &mut self,
-        elements: Vec<V::Element>,
+        elements: Vec<E>,
         states: Self::SeqState,
         cx: &mut C,
         data: &mut T,
@@ -114,13 +111,13 @@ where
         for ((view, element), state) in
             self.iter_mut().zip(elements).zip(states)
         {
-            view.teardown(element, state, cx, data);
+            view.teardown(element.downcast(), state, cx, data);
         }
     }
 
     fn seq_event(
         &mut self,
-        elements: &mut [V::Element],
+        elements: &mut [E],
         states: &mut Self::SeqState,
         cx: &mut C,
         data: &mut T,
@@ -129,13 +126,9 @@ where
         let mut action = Action::none();
 
         for (i, view) in self.iter_mut().enumerate() {
-            action |= view.event(
-                &mut elements[i],
-                &mut states[i],
-                cx,
-                data,
-                event,
-            );
+            elements[i].downcast_with(|element| {
+                action |= view.event(element, &mut states[i], cx, data, event);
+            });
         }
 
         action

@@ -24,4 +24,6 @@ pub mod prelude {
     pub use crate::{
         Action, App, Context, Error, View, ViewSeq, Window, views::*,
     };
+
+    pub use ori::Proxy;
 }

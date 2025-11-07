@@ -10,13 +10,13 @@ use std::{
 /// [`View::event`](crate::View::event) for more information.
 pub struct Event {
     target: Option<ViewId>,
-    item: Option<Box<dyn Any + Send + Sync>>,
+    item: Option<Box<dyn Any + Send>>,
     name: &'static str,
 }
 
 impl Event {
     /// Create a new [`Event`] with over an `item` and an optional `target`.
-    pub fn new<T: Any + Send + Sync>(
+    pub fn new<T: Any + Send>(
         item: T,
         target: impl Into<Option<ViewId>>,
     ) -> Self {
@@ -38,35 +38,35 @@ impl Event {
     }
 
     /// Check if the item in `self` is an instance of `T`.
-    pub fn is<T: Any + Send + Sync>(&self) -> bool {
+    pub fn is<T: Any + Send>(&self) -> bool {
         self.item.as_ref().is_some_and(|item| item.is::<T>())
     }
 
     /// Get the item in `self`.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get<T: Any + Send + Sync>(&self) -> Option<&T> {
+    pub fn get<T: Any + Send>(&self) -> Option<&T> {
         self.item.as_ref().and_then(|item| item.downcast_ref())
     }
 
     /// Get the item in `self` mutably.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_mut<T: Any + Send + Sync>(&mut self) -> Option<&mut T> {
+    pub fn get_mut<T: Any + Send>(&mut self) -> Option<&mut T> {
         self.item.as_mut().and_then(|item| item.downcast_mut())
     }
 
     /// Get the item in `self` if `id` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_targeted<T: Any + Send + Sync>(&self, id: ViewId) -> Option<&T> {
+    pub fn get_targeted<T: Any + Send>(&self, id: ViewId) -> Option<&T> {
         self.get().filter(|_| self.is_target(id))
     }
 
     /// Take the item out of `self`.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn take<T: Any + Send + Sync>(&mut self) -> Option<T> {
+    pub fn take<T: Any + Send>(&mut self) -> Option<T> {
         match self.item.take()?.downcast() {
             Ok(item) => Some(*item),
             Err(item) => {
@@ -79,10 +79,7 @@ impl Event {
     /// Take the item out of `self` if `id` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn take_targeted<T: Any + Send + Sync>(
-        &mut self,
-        id: ViewId,
-    ) -> Option<T> {
+    pub fn take_targeted<T: Any + Send>(&mut self, id: ViewId) -> Option<T> {
         self.is_target(id).then(|| self.take()).flatten()
     }
 }

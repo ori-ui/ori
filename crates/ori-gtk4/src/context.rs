@@ -27,7 +27,7 @@ impl Context {
         &self.app
     }
 
-    pub fn event<T: Any + Send + Sync>(
+    pub fn event<T: Any + Send>(
         &self,
         item: T,
         target: impl Into<Option<ori::ViewId>>,

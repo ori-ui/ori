@@ -12,7 +12,7 @@ where
 
 /// [`View`] that spawns a task when built.
 pub fn task<C, T>(
-    task: impl Future<Output: IntoAction> + Send + Sync + 'static,
+    task: impl Future<Output: IntoAction> + Send + 'static,
 ) -> impl View<C, T, Element = NoElement>
 where
     C: Context,

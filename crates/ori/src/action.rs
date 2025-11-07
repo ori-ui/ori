@@ -24,7 +24,7 @@ pub struct Action {
     pub events: Vec<Event>,
 
     /// Futures to spawned by this action.
-    pub futures: Vec<Pin<Box<dyn Future<Output = Action> + Send + Sync>>>,
+    pub futures: Vec<Pin<Box<dyn Future<Output = Action> + Send>>>,
 }
 
 impl Action {
@@ -57,7 +57,7 @@ impl Action {
 
     /// Spawn a future that can emits an action.
     pub fn spawn(
-        fut: impl Future<Output: IntoAction> + Send + Sync + 'static,
+        fut: impl Future<Output: IntoAction> + Send + 'static,
     ) -> Self {
         let fut = Box::pin(async { fut.await.into_action() });
 

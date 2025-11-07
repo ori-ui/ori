@@ -18,7 +18,9 @@ pub struct Window {
     pub(crate) hide_on_close: bool,
 
     #[cfg(feature = "layer-shell")]
-    pub(crate) layer: Option<Layer>,
+    pub(crate) is_layer_shell: bool,
+    #[cfg(feature = "layer-shell")]
+    pub(crate) layer: Layer,
     #[cfg(feature = "layer-shell")]
     pub(crate) exclusive_zone: Option<i32>,
     #[cfg(feature = "layer-shell")]
@@ -69,7 +71,9 @@ impl Window {
             hide_on_close: false,
 
             #[cfg(feature = "layer-shell")]
-            layer: None,
+            is_layer_shell: false,
+            #[cfg(feature = "layer-shell")]
+            layer: Layer::Top,
             #[cfg(feature = "layer-shell")]
             exclusive_zone: None,
             #[cfg(feature = "layer-shell")]
@@ -134,9 +138,16 @@ impl Window {
         self
     }
 
+    /// Makes window a layer shell.
     #[cfg(feature = "layer-shell")]
-    pub fn layer(mut self, layer: impl Into<Option<Layer>>) -> Self {
-        self.layer = layer.into();
+    pub fn is_layer_shell(mut self, is_layer_shell: bool) -> Self {
+        self.is_layer_shell = is_layer_shell;
+        self
+    }
+
+    #[cfg(feature = "layer-shell")]
+    pub fn layer(mut self, layer: Layer) -> Self {
+        self.layer = layer;
         self
     }
 

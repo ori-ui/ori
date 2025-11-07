@@ -159,9 +159,9 @@ impl<T> App<T> {
                     let win = gtk4::ApplicationWindow::new(app);
 
                     #[cfg(feature = "layer-shell")]
-                    if let Some(layer) = desc.layer {
+                    if desc.is_layer_shell {
                         win.init_layer_shell();
-                        win.set_layer(layer.into());
+                        win.set_layer(desc.layer.into());
 
                         if let Some(zone) = desc.exclusive_zone {
                             win.set_exclusive_zone(zone);

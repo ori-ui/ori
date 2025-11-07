@@ -9,7 +9,7 @@ fn ui(data: &mut Data) -> impl View<Data> + use<> {
 
     let button = button(text, |data: &mut Data| data.count += 1);
 
-    center(button)
+    center(size(80, 80, button))
 }
 
 fn main() {

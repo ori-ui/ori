@@ -8,6 +8,7 @@ mod focusable;
 mod frame;
 mod label;
 mod line;
+mod size;
 
 pub use align::{Align, Alignment, align, center, halign, valign};
 pub use button::{Button, button};
@@ -18,6 +19,7 @@ pub use expand::{Expand, expand, hexpand, shrink, vexpand};
 pub use frame::{Frame, frame};
 pub use label::{Label, label};
 pub use line::{Line, hline, line, vline};
+pub use size::{Size, height, max_width, min_height, min_width, size, width};
 
 use gtk4::{
     glib::object::{Cast, IsA},

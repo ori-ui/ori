@@ -6,7 +6,7 @@ pub fn handler() -> Handler<()> {
 }
 
 /// [`View`] that handles events.
-pub fn on_event<V, T>(
+pub fn on_event<T>(
     handler: impl EventHandler<T>,
 ) -> Handler<impl EventHandler<T>> {
     Handler::new().on_event(handler)

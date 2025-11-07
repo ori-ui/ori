@@ -16,7 +16,7 @@ use gtk4::{
 use notify::Watcher as _;
 use ori::{Context as _, View as _};
 
-use crate::{AnyView, Context, Event, Window, WindowEvent};
+use crate::{AnyView, Context, Window, WindowEvent, context::Event};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

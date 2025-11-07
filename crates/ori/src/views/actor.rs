@@ -1,4 +1,4 @@
-use crate::{Action, Context, Event, IntoAction, NoElement, View};
+use crate::{Action, AsyncContext, Event, IntoAction, NoElement, Proxy, View};
 
 /// [`View`] that acts when built.
 pub fn actor<T, A>(
@@ -15,7 +15,7 @@ pub fn task<C, T>(
     task: impl Future<Output: IntoAction> + Send + 'static,
 ) -> impl View<C, T, Element = NoElement>
 where
-    C: Context,
+    C: AsyncContext,
 {
     Actor::new(move |_| Action::spawn(async { task.await.into_action() }))
 }
@@ -41,7 +41,7 @@ impl Actor<()> {
 
 impl<C, T, F> View<C, T> for Actor<F>
 where
-    C: Context,
+    C: AsyncContext,
     F: FnOnce(&mut T) -> Action,
 {
     type Element = NoElement;
@@ -53,7 +53,7 @@ where
         data: &mut T,
     ) -> (Self::Element, Self::State) {
         let act = self.act.take().unwrap();
-        cx.action(act(data));
+        cx.proxy().action(act(data));
 
         (NoElement, ())
     }

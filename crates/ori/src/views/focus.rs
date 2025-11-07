@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{Action, Context, Event, View};
+use crate::{Action, Event, View};
 
 /// [`View`] that maps one type of data to another.
 pub fn focus<F, U, V, T>(content: V, focus: F) -> Focus<F, U, V>
@@ -34,7 +34,6 @@ impl<F, U, V> Focus<F, U, V> {
 
 impl<C, T, U, V, F> View<C, T> for Focus<F, U, V>
 where
-    C: Context,
     V: View<C, U>,
     F: FnMut(&mut T, &mut dyn FnOnce(&mut U)),
 {

@@ -1,12 +1,12 @@
 use std::{any::Any, mem};
 
-use crate::{Action, Context, Event, Super, View};
+use crate::{Action, Event, Super, View};
 
 /// A type erased [`View`].
 ///
 /// Note that this generic over `E` which should be treated as a [`Super`] element of the elements
 /// supported by this implementation.
-pub trait AnyView<C: Context, E, T> {
+pub trait AnyView<C, E, T> {
     /// Get `self` as `&mut dyn Any`.
     ///
     /// This unfortunately is still necessary, even after the stabilization of casting `dyn` trait
@@ -48,7 +48,6 @@ pub trait AnyView<C: Context, E, T> {
 
 impl<C, E, T, V> AnyView<C, E, T> for V
 where
-    C: Context,
     V: View<C, T> + Any,
     E: Super<C, V::Element>,
     V::State: Any,
@@ -122,10 +121,7 @@ where
     }
 }
 
-impl<C, E, T> View<C, T> for Box<dyn AnyView<C, E, T>>
-where
-    C: Context,
-{
+impl<C, E, T> View<C, T> for Box<dyn AnyView<C, E, T>> {
     type Element = E;
     type State = Box<dyn Any>;
 

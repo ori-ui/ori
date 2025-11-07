@@ -1,7 +1,7 @@
-use crate::{Action, Context, Event};
+use crate::{Action, Event};
 
 /// Snapshot of the state of a retained UI.
-pub trait View<C: Context, T> {
+pub trait View<C, T> {
     /// The element this view produces.
     type Element;
 

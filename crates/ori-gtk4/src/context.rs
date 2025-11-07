@@ -1,7 +1,6 @@
-use std::{any::Any, path::PathBuf};
+use std::{any::Any, path::PathBuf, pin::Pin};
 
 use gtk4::gio::prelude::ApplicationExt as _;
-use ori::Action;
 use tokio::sync::mpsc::{
     UnboundedReceiver, UnboundedSender, unbounded_channel,
 };
@@ -68,18 +67,44 @@ impl Context {
     }
 }
 
-impl ori::Context for Context {
-    fn action(&mut self, action: Action) {
-        self.sender.send(Event::Action(action)).expect("channel not closed");
+impl ori::AsyncContext for Context {
+    type Proxy = Proxy;
+
+    fn proxy(&mut self) -> Self::Proxy {
+        Proxy {
+            sender: self.sender.clone(),
+        }
     }
+}
+
+impl ori::Proxy for Proxy {
+    fn rebuild(&self) {
+        self.sender.send(Event::Rebuild).expect("channel not closed");
+    }
+
+    fn event(&self, event: ori::Event) {
+        self.sender.send(Event::Event(event)).expect("channel not closed");
+    }
+
+    fn spawn(&self, future: impl Future<Output = ()> + Send + 'static) {
+        self.sender
+            .send(Event::Spawn(Box::pin(future)))
+            .expect("channel not closed");
+    }
+}
+
+#[derive(Clone)]
+pub struct Proxy {
+    sender: UnboundedSender<Event>,
 }
 
 pub enum Event {
     Activate,
-    Rebuild,
     InitialWindowCreated(u64),
     WindowClosed(u64),
     CssChanged(PathBuf),
+
+    Rebuild,
     Event(ori::Event),
-    Action(Action),
+    Spawn(Pin<Box<dyn Future<Output = ()> + Send>>),
 }

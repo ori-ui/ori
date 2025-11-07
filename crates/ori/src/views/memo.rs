@@ -1,11 +1,10 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use crate::{Action, Context, Event, View};
+use crate::{Action, Event, View};
 
 /// [`View`] that is only rebuilt when `data` changes.
 pub fn memo<C, T, V, F, D>(data: D, build: F) -> Memo<F, D>
 where
-    C: Context,
     V: View<C, T>,
     F: FnOnce(&mut T) -> V,
     D: PartialEq,
@@ -16,7 +15,6 @@ where
 /// [`View`] that is only rebuilt when the hash of `data` changes.
 pub fn hash_memo<C, T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
 where
-    C: Context,
     V: View<C, T>,
     F: FnOnce(&mut T) -> V,
     D: Hash,
@@ -39,7 +37,6 @@ impl<F, D> Memo<F, D> {
     /// Crate new [`Memo`].
     pub fn new<C, T, V>(data: D, build: F) -> Self
     where
-        C: Context,
         V: View<C, T>,
         F: FnOnce(&mut T) -> V,
         D: PartialEq,
@@ -53,7 +50,6 @@ impl<F, D> Memo<F, D> {
 
 impl<C, T, V, F, D> View<C, T> for Memo<F, D>
 where
-    C: Context,
     V: View<C, T>,
     F: FnOnce(&mut T) -> V,
     D: PartialEq,

@@ -14,7 +14,7 @@ use gtk4::{
     prelude::{GtkWindowExt as _, WidgetExt as _},
 };
 use notify::Watcher as _;
-use ori::{Context as _, View as _};
+use ori::{AsyncContext as _, Proxy as _, View as _};
 
 use crate::{AnyView, Context, Window, WindowEvent, context::Event};
 
@@ -412,27 +412,12 @@ impl<T> AppState<T> {
                         &mut event,
                     );
 
-                    self.context.action(action);
+                    self.context.proxy().action(action);
                 }
             }
 
-            Event::Action(action) => {
-                if action.rebuild {
-                    self.context.rebuild();
-                }
-
-                for event in action.events {
-                    self.context
-                        .sender()
-                        .send(Event::Event(event))
-                        .expect("channel not closed");
-                }
-
-                let main_context = gtk4::glib::MainContext::default();
-
-                for fut in action.futures {
-                    main_context.spawn_local(fut);
-                }
+            Event::Spawn(future) => {
+                gtk4::glib::MainContext::default().spawn(future);
             }
         }
 

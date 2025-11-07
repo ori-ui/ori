@@ -1,4 +1,4 @@
-use crate::{Action, Context, Event, NoElement, View};
+use crate::{Action, Event, NoElement, View};
 
 /// [`View`] that attaches another [`View`] with [`NoElement`].
 ///
@@ -28,7 +28,6 @@ impl<V, W> With<V, W> {
 
 impl<C, T, V, W> View<C, T> for With<V, W>
 where
-    C: Context,
     V: View<C, T>,
     W: View<C, T, Element = NoElement>,
 {

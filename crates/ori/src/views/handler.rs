@@ -1,4 +1,4 @@
-use crate::{Action, Context, Event, IntoAction, NoElement, View};
+use crate::{Action, Event, IntoAction, NoElement, View};
 
 /// Create a new [`Handler`].
 pub fn handler() -> Handler<()> {
@@ -43,7 +43,6 @@ impl Handler<()> {
 
 impl<C, T, E> View<C, T> for Handler<E>
 where
-    C: Context,
     E: EventHandler<T>,
 {
     type Element = NoElement;

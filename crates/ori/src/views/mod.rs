@@ -1,3 +1,5 @@
+//! Builtin [`View`](crate::View)s.
+
 mod actor;
 mod focus;
 mod freeze;

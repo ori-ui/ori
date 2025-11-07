@@ -1,4 +1,4 @@
-use ori_gtk4::{App, View, Window, button, center, label};
+use ori_gtk4::{App, View, Window, views::*};
 
 struct Data {
     count: u32,

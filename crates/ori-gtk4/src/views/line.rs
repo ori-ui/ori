@@ -7,25 +7,27 @@ pub fn line<V>(axis: Axis, content: V) -> Line<V> {
     Line::new(axis, content)
 }
 
-pub fn row<V>(content: V) -> Line<V> {
+pub fn hline<V>(content: V) -> Line<V> {
     Line::new(Axis::Horizontal, content)
 }
 
-pub fn column<V>(content: V) -> Line<V> {
+pub fn vline<V>(content: V) -> Line<V> {
     Line::new(Axis::Vertical, content)
 }
 
+pub use crate::{hline, vline};
+
 #[macro_export]
-macro_rules! row {
+macro_rules! hline {
     [$($view:expr),* $(,)?] => {
-        $crate::row(($($view,)*))
+        $crate::views::hline(($($view,)*))
     };
 }
 
 #[macro_export]
-macro_rules! column {
+macro_rules! vline {
     [$($view:expr),* $(,)?] => {
-        $crate::column(($($view,)*))
+        $crate::views::vline(($($view,)*))
     };
 }
 

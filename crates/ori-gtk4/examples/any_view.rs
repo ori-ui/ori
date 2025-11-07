@@ -1,6 +1,4 @@
-use ori_gtk4::{
-    App, View, Window, any, button, center, checkbox, column, entry, label, row,
-};
+use ori_gtk4::{App, View, Window, views::*};
 
 struct Data {
     toggle: bool,
@@ -13,7 +11,7 @@ fn ui(data: &mut Data) -> impl View<Data> + use<> {
     });
 
     let view = if data.toggle {
-        let view = row![
+        let view = hline![
             checkbox(|_, checked| println!("checked: {checked}")),
             label("checkbox"),
         ]
@@ -28,7 +26,7 @@ fn ui(data: &mut Data) -> impl View<Data> + use<> {
         any(view)
     };
 
-    center(column![toggle, view].spacing(10))
+    center(vline![toggle, view].spacing(10))
 }
 
 fn main() {

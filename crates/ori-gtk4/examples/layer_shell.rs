@@ -1,4 +1,4 @@
-use ori_gtk4::{App, Layer, View, Window, label};
+use ori_gtk4::{App, Layer, View, Window, views::*};
 
 struct Data {}
 

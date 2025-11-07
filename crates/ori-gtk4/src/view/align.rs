@@ -115,8 +115,8 @@ impl<T, V: View<T>> ori::View<Context, T> for Alignment<V> {
 
     fn teardown(
         &mut self,
-        element: &mut Self::Element,
-        state: &mut Self::State,
+        element: Self::Element,
+        state: Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {

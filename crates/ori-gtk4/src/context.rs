@@ -72,6 +72,6 @@ pub enum Event {
     Rebuild,
     InitialWindowCreated(u64),
     WindowClosed(u64),
-    StyleChanged(PathBuf),
+    CssChanged(PathBuf),
     Event(ori::Event),
 }

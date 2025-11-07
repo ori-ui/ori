@@ -1,12 +1,22 @@
-use std::any::Any;
+use std::{any::Any, mem};
 
 use crate::{Action, Event, Super, View};
 
+/// A type erased [`View`].
+///
+/// Note that this generic over `E` which should be treated as a [`Super`] element of the elements
+/// supported by this implementation.
 pub trait AnyView<C, E, T> {
+    /// Get `self` as `&mut dyn Any`.
+    ///
+    /// This unfortunately is still necessary, even after the stabilization of casting `dyn` trait
+    /// to super trait, due to lifetime issues.
     fn as_mut_any(&mut self) -> &mut dyn Any;
 
+    /// Build in a type erased manner, see [`View::build`] for more details.
     fn any_build(&mut self, cx: &mut C, data: &mut T) -> (E, Box<dyn Any>);
 
+    /// Rebuild in a type erased manner, see [`View::rebuild`] for more details.
     fn any_rebuild(
         &mut self,
         element: &mut E,
@@ -16,14 +26,16 @@ pub trait AnyView<C, E, T> {
         old: &mut dyn AnyView<C, E, T>,
     );
 
+    /// Tear down in a type erased manner, see [`View::teardown`] for more details.
     fn any_teardown(
         &mut self,
-        element: &mut E,
-        state: &mut Box<dyn Any>,
+        element: E,
+        state: Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
     );
 
+    /// Handle event in a type erased manner, see [`View::event`] for more details.
     fn any_event(
         &mut self,
         element: &mut E,
@@ -60,33 +72,38 @@ where
     ) {
         match old.as_mut_any().downcast_mut::<V>() {
             Some(old) => {
-                element.downcast(|element| {
+                element.downcast_with(|element| {
                     let state = state.downcast_mut().unwrap();
                     self.rebuild(element, state, cx, data, old);
                 });
             }
 
             None => {
-                old.any_teardown(element, state, cx, data);
-
                 let (new_element, new_state) = self.build(cx, data);
-                *element = E::upcast(cx, new_element);
-                *state = Box::new(new_state);
+
+                old.any_teardown(
+                    mem::replace(element, E::upcast(cx, new_element)),
+                    mem::replace(state, Box::new(new_state)),
+                    cx,
+                    data,
+                );
             }
         }
     }
 
     fn any_teardown(
         &mut self,
-        element: &mut E,
-        state: &mut Box<dyn Any>,
+        element: E,
+        state: Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
     ) {
-        element.downcast(|element| {
-            let state = state.downcast_mut().unwrap();
-            self.teardown(element, state, cx, data);
-        });
+        self.teardown(
+            element.downcast(),
+            *state.downcast().unwrap(),
+            cx,
+            data,
+        );
     }
 
     fn any_event(
@@ -97,14 +114,14 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        element.downcast(|element| {
+        element.downcast_with(|element| {
             let state = state.downcast_mut().unwrap();
             self.event(element, state, cx, data, event)
         })
     }
 }
 
-impl<C, E, T> View<C, T> for dyn AnyView<C, E, T> {
+impl<C, E, T> View<C, T> for Box<dyn AnyView<C, E, T>> {
     type Element = E;
     type State = Box<dyn Any>;
 
@@ -113,7 +130,7 @@ impl<C, E, T> View<C, T> for dyn AnyView<C, E, T> {
         cx: &mut C,
         data: &mut T,
     ) -> (Self::Element, Self::State) {
-        self.any_build(cx, data)
+        self.as_mut().any_build(cx, data)
     }
 
     fn rebuild(
@@ -124,17 +141,17 @@ impl<C, E, T> View<C, T> for dyn AnyView<C, E, T> {
         data: &mut T,
         old: &mut Self,
     ) {
-        self.any_rebuild(element, state, cx, data, old);
+        self.as_mut().any_rebuild(element, state, cx, data, old.as_mut());
     }
 
     fn teardown(
         &mut self,
-        element: &mut Self::Element,
-        state: &mut Self::State,
+        element: Self::Element,
+        state: Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
-        self.any_teardown(element, state, cx, data);
+        self.as_mut().any_teardown(element, state, cx, data);
     }
 
     fn event(
@@ -145,6 +162,6 @@ impl<C, E, T> View<C, T> for dyn AnyView<C, E, T> {
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        self.any_event(element, state, cx, data, event)
+        self.as_mut().any_event(element, state, cx, data, event)
     }
 }

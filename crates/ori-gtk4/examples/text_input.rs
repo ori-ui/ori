@@ -8,15 +8,17 @@ fn ui(data: &mut Data) -> impl View<Data> + use<> {
     let text = entry()
         .text(&data.text)
         .placeholder("Try typing here!")
-        .on_change(|data: &mut Data, text| {
-            data.text = text;
+        .on_change(|data: &mut Data, text| data.text = text)
+        .on_submit(|data: &mut Data, text| {
+            data.text.clear();
+            println!("Text inputted: {}", text);
         });
 
     let clear = button(label("Clear"), |data: &mut Data| {
         data.text.clear();
     });
 
-    center(column![text, clear].spacing(10))
+    center(column![text, center(clear)].spacing(10))
 }
 
 fn main() {

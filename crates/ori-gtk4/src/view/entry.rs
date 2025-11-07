@@ -22,6 +22,12 @@ pub struct Entry<T> {
     pub on_submit: Box<dyn FnMut(&mut T, String) -> ori::Action>,
 }
 
+impl<T> Default for Entry<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Entry<T> {
     pub fn new() -> Self {
         Self {
@@ -111,15 +117,13 @@ impl<T> ori::View<Context, T> for Entry<T> {
         _data: &mut T,
         old: &mut Self,
     ) {
-        if self.text != old.text {
-            if let Some(ref text) = self.text {
-                if **text != element.text() {
+        if self.text != old.text
+            && let Some(ref text) = self.text
+                && **text != element.text() {
                     element.block_signal(changed);
                     element.set_text(text);
                     element.unblock_signal(changed);
                 }
-            }
-        }
 
         if self.placeholder != old.placeholder {
             element.set_placeholder_text(self.placeholder.as_deref());
@@ -128,8 +132,8 @@ impl<T> ori::View<Context, T> for Entry<T> {
 
     fn teardown(
         &mut self,
-        _element: &mut Self::Element,
-        _id: &mut Self::State,
+        _element: Self::Element,
+        _id: Self::State,
         _cx: &mut Context,
         _data: &mut T,
     ) {

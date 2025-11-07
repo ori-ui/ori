@@ -1,3 +1,7 @@
+#![warn(missing_docs)]
+
+//! Ori provides primitives for building Ori UI model.
+
 mod action;
 mod any;
 mod element;

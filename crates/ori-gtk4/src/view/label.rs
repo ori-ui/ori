@@ -46,8 +46,8 @@ impl<T> ori::View<Context, T> for Label {
 
     fn teardown(
         &mut self,
-        _element: &mut Self::Element,
-        _state: &mut Self::State,
+        _element: Self::Element,
+        _state: Self::State,
         _cx: &mut Context,
         _data: &mut T,
     ) {

@@ -2,15 +2,15 @@ use std::marker::PhantomData;
 
 use crate::{Action, Event, View};
 
+/// [`View`] that maps one type of data to another.
 pub fn focus<F, U, V, T>(content: V, focus: F) -> Focus<F, U, V>
 where
-    F: FnMut(&mut T, &mut Lens<U>),
+    F: FnMut(&mut T, &mut dyn FnOnce(&mut U)),
 {
     Focus::new(content, focus)
 }
 
-pub type Lens<'a, T> = dyn FnMut(&mut T) + 'a;
-
+/// [`View`] that maps one type of data to another.
 #[must_use]
 pub struct Focus<F, U, V> {
     content: V,
@@ -19,9 +19,10 @@ pub struct Focus<F, U, V> {
 }
 
 impl<F, U, V> Focus<F, U, V> {
+    /// Create a new [`Focus`].
     pub fn new<T>(content: V, focus: F) -> Self
     where
-        F: FnMut(&mut T, &mut Lens<U>),
+        F: FnMut(&mut T, &mut dyn FnOnce(&mut U)),
     {
         Self {
             content,
@@ -33,7 +34,7 @@ impl<F, U, V> Focus<F, U, V> {
 
 impl<C, T, U, V, F> View<C, T> for Focus<F, U, V>
 where
-    F: FnMut(&mut T, &mut Lens<U>),
+    F: FnMut(&mut T, &mut dyn FnOnce(&mut U)),
     V: View<C, U>,
 {
     type Element = V::Element;
@@ -80,8 +81,8 @@ where
 
     fn teardown(
         &mut self,
-        element: &mut Self::Element,
-        state: &mut Self::State,
+        element: Self::Element,
+        state: Self::State,
         cx: &mut C,
         data: &mut T,
     ) {

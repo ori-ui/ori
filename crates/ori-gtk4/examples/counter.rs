@@ -17,5 +17,5 @@ fn main() {
 
     let window = Window::new().title("counter");
 
-    App::new().window(window, ui).run(data).unwrap();
+    App::new().theme("Adwaita-dark").window(window, ui).run(data).unwrap();
 }

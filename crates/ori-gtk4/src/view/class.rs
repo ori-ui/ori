@@ -2,21 +2,21 @@ use gtk4::prelude::WidgetExt as _;
 
 use crate::{Context, View};
 
-pub fn class<V>(class: impl ToString, content: V) -> Class<V> {
-    Class::new(class, content)
+pub fn class<V>(classes: &[impl ToString], content: V) -> Class<V> {
+    Class::new(classes, content)
 }
 
 #[must_use]
 pub struct Class<V> {
     pub content: V,
-    pub class: String,
+    pub classes: Vec<String>,
 }
 
 impl<V> Class<V> {
-    pub fn new(class: impl ToString, content: V) -> Self {
+    pub fn new(classes: &[impl ToString], content: V) -> Self {
         Self {
             content,
-            class: class.to_string(),
+            classes: classes.iter().map(|s| s.to_string()).collect(),
         }
     }
 }
@@ -32,7 +32,9 @@ impl<T, V: View<T>> ori::View<Context, T> for Class<V> {
     ) -> (Self::Element, Self::State) {
         let (element, state) = self.content.build(cx, data);
 
-        element.set_css_classes(&[&self.class]);
+        for class in &self.classes {
+            element.add_css_class(class);
+        }
 
         (element, state)
     }
@@ -53,16 +55,23 @@ impl<T, V: View<T>> ori::View<Context, T> for Class<V> {
             &mut old.content,
         );
 
-        if self.class != old.class {
-            element.remove_css_class(&old.class);
-            element.set_css_classes(&[&self.class]);
+        for class in &old.classes {
+            if !self.classes.contains(class) {
+                element.remove_css_class(class);
+            }
+        }
+
+        for class in &self.classes {
+            if !old.classes.contains(class) {
+                element.add_css_class(class);
+            }
         }
     }
 
     fn teardown(
         &mut self,
-        element: &mut Self::Element,
-        state: &mut Self::State,
+        element: Self::Element,
+        state: Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {

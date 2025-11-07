@@ -1,18 +1,18 @@
-use gtk4::prelude::{BoxExt as _, OrientableExt as _, WidgetExt};
+use gtk4::prelude::{BoxExt as _, OrientableExt as _, WidgetExt as _};
 use ori::Event;
 
-use crate::Context;
+use crate::{Context, ViewSeq};
 
-pub fn box_layout<V>(axis: Axis, content: V) -> BoxLayout<V> {
-    BoxLayout::new(axis, content)
+pub fn line<V>(axis: Axis, content: V) -> Line<V> {
+    Line::new(axis, content)
 }
 
-pub fn row<V>(content: V) -> BoxLayout<V> {
-    BoxLayout::new(Axis::Horizontal, content)
+pub fn row<V>(content: V) -> Line<V> {
+    Line::new(Axis::Horizontal, content)
 }
 
-pub fn column<V>(content: V) -> BoxLayout<V> {
-    BoxLayout::new(Axis::Vertical, content)
+pub fn column<V>(content: V) -> Line<V> {
+    Line::new(Axis::Vertical, content)
 }
 
 #[macro_export]
@@ -45,13 +45,13 @@ impl From<Axis> for gtk4::Orientation {
 }
 
 #[must_use]
-pub struct BoxLayout<V> {
+pub struct Line<V> {
     pub content: V,
     pub spacing: u32,
     pub axis: Axis,
 }
 
-impl<V> BoxLayout<V> {
+impl<V> Line<V> {
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
             content,
@@ -66,9 +66,9 @@ impl<V> BoxLayout<V> {
     }
 }
 
-impl<T, V> ori::View<Context, T> for BoxLayout<V>
+impl<T, V> ori::View<Context, T> for Line<V>
 where
-    V: ori::ViewSeq<Context, gtk4::Widget, T>,
+    V: ViewSeq<T>,
 {
     type Element = gtk4::Box;
     type State = (Vec<gtk4::Widget>, V::SeqState);
@@ -80,7 +80,9 @@ where
     ) -> (Self::Element, Self::State) {
         let (children, state) = self.content.seq_build(cx, data);
 
-        let element = gtk4::Box::new(self.axis.into(), self.spacing as i32);
+        let element = gtk4::Box::default();
+        element.set_orientation(self.axis.into());
+        element.set_spacing(self.spacing as i32);
 
         for child in &children {
             element.append(child);
@@ -105,12 +107,30 @@ where
             &mut old.content,
         );
 
+        // add new children
         for child in children.iter() {
-            if !child.is_ancestor(element) {
+            if !super::is_parent(element, child) {
                 element.append(child);
             }
         }
 
+        // reorder children
+        for child in children.iter().rev() {
+            if super::is_parent(element, child) {
+                element.reorder_child_after(child, None::<&gtk4::Widget>);
+            }
+        }
+
+        // remove children
+        let count = element.observe_children().into_iter().len();
+
+        for _ in children.len()..count {
+            if let Some(child) = element.last_child() {
+                element.remove(&child);
+            }
+        }
+
+        // update state
         if self.spacing != old.spacing {
             element.set_spacing(self.spacing as i32);
         }
@@ -122,8 +142,8 @@ where
 
     fn teardown(
         &mut self,
-        _element: &mut Self::Element,
-        (children, state): &mut Self::State,
+        _element: Self::Element,
+        (children, state): Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {

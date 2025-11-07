@@ -1,5 +1,7 @@
 mod focus;
+mod freeze;
 mod memo;
 
-pub use focus::{Focus, Lens, focus};
-pub use memo::{Memo, memo};
+pub use focus::{Focus, focus};
+pub use freeze::{Freeze, freeze};
+pub use memo::{Memo, hash_memo, memo};

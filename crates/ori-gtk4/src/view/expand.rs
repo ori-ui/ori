@@ -2,8 +2,12 @@ use gtk4::prelude::WidgetExt as _;
 
 use crate::{Context, View};
 
-pub fn expand<V>(expand: bool, content: V) -> Expand<V> {
-    Expand::new(content).hexpand(expand).vexpand(expand)
+pub fn expand<V>(content: V) -> Expand<V> {
+    Expand::new(content).hexpand(true).vexpand(true)
+}
+
+pub fn shrink<V>(content: V) -> Expand<V> {
+    Expand::new(content).hexpand(false).vexpand(false)
 }
 
 pub fn hexpand<V>(expand: bool, content: V) -> Expand<V> {
@@ -90,8 +94,8 @@ impl<T, V: View<T>> ori::View<Context, T> for Expand<V> {
 
     fn teardown(
         &mut self,
-        element: &mut Self::Element,
-        state: &mut Self::State,
+        element: Self::Element,
+        state: Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {

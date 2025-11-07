@@ -1,32 +1,21 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-#[cfg(feature = "layer-shell")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Layer {
-    Background,
-    Bottom,
-    Top,
-    Overlay,
-}
-
-#[cfg(feature = "layer-shell")]
-impl From<Layer> for gtk4_layer_shell::Layer {
-    fn from(layer: Layer) -> Self {
-        match layer {
-            Layer::Background => gtk4_layer_shell::Layer::Background,
-            Layer::Bottom => gtk4_layer_shell::Layer::Bottom,
-            Layer::Top => gtk4_layer_shell::Layer::Top,
-            Layer::Overlay => gtk4_layer_shell::Layer::Overlay,
-        }
-    }
+pub enum WindowEvent {
+    /// Sent when the window is active.
+    Activate,
 }
 
 #[derive(Debug)]
 pub struct Window {
     pub(crate) id: u64,
     pub(crate) title: String,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
+    pub(crate) width: Option<u32>,
+    pub(crate) height: Option<u32>,
+    pub(crate) resizable: bool,
+    pub(crate) decorated: bool,
+    pub(crate) show_focus: bool,
+    pub(crate) hide_on_close: bool,
 
     #[cfg(feature = "layer-shell")]
     pub(crate) layer: Option<Layer>,
@@ -50,6 +39,21 @@ pub struct Window {
     pub(crate) anchor_left: bool,
 }
 
+#[cfg(feature = "layer-shell")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Layer {
+    Background,
+    Bottom,
+    Top,
+    Overlay,
+}
+
+impl Default for Window {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Window {
     pub fn new() -> Self {
         static NEXT_ID: AtomicU64 = AtomicU64::new(0);
@@ -57,8 +61,12 @@ impl Window {
         Self {
             id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
             title: String::from("Ori Gtk4 App"),
-            width: 800,
-            height: 600,
+            width: None,
+            height: None,
+            resizable: true,
+            decorated: true,
+            show_focus: true,
+            hide_on_close: false,
 
             #[cfg(feature = "layer-shell")]
             layer: None,
@@ -88,18 +96,42 @@ impl Window {
         self
     }
 
-    pub fn width(mut self, width: u32) -> Self {
-        self.width = width;
+    pub fn width(mut self, width: impl Into<Option<u32>>) -> Self {
+        self.width = width.into();
         self
     }
 
-    pub fn height(mut self, height: u32) -> Self {
-        self.height = height;
+    pub fn height(mut self, height: impl Into<Option<u32>>) -> Self {
+        self.height = height.into();
         self
     }
 
-    pub fn size(self, width: u32, height: u32) -> Self {
+    pub fn size(
+        self,
+        width: impl Into<Option<u32>>,
+        height: impl Into<Option<u32>>,
+    ) -> Self {
         self.width(width).height(height)
+    }
+
+    pub fn resizable(mut self, resizable: bool) -> Self {
+        self.resizable = resizable;
+        self
+    }
+
+    pub fn decorated(mut self, decorated: bool) -> Self {
+        self.decorated = decorated;
+        self
+    }
+
+    pub fn show_focus(mut self, show_focus: bool) -> Self {
+        self.show_focus = show_focus;
+        self
+    }
+
+    pub fn hide_on_close(mut self, hide_on_close: bool) -> Self {
+        self.hide_on_close = hide_on_close;
+        self
     }
 
     #[cfg(feature = "layer-shell")]
@@ -160,5 +192,17 @@ impl Window {
     pub fn anchor_left(mut self, anchor: bool) -> Self {
         self.anchor_left = anchor;
         self
+    }
+}
+
+#[cfg(feature = "layer-shell")]
+impl From<Layer> for gtk4_layer_shell::Layer {
+    fn from(layer: Layer) -> Self {
+        match layer {
+            Layer::Background => gtk4_layer_shell::Layer::Background,
+            Layer::Bottom => gtk4_layer_shell::Layer::Bottom,
+            Layer::Top => gtk4_layer_shell::Layer::Top,
+            Layer::Overlay => gtk4_layer_shell::Layer::Overlay,
+        }
     }
 }

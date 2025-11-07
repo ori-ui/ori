@@ -1,14 +1,18 @@
 use crate::{Action, Event, Super, View};
 
+/// A sequence of [`View`]s.
 pub trait ViewSeq<C, E, T> {
+    /// State of the sequence.
     type SeqState;
 
+    /// Build elements and [`Self::SeqState`], see [`View::build`] for more information.
     fn seq_build(
         &mut self,
         cx: &mut C,
         data: &mut T,
     ) -> (Vec<E>, Self::SeqState);
 
+    /// Rebuild the sequence, see [`View::rebuild`] for more information.
     fn seq_rebuild(
         &mut self,
         elements: &mut Vec<E>,
@@ -18,14 +22,16 @@ pub trait ViewSeq<C, E, T> {
         old: &mut Self,
     );
 
+    /// Tear down the sequence, see [`View::teardown`] for more information.
     fn seq_teardown(
         &mut self,
-        elements: &mut [E],
-        state: &mut Self::SeqState,
+        elements: Vec<E>,
+        state: Self::SeqState,
         cx: &mut C,
         data: &mut T,
     );
 
+    /// Handle an event for the sequence, see [`View::event`] for more information.
     fn seq_event(
         &mut self,
         elements: &mut [E],
@@ -68,13 +74,13 @@ where
         old: &mut Self,
     ) {
         if self.len() < old.len() {
-            for (i, old) in old.iter_mut().enumerate().skip(self.len()) {
-                old.teardown(
-                    &mut elements[i],
-                    &mut states[i],
-                    cx,
-                    data,
-                );
+            for ((old, element), state) in old
+                .iter_mut()
+                .skip(self.len())
+                .zip(elements.drain(self.len()..))
+                .zip(states.drain(self.len()..))
+            {
+                old.teardown(element, state, cx, data);
             }
 
             elements.truncate(self.len());
@@ -100,18 +106,15 @@ where
 
     fn seq_teardown(
         &mut self,
-        elements: &mut [V::Element],
-        states: &mut Self::SeqState,
+        elements: Vec<V::Element>,
+        states: Self::SeqState,
         cx: &mut C,
         data: &mut T,
     ) {
-        for (i, view) in self.iter_mut().enumerate() {
-            view.teardown(
-                &mut elements[i],
-                &mut states[i],
-                cx,
-                data,
-            );
+        for ((view, element), state) in
+            self.iter_mut().zip(elements).zip(states)
+        {
+            view.teardown(element, state, cx, data);
         }
     }
 
@@ -174,7 +177,7 @@ macro_rules! impl_tuple {
                 old: &mut Self,
             ) {
                 $({
-                    elements[$index].downcast(|element| {
+                    elements[$index].downcast_with(|element| {
                         self.$index.rebuild(
                             element,
                             &mut state.$index,
@@ -188,20 +191,19 @@ macro_rules! impl_tuple {
 
             fn seq_teardown(
                 &mut self,
-                elements: &mut [E],
-                state: &mut Self::SeqState,
+                mut elements: Vec<E>,
+                state: Self::SeqState,
                 cx: &mut C,
                 data: &mut T,
             ) {
                 $({
-                    elements[$index].downcast(|element| {
-                        self.$index.teardown(
-                            element,
-                            &mut state.$index,
-                            cx,
-                            data,
-                        );
-                    });
+                    let element = elements.remove(0);
+                    self.$index.teardown(
+                        element.downcast(),
+                        state.$index,
+                        cx,
+                        data,
+                    );
                 })*
             }
 
@@ -216,7 +218,7 @@ macro_rules! impl_tuple {
                 let mut action = Action::none();
 
                 $({
-                    action |= elements[$index].downcast(|element| {
+                    action |= elements[$index].downcast_with(|element| {
                         self.$index.event(
                             element,
                             &mut state.$index,

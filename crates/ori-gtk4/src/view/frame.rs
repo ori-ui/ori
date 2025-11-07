@@ -1,4 +1,4 @@
-use gtk4::prelude::{FrameExt as _, WidgetExt};
+use gtk4::prelude::FrameExt as _;
 
 use crate::{Context, View};
 
@@ -53,7 +53,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Frame<V> {
     ) {
         self.content.rebuild(child, state, cx, data, &mut old.content);
 
-        if !child.is_ancestor(element) {
+        if !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
 
@@ -64,8 +64,8 @@ impl<T, V: View<T>> ori::View<Context, T> for Frame<V> {
 
     fn teardown(
         &mut self,
-        _element: &mut Self::Element,
-        (child, state): &mut Self::State,
+        _element: Self::Element,
+        (child, state): Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {

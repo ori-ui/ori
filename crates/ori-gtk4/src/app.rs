@@ -16,7 +16,7 @@ use gtk4::{
 use notify::Watcher as _;
 use ori::View as _;
 
-use crate::{AnyView, Context, Event, Window};
+use crate::{AnyView, Context, Event, Window, WindowEvent};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -33,6 +33,9 @@ pub enum Css {
     String(String),
 }
 
+/// On debug builds load CSS from the file, and watch for changes.
+///
+/// On release builds include the CSS into the binary by string.
 #[macro_export]
 macro_rules! include_css {
     ($path:literal) => {{
@@ -54,14 +57,22 @@ macro_rules! include_css {
 
 pub struct App<T> {
     windows: Vec<(u64, Option<Window>, UiBuilder<T>)>,
+    theme: Option<String>,
     css_paths: Vec<PathBuf>,
     css_strings: Vec<String>,
+}
+
+impl<T> Default for App<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T> App<T> {
     pub fn new() -> Self {
         Self {
             windows: Vec::new(),
+            theme: None,
             css_paths: Vec::new(),
             css_strings: Vec::new(),
         }
@@ -77,6 +88,11 @@ impl<T> App<T> {
     {
         let builder: UiBuilder<T> = Box::new(move |data| Box::new(ui(data)));
         self.windows.push((window.id, Some(window), builder));
+        self
+    }
+
+    pub fn theme(mut self, theme: impl ToString) -> Self {
+        self.theme = Some(theme.to_string());
         self
     }
 
@@ -101,6 +117,15 @@ impl<T> App<T> {
     where
         T: 'static,
     {
+        gtk4::init().unwrap();
+
+        if let Some(ref theme) = self.theme
+            && let Some(display) = gtk4::gdk::Display::default()
+        {
+            let settings = gtk4::Settings::for_display(&display);
+            settings.set_gtk_theme_name(Some(theme));
+        }
+
         let app = gtk4::Application::builder()
             .application_id("com.example.counter")
             .build();
@@ -119,41 +144,46 @@ impl<T> App<T> {
             move |app| {
                 context.activate();
 
-                for window in &windows {
+                for desc in &windows {
                     #[cfg(feature = "layer-shell")]
                     use gtk4_layer_shell::{Edge, LayerShell};
 
                     let win = gtk4::ApplicationWindow::new(app);
 
                     #[cfg(feature = "layer-shell")]
-                    if let Some(layer) = window.layer {
+                    if let Some(layer) = desc.layer {
                         win.init_layer_shell();
                         win.set_layer(layer.into());
 
-                        if let Some(zone) = window.exclusive_zone {
+                        if let Some(zone) = desc.exclusive_zone {
                             win.set_exclusive_zone(zone);
                         } else {
                             win.auto_exclusive_zone_enable();
                         }
 
-                        win.set_anchor(Edge::Top, window.anchor_top);
-                        win.set_anchor(Edge::Right, window.anchor_right);
-                        win.set_anchor(Edge::Bottom, window.anchor_bottom);
-                        win.set_anchor(Edge::Left, window.anchor_left);
+                        win.set_anchor(Edge::Top, desc.anchor_top);
+                        win.set_anchor(Edge::Right, desc.anchor_right);
+                        win.set_anchor(Edge::Bottom, desc.anchor_bottom);
+                        win.set_anchor(Edge::Left, desc.anchor_left);
 
-                        win.set_margin(Edge::Top, window.margin_top);
-                        win.set_margin(Edge::Right, window.margin_right);
-                        win.set_margin(Edge::Bottom, window.margin_bottom);
-                        win.set_margin(Edge::Left, window.margin_left);
+                        win.set_margin(Edge::Top, desc.margin_top);
+                        win.set_margin(Edge::Right, desc.margin_right);
+                        win.set_margin(Edge::Bottom, desc.margin_bottom);
+                        win.set_margin(Edge::Left, desc.margin_left);
                     }
 
-                    win.set_title(Some(&window.title));
+                    win.set_title(Some(&desc.title));
                     win.set_default_size(
-                        window.width as i32,
-                        window.height as i32,
+                        desc.width.map_or(-1, |width| width as i32),
+                        desc.height.map_or(-1, |width| width as i32),
                     );
 
-                    context.opened(window.id);
+                    win.set_resizable(desc.resizable);
+                    win.set_decorated(desc.decorated);
+                    win.set_focus_visible(desc.show_focus);
+                    win.set_hide_on_close(desc.hide_on_close);
+
+                    context.opened(desc.id);
                     win_tx.send(win).unwrap();
                 }
             }
@@ -178,7 +208,7 @@ impl<T> App<T> {
                         for path in event.paths {
                             if let Ok(canonical) = fs::canonicalize(path) {
                                 let _ =
-                                    sender.send(Event::StyleChanged(canonical));
+                                    sender.send(Event::CssChanged(canonical));
                             }
                         }
                     }
@@ -229,20 +259,24 @@ struct AppState<T> {
 }
 
 impl<T> AppState<T> {
-    fn add_css_path(&mut self, path: &Path) -> Result<(), Error> {
+    fn add_css_path(
+        &mut self,
+        path: &Path,
+        display: &gtk4::gdk::Display,
+    ) -> Result<(), Error> {
         let canonical = fs::canonicalize(path)?;
 
         let css_provider = gtk4::CssProvider::new();
         css_provider.load_from_path(&canonical);
 
         gtk4::style_context_add_provider_for_display(
-            &gtk4::gdk::Display::default().unwrap(),
+            display,
             &css_provider,
             gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
         self.watcher.watch(
-            &path,
+            path,
             notify::RecursiveMode::NonRecursive,
         )?;
 
@@ -259,8 +293,10 @@ impl<T> AppState<T> {
     ) -> Result<bool, Error> {
         match event {
             Event::Activate => {
+                let display = gtk4::gdk::Display::default().unwrap();
+
                 for path in &app.css_paths {
-                    self.add_css_path(path)?;
+                    self.add_css_path(path, &display)?;
                 }
 
                 for string in &app.css_strings {
@@ -268,14 +304,14 @@ impl<T> AppState<T> {
                     css_provider.load_from_data(string);
 
                     gtk4::style_context_add_provider_for_display(
-                        &gtk4::gdk::Display::default().unwrap(),
+                        &display,
                         &css_provider,
                         gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
                     );
                 }
             }
 
-            Event::StyleChanged(path) => {
+            Event::CssChanged(path) => {
                 if let Some(provider) = self.css_paths.get(&path) {
                     provider.load_from_path(path);
                 }
@@ -290,7 +326,7 @@ impl<T> AppState<T> {
                         &mut window.state,
                         &mut self.context,
                         data,
-                        window.view.as_mut(),
+                        &mut window.view,
                     );
 
                     if !window.element.is_ancestor(&window.window) {
@@ -316,7 +352,7 @@ impl<T> AppState<T> {
                 let window = self.win_rx.recv().unwrap();
 
                 window.set_child(Some(&element));
-                window.show();
+                window.present();
 
                 window.connect_close_request({
                     let context = self.context.clone();
@@ -337,6 +373,8 @@ impl<T> AppState<T> {
                 };
 
                 self.windows.push(window_state);
+
+                self.context.event(WindowEvent::Activate, None);
             }
 
             Event::WindowClosed(id) => {
@@ -346,8 +384,8 @@ impl<T> AppState<T> {
                     let mut window = self.windows.swap_remove(index);
 
                     window.view.teardown(
-                        &mut window.element,
-                        &mut window.state,
+                        window.element,
+                        window.state,
                         &mut self.context,
                         data,
                     );
@@ -366,6 +404,13 @@ impl<T> AppState<T> {
 
                     if action.rebuild {
                         self.context.rebuild();
+                    }
+
+                    for event in action.events {
+                        self.context
+                            .sender()
+                            .send(Event::Event(event))
+                            .expect("channel not closed");
                     }
                 }
             }

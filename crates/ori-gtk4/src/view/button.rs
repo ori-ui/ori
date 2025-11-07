@@ -1,4 +1,4 @@
-use gtk4::prelude::{ButtonExt as _, WidgetExt};
+use gtk4::prelude::ButtonExt as _;
 
 use crate::{Context, View};
 
@@ -77,15 +77,15 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     ) {
         self.content.rebuild(child, state, cx, data, &mut old.content);
 
-        if !child.is_ancestor(element) {
+        if super::is_parent(element, child) {
             element.set_child(Some(child));
         }
     }
 
     fn teardown(
         &mut self,
-        _element: &mut Self::Element,
-        (_id, child, state): &mut Self::State,
+        _element: Self::Element,
+        (_id, child, state): Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {
@@ -102,10 +102,9 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     ) -> ori::Action {
         let action = self.content.event(child, state, cx, data, event);
 
-        match event.get_targeted(*id) {
+        match event.take_targeted(*id) {
             Some(ButtonEvent::Clicked) => action | (self.on_click)(data),
-
-            _ => action,
+            None => action,
         }
     }
 }

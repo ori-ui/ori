@@ -1,6 +1,15 @@
 /// Trait for defining subtype relations between [`View::Element`](crate::View::Element)s.
 pub trait Super<C, S> {
+    /// Upcast sub type `S` to the super type `Self`.
     fn upcast(cx: &mut C, sub: S) -> Self;
 
-    fn downcast<T>(&mut self, f: impl FnOnce(&mut S) -> T) -> T;
+    /// Downcast self to the sub type `S`.
+    ///
+    /// This is expected to panic when `self` is not an instance of `S`.
+    fn downcast(self) -> S;
+
+    /// Downcast self to the sub type `S`, and call `f` with it.
+    ///
+    /// This is expected to panic when `self` is not an instance of `S`.
+    fn downcast_with<T>(&mut self, f: impl FnOnce(&mut S) -> T) -> T;
 }

@@ -412,16 +412,26 @@ impl<T> AppState<T> {
                         &mut event,
                     );
 
-                    if action.rebuild {
-                        self.context.rebuild();
-                    }
+                    self.context.action(action);
+                }
+            }
 
-                    for event in action.events {
-                        self.context
-                            .sender()
-                            .send(Event::Event(event))
-                            .expect("channel not closed");
-                    }
+            Event::Action(action) => {
+                if action.rebuild {
+                    self.context.rebuild();
+                }
+
+                for event in action.events {
+                    self.context
+                        .sender()
+                        .send(Event::Event(event))
+                        .expect("channel not closed");
+                }
+
+                let main_context = gtk4::glib::MainContext::default();
+
+                for fut in action.futures {
+                    main_context.spawn_local(fut);
                 }
             }
         }

@@ -1,6 +1,7 @@
 use std::{any::Any, path::PathBuf};
 
 use gtk4::gio::prelude::ApplicationExt as _;
+use ori::Action;
 use tokio::sync::mpsc::{
     UnboundedReceiver, UnboundedSender, unbounded_channel,
 };
@@ -46,6 +47,10 @@ impl Context {
         }
     }
 
+    pub(crate) fn action(&self, action: Action) {
+        self.sender.send(Event::Action(action)).expect("channel not closed");
+    }
+
     pub(crate) fn activate(&self) {
         self.sender.send(Event::Activate).expect("channel not closed");
     }
@@ -74,4 +79,5 @@ pub enum Event {
     WindowClosed(u64),
     CssChanged(PathBuf),
     Event(ori::Event),
+    Action(Action),
 }

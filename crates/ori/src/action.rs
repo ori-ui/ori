@@ -1,4 +1,8 @@
-use std::ops::{BitOr, BitOrAssign};
+use std::{
+    fmt,
+    ops::{BitOr, BitOrAssign},
+    pin::Pin,
+};
 
 use crate::Event;
 
@@ -12,13 +16,15 @@ use crate::Event;
 /// [`View`]: crate::View
 /// [`View::event`]: crate::View::event
 #[must_use]
-#[derive(Debug)]
 pub struct Action {
     /// Whether the action requests a rebuild.
     pub rebuild: bool,
 
     /// Events to be triggered by this action.
     pub events: Vec<Event>,
+
+    /// Futures to spawned by this action.
+    pub futures: Vec<Pin<Box<dyn Future<Output = Action> + Send + Sync>>>,
 }
 
 impl Action {
@@ -27,6 +33,7 @@ impl Action {
         Self {
             rebuild: false,
             events: Vec::new(),
+            futures: Vec::new(),
         }
     }
 
@@ -35,6 +42,7 @@ impl Action {
         Self {
             rebuild: true,
             events: Vec::new(),
+            futures: Vec::new(),
         }
     }
 
@@ -43,6 +51,20 @@ impl Action {
         Self {
             rebuild: true,
             events: vec![event],
+            futures: Vec::new(),
+        }
+    }
+
+    /// Spawn a future that can emits an action.
+    pub fn spawn(
+        fut: impl Future<Output: IntoAction> + Send + Sync + 'static,
+    ) -> Self {
+        let fut = Box::pin(async { fut.await.into_action() });
+
+        Self {
+            rebuild: false,
+            events: Vec::new(),
+            futures: vec![fut],
         }
     }
 
@@ -59,9 +81,19 @@ impl Action {
     }
 
     /// Merge `self` with `other`.
-    pub fn merge(&mut self, other: Self) {
+    pub fn merge(&mut self, mut other: Self) {
         self.rebuild |= other.rebuild;
-        self.events.extend(other.events);
+        self.events.append(&mut other.events);
+        self.futures.append(&mut other.futures);
+    }
+}
+
+impl fmt::Debug for Action {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Action")
+            .field("rebuild", &self.rebuild)
+            .field("events", &self.events)
+            .finish()
     }
 }
 

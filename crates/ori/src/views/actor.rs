@@ -1,4 +1,6 @@
-use crate::{Action, AsyncContext, Event, IntoAction, NoElement, View};
+use crate::{
+    Action, AsyncContext, Event, IntoAction, NoElement, View, views::builder,
+};
 
 /// [`View`] that acts when built.
 pub fn actor<T, A>(
@@ -17,7 +19,18 @@ pub fn task<C, T>(
 where
     C: AsyncContext,
 {
-    Actor::new(move |_| Action::spawn(async { task.await.into_action() }))
+    actor(move |_| Action::spawn(async { task.await.into_action() }))
+}
+
+/// [`View`] that spawns a task with a proxy when built.
+pub fn task_with_proxy<C, T, F>(
+    task: impl FnOnce(C::Proxy) -> F,
+) -> impl View<C, T, Element = NoElement>
+where
+    C: AsyncContext,
+    F: Future<Output: IntoAction> + Send + 'static,
+{
+    builder(|cx: &mut C, _| self::task(task(cx.proxy())))
 }
 
 /// [`View`] that acts with it's built.

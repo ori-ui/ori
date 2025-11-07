@@ -6,9 +6,12 @@ pub fn handler() -> Handler<()> {
 }
 
 /// [`View`] that handles events.
-pub fn on_event<T>(
-    handler: impl EventHandler<T>,
-) -> Handler<impl EventHandler<T>> {
+pub fn on_event<T, A>(
+    handler: impl FnMut(&mut T, &mut Event) -> A,
+) -> Handler<impl EventHandler<T>>
+where
+    A: IntoAction,
+{
     Handler::new().on_event(handler)
 }
 

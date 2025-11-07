@@ -11,7 +11,9 @@ where
 }
 
 /// [`View`] that spawns a task when built.
-pub fn task<C, T, F>(task: impl FnOnce(&mut T) -> F) -> impl View<C, T>
+pub fn task<C, T, F>(
+    task: impl FnOnce(&mut T) -> F,
+) -> impl View<C, T, Element = NoElement>
 where
     C: Context,
     F: Future<Output: IntoAction> + Send + Sync + 'static,

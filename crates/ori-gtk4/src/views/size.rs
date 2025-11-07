@@ -234,13 +234,15 @@ mod imp {
             }
 
             if let Some(ref child) = *self.child.borrow() {
-                let (mut min, mut nat, _, _) =
+                let (mut min, mut nat, mut min_baseline, mut nat_baseline) =
                     child.measure(orientation, for_size);
 
                 min = min.min(max);
                 nat = nat.min(max);
+                min_baseline = min_baseline.min(max);
+                nat_baseline = nat_baseline.min(max);
 
-                (min, nat, min, nat)
+                (min, nat, min_baseline, nat_baseline)
             } else {
                 (0, 0, 0, 0)
             }

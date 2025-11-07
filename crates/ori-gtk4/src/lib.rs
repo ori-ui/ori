@@ -18,8 +18,10 @@ pub use context::*;
 pub use view::*;
 pub use window::*;
 
-pub use ori as core;
+pub use ori::{self as core, Action, Event};
 
 pub mod prelude {
-    pub use crate::{App, Context, Error, View, ViewSeq, Window, views::*};
+    pub use crate::{
+        Action, App, Context, Error, View, ViewSeq, Window, views::*,
+    };
 }

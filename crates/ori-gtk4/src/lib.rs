@@ -25,5 +25,5 @@ pub mod prelude {
         Action, App, Context, Error, View, ViewSeq, Window, views::*,
     };
 
-    pub use ori::Proxy;
+    pub use ori::{Event, Proxy};
 }

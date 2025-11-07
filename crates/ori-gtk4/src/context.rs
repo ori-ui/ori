@@ -75,6 +75,10 @@ impl ori::AsyncContext for Context {
             sender: self.sender.clone(),
         }
     }
+
+    fn send_action(&mut self, action: ori::Action) {
+        ori::Proxy::action(&self.proxy(), action);
+    }
 }
 
 impl ori::Proxy for Proxy {
@@ -86,7 +90,10 @@ impl ori::Proxy for Proxy {
         self.sender.send(Event::Event(event)).expect("channel not closed");
     }
 
-    fn spawn(&self, future: impl Future<Output = ()> + Send + 'static) {
+    fn spawn_boxed(
+        &self,
+        future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
+    ) {
         self.sender
             .send(Event::Spawn(Box::pin(future)))
             .expect("channel not closed");

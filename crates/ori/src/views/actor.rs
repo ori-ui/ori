@@ -1,4 +1,4 @@
-use crate::{Action, AsyncContext, Event, IntoAction, NoElement, Proxy, View};
+use crate::{Action, AsyncContext, Event, IntoAction, NoElement, View};
 
 /// [`View`] that acts when built.
 pub fn actor<T, A>(
@@ -53,7 +53,7 @@ where
         data: &mut T,
     ) -> (Self::Element, Self::State) {
         let act = self.act.take().unwrap();
-        cx.proxy().action(act(data));
+        cx.send_action(act(data));
 
         (NoElement, ())
     }

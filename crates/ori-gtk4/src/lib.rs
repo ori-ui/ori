@@ -21,9 +21,5 @@ pub use window::*;
 pub use ori as core;
 
 pub mod prelude {
-    pub use crate::{
-        app::{App, Error},
-        context::Context,
-        window::Window,
-    };
+    pub use crate::{App, Context, Error, View, ViewSeq, Window, views::*};
 }

@@ -56,6 +56,7 @@ macro_rules! include_css {
 }
 
 pub struct App<T> {
+    id: Option<String>,
     windows: Vec<(u64, Option<Window>, UiBuilder<T>)>,
     theme: Option<String>,
     css_paths: Vec<PathBuf>,
@@ -71,11 +72,17 @@ impl<T> Default for App<T> {
 impl<T> App<T> {
     pub fn new() -> Self {
         Self {
+            id: None,
             windows: Vec::new(),
             theme: None,
             css_paths: Vec::new(),
             css_strings: Vec::new(),
         }
+    }
+
+    pub fn id(mut self, id: impl ToString) -> Self {
+        self.id = Some(id.to_string());
+        self
     }
 
     pub fn window<V>(
@@ -126,9 +133,10 @@ impl<T> App<T> {
             settings.set_gtk_theme_name(Some(theme));
         }
 
-        let app = gtk4::Application::builder()
-            .application_id("com.example.counter")
-            .build();
+        let app = gtk4::Application::new(
+            self.id.as_deref(),
+            gtk4::gio::ApplicationFlags::empty(),
+        );
 
         let (context, mut receiver) = Context::new(app.downgrade());
         let (win_tx, win_rx) = std::sync::mpsc::channel();
@@ -226,10 +234,12 @@ impl<T> App<T> {
 
             async move {
                 while let Some(event) = receiver.recv().await {
-                    if let Err(err) =
-                        state.handle_event(&mut self, &mut data, event)
-                    {
-                        println!("error: {err}");
+                    let result = state.handle_event(
+                        &mut self, &mut data, event, //
+                    );
+
+                    if let Err(err) = result {
+                        eprintln!("error: {err}");
                     }
                 }
             }

@@ -10,4 +10,14 @@ pub use context::*;
 pub use view::*;
 pub use window::*;
 
+pub use ori as core;
 pub use ori::Action;
+
+pub mod prelude {
+    pub use crate::{
+        app::{App, Error},
+        context::Context,
+        view::*,
+        window::Window,
+    };
+}

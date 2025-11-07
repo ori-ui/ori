@@ -11,17 +11,13 @@ where
 }
 
 /// [`View`] that spawns a task when built.
-pub fn task<C, T, F>(
-    task: impl FnOnce(&mut T) -> F,
+pub fn task<C, T>(
+    task: impl Future<Output: IntoAction> + Send + Sync + 'static,
 ) -> impl View<C, T, Element = NoElement>
 where
     C: Context,
-    F: Future<Output: IntoAction> + Send + Sync + 'static,
 {
-    Actor::new(move |data| {
-        let task = task(data);
-        Action::spawn(async { task.await.into_action() })
-    })
+    Actor::new(move |_| Action::spawn(async { task.await.into_action() }))
 }
 
 /// [`View`] that acts with it's built.

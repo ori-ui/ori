@@ -8,7 +8,9 @@ mod focusable;
 mod frame;
 mod label;
 mod line;
-mod size;
+mod picture;
+mod request;
+mod window;
 
 pub use align::{Align, Alignment, align, center, halign, valign};
 pub use button::{Button, button};
@@ -17,11 +19,20 @@ pub use class::{Class, class};
 pub use entry::{Entry, entry};
 pub use expand::{Expand, expand, hexpand, shrink, vexpand};
 pub use frame::{Frame, frame};
-pub use label::{Label, label};
+pub use label::{Ellipsize, Label, Wrap, label};
 pub use line::{Line, hline, line, vline};
-pub use size::{
-    Size, height, max_height, max_width, min_height, min_width, size, width,
-};
+pub use picture::{ImageSource, Picture, picture};
+pub use request::{Request, request_height, request_size, request_width};
+pub use window::{Window, window};
+
+#[cfg(feature = "layer-shell")]
+pub use window::Layer;
+
+#[cfg(feature = "adwaita")]
+mod clamp;
+
+#[cfg(feature = "adwaita")]
+pub use clamp::{Clamp, clamp, clamp_height, clamp_width};
 
 use gtk4::{
     glib::object::{Cast, IsA},
@@ -44,4 +55,19 @@ where
     V::State: 'static,
 {
     Box::new(view)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Axis {
+    Horizontal,
+    Vertical,
+}
+
+impl From<Axis> for gtk4::Orientation {
+    fn from(axis: Axis) -> Self {
+        match axis {
+            Axis::Horizontal => gtk4::Orientation::Horizontal,
+            Axis::Vertical => gtk4::Orientation::Vertical,
+        }
+    }
 }

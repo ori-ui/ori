@@ -1,7 +1,9 @@
+use std::ops::{Deref, DerefMut};
+
 use gtk4::prelude::{BoxExt as _, OrientableExt as _, WidgetExt as _};
 use ori::Event;
 
-use crate::{Context, ViewSeq};
+use crate::{Context, ViewSeq, views::Axis};
 
 pub fn line<V>(axis: Axis, content: V) -> Line<V> {
     Line::new(axis, content)
@@ -31,21 +33,6 @@ macro_rules! vline {
     };
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Axis {
-    Horizontal,
-    Vertical,
-}
-
-impl From<Axis> for gtk4::Orientation {
-    fn from(axis: Axis) -> Self {
-        match axis {
-            Axis::Horizontal => gtk4::Orientation::Horizontal,
-            Axis::Vertical => gtk4::Orientation::Vertical,
-        }
-    }
-}
-
 #[must_use]
 pub struct Line<V> {
     pub content: V,
@@ -65,6 +52,20 @@ impl<V> Line<V> {
     pub fn spacing(mut self, spacing: u32) -> Self {
         self.spacing = spacing;
         self
+    }
+}
+
+impl<V> Deref for Line<V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.content
+    }
+}
+
+impl<V> DerefMut for Line<V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.content
     }
 }
 

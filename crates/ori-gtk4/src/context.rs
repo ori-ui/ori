@@ -46,22 +46,6 @@ impl Context {
         }
     }
 
-    pub(crate) fn activate(&self) {
-        self.sender.send(Event::Activate).expect("channel not closed");
-    }
-
-    pub(crate) fn opened(&self, id: u64) {
-        self.sender
-            .send(Event::InitialWindowCreated(id))
-            .expect("channel not closed");
-    }
-
-    pub(crate) fn closed(&self, window_id: u64) {
-        self.sender
-            .send(Event::WindowClosed(window_id))
-            .expect("channel not closed");
-    }
-
     pub(crate) fn sender(&self) -> &UnboundedSender<Event> {
         &self.sender
     }
@@ -106,9 +90,6 @@ pub struct Proxy {
 }
 
 pub enum Event {
-    Activate,
-    InitialWindowCreated(u64),
-    WindowClosed(u64),
     CssChanged(PathBuf),
 
     Rebuild,

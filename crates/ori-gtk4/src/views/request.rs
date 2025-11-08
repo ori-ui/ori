@@ -1,43 +1,49 @@
-use gtk4::prelude::WidgetExt as _;
+use gtk4::prelude::WidgetExt;
 
 use crate::{Context, View};
 
-pub fn class<V, T>(classes: impl IntoClasses<T>, content: V) -> Class<V> {
-    Class::new(classes, content)
+pub fn request_size<V>(width: u32, height: u32, content: V) -> Request<V> {
+    Request::new(content).width(width).height(height)
 }
 
-pub trait IntoClasses<T> {
-    fn into_classes(self) -> Vec<String>;
+pub fn request_width<V>(width: u32, content: V) -> Request<V> {
+    Request::new(content).width(width)
 }
 
-impl<T: ToString> IntoClasses<()> for T {
-    fn into_classes(self) -> Vec<String> {
-        self.to_string().split_whitespace().map(String::from).collect()
-    }
+pub fn request_height<V>(height: u32, content: V) -> Request<V> {
+    Request::new(content).height(height)
 }
 
-impl<I: IntoIterator<Item: ToString>> IntoClasses<&str> for I {
-    fn into_classes(self) -> Vec<String> {
-        self.into_iter().flat_map(|s| s.into_classes()).collect()
-    }
-}
-
-#[must_use]
-pub struct Class<V> {
+pub struct Request<V> {
     pub content: V,
-    pub classes: Vec<String>,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
 }
 
-impl<V> Class<V> {
-    pub fn new<T>(classes: impl IntoClasses<T>, content: V) -> Self {
+impl<V> Request<V> {
+    pub fn new(content: V) -> Self {
         Self {
             content,
-            classes: classes.into_classes(),
+            width: None,
+            height: None,
         }
+    }
+
+    pub fn width(mut self, width: u32) -> Self {
+        self.width = Some(width);
+        self
+    }
+
+    pub fn height(mut self, height: u32) -> Self {
+        self.height = Some(height);
+        self
     }
 }
 
-impl<T, V: View<T>> ori::View<Context, T> for Class<V> {
+impl<T, V> ori::View<Context, T> for Request<V>
+where
+    V: View<T>,
+{
     type Element = V::Element;
     type State = V::State;
 
@@ -48,9 +54,10 @@ impl<T, V: View<T>> ori::View<Context, T> for Class<V> {
     ) -> (Self::Element, Self::State) {
         let (element, state) = self.content.build(cx, data);
 
-        for class in &self.classes {
-            element.add_css_class(class);
-        }
+        element.set_size_request(
+            self.width.map_or(-1, |w| w as i32),
+            self.height.map_or(-1, |h| h as i32),
+        );
 
         (element, state)
     }
@@ -71,16 +78,11 @@ impl<T, V: View<T>> ori::View<Context, T> for Class<V> {
             &mut old.content,
         );
 
-        for class in &old.classes {
-            if !self.classes.contains(class) {
-                element.remove_css_class(class);
-            }
-        }
-
-        for class in &self.classes {
-            if !old.classes.contains(class) {
-                element.add_css_class(class);
-            }
+        if self.width != old.width || self.height != old.height {
+            element.set_size_request(
+                self.width.map_or(-1, |w| w as i32),
+                self.height.map_or(-1, |h| h as i32),
+            );
         }
     }
 

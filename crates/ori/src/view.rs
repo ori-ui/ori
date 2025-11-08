@@ -48,6 +48,3 @@ pub trait View<C, T> {
         event: &mut Event,
     ) -> Action;
 }
-
-/// Not an element.
-pub struct NoElement;

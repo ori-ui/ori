@@ -13,6 +13,11 @@ ori.workspace = true
 gtk4 = "0.10"
 notify = "8.2"
 thiserror = "2"
+image = "0.25"
+
+[dependencies.libadwaita]
+version = "0.8"
+optional = true
 
 [dependencies.tokio]
 version = "1"
@@ -24,4 +29,5 @@ version = "0.7"
 optional = true
 
 [features]
+adwaita = ["dep:libadwaita"]
 layer-shell = ["dep:gtk4-layer-shell"]

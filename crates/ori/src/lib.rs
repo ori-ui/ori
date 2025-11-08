@@ -5,6 +5,7 @@
 mod action;
 mod any;
 mod context;
+mod effect;
 mod element;
 mod event;
 mod seq;
@@ -15,6 +16,7 @@ pub mod views;
 pub use action::*;
 pub use any::*;
 pub use context::*;
+pub use effect::*;
 pub use element::*;
 pub use event::*;
 pub use seq::*;

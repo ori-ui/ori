@@ -1,15 +1,9 @@
-use ori_gtk4::{App, Layer, View, Window, views::*};
+use ori_gtk4::{App, SideEffect, views::*};
 
 struct Data {}
 
-fn ui(_data: &mut Data) -> impl View<Data> + use<> {
-    label("hello")
-}
-
-fn main() {
-    let data = Data {};
-
-    let window = Window::new()
+fn ui(_data: &mut Data) -> impl SideEffect<Data> + use<> {
+    window(label("hello"))
         .layer(Layer::Overlay)
         .height(200)
         .anchor_left(true)
@@ -17,7 +11,11 @@ fn main() {
         .anchor_right(true)
         .margin_left(40)
         .margin_right(40)
-        .margin_top(20);
+        .margin_top(20)
+}
 
-    App::new().window(window, ui).run(data).unwrap();
+fn main() {
+    let data = Data {};
+
+    App::new().run(data, ui).unwrap();
 }

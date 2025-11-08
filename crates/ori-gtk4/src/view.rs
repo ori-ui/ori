@@ -10,6 +10,8 @@ pub type AnyView<T> = Box<dyn ori::AnyView<Context, gtk4::Widget, T>>;
 pub trait View<T>: ori::View<Context, T, Element: IsA<gtk4::Widget>> {}
 pub trait ViewSeq<T>: ori::ViewSeq<Context, gtk4::Widget, T> {}
 
+pub trait SideEffect<T>: ori::SideEffect<Context, T> {}
+
 impl<T, V> View<T> for V
 where
     V: ori::View<Context, T>,
@@ -18,6 +20,8 @@ where
 }
 
 impl<T, V> ViewSeq<T> for V where V: ori::ViewSeq<Context, gtk4::Widget, T> {}
+
+impl<T, V> SideEffect<T> for V where V: ori::SideEffect<Context, T> {}
 
 impl<S> ori::Super<Context, S> for gtk4::Widget
 where

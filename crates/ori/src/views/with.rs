@@ -1,19 +1,19 @@
-use crate::{Action, Event, NoElement, View};
+use crate::{Action, Event, NoElement, SideEffect, View};
 
-/// [`View`] that attaches another [`View`] with [`NoElement`].
+/// [`View`] that attaches a [`SideEffect`].
 ///
 /// This is useful in conjunction with:
-///  - [`Handler`](crate::Handler), [`handler`](crate::handler).
-///  - [`Actor`](crate::Actor), [`actor`](crate::actor), [`task`](crate::task).
+///  - [`Handler`](crate::views::Handler), [`handler`](crate::views::handler).
+///  - [`Actor`](crate::views::Actor), [`actor`](crate::views::actor), [`task`](crate::views::task).
 pub fn with<V, W>(content: V, with: W) -> With<V, W> {
     With::new(content, with)
 }
 
-/// [`View`] that attaches another [`View`] with [`NoElement`].
+/// [`View`] that attaches a [`SideEffect`].
 ///
 /// This is useful in conjunction with:
-///  - [`Handler`](crate::Handler), [`handler`](crate::handler).
-///  - [`Actor`](crate::Actor), [`actor`](crate::actor), [`task`](crate::task).
+///  - [`Handler`](crate::views::Handler), [`handler`](crate::views::handler).
+///  - [`Actor`](crate::views::Actor), [`actor`](crate::views::actor), [`task`](crate::views::task).
 pub struct With<V, W> {
     content: V,
     with: W,
@@ -29,7 +29,7 @@ impl<V, W> With<V, W> {
 impl<C, T, V, W> View<C, T> for With<V, W>
 where
     V: View<C, T>,
-    W: View<C, T, Element = NoElement>,
+    W: SideEffect<C, T>,
 {
     type Element = V::Element;
     type State = (V::State, W::State);

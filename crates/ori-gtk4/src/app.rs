@@ -1,22 +1,21 @@
 use std::{
     any::Any,
+    cell::RefCell,
     collections::HashMap,
     fs, io,
     path::{Path, PathBuf},
     process::ExitCode,
-    sync::mpsc::Receiver,
     time::Duration,
 };
 
 use gtk4::{
     gio::prelude::{ApplicationExt as _, ApplicationExtManual as _},
     glib::clone::Downgrade as _,
-    prelude::{GtkWindowExt as _, WidgetExt as _},
 };
 use notify::Watcher as _;
 use ori::{AsyncContext as _, View as _};
 
-use crate::{AnyView, Context, Window, WindowEvent, context::Event};
+use crate::{Context, context::Event};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -55,25 +54,23 @@ macro_rules! include_css {
     }};
 }
 
-pub struct App<T> {
+pub struct App {
     id: Option<String>,
-    windows: Vec<(u64, Option<Window>, UiBuilder<T>)>,
     theme: Option<String>,
     css_paths: Vec<PathBuf>,
     css_strings: Vec<String>,
 }
 
-impl<T> Default for App<T> {
+impl Default for App {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> App<T> {
+impl App {
     pub fn new() -> Self {
         Self {
             id: None,
-            windows: Vec::new(),
             theme: None,
             css_paths: Vec::new(),
             css_strings: Vec::new(),
@@ -82,19 +79,6 @@ impl<T> App<T> {
 
     pub fn id(mut self, id: impl ToString) -> Self {
         self.id = Some(id.to_string());
-        self
-    }
-
-    pub fn window<V>(
-        mut self,
-        window: Window,
-        mut ui: impl FnMut(&mut T) -> V + 'static,
-    ) -> Self
-    where
-        V: ori::AnyView<Context, gtk4::Widget, T> + 'static,
-    {
-        let builder: UiBuilder<T> = Box::new(move |data| Box::new(ui(data)));
-        self.windows.push((window.id, Some(window), builder));
         self
     }
 
@@ -120,10 +104,17 @@ impl<T> App<T> {
         self
     }
 
-    pub fn run(mut self, mut data: T) -> Result<ExitCode, Error>
+    pub fn run<T, V>(
+        mut self,
+        data: T,
+        mut ui: impl FnMut(&mut T) -> V + 'static,
+    ) -> Result<ExitCode, Error>
     where
         T: 'static,
+        V: ori::View<Context, T, Element = ori::NoElement> + 'static,
     {
+        let ui: UiBuilder<T> = Box::new(move |data| Box::new(ui(data)));
+
         gtk4::init().unwrap();
 
         if let Some(ref theme) = self.theme
@@ -139,61 +130,22 @@ impl<T> App<T> {
         );
 
         let (context, mut receiver) = Context::new(app.downgrade());
-        let (win_tx, win_rx) = std::sync::mpsc::channel();
+        let (win_tx, mut win_rx) = tokio::sync::mpsc::unbounded_channel();
 
         app.connect_activate({
             let context = context.clone();
-            let windows = self
-                .windows
-                .iter_mut()
-                .map(|(_, w, _)| w.take().unwrap())
-                .collect::<Vec<_>>();
+            let data = RefCell::new(Some(data));
+            let ui = RefCell::new(Some(ui));
 
-            move |app| {
-                context.activate();
+            move |_app| {
+                let mut cx = context.clone();
+                let mut data = data.borrow_mut().take().unwrap();
+                let mut ui = ui.borrow_mut().take().unwrap();
 
-                for desc in &windows {
-                    #[cfg(feature = "layer-shell")]
-                    use gtk4_layer_shell::{Edge, LayerShell};
+                let mut view = ui(&mut data);
+                let (_, state) = view.build(&mut cx, &mut data);
 
-                    let win = gtk4::ApplicationWindow::new(app);
-
-                    #[cfg(feature = "layer-shell")]
-                    if desc.is_layer_shell {
-                        win.init_layer_shell();
-                        win.set_layer(desc.layer.into());
-
-                        if let Some(zone) = desc.exclusive_zone {
-                            win.set_exclusive_zone(zone);
-                        } else {
-                            win.auto_exclusive_zone_enable();
-                        }
-
-                        win.set_anchor(Edge::Top, desc.anchor_top);
-                        win.set_anchor(Edge::Right, desc.anchor_right);
-                        win.set_anchor(Edge::Bottom, desc.anchor_bottom);
-                        win.set_anchor(Edge::Left, desc.anchor_left);
-
-                        win.set_margin(Edge::Top, desc.margin_top);
-                        win.set_margin(Edge::Right, desc.margin_right);
-                        win.set_margin(Edge::Bottom, desc.margin_bottom);
-                        win.set_margin(Edge::Left, desc.margin_left);
-                    }
-
-                    win.set_title(Some(&desc.title));
-                    win.set_default_size(
-                        desc.width.map_or(-1, |width| width as i32),
-                        desc.height.map_or(-1, |width| width as i32),
-                    );
-
-                    win.set_resizable(desc.resizable);
-                    win.set_decorated(desc.decorated);
-                    win.set_focus_visible(desc.show_focus);
-                    win.set_hide_on_close(desc.hide_on_close);
-
-                    context.opened(desc.id);
-                    win_tx.send(win).unwrap();
-                }
+                win_tx.send((data, ui, view, state)).unwrap();
             }
         });
 
@@ -224,19 +176,25 @@ impl<T> App<T> {
                 config,
             )?;
 
-            let mut state = AppState {
-                win_rx,
-                watcher,
-                context: context.clone(),
-                windows: Vec::new(),
-                css_paths: HashMap::new(),
-            };
-
             async move {
+                let (mut data, builder, view, state) =
+                    win_rx.recv().await.unwrap();
+
+                let mut state = AppState {
+                    watcher,
+                    builder,
+                    view,
+                    state,
+                    context: context.clone(),
+                    css_paths: HashMap::new(),
+                };
+
+                if let Err(err) = state.activate(&mut self) {
+                    eprintln!("error: {err}");
+                }
+
                 while let Some(event) = receiver.recv().await {
-                    let result = state.handle_event(
-                        &mut self, &mut data, event, //
-                    );
+                    let result = state.handle_event(&mut data, event);
 
                     if let Err(err) = result {
                         eprintln!("error: {err}");
@@ -249,26 +207,40 @@ impl<T> App<T> {
     }
 }
 
-type UiBuilder<T> = Box<dyn FnMut(&mut T) -> AnyView<T>>;
-
-struct WindowState<T> {
-    id: u64,
-    window: gtk4::ApplicationWindow,
-    builder: UiBuilder<T>,
-    view: AnyView<T>,
-    element: gtk4::Widget,
-    state: Box<dyn Any>,
-}
+type SideEffect<T> = Box<dyn ori::AnySideEffect<Context, T>>;
+type UiBuilder<T> = Box<dyn FnMut(&mut T) -> SideEffect<T>>;
 
 struct AppState<T> {
-    win_rx: Receiver<gtk4::ApplicationWindow>,
+    builder: UiBuilder<T>,
+    view: Box<dyn ori::AnySideEffect<Context, T>>,
+    state: Box<dyn Any>,
     watcher: notify::PollWatcher,
     context: Context,
-    windows: Vec<WindowState<T>>,
     css_paths: HashMap<PathBuf, gtk4::CssProvider>,
 }
 
 impl<T> AppState<T> {
+    fn activate(&mut self, app: &mut App) -> Result<(), Error> {
+        let display = gtk4::gdk::Display::default().unwrap();
+
+        for path in &app.css_paths {
+            self.add_css_path(path, &display)?;
+        }
+
+        for string in &app.css_strings {
+            let css_provider = gtk4::CssProvider::new();
+            css_provider.load_from_data(string);
+
+            gtk4::style_context_add_provider_for_display(
+                &display,
+                &css_provider,
+                gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+        }
+
+        Ok(())
+    }
+
     fn add_css_path(
         &mut self,
         path: &Path,
@@ -297,30 +269,10 @@ impl<T> AppState<T> {
 
     fn handle_event(
         &mut self,
-        app: &mut App<T>,
         data: &mut T,
         event: Event,
     ) -> Result<bool, Error> {
         match event {
-            Event::Activate => {
-                let display = gtk4::gdk::Display::default().unwrap();
-
-                for path in &app.css_paths {
-                    self.add_css_path(path, &display)?;
-                }
-
-                for string in &app.css_strings {
-                    let css_provider = gtk4::CssProvider::new();
-                    css_provider.load_from_data(string);
-
-                    gtk4::style_context_add_provider_for_display(
-                        &display,
-                        &css_provider,
-                        gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
-                    );
-                }
-            }
-
             Event::CssChanged(path) => {
                 if let Some(provider) = self.css_paths.get(&path) {
                     provider.load_from_path(path);
@@ -328,92 +280,29 @@ impl<T> AppState<T> {
             }
 
             Event::Rebuild => {
-                for window in &mut self.windows {
-                    let mut view = (window.builder)(data);
+                let mut view = (self.builder)(data);
 
-                    view.rebuild(
-                        &mut window.element,
-                        &mut window.state,
-                        &mut self.context,
-                        data,
-                        &mut window.view,
-                    );
+                view.rebuild(
+                    &mut ori::NoElement,
+                    &mut self.state,
+                    &mut self.context,
+                    data,
+                    &mut self.view,
+                );
 
-                    if !window.element.is_ancestor(&window.window) {
-                        window.window.set_child(Some(&window.element));
-                    }
-
-                    window.view = view;
-                }
-            }
-
-            Event::InitialWindowCreated(id) => {
-                let index = app
-                    .windows
-                    .iter()
-                    .position(|(wid, _, _)| *wid == id)
-                    .unwrap();
-
-                let (_, _, mut builder) = app.windows.swap_remove(index);
-
-                let mut view = builder(data);
-                let (element, state) = view.build(&mut self.context, data);
-
-                let window = self.win_rx.recv().unwrap();
-
-                window.set_child(Some(&element));
-                window.present();
-
-                window.connect_close_request({
-                    let context = self.context.clone();
-
-                    move |_| {
-                        context.closed(id);
-                        gtk4::glib::Propagation::Proceed
-                    }
-                });
-
-                let window_state = WindowState {
-                    id,
-                    window,
-                    builder,
-                    view,
-                    element,
-                    state,
-                };
-
-                self.windows.push(window_state);
-
-                self.context.event(WindowEvent::Activate, None);
-            }
-
-            Event::WindowClosed(id) => {
-                let index = self.windows.iter().position(|w| w.id == id);
-
-                if let Some(index) = index {
-                    let mut window = self.windows.swap_remove(index);
-
-                    window.view.teardown(
-                        window.element,
-                        window.state,
-                        &mut self.context,
-                        data,
-                    );
-                }
+                self.view = view;
             }
 
             Event::Event(mut event) => {
-                for window in &mut self.windows {
-                    let action = window.view.event(
-                        &mut window.element,
-                        &mut window.state,
-                        &mut self.context,
-                        data,
-                        &mut event,
-                    );
+                let action = self.view.event(
+                    &mut ori::NoElement,
+                    &mut self.state,
+                    &mut self.context,
+                    data,
+                    &mut event,
+                );
 
-                    self.context.send_action(action);
-                }
+                self.context.send_action(action);
             }
 
             Event::Spawn(future) => {

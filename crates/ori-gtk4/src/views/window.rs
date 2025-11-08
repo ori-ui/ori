@@ -1,17 +1,19 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use gtk4::prelude::{GtkWindowExt as _, WidgetExt as _};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum WindowEvent {
-    /// Sent when the window is active.
-    Activate,
+use crate::{Context, View};
+
+pub fn window<V>(content: V) -> Window<V> {
+    Window::new(content)
 }
 
 #[derive(Debug)]
-pub struct Window {
-    pub(crate) id: u64,
+pub struct Window<V> {
+    pub(crate) content: V,
+    pub(crate) id: Option<ori::ViewId>,
     pub(crate) title: String,
     pub(crate) width: Option<u32>,
     pub(crate) height: Option<u32>,
+    pub(crate) visible: bool,
     pub(crate) resizable: bool,
     pub(crate) decorated: bool,
     pub(crate) show_focus: bool,
@@ -50,21 +52,15 @@ pub enum Layer {
     Overlay,
 }
 
-impl Default for Window {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Window {
-    pub fn new() -> Self {
-        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-
+impl<V> Window<V> {
+    pub fn new(content: V) -> Self {
         Self {
-            id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
+            content,
+            id: None,
             title: String::from("Ori Gtk4 App"),
             width: None,
             height: None,
+            visible: true,
             resizable: true,
             decorated: true,
             show_focus: true,
@@ -116,6 +112,11 @@ impl Window {
         height: impl Into<Option<u32>>,
     ) -> Self {
         self.width(width).height(height)
+    }
+
+    pub fn visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
+        self
     }
 
     pub fn resizable(mut self, resizable: bool) -> Self {
@@ -216,4 +217,136 @@ impl From<Layer> for gtk4_layer_shell::Layer {
             Layer::Overlay => gtk4_layer_shell::Layer::Overlay,
         }
     }
+}
+
+pub struct WindowState<T, V>
+where
+    V: View<T>,
+{
+    window: gtk4::ApplicationWindow,
+    child: V::Element,
+    state: V::State,
+}
+
+impl<T, V> ori::View<Context, T> for Window<V>
+where
+    V: View<T>,
+{
+    type Element = ori::NoElement;
+    type State = WindowState<T, V>;
+
+    fn build(
+        &mut self,
+        cx: &mut Context,
+        data: &mut T,
+    ) -> (Self::Element, Self::State) {
+        let (child, state) = self.content.build(cx, data);
+
+        let window = gtk4::ApplicationWindow::default();
+
+        if let Some(app) = cx.app().upgrade() {
+            window.set_application(Some(&app));
+        }
+
+        window.set_child(Some(&child));
+        set_state(&window, self);
+
+        window.present();
+
+        let state = WindowState {
+            window,
+            child,
+            state,
+        };
+
+        (ori::NoElement, state)
+    }
+
+    fn rebuild(
+        &mut self,
+        _element: &mut Self::Element,
+        state: &mut Self::State,
+        cx: &mut Context,
+        data: &mut T,
+        old: &mut Self,
+    ) {
+        self.content.rebuild(
+            &mut state.child,
+            &mut state.state,
+            cx,
+            data,
+            &mut old.content,
+        );
+
+        if !super::is_parent(&state.window, &state.child) {
+            state.window.set_child(Some(&state.child));
+        }
+
+        set_state(&state.window, self);
+    }
+
+    fn teardown(
+        &mut self,
+        _element: Self::Element,
+        state: Self::State,
+        cx: &mut Context,
+        data: &mut T,
+    ) {
+        self.content.teardown(state.child, state.state, cx, data);
+    }
+
+    fn event(
+        &mut self,
+        _element: &mut Self::Element,
+        state: &mut Self::State,
+        cx: &mut Context,
+        data: &mut T,
+        event: &mut ori::Event,
+    ) -> ori::Action {
+        self.content.event(
+            &mut state.child,
+            &mut state.state,
+            cx,
+            data,
+            event,
+        )
+    }
+}
+
+fn set_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>) {
+    #[cfg(feature = "layer-shell")]
+    if desc.is_layer_shell {
+        use gtk4_layer_shell::{Edge, LayerShell as _};
+
+        win.init_layer_shell();
+        win.set_layer(desc.layer.into());
+
+        if let Some(zone) = desc.exclusive_zone {
+            win.set_exclusive_zone(zone);
+        } else {
+            win.auto_exclusive_zone_enable();
+        }
+
+        win.set_anchor(Edge::Top, desc.anchor_top);
+        win.set_anchor(Edge::Right, desc.anchor_right);
+        win.set_anchor(Edge::Bottom, desc.anchor_bottom);
+        win.set_anchor(Edge::Left, desc.anchor_left);
+
+        win.set_margin(Edge::Top, desc.margin_top);
+        win.set_margin(Edge::Right, desc.margin_right);
+        win.set_margin(Edge::Bottom, desc.margin_bottom);
+        win.set_margin(Edge::Left, desc.margin_left);
+    }
+
+    win.set_title(Some(&desc.title));
+    win.set_default_size(
+        desc.width.map_or(-1, |width| width as i32),
+        desc.height.map_or(-1, |width| width as i32),
+    );
+
+    win.set_visible(desc.visible);
+    win.set_resizable(desc.resizable);
+    win.set_decorated(desc.decorated);
+    win.set_focus_visible(desc.show_focus);
+    win.set_hide_on_close(desc.hide_on_close);
 }

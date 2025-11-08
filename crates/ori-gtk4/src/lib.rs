@@ -3,7 +3,6 @@
 mod app;
 mod context;
 mod view;
-mod window;
 
 #[path = "views/mod.rs"]
 mod gtk4_views;
@@ -16,13 +15,12 @@ pub mod views {
 pub use app::*;
 pub use context::*;
 pub use view::*;
-pub use window::*;
 
 pub use ori::{self as core, Action, Event};
 
 pub mod prelude {
     pub use crate::{
-        Action, App, Context, Error, View, ViewSeq, Window, include_css,
+        Action, App, Context, Error, SideEffect, View, ViewSeq, include_css,
         views::*,
     };
 

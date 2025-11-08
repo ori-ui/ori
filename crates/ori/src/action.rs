@@ -55,7 +55,7 @@ impl Action {
         }
     }
 
-    /// Spawn a future that can emits an action.
+    /// Spawn a future that emits an action.
     pub fn spawn(
         fut: impl Future<Output: IntoAction> + Send + 'static,
     ) -> Self {
@@ -77,6 +77,18 @@ impl Action {
     /// Add an event to the action.
     pub fn with_event(mut self, event: Event) -> Self {
         self.events.push(event);
+        self
+    }
+
+    /// Add a future that emits an action.
+    pub fn with_spawn(
+        mut self,
+        fut: impl Future<Output: IntoAction> + Send + 'static,
+    ) -> Self {
+        self.futures.push(Box::pin(async {
+            fut.await.into_action()
+        }));
+
         self
     }
 

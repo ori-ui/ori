@@ -1,21 +1,19 @@
-use ori_gtk4::{App, View, Window, views::*};
+use ori_gtk4::{App, SideEffect, views::*};
 
 struct Data {
     count: u32,
 }
 
-fn ui(data: &mut Data) -> impl View<Data> + use<> {
+fn ui(data: &mut Data) -> impl SideEffect<Data> + use<> {
     let text = label(format!("clicked {} times", data.count));
 
     let button = button(text, |data: &mut Data| data.count += 1);
 
-    center(size(80, 80, button))
+    window(center(button))
 }
 
 fn main() {
     let data = Data { count: 0 };
 
-    let window = Window::new().title("counter");
-
-    App::new().theme("Adwaita-dark").window(window, ui).run(data).unwrap();
+    App::new().theme("Adwaita-dark").run(data, ui).unwrap();
 }

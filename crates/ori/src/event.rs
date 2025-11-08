@@ -1,7 +1,7 @@
 use std::{
     any::Any,
     fmt,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicI64, Ordering},
 };
 
 /// An event in an application.
@@ -97,7 +97,7 @@ impl fmt::Debug for Event {
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViewId {
-    id: u64,
+    id: i64,
 }
 
 impl Default for ViewId {
@@ -109,17 +109,16 @@ impl Default for ViewId {
 impl ViewId {
     /// Create a [`ViewId`] with a globally incremented id.
     pub fn new() -> Self {
-        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
-        Self::from_u64(NEXT_ID.fetch_add(1, Ordering::SeqCst))
+        static NEXT_ID: AtomicI64 = AtomicI64::new(0);
+        Self {
+            id: NEXT_ID.fetch_sub(1, Ordering::SeqCst),
+        }
     }
 
     /// Create a [`ViewId`] from a raw [`u64`].
     pub const fn from_u64(id: u64) -> Self {
-        Self { id }
-    }
+        assert!(id <= i64::MAX as u64);
 
-    /// Get the internal id.
-    pub const fn as_u64(self) -> u64 {
-        self.id
+        Self { id: id as i64 }
     }
 }

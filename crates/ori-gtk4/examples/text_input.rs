@@ -1,10 +1,10 @@
-use ori_gtk4::{App, View, Window, views::*};
+use ori_gtk4::{App, SideEffect, views::*};
 
 struct Data {
     text: String,
 }
 
-fn ui(data: &mut Data) -> impl View<Data> + use<> {
+fn ui(data: &mut Data) -> impl SideEffect<Data> + use<> {
     let text = entry()
         .text(&data.text)
         .placeholder("Try typing here!")
@@ -18,7 +18,9 @@ fn ui(data: &mut Data) -> impl View<Data> + use<> {
         data.text.clear();
     });
 
-    center(vline![text, center(clear)].spacing(10))
+    let view = center(vline![text, center(clear)].spacing(10));
+
+    window(view).title("text input")
 }
 
 fn main() {
@@ -26,7 +28,5 @@ fn main() {
         text: String::new(),
     };
 
-    let window = Window::new().title("text input");
-
-    App::new().window(window, ui).run(data).unwrap();
+    App::new().run(data, ui).unwrap();
 }

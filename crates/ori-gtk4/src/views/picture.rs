@@ -3,8 +3,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use image::RgbaImage;
-
 use crate::Context;
 
 pub fn picture(source: impl Into<ImageSource>) -> Picture {
@@ -14,7 +12,9 @@ pub fn picture(source: impl Into<ImageSource>) -> Picture {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ImageSource {
     File(PathBuf),
-    Data(RgbaImage),
+
+    #[cfg(feature = "image")]
+    Data(image::RgbaImage),
 }
 
 impl From<&str> for ImageSource {
@@ -41,8 +41,9 @@ impl From<PathBuf> for ImageSource {
     }
 }
 
-impl From<RgbaImage> for ImageSource {
-    fn from(data: RgbaImage) -> Self {
+#[cfg(feature = "image")]
+impl From<image::RgbaImage> for ImageSource {
+    fn from(data: image::RgbaImage) -> Self {
         ImageSource::Data(data)
     }
 }
@@ -65,6 +66,7 @@ fn load_from_source(element: &gtk4::Picture, source: &ImageSource) {
             element.set_filename(Some(path));
         }
 
+        #[cfg(feature = "image")]
         ImageSource::Data(data) => {
             let texture = gtk4::gdk::MemoryTexture::new(
                 data.width() as i32,

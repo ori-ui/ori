@@ -19,7 +19,7 @@ pub use properties::{Align, Prop, WithProp};
 pub use window::{Window, window};
 
 #[cfg(feature = "layer-shell")]
-pub use window::Layer;
+pub use window::{Exclusive, Layer};
 
 #[cfg(feature = "adwaita")]
 mod clamp;

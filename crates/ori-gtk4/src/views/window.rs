@@ -24,7 +24,7 @@ pub struct Window<V> {
     #[cfg(feature = "layer-shell")]
     pub(crate) layer: Layer,
     #[cfg(feature = "layer-shell")]
-    pub(crate) exclusive_zone: Option<i32>,
+    pub(crate) exclusive_zone: Exclusive,
     #[cfg(feature = "layer-shell")]
     pub(crate) margin_top: i32,
     #[cfg(feature = "layer-shell")]
@@ -52,6 +52,13 @@ pub enum Layer {
     Overlay,
 }
 
+#[cfg(feature = "layer-shell")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Exclusive {
+    Auto,
+    Fixed(u32),
+}
+
 impl<V> Window<V> {
     pub fn new(content: V) -> Self {
         Self {
@@ -70,7 +77,7 @@ impl<V> Window<V> {
             #[cfg(feature = "layer-shell")]
             layer: Layer::Top,
             #[cfg(feature = "layer-shell")]
-            exclusive_zone: None,
+            exclusive_zone: Exclusive::Fixed(0),
             #[cfg(feature = "layer-shell")]
             margin_top: 0,
             #[cfg(feature = "layer-shell")]
@@ -143,7 +150,7 @@ impl<V> Window<V> {
     }
 
     #[cfg(feature = "layer-shell")]
-    pub fn exclusive_zone(mut self, zone: impl Into<Option<i32>>) -> Self {
+    pub fn exclusive_zone(mut self, zone: impl Into<Exclusive>) -> Self {
         self.exclusive_zone = zone.into();
         self
     }
@@ -315,10 +322,9 @@ fn set_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>) {
         win.init_layer_shell();
         win.set_layer(desc.layer.into());
 
-        if let Some(zone) = desc.exclusive_zone {
-            win.set_exclusive_zone(zone);
-        } else {
-            win.auto_exclusive_zone_enable();
+        match desc.exclusive_zone {
+            Exclusive::Fixed(zone) => win.set_exclusive_zone(zone as i32),
+            Exclusive::Auto => win.auto_exclusive_zone_enable(),
         }
 
         win.set_anchor(Edge::Top, desc.anchor_top);
@@ -354,10 +360,9 @@ fn update_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>, old: &Window
         }
 
         if desc.exclusive_zone != old.exclusive_zone {
-            if let Some(zone) = desc.exclusive_zone {
-                win.set_exclusive_zone(zone);
-            } else {
-                win.auto_exclusive_zone_enable();
+            match desc.exclusive_zone {
+                Exclusive::Fixed(zone) => win.set_exclusive_zone(zone as i32),
+                Exclusive::Auto => win.auto_exclusive_zone_enable(),
             }
         }
 

@@ -1,33 +1,33 @@
 use crate::{Action, Event, NoElement, View, ViewSeq};
 
-pub use crate::side_effects;
+pub use crate::effects;
 
-/// Sequence of [`SideEffect`](crate::SideEffect).
+/// Sequence of [`Effect`](crate::Effect).
 #[macro_export]
-macro_rules! side_effects {
-    [$($side_effect:expr),* $(,)?] => (
-        $crate::views::side_effects(($($side_effect,)*))
+macro_rules! effects {
+    [$($effect:expr),* $(,)?] => (
+        $crate::views::effects(($($effect,)*))
     )
 }
 
-/// Sequence of [`SideEffect`](crate::SideEffect)s.
-pub const fn side_effects<V>(content: V) -> SideEffects<V> {
-    SideEffects::new(content)
+/// Sequence of [`Effect`](crate::Effect)s.
+pub const fn effects<V>(content: V) -> Effects<V> {
+    Effects::new(content)
 }
 
-/// Sequence of [`SideEffect`](crate::SideEffect)s.
-pub struct SideEffects<V> {
+/// Sequence of [`Effect`](crate::Effect)s.
+pub struct Effects<V> {
     content: V,
 }
 
-impl<V> SideEffects<V> {
-    /// Create new [`SideEffects`](crate::SideEffect).
+impl<V> Effects<V> {
+    /// Create new [`Effects`](crate::Effect).
     pub const fn new(content: V) -> Self {
         Self { content }
     }
 }
 
-impl<C, T, V> View<C, T> for SideEffects<V>
+impl<C, T, V> View<C, T> for Effects<V>
 where
     V: ViewSeq<C, NoElement, T>,
 {

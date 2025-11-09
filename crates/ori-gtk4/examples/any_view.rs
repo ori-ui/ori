@@ -1,11 +1,11 @@
-use ori_gtk4::{App, SideEffect, views::*};
+use ori_gtk4::{App, Effect, views::*};
 
 struct Data {
     toggle: bool,
     text: String,
 }
 
-fn ui(data: &mut Data) -> impl SideEffect<Data> + use<> {
+fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
     let toggle = button(label("toggle"), |data: &mut Data| {
         data.toggle = !data.toggle;
     });
@@ -26,7 +26,10 @@ fn ui(data: &mut Data) -> impl SideEffect<Data> + use<> {
         any(view)
     };
 
-    let view = center(vline![toggle, view].spacing(10));
+    let view = vline![toggle, view]
+        .spacing(10)
+        .halign(Align::Center)
+        .valign(Align::Center);
 
     window(view).title("any view")
 }

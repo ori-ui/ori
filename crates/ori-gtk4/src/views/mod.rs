@@ -1,28 +1,21 @@
-mod align;
 mod button;
 mod checkbox;
-mod class;
 mod entry;
-mod expand;
-mod focusable;
 mod frame;
 mod label;
 mod line;
 mod picture;
-mod request;
+mod properties;
 mod window;
 
-pub use align::{Align, Alignment, align, center, halign, valign};
 pub use button::{Button, button};
 pub use checkbox::{Checkbox, checkbox};
-pub use class::{Class, class};
 pub use entry::{Entry, entry};
-pub use expand::{Expand, expand, hexpand, shrink, vexpand};
 pub use frame::{Frame, frame};
 pub use label::{Ellipsize, Label, Wrap, label};
 pub use line::{Line, hline, line, vline};
 pub use picture::{ImageSource, Picture, picture};
-pub use request::{Request, request_height, request_size, request_width};
+pub use properties::{Align, Prop, WithProp};
 pub use window::{Window, window};
 
 #[cfg(feature = "layer-shell")]

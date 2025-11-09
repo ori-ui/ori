@@ -1,15 +1,15 @@
-use ori_gtk4::{App, SideEffect, views::*};
+use ori_gtk4::{App, Effect, views::*};
 
 struct Data {
     count: u32,
 }
 
-fn ui(data: &mut Data) -> impl SideEffect<Data> + use<> {
+fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
     let text = label(format!("clicked {} times", data.count));
 
     let button = button(text, |data: &mut Data| data.count += 1);
 
-    window(center(button))
+    window(button.halign(Align::Center).valign(Align::Center))
 }
 
 fn main() {

@@ -1,6 +1,6 @@
-use crate::{Action, Event, NoElement, SideEffect, View};
+use crate::{Action, Effect, Event, NoElement, View};
 
-/// [`View`] that attaches a [`SideEffect`].
+/// [`View`] that attaches an [`Effect`].
 ///
 /// This is useful in conjunction with:
 ///  - [`Handler`](crate::views::Handler), [`handler`](crate::views::handler).
@@ -9,7 +9,7 @@ pub fn with<V, W>(content: V, with: W) -> With<V, W> {
     With::new(content, with)
 }
 
-/// [`View`] that attaches a [`SideEffect`].
+/// [`View`] that attaches an [`Effect`].
 ///
 /// This is useful in conjunction with:
 ///  - [`Handler`](crate::views::Handler), [`handler`](crate::views::handler).
@@ -29,7 +29,7 @@ impl<V, W> With<V, W> {
 impl<C, T, V, W> View<C, T> for With<V, W>
 where
     V: View<C, T>,
-    W: SideEffect<C, T>,
+    W: Effect<C, T>,
 {
     type Element = V::Element;
     type State = (V::State, W::State);

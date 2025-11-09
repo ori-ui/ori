@@ -1,8 +1,8 @@
-use ori_gtk4::{App, SideEffect, views::*};
+use ori_gtk4::{App, Effect, views::*};
 
 struct Data {}
 
-fn ui(_data: &mut Data) -> impl SideEffect<Data> + use<> {
+fn ui(_data: &mut Data) -> impl Effect<Data> + use<> {
     window(label("hello"))
         .layer(Layer::Overlay)
         .height(200)

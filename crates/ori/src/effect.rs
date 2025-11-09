@@ -5,16 +5,16 @@ use crate::{Action, AnyView, Event, NoElement, View};
 /// A [`View`] that has [`NoElement`] and can therefore only produce side-effects.
 ///
 /// Implemented by implementing [`View`] with an element of [`NoElement`].
-pub trait SideEffect<C, T>: View<C, T, Element = NoElement> {}
+pub trait Effect<C, T>: View<C, T, Element = NoElement> {}
 
-impl<C, T, V> SideEffect<C, T> for V where V: View<C, T, Element = NoElement> {}
+impl<C, T, V> Effect<C, T> for V where V: View<C, T, Element = NoElement> {}
 
-/// Type erased [`SideEffect`].
-pub trait AnySideEffect<C, T>: AnyView<C, NoElement, T> {}
+/// Type erased [`Effect`].
+pub trait AnyEffect<C, T>: AnyView<C, NoElement, T> {}
 
-impl<C, T, V> AnySideEffect<C, T> for V where V: AnyView<C, NoElement, T> {}
+impl<C, T, V> AnyEffect<C, T> for V where V: AnyView<C, NoElement, T> {}
 
-impl<C, T> View<C, T> for Box<dyn AnySideEffect<C, T>> {
+impl<C, T> View<C, T> for Box<dyn AnyEffect<C, T>> {
     type Element = NoElement;
     type State = Box<dyn Any>;
 

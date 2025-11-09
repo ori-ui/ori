@@ -6,6 +6,7 @@ pub fn window<V>(content: V) -> Window<V> {
     Window::new(content)
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct Window<V> {
     pub(crate) content: V,
@@ -16,7 +17,6 @@ pub struct Window<V> {
     pub(crate) visible: bool,
     pub(crate) resizable: bool,
     pub(crate) decorated: bool,
-    pub(crate) show_focus: bool,
     pub(crate) hide_on_close: bool,
 
     #[cfg(feature = "layer-shell")]
@@ -63,7 +63,6 @@ impl<V> Window<V> {
             visible: true,
             resizable: true,
             decorated: true,
-            show_focus: true,
             hide_on_close: false,
 
             #[cfg(feature = "layer-shell")]
@@ -126,11 +125,6 @@ impl<V> Window<V> {
 
     pub fn decorated(mut self, decorated: bool) -> Self {
         self.decorated = decorated;
-        self
-    }
-
-    pub fn show_focus(mut self, show_focus: bool) -> Self {
-        self.show_focus = show_focus;
         self
     }
 
@@ -282,7 +276,7 @@ where
             state.window.set_child(Some(&state.child));
         }
 
-        set_state(&state.window, self);
+        update_state(&state.window, self, old);
     }
 
     fn teardown(
@@ -347,6 +341,87 @@ fn set_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>) {
     win.set_visible(desc.visible);
     win.set_resizable(desc.resizable);
     win.set_decorated(desc.decorated);
-    win.set_focus_visible(desc.show_focus);
     win.set_hide_on_close(desc.hide_on_close);
+}
+
+fn update_state<V>(
+    win: &gtk4::ApplicationWindow,
+    desc: &Window<V>,
+    old: &Window<V>,
+) {
+    #[cfg(feature = "layer-shell")]
+    if desc.is_layer_shell {
+        use gtk4_layer_shell::{Edge, LayerShell as _};
+
+        if desc.layer != old.layer {
+            win.set_layer(desc.layer.into());
+        }
+
+        if desc.exclusive_zone != old.exclusive_zone {
+            if let Some(zone) = desc.exclusive_zone {
+                win.set_exclusive_zone(zone);
+            } else {
+                win.auto_exclusive_zone_enable();
+            }
+        }
+
+        if desc.anchor_top != old.anchor_top {
+            win.set_anchor(Edge::Top, desc.anchor_top);
+        }
+
+        if desc.anchor_right != old.anchor_right {
+            win.set_anchor(Edge::Right, desc.anchor_right);
+        }
+
+        if desc.anchor_bottom != old.anchor_bottom {
+            win.set_anchor(Edge::Bottom, desc.anchor_bottom);
+        }
+
+        if desc.anchor_left != old.anchor_left {
+            win.set_anchor(Edge::Left, desc.anchor_left);
+        }
+
+        if desc.margin_top != old.margin_top {
+            win.set_margin(Edge::Top, desc.margin_top);
+        }
+
+        if desc.margin_right != old.margin_right {
+            win.set_margin(Edge::Right, desc.margin_right);
+        }
+
+        if desc.margin_bottom != old.margin_bottom {
+            win.set_margin(Edge::Bottom, desc.margin_bottom);
+        }
+
+        if desc.margin_left != old.margin_left {
+            win.set_margin(Edge::Left, desc.margin_left);
+        }
+    }
+
+    if desc.title != old.title {
+        win.set_title(Some(&desc.title));
+    }
+
+    if desc.width != old.width || desc.height != old.height {
+        win.set_default_size(
+            desc.width.map_or(-1, |width| width as i32),
+            desc.height.map_or(-1, |width| width as i32),
+        );
+    }
+
+    if desc.visible != old.visible {
+        win.set_visible(desc.visible);
+    }
+
+    if desc.resizable != old.resizable {
+        win.set_resizable(desc.resizable);
+    }
+
+    if desc.decorated != old.decorated {
+        win.set_decorated(desc.decorated);
+    }
+
+    if desc.hide_on_close != old.hide_on_close {
+        win.set_hide_on_close(desc.hide_on_close);
+    }
 }

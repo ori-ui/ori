@@ -8,6 +8,7 @@ use std::{
     time::Duration,
 };
 
+use futures_util::StreamExt;
 use gtk4::{
     gio::prelude::{ApplicationExt as _, ApplicationExtManual as _},
     glib::clone::Downgrade as _,
@@ -15,7 +16,7 @@ use gtk4::{
 use notify::Watcher as _;
 use ori::{AsyncContext as _, View as _};
 
-use crate::{Context, context::Event};
+use crate::{AnyEffect, Context, context::Event};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -130,7 +131,7 @@ impl App {
         );
 
         let (context, mut receiver) = Context::new(app.downgrade());
-        let (win_tx, mut win_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (win_tx, mut win_rx) = futures_channel::mpsc::unbounded();
 
         app.connect_activate({
             let context = context.clone();
@@ -145,11 +146,13 @@ impl App {
                 let mut view = ui(&mut data);
                 let (_, state) = view.build(&mut cx, &mut data);
 
-                win_tx.send((data, ui, view, state)).unwrap();
+                win_tx.unbounded_send((data, ui, view, state)).unwrap();
             }
         });
 
-        gtk4::glib::MainContext::default().spawn_local({
+        let main_context = gtk4::glib::MainContext::default();
+
+        main_context.clone().spawn_local({
             let config = notify::Config::default()
                 .with_poll_interval(Duration::from_secs(1))
                 .with_compare_contents(true);
@@ -167,8 +170,9 @@ impl App {
 
                         for path in event.paths {
                             if let Ok(canonical) = fs::canonicalize(path) {
-                                let _ =
-                                    sender.send(Event::CssChanged(canonical));
+                                let _ = sender.unbounded_send(
+                                    Event::CssChanged(canonical),
+                                );
                             }
                         }
                     }
@@ -178,9 +182,10 @@ impl App {
 
             async move {
                 let (mut data, builder, view, state) =
-                    win_rx.recv().await.unwrap();
+                    win_rx.next().await.unwrap();
 
                 let mut state = AppState {
+                    main_context,
                     watcher,
                     builder,
                     view,
@@ -193,7 +198,7 @@ impl App {
                     eprintln!("error: {err}");
                 }
 
-                while let Some(event) = receiver.recv().await {
+                while let Some(event) = receiver.next().await {
                     let result = state.handle_event(&mut data, event);
 
                     if let Err(err) = result {
@@ -207,12 +212,12 @@ impl App {
     }
 }
 
-type SideEffect<T> = Box<dyn ori::AnySideEffect<Context, T>>;
-type UiBuilder<T> = Box<dyn FnMut(&mut T) -> SideEffect<T>>;
+type UiBuilder<T> = Box<dyn FnMut(&mut T) -> AnyEffect<T>>;
 
 struct AppState<T> {
+    main_context: gtk4::glib::MainContext,
     builder: UiBuilder<T>,
-    view: Box<dyn ori::AnySideEffect<Context, T>>,
+    view: AnyEffect<T>,
     state: Box<dyn Any>,
     watcher: notify::PollWatcher,
     context: Context,
@@ -306,7 +311,7 @@ impl<T> AppState<T> {
             }
 
             Event::Spawn(future) => {
-                gtk4::glib::MainContext::default().spawn(future);
+                self.main_context.spawn_local(future);
             }
         }
 

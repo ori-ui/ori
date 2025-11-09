@@ -77,7 +77,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     ) {
         self.content.rebuild(child, state, cx, data, &mut old.content);
 
-        if super::is_parent(element, child) {
+        if !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
     }

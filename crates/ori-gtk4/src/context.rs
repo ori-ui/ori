@@ -1,9 +1,7 @@
 use std::{any::Any, path::PathBuf, pin::Pin};
 
+use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gtk4::gio::prelude::ApplicationExt as _;
-use tokio::sync::mpsc::{
-    UnboundedReceiver, UnboundedSender, unbounded_channel,
-};
 
 #[derive(Clone)]
 pub struct Context {
@@ -15,7 +13,7 @@ impl Context {
     pub fn new(
         app: gtk4::glib::WeakRef<gtk4::Application>,
     ) -> (Context, UnboundedReceiver<Event>) {
-        let (sender, receiver) = unbounded_channel();
+        let (sender, receiver) = unbounded();
 
         let context = Context { app, sender };
 
@@ -33,11 +31,7 @@ impl Context {
     ) {
         let event = ori::Event::new(item, target);
 
-        self.sender.send(Event::Event(event)).expect("channel not closed");
-    }
-
-    pub fn rebuild(&self) {
-        self.sender.send(Event::Rebuild).expect("channel not closed");
+        self.sender.unbounded_send(Event::Event(event)).unwrap();
     }
 
     pub fn quit(&self) {
@@ -67,20 +61,18 @@ impl ori::AsyncContext for Context {
 
 impl ori::Proxy for Proxy {
     fn rebuild(&self) {
-        self.sender.send(Event::Rebuild).expect("channel not closed");
+        self.sender.unbounded_send(Event::Rebuild).unwrap();
     }
 
     fn event(&self, event: ori::Event) {
-        self.sender.send(Event::Event(event)).expect("channel not closed");
+        self.sender.unbounded_send(Event::Event(event)).unwrap();
     }
 
     fn spawn_boxed(
         &self,
         future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
     ) {
-        self.sender
-            .send(Event::Spawn(Box::pin(future)))
-            .expect("channel not closed");
+        self.sender.unbounded_send(Event::Spawn(Box::pin(future))).unwrap();
     }
 }
 

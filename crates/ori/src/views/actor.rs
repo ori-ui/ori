@@ -1,12 +1,12 @@
 use crate::{
-    Action, AsyncContext, Event, IntoAction, NoElement, View, views::builder,
+    Action, AsyncContext, Effect, Event, IntoAction, NoElement, View,
+    views::builder,
 };
 
 /// [`View`] that acts when built.
-pub fn actor<T, A>(
-    act: impl FnOnce(&mut T) -> A,
-) -> Actor<impl FnOnce(&mut T) -> Action>
+pub fn actor<C, T, A>(act: impl FnOnce(&mut T) -> A) -> impl Effect<C, T>
 where
+    C: AsyncContext,
     A: IntoAction,
 {
     Actor::new(act)
@@ -15,7 +15,7 @@ where
 /// [`View`] that spawns a task when built.
 pub fn task<C, T>(
     task: impl Future<Output: IntoAction> + Send + 'static,
-) -> impl View<C, T, Element = NoElement>
+) -> impl Effect<C, T>
 where
     C: AsyncContext,
 {
@@ -25,7 +25,7 @@ where
 /// [`View`] that spawns a task with a proxy when built.
 pub fn task_with_proxy<C, T, F>(
     task: impl FnOnce(C::Proxy) -> F,
-) -> impl View<C, T, Element = NoElement>
+) -> impl Effect<C, T>
 where
     C: AsyncContext,
     F: Future<Output: IntoAction> + Send + 'static,

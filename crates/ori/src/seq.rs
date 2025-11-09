@@ -42,6 +42,93 @@ pub trait ViewSeq<C, E, T> {
     ) -> Action;
 }
 
+impl<C, E, T, V> ViewSeq<C, E, T> for Option<V>
+where
+    V: View<C, T>,
+    E: Super<C, V::Element>,
+{
+    type SeqState = Option<V::State>;
+
+    fn seq_build(
+        &mut self,
+        cx: &mut C,
+        data: &mut T,
+    ) -> (Vec<E>, Self::SeqState) {
+        match self {
+            Some(content) => {
+                let (child, state) = content.build(cx, data);
+                (vec![E::upcast(cx, child)], Some(state))
+            }
+
+            None => (Vec::new(), None),
+        }
+    }
+
+    fn seq_rebuild(
+        &mut self,
+        elements: &mut Vec<E>,
+        state: &mut Self::SeqState,
+        cx: &mut C,
+        data: &mut T,
+        old: &mut Self,
+    ) {
+        match (self, old) {
+            (None, None) => {}
+
+            (None, Some(old)) => {
+                let element = elements.pop().unwrap().downcast();
+                let state = state.take().unwrap();
+                old.teardown(element, state, cx, data);
+            }
+
+            (Some(content), None) => {
+                let (child, new_state) = content.build(cx, data);
+                elements.push(E::upcast(cx, child));
+                *state = Some(new_state);
+            }
+
+            (Some(content), Some(old)) => {
+                elements[0].downcast_with(|element| {
+                    let state = state.as_mut().unwrap();
+                    content.rebuild(element, state, cx, data, old);
+                });
+            }
+        }
+    }
+
+    fn seq_teardown(
+        &mut self,
+        mut elements: Vec<E>,
+        state: Self::SeqState,
+        cx: &mut C,
+        data: &mut T,
+    ) {
+        if let Some(content) = self {
+            let element = elements.pop().unwrap().downcast();
+            let state = state.unwrap();
+            content.teardown(element, state, cx, data);
+        }
+    }
+
+    fn seq_event(
+        &mut self,
+        elements: &mut [E],
+        state: &mut Self::SeqState,
+        cx: &mut C,
+        data: &mut T,
+        event: &mut Event,
+    ) -> Action {
+        match self {
+            Some(content) => elements[0].downcast_with(|element| {
+                let state = state.as_mut().unwrap();
+                content.event(element, state, cx, data, event)
+            }),
+
+            None => Action::none(),
+        }
+    }
+}
+
 impl<C, E, T, V> ViewSeq<C, E, T> for Vec<V>
 where
     V: View<C, T>,

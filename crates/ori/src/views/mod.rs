@@ -11,7 +11,7 @@ mod with;
 
 pub use actor::{Actor, actor, task, task_with_proxy};
 pub use builder::{Builder, builder};
-pub use effect::{SideEffects, side_effects};
+pub use effect::{Effects, effects};
 pub use focus::{Focus, focus};
 pub use freeze::{Freeze, freeze};
 pub use handler::{EventHandler, Handler, handler, on_event};

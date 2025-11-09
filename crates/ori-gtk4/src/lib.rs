@@ -20,7 +20,7 @@ pub use ori::{self as core, Action, Event};
 
 pub mod prelude {
     pub use crate::{
-        Action, App, Context, Error, SideEffect, View, ViewSeq, include_css,
+        Action, App, Context, Effect, Error, View, ViewSeq, include_css,
         views::*,
     };
 

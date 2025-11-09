@@ -10,19 +10,20 @@ features = ["layer-shell"]
 [dependencies]
 ori.workspace = true
 
+futures-channel = "0.3"
+futures-core = "0.3"
 gtk4 = "0.10"
+image = "0.25"
 notify = "8.2"
 thiserror = "2"
-image = "0.25"
+
+[dependencies.futures-util]
+version = "0.3"
+default-features = false
 
 [dependencies.libadwaita]
 version = "0.8"
 optional = true
-
-[dependencies.tokio]
-version = "1"
-default-features = false
-features = ["sync"]
 
 [dependencies.gtk4-layer-shell]
 version = "0.7"

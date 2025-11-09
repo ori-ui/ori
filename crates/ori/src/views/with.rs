@@ -5,8 +5,8 @@ use crate::{Action, Effect, Event, NoElement, View};
 /// This is useful in conjunction with:
 ///  - [`Handler`](crate::views::Handler), [`handler`](crate::views::handler).
 ///  - [`Actor`](crate::views::Actor), [`actor`](crate::views::actor), [`task`](crate::views::task).
-pub fn with<V, W>(content: V, with: W) -> With<V, W> {
-    With::new(content, with)
+pub fn with_effect<V, W>(content: V, with: W) -> WithEffect<V, W> {
+    WithEffect::new(content, with)
 }
 
 /// [`View`] that attaches an [`Effect`].
@@ -14,19 +14,19 @@ pub fn with<V, W>(content: V, with: W) -> With<V, W> {
 /// This is useful in conjunction with:
 ///  - [`Handler`](crate::views::Handler), [`handler`](crate::views::handler).
 ///  - [`Actor`](crate::views::Actor), [`actor`](crate::views::actor), [`task`](crate::views::task).
-pub struct With<V, W> {
+pub struct WithEffect<V, W> {
     content: V,
     with: W,
 }
 
-impl<V, W> With<V, W> {
-    /// Create a new [`With`].
+impl<V, W> WithEffect<V, W> {
+    /// Create a [`WithEffect`].
     pub fn new(content: V, with: W) -> Self {
         Self { content, with }
     }
 }
 
-impl<C, T, V, W> View<C, T> for With<V, W>
+impl<C, T, V, W> View<C, T> for WithEffect<V, W>
 where
     V: View<C, T>,
     W: Effect<C, T>,

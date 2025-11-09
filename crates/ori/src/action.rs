@@ -62,9 +62,7 @@ impl Action {
     }
 
     /// Spawn a future that emits an action.
-    pub fn spawn(
-        fut: impl Future<Output: IntoAction> + Send + 'static,
-    ) -> Self {
+    pub fn spawn(fut: impl Future<Output: IntoAction> + Send + 'static) -> Self {
         let fut = Box::pin(async { fut.await.into_action() });
 
         Self {
@@ -85,10 +83,7 @@ impl Action {
     }
 
     /// Add a future that emits an action.
-    pub fn add_spawn(
-        &mut self,
-        fut: impl Future<Output: IntoAction> + Send + 'static,
-    ) {
+    pub fn add_spawn(&mut self, fut: impl Future<Output: IntoAction> + Send + 'static) {
         self.futures.push(Box::pin(async {
             fut.await.into_action()
         }));
@@ -107,10 +102,7 @@ impl Action {
     }
 
     /// Add a future that emits an action.
-    pub fn with_spawn(
-        mut self,
-        fut: impl Future<Output: IntoAction> + Send + 'static,
-    ) -> Self {
+    pub fn with_spawn(mut self, fut: impl Future<Output: IntoAction> + Send + 'static) -> Self {
         self.futures.push(Box::pin(async {
             fut.await.into_action()
         }));

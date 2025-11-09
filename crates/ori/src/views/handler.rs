@@ -6,9 +6,7 @@ pub fn handler() -> Handler<()> {
 }
 
 /// [`View`] that handles events.
-pub fn on_event<C, T>(
-    on_event: impl FnMut(&mut T, &mut Event) -> Action,
-) -> impl Effect<C, T> {
+pub fn on_event<C, T>(on_event: impl FnMut(&mut T, &mut Event) -> Action) -> impl Effect<C, T> {
     Handler::new().on_event(on_event)
 }
 
@@ -46,11 +44,7 @@ where
     type Element = NoElement;
     type State = ();
 
-    fn build(
-        &mut self,
-        _cx: &mut C,
-        _data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, _cx: &mut C, _data: &mut T) -> (Self::Element, Self::State) {
         (NoElement, ())
     }
 

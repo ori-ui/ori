@@ -48,10 +48,7 @@ impl<T> Entry<T> {
         self
     }
 
-    pub fn on_change<A>(
-        mut self,
-        mut on_change: impl FnMut(&mut T, String) -> A + 'static,
-    ) -> Self
+    pub fn on_change<A>(mut self, mut on_change: impl FnMut(&mut T, String) -> A + 'static) -> Self
     where
         A: ori::IntoAction,
     {
@@ -59,10 +56,7 @@ impl<T> Entry<T> {
         self
     }
 
-    pub fn on_submit<A>(
-        mut self,
-        mut on_submit: impl FnMut(&mut T, String) -> A + 'static,
-    ) -> Self
+    pub fn on_submit<A>(mut self, mut on_submit: impl FnMut(&mut T, String) -> A + 'static) -> Self
     where
         A: ori::IntoAction,
     {
@@ -75,11 +69,7 @@ impl<T> ori::View<Context, T> for Entry<T> {
     type Element = gtk4::Entry;
     type State = (ori::Key, gtk4::glib::SignalHandlerId);
 
-    fn build(
-        &mut self,
-        cx: &mut Context,
-        _data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let element = gtk4::Entry::new();
 
         if let Some(ref text) = self.text {

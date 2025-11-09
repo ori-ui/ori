@@ -2,10 +2,7 @@ use gtk4::prelude::ButtonExt as _;
 
 use crate::{Context, View};
 
-pub fn button<V, T, A>(
-    content: V,
-    on_click: impl FnMut(&mut T) -> A + 'static,
-) -> Button<V, T>
+pub fn button<V, T, A>(content: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<V, T>
 where
     A: ori::IntoAction,
 {
@@ -30,10 +27,7 @@ impl<V, T> Button<V, T> {
         }
     }
 
-    pub fn on_click<A>(
-        mut self,
-        mut on_click: impl FnMut(&mut T) -> A + 'static,
-    ) -> Self
+    pub fn on_click<A>(mut self, mut on_click: impl FnMut(&mut T) -> A + 'static) -> Self
     where
         A: ori::IntoAction,
     {
@@ -46,11 +40,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     type Element = gtk4::Button;
     type State = (ori::Key, V::Element, V::State);
 
-    fn build(
-        &mut self,
-        cx: &mut Context,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (child, state) = self.content.build(cx, data);
 
         let id = ori::Key::next();
@@ -75,8 +65,9 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         data: &mut T,
         old: &mut Self,
     ) -> bool {
-        let changed =
-            self.content.rebuild(child, state, cx, data, &mut old.content);
+        let changed = self
+            .content
+            .rebuild(child, state, cx, data, &mut old.content);
 
         if changed && !super::is_parent(element, child) {
             element.set_child(Some(child));
@@ -103,8 +94,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         data: &mut T,
         event: &mut ori::Event,
     ) -> (bool, ori::Action) {
-        let (changed, action) =
-            self.content.event(child, state, cx, data, event);
+        let (changed, action) = self.content.event(child, state, cx, data, event);
 
         if changed && !super::is_parent(element, child) {
             element.set_child(Some(child));

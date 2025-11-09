@@ -24,11 +24,7 @@ impl<C, T> View<C, T> for Box<dyn AnyEffect<C, T>> {
     type Element = NoElement;
     type State = Box<dyn Any>;
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         self.as_mut().any_build(cx, data)
     }
 
@@ -40,16 +36,11 @@ impl<C, T> View<C, T> for Box<dyn AnyEffect<C, T>> {
         data: &mut T,
         old: &mut Self,
     ) -> bool {
-        self.as_mut().any_rebuild(element, state, cx, data, old.as_mut())
+        self.as_mut()
+            .any_rebuild(element, state, cx, data, old.as_mut())
     }
 
-    fn teardown(
-        &mut self,
-        element: Self::Element,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
         self.as_mut().any_teardown(element, state, cx, data);
     }
 

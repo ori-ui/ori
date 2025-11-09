@@ -1,12 +1,7 @@
-use crate::{
-    Action, AsyncContext, Effect, Event, IntoAction, NoElement, View,
-    views::builder,
-};
+use crate::{Action, AsyncContext, Effect, Event, IntoAction, NoElement, View, views::builder};
 
 /// [`View`] that acts when built.
-pub fn on_build<C, T>(
-    on_build: impl FnOnce(&mut T) -> Action,
-) -> impl Effect<C, T>
+pub fn on_build<C, T>(on_build: impl FnOnce(&mut T) -> Action) -> impl Effect<C, T>
 where
     C: AsyncContext,
 {
@@ -14,9 +9,7 @@ where
 }
 
 /// [`View`] that spawns a task when built.
-pub fn task<C, T>(
-    task: impl Future<Output: IntoAction> + Send + 'static,
-) -> impl Effect<C, T>
+pub fn task<C, T>(task: impl Future<Output: IntoAction> + Send + 'static) -> impl Effect<C, T>
 where
     C: AsyncContext,
 {
@@ -24,9 +17,7 @@ where
 }
 
 /// [`View`] that spawns a task with a proxy when built.
-pub fn task_with_proxy<C, T, F>(
-    task: impl FnOnce(C::Proxy) -> F,
-) -> impl Effect<C, T>
+pub fn task_with_proxy<C, T, F>(task: impl FnOnce(C::Proxy) -> F) -> impl Effect<C, T>
 where
     C: AsyncContext,
     F: Future<Output: IntoAction> + Send + 'static,
@@ -72,11 +63,7 @@ where
     type Element = NoElement;
     type State = ();
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         if let Some(on_build) = self.on_build.take() {
             cx.send_action(on_build(data));
         }

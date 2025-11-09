@@ -63,10 +63,7 @@ impl Event {
     /// Get the item in `self` mutably if `key` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_mut_targeted<T: Any + Send>(
-        &mut self,
-        key: Key,
-    ) -> Option<&mut T> {
+    pub fn get_mut_targeted<T: Any + Send>(&mut self, key: Key) -> Option<&mut T> {
         let is_target = self.is_target(key);
         self.get_mut().filter(|_| is_target)
     }

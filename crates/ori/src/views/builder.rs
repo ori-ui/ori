@@ -33,11 +33,7 @@ where
     type Element = V::Element;
     type State = (V, V::State);
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let build = self.build.take().unwrap();
         let mut view = build(cx, data);
         let (element, state) = view.build(cx, data);

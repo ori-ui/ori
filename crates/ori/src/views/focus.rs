@@ -40,11 +40,7 @@ where
     type Element = V::Element;
     type State = V::State;
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let mut state = None;
 
         (self.focus)(data, &mut |data| {
@@ -82,13 +78,7 @@ where
         changed
     }
 
-    fn teardown(
-        &mut self,
-        element: Self::Element,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
         let mut called = false;
 
         (self.focus)(data, &mut |data| {

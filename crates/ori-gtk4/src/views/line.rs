@@ -98,9 +98,13 @@ where
         data: &mut T,
         old: &mut Self,
     ) -> bool {
-        let changed = self
-            .content
-            .seq_rebuild(children, state, cx, data, &mut old.content);
+        let changed = self.content.seq_rebuild(
+            children,
+            state,
+            cx,
+            data,
+            &mut old.content,
+        );
 
         if changed {
             update_children(element, children);

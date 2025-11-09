@@ -27,13 +27,7 @@ pub trait AnyView<C, T, E> {
     ) -> bool;
 
     /// Tear down in a type erased manner, see [`View::teardown`] for more details.
-    fn any_teardown(
-        &mut self,
-        element: E,
-        state: Box<dyn Any>,
-        cx: &mut C,
-        data: &mut T,
-    );
+    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C, data: &mut T);
 
     /// Handle event in a type erased manner, see [`View::event`] for more details.
     fn any_event(
@@ -91,13 +85,7 @@ where
         }
     }
 
-    fn any_teardown(
-        &mut self,
-        element: E,
-        state: Box<dyn Any>,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C, data: &mut T) {
         self.teardown(
             element.downcast(),
             *state.downcast().unwrap(),
@@ -125,11 +113,7 @@ impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
     type Element = E;
     type State = Box<dyn Any>;
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         self.as_mut().any_build(cx, data)
     }
 
@@ -141,16 +125,11 @@ impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
         data: &mut T,
         old: &mut Self,
     ) -> bool {
-        self.as_mut().any_rebuild(element, state, cx, data, old.as_mut())
+        self.as_mut()
+            .any_rebuild(element, state, cx, data, old.as_mut())
     }
 
-    fn teardown(
-        &mut self,
-        element: Self::Element,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
         self.as_mut().any_teardown(element, state, cx, data);
     }
 

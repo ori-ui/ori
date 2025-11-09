@@ -2,9 +2,7 @@ use gtk4::prelude::CheckButtonExt;
 
 use crate::Context;
 
-pub fn checkbox<T, A>(
-    on_change: impl FnMut(&mut T, bool) -> A + 'static,
-) -> Checkbox<T>
+pub fn checkbox<T, A>(on_change: impl FnMut(&mut T, bool) -> A + 'static) -> Checkbox<T>
 where
     A: ori::IntoAction,
 {
@@ -23,18 +21,14 @@ pub struct Checkbox<T> {
 
 impl<T> Checkbox<T> {
     /// Create a new [`Checkbox`].
-    pub fn new<A>(
-        mut on_change: impl FnMut(&mut T, bool) -> A + 'static,
-    ) -> Self
+    pub fn new<A>(mut on_change: impl FnMut(&mut T, bool) -> A + 'static) -> Self
     where
         A: ori::IntoAction,
     {
         Self {
             checked: None,
             label: None,
-            on_change: Box::new(move |data, checked| {
-                on_change(data, checked).into_action()
-            }),
+            on_change: Box::new(move |data, checked| on_change(data, checked).into_action()),
         }
     }
 
@@ -55,11 +49,7 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
     type Element = gtk4::CheckButton;
     type State = ori::Key;
 
-    fn build(
-        &mut self,
-        cx: &mut Context,
-        _data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let element = gtk4::CheckButton::new();
 
         if let Some(checked) = self.checked {
@@ -115,9 +105,7 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
         event: &mut ori::Event,
     ) -> (bool, ori::Action) {
         let action = match event.take_targeted(*id) {
-            Some(CheckboxEvent::Toggled(checked)) => {
-                (self.on_change)(data, checked)
-            }
+            Some(CheckboxEvent::Toggled(checked)) => (self.on_change)(data, checked),
 
             None => ori::Action::new(),
         };

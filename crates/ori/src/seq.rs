@@ -6,11 +6,7 @@ pub trait ViewSeq<C, T, E> {
     type SeqState;
 
     /// Build elements and [`Self::SeqState`], see [`View::build`] for more information.
-    fn seq_build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Vec<E>, Self::SeqState);
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Vec<E>, Self::SeqState);
 
     /// Rebuild the sequence, see [`View::rebuild`] for more information.
     fn seq_rebuild(
@@ -23,13 +19,7 @@ pub trait ViewSeq<C, T, E> {
     ) -> bool;
 
     /// Tear down the sequence, see [`View::teardown`] for more information.
-    fn seq_teardown(
-        &mut self,
-        elements: Vec<E>,
-        state: Self::SeqState,
-        cx: &mut C,
-        data: &mut T,
-    );
+    fn seq_teardown(&mut self, elements: Vec<E>, state: Self::SeqState, cx: &mut C, data: &mut T);
 
     /// Handle an event for the sequence, see [`View::event`] for more information.
     fn seq_event(
@@ -49,11 +39,7 @@ where
 {
     type SeqState = Option<V::State>;
 
-    fn seq_build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Vec<E>, Self::SeqState) {
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Vec<E>, Self::SeqState) {
         match self {
             Some(content) => {
                 let (child, state) = content.build(cx, data);
@@ -91,12 +77,10 @@ where
                 true
             }
 
-            (Some(content), Some(old)) => {
-                elements[0].downcast_with(|element| {
-                    let state = state.as_mut().unwrap();
-                    content.rebuild(element, state, cx, data, old)
-                })
-            }
+            (Some(content), Some(old)) => elements[0].downcast_with(|element| {
+                let state = state.as_mut().unwrap();
+                content.rebuild(element, state, cx, data, old)
+            }),
         }
     }
 
@@ -140,11 +124,7 @@ where
 {
     type SeqState = Vec<V::State>;
 
-    fn seq_build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Vec<E>, Self::SeqState) {
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Vec<E>, Self::SeqState) {
         let mut elements = Vec::with_capacity(self.len());
         let mut states = Vec::with_capacity(self.len());
 
@@ -186,8 +166,7 @@ where
         for (i, view) in self.iter_mut().enumerate() {
             if let Some(old) = old.get_mut(i) {
                 elements[i].downcast_with(|element| {
-                    elements_changed |=
-                        view.rebuild(element, &mut states[i], cx, data, old);
+                    elements_changed |= view.rebuild(element, &mut states[i], cx, data, old);
                 });
             } else {
                 let (element, state) = view.build(cx, data);
@@ -201,16 +180,8 @@ where
         elements_changed
     }
 
-    fn seq_teardown(
-        &mut self,
-        elements: Vec<E>,
-        states: Self::SeqState,
-        cx: &mut C,
-        data: &mut T,
-    ) {
-        for ((view, element), state) in
-            self.iter_mut().zip(elements).zip(states)
-        {
+    fn seq_teardown(&mut self, elements: Vec<E>, states: Self::SeqState, cx: &mut C, data: &mut T) {
+        for ((view, element), state) in self.iter_mut().zip(elements).zip(states) {
             view.teardown(element.downcast(), state, cx, data);
         }
     }

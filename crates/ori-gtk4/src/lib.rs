@@ -19,10 +19,7 @@ pub use view::*;
 pub use ori::{self as core, Action, Event};
 
 pub mod prelude {
-    pub use crate::{
-        Action, App, Context, Effect, Error, View, ViewSeq, include_css,
-        views::*,
-    };
+    pub use crate::{Action, App, Context, Effect, Error, View, ViewSeq, include_css, views::*};
 
     pub use ori::{Event, Proxy};
 }

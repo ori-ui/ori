@@ -34,10 +34,7 @@ use gtk4::{
 
 use crate::{AnyView, View};
 
-fn is_parent(
-    parent: &impl IsA<gtk4::Widget>,
-    child: &impl IsA<gtk4::Widget>,
-) -> bool {
+fn is_parent(parent: &impl IsA<gtk4::Widget>, child: &impl IsA<gtk4::Widget>) -> bool {
     Some(parent.upcast_ref()) == child.upcast_ref().parent().as_ref()
 }
 

@@ -152,9 +152,13 @@ where
         // before rebuilding.
         prev.set(element);
 
-        let changed = self
-            .content
-            .rebuild(element, state, cx, data, &mut old.content);
+        let changed = self.content.rebuild(
+            element,
+            state,
+            cx,
+            data,
+            &mut old.content,
+        );
 
         // we now record the state of the new property and apply it
         *prev = self.property.get(element);

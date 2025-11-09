@@ -93,12 +93,10 @@ impl<T> ori::View<Context, T> for Label {
             None => element.set_wrap(false),
         }
 
-        element.set_ellipsize(
-            self.ellipsize
-                .map_or(gtk4::pango::EllipsizeMode::None, |ellipsize| {
-                    ellipsize.into()
-                }),
-        );
+        element.set_ellipsize(self.ellipsize.map_or(
+            gtk4::pango::EllipsizeMode::None,
+            |ellipsize| ellipsize.into(),
+        ));
 
         (element, ())
     }
@@ -130,12 +128,10 @@ impl<T> ori::View<Context, T> for Label {
         }
 
         if self.ellipsize != old.ellipsize {
-            element.set_ellipsize(
-                self.ellipsize
-                    .map_or(gtk4::pango::EllipsizeMode::None, |ellipsize| {
-                        ellipsize.into()
-                    }),
-            );
+            element.set_ellipsize(self.ellipsize.map_or(
+                gtk4::pango::EllipsizeMode::None,
+                |ellipsize| ellipsize.into(),
+            ));
         }
 
         false

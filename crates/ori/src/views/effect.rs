@@ -26,11 +26,7 @@ where
     type Element = V::Element;
     type State = (V::State, W::State);
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, content) = self.content.build(cx, data);
         let (_, with) = self.with.build(cx, data);
 
@@ -86,8 +82,7 @@ where
         let (element_changed, content_action) =
             self.with.event(&mut NoElement, with, cx, data, event);
 
-        let (_, effect_action) =
-            self.content.event(element, content, cx, data, event);
+        let (_, effect_action) = self.content.event(element, content, cx, data, event);
 
         (
             element_changed,
@@ -130,11 +125,7 @@ where
     type Element = NoElement;
     type State = (Vec<NoElement>, V::SeqState);
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (children, states) = self.content.seq_build(cx, data);
         (NoElement, (children, states))
     }

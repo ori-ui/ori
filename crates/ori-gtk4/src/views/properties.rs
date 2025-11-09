@@ -180,12 +180,20 @@ where
     fn event(
         &mut self,
         element: &mut Self::Element,
-        (_, state): &mut Self::State,
+        (prev, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
     ) -> (bool, ori::Action) {
-        self.content.event(element, state, cx, data, event)
+        // same idea as rebuild
+        prev.set(element);
+
+        let (changed, action) = self.content.event(element, state, cx, data, event);
+
+        *prev = self.property.get(element);
+        self.property.set(element);
+
+        (changed, action)
     }
 }
 

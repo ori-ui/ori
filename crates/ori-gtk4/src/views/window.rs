@@ -234,9 +234,9 @@ where
             window.set_application(Some(&app));
         }
 
-        window.set_child(Some(&child));
         set_state(&window, self);
 
+        window.set_child(Some(&child));
         window.present();
 
         let state = WindowState {
@@ -334,8 +334,8 @@ fn set_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>) {
 
     win.set_title(Some(&desc.title));
     win.set_default_size(
-        desc.width.map_or(-1, |width| width as i32),
-        desc.height.map_or(-1, |width| width as i32),
+        desc.width.map_or(0, |width| width as i32),
+        desc.height.map_or(0, |width| width as i32),
     );
 
     win.set_visible(desc.visible);

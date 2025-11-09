@@ -5,11 +5,11 @@ use crate::Context;
 /// Type erased [`View`].
 ///
 /// This is useful for building UI, based on controlflow.
-pub type AnyView<T> = Box<dyn ori::AnyView<Context, gtk4::Widget, T>>;
+pub type AnyView<T> = Box<dyn ori::AnyView<Context, T, gtk4::Widget>>;
 pub type AnyEffect<T> = Box<dyn ori::AnyEffect<Context, T>>;
 
 pub trait View<T>: ori::View<Context, T, Element: IsA<gtk4::Widget>> {}
-pub trait ViewSeq<T>: ori::ViewSeq<Context, gtk4::Widget, T> {}
+pub trait ViewSeq<T>: ori::ViewSeq<Context, T, gtk4::Widget> {}
 
 pub trait Effect<T>: ori::Effect<Context, T> {}
 
@@ -20,7 +20,7 @@ where
 {
 }
 
-impl<T, V> ViewSeq<T> for V where V: ori::ViewSeq<Context, gtk4::Widget, T> {}
+impl<T, V> ViewSeq<T> for V where V: ori::ViewSeq<Context, T, gtk4::Widget> {}
 
 impl<T, V> Effect<T> for V where V: ori::Effect<Context, T> {}
 

@@ -1,7 +1,7 @@
 use crate::{Action, Event, Super, View};
 
 /// A sequence of [`View`]s.
-pub trait ViewSeq<C, E, T> {
+pub trait ViewSeq<C, T, E> {
     /// State of the sequence.
     type SeqState;
 
@@ -42,7 +42,7 @@ pub trait ViewSeq<C, E, T> {
     ) -> Action;
 }
 
-impl<C, E, T, V> ViewSeq<C, E, T> for Option<V>
+impl<C, T, E, V> ViewSeq<C, T, E> for Option<V>
 where
     V: View<C, T>,
     E: Super<C, V::Element>,
@@ -129,7 +129,7 @@ where
     }
 }
 
-impl<C, E, T, V> ViewSeq<C, E, T> for Vec<V>
+impl<C, T, E, V> ViewSeq<C, T, E> for Vec<V>
 where
     V: View<C, T>,
     E: Super<C, V::Element>,
@@ -225,7 +225,7 @@ where
 macro_rules! impl_tuple {
     ($($name:ident, $index:tt);*) => {
         #[allow(unused)]
-        impl<C, E, T, $($name),*> ViewSeq<C, E, T> for ($($name,)*)
+        impl<C, T, E, $($name),*> ViewSeq<C, T, E> for ($($name,)*)
         where
             $($name: View<C, T>,)*
             $(E: Super<C, $name::Element>,)*

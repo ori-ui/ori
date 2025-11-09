@@ -6,7 +6,7 @@ use crate::{Action, Event, Super, View};
 ///
 /// Note that this generic over `E` which should be treated as a [`Super`] element of the elements
 /// supported by this implementation.
-pub trait AnyView<C, E, T> {
+pub trait AnyView<C, T, E> {
     /// Get `self` as `&mut dyn Any`.
     ///
     /// This unfortunately is still necessary, even after the stabilization of casting `dyn` trait
@@ -23,7 +23,7 @@ pub trait AnyView<C, E, T> {
         state: &mut Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
-        old: &mut dyn AnyView<C, E, T>,
+        old: &mut dyn AnyView<C, T, E>,
     );
 
     /// Tear down in a type erased manner, see [`View::teardown`] for more details.
@@ -46,7 +46,7 @@ pub trait AnyView<C, E, T> {
     ) -> Action;
 }
 
-impl<C, E, T, V> AnyView<C, E, T> for V
+impl<C, T, E, V> AnyView<C, T, E> for V
 where
     V: View<C, T> + Any,
     E: Super<C, V::Element>,
@@ -68,7 +68,7 @@ where
         state: &mut Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
-        old: &mut dyn AnyView<C, E, T>,
+        old: &mut dyn AnyView<C, T, E>,
     ) {
         match old.as_mut_any().downcast_mut::<V>() {
             Some(old) => {
@@ -121,7 +121,7 @@ where
     }
 }
 
-impl<C, E, T> View<C, T> for Box<dyn AnyView<C, E, T>> {
+impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
     type Element = E;
     type State = Box<dyn Any>;
 

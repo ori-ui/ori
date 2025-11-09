@@ -1,4 +1,4 @@
-use crate::{Action, Event, NoElement, View, ViewSeq};
+use crate::{Action, EffectSeq, Event, NoElement, View};
 
 pub use crate::effects;
 
@@ -29,7 +29,7 @@ impl<V> Effects<V> {
 
 impl<C, T, V> View<C, T> for Effects<V>
 where
-    V: ViewSeq<C, NoElement, T>,
+    V: EffectSeq<C, T>,
 {
     type Element = NoElement;
     type State = (Vec<NoElement>, V::SeqState);

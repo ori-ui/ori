@@ -1,18 +1,24 @@
 use std::any::Any;
 
-use crate::{Action, AnyView, Event, NoElement, View};
+use crate::{Action, AnyView, Event, NoElement, View, ViewSeq};
 
 /// A [`View`] that has [`NoElement`] and can therefore only produce side-effects.
 ///
-/// Implemented by implementing [`View`] with an element of [`NoElement`].
+/// Implemented for all [`View`]s with an element of [`NoElement`].
 pub trait Effect<C, T>: View<C, T, Element = NoElement> {}
 
+/// A sequence of [`Effect`]s.
+///
+/// Implemented for all [`ViewSeq`]s with an element of [`NoElement`].
+pub trait EffectSeq<C, T>: ViewSeq<C, T, NoElement> {}
+
 impl<C, T, V> Effect<C, T> for V where V: View<C, T, Element = NoElement> {}
+impl<C, T, V> EffectSeq<C, T> for V where V: ViewSeq<C, T, NoElement> {}
 
 /// Type erased [`Effect`].
-pub trait AnyEffect<C, T>: AnyView<C, NoElement, T> {}
+pub trait AnyEffect<C, T>: AnyView<C, T, NoElement> {}
 
-impl<C, T, V> AnyEffect<C, T> for V where V: AnyView<C, NoElement, T> {}
+impl<C, T, V> AnyEffect<C, T> for V where V: AnyView<C, T, NoElement> {}
 
 impl<C, T> View<C, T> for Box<dyn AnyEffect<C, T>> {
     type Element = NoElement;

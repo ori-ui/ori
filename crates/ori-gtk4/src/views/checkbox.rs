@@ -117,7 +117,7 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
                 (self.on_change)(data, checked)
             }
 
-            None => ori::Action::none(),
+            None => ori::Action::new(),
         }
     }
 }

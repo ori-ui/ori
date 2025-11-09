@@ -98,7 +98,7 @@ pub trait EventHandler<T> {
 
 impl<T> EventHandler<T> for () {
     fn on_event(&mut self, _data: &mut T, _event: &mut Event) -> Action {
-        Action::none()
+        Action::new()
     }
 }
 

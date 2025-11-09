@@ -144,6 +144,6 @@ impl<T> ori::View<Context, T> for Label {
         _data: &mut T,
         _event: &mut ori::Event,
     ) -> ori::Action {
-        ori::Action::none()
+        ori::Action::new()
     }
 }

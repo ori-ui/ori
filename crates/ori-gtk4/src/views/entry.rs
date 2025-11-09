@@ -33,8 +33,8 @@ impl<T> Entry<T> {
         Self {
             text: None,
             placeholder: None,
-            on_change: Box::new(|_, _| ori::Action::none()),
-            on_submit: Box::new(|_, _| ori::Action::none()),
+            on_change: Box::new(|_, _| ori::Action::new()),
+            on_submit: Box::new(|_, _| ori::Action::new()),
         }
     }
 
@@ -119,11 +119,12 @@ impl<T> ori::View<Context, T> for Entry<T> {
     ) {
         if self.text != old.text
             && let Some(ref text) = self.text
-                && **text != element.text() {
-                    element.block_signal(changed);
-                    element.set_text(text);
-                    element.unblock_signal(changed);
-                }
+            && **text != element.text()
+        {
+            element.block_signal(changed);
+            element.set_text(text);
+            element.unblock_signal(changed);
+        }
 
         if self.placeholder != old.placeholder {
             element.set_placeholder_text(self.placeholder.as_deref());
@@ -150,7 +151,7 @@ impl<T> ori::View<Context, T> for Entry<T> {
         match event.take_targeted(*id) {
             Some(EntryEvent::Change(text)) => (self.on_change)(data, text),
             Some(EntryEvent::Submit(text)) => (self.on_submit)(data, text),
-            None => ori::Action::none(),
+            None => ori::Action::new(),
         }
     }
 }

@@ -27,9 +27,15 @@ pub struct Action {
     pub futures: Vec<Pin<Box<dyn Future<Output = Action> + Send>>>,
 }
 
+impl Default for Action {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Action {
-    /// No action, does nothing.
-    pub const fn none() -> Self {
+    /// New empty action, does nothing.
+    pub const fn new() -> Self {
         Self {
             rebuild: false,
             events: Vec::new(),

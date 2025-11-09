@@ -98,6 +98,6 @@ where
         _data: &mut T,
         _event: &mut Event,
     ) -> Action {
-        Action::none()
+        Action::new()
     }
 }

@@ -129,6 +129,6 @@ impl<T> ori::View<Context, T> for Picture {
         _data: &mut T,
         _event: &mut ori::Event,
     ) -> ori::Action {
-        ori::Action::none()
+        ori::Action::new()
     }
 }

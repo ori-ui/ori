@@ -26,7 +26,7 @@ impl<V, T> Button<V, T> {
     pub fn new(content: V) -> Self {
         Self {
             content,
-            on_click: Box::new(|_| ori::Action::none()),
+            on_click: Box::new(|_| ori::Action::new()),
         }
     }
 

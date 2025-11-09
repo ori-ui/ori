@@ -124,7 +124,7 @@ where
                 content.event(element, state, cx, data, event)
             }),
 
-            None => Action::none(),
+            None => Action::new(),
         }
     }
 }
@@ -210,7 +210,7 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        let mut action = Action::none();
+        let mut action = Action::new();
 
         for (i, view) in self.iter_mut().enumerate() {
             elements[i].downcast_with(|element| {
@@ -295,7 +295,7 @@ macro_rules! impl_tuple {
                 data: &mut T,
                 event: &mut Event,
             ) -> Action {
-                let mut action = Action::none();
+                let mut action = Action::new();
 
                 $({
                     action |= elements[$index].downcast_with(|element| {

@@ -205,7 +205,7 @@ impl App {
             }
         });
 
-        Ok(app.run().into())
+        Ok(app.run_with_args::<&str>(&[]).into())
     }
 }
 

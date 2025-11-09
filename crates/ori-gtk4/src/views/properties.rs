@@ -228,7 +228,7 @@ mod imp {
                 }
 
                 Property::HeightRequest(request) => {
-                    element.set_width_request(request.map_or(-1, |r| r as i32));
+                    element.set_height_request(request.map_or(-1, |r| r as i32));
                 }
 
                 Property::Opacity(opacity) => {

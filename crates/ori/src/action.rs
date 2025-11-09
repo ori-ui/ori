@@ -11,7 +11,7 @@ use crate::Event;
 /// Callbacks from [`View`]s will usually return one of these, note that `()` implements
 /// [`IntoAction`], which means that if no action is explicitly return by a callback, the default
 /// action is [`Action::rebuild`]. If this behaviour is not desired, callbacks should explicitly
-/// return [`Action::none`].
+/// return [`Action::new`].
 ///
 /// [`View`]: crate::View
 /// [`View::event`]: crate::View::event
@@ -74,9 +74,29 @@ impl Action {
         }
     }
 
-    /// Set whether the action requests a rebuild.
+    /// Set whether a rebuild is requested.
+    pub fn set_rebuild(&mut self, rebuild: bool) {
+        self.rebuild |= rebuild;
+    }
+
+    /// Add an event to the action.
+    pub fn add_event(&mut self, event: Event) {
+        self.events.push(event);
+    }
+
+    /// Add a future that emits an action.
+    pub fn add_spawn(
+        &mut self,
+        fut: impl Future<Output: IntoAction> + Send + 'static,
+    ) {
+        self.futures.push(Box::pin(async {
+            fut.await.into_action()
+        }));
+    }
+
+    /// Set whether a rebuild is requested.
     pub fn with_rebuild(mut self, rebuild: bool) -> Self {
-        self.rebuild = rebuild;
+        self.set_rebuild(rebuild);
         self
     }
 

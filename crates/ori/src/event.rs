@@ -9,17 +9,14 @@ use std::{
 /// This is the primary way [`View`](crate::View)s communicate with each other, see
 /// [`View::event`](crate::View::event) for more information.
 pub struct Event {
-    target: Option<ViewId>,
+    target: Option<Key>,
     item: Option<Box<dyn Any + Send>>,
     name: &'static str,
 }
 
 impl Event {
     /// Create a new [`Event`] with over an `item` and an optional `target`.
-    pub fn new<T: Any + Send>(
-        item: T,
-        target: impl Into<Option<ViewId>>,
-    ) -> Self {
+    pub fn new<T: Any + Send>(item: T, target: impl Into<Option<Key>>) -> Self {
         Self {
             target: target.into(),
             item: Some(Box::new(item)),
@@ -28,12 +25,12 @@ impl Event {
     }
 
     /// Get the target of `self`.
-    pub fn target(&self) -> Option<ViewId> {
+    pub fn target(&self) -> Option<Key> {
         self.target
     }
 
     /// Check if `id` is the target of `self`.
-    pub fn is_target(&self, id: ViewId) -> bool {
+    pub fn is_target(&self, id: Key) -> bool {
         self.target() == Some(id)
     }
 
@@ -56,11 +53,22 @@ impl Event {
         self.item.as_mut().and_then(|item| item.downcast_mut())
     }
 
-    /// Get the item in `self` if `id` is the target.
+    /// Get the item in `self` if `key` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_targeted<T: Any + Send>(&self, id: ViewId) -> Option<&T> {
-        self.get().filter(|_| self.is_target(id))
+    pub fn get_targeted<T: Any + Send>(&self, key: Key) -> Option<&T> {
+        self.get().filter(|_| self.is_target(key))
+    }
+
+    /// Get the item in `self` mutably if `key` is the target.
+    ///
+    /// Returns [`None`] if the item is not an instance of `T` or has been taken.
+    pub fn get_mut_targeted<T: Any + Send>(
+        &mut self,
+        key: Key,
+    ) -> Option<&mut T> {
+        let is_target = self.is_target(key);
+        self.get_mut().filter(|_| is_target)
     }
 
     /// Take the item out of `self`.
@@ -76,11 +84,11 @@ impl Event {
         }
     }
 
-    /// Take the item out of `self` if `id` is the target.
+    /// Take the item out of `self` if `key` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn take_targeted<T: Any + Send>(&mut self, id: ViewId) -> Option<T> {
-        self.is_target(id).then(|| self.take()).flatten()
+    pub fn take_targeted<T: Any + Send>(&mut self, key: Key) -> Option<T> {
+        self.is_target(key).then(|| self.take()).flatten()
     }
 }
 
@@ -93,29 +101,40 @@ impl fmt::Debug for Event {
     }
 }
 
-/// Unique identifier for a [`View`](crate::View).
+/// Unique key for targeting [`Event`]s.
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ViewId {
+pub struct Key {
     id: i64,
 }
 
-impl Default for ViewId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+impl Key {
+    /// Create a [`Key`] from a string.
+    pub const fn new(s: &str) -> Self {
+        let mut hash = 14695981039346656037u64;
+        let prime = 1099511628211u64;
 
-impl ViewId {
-    /// Create a [`ViewId`] with a globally incremented id.
-    pub fn new() -> Self {
+        let mut i = 0;
+        while i < s.len() {
+            hash = hash.wrapping_mul(prime);
+            hash ^= s.as_bytes()[i] as u64;
+            i += 1;
+        }
+
+        Self {
+            id: (hash as i64).abs(),
+        }
+    }
+
+    /// Create a [`Key`] with a globally incremented id.
+    pub fn next() -> Self {
         static NEXT_ID: AtomicI64 = AtomicI64::new(0);
         Self {
             id: NEXT_ID.fetch_sub(1, Ordering::SeqCst),
         }
     }
 
-    /// Create a [`ViewId`] from a raw [`u64`].
+    /// Create a [`Key`] from a raw [`u64`].
     pub const fn from_u64(id: u64) -> Self {
         assert!(id <= i64::MAX as u64);
 

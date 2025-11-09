@@ -37,11 +37,7 @@ where
     type Element = libadwaita::Clamp;
     type State = (V::Element, V::State);
 
-    fn build(
-        &mut self,
-        cx: &mut Context,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (child, state) = self.content.build(cx, data);
 
         let element = libadwaita::Clamp::new();
@@ -59,10 +55,12 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) {
-        self.content.rebuild(child, state, cx, data, &mut old.content);
+    ) -> bool {
+        let changed = self
+            .content
+            .rebuild(child, state, cx, data, &mut old.content);
 
-        if !super::is_parent(element, child) {
+        if changed && !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
 
@@ -73,6 +71,8 @@ where
         if self.size != old.size {
             element.set_maximum_size(self.size as i32);
         }
+
+        false
     }
 
     fn teardown(
@@ -87,12 +87,18 @@ where
 
     fn event(
         &mut self,
-        _element: &mut Self::Element,
+        element: &mut Self::Element,
         (child, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> ori::Action {
-        self.content.event(child, state, cx, data, event)
+    ) -> (bool, ori::Action) {
+        let (changed, action) = self.content.event(child, state, cx, data, event);
+
+        if changed && !super::is_parent(element, child) {
+            element.set_child(Some(child));
+        }
+
+        (false, action)
     }
 }

@@ -3,9 +3,9 @@ name = "ori-gtk4"
 version = "0.1.0"
 edition.workspace = true
 
-[dev-dependencies.ori-gtk4]
-workspace = true
-features = ["layer-shell"]
+[features]
+adwaita = ["dep:libadwaita"]
+layer-shell = ["dep:gtk4-layer-shell"]
 
 [dependencies]
 ori.workspace = true
@@ -29,6 +29,9 @@ optional = true
 version = "0.7"
 optional = true
 
-[features]
-adwaita = ["dep:libadwaita"]
-layer-shell = ["dep:gtk4-layer-shell"]
+[dev-dependencies]
+futures-timer = "3"
+
+[dev-dependencies.ori-gtk4]
+workspace = true
+features = ["layer-shell"]

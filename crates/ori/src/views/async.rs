@@ -4,12 +4,13 @@ use crate::{
 };
 
 /// [`View`] that acts when built.
-pub fn actor<C, T, A>(act: impl FnOnce(&mut T) -> A) -> impl Effect<C, T>
+pub fn on_build<C, T>(
+    on_build: impl FnOnce(&mut T) -> Action,
+) -> impl Effect<C, T>
 where
     C: AsyncContext,
-    A: IntoAction,
 {
-    Actor::new(act)
+    AsyncHandler::new().on_build(on_build)
 }
 
 /// [`View`] that spawns a task when built.
@@ -19,7 +20,7 @@ pub fn task<C, T>(
 where
     C: AsyncContext,
 {
-    actor(move |_| Action::spawn(async { task.await.into_action() }))
+    on_build(move |_| Action::spawn(async { task.await.into_action() }))
 }
 
 /// [`View`] that spawns a task with a proxy when built.
@@ -34,25 +35,36 @@ where
 }
 
 /// [`View`] that acts with it's built.
-pub struct Actor<F> {
-    act: Option<F>,
+pub struct AsyncHandler<F> {
+    on_build: Option<F>,
 }
 
-impl Actor<()> {
-    /// Create an [`Actor`].
-    pub fn new<T, A>(
-        act: impl FnOnce(&mut T) -> A,
-    ) -> Actor<impl FnOnce(&mut T) -> Action>
-    where
-        A: IntoAction,
-    {
-        Actor {
-            act: Some(move |data: &mut T| act(data).into_action()),
+impl Default for AsyncHandler<()> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AsyncHandler<()> {
+    /// Create an [`AsyncHandler`].
+    pub fn new() -> Self {
+        Self { on_build: None }
+    }
+}
+
+impl<F> AsyncHandler<F> {
+    /// Add a callback trigged when the [`View`] is built.
+    pub fn on_build<T>(
+        self,
+        on_build: impl FnOnce(&mut T) -> Action,
+    ) -> AsyncHandler<impl FnOnce(&mut T) -> Action> {
+        AsyncHandler {
+            on_build: Some(move |data: &mut T| on_build(data).into_action()),
         }
     }
 }
 
-impl<C, T, F> View<C, T> for Actor<F>
+impl<C, T, F> View<C, T> for AsyncHandler<F>
 where
     C: AsyncContext,
     F: FnOnce(&mut T) -> Action,
@@ -65,8 +77,9 @@ where
         cx: &mut C,
         data: &mut T,
     ) -> (Self::Element, Self::State) {
-        let act = self.act.take().unwrap();
-        cx.send_action(act(data));
+        if let Some(on_build) = self.on_build.take() {
+            cx.send_action(on_build(data));
+        }
 
         (NoElement, ())
     }
@@ -78,7 +91,8 @@ where
         _cx: &mut C,
         _data: &mut T,
         _old: &mut Self,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn teardown(
@@ -97,7 +111,7 @@ where
         _cx: &mut C,
         _data: &mut T,
         _event: &mut Event,
-    ) -> Action {
-        Action::new()
+    ) -> (bool, Action) {
+        (false, Action::new())
     }
 }

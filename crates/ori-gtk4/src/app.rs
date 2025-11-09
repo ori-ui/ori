@@ -170,9 +170,7 @@ impl App {
 
                         for path in event.paths {
                             if let Ok(canonical) = fs::canonicalize(path) {
-                                let _ = sender.unbounded_send(
-                                    Event::CssChanged(canonical),
-                                );
+                                let _ = sender.unbounded_send(Event::CssChanged(canonical));
                             }
                         }
                     }
@@ -181,8 +179,7 @@ impl App {
             )?;
 
             async move {
-                let (mut data, builder, view, state) =
-                    win_rx.next().await.unwrap();
+                let (mut data, builder, view, state) = win_rx.next().await.unwrap();
 
                 let mut state = AppState {
                     main_context,
@@ -246,11 +243,7 @@ impl<T> AppState<T> {
         Ok(())
     }
 
-    fn add_css_path(
-        &mut self,
-        path: &Path,
-        display: &gtk4::gdk::Display,
-    ) -> Result<(), Error> {
+    fn add_css_path(&mut self, path: &Path, display: &gtk4::gdk::Display) -> Result<(), Error> {
         let canonical = fs::canonicalize(path)?;
 
         let css_provider = gtk4::CssProvider::new();
@@ -272,11 +265,7 @@ impl<T> AppState<T> {
         Ok(())
     }
 
-    fn handle_event(
-        &mut self,
-        data: &mut T,
-        event: Event,
-    ) -> Result<bool, Error> {
+    fn handle_event(&mut self, data: &mut T, event: Event) -> Result<bool, Error> {
         match event {
             Event::CssChanged(path) => {
                 if let Some(provider) = self.css_paths.get(&path) {
@@ -299,7 +288,7 @@ impl<T> AppState<T> {
             }
 
             Event::Event(mut event) => {
-                let action = self.view.event(
+                let (_, action) = self.view.event(
                     &mut ori::NoElement,
                     &mut self.state,
                     &mut self.context,

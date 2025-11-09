@@ -10,7 +10,7 @@ pub fn window<V>(content: V) -> Window<V> {
 #[derive(Debug)]
 pub struct Window<V> {
     pub(crate) content: V,
-    pub(crate) id: Option<ori::ViewId>,
+    pub(crate) id: Option<ori::Key>,
     pub(crate) title: String,
     pub(crate) width: Option<u32>,
     pub(crate) height: Option<u32>,
@@ -105,11 +105,7 @@ impl<V> Window<V> {
         self
     }
 
-    pub fn size(
-        self,
-        width: impl Into<Option<u32>>,
-        height: impl Into<Option<u32>>,
-    ) -> Self {
+    pub fn size(self, width: impl Into<Option<u32>>, height: impl Into<Option<u32>>) -> Self {
         self.width(width).height(height)
     }
 
@@ -229,11 +225,7 @@ where
     type Element = ori::NoElement;
     type State = WindowState<T, V>;
 
-    fn build(
-        &mut self,
-        cx: &mut Context,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (child, state) = self.content.build(cx, data);
 
         let window = gtk4::ApplicationWindow::default();
@@ -263,8 +255,8 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) {
-        self.content.rebuild(
+    ) -> bool {
+        let changed = self.content.rebuild(
             &mut state.child,
             &mut state.state,
             cx,
@@ -272,11 +264,13 @@ where
             &mut old.content,
         );
 
-        if !super::is_parent(&state.window, &state.child) {
+        if changed && !super::is_parent(&state.window, &state.child) {
             state.window.set_child(Some(&state.child));
         }
 
         update_state(&state.window, self, old);
+
+        false
     }
 
     fn teardown(
@@ -296,14 +290,20 @@ where
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> ori::Action {
-        self.content.event(
+    ) -> (bool, ori::Action) {
+        let (changed, action) = self.content.event(
             &mut state.child,
             &mut state.state,
             cx,
             data,
             event,
-        )
+        );
+
+        if changed && !super::is_parent(&state.window, &state.child) {
+            state.window.set_child(Some(&state.child));
+        }
+
+        (false, action)
     }
 }
 
@@ -344,11 +344,7 @@ fn set_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>) {
     win.set_hide_on_close(desc.hide_on_close);
 }
 
-fn update_state<V>(
-    win: &gtk4::ApplicationWindow,
-    desc: &Window<V>,
-    old: &Window<V>,
-) {
+fn update_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>, old: &Window<V>) {
     #[cfg(feature = "layer-shell")]
     if desc.is_layer_shell {
         use gtk4_layer_shell::{Edge, LayerShell as _};

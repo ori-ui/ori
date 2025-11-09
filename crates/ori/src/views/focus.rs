@@ -61,11 +61,12 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) {
+    ) -> bool {
+        let mut changed = false;
         let mut called = false;
 
         (self.focus)(data, &mut |data| {
-            self.content.rebuild(
+            changed = self.content.rebuild(
                 element,
                 state,
                 cx,
@@ -77,6 +78,8 @@ where
         });
 
         assert!(called, "focus must call lens");
+
+        changed
     }
 
     fn teardown(
@@ -103,7 +106,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
+    ) -> (bool, Action) {
         let mut action = None;
 
         (self.focus)(data, &mut |data| {

@@ -41,6 +41,7 @@ pub fn label(text: impl ToString) -> Label {
 #[must_use]
 pub struct Label {
     pub text: String,
+    pub markup: bool,
     pub wrap: Option<Wrap>,
     pub ellipsize: Option<Ellipsize>,
 }
@@ -49,9 +50,15 @@ impl Label {
     pub fn new(text: impl ToString) -> Self {
         Self {
             text: text.to_string(),
+            markup: false,
             wrap: None,
             ellipsize: None,
         }
+    }
+
+    pub fn markup(mut self, markup: bool) -> Self {
+        self.markup = markup;
+        self
     }
 
     pub fn wrap(mut self, wrap: impl Into<Option<Wrap>>) -> Self {
@@ -59,10 +66,7 @@ impl Label {
         self
     }
 
-    pub fn ellipsize(
-        mut self,
-        ellipsize: impl Into<Option<Ellipsize>>,
-    ) -> Self {
+    pub fn ellipsize(mut self, ellipsize: impl Into<Option<Ellipsize>>) -> Self {
         self.ellipsize = ellipsize.into();
         self
     }
@@ -72,12 +76,13 @@ impl<T> ori::View<Context, T> for Label {
     type Element = gtk4::Label;
     type State = ();
 
-    fn build(
-        &mut self,
-        _cx: &mut Context,
-        _data: &mut T,
-    ) -> (Self::Element, Self::State) {
-        let element = gtk4::Label::new(Some(&self.text));
+    fn build(&mut self, _cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
+        let element = gtk4::Label::default();
+
+        match self.markup {
+            true => element.set_markup(&self.text),
+            false => element.set_text(&self.text),
+        }
 
         match self.wrap {
             Some(wrap) => {
@@ -88,10 +93,12 @@ impl<T> ori::View<Context, T> for Label {
             None => element.set_wrap(false),
         }
 
-        element.set_ellipsize(self.ellipsize.map_or(
-            gtk4::pango::EllipsizeMode::None,
-            |ellipsize| ellipsize.into(),
-        ));
+        element.set_ellipsize(
+            self.ellipsize
+                .map_or(gtk4::pango::EllipsizeMode::None, |ellipsize| {
+                    ellipsize.into()
+                }),
+        );
 
         (element, ())
     }
@@ -103,9 +110,12 @@ impl<T> ori::View<Context, T> for Label {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) {
-        if self.text != old.text {
-            element.set_text(&self.text);
+    ) -> bool {
+        if self.text != old.text || self.markup != old.markup {
+            match self.markup {
+                true => element.set_markup(&self.text),
+                false => element.set_text(&self.text),
+            }
         }
 
         if self.wrap != old.wrap {
@@ -120,11 +130,15 @@ impl<T> ori::View<Context, T> for Label {
         }
 
         if self.ellipsize != old.ellipsize {
-            element.set_ellipsize(self.ellipsize.map_or(
-                gtk4::pango::EllipsizeMode::None,
-                |ellipsize| ellipsize.into(),
-            ));
+            element.set_ellipsize(
+                self.ellipsize
+                    .map_or(gtk4::pango::EllipsizeMode::None, |ellipsize| {
+                        ellipsize.into()
+                    }),
+            );
         }
+
+        false
     }
 
     fn teardown(
@@ -143,7 +157,7 @@ impl<T> ori::View<Context, T> for Label {
         _cx: &mut Context,
         _data: &mut T,
         _event: &mut ori::Event,
-    ) -> ori::Action {
-        ori::Action::new()
+    ) -> (bool, ori::Action) {
+        (false, ori::Action::new())
     }
 }

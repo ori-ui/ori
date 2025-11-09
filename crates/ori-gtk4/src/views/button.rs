@@ -44,7 +44,7 @@ impl<V, T> Button<V, T> {
 
 impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     type Element = gtk4::Button;
-    type State = (ori::ViewId, V::Element, V::State);
+    type State = (ori::Key, V::Element, V::State);
 
     fn build(
         &mut self,
@@ -53,7 +53,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     ) -> (Self::Element, Self::State) {
         let (child, state) = self.content.build(cx, data);
 
-        let id = ori::ViewId::new();
+        let id = ori::Key::next();
 
         let button = gtk4::Button::new();
         button.set_child(Some(&child));
@@ -70,22 +70,25 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        (_id, child, state): &mut Self::State,
+        (_key, child, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) {
-        self.content.rebuild(child, state, cx, data, &mut old.content);
+    ) -> bool {
+        let changed =
+            self.content.rebuild(child, state, cx, data, &mut old.content);
 
-        if !super::is_parent(element, child) {
+        if changed && !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
+
+        false
     }
 
     fn teardown(
         &mut self,
         _element: Self::Element,
-        (_id, child, state): Self::State,
+        (_key, child, state): Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {
@@ -94,17 +97,24 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
 
     fn event(
         &mut self,
-        _element: &mut Self::Element,
-        (id, child, state): &mut Self::State,
+        element: &mut Self::Element,
+        (key, child, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> ori::Action {
-        let action = self.content.event(child, state, cx, data, event);
+    ) -> (bool, ori::Action) {
+        let (changed, action) =
+            self.content.event(child, state, cx, data, event);
 
-        match event.take_targeted(*id) {
+        if changed && !super::is_parent(element, child) {
+            element.set_child(Some(child));
+        }
+
+        let action = match event.take_targeted(*key) {
             Some(ButtonEvent::Clicked) => action | (self.on_click)(data),
             None => action,
-        }
+        };
+
+        (false, action)
     }
 }

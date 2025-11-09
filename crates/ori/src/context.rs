@@ -2,6 +2,12 @@ use std::{pin::Pin, sync::Arc};
 
 use crate::{Action, Event};
 
+/// A context with a common [`Super`](crate::Super) element, all elements share.
+pub trait SuperElement {
+    /// The super element.
+    type Element;
+}
+
 /// A context for a [`View`](crate::View).
 pub trait AsyncContext {
     /// [`Proxy`] associated
@@ -26,10 +32,7 @@ pub trait Proxy: Send + Sync + 'static {
     fn event(&self, event: Event);
 
     /// Spawn a boxed future.
-    fn spawn_boxed(
-        &self,
-        future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
-    );
+    fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>);
 
     /// Spawn a future.
     fn spawn(&self, future: impl Future<Output = ()> + Send + 'static)
@@ -70,10 +73,7 @@ impl Proxy for Arc<dyn Proxy> {
         self.as_ref().event(event);
     }
 
-    fn spawn_boxed(
-        &self,
-        future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
-    ) {
+    fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>) {
         self.as_ref().spawn_boxed(future);
     }
 }

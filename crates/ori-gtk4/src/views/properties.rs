@@ -9,7 +9,10 @@ where
     T: ToString,
 {
     fn into_css_classes(self) -> Vec<String> {
-        self.to_string().split_whitespace().map(String::from).collect()
+        self.to_string()
+            .split_whitespace()
+            .map(String::from)
+            .collect()
     }
 }
 
@@ -20,7 +23,9 @@ where
     I: IntoIterator<Item: ToString>,
 {
     fn into_css_classes(self) -> Vec<String> {
-        self.into_iter().flat_map(IntoCssClasses::into_css_classes).collect()
+        self.into_iter()
+            .flat_map(IntoCssClasses::into_css_classes)
+            .collect()
     }
 }
 
@@ -124,11 +129,7 @@ where
     type Element = V::Element;
     type State = (Property, V::State);
 
-    fn build(
-        &mut self,
-        cx: &mut Context,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (element, state) = self.content.build(cx, data);
 
         // record the current state of the property and apply it
@@ -145,23 +146,21 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) {
+    ) -> bool {
         // since pretty much anything can happen to the element, imagine a view dynamically
         // swapping between two elements, we have to restore the property to it's original state
         // before rebuilding.
         prev.set(element);
 
-        self.content.rebuild(
-            element,
-            state,
-            cx,
-            data,
-            &mut old.content,
-        );
+        let changed = self
+            .content
+            .rebuild(element, state, cx, data, &mut old.content);
 
         // we now record the state of the new property and apply it
         *prev = self.property.get(element);
         self.property.set(element);
+
+        changed
     }
 
     fn teardown(
@@ -181,7 +180,7 @@ where
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> ori::Action {
+    ) -> (bool, ori::Action) {
         self.content.event(element, state, cx, data, event)
     }
 }
@@ -260,27 +259,17 @@ mod imp {
 
         pub(super) fn get(&self, element: &impl IsA<gtk4::Widget>) -> Self {
             match self {
-                Property::CanFocus(_) => {
-                    Property::CanFocus(element.can_focus())
-                }
-                Property::CanTarget(_) => {
-                    Property::CanTarget(element.can_target())
-                }
+                Property::CanFocus(_) => Property::CanFocus(element.can_focus()),
+                Property::CanTarget(_) => Property::CanTarget(element.can_target()),
                 Property::CssClasses(_) => Property::CssClasses(
                     element.css_classes().into_iter().map(Into::into).collect(),
                 ),
 
-                Property::Focusable(_) => {
-                    Property::Focusable(element.is_focusable())
-                }
+                Property::Focusable(_) => Property::Focusable(element.is_focusable()),
 
-                Property::Halign(_) => {
-                    Property::Halign(gtk_to_align(element.halign()))
-                }
+                Property::Halign(_) => Property::Halign(gtk_to_align(element.halign())),
 
-                Property::Valign(_) => {
-                    Property::Valign(gtk_to_align(element.valign()))
-                }
+                Property::Valign(_) => Property::Valign(gtk_to_align(element.valign())),
 
                 Property::WidthRequest(_) => match element.width_request() {
                     request if request < 0 => Property::WidthRequest(None),
@@ -292,13 +281,9 @@ mod imp {
                     request => Property::HeightRequest(Some(request as u32)),
                 },
 
-                Property::Opacity(_) => {
-                    Property::Opacity(element.opacity() as f32)
-                }
+                Property::Opacity(_) => Property::Opacity(element.opacity() as f32),
 
-                Property::Tooltip(_) => {
-                    Property::Tooltip(element.tooltip_text().map(Into::into))
-                }
+                Property::Tooltip(_) => Property::Tooltip(element.tooltip_text().map(Into::into)),
 
                 Property::Hexpand(_) => match element.is_hexpand_set() {
                     true => Property::Hexpand(Some(element.hexpands())),

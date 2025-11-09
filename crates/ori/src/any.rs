@@ -24,7 +24,7 @@ pub trait AnyView<C, T, E> {
         cx: &mut C,
         data: &mut T,
         old: &mut dyn AnyView<C, T, E>,
-    );
+    ) -> bool;
 
     /// Tear down in a type erased manner, see [`View::teardown`] for more details.
     fn any_teardown(
@@ -43,7 +43,7 @@ pub trait AnyView<C, T, E> {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action;
+    ) -> (bool, Action);
 }
 
 impl<C, T, E, V> AnyView<C, T, E> for V
@@ -69,14 +69,12 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut dyn AnyView<C, T, E>,
-    ) {
+    ) -> bool {
         match old.as_mut_any().downcast_mut::<V>() {
-            Some(old) => {
-                element.downcast_with(|element| {
-                    let state = state.downcast_mut().unwrap();
-                    self.rebuild(element, state, cx, data, old);
-                });
-            }
+            Some(old) => element.downcast_with(|element| {
+                let state = state.downcast_mut().unwrap();
+                self.rebuild(element, state, cx, data, old)
+            }),
 
             None => {
                 let (new_element, new_state) = self.build(cx, data);
@@ -87,6 +85,8 @@ where
                     cx,
                     data,
                 );
+
+                true
             }
         }
     }
@@ -113,7 +113,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
+    ) -> (bool, Action) {
         element.downcast_with(|element| {
             let state = state.downcast_mut().unwrap();
             self.event(element, state, cx, data, event)
@@ -140,8 +140,8 @@ impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) {
-        self.as_mut().any_rebuild(element, state, cx, data, old.as_mut());
+    ) -> bool {
+        self.as_mut().any_rebuild(element, state, cx, data, old.as_mut())
     }
 
     fn teardown(
@@ -161,7 +161,7 @@ impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
+    ) -> (bool, Action) {
         self.as_mut().any_event(element, state, cx, data, event)
     }
 }

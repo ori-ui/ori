@@ -85,11 +85,7 @@ impl<T> ori::View<Context, T> for Picture {
     type Element = gtk4::Picture;
     type State = ();
 
-    fn build(
-        &mut self,
-        _cx: &mut Context,
-        _data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, _cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let element = gtk4::Picture::new();
 
         load_from_source(&element, &self.source);
@@ -106,10 +102,12 @@ impl<T> ori::View<Context, T> for Picture {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) {
+    ) -> bool {
         if self.source != old.source {
             load_from_source(element, &self.source);
         }
+
+        false
     }
 
     fn teardown(
@@ -128,7 +126,7 @@ impl<T> ori::View<Context, T> for Picture {
         _cx: &mut Context,
         _data: &mut T,
         _event: &mut ori::Event,
-    ) -> ori::Action {
-        ori::Action::new()
+    ) -> (bool, ori::Action) {
+        (false, ori::Action::new())
     }
 }

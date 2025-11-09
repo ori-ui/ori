@@ -1,4 +1,4 @@
-use crate::{Action, Event, IntoAction, NoElement, View};
+use crate::{Action, Effect, Event, NoElement, View};
 
 /// Create a new [`Handler`].
 pub fn handler() -> Handler<()> {
@@ -6,19 +6,16 @@ pub fn handler() -> Handler<()> {
 }
 
 /// [`View`] that handles events.
-pub fn on_event<T, A>(
-    handler: impl FnMut(&mut T, &mut Event) -> A,
-) -> Handler<impl EventHandler<T>>
-where
-    A: IntoAction,
-{
-    Handler::new().on_event(handler)
+pub fn on_event<C, T>(
+    on_event: impl FnMut(&mut T, &mut Event) -> Action,
+) -> impl Effect<C, T> {
+    Handler::new().on_event(on_event)
 }
 
 /// [`View`] that handles events.
 #[must_use]
 pub struct Handler<E> {
-    event_handler: E,
+    on_event: E,
 }
 
 impl Default for Handler<()> {
@@ -30,23 +27,21 @@ impl Default for Handler<()> {
 impl Handler<()> {
     /// Create a new [`Handler`].
     pub const fn new() -> Self {
-        Self { event_handler: () }
+        Self { on_event: () }
     }
 
     /// Add an event handler.
     pub const fn on_event<T>(
         self,
-        handler: impl EventHandler<T>,
-    ) -> Handler<impl EventHandler<T>> {
-        Handler {
-            event_handler: handler,
-        }
+        on_event: impl FnMut(&mut T, &mut Event) -> Action,
+    ) -> Handler<impl FnMut(&mut T, &mut Event) -> Action> {
+        Handler { on_event }
     }
 }
 
 impl<C, T, E> View<C, T> for Handler<E>
 where
-    E: EventHandler<T>,
+    E: FnMut(&mut T, &mut Event) -> Action,
 {
     type Element = NoElement;
     type State = ();
@@ -66,7 +61,8 @@ where
         _cx: &mut C,
         _data: &mut T,
         _old: &mut Self,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn teardown(
@@ -85,29 +81,7 @@ where
         _cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
-        self.event_handler.on_event(data, event)
-    }
-}
-
-/// A handler for events, see [`Handler`] for more information.
-pub trait EventHandler<T> {
-    /// Handle an event.
-    fn on_event(&mut self, data: &mut T, event: &mut Event) -> Action;
-}
-
-impl<T> EventHandler<T> for () {
-    fn on_event(&mut self, _data: &mut T, _event: &mut Event) -> Action {
-        Action::new()
-    }
-}
-
-impl<T, F, A> EventHandler<T> for F
-where
-    F: FnMut(&mut T, &mut Event) -> A,
-    A: IntoAction,
-{
-    fn on_event(&mut self, data: &mut T, event: &mut Event) -> Action {
-        self(data, event).into_action()
+    ) -> (bool, Action) {
+        (false, (self.on_event)(data, event))
     }
 }

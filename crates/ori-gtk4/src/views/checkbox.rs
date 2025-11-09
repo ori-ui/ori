@@ -53,7 +53,7 @@ impl<T> Checkbox<T> {
 
 impl<T> ori::View<Context, T> for Checkbox<T> {
     type Element = gtk4::CheckButton;
-    type State = ori::ViewId;
+    type State = ori::Key;
 
     fn build(
         &mut self,
@@ -66,7 +66,7 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
             element.set_active(checked);
         }
 
-        let id = ori::ViewId::new();
+        let id = ori::Key::next();
 
         element.connect_toggled({
             let cx = cx.clone();
@@ -87,12 +87,14 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) {
+    ) -> bool {
         if let Some(checked) = self.checked
             && self.checked != old.checked
         {
             element.set_active(checked);
         }
+
+        false
     }
 
     fn teardown(
@@ -111,13 +113,15 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
         _cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> ori::Action {
-        match event.take_targeted(*id) {
+    ) -> (bool, ori::Action) {
+        let action = match event.take_targeted(*id) {
             Some(CheckboxEvent::Toggled(checked)) => {
                 (self.on_change)(data, checked)
             }
 
             None => ori::Action::new(),
-        }
+        };
+
+        (false, action)
     }
 }

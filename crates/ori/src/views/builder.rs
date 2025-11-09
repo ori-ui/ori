@@ -52,11 +52,12 @@ where
         cx: &mut C,
         data: &mut T,
         _old: &mut Self,
-    ) {
+    ) -> bool {
         let build = self.build.take().unwrap();
         let mut new_view = build(cx, data);
-        new_view.rebuild(element, state, cx, data, view);
+        let element_changed = new_view.rebuild(element, state, cx, data, view);
         *view = new_view;
+        element_changed
     }
 
     fn teardown(
@@ -76,7 +77,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
+    ) -> (bool, Action) {
         view.event(element, state, cx, data, event)
     }
 }

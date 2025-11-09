@@ -1,11 +1,7 @@
 use crate::{Action, Event, View};
 
 /// [`View`] that doesn't rebuild when state changes.
-pub fn freeze<C, T, F, V>(build: F) -> Freeze<F>
-where
-    V: View<C, T>,
-    F: FnOnce() -> V,
-{
+pub fn freeze<V>(build: impl FnOnce() -> V) -> Freeze<impl FnOnce() -> V> {
     Freeze::new(build)
 }
 
@@ -17,9 +13,8 @@ pub struct Freeze<F> {
 
 impl<F> Freeze<F> {
     /// Crate a new [`Freeze`].
-    pub fn new<C, T, V>(build: F) -> Self
+    pub fn new<V>(build: F) -> Self
     where
-        V: View<C, T>,
         F: FnOnce() -> V,
     {
         Self { build: Some(build) }
@@ -34,11 +29,7 @@ where
     type Element = V::Element;
     type State = (V, V::State);
 
-    fn build(
-        &mut self,
-        cx: &mut C,
-        data: &mut T,
-    ) -> (Self::Element, Self::State) {
+    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let build = self.build.take().unwrap();
         let mut view = build();
         let (element, state) = view.build(cx, data);
@@ -53,7 +44,8 @@ where
         _cx: &mut C,
         _data: &mut T,
         _old: &mut Self,
-    ) {
+    ) -> bool {
+        false
     }
 
     fn teardown(
@@ -73,7 +65,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
+    ) -> (bool, Action) {
         view.event(element, state, cx, data, event)
     }
 }

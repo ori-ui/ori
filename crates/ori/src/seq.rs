@@ -20,7 +20,7 @@ pub trait ViewSeq<C, T, E> {
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    );
+    ) -> bool;
 
     /// Tear down the sequence, see [`View::teardown`] for more information.
     fn seq_teardown(
@@ -39,7 +39,7 @@ pub trait ViewSeq<C, T, E> {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action;
+    ) -> (bool, Action);
 }
 
 impl<C, T, E, V> ViewSeq<C, T, E> for Option<V>
@@ -71,27 +71,31 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) {
+    ) -> bool {
         match (self, old) {
-            (None, None) => {}
+            (None, None) => false,
 
             (None, Some(old)) => {
                 let element = elements.pop().unwrap().downcast();
                 let state = state.take().unwrap();
                 old.teardown(element, state, cx, data);
+
+                true
             }
 
             (Some(content), None) => {
                 let (child, new_state) = content.build(cx, data);
                 elements.push(E::upcast(cx, child));
                 *state = Some(new_state);
+
+                true
             }
 
             (Some(content), Some(old)) => {
                 elements[0].downcast_with(|element| {
                     let state = state.as_mut().unwrap();
-                    content.rebuild(element, state, cx, data, old);
-                });
+                    content.rebuild(element, state, cx, data, old)
+                })
             }
         }
     }
@@ -117,14 +121,14 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
+    ) -> (bool, Action) {
         match self {
             Some(content) => elements[0].downcast_with(|element| {
                 let state = state.as_mut().unwrap();
                 content.event(element, state, cx, data, event)
             }),
 
-            None => Action::new(),
+            None => (false, Action::new()),
         }
     }
 }
@@ -160,7 +164,9 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) {
+    ) -> bool {
+        let mut elements_changed = false;
+
         if self.len() < old.len() {
             for ((old, element), state) in old
                 .iter_mut()
@@ -173,19 +179,26 @@ where
 
             elements.truncate(self.len());
             states.truncate(self.len());
+
+            elements_changed = true;
         }
 
         for (i, view) in self.iter_mut().enumerate() {
             if let Some(old) = old.get_mut(i) {
                 elements[i].downcast_with(|element| {
-                    view.rebuild(element, &mut states[i], cx, data, old)
+                    elements_changed |=
+                        view.rebuild(element, &mut states[i], cx, data, old);
                 });
             } else {
                 let (element, state) = view.build(cx, data);
                 elements.push(E::upcast(cx, element));
                 states.push(state);
+
+                elements_changed = true;
             }
         }
+
+        elements_changed
     }
 
     fn seq_teardown(
@@ -209,16 +222,21 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> Action {
+    ) -> (bool, Action) {
+        let mut changed = false;
         let mut action = Action::new();
 
         for (i, view) in self.iter_mut().enumerate() {
             elements[i].downcast_with(|element| {
-                action |= view.event(element, &mut states[i], cx, data, event);
+                let (element_changed, element_action) =
+                    view.event(element, &mut states[i], cx, data, event);
+
+                changed |= element_changed;
+                action |= element_action;
             });
         }
 
-        action
+        (changed, action)
     }
 }
 
@@ -255,10 +273,12 @@ macro_rules! impl_tuple {
                 cx: &mut C,
                 data: &mut T,
                 old: &mut Self,
-            ) {
+            ) -> bool {
+                let mut changed = false;
+
                 $({
                     elements[$index].downcast_with(|element| {
-                        self.$index.rebuild(
+                        changed |= self.$index.rebuild(
                             element,
                             &mut state.$index,
                             cx,
@@ -267,6 +287,8 @@ macro_rules! impl_tuple {
                         );
                     });
                 })*
+
+                changed
             }
 
             fn seq_teardown(
@@ -294,22 +316,26 @@ macro_rules! impl_tuple {
                 cx: &mut C,
                 data: &mut T,
                 event: &mut Event,
-            ) -> Action {
+            ) -> (bool, Action) {
+                let mut changed = false;
                 let mut action = Action::new();
 
                 $({
-                    action |= elements[$index].downcast_with(|element| {
-                        self.$index.event(
+                    elements[$index].downcast_with(|element| {
+                        let (element_changed, element_action) = self.$index.event(
                             element,
                             &mut state.$index,
                             cx,
                             data,
                             event,
-                        )
+                        );
+
+                        changed |= element_changed;
+                        action |= element_action;
                     });
                 })*
 
-                action
+                (changed, action)
             }
         }
     };

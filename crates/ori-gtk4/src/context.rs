@@ -10,9 +10,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(
-        app: gtk4::glib::WeakRef<gtk4::Application>,
-    ) -> (Context, UnboundedReceiver<Event>) {
+    pub fn new(app: gtk4::glib::WeakRef<gtk4::Application>) -> (Context, UnboundedReceiver<Event>) {
         let (sender, receiver) = unbounded();
 
         let context = Context { app, sender };
@@ -24,11 +22,7 @@ impl Context {
         &self.app
     }
 
-    pub fn event<T: Any + Send>(
-        &self,
-        item: T,
-        target: impl Into<Option<ori::ViewId>>,
-    ) {
+    pub fn event<T: Any + Send>(&self, item: T, target: impl Into<Option<ori::Key>>) {
         let event = ori::Event::new(item, target);
 
         self.sender.unbounded_send(Event::Event(event)).unwrap();
@@ -43,6 +37,10 @@ impl Context {
     pub(crate) fn sender(&self) -> &UnboundedSender<Event> {
         &self.sender
     }
+}
+
+impl ori::SuperElement for Context {
+    type Element = gtk4::Widget;
 }
 
 impl ori::AsyncContext for Context {
@@ -68,11 +66,10 @@ impl ori::Proxy for Proxy {
         self.sender.unbounded_send(Event::Event(event)).unwrap();
     }
 
-    fn spawn_boxed(
-        &self,
-        future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>,
-    ) {
-        self.sender.unbounded_send(Event::Spawn(Box::pin(future))).unwrap();
+    fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>) {
+        self.sender
+            .unbounded_send(Event::Spawn(Box::pin(future)))
+            .unwrap();
     }
 }
 

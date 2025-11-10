@@ -231,6 +231,8 @@ mod imp {
                 }
 
                 Property::CssClasses(ref classes) => {
+                    element.set_css_classes(&[]);
+
                     for class in classes {
                         element.add_css_class(class);
                     }

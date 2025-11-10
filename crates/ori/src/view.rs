@@ -1,7 +1,10 @@
 use crate::{Action, Event};
 
+/// Trait restricting implementations of [`View`].
+pub trait ViewMarker {}
+
 /// Snapshot of the state of a retained UI.
-pub trait View<C, T> {
+pub trait View<C, T>: ViewMarker {
     /// The element this view produces.
     type Element;
 

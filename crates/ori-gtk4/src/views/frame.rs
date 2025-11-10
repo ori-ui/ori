@@ -26,6 +26,7 @@ impl<V> Frame<V> {
     }
 }
 
+impl<V> ori::ViewMarker for Frame<V> {}
 impl<T, V: View<T>> ori::View<Context, T> for Frame<V> {
     type Element = gtk4::Frame;
     type State = (V::Element, V::State);

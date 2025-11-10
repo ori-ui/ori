@@ -36,6 +36,7 @@ impl<V, T> Button<V, T> {
     }
 }
 
+impl<V, T> ori::ViewMarker for Button<V, T> {}
 impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     type Element = gtk4::Button;
     type State = (ori::Key, V::Element, V::State);

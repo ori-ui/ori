@@ -1,6 +1,6 @@
 use std::{any::Any, mem};
 
-use crate::{Action, Event, Super, View};
+use crate::{Action, Event, Super, View, ViewMarker};
 
 /// A type erased [`View`].
 ///
@@ -109,6 +109,7 @@ where
     }
 }
 
+impl<C, T, E> ViewMarker for Box<dyn AnyView<C, T, E>> {}
 impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
     type Element = E;
     type State = Box<dyn Any>;

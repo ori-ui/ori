@@ -1,4 +1,4 @@
-use crate::{Action, Event, View};
+use crate::{Action, Event, View, ViewMarker};
 
 /// [`View`] that is built from a callback.
 pub fn builder<C, T, V, F>(build: F) -> Builder<F>
@@ -25,6 +25,7 @@ impl<F> Builder<F> {
     }
 }
 
+impl<F> ViewMarker for Builder<F> {}
 impl<C, T, V, F> View<C, T> for Builder<F>
 where
     F: FnOnce(&mut C, &mut T) -> V,

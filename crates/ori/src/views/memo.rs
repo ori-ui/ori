@@ -1,6 +1,6 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use crate::{Action, Event, View};
+use crate::{Action, Event, View, ViewMarker};
 
 /// [`View`] that is only rebuilt when `data` changes.
 pub fn memo<C, T, V, F, D>(data: D, build: F) -> Memo<F, D>
@@ -48,6 +48,7 @@ impl<F, D> Memo<F, D> {
     }
 }
 
+impl<F, D> ViewMarker for Memo<F, D> {}
 impl<C, T, V, F, D> View<C, T> for Memo<F, D>
 where
     V: View<C, T>,

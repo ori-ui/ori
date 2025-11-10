@@ -83,6 +83,7 @@ fn load_from_source(element: &gtk4::Picture, source: &ImageSource) {
     }
 }
 
+impl ori::ViewMarker for Picture {}
 impl<T> ori::View<Context, T> for Picture {
     type Element = gtk4::Picture;
     type State = ();

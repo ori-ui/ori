@@ -30,6 +30,7 @@ impl<V> Clamp<V> {
     }
 }
 
+impl<V> ori::ViewMarker for Clamp<V> {}
 impl<T, V> ori::View<Context, T> for Clamp<V>
 where
     V: View<T>,

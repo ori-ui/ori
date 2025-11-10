@@ -45,6 +45,7 @@ impl<T> Checkbox<T> {
     }
 }
 
+impl<T> ori::ViewMarker for Checkbox<T> {}
 impl<T> ori::View<Context, T> for Checkbox<T> {
     type Element = gtk4::CheckButton;
     type State = ori::Key;

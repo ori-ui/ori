@@ -17,22 +17,6 @@ pub fn vline<V>(content: V) -> Line<V> {
     Line::new(Axis::Vertical, content)
 }
 
-pub use crate::{hline, vline};
-
-#[macro_export]
-macro_rules! hline {
-    [$($view:expr),* $(,)?] => {
-        $crate::views::hline(($($view,)*))
-    };
-}
-
-#[macro_export]
-macro_rules! vline {
-    [$($view:expr),* $(,)?] => {
-        $crate::views::vline(($($view,)*))
-    };
-}
-
 #[must_use]
 pub struct Line<V> {
     pub content: V,
@@ -69,6 +53,7 @@ impl<V> DerefMut for Line<V> {
     }
 }
 
+impl<V> ori::ViewMarker for Line<V> {}
 impl<T, V> ori::View<Context, T> for Line<V>
 where
     V: ViewSeq<T>,

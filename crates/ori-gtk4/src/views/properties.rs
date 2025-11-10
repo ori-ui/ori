@@ -122,6 +122,7 @@ impl<V> Prop<V> {
     }
 }
 
+impl<V> ori::ViewMarker for Prop<V> {}
 impl<T, V> ori::View<Context, T> for Prop<V>
 where
     V: View<T>,

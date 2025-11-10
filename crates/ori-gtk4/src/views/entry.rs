@@ -65,6 +65,7 @@ impl<T> Entry<T> {
     }
 }
 
+impl<T> ori::ViewMarker for Entry<T> {}
 impl<T> ori::View<Context, T> for Entry<T> {
     type Element = gtk4::Entry;
     type State = (ori::Key, gtk4::glib::SignalHandlerId);

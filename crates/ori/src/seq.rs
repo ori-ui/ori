@@ -32,6 +32,52 @@ pub trait ViewSeq<C, T, E> {
     ) -> (bool, Action);
 }
 
+impl<C, T, E, V> ViewSeq<C, T, E> for V
+where
+    V: View<C, T>,
+    E: Super<C, V::Element>,
+{
+    type SeqState = V::State;
+
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Vec<E>, Self::SeqState) {
+        let (element, state) = self.build(cx, data);
+        (vec![E::upcast(cx, element)], state)
+    }
+
+    fn seq_rebuild(
+        &mut self,
+        elements: &mut Vec<E>,
+        state: &mut Self::SeqState,
+        cx: &mut C,
+        data: &mut T,
+        old: &mut Self,
+    ) -> bool {
+        elements[0].downcast_with(|element| self.rebuild(element, state, cx, data, old))
+    }
+
+    fn seq_teardown(
+        &mut self,
+        mut elements: Vec<E>,
+        state: Self::SeqState,
+        cx: &mut C,
+        data: &mut T,
+    ) {
+        let element = elements.pop().unwrap().downcast();
+        self.teardown(element, state, cx, data);
+    }
+
+    fn seq_event(
+        &mut self,
+        elements: &mut [E],
+        state: &mut Self::SeqState,
+        cx: &mut C,
+        data: &mut T,
+        event: &mut Event,
+    ) -> (bool, Action) {
+        elements[0].downcast_with(|element| self.event(element, state, cx, data, event))
+    }
+}
+
 impl<C, T, E, V> ViewSeq<C, T, E> for Option<V>
 where
     V: View<C, T>,

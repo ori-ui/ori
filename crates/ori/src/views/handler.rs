@@ -1,4 +1,4 @@
-use crate::{Action, Effect, Event, NoElement, View};
+use crate::{Action, Effect, Event, NoElement, View, ViewMarker};
 
 /// Create a new [`Handler`].
 pub fn handler() -> Handler<()> {
@@ -37,6 +37,7 @@ impl Handler<()> {
     }
 }
 
+impl<F> ViewMarker for Handler<F> {}
 impl<C, T, E> View<C, T> for Handler<E>
 where
     E: FnMut(&mut T, &mut Event) -> Action,

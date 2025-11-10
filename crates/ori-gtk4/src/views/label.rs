@@ -72,6 +72,7 @@ impl Label {
     }
 }
 
+impl ori::ViewMarker for Label {}
 impl<T> ori::View<Context, T> for Label {
     type Element = gtk4::Label;
     type State = ();

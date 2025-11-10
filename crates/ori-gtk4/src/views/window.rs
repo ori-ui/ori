@@ -225,6 +225,7 @@ where
     state: V::State,
 }
 
+impl<V> ori::ViewMarker for Window<V> {}
 impl<T, V> ori::View<Context, T> for Window<V>
 where
     V: View<T>,

@@ -1,4 +1,4 @@
-use crate::{Action, Event, View};
+use crate::{Action, Event, View, ViewMarker};
 
 /// [`View`] that doesn't rebuild when state changes.
 pub fn freeze<V>(build: impl FnOnce() -> V) -> Freeze<impl FnOnce() -> V> {
@@ -21,6 +21,7 @@ impl<F> Freeze<F> {
     }
 }
 
+impl<F> ViewMarker for Freeze<F> {}
 impl<C, T, F, V> View<C, T> for Freeze<F>
 where
     V: View<C, T>,

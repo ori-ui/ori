@@ -1,4 +1,4 @@
-use crate::{Action, Effect, EffectSeq, Event, NoElement, View};
+use crate::{Action, EffectSeq, Event, NoElement, View, ViewMarker};
 
 /// [`View`] that attaches an [`Effect`] to a [`View`].
 pub const fn with_effect<V, W>(content: V, with: W) -> WithEffect<V, W> {
@@ -8,35 +8,39 @@ pub const fn with_effect<V, W>(content: V, with: W) -> WithEffect<V, W> {
 /// [`View`] that attaches an [`Effect`] to a [`View`].
 pub struct WithEffect<V, W> {
     content: V,
-    with: W,
+    effect: W,
 }
 
 impl<V, W> WithEffect<V, W> {
     /// Create a [`WithEffect`].
     pub const fn new(content: V, with: W) -> Self {
-        Self { content, with }
+        Self {
+            content,
+            effect: with,
+        }
     }
 }
 
+impl<V, W> ViewMarker for WithEffect<V, W> {}
 impl<C, T, V, W> View<C, T> for WithEffect<V, W>
 where
     V: View<C, T>,
-    W: Effect<C, T>,
+    W: EffectSeq<C, T>,
 {
     type Element = V::Element;
-    type State = (V::State, W::State);
+    type State = (V::State, Vec<NoElement>, W::SeqState);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, content) = self.content.build(cx, data);
-        let (_, with) = self.with.build(cx, data);
+        let (elements, with) = self.effect.seq_build(cx, data);
 
-        (element, (content, with))
+        (element, (content, elements, with))
     }
 
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        (content, with): &mut Self::State,
+        (content, elements, with): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
@@ -49,12 +53,12 @@ where
             &mut old.content,
         );
 
-        self.with.rebuild(
-            &mut NoElement,
+        self.effect.seq_rebuild(
+            elements,
             with,
             cx,
             data,
-            &mut old.with,
+            &mut old.effect,
         );
 
         element_changed
@@ -63,42 +67,32 @@ where
     fn teardown(
         &mut self,
         element: Self::Element,
-        (content, with): Self::State,
+        (content, elements, with): Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
         self.content.teardown(element, content, cx, data);
-        self.with.teardown(NoElement, with, cx, data);
+        self.effect.seq_teardown(elements, with, cx, data);
     }
 
     fn event(
         &mut self,
         element: &mut Self::Element,
-        (content, with): &mut Self::State,
+        (content, elements, with): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> (bool, Action) {
-        let (element_changed, content_action) =
-            self.with.event(&mut NoElement, with, cx, data, event);
+        let (_, content_action) = self.effect.seq_event(elements, with, cx, data, event);
 
-        let (_, effect_action) = self.content.event(element, content, cx, data, event);
+        let (element_changed, effect_action) =
+            self.content.event(element, content, cx, data, event);
 
         (
             element_changed,
             content_action | effect_action,
         )
     }
-}
-
-pub use crate::effects;
-
-/// Sequence of [`Effect`].
-#[macro_export]
-macro_rules! effects {
-    [$($effect:expr),* $(,)?] => (
-        $crate::views::effects(($($effect,)*))
-    )
 }
 
 /// Sequence of [`Effect`]s.
@@ -118,6 +112,7 @@ impl<V> Effects<V> {
     }
 }
 
+impl<V> ViewMarker for Effects<V> {}
 impl<C, T, V> View<C, T> for Effects<V>
 where
     V: EffectSeq<C, T>,

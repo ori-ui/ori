@@ -1,4 +1,6 @@
-use crate::{Action, AsyncContext, Effect, Event, IntoAction, NoElement, View, views::builder};
+use crate::{
+    Action, AsyncContext, Effect, Event, IntoAction, NoElement, View, ViewMarker, views::builder,
+};
 
 /// [`View`] that acts when built.
 pub fn on_build<C, T>(on_build: impl FnOnce(&mut T) -> Action) -> impl Effect<C, T>
@@ -55,6 +57,7 @@ impl<F> AsyncHandler<F> {
     }
 }
 
+impl<F> ViewMarker for AsyncHandler<F> {}
 impl<C, T, F> View<C, T> for AsyncHandler<F>
 where
     C: AsyncContext,

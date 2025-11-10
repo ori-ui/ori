@@ -1,11 +1,11 @@
 use crate::{Action, EffectSeq, Event, NoElement, View, ViewMarker};
 
-/// [`View`] that attaches an [`Effect`] to a [`View`].
+/// [`View`] that attaches an [`Effect`](crate::Effect) to a [`View`].
 pub const fn with_effect<V, W>(content: V, with: W) -> WithEffect<V, W> {
     WithEffect::new(content, with)
 }
 
-/// [`View`] that attaches an [`Effect`] to a [`View`].
+/// [`View`] that attaches an [`Effect`](crate::Effect) to a [`View`].
 pub struct WithEffect<V, W> {
     content: V,
     effect: W,
@@ -95,12 +95,12 @@ where
     }
 }
 
-/// Sequence of [`Effect`]s.
+/// Sequence of [`Effect`](crate::Effect)s.
 pub const fn effects<V>(content: V) -> Effects<V> {
     Effects::new(content)
 }
 
-/// Sequence of [`Effect`]s.
+/// Sequence of [`Effect`](crate::Effect)s.
 pub struct Effects<V> {
     content: V,
 }

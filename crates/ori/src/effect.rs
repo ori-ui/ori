@@ -15,7 +15,7 @@ pub trait EffectSeq<C, T>: ViewSeq<C, T, NoElement> {}
 impl<C, T, V> Effect<C, T> for V where V: View<C, T, Element = NoElement> {}
 impl<C, T, V> EffectSeq<C, T> for V where V: ViewSeq<C, T, NoElement> {}
 
-/// Type erased [`Effect`].
+/// Type erased [`Effect`](crate::Effect).
 pub trait AnyEffect<C, T>: AnyView<C, T, NoElement> {}
 
 impl<C, T, V> AnyEffect<C, T> for V where V: AnyView<C, T, NoElement> {}

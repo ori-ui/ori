@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use crate::{Context, View};
 
 pub trait IntoCssClasses<I> {
@@ -97,6 +99,20 @@ pub enum Align {
 pub struct Prop<V> {
     content: V,
     property: Property,
+}
+
+impl<V> Deref for Prop<V> {
+    type Target = V;
+
+    fn deref(&self) -> &Self::Target {
+        &self.content
+    }
+}
+
+impl<V> DerefMut for Prop<V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.content
+    }
 }
 
 #[derive(PartialEq)]

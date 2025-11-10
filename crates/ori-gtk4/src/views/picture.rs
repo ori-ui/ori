@@ -1,7 +1,4 @@
-use std::{
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use crate::Context;
 
@@ -68,6 +65,8 @@ fn load_from_source(element: &gtk4::Picture, source: &ImageSource) {
 
         #[cfg(feature = "image")]
         ImageSource::Data(data) => {
+            use std::io::Read;
+
             let texture = gtk4::gdk::MemoryTexture::new(
                 data.width() as i32,
                 data.height() as i32,

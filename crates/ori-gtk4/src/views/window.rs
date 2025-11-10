@@ -9,38 +9,40 @@ pub fn window<V>(content: V) -> Window<V> {
 #[allow(unused)]
 #[derive(Debug)]
 pub struct Window<V> {
-    pub(crate) content: V,
-    pub(crate) id: Option<ori::Key>,
-    pub(crate) title: String,
-    pub(crate) width: Option<u32>,
-    pub(crate) height: Option<u32>,
-    pub(crate) visible: bool,
-    pub(crate) resizable: bool,
-    pub(crate) decorated: bool,
-    pub(crate) hide_on_close: bool,
+    content: V,
+    id: Option<ori::Key>,
+    title: String,
+    width: Option<u32>,
+    height: Option<u32>,
+    visible: bool,
+    resizable: bool,
+    decorated: bool,
+    hide_on_close: bool,
 
     #[cfg(feature = "layer-shell")]
-    pub(crate) is_layer_shell: bool,
+    is_layer_shell: bool,
     #[cfg(feature = "layer-shell")]
-    pub(crate) layer: Layer,
+    layer: Layer,
     #[cfg(feature = "layer-shell")]
-    pub(crate) exclusive_zone: Exclusive,
+    exclusive_zone: Exclusive,
     #[cfg(feature = "layer-shell")]
-    pub(crate) margin_top: i32,
+    monitor: Option<u32>,
     #[cfg(feature = "layer-shell")]
-    pub(crate) margin_right: i32,
+    margin_top: i32,
     #[cfg(feature = "layer-shell")]
-    pub(crate) margin_bottom: i32,
+    margin_right: i32,
     #[cfg(feature = "layer-shell")]
-    pub(crate) margin_left: i32,
+    margin_bottom: i32,
     #[cfg(feature = "layer-shell")]
-    pub(crate) anchor_top: bool,
+    margin_left: i32,
     #[cfg(feature = "layer-shell")]
-    pub(crate) anchor_right: bool,
+    anchor_top: bool,
     #[cfg(feature = "layer-shell")]
-    pub(crate) anchor_bottom: bool,
+    anchor_right: bool,
     #[cfg(feature = "layer-shell")]
-    pub(crate) anchor_left: bool,
+    anchor_bottom: bool,
+    #[cfg(feature = "layer-shell")]
+    anchor_left: bool,
 }
 
 #[cfg(feature = "layer-shell")]
@@ -78,6 +80,8 @@ impl<V> Window<V> {
             layer: Layer::Top,
             #[cfg(feature = "layer-shell")]
             exclusive_zone: Exclusive::Fixed(0),
+            #[cfg(feature = "layer-shell")]
+            monitor: None,
             #[cfg(feature = "layer-shell")]
             margin_top: 0,
             #[cfg(feature = "layer-shell")]
@@ -152,6 +156,12 @@ impl<V> Window<V> {
     #[cfg(feature = "layer-shell")]
     pub fn exclusive_zone(mut self, zone: impl Into<Exclusive>) -> Self {
         self.exclusive_zone = zone.into();
+        self
+    }
+
+    #[cfg(feature = "layer-shell")]
+    pub fn monitor(mut self, monitor: impl Into<Option<u32>>) -> Self {
+        self.monitor = monitor.into();
         self
     }
 
@@ -328,6 +338,21 @@ fn set_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>) {
             Exclusive::Auto => win.auto_exclusive_zone_enable(),
         }
 
+        if let Some(monitor) = desc.monitor {
+            use gtk4::gdk::prelude::DisplayExt;
+
+            let monitor = gtk4::gdk::Display::default()
+                .unwrap()
+                .monitors()
+                .into_iter()
+                .nth(monitor as usize);
+
+            if let Some(monitor) = monitor {
+                use gtk4::glib::object::Cast;
+                win.set_monitor(monitor.unwrap().downcast_ref());
+            }
+        }
+
         win.set_anchor(Edge::Top, desc.anchor_top);
         win.set_anchor(Edge::Right, desc.anchor_right);
         win.set_anchor(Edge::Bottom, desc.anchor_bottom);
@@ -364,6 +389,25 @@ fn update_state<V>(win: &gtk4::ApplicationWindow, desc: &Window<V>, old: &Window
             match desc.exclusive_zone {
                 Exclusive::Fixed(zone) => win.set_exclusive_zone(zone as i32),
                 Exclusive::Auto => win.auto_exclusive_zone_enable(),
+            }
+        }
+
+        if desc.monitor != old.monitor {
+            if let Some(monitor) = desc.monitor {
+                use gtk4::gdk::prelude::DisplayExt;
+
+                let monitor = gtk4::gdk::Display::default()
+                    .unwrap()
+                    .monitors()
+                    .into_iter()
+                    .nth(monitor as usize);
+
+                if let Some(monitor) = monitor {
+                    use gtk4::glib::object::Cast;
+                    win.set_monitor(monitor.unwrap().downcast_ref());
+                }
+            } else {
+                win.set_monitor(None);
             }
         }
 

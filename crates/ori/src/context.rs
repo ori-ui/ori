@@ -65,6 +65,20 @@ pub trait Proxy: Send + Sync + 'static {
     }
 }
 
+impl Proxy for Box<dyn Proxy> {
+    fn rebuild(&self) {
+        self.as_ref().rebuild();
+    }
+
+    fn event(&self, event: Event) {
+        self.as_ref().event(event);
+    }
+
+    fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send + 'static>>) {
+        self.as_ref().spawn_boxed(future);
+    }
+}
+
 impl Proxy for Arc<dyn Proxy> {
     fn rebuild(&self) {
         self.as_ref().rebuild();

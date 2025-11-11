@@ -4,7 +4,7 @@ use gtk4::{
     glib::object::Cast as _,
     prelude::{BoxExt as _, OrientableExt as _, WidgetExt as _},
 };
-use ori::Event;
+use ori::{ElementSeq, Event};
 
 use crate::{Context, ViewSeq, views::Axis};
 
@@ -62,16 +62,16 @@ where
     V: ViewSeq<T>,
 {
     type Element = gtk4::Box;
-    type State = (Vec<gtk4::Widget>, V::SeqState);
+    type State = (V::Elements, V::States);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (children, state) = self.content.seq_build(cx, data);
+        let (mut children, state) = self.content.seq_build(cx, data);
 
         let element = gtk4::Box::default();
         element.set_orientation(self.axis.into());
         element.set_spacing(self.spacing as i32);
 
-        for child in &children {
+        for child in children.element_iter() {
             element.append(child);
         }
 
@@ -134,34 +134,42 @@ where
     }
 }
 
-fn update_children(element: &gtk4::Box, children: &[gtk4::Widget], changed: &[usize]) {
+fn update_children(
+    element: &gtk4::Box,
+    children: &mut impl ElementSeq<gtk4::Widget>,
+    changed: &[usize],
+) {
     if changed.is_empty() {
         return;
     }
 
     let count = element.observe_children().into_iter().len();
 
-    for child in children.iter().skip(count) {
+    for child in children.element_iter().skip(count) {
         element.append(child);
     }
 
-    for _ in children.len()..count {
+    for _ in children.element_count()..count {
         if let Some(child) = element.last_child() {
             element.remove(&child);
         }
     }
 
-    for &i in changed {
-        let current: gtk4::Widget = element
-            .observe_children()
-            .into_iter()
-            .nth(i)
-            .unwrap()
-            .unwrap()
-            .downcast()
-            .unwrap();
+    if !changed.is_empty() {
+        let children = children.element_iter().collect::<Vec<_>>();
 
-        element.insert_child_after(&children[i], Some(&current));
-        element.remove(&current);
+        for &i in changed {
+            let current: gtk4::Widget = element
+                .observe_children()
+                .into_iter()
+                .nth(i)
+                .unwrap()
+                .unwrap()
+                .downcast()
+                .unwrap();
+
+            element.insert_child_after(children[i], Some(&current));
+            element.remove(&current);
+        }
     }
 }

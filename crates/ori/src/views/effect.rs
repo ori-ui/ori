@@ -162,6 +162,8 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> (bool, Action) {
-        self.content.seq_event(children, state, cx, data, event)
+        let (_, action) = self.content.seq_event(children, state, cx, data, event);
+
+        (false, action)
     }
 }

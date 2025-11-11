@@ -9,6 +9,9 @@ pub trait ViewSeq<C, T, E> {
     fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Vec<E>, Self::SeqState);
 
     /// Rebuild the sequence, see [`View::rebuild`] for more information.
+    ///
+    /// Returns a list of indices of elements that have change in a way that might invalidate the
+    /// parent child relation.
     fn seq_rebuild(
         &mut self,
         elements: &mut Vec<E>,
@@ -16,12 +19,15 @@ pub trait ViewSeq<C, T, E> {
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool;
+    ) -> Vec<usize>;
 
     /// Tear down the sequence, see [`View::teardown`] for more information.
     fn seq_teardown(&mut self, elements: Vec<E>, state: Self::SeqState, cx: &mut C, data: &mut T);
 
     /// Handle an event for the sequence, see [`View::event`] for more information.
+    ///
+    /// Returns a list of indices of elements that have change in a way that might invalidate the
+    /// parent child relation.
     fn seq_event(
         &mut self,
         elements: &mut [E],
@@ -29,7 +35,7 @@ pub trait ViewSeq<C, T, E> {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action);
+    ) -> (Vec<usize>, Action);
 }
 
 impl<C, T, E, V> ViewSeq<C, T, E> for V
@@ -51,8 +57,13 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        elements[0].downcast_with(|element| self.rebuild(element, state, cx, data, old))
+    ) -> Vec<usize> {
+        elements[0].downcast_with(|element| -> Vec<usize> {
+            match self.rebuild(element, state, cx, data, old) {
+                true => vec![0],
+                false => Vec::new(),
+            }
+        })
     }
 
     fn seq_teardown(
@@ -73,8 +84,15 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
-        elements[0].downcast_with(|element| self.event(element, state, cx, data, event))
+    ) -> (Vec<usize>, Action) {
+        elements[0].downcast_with(|element| {
+            let (changed, action) = self.event(element, state, cx, data, event);
+
+            match changed {
+                true => (vec![0], action),
+                false => (Vec::new(), action),
+            }
+        })
     }
 }
 
@@ -103,16 +121,16 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) -> Vec<usize> {
         match (self, old) {
-            (None, None) => false,
+            (None, None) => Vec::new(),
 
             (None, Some(old)) => {
                 let element = elements.pop().unwrap().downcast();
                 let state = state.take().unwrap();
                 old.teardown(element, state, cx, data);
 
-                true
+                Vec::new()
             }
 
             (Some(content), None) => {
@@ -120,12 +138,15 @@ where
                 elements.push(E::upcast(cx, child));
                 *state = Some(new_state);
 
-                true
+                vec![0]
             }
 
             (Some(content), Some(old)) => elements[0].downcast_with(|element| {
                 let state = state.as_mut().unwrap();
-                content.rebuild(element, state, cx, data, old)
+                match content.rebuild(element, state, cx, data, old) {
+                    true => vec![0],
+                    false => Vec::new(),
+                }
             }),
         }
     }
@@ -151,14 +172,19 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
+    ) -> (Vec<usize>, Action) {
         match self {
             Some(content) => elements[0].downcast_with(|element| {
                 let state = state.as_mut().unwrap();
-                content.event(element, state, cx, data, event)
+                let (changed, action) = content.event(element, state, cx, data, event);
+
+                match changed {
+                    true => (vec![0], action),
+                    false => (Vec::new(), action),
+                }
             }),
 
-            None => (false, Action::new()),
+            None => (Vec::new(), Action::new()),
         }
     }
 }
@@ -190,8 +216,8 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        let mut elements_changed = false;
+    ) -> Vec<usize> {
+        let mut changed = Vec::new();
 
         if self.len() < old.len() {
             for ((old, element), state) in old
@@ -205,25 +231,25 @@ where
 
             elements.truncate(self.len());
             states.truncate(self.len());
-
-            elements_changed = true;
         }
 
         for (i, view) in self.iter_mut().enumerate() {
             if let Some(old) = old.get_mut(i) {
                 elements[i].downcast_with(|element| {
-                    elements_changed |= view.rebuild(element, &mut states[i], cx, data, old);
+                    if view.rebuild(element, &mut states[i], cx, data, old) {
+                        changed.push(i);
+                    }
                 });
             } else {
                 let (element, state) = view.build(cx, data);
                 elements.push(E::upcast(cx, element));
                 states.push(state);
 
-                elements_changed = true;
+                changed.push(i);
             }
         }
 
-        elements_changed
+        changed
     }
 
     fn seq_teardown(&mut self, elements: Vec<E>, states: Self::SeqState, cx: &mut C, data: &mut T) {
@@ -239,8 +265,8 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
-        let mut changed = false;
+    ) -> (Vec<usize>, Action) {
+        let mut changed = Vec::new();
         let mut action = Action::new();
 
         for (i, view) in self.iter_mut().enumerate() {
@@ -248,7 +274,10 @@ where
                 let (element_changed, element_action) =
                     view.event(element, &mut states[i], cx, data, event);
 
-                changed |= element_changed;
+                if element_changed {
+                    changed.push(i);
+                }
+
                 action |= element_action;
             });
         }
@@ -290,18 +319,22 @@ macro_rules! impl_tuple {
                 cx: &mut C,
                 data: &mut T,
                 old: &mut Self,
-            ) -> bool {
-                let mut changed = false;
+            ) -> Vec<usize> {
+                let mut changed = Vec::new();
 
                 $({
                     elements[$index].downcast_with(|element| {
-                        changed |= self.$index.rebuild(
+                        let element_changed = self.$index.rebuild(
                             element,
                             &mut state.$index,
                             cx,
                             data,
                             &mut old.$index,
                         );
+
+                        if element_changed {
+                            changed.push($index);
+                        }
                     });
                 })*
 
@@ -333,8 +366,8 @@ macro_rules! impl_tuple {
                 cx: &mut C,
                 data: &mut T,
                 event: &mut Event,
-            ) -> (bool, Action) {
-                let mut changed = false;
+            ) -> (Vec<usize>, Action) {
+                let mut changed = Vec::new();
                 let mut action = Action::new();
 
                 $({
@@ -347,7 +380,10 @@ macro_rules! impl_tuple {
                             event,
                         );
 
-                        changed |= element_changed;
+                        if element_changed {
+                            changed.push($index);
+                        }
+
                         action |= element_action;
                     });
                 })*

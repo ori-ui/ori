@@ -1,6 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
-use gtk4::prelude::{BoxExt as _, OrientableExt as _, WidgetExt as _};
+use gtk4::{
+    glib::object::Cast as _,
+    prelude::{BoxExt as _, OrientableExt as _, WidgetExt as _},
+};
 use ori::Event;
 
 use crate::{Context, ViewSeq, views::Axis};
@@ -91,9 +94,7 @@ where
             &mut old.content,
         );
 
-        if changed {
-            update_children(element, children);
-        }
+        update_children(element, children, &changed);
 
         // update state
         if self.spacing != old.spacing {
@@ -127,35 +128,40 @@ where
     ) -> (bool, ori::Action) {
         let (changed, action) = self.content.seq_event(children, state, cx, data, event);
 
-        if changed {
-            update_children(element, children);
-        }
+        update_children(element, children, &changed);
 
         (false, action)
     }
 }
 
-fn update_children(element: &gtk4::Box, children: &[gtk4::Widget]) {
-    // add new children
-    for child in children.iter() {
-        if !super::is_parent(element, child) {
-            element.append(child);
-        }
+fn update_children(element: &gtk4::Box, children: &[gtk4::Widget], changed: &[usize]) {
+    if changed.is_empty() {
+        return;
     }
 
-    // reorder children
-    for child in children.iter().rev() {
-        if super::is_parent(element, child) {
-            element.reorder_child_after(child, None::<&gtk4::Widget>);
-        }
-    }
-
-    // remove children
     let count = element.observe_children().into_iter().len();
+
+    for child in children.iter().skip(count) {
+        element.append(child);
+    }
 
     for _ in children.len()..count {
         if let Some(child) = element.last_child() {
             element.remove(&child);
         }
+    }
+
+    for &i in changed {
+        let current: gtk4::Widget = element
+            .observe_children()
+            .into_iter()
+            .nth(i)
+            .unwrap()
+            .unwrap()
+            .downcast()
+            .unwrap();
+
+        element.insert_child_after(&children[i], Some(&current));
+        element.remove(&current);
     }
 }

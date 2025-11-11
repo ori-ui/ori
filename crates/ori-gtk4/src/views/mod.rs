@@ -5,6 +5,7 @@ mod frame;
 mod label;
 mod line;
 mod picture;
+mod popover;
 mod properties;
 mod window;
 
@@ -15,6 +16,7 @@ pub use frame::{Frame, frame};
 pub use label::{Ellipsize, Label, Wrap, label};
 pub use line::{Line, hline, line, vline};
 pub use picture::{ImageSource, Picture, picture};
+pub use popover::{Popover, PopoverCommand, popover};
 pub use properties::{Align, Prop, WithProp};
 pub use window::{Window, window};
 

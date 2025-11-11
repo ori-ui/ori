@@ -58,9 +58,9 @@ pub trait ElementSeq<E> {
 }
 
 /// [`ElementSeq`] with one element.
-pub struct OneElement<E>(pub E);
+pub struct One<E>(pub E);
 
-impl<E> ElementSeq<E> for OneElement<E> {
+impl<E> ElementSeq<E> for One<E> {
     fn element_iter<'a>(&'a mut self) -> impl Iterator<Item = &'a mut E>
     where
         E: 'a,
@@ -126,25 +126,25 @@ where
     V: View<C, T>,
     E: Super<C, V::Element>,
 {
-    type Elements = OneElement<E>;
+    type Elements = One<E>;
     type States = V::State;
 
     fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::States) {
         let (element, state) = self.build(cx, data);
-        let elements = OneElement(E::upcast(cx, element));
+        let elements = One(E::upcast(cx, element));
 
         (elements, state)
     }
 
     fn seq_rebuild(
         &mut self,
-        elements: &mut Self::Elements,
+        One(element): &mut Self::Elements,
         state: &mut Self::States,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
     ) -> Vec<usize> {
-        elements.0.downcast_with(|element| -> Vec<usize> {
+        element.downcast_with(|element| -> Vec<usize> {
             match self.rebuild(element, state, cx, data, old) {
                 true => vec![0],
                 false => Vec::new(),
@@ -154,23 +154,23 @@ where
 
     fn seq_teardown(
         &mut self,
-        elements: Self::Elements,
+        One(element): Self::Elements,
         state: Self::States,
         cx: &mut C,
         data: &mut T,
     ) {
-        self.teardown(elements.0.downcast(), state, cx, data);
+        self.teardown(element.downcast(), state, cx, data);
     }
 
     fn seq_event(
         &mut self,
-        elements: &mut Self::Elements,
+        One(elements): &mut Self::Elements,
         state: &mut Self::States,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> (Vec<usize>, Action) {
-        elements.0.downcast_with(|element| {
+        elements.downcast_with(|element| {
             let (changed, action) = self.event(element, state, cx, data, event);
 
             match changed {

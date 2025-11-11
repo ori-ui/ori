@@ -120,8 +120,8 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        let content_changed = self.content.rebuild(
+    ) {
+        self.content.rebuild(
             &mut state.content_element,
             &mut state.content_state,
             cx,
@@ -129,11 +129,11 @@ where
             &mut old.content,
         );
 
-        if content_changed {
+        if !super::is_parent(element, &state.content_element) {
             element.set_child(&state.content_element);
         }
 
-        let popover_changed = self.popover.rebuild(
+        self.popover.rebuild(
             &mut state.popover_element,
             &mut state.popover_state,
             cx,
@@ -141,7 +141,7 @@ where
             &mut old.popover,
         );
 
-        if popover_changed {
+        if !super::is_parent(element, &state.popover_element) {
             state.popover.set_child(Some(&state.popover_element));
         }
 
@@ -161,8 +161,6 @@ where
                 Position::Left => gtk4::PositionType::Left,
             });
         }
-
-        false
     }
 
     fn teardown(
@@ -194,7 +192,7 @@ where
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
+    ) -> ori::Action {
         match event.take_targeted(self.key) {
             Some(PopoverCommand::Popup) => {
                 state.popover.popup();
@@ -207,7 +205,7 @@ where
             None => {}
         }
 
-        let (content_changed, content_action) = self.content.event(
+        let content_action = self.content.event(
             &mut state.content_element,
             &mut state.content_state,
             cx,
@@ -215,11 +213,11 @@ where
             event,
         );
 
-        if content_changed {
+        if !super::is_parent(element, &state.content_element) {
             element.set_child(&state.content_element);
         }
 
-        let (popover_changed, popover_action) = self.popover.event(
+        let popover_action = self.popover.event(
             &mut state.popover_element,
             &mut state.popover_state,
             cx,
@@ -227,11 +225,11 @@ where
             event,
         );
 
-        if popover_changed {
+        if !super::is_parent(element, &state.popover_element) {
             state.popover.set_child(Some(&state.popover_element));
         }
 
-        (false, content_action | popover_action)
+        content_action | popover_action
     }
 }
 

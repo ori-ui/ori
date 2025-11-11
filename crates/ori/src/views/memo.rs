@@ -72,16 +72,13 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         if self.data != old.data
             && let Some(build) = self.build.take()
         {
             let mut new_view = build(data);
-            let changed = new_view.rebuild(element, state, cx, data, view);
+            new_view.rebuild(element, state, cx, data, view);
             *view = new_view;
-            changed
-        } else {
-            false
         }
     }
 
@@ -102,7 +99,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
+    ) -> Action {
         view.event(element, state, cx, data, event)
     }
 }

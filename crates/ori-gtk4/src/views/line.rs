@@ -1,12 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
-use gtk4::{
-    glib::object::Cast as _,
-    prelude::{BoxExt as _, OrientableExt as _, WidgetExt as _},
-};
+use gtk4::prelude::{BoxExt as _, OrientableExt as _, WidgetExt as _};
 use ori::{ElementSeq, Event};
 
-use crate::{Context, ViewSeq, views::Axis};
+use crate::{Context, views::Axis};
 
 pub fn line<V>(axis: Axis, content: V) -> Line<V> {
     Line::new(axis, content)
@@ -59,7 +56,7 @@ impl<V> DerefMut for Line<V> {
 impl<V> ori::ViewMarker for Line<V> {}
 impl<T, V> ori::View<Context, T> for Line<V>
 where
-    V: ViewSeq<T>,
+    V: ori::ViewSeq<Context, T, gtk4::Widget>,
 {
     type Element = gtk4::Box;
     type State = (V::Elements, V::States);
@@ -85,8 +82,8 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        let changed = self.content.seq_rebuild(
+    ) {
+        self.content.seq_rebuild(
             children,
             state,
             cx,
@@ -94,7 +91,7 @@ where
             &mut old.content,
         );
 
-        update_children(element, children, &changed);
+        update_children(element, children);
 
         // update state
         if self.spacing != old.spacing {
@@ -104,8 +101,6 @@ where
         if self.axis != old.axis {
             element.set_orientation(self.axis.into());
         }
-
-        false
     }
 
     fn teardown(
@@ -125,51 +120,38 @@ where
         cx: &mut Context,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, ori::Action) {
-        let (changed, action) = self.content.seq_event(children, state, cx, data, event);
+    ) -> ori::Action {
+        let action = self.content.seq_event(children, state, cx, data, event);
 
-        update_children(element, children, &changed);
+        update_children(element, children);
 
-        (false, action)
+        action
     }
 }
 
-fn update_children(
-    element: &gtk4::Box,
-    children: &mut impl ElementSeq<gtk4::Widget>,
-    changed: &[usize],
-) {
-    if changed.is_empty() {
-        return;
+fn update_children(element: &gtk4::Box, children: &mut impl ElementSeq<gtk4::Widget>) {
+    let mut prev = None::<&gtk4::Widget>;
+
+    for child in children.element_iter() {
+        if prev.is_some_and(|p| p.next_sibling().as_ref() == Some(child)) {
+            prev = Some(child);
+            continue;
+        }
+
+        if super::is_parent(element, child) {
+            element.reorder_child_after(child, prev);
+        } else {
+            element.insert_child_after(child, prev);
+        }
+
+        prev = Some(child);
     }
 
     let count = element.observe_children().into_iter().len();
 
-    for child in children.element_iter().skip(count) {
-        element.append(child);
-    }
-
     for _ in children.element_count()..count {
         if let Some(child) = element.last_child() {
             element.remove(&child);
-        }
-    }
-
-    if !changed.is_empty() {
-        let children = children.element_iter().collect::<Vec<_>>();
-
-        for &i in changed {
-            let current: gtk4::Widget = element
-                .observe_children()
-                .into_iter()
-                .nth(i)
-                .unwrap()
-                .unwrap()
-                .downcast()
-                .unwrap();
-
-            element.insert_child_after(children[i], Some(&current));
-            element.remove(&current);
         }
     }
 }

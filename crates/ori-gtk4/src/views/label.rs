@@ -109,7 +109,7 @@ impl<T> ori::View<Context, T> for Label {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         if self.text != old.text || self.markup != old.markup {
             match self.markup {
                 true => element.set_markup(&self.text),
@@ -134,8 +134,6 @@ impl<T> ori::View<Context, T> for Label {
                 |ellipsize| ellipsize.into(),
             ));
         }
-
-        false
     }
 
     fn teardown(
@@ -154,7 +152,7 @@ impl<T> ori::View<Context, T> for Label {
         _cx: &mut Context,
         _data: &mut T,
         _event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        (false, ori::Action::new())
+    ) -> ori::Action {
+        ori::Action::new()
     }
 }

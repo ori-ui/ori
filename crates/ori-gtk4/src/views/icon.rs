@@ -32,12 +32,10 @@ impl<T> ori::View<Context, T> for Icon {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         if self.name != old.name {
             element.set_icon_name(Some(&self.name));
         }
-
-        false
     }
 
     fn teardown(
@@ -56,7 +54,7 @@ impl<T> ori::View<Context, T> for Icon {
         _cx: &mut Context,
         _data: &mut T,
         _event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        (false, ori::Action::new())
+    ) -> ori::Action {
+        ori::Action::new()
     }
 }

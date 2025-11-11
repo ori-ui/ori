@@ -81,8 +81,7 @@ where
         _cx: &mut C,
         _data: &mut T,
         _old: &mut Self,
-    ) -> bool {
-        false
+    ) {
     }
 
     fn teardown(
@@ -101,7 +100,7 @@ where
         _cx: &mut C,
         _data: &mut T,
         _event: &mut Event,
-    ) -> (bool, Action) {
-        (false, Action::new())
+    ) -> Action {
+        Action::new()
     }
 }

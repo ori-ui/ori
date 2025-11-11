@@ -78,14 +78,12 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         if let Some(checked) = self.checked
             && self.checked != old.checked
         {
             element.set_active(checked);
         }
-
-        false
     }
 
     fn teardown(
@@ -104,13 +102,10 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
         _cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        let action = match event.take_targeted(*id) {
+    ) -> ori::Action {
+        match event.take_targeted(*id) {
             Some(CheckboxEvent::Toggled(checked)) => (self.on_change)(data, checked),
-
             None => ori::Action::new(),
-        };
-
-        (false, action)
+        }
     }
 }

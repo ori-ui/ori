@@ -45,8 +45,7 @@ where
         _cx: &mut C,
         _data: &mut T,
         _old: &mut Self,
-    ) -> bool {
-        false
+    ) {
     }
 
     fn teardown(
@@ -66,7 +65,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
+    ) -> Action {
         view.event(element, state, cx, data, event)
     }
 }

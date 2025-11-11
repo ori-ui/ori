@@ -44,8 +44,8 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        let element_changed = self.content.rebuild(
+    ) {
+        self.content.rebuild(
             element,
             content,
             cx,
@@ -60,8 +60,6 @@ where
             data,
             &mut old.effect,
         );
-
-        element_changed
     }
 
     fn teardown(
@@ -82,16 +80,11 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
-        let (_, content_action) = self.effect.seq_event(elements, with, cx, data, event);
+    ) -> Action {
+        let content_action = self.effect.seq_event(elements, with, cx, data, event);
+        let effect_action = self.content.event(element, content, cx, data, event);
 
-        let (element_changed, effect_action) =
-            self.content.event(element, content, cx, data, event);
-
-        (
-            element_changed,
-            content_action | effect_action,
-        )
+        content_action | effect_action
     }
 }
 
@@ -132,7 +125,7 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         self.content.seq_rebuild(
             children,
             state,
@@ -140,8 +133,6 @@ where
             data,
             &mut old.content,
         );
-
-        false
     }
 
     fn teardown(
@@ -161,9 +152,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
-        let (_, action) = self.content.seq_event(children, state, cx, data, event);
-
-        (false, action)
+    ) -> Action {
+        self.content.seq_event(children, state, cx, data, event)
     }
 }

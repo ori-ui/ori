@@ -104,12 +104,10 @@ impl<T> ori::View<Context, T> for Picture {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         if self.source != old.source {
             load_from_source(element, &self.source);
         }
-
-        false
     }
 
     fn teardown(
@@ -128,7 +126,7 @@ impl<T> ori::View<Context, T> for Picture {
         _cx: &mut Context,
         _data: &mut T,
         _event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        (false, ori::Action::new())
+    ) -> ori::Action {
+        ori::Action::new()
     }
 }

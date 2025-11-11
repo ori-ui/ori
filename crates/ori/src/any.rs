@@ -24,7 +24,7 @@ pub trait AnyView<C, T, E> {
         cx: &mut C,
         data: &mut T,
         old: &mut dyn AnyView<C, T, E>,
-    ) -> bool;
+    );
 
     /// Tear down in a type erased manner, see [`View::teardown`] for more details.
     fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C, data: &mut T);
@@ -37,7 +37,7 @@ pub trait AnyView<C, T, E> {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action);
+    ) -> Action;
 }
 
 impl<C, T, E, V> AnyView<C, T, E> for V
@@ -63,11 +63,11 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut dyn AnyView<C, T, E>,
-    ) -> bool {
+    ) {
         match old.as_mut_any().downcast_mut::<V>() {
             Some(old) => element.downcast_with(|element| {
                 let state = state.downcast_mut().unwrap();
-                self.rebuild(element, state, cx, data, old)
+                self.rebuild(element, state, cx, data, old);
             }),
 
             None => {
@@ -79,8 +79,6 @@ where
                     cx,
                     data,
                 );
-
-                true
             }
         }
     }
@@ -101,7 +99,7 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
+    ) -> Action {
         element.downcast_with(|element| {
             let state = state.downcast_mut().unwrap();
             self.event(element, state, cx, data, event)
@@ -125,9 +123,9 @@ impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         self.as_mut()
-            .any_rebuild(element, state, cx, data, old.as_mut())
+            .any_rebuild(element, state, cx, data, old.as_mut());
     }
 
     fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
@@ -141,7 +139,7 @@ impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
+    ) -> Action {
         self.as_mut().any_event(element, state, cx, data, event)
     }
 }

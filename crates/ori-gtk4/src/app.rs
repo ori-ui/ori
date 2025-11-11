@@ -288,7 +288,7 @@ impl<T> AppState<T> {
             }
 
             Event::Event(mut event) => {
-                let (_, action) = self.view.event(
+                let action = self.view.event(
                     &mut ori::NoElement,
                     &mut self.state,
                     &mut self.context,

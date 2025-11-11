@@ -273,8 +273,8 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        let changed = self.content.rebuild(
+    ) {
+        self.content.rebuild(
             &mut state.child,
             &mut state.state,
             cx,
@@ -282,13 +282,11 @@ where
             &mut old.content,
         );
 
-        if changed && !super::is_parent(&state.window, &state.child) {
+        if !super::is_parent(&state.window, &state.child) {
             state.window.set_child(Some(&state.child));
         }
 
         update_state(&state.window, self, old);
-
-        false
     }
 
     fn teardown(
@@ -308,8 +306,8 @@ where
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        let (changed, action) = self.content.event(
+    ) -> ori::Action {
+        let action = self.content.event(
             &mut state.child,
             &mut state.state,
             cx,
@@ -317,11 +315,11 @@ where
             event,
         );
 
-        if changed && !super::is_parent(&state.window, &state.child) {
+        if !super::is_parent(&state.window, &state.child) {
             state.window.set_child(Some(&state.child));
         }
 
-        (false, action)
+        action
     }
 }
 

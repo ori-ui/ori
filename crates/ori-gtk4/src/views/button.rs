@@ -65,16 +65,13 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        let changed = self
-            .content
+    ) {
+        self.content
             .rebuild(child, state, cx, data, &mut old.content);
 
-        if changed && !super::is_parent(element, child) {
+        if !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
-
-        false
     }
 
     fn teardown(
@@ -94,18 +91,16 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        let (changed, action) = self.content.event(child, state, cx, data, event);
+    ) -> ori::Action {
+        let action = self.content.event(child, state, cx, data, event);
 
-        if changed && !super::is_parent(element, child) {
+        if !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
 
-        let action = match event.take_targeted(*key) {
+        match event.take_targeted(*key) {
             Some(ButtonEvent::Clicked) => action | (self.on_click)(data),
             None => action,
-        };
-
-        (false, action)
+        }
     }
 }

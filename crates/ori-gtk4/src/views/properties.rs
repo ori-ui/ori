@@ -163,13 +163,13 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         // since pretty much anything can happen to the element, imagine a view dynamically
         // swapping between two elements, we have to restore the property to it's original state
         // before rebuilding.
         prev.set(element);
 
-        let changed = self.content.rebuild(
+        self.content.rebuild(
             element,
             state,
             cx,
@@ -180,8 +180,6 @@ where
         // we now record the state of the new property and apply it
         *prev = self.property.get(element);
         self.property.set(element);
-
-        changed
     }
 
     fn teardown(
@@ -201,16 +199,16 @@ where
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
+    ) -> ori::Action {
         // same idea as rebuild
         prev.set(element);
 
-        let (changed, action) = self.content.event(element, state, cx, data, event);
+        let action = self.content.event(element, state, cx, data, event);
 
         *prev = self.property.get(element);
         self.property.set(element);
 
-        (changed, action)
+        action
     }
 }
 

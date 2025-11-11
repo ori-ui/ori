@@ -17,9 +17,6 @@ pub trait View<C, T>: ViewMarker {
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State);
 
     /// Rebuild the UI, applying the differences between `self` and `old`.
-    ///
-    /// Returns whether the element has changed in a way that might invalidate the parent child
-    /// relation.
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
@@ -27,7 +24,7 @@ pub trait View<C, T>: ViewMarker {
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool;
+    );
 
     /// Tear down the UI built by the [`View`].
     ///
@@ -45,5 +42,5 @@ pub trait View<C, T>: ViewMarker {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action);
+    ) -> Action;
 }

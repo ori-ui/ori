@@ -36,9 +36,9 @@ impl<C, T> View<C, T> for Box<dyn AnyEffect<C, T>> {
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         self.as_mut()
-            .any_rebuild(element, state, cx, data, old.as_mut())
+            .any_rebuild(element, state, cx, data, old.as_mut());
     }
 
     fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
@@ -52,7 +52,7 @@ impl<C, T> View<C, T> for Box<dyn AnyEffect<C, T>> {
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
+    ) -> Action {
         self.as_mut().any_event(element, state, cx, data, event)
     }
 }

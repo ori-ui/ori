@@ -107,7 +107,7 @@ impl<T> ori::View<Context, T> for Entry<T> {
         _cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         if self.text != old.text
             && let Some(ref text) = self.text
             && **text != element.text()
@@ -120,8 +120,6 @@ impl<T> ori::View<Context, T> for Entry<T> {
         if self.placeholder != old.placeholder {
             element.set_placeholder_text(self.placeholder.as_deref());
         }
-
-        false
     }
 
     fn teardown(
@@ -140,13 +138,11 @@ impl<T> ori::View<Context, T> for Entry<T> {
         _cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        let action = match event.take_targeted(*id) {
+    ) -> ori::Action {
+        match event.take_targeted(*id) {
             Some(EntryEvent::Change(text)) => (self.on_change)(data, text),
             Some(EntryEvent::Submit(text)) => (self.on_submit)(data, text),
             None => ori::Action::new(),
-        };
-
-        (false, action)
+        }
     }
 }

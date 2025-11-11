@@ -107,7 +107,7 @@ where
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
+    ) {
         if let Some(future) = self.future.take() {
             let proxy = cx.proxy();
             let key = *key;
@@ -126,10 +126,10 @@ where
                     cx,
                     data,
                     &mut old.fallback,
-                )
+                );
             }),
 
-            SuspenseState::Content(_, _) => false,
+            SuspenseState::Content(_, _) => {}
         }
     }
 
@@ -168,9 +168,9 @@ where
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
-    ) -> (bool, Action) {
-        let element_changed = match event.take_targeted(*key) {
-            Some(SuspenseFuture::<F::Output>(mut content)) => match state {
+    ) -> Action {
+        if let Some(SuspenseFuture::<F::Output>(mut content)) = event.take_targeted(*key) {
+            match state {
                 SuspenseState::Fallback(_) => {
                     let (content_element, content_state) = content.build(cx, data);
 
@@ -192,12 +192,9 @@ where
                         cx,
                         data,
                     );
-
-                    true
                 }
 
                 SuspenseState::Content(old_content, content_state) => {
-                    // rustfmt please
                     element.downcast_with(|element| {
                         content.rebuild(
                             element,
@@ -205,27 +202,24 @@ where
                             cx,
                             data,
                             old_content,
-                        )
-                    })
+                        );
+                    });
                 }
-            },
-
-            _ => false,
+            }
         };
 
-        let (changed, action) = match state {
+        match state {
             SuspenseState::Fallback(fallback_state) => element.downcast_with(|element| {
                 self.fallback
                     .event(element, fallback_state, cx, data, event)
             }),
 
             SuspenseState::Content(content, content_state) => {
-                // rustfmt please
-                element
-                    .downcast_with(|element| content.event(element, content_state, cx, data, event))
+                element.downcast_with(|element| {
+                    content.event(element, content_state, cx, data, event)
+                    //
+                })
             }
-        };
-
-        (changed || element_changed, action)
+        }
     }
 }

@@ -56,12 +56,11 @@ where
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
-    ) -> bool {
-        let changed = self
-            .content
+    ) {
+        self.content
             .rebuild(child, state, cx, data, &mut old.content);
 
-        if changed && !super::is_parent(element, child) {
+        if !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
 
@@ -72,8 +71,6 @@ where
         if self.size != old.size {
             element.set_maximum_size(self.size as i32);
         }
-
-        false
     }
 
     fn teardown(
@@ -93,13 +90,13 @@ where
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
-    ) -> (bool, ori::Action) {
-        let (changed, action) = self.content.event(child, state, cx, data, event);
+    ) -> ori::Action {
+        let action = self.content.event(child, state, cx, data, event);
 
-        if changed && !super::is_parent(element, child) {
+        if !super::is_parent(element, child) {
             element.set_child(Some(child));
         }
 
-        (false, action)
+        action
     }
 }

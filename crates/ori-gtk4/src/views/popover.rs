@@ -154,7 +154,7 @@ where
         }
 
         if self.position != old.position {
-            popover.set_position(match self.position {
+            state.popover.set_position(match self.position {
                 Position::Top => gtk4::PositionType::Top,
                 Position::Right => gtk4::PositionType::Right,
                 Position::Bottom => gtk4::PositionType::Bottom,

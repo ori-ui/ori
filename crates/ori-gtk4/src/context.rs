@@ -39,7 +39,7 @@ impl Context {
     }
 }
 
-impl ori::SuperElement for Context {
+impl ori::BaseElement for Context {
     type Element = gtk4::Widget;
 }
 

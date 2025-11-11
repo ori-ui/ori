@@ -2,9 +2,10 @@ use std::{pin::Pin, sync::Arc};
 
 use crate::{Action, Event};
 
-/// A context with a common [`Super`](crate::Super) element, all elements share.
-pub trait SuperElement {
-    /// The super element.
+/// A context with a common base element, that is [`Super`](crate::Super) to all elements in the
+/// context.
+pub trait BaseElement {
+    /// The base element.
     type Element;
 }
 

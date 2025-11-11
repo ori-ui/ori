@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::{Action, AsyncContext, Event, Key, Proxy, Super, SuperElement, View, ViewMarker};
+use crate::{Action, AsyncContext, BaseElement, Event, Key, Proxy, Super, View, ViewMarker};
 
 struct SuspenseFuture<V>(V);
 
@@ -71,7 +71,7 @@ where
 impl<V, F> ViewMarker for Suspense<V, F> {}
 impl<C, T, V, F> View<C, T> for Suspense<V, F>
 where
-    C: AsyncContext + SuperElement,
+    C: AsyncContext + BaseElement,
     V: View<C, T>,
     F: Future + Send + 'static,
     F::Output: View<C, T> + Send,

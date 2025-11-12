@@ -3,40 +3,40 @@ use std::marker::PhantomData;
 use crate::{Action, Event, View, ViewMarker};
 
 /// [`View`] that maps one type of data to another.
-pub fn focus<F, U, V, T>(content: V, focus: F) -> Focus<F, U, V>
-where
-    F: FnMut(&mut T, &mut dyn FnOnce(&mut U)),
-{
-    Focus::new(content, focus)
+pub fn map<C, T, U, E>(
+    content: impl View<C, U, Element = E>,
+    map: impl FnMut(&mut T, &mut dyn FnMut(&mut U)),
+) -> impl View<C, T, Element = E> {
+    Map::new(content, map)
 }
 
 /// [`View`] that maps one type of data to another.
 #[must_use]
-pub struct Focus<F, U, V> {
+pub struct Map<F, U, V> {
     content: V,
-    focus: F,
+    map: F,
     marker: PhantomData<fn(&U)>,
 }
 
-impl<F, U, V> Focus<F, U, V> {
-    /// Create a new [`Focus`].
-    pub fn new<T>(content: V, focus: F) -> Self
+impl<F, U, V> Map<F, U, V> {
+    /// Create a [`Map`].
+    pub fn new<T>(content: V, map: F) -> Self
     where
-        F: FnMut(&mut T, &mut dyn FnOnce(&mut U)),
+        F: FnMut(&mut T, &mut dyn FnMut(&mut U)),
     {
         Self {
             content,
-            focus,
+            map,
             marker: PhantomData,
         }
     }
 }
 
-impl<F, U, V> ViewMarker for Focus<F, U, V> {}
-impl<C, T, U, V, F> View<C, T> for Focus<F, U, V>
+impl<F, U, V> ViewMarker for Map<F, U, V> {}
+impl<C, T, U, V, F> View<C, T> for Map<F, U, V>
 where
     V: View<C, U>,
-    F: FnMut(&mut T, &mut dyn FnOnce(&mut U)),
+    F: FnMut(&mut T, &mut dyn FnMut(&mut U)),
 {
     type Element = V::Element;
     type State = V::State;
@@ -44,11 +44,11 @@ where
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let mut state = None;
 
-        (self.focus)(data, &mut |data| {
+        (self.map)(data, &mut |data| {
             state = Some(self.content.build(cx, data));
         });
 
-        state.expect("focus calls lens")
+        state.expect("map calls lens")
     }
 
     fn rebuild(
@@ -61,7 +61,7 @@ where
     ) {
         let mut called = false;
 
-        (self.focus)(data, &mut |data| {
+        (self.map)(data, &mut |data| {
             self.content.rebuild(
                 element,
                 state,
@@ -73,15 +73,20 @@ where
             called = true;
         });
 
-        assert!(called, "focus must call lens");
+        assert!(called, "map must call lens");
     }
 
     fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
         let mut called = false;
 
-        (self.focus)(data, &mut |data| {
-            self.content.teardown(element, state, cx, data);
-            called = true;
+        let mut element = Some(element);
+        let mut state = Some(state);
+
+        (self.map)(data, &mut |data| {
+            if let (Some(element), Some(state)) = (element.take(), state.take()) {
+                self.content.teardown(element, state, cx, data);
+                called = true;
+            }
         });
 
         assert!(called, "focus must call lens");
@@ -97,7 +102,7 @@ where
     ) -> Action {
         let mut action = None;
 
-        (self.focus)(data, &mut |data| {
+        (self.map)(data, &mut |data| {
             action = Some(self.content.event(element, state, cx, data, event));
         });
 

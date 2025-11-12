@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use gtk4::gdk_pixbuf::prelude::PixbufLoaderExt;
+
 use crate::Context;
 
 pub fn picture(source: impl Into<ImageSource>) -> Picture {
@@ -9,6 +11,8 @@ pub fn picture(source: impl Into<ImageSource>) -> Picture {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ImageSource {
     File(PathBuf),
+
+    Svg(String),
 
     #[cfg(feature = "image")]
     Data(image::RgbaImage),
@@ -61,6 +65,15 @@ fn load_from_source(element: &gtk4::Picture, source: &ImageSource) {
     match source {
         ImageSource::File(path) => {
             element.set_filename(Some(path));
+        }
+
+        ImageSource::Svg(data) => {
+            let loader = gtk4::gdk_pixbuf::PixbufLoader::new();
+            let _ = loader.write(data.as_bytes());
+            let _ = loader.close();
+            let pixbuf = loader.pixbuf().unwrap();
+
+            element.set_pixbuf(Some(&pixbuf));
         }
 
         #[cfg(feature = "image")]

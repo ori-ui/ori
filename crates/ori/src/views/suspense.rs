@@ -44,6 +44,7 @@ pub fn suspense<V, F>(fallback: V, future: F) -> Suspense<V, F> {
 ///     )
 /// });
 /// ```
+#[must_use]
 pub struct Suspense<V, F> {
     fallback: V,
     future: Option<F>,
@@ -204,6 +205,8 @@ where
                             old_content,
                         );
                     });
+
+                    *old_content = content;
                 }
             }
         };

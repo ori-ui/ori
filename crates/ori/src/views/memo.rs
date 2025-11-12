@@ -17,7 +17,7 @@ pub fn hash_memo<C, T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
 where
     V: View<C, T>,
     F: FnOnce(&mut T) -> V,
-    D: Hash,
+    D: Hash + ?Sized,
 {
     let mut hasher = DefaultHasher::new();
 

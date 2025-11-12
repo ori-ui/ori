@@ -68,7 +68,7 @@ where
         element.set_orientation(self.axis.into());
         element.set_spacing(self.spacing as i32);
 
-        for child in children.element_iter() {
+        for child in children.iter_mut() {
             element.append(child);
         }
 
@@ -132,7 +132,7 @@ where
 fn update_children(element: &gtk4::Box, children: &mut impl ElementSeq<gtk4::Widget>) {
     let mut prev = None::<&gtk4::Widget>;
 
-    for child in children.element_iter() {
+    for child in children.iter_mut() {
         if prev.is_some_and(|p| p.next_sibling().as_ref() == Some(child)) {
             prev = Some(child);
             continue;
@@ -149,7 +149,7 @@ fn update_children(element: &gtk4::Box, children: &mut impl ElementSeq<gtk4::Wid
 
     let count = element.observe_children().into_iter().len();
 
-    for _ in children.element_count()..count {
+    for _ in children.count()..count {
         if let Some(child) = element.last_child() {
             element.remove(&child);
         }

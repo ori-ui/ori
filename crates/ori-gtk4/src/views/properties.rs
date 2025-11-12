@@ -22,7 +22,8 @@ struct IterImpl;
 
 impl<I> IntoCssClasses<IterImpl> for I
 where
-    I: IntoIterator<Item: ToString>,
+    I: IntoIterator,
+    I::Item: ToString,
 {
     fn into_css_classes(self) -> Vec<String> {
         self.into_iter()
@@ -31,7 +32,7 @@ where
     }
 }
 
-pub trait WithProp: Sized {
+pub trait WithProp: ori::ViewMarker + Sized {
     fn can_focus(self, can_focus: bool) -> Prop<Self> {
         Prop::new(self, Property::CanFocus(can_focus))
     }
@@ -85,7 +86,7 @@ pub trait WithProp: Sized {
     }
 }
 
-impl<V> WithProp for V {}
+impl<V> WithProp for V where V: ori::ViewMarker {}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Align {

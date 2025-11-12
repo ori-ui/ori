@@ -1,4 +1,4 @@
-use ori_gtk4::{App, Effect, views::*};
+use ori_gtk4::prelude::*;
 
 struct Data {}
 

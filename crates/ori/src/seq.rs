@@ -7,7 +7,7 @@ pub trait ViewSeq<C, T, E> {
     /// State of the sequence.
     type States;
 
-    /// Build elements and [`Self::SeqState`], see [`View::build`] for more information.
+    /// Build [`Self::Elements`] and [`Self::States`], see [`View::build`] for more information.
     fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::States);
 
     /// Rebuild the sequence, see [`View::rebuild`] for more information.
@@ -46,26 +46,40 @@ pub trait ViewSeq<C, T, E> {
 /// A sequence of elements, see [`ViewSeq`] for more details.
 pub trait ElementSeq<E> {
     /// Create an [`Iterator`] over all the elements in the sequence.
-    fn element_iter<'a>(&'a mut self) -> impl Iterator<Item = &'a mut E>
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a E>
+    where
+        E: 'a;
+
+    /// Create an [`Iterator`] over all the elements in the sequence.
+    fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut E>
     where
         E: 'a;
 
     /// Compute the number of elements in the sequence.
-    fn element_count(&self) -> usize;
+    fn count(&self) -> usize {
+        self.iter().count()
+    }
 }
 
-/// [`ElementSeq`] with one element.
+#[doc(hidden)]
 pub struct One<E>(pub E);
 
 impl<E> ElementSeq<E> for One<E> {
-    fn element_iter<'a>(&'a mut self) -> impl Iterator<Item = &'a mut E>
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a E>
+    where
+        E: 'a,
+    {
+        std::iter::once(&self.0)
+    }
+
+    fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut E>
     where
         E: 'a,
     {
         std::iter::once(&mut self.0)
     }
 
-    fn element_count(&self) -> usize {
+    fn count(&self) -> usize {
         1
     }
 }
@@ -74,15 +88,22 @@ impl<T, U> ElementSeq<T> for Option<U>
 where
     U: ElementSeq<T>,
 {
-    fn element_iter<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T>
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
     where
         T: 'a,
     {
-        self.iter_mut().flat_map(ElementSeq::element_iter)
+        self.iter().flat_map(ElementSeq::iter)
     }
 
-    fn element_count(&self) -> usize {
-        self.as_ref().map_or(0, |e| e.element_count())
+    fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T>
+    where
+        T: 'a,
+    {
+        self.iter_mut().flat_map(ElementSeq::iter_mut)
+    }
+
+    fn count(&self) -> usize {
+        self.as_ref().map_or(0, |e| e.count())
     }
 }
 
@@ -90,15 +111,24 @@ impl<T, U, const SIZE: usize> ElementSeq<T> for [U; SIZE]
 where
     U: ElementSeq<T>,
 {
-    fn element_iter<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T>
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
     where
         T: 'a,
     {
-        self.iter_mut().flat_map(ElementSeq::element_iter)
+        self.as_slice().iter().flat_map(ElementSeq::iter)
     }
 
-    fn element_count(&self) -> usize {
-        self.iter().map(ElementSeq::element_count).sum()
+    fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T>
+    where
+        T: 'a,
+    {
+        self.as_mut_slice()
+            .iter_mut()
+            .flat_map(ElementSeq::iter_mut)
+    }
+
+    fn count(&self) -> usize {
+        self.as_slice().iter().map(ElementSeq::count).sum()
     }
 }
 
@@ -106,15 +136,24 @@ impl<T, U> ElementSeq<T> for Vec<U>
 where
     U: ElementSeq<T>,
 {
-    fn element_iter<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T>
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
     where
         T: 'a,
     {
-        self.iter_mut().flat_map(ElementSeq::element_iter)
+        self.as_slice().iter().flat_map(ElementSeq::iter)
     }
 
-    fn element_count(&self) -> usize {
-        self.iter().map(ElementSeq::element_count).sum()
+    fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T>
+    where
+        T: 'a,
+    {
+        self.as_mut_slice()
+            .iter_mut()
+            .flat_map(ElementSeq::iter_mut)
+    }
+
+    fn count(&self) -> usize {
+        self.as_slice().iter().map(ElementSeq::count).sum()
     }
 }
 
@@ -288,7 +327,7 @@ where
                 .zip(elements.drain(self.len()..))
                 .zip(states.drain(self.len()..))
             {
-                for _ in 0..element.element_count() {
+                for _ in 0..element.count() {
                     diff.push(self.len());
                 }
 
@@ -359,15 +398,22 @@ macro_rules! impl_tuple {
         where
             $($name: ElementSeq<E>,)*
         {
-            fn element_iter<'a>(&'a mut self) -> impl Iterator<Item = &'a mut E>
+            fn iter<'a>(&'a self) -> impl Iterator<Item = &'a E>
             where
                 E: 'a,
             {
-                None.into_iter()$(.chain(self.$index.element_iter()))*
+                None.into_iter()$(.chain(self.$index.iter()))*
             }
 
-            fn element_count(&self) -> usize {
-                0 $(+ self.$index.element_count())*
+            fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut E>
+            where
+                E: 'a,
+            {
+                None.into_iter()$(.chain(self.$index.iter_mut()))*
+            }
+
+            fn count(&self) -> usize {
+                0 $(+ self.$index.count())*
             }
         }
 

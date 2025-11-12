@@ -35,7 +35,3 @@ fn main() {
     App::new().run(data, ui).unwrap();
 }
 ```
-
-## Concepts
-
-

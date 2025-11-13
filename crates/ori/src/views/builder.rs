@@ -1,4 +1,4 @@
-use crate::{Action, Event, View, ViewMarker};
+use crate::{Action, AsyncContext, Event, View, ViewMarker};
 
 /// [`View`] that is built from a callback.
 pub fn build<C, T, V>(build: impl FnOnce(&mut T) -> V) -> impl View<C, T, Element = V::Element>
@@ -8,7 +8,18 @@ where
     build_with_context(move |_, data| build(data))
 }
 
-/// [`View`] that is built from a callback.
+/// [`View`] that is built from a callback with a [`Proxy`].
+pub fn build_with_proxy<C, T, V>(
+    build: impl FnOnce(&mut T, C::Proxy) -> V,
+) -> impl View<C, T, Element = V::Element>
+where
+    C: AsyncContext,
+    V: View<C, T>,
+{
+    build_with_context(move |cx: &mut C, data| build(data, cx.proxy()))
+}
+
+/// [`View`] that is built from a callback with access to the context.
 pub fn build_with_context<C, T, V>(
     build: impl FnOnce(&mut C, &mut T) -> V,
 ) -> impl View<C, T, Element = V::Element>

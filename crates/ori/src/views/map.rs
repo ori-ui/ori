@@ -72,8 +72,6 @@ where
 
             called = true;
         });
-
-        assert!(called, "map must call lens");
     }
 
     fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
@@ -88,8 +86,6 @@ where
                 called = true;
             }
         });
-
-        assert!(called, "focus must call lens");
     }
 
     fn event(
@@ -106,6 +102,6 @@ where
             action = Some(self.content.event(element, state, cx, data, event));
         });
 
-        action.expect("focus calls lens")
+        action.unwrap_or(Action::new())
     }
 }

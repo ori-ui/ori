@@ -18,7 +18,7 @@ fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
         data.text.clear();
     });
 
-    let view = vline((text, clear.halign(Align::Center)))
+    let view = vbox((text, clear.halign(Align::Center)))
         .spacing(10)
         .halign(Align::Center)
         .valign(Align::Center);

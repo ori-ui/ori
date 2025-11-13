@@ -11,7 +11,7 @@ fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
     });
 
     let view = if data.toggle {
-        let view = hline((
+        let view = hbox((
             checkbox(|_, checked| println!("checked: {checked}")),
             label("checkbox"),
         ))
@@ -26,7 +26,7 @@ fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
         any(view)
     };
 
-    let view = vline((toggle, view))
+    let view = vbox((toggle, view))
         .spacing(10)
         .halign(Align::Center)
         .valign(Align::Center);

@@ -1,22 +1,22 @@
+mod r#box;
 mod button;
 mod checkbox;
 mod entry;
 mod frame;
 mod icon;
 mod label;
-mod line;
 mod picture;
 mod popover;
 mod properties;
 mod window;
 
+pub use r#box::{GtkBox, hbox, vbox};
 pub use button::{Button, button};
 pub use checkbox::{Checkbox, checkbox};
 pub use entry::{Entry, entry};
 pub use frame::{Frame, frame};
 pub use icon::{Icon, icon};
 pub use label::{Ellipsize, Label, Wrap, label};
-pub use line::{Line, hline, line, vline};
 pub use picture::{ImageSource, Picture, picture};
 pub use popover::{Popover, PopoverCommand, popover};
 pub use properties::{Align, Prop, WithProp};

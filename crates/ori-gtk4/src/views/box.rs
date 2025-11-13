@@ -5,26 +5,22 @@ use ori::{ElementSeq, Event};
 
 use crate::{Context, views::Axis};
 
-pub fn line<V>(axis: Axis, content: V) -> Line<V> {
-    Line::new(axis, content)
+pub fn hbox<V>(content: V) -> GtkBox<V> {
+    GtkBox::new(Axis::Horizontal, content)
 }
 
-pub fn hline<V>(content: V) -> Line<V> {
-    Line::new(Axis::Horizontal, content)
-}
-
-pub fn vline<V>(content: V) -> Line<V> {
-    Line::new(Axis::Vertical, content)
+pub fn vbox<V>(content: V) -> GtkBox<V> {
+    GtkBox::new(Axis::Vertical, content)
 }
 
 #[must_use]
-pub struct Line<V> {
+pub struct GtkBox<V> {
     pub content: V,
     pub spacing: u32,
     pub axis: Axis,
 }
 
-impl<V> Line<V> {
+impl<V> GtkBox<V> {
     pub fn new(axis: Axis, content: V) -> Self {
         Self {
             content,
@@ -39,7 +35,7 @@ impl<V> Line<V> {
     }
 }
 
-impl<V> Deref for Line<V> {
+impl<V> Deref for GtkBox<V> {
     type Target = V;
 
     fn deref(&self) -> &Self::Target {
@@ -47,14 +43,14 @@ impl<V> Deref for Line<V> {
     }
 }
 
-impl<V> DerefMut for Line<V> {
+impl<V> DerefMut for GtkBox<V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.content
     }
 }
 
-impl<V> ori::ViewMarker for Line<V> {}
-impl<T, V> ori::View<Context, T> for Line<V>
+impl<V> ori::ViewMarker for GtkBox<V> {}
+impl<T, V> ori::View<Context, T> for GtkBox<V>
 where
     V: ori::ViewSeq<Context, T, gtk4::Widget>,
 {

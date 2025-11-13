@@ -1,5 +1,6 @@
 use crate::{
-    Action, AsyncContext, Effect, Event, IntoAction, NoElement, View, ViewMarker, views::builder,
+    Action, AsyncContext, Effect, Event, IntoAction, NoElement, View, ViewMarker,
+    views::builder::build_with_context,
 };
 
 /// [`View`] that acts when built.
@@ -24,7 +25,7 @@ where
     C: AsyncContext,
     F: Future<Output: IntoAction> + Send + 'static,
 {
-    builder(|cx: &mut C, _| self::task(task(cx.proxy())))
+    build_with_context(|cx: &mut C, _| self::task(task(cx.proxy())))
 }
 
 /// [`View`] that acts with it's built.

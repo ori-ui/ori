@@ -1,9 +1,18 @@
 use crate::{Action, Event, View, ViewMarker};
 
 /// [`View`] that is built from a callback.
-pub fn builder<C, T, V, F>(build: F) -> Builder<F>
+pub fn build<C, T, V>(build: impl FnOnce(&mut T) -> V) -> impl View<C, T, Element = V::Element>
 where
-    F: FnOnce(&mut C, &mut T) -> V,
+    V: View<C, T>,
+{
+    build_with_context(move |_, data| build(data))
+}
+
+/// [`View`] that is built from a callback.
+pub fn build_with_context<C, T, V>(
+    build: impl FnOnce(&mut C, &mut T) -> V,
+) -> impl View<C, T, Element = V::Element>
+where
     V: View<C, T>,
 {
     Builder::new(build)

@@ -6,7 +6,6 @@ use crate::Context;
 ///
 /// This is useful for building UI, based on controlflow.
 pub type AnyView<T> = Box<dyn ori::AnyView<Context, T, gtk4::Widget>>;
-pub type AnyEffect<T> = Box<dyn ori::AnyEffect<Context, T>>;
 
 pub trait View<T>: ori::View<Context, T, Element: IsA<gtk4::Widget>> {}
 pub trait ViewSeq<T>: ori::ViewSeq<Context, T, gtk4::Widget> {}

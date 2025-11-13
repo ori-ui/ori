@@ -16,7 +16,7 @@ use gtk4::{
 use notify::Watcher as _;
 use ori::{AsyncContext as _, View as _};
 
-use crate::{AnyEffect, Context, context::Event};
+use crate::{Context, context::Event};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -209,6 +209,7 @@ impl App {
     }
 }
 
+type AnyEffect<T> = Box<dyn ori::AnyView<Context, T, ori::NoElement>>;
 type UiBuilder<T> = Box<dyn FnMut(&mut T) -> AnyEffect<T>>;
 
 struct AppState<T> {

@@ -15,9 +15,9 @@ pub fn vbox<V>(content: V) -> GtkBox<V> {
 
 #[must_use]
 pub struct GtkBox<V> {
-    pub content: V,
-    pub spacing: u32,
-    pub axis: Axis,
+    content: V,
+    spacing: u32,
+    axis: Axis,
 }
 
 impl<V> GtkBox<V> {

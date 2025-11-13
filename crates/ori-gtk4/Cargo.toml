@@ -14,6 +14,7 @@ ori.workspace = true
 futures-channel = "0.3"
 futures-core = "0.3"
 gtk4 = "0.10"
+gdk4 = "0.10"
 notify = "8.2"
 thiserror = "2"
 

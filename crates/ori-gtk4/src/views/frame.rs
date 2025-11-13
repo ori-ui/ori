@@ -8,8 +8,8 @@ pub fn frame<V>(content: V) -> Frame<V> {
 
 #[must_use]
 pub struct Frame<V> {
-    pub content: V,
-    pub label: Option<String>,
+    content: V,
+    label: Option<String>,
 }
 
 impl<V> Frame<V> {

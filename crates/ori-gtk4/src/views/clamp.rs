@@ -15,9 +15,9 @@ pub fn clamp_height<V>(size: u32, content: V) -> Clamp<V> {
 }
 
 pub struct Clamp<V> {
-    pub content: V,
-    pub axis: Axis,
-    pub size: u32,
+    content: V,
+    axis: Axis,
+    size: u32,
 }
 
 impl<V> Clamp<V> {

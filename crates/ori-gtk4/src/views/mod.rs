@@ -7,6 +7,7 @@ mod icon;
 mod label;
 mod picture;
 mod popover;
+mod progress;
 mod properties;
 mod window;
 
@@ -19,6 +20,7 @@ pub use icon::{Icon, icon};
 pub use label::{Ellipsize, Label, Wrap, label};
 pub use picture::{ImageSource, Picture, picture};
 pub use popover::{Popover, PopoverCommand, popover};
+pub use progress::{Progress, progress};
 pub use properties::{Align, Prop, WithProp};
 pub use window::{Window, window};
 

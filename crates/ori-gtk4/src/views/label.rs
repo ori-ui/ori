@@ -40,10 +40,10 @@ pub fn label(text: impl ToString) -> Label {
 
 #[must_use]
 pub struct Label {
-    pub text: String,
-    pub markup: bool,
-    pub wrap: Option<Wrap>,
-    pub ellipsize: Option<Ellipsize>,
+    text: String,
+    markup: bool,
+    wrap: Option<Wrap>,
+    ellipsize: Option<Ellipsize>,
 }
 
 impl Label {

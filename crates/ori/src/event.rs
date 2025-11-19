@@ -102,7 +102,7 @@ impl fmt::Debug for Event {
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Key {
-    id: i64,
+    data: i64,
 }
 
 impl Key {
@@ -118,23 +118,23 @@ impl Key {
             i += 1;
         }
 
-        Self {
-            id: (hash as i64).abs(),
-        }
+        Self::from_u64((hash as i64).wrapping_abs() as u64)
     }
 
     /// Create a [`Key`] with a globally incremented id.
     pub fn next() -> Self {
         static NEXT_ID: AtomicI64 = AtomicI64::new(0);
+
         Self {
-            id: NEXT_ID.fetch_sub(1, Ordering::SeqCst),
+            data: NEXT_ID.fetch_sub(1, Ordering::SeqCst),
         }
     }
 
     /// Create a [`Key`] from a raw [`u64`].
-    pub const fn from_u64(id: u64) -> Self {
-        assert!(id <= i64::MAX as u64);
+    #[track_caller]
+    pub const fn from_u64(data: u64) -> Self {
+        assert!(data <= i64::MAX as u64);
 
-        Self { id: id as i64 }
+        Self { data: data as i64 }
     }
 }

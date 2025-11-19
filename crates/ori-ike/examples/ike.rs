@@ -6,7 +6,7 @@ struct Data {
 }
 
 fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
-    effects(())
+    window(())
 }
 
 fn main() {

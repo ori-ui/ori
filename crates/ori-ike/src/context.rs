@@ -1,6 +1,7 @@
 use winit::window::WindowAttributes;
 
 pub struct Context {
+    pub(crate) windows: Windows,
     pub(crate) commands: Vec<Command>,
 }
 

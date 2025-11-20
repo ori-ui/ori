@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::{Action, AsyncContext, BaseElement, Event, Key, Proxy, Super, View, ViewMarker};
+use crate::{Action, AsyncContext, BaseElement, Event, Proxy, Super, View, ViewId, ViewMarker};
 
 struct SuspenseFuture<V>(V);
 
@@ -80,38 +80,41 @@ where
     C::Element: Super<C, <F::Output as View<C, T>>::Element>,
 {
     type Element = C::Element;
-    type State = (Key, SuspenseState<C, T, V, F::Output>);
+    type State = (
+        ViewId,
+        SuspenseState<C, T, V, F::Output>,
+    );
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (fallback_element, fallback_state) = self.fallback.build(cx, data);
 
-        let key = Key::next();
+        let id = ViewId::next();
 
         if let Some(future) = self.future.take() {
             let proxy = cx.proxy();
 
             cx.proxy().spawn(async move {
                 let content = future.await;
-                proxy.event(Event::new(SuspenseFuture(content), key));
+                proxy.event(Event::new(SuspenseFuture(content), id));
             });
         }
 
         let element = C::Element::upcast(cx, fallback_element);
         let state = SuspenseState::Fallback(fallback_state);
-        (element, (key, state))
+        (element, (id, state))
     }
 
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        (key, state): &mut Self::State,
+        (id, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
     ) {
         if let Some(future) = self.future.take() {
             let proxy = cx.proxy();
-            let key = *key;
+            let key = *id;
 
             cx.proxy().spawn(async move {
                 let content = future.await;
@@ -137,7 +140,7 @@ where
     fn teardown(
         &mut self,
         element: Self::Element,
-        (_key, state): Self::State,
+        (_id, state): Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
@@ -165,12 +168,12 @@ where
     fn event(
         &mut self,
         element: &mut Self::Element,
-        (key, state): &mut Self::State,
+        (id, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        if let Some(SuspenseFuture::<F::Output>(mut content)) = event.take_targeted(*key) {
+        if let Some(SuspenseFuture::<F::Output>(mut content)) = event.take_targeted(*id) {
             match state {
                 SuspenseState::Fallback(_) => {
                     let (content_element, content_state) = content.build(cx, data);

@@ -20,6 +20,7 @@ pub struct ButtonTheme {
     pub hovered_color: Option<Color>,
     pub active_color:  Option<Color>,
     pub border_color:  Option<Color>,
+    pub focus_color:   Option<Color>,
 }
 
 impl Default for ButtonTheme {
@@ -32,6 +33,7 @@ impl Default for ButtonTheme {
             hovered_color: None,
             active_color:  None,
             border_color:  None,
+            focus_color:   None,
         }
     }
 }
@@ -47,6 +49,7 @@ pub struct Button<T, V> {
     hovered_color: Option<Color>,
     active_color:  Option<Color>,
     border_color:  Option<Color>,
+    focus_color:   Option<Color>,
 }
 
 impl<T, V> Button<T, V> {
@@ -64,6 +67,7 @@ impl<T, V> Button<T, V> {
             hovered_color: None,
             active_color: None,
             border_color: None,
+            focus_color: None,
         }
     }
 
@@ -102,6 +106,11 @@ impl<T, V> Button<T, V> {
         self
     }
 
+    pub fn focus_color(mut self, color: Color) -> Self {
+        self.focus_color = Some(color);
+        self
+    }
+
     fn get_padding(&self, theme: &ButtonTheme) -> Padding {
         self.padding.unwrap_or(theme.padding)
     }
@@ -116,28 +125,27 @@ impl<T, V> Button<T, V> {
 
     fn get_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
         self.color
-            .unwrap_or_else(|| theme.color.unwrap_or(palette.primary))
+            .unwrap_or_else(|| theme.color.unwrap_or_else(|| palette.surface(1)))
     }
 
     fn get_hovered_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
-        self.hovered_color.unwrap_or_else(|| {
-            theme
-                .hovered_color
-                .unwrap_or_else(|| palette.primary.darken(0.05))
-        })
+        self.hovered_color
+            .unwrap_or_else(|| theme.hovered_color.unwrap_or_else(|| palette.surface(0)))
     }
 
     fn get_active_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
-        self.active_color.unwrap_or_else(|| {
-            theme
-                .active_color
-                .unwrap_or_else(|| palette.primary.darken(0.1))
-        })
+        self.active_color
+            .unwrap_or_else(|| theme.active_color.unwrap_or_else(|| palette.surface(-1)))
     }
 
     fn get_border_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
         self.border_color
             .unwrap_or_else(|| theme.border_color.unwrap_or(palette.outline))
+    }
+
+    fn get_focus_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
+        self.focus_color
+            .unwrap_or_else(|| theme.focus_color.unwrap_or(palette.info))
     }
 }
 
@@ -151,7 +159,7 @@ where
     V: View<T>,
 {
     type Element = ike::WidgetId<ike::widgets::Button>;
-    type State = (ori::Key, V::Element, V::State);
+    type State = (ori::ViewId, V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (content, state) = self.content.build(cx, data);
@@ -161,13 +169,14 @@ where
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx.get_context::<ButtonTheme>().cloned().unwrap_or_default();
 
-        let padding = Self::get_padding(self, &theme);
-        let border_width = Self::get_border_width(self, &theme);
-        let corner_radius = Self::get_corner_radius(self, &theme);
-        let color = Self::get_color(self, &theme, &palette);
-        let hovered_color = Self::get_hovered_color(self, &theme, &palette);
-        let active_color = Self::get_active_color(self, &theme, &palette);
-        let border_color = Self::get_border_color(self, &theme, &palette);
+        let padding = self.get_padding(&theme);
+        let border_width = self.get_border_width(&theme);
+        let corner_radius = self.get_corner_radius(&theme);
+        let color = self.get_color(&theme, &palette);
+        let hovered_color = self.get_hovered_color(&theme, &palette);
+        let active_color = self.get_active_color(&theme, &palette);
+        let border_color = self.get_border_color(&theme, &palette);
+        let focus_color = self.get_focus_color(&theme, &palette);
 
         ike::widgets::Button::set_padding(cx, element, padding);
         ike::widgets::Button::set_border_width(cx, element, border_width);
@@ -176,24 +185,25 @@ where
         ike::widgets::Button::set_hovered_color(cx, element, hovered_color);
         ike::widgets::Button::set_active_color(cx, element, active_color);
         ike::widgets::Button::set_border_color(cx, element, border_color);
+        ike::widgets::Button::set_focus_color(cx, element, focus_color);
 
-        let key = ori::Key::next();
+        let id = ori::ViewId::next();
         let proxy = cx.proxy();
 
-        ike::widgets::Button::set_on_click(cx, element, move |_| {
+        ike::widgets::Button::set_on_click(cx, element, move || {
             proxy.event(ori::Event::new(
                 ButtonEvent::Clicked,
-                key,
+                id,
             ));
         });
 
-        (element, (key, content, state))
+        (element, (id, content, state))
     }
 
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        (_key, content, state): &mut Self::State,
+        (_id, content, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
@@ -214,45 +224,50 @@ where
         let theme = cx.get_context::<ButtonTheme>().cloned().unwrap_or_default();
 
         if self.padding != old.padding {
-            let padding = Self::get_padding(self, &theme);
+            let padding = self.get_padding(&theme);
             ike::widgets::Button::set_padding(cx, *element, padding);
         }
 
         if self.border_width != old.border_width {
-            let border_width = Self::get_border_width(self, &theme);
+            let border_width = self.get_border_width(&theme);
             ike::widgets::Button::set_border_width(cx, *element, border_width);
         }
 
         if self.corner_radius != old.corner_radius {
-            let corner_radius = Self::get_corner_radius(self, &theme);
+            let corner_radius = self.get_corner_radius(&theme);
             ike::widgets::Button::set_corner_radius(cx, *element, corner_radius);
         }
 
         if self.color != old.color {
-            let color = Self::get_color(self, &theme, &palette);
+            let color = self.get_color(&theme, &palette);
             ike::widgets::Button::set_color(cx, *element, color);
         }
 
         if self.hovered_color != old.hovered_color {
-            let hovered_color = Self::get_hovered_color(self, &theme, &palette);
+            let hovered_color = self.get_hovered_color(&theme, &palette);
             ike::widgets::Button::set_hovered_color(cx, *element, hovered_color);
         }
 
         if self.active_color != old.active_color {
-            let active_color = Self::get_active_color(self, &theme, &palette);
+            let active_color = self.get_active_color(&theme, &palette);
             ike::widgets::Button::set_active_color(cx, *element, active_color);
         }
 
         if self.border_color != old.border_color {
-            let border_color = Self::get_border_color(self, &theme, &palette);
+            let border_color = self.get_border_color(&theme, &palette);
             ike::widgets::Button::set_border_color(cx, *element, border_color);
+        }
+
+        if self.focus_color != old.focus_color {
+            let focus_color = self.get_focus_color(&theme, &palette);
+            ike::widgets::Button::set_focus_color(cx, *element, focus_color);
         }
     }
 
     fn teardown(
         &mut self,
         element: Self::Element,
-        (_key, content, state): Self::State,
+        (_id, content, state): Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {
@@ -263,7 +278,7 @@ where
     fn event(
         &mut self,
         element: &mut Self::Element,
-        (key, content, state): &mut Self::State,
+        (id, content, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
@@ -274,7 +289,7 @@ where
             ike::widgets::Button::set_child(cx, *element, content);
         }
 
-        match event.get_targeted(*key) {
+        match event.get_targeted(*id) {
             Some(ButtonEvent::Clicked) => action | (self.on_click)(data),
             None => action,
         }

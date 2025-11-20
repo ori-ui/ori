@@ -1,24 +1,21 @@
-use ike::{AnyWidgetId, DowncastWidgetId};
+use ike::{AnyWidgetId, CastWidgetId};
 
 use crate::Context;
 
-pub trait View<T>:
-    ori::View<Context, T, Element: ike::AnyWidgetId + ike::DowncastWidgetId>
-{
-}
+pub trait View<T>: ori::View<Context, T, Element: ike::AnyWidgetId + ike::CastWidgetId> {}
 pub trait Effect<T>: ori::Effect<Context, T> {}
 
 impl<T, V> View<T> for V
 where
     V: ori::View<Context, T>,
-    V::Element: ike::AnyWidgetId + ike::DowncastWidgetId,
+    V::Element: ike::AnyWidgetId + ike::CastWidgetId,
 {
 }
 impl<T, V> Effect<T> for V where V: ori::Effect<Context, T> {}
 
 impl<S> ori::Super<Context, S> for ike::WidgetId
 where
-    S: AnyWidgetId + DowncastWidgetId,
+    S: AnyWidgetId + CastWidgetId,
 {
     fn upcast(_cx: &mut Context, sub: S) -> Self {
         sub.upcast()

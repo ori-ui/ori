@@ -10,7 +10,7 @@ pub fn window<V>(content: V) -> Window<V> {
 #[derive(Debug)]
 pub struct Window<V> {
     content:       V,
-    id:            Option<ori::Key>,
+    id:            Option<ori::ViewId>,
     title:         String,
     width:         Option<u32>,
     height:        Option<u32>,

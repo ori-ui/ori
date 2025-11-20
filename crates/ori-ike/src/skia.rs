@@ -1,5 +1,6 @@
 use ike::{
-    Affine, BorderWidth, Canvas, CornerRadius, Fonts, Offset, Paint, Paragraph, Rect, Shader, Size,
+    Affine, BorderWidth, Canvas, CornerRadius, Fonts, GlyphCluster, Offset, Paint, Paragraph,
+    Point, Rect, Shader, Size, TextDirection, TextLayoutLine,
 };
 
 pub(crate) struct SkiaFonts {
@@ -92,6 +93,86 @@ impl Fonts for SkiaFonts {
             width:  paragraph.max_intrinsic_width(),
             height: paragraph.height(),
         }
+    }
+
+    fn layout(&mut self, paragraph: &Paragraph, max_width: f32) -> Vec<ike::TextLayoutLine> {
+        let mut skia = self.build_paragraph(paragraph);
+        skia.layout(max_width);
+
+        let mut lines = Vec::new();
+
+        let metrics = skia.get_line_metrics();
+
+        for (i, metric) in metrics.iter().enumerate() {
+            let end_index = metric.end_including_newline.saturating_sub(1);
+
+            let has_newline = if paragraph.text().is_char_boundary(end_index) {
+                paragraph.text()[end_index..].starts_with('\n')
+            } else {
+                false
+            };
+
+            let is_last = i == metrics.len() - 1;
+
+            let (start_index, end_index) = if has_newline {
+                if is_last {
+                    (
+                        metric.start_index + 1,
+                        metric.end_including_newline,
+                    )
+                } else {
+                    (metric.start_index, end_index)
+                }
+            } else {
+                (
+                    metric.start_index,
+                    metric.end_including_newline,
+                )
+            };
+
+            let mut line = TextLayoutLine {
+                ascent: metric.ascent as f32,
+                descent: metric.descent as f32,
+                left: metric.left as f32,
+                width: metric.width as f32,
+                height: metric.height as f32,
+                baseline: metric.baseline as f32,
+                start_index,
+                end_index,
+                glyphs: Vec::new(),
+            };
+
+            for i in metric.start_index..metric.end_index {
+                let Some(glyph) = skia.get_glyph_cluster_at(i) else {
+                    continue;
+                };
+
+                if paragraph.text()[glyph.text_range.clone()] == *"\n" {
+                    continue;
+                }
+
+                let bounds = Rect {
+                    min: Point::new(glyph.bounds.left, glyph.bounds.top),
+                    max: Point::new(glyph.bounds.right, glyph.bounds.bottom),
+                };
+
+                let direction = match glyph.position {
+                    skia_safe::textlayout::TextDirection::RTL => TextDirection::Rtl,
+                    skia_safe::textlayout::TextDirection::LTR => TextDirection::Ltr,
+                };
+
+                line.glyphs.push(GlyphCluster {
+                    bounds,
+                    start_index: glyph.text_range.start,
+                    end_index: glyph.text_range.end,
+                    direction,
+                });
+            }
+
+            lines.push(line);
+        }
+
+        lines
     }
 }
 

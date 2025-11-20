@@ -3,13 +3,13 @@ use ori_gtk4::prelude::*;
 struct Data {}
 
 fn ui(_: &mut Data) -> impl Effect<Data> + use<> {
-    const KEY: Key = Key::new("example.popover");
+    const ID: ViewId = ViewId::new("example.popover");
 
     let button = popover(
-        KEY,
+        ID,
         button(
             label("Click me to open popover"),
-            |_| Event::new(PopoverCommand::Popup, KEY),
+            |_| Event::new(PopoverCommand::Popup, ID),
         ),
         label("I am a popover!"),
     );

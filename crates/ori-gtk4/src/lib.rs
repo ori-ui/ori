@@ -21,5 +21,5 @@ pub use ori::{self as core, Action, Event};
 pub mod prelude {
     pub use crate::{Action, App, Context, Effect, Error, View, include_css, views::*};
 
-    pub use ori::{Event, Key, Proxy};
+    pub use ori::{Event, Proxy, ViewId};
 }

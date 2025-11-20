@@ -22,7 +22,7 @@ impl Context {
         &self.app
     }
 
-    pub fn event<T: Any + Send>(&self, item: T, target: impl Into<Option<ori::Key>>) {
+    pub fn event<T: Any + Send>(&self, item: T, target: impl Into<Option<ori::ViewId>>) {
         let event = ori::Event::new(item, target);
 
         self.sender.unbounded_send(Event::Event(event)).unwrap();

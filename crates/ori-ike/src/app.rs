@@ -1,4 +1,4 @@
-use std::{any::Any, ffi, mem, num::NonZeroU32};
+use std::{any::Any, ffi, mem, num::NonZeroU32, time::Instant};
 
 use glutin::{
     config::{Config as GlConfig, ConfigTemplateBuilder, GlConfig as _},
@@ -22,6 +22,7 @@ use winit::{
 use crate::{
     Context, Effect,
     context::Event,
+    key::convert_winit_key,
     skia::{SkiaCanvas, SkiaFonts},
 };
 
@@ -53,23 +54,29 @@ impl App {
             None
         };
 
+        let runtime = tokio::runtime::Handle::current();
+
         let mut build: UiBuilder<T> = Box::new(move |data| Box::new(ui(data)));
-        let ui = build(data);
+        let view = build(data);
+
+        let fonts = SkiaFonts::new();
+        let context = Context {
+            app:      ike::App::new(),
+            proxy:    event_loop.create_proxy(),
+            contexts: Vec::new(),
+        };
 
         let mut state = AppState {
             data,
+
             build,
-            view: ui,
+            view,
             state: None,
 
-            runtime: tokio::runtime::Handle::current(),
+            runtime,
 
-            fonts: SkiaFonts::new(),
-            context: Context {
-                app:      ike::App::new(),
-                proxy:    event_loop.create_proxy(),
-                contexts: Vec::new(),
-            },
+            fonts,
+            context,
             windows: Vec::new(),
             gl_state: None,
         };
@@ -96,8 +103,10 @@ struct AppState<'a, T> {
 struct WindowState {
     fb_info:      FramebufferInfo,
     skia_surface: skia_safe::Surface,
-    gl_surface:   Surface<WindowSurface>,
     skia_context: skia_safe::gpu::DirectContext,
+    gl_surface:   Surface<WindowSurface>,
+
+    animate: Option<Instant>,
 
     id:     ike::WindowId,
     window: Window,
@@ -138,13 +147,29 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
 
         match event {
             WindowEvent::RedrawRequested => {
+                if let Some(animate) = window.animate.take() {
+                    let delta_time = animate.elapsed();
+                    self.context.app.animate(window.id, delta_time);
+                }
+
+                if self.context.app.window_needs_animate(window.id) {
+                    window.window.request_redraw();
+                    window.animate = Some(Instant::now());
+                }
+
                 let gl = self.gl_state.as_ref().unwrap();
                 gl.context.make_current(&window.gl_surface).unwrap();
 
-                let scale = window.window.scale_factor();
+                let ike = self.context.app.get_window(window.id).unwrap();
 
+                let scale = window.window.scale_factor();
                 let canvas = window.skia_surface.canvas();
-                canvas.clear(skia_safe::Color::WHITE);
+                canvas.clear(skia_safe::Color::from_argb(
+                    f32::round(ike.color.a * 255.0) as u8,
+                    f32::round(ike.color.r * 255.0) as u8,
+                    f32::round(ike.color.g * 255.0) as u8,
+                    f32::round(ike.color.b * 255.0) as u8,
+                ));
                 canvas.save();
                 canvas.scale((scale as f32, scale as f32));
 
@@ -165,24 +190,18 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
                 let gl = self.gl_state.as_ref().unwrap();
                 window.resize(gl);
 
-                let size = window
-                    .window
-                    .inner_size()
-                    .to_logical(window.window.scale_factor());
+                let scale = window.window.scale_factor();
+                let size = window.window.inner_size().to_logical(scale);
 
-                let new_size = ike::Size::new(size.width, size.height);
+                let size = ike::Size::new(size.width, size.height);
 
                 match event {
                     WindowEvent::Resized(..) => {
-                        self.context.app.window_resized(window.id, new_size);
+                        self.context.app.window_resized(window.id, size);
                     }
 
                     WindowEvent::ScaleFactorChanged { .. } => {
-                        self.context.app.window_scaled(
-                            window.id,
-                            window.window.scale_factor() as f32,
-                            new_size,
-                        );
+                        (self.context.app).window_scaled(window.id, scale as f32, size);
                     }
 
                     _ => unreachable!(),
@@ -237,6 +256,40 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
                 );
             }
 
+            WindowEvent::KeyboardInput { event, .. } => {
+                let pressed = matches!(event.state, ElementState::Pressed);
+
+                self.context.app.key_press(
+                    window.id,
+                    convert_winit_key(event.logical_key),
+                    event.repeat,
+                    event.text.as_deref(),
+                    pressed,
+                );
+            }
+
+            WindowEvent::ModifiersChanged(mods) => {
+                let mut modifiers = ike::Modifiers::empty();
+
+                if mods.state().shift_key() {
+                    modifiers |= ike::Modifiers::SHIFT;
+                }
+
+                if mods.state().control_key() {
+                    modifiers |= ike::Modifiers::CONTROL;
+                }
+
+                if mods.state().alt_key() {
+                    modifiers |= ike::Modifiers::ALT;
+                }
+
+                if mods.state().super_key() {
+                    modifiers |= ike::Modifiers::META;
+                }
+
+                self.context.app.modifiers_changed(window.id, modifiers);
+            }
+
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             }
@@ -244,7 +297,12 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
             _ => {}
         }
 
-        for window in &self.windows {
+        for window in &mut self.windows {
+            if self.context.app.window_needs_animate(window.id) && window.animate.is_none() {
+                window.window.request_redraw();
+                window.animate = Some(Instant::now());
+            }
+
             if self.context.app.window_needs_draw(window.id) {
                 window.window.request_redraw();
             }
@@ -427,8 +485,10 @@ impl WindowState {
         WindowState {
             fb_info,
             skia_surface,
-            gl_surface,
             skia_context,
+            gl_surface,
+
+            animate: None,
 
             id: window.id(),
             window: win,

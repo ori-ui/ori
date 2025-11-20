@@ -2,11 +2,11 @@ use gtk4::{
     glib::{object::IsA, subclass::prelude::ObjectSubclassIsExt as _},
     prelude::{PopoverExt as _, WidgetExt as _},
 };
-use ori::Key;
+use ori::ViewId;
 
 use crate::{Context, View};
 
-pub fn popover<V, P>(key: Key, content: V, popover: P) -> Popover<V, P> {
+pub fn popover<V, P>(key: ViewId, content: V, popover: P) -> Popover<V, P> {
     Popover::new(key, content, popover)
 }
 
@@ -25,7 +25,7 @@ pub enum Position {
 }
 
 pub struct Popover<V, P> {
-    key:       Key,
+    key:       ViewId,
     content:   V,
     popover:   P,
     autohide:  bool,
@@ -34,7 +34,7 @@ pub struct Popover<V, P> {
 }
 
 impl<V, P> Popover<V, P> {
-    pub fn new(key: Key, content: V, popover: P) -> Self {
+    pub fn new(key: ViewId, content: V, popover: P) -> Self {
         Self {
             key,
             content,

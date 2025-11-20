@@ -48,7 +48,7 @@ impl<T> Checkbox<T> {
 impl<T> ori::ViewMarker for Checkbox<T> {}
 impl<T> ori::View<Context, T> for Checkbox<T> {
     type Element = gtk4::CheckButton;
-    type State = ori::Key;
+    type State = ori::ViewId;
 
     fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let element = gtk4::CheckButton::new();
@@ -57,7 +57,7 @@ impl<T> ori::View<Context, T> for Checkbox<T> {
             element.set_active(checked);
         }
 
-        let id = ori::Key::next();
+        let id = ori::ViewId::next();
 
         element.connect_toggled({
             let cx = cx.clone();

@@ -39,12 +39,12 @@ impl<V, T> Button<V, T> {
 impl<V, T> ori::ViewMarker for Button<V, T> {}
 impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     type Element = gtk4::Button;
-    type State = (ori::Key, V::Element, V::State);
+    type State = (ori::ViewId, V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (child, state) = self.content.build(cx, data);
 
-        let id = ori::Key::next();
+        let id = ori::ViewId::next();
 
         let button = gtk4::Button::new();
         button.set_child(Some(&child));

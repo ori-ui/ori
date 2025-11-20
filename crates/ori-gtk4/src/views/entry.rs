@@ -68,7 +68,7 @@ impl<T> Entry<T> {
 impl<T> ori::ViewMarker for Entry<T> {}
 impl<T> ori::View<Context, T> for Entry<T> {
     type Element = gtk4::Entry;
-    type State = (ori::Key, gtk4::glib::SignalHandlerId);
+    type State = (ori::ViewId, gtk4::glib::SignalHandlerId);
 
     fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let element = gtk4::Entry::new();
@@ -79,7 +79,7 @@ impl<T> ori::View<Context, T> for Entry<T> {
 
         element.set_placeholder_text(self.placeholder.as_deref());
 
-        let id = ori::Key::next();
+        let id = ori::ViewId::next();
 
         let changed = element.connect_changed({
             let cx = cx.clone();

@@ -1,6 +1,7 @@
 use ike::AnyWidgetId;
+use ori::ProviderContext;
 
-use crate::{Context, View};
+use crate::{Context, Palette, View};
 
 pub fn window<V>(content: V) -> Window<V> {
     Window { content }
@@ -21,7 +22,10 @@ where
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (content, state) = self.content.build(cx, data);
 
+        let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let window = cx.app.create_window(content.upcast());
+
+        window.color = palette.background;
 
         let id = window.id();
         (ori::NoElement, (id, content, state))

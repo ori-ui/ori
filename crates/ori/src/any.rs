@@ -84,12 +84,9 @@ where
     }
 
     fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C, data: &mut T) {
-        self.teardown(
-            element.downcast(),
-            *state.downcast().unwrap(),
-            cx,
-            data,
-        );
+        if let Ok(state) = state.downcast() {
+            self.teardown(element.downcast(), *state, cx, data);
+        }
     }
 
     fn any_event(

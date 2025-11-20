@@ -1,10 +1,10 @@
 use ike::{
-    BuildCx,
+    AnyWidgetId, BuildCx, CastWidgetId,
     widgets::{Align, Axis, Justify},
 };
 use ori::ElementSeq;
 
-use crate::Context;
+use crate::{Context, View};
 
 pub fn stack<V>(axis: Axis, content: V) -> Stack<V> {
     Stack::new(axis, content)
@@ -56,7 +56,7 @@ impl<V> Stack<V> {
 impl<V> ori::ViewMarker for Stack<V> {}
 impl<T, V> ori::View<Context, T> for Stack<V>
 where
-    V: ori::ViewSeq<Context, T, ike::WidgetId>,
+    V: ori::ViewSeq<Context, T, Flex<ike::WidgetId>>,
 {
     type Element = ike::WidgetId<ike::widgets::Stack>;
     type State = (V::Elements, V::States);
@@ -71,8 +71,9 @@ where
         ike::widgets::Stack::set_align(cx, element, self.align);
         ike::widgets::Stack::set_gap(cx, element, self.gap);
 
-        for child in children.iter() {
-            ike::widgets::Stack::add_flex_child(cx, element, child, 0.0);
+        for (i, child) in children.iter().enumerate() {
+            cx.add_child(element, child.content);
+            ike::widgets::Stack::set_flex(cx, element, i, child.flex, child.tight);
         }
 
         (element, (children, states))
@@ -143,17 +144,23 @@ where
 fn update_children(
     cx: &mut impl BuildCx,
     element: ike::WidgetId<ike::widgets::Stack>,
-    children: &mut impl ElementSeq<ike::WidgetId>,
+    children: &mut impl ElementSeq<Flex<ike::WidgetId>>,
 ) {
     for child in children.iter() {
-        if !cx.is_parent(element, child) {
-            ike::widgets::Stack::add_flex_child(cx, element, child, 0.0);
+        if !cx.is_parent(element, child.content) {
+            cx.add_child(element, child.content);
         }
     }
 
-    for (i, &child) in children.iter().enumerate() {
-        if cx.children(element)[i] != child {
+    for (i, child) in children.iter().enumerate() {
+        if cx.children(element)[i] != child.content {
             cx.swap_children(element, i, i + 1);
+        }
+
+        let (flex, tight) = ike::widgets::Stack::get_flex(cx, element, i);
+
+        if child.flex != flex || child.tight != tight {
+            ike::widgets::Stack::set_flex(cx, element, i, child.flex, child.tight);
         }
     }
 
@@ -161,5 +168,140 @@ fn update_children(
 
     for i in (children.count()..count).rev() {
         cx.remove_child(element, i);
+    }
+}
+
+pub fn flex<V>(flex: f32, content: V) -> Flex<V> {
+    Flex::new(flex, true, content)
+}
+
+pub fn expand<V>(flex: f32, content: V) -> Flex<V> {
+    Flex::new(flex, false, content)
+}
+
+#[derive(Clone, Copy)]
+pub struct Flex<V> {
+    content: V,
+    flex:    f32,
+    tight:   bool,
+}
+
+impl<V> Flex<V> {
+    pub fn new(flex: f32, tight: bool, content: V) -> Self {
+        Self {
+            content,
+            flex,
+            tight,
+        }
+    }
+}
+
+impl<V> ori::ViewMarker for Flex<V> {}
+impl<T, V> ori::View<Context, T> for Flex<V>
+where
+    V: View<T>,
+{
+    type Element = Flex<V::Element>;
+    type State = V::State;
+
+    fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
+        let (element, state) = self.content.build(cx, data);
+        let element = Flex::new(self.flex, self.tight, element);
+
+        (element, state)
+    }
+
+    fn rebuild(
+        &mut self,
+        element: &mut Self::Element,
+        state: &mut Self::State,
+        cx: &mut Context,
+        data: &mut T,
+        old: &mut Self,
+    ) {
+        self.content.rebuild(
+            &mut element.content,
+            state,
+            cx,
+            data,
+            &mut old.content,
+        );
+    }
+
+    fn teardown(
+        &mut self,
+        element: Self::Element,
+        state: Self::State,
+        cx: &mut Context,
+        data: &mut T,
+    ) {
+        self.content.teardown(element.content, state, cx, data);
+    }
+
+    fn event(
+        &mut self,
+        element: &mut Self::Element,
+        state: &mut Self::State,
+        cx: &mut Context,
+        data: &mut T,
+        event: &mut ori::Event,
+    ) -> ori::Action {
+        self.content.event(
+            &mut element.content,
+            state,
+            cx,
+            data,
+            event,
+        )
+    }
+}
+
+impl<S> ori::Super<Context, S> for Flex<ike::WidgetId>
+where
+    S: AnyWidgetId + CastWidgetId,
+{
+    fn upcast(_cx: &mut Context, sub: S) -> Self {
+        Flex {
+            content: sub.upcast(),
+            flex:    0.0,
+            tight:   false,
+        }
+    }
+
+    fn downcast(self) -> S {
+        self.content.downcast()
+    }
+
+    fn downcast_with<T>(&mut self, f: impl FnOnce(&mut S) -> T) -> T {
+        self.content.downcast_with(f)
+    }
+}
+
+impl<S> ori::Super<Context, Flex<S>> for Flex<ike::WidgetId>
+where
+    S: AnyWidgetId + CastWidgetId,
+{
+    fn upcast(_cx: &mut Context, sub: Flex<S>) -> Self {
+        Self {
+            content: sub.content.upcast(),
+            flex:    sub.flex,
+            tight:   sub.tight,
+        }
+    }
+
+    fn downcast(self) -> Flex<S> {
+        Flex {
+            content: self.content.downcast(),
+            flex:    self.flex,
+            tight:   self.tight,
+        }
+    }
+
+    fn downcast_with<T>(&mut self, f: impl FnOnce(&mut Flex<S>) -> T) -> T {
+        let mut flex: Flex<S> = self.downcast();
+        let output = f(&mut flex);
+        self.content = flex.content.upcast();
+        self.flex = flex.flex;
+        output
     }
 }

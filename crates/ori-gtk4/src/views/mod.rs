@@ -38,19 +38,8 @@ use gtk4::{
     prelude::WidgetExt,
 };
 
-use crate::{AnyView, View};
-
 fn is_parent(parent: &impl IsA<gtk4::Widget>, child: &impl IsA<gtk4::Widget>) -> bool {
     Some(parent.upcast_ref()) == child.upcast_ref().parent().as_ref()
-}
-
-#[must_use]
-pub fn any<T, V>(view: V) -> AnyView<T>
-where
-    V: View<T> + 'static,
-    V::State: 'static,
-{
-    Box::new(view)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

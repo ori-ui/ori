@@ -14,8 +14,8 @@ enum CheckboxEvent {
 }
 
 pub struct Checkbox<T> {
-    checked: Option<bool>,
-    label: Option<String>,
+    checked:   Option<bool>,
+    label:     Option<String>,
     on_change: Box<dyn FnMut(&mut T, bool) -> ori::Action>,
 }
 
@@ -26,8 +26,8 @@ impl<T> Checkbox<T> {
         A: ori::IntoAction,
     {
         Self {
-            checked: None,
-            label: None,
+            checked:   None,
+            label:     None,
             on_change: Box::new(move |data, checked| on_change(data, checked).into_action()),
         }
     }

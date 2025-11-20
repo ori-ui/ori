@@ -1,4 +1,6 @@
-use ike::{Affine, Canvas, CornerRadius, Fonts, Offset, Paint, Paragraph, Rect, Shader, Size};
+use ike::{
+    Affine, BorderWidth, Canvas, CornerRadius, Fonts, Offset, Paint, Paragraph, Rect, Shader, Size,
+};
 
 pub(crate) struct SkiaFonts {
     pub(crate) collection: skia_safe::textlayout::FontCollection,
@@ -24,8 +26,14 @@ impl SkiaFonts {
     ) -> skia_safe::textlayout::Paragraph {
         let mut style = skia_safe::textlayout::ParagraphStyle::new();
 
-        style.set_height(16.0);
-        style.set_text_align(skia_safe::textlayout::TextAlign::Start);
+        let align = match paragraph.align {
+            ike::TextAlign::Start => skia_safe::textlayout::TextAlign::Start,
+            ike::TextAlign::Center => skia_safe::textlayout::TextAlign::Center,
+            ike::TextAlign::End => skia_safe::textlayout::TextAlign::End,
+        };
+
+        style.set_height(paragraph.line_height);
+        style.set_text_align(align);
 
         let mut builder = skia_safe::textlayout::ParagraphBuilder::new(&style, &self.collection);
 
@@ -35,7 +43,12 @@ impl SkiaFonts {
             skia_style.set_font_size(style.font_size);
             skia_style.set_font_families(&[&style.font_family]);
             skia_style.set_font_style(skia_safe::FontStyle::normal());
-            skia_style.set_color(skia_safe::Color::BLACK);
+            skia_style.set_color(skia_safe::Color::from_argb(
+                f32::round(style.color.a * 255.0) as u8,
+                f32::round(style.color.r * 255.0) as u8,
+                f32::round(style.color.g * 255.0) as u8,
+                f32::round(style.color.b * 255.0) as u8,
+            ));
 
             builder.push_style(&skia_style);
             builder.add_text(text);
@@ -48,14 +61,10 @@ impl SkiaFonts {
 
 pub(crate) struct SkiaCanvas<'a> {
     pub(crate) canvas: &'a skia_safe::Canvas,
-    pub(crate) fonts: &'a mut SkiaFonts,
+    pub(crate) fonts:  &'a mut SkiaFonts,
 }
 
 impl<'a> SkiaCanvas<'a> {
-    pub(crate) fn new(canvas: &'a skia_safe::Canvas, fonts: &'a mut SkiaFonts) -> Self {
-        Self { canvas, fonts }
-    }
-
     fn create_paint(&self, paint: &Paint) -> skia_safe::Paint {
         let mut skia_paint = skia_safe::Paint::default();
 
@@ -80,13 +89,17 @@ impl Fonts for SkiaFonts {
         paragraph.layout(max_width);
 
         Size {
-            width: paragraph.max_intrinsic_width(),
+            width:  paragraph.max_intrinsic_width(),
             height: paragraph.height(),
         }
     }
 }
 
 impl Canvas for SkiaCanvas<'_> {
+    fn fonts(&mut self) -> &mut dyn Fonts {
+        self.fonts
+    }
+
     fn transform(&mut self, affine: Affine, f: &mut dyn FnMut(&mut dyn Canvas)) {
         let matrix = skia_safe::Matrix::new_all(
             affine.matrix.matrix[0],
@@ -108,20 +121,57 @@ impl Canvas for SkiaCanvas<'_> {
         self.canvas.restore();
     }
 
-    fn draw_rect(&mut self, rect: Rect, corners: CornerRadius, paint: &Paint) {
+    fn draw_rect(&mut self, rect: Rect, radius: CornerRadius, paint: &Paint) {
         let rect = skia_safe::RRect::new_nine_patch(
             skia_safe::Rect::new(
                 rect.min.x, rect.min.y, rect.max.x, rect.max.y,
             ),
-            corners.top_left,
-            corners.top_right,
-            corners.bottom_right,
-            corners.bottom_left,
+            radius.top_left,
+            radius.top_right,
+            radius.bottom_right,
+            radius.bottom_left,
         );
 
         let paint = self.create_paint(paint);
 
         self.canvas.draw_rrect(rect, &paint);
+    }
+
+    fn draw_border(&mut self, rect: Rect, width: BorderWidth, radius: CornerRadius, paint: &Paint) {
+        let mut path = skia_safe::Path::new();
+
+        let inner = skia_safe::RRect::new_nine_patch(
+            skia_safe::Rect::new(
+                rect.min.x + width.left,
+                rect.min.y + width.top,
+                rect.max.x - width.right,
+                rect.max.y - width.bottom,
+            ),
+            radius.top_left - (width.top + width.left) / 2.0,
+            radius.top_right - (width.top + width.right) / 2.0,
+            radius.bottom_right - (width.bottom + width.right) / 2.0,
+            radius.bottom_left - (width.bottom + width.left) / 2.0,
+        );
+
+        let outer = skia_safe::RRect::new_nine_patch(
+            skia_safe::Rect::new(
+                rect.min.x, rect.min.y, rect.max.x, rect.max.y,
+            ),
+            radius.top_left,
+            radius.top_right,
+            radius.bottom_right,
+            radius.bottom_left,
+        );
+
+        path.add_rrect(
+            inner,
+            Some((skia_safe::PathDirection::CCW, 0)),
+        );
+        path.add_rrect(outer, None);
+
+        let paint = self.create_paint(paint);
+
+        self.canvas.draw_path(&path, &paint);
     }
 
     fn draw_text(&mut self, paragraph: &Paragraph, max_width: f32, offset: Offset) {

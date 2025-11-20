@@ -38,7 +38,7 @@ impl Action {
     pub const fn new() -> Self {
         Self {
             rebuild: false,
-            events: Vec::new(),
+            events:  Vec::new(),
             futures: Vec::new(),
         }
     }
@@ -47,7 +47,7 @@ impl Action {
     pub const fn rebuild() -> Self {
         Self {
             rebuild: true,
-            events: Vec::new(),
+            events:  Vec::new(),
             futures: Vec::new(),
         }
     }
@@ -56,7 +56,7 @@ impl Action {
     pub fn event(event: Event) -> Self {
         Self {
             rebuild: true,
-            events: vec![event],
+            events:  vec![event],
             futures: Vec::new(),
         }
     }
@@ -67,7 +67,7 @@ impl Action {
 
         Self {
             rebuild: false,
-            events: Vec::new(),
+            events:  Vec::new(),
             futures: vec![fut],
         }
     }

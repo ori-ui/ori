@@ -40,18 +40,18 @@ pub fn label(text: impl ToString) -> Label {
 
 #[must_use]
 pub struct Label {
-    text: String,
-    markup: bool,
-    wrap: Option<Wrap>,
+    text:      String,
+    markup:    bool,
+    wrap:      Option<Wrap>,
     ellipsize: Option<Ellipsize>,
 }
 
 impl Label {
     pub fn new(text: impl ToString) -> Self {
         Self {
-            text: text.to_string(),
-            markup: false,
-            wrap: None,
+            text:      text.to_string(),
+            markup:    false,
+            wrap:      None,
             ellipsize: None,
         }
     }

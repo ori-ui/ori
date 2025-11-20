@@ -14,8 +14,8 @@ pub fn map<C, T, U, E>(
 #[must_use]
 pub struct Map<F, U, V> {
     content: V,
-    map: F,
-    marker: PhantomData<fn(&U)>,
+    map:     F,
+    marker:  PhantomData<fn(&U)>,
 }
 
 impl<F, U, V> Map<F, U, V> {

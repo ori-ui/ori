@@ -7,6 +7,7 @@ mod freeze;
 mod handler;
 mod map;
 mod memo;
+mod provide;
 mod suspense;
 
 pub use r#async::{AsyncHandler, on_build, task, task_with_proxy};
@@ -16,4 +17,5 @@ pub use freeze::{Freeze, freeze};
 pub use handler::{Handler, handler, on_event};
 pub use map::{Map, map};
 pub use memo::{Memo, hash_memo, memo};
+pub use provide::{Provide, Using, provide, try_using, using};
 pub use suspense::{Suspense, suspense};

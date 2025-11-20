@@ -16,10 +16,10 @@ enum EntryEvent {
 
 #[must_use]
 pub struct Entry<T> {
-    pub text: Option<String>,
+    pub text:        Option<String>,
     pub placeholder: Option<String>,
-    pub on_change: Box<dyn FnMut(&mut T, String) -> ori::Action>,
-    pub on_submit: Box<dyn FnMut(&mut T, String) -> ori::Action>,
+    pub on_change:   Box<dyn FnMut(&mut T, String) -> ori::Action>,
+    pub on_submit:   Box<dyn FnMut(&mut T, String) -> ori::Action>,
 }
 
 impl<T> Default for Entry<T> {
@@ -31,10 +31,10 @@ impl<T> Default for Entry<T> {
 impl<T> Entry<T> {
     pub fn new() -> Self {
         Self {
-            text: None,
+            text:        None,
             placeholder: None,
-            on_change: Box::new(|_, _| ori::Action::new()),
-            on_submit: Box::new(|_, _| ori::Action::new()),
+            on_change:   Box::new(|_, _| ori::Action::new()),
+            on_submit:   Box::new(|_, _| ori::Action::new()),
         }
     }
 

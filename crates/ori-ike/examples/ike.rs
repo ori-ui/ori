@@ -1,12 +1,24 @@
-use ori::views::effects;
-use ori_ike::{App, Effect};
+use ori_ike::{
+    App, Effect,
+    views::{any, button, center, hstack, label, vstack, window},
+};
 
 struct Data {
     count: u32,
 }
 
 fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
-    window(())
+    window(center(vstack((
+        button(
+            label(format!("count {}", data.count)),
+            |data: &mut Data| data.count += 1,
+        ),
+        if data.count.is_multiple_of(2) {
+            any(hstack((label("wahoo"), label("another"))).gap(10.0))
+        } else {
+            any(label("wahoo"))
+        },
+    ))))
 }
 
 fn main() {

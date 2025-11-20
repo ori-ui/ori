@@ -29,7 +29,7 @@ where
 /// [`View`] that is only rebuilt when `data` changes.
 #[must_use]
 pub struct Memo<F, D> {
-    data: D,
+    data:  D,
     build: Option<F>,
 }
 

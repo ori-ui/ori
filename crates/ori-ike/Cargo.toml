@@ -12,6 +12,10 @@ glutin-winit = "0.5"
 [dependencies.ike]
 path = "../../../ike"
 
+[dependencies.tokio]
+version = "1"
+features = ["rt-multi-thread"]
+
 [dependencies.winit]
 version = "0.30"
 default-features = false

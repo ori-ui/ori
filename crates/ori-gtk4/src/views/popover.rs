@@ -25,12 +25,12 @@ pub enum Position {
 }
 
 pub struct Popover<V, P> {
-    key: Key,
-    content: V,
-    popover: P,
-    autohide: bool,
+    key:       Key,
+    content:   V,
+    popover:   P,
+    autohide:  bool,
     has_arrow: bool,
-    position: Position,
+    position:  Position,
 }
 
 impl<V, P> Popover<V, P> {
@@ -67,10 +67,10 @@ where
     P: View<T>,
 {
     content_element: V::Element,
-    content_state: V::State,
+    content_state:   V::State,
     popover_element: P::Element,
-    popover_state: P::State,
-    popover: gtk4::Popover,
+    popover_state:   P::State,
+    popover:         gtk4::Popover,
 }
 
 impl<V, P> ori::ViewMarker for Popover<V, P> {}
@@ -288,7 +288,7 @@ mod imp {
 
     #[derive(Default)]
     pub struct PopoverReceiver {
-        pub(super) child: RefCell<Option<gtk4::Widget>>,
+        pub(super) child:   RefCell<Option<gtk4::Widget>>,
         pub(super) popover: RefCell<Option<gtk4::Popover>>,
     }
 

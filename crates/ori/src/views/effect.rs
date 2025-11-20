@@ -8,7 +8,7 @@ pub const fn with_effect<V, W>(content: V, with: W) -> WithEffect<V, W> {
 /// [`View`] that attaches an [`Effect`](crate::Effect) to a [`View`].
 pub struct WithEffect<V, W> {
     content: V,
-    effect: W,
+    effect:  W,
 }
 
 impl<V, W> WithEffect<V, W> {

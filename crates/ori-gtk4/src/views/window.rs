@@ -9,40 +9,40 @@ pub fn window<V>(content: V) -> Window<V> {
 #[allow(unused)]
 #[derive(Debug)]
 pub struct Window<V> {
-    content: V,
-    id: Option<ori::Key>,
-    title: String,
-    width: Option<u32>,
-    height: Option<u32>,
-    visible: bool,
-    resizable: bool,
-    decorated: bool,
+    content:       V,
+    id:            Option<ori::Key>,
+    title:         String,
+    width:         Option<u32>,
+    height:        Option<u32>,
+    visible:       bool,
+    resizable:     bool,
+    decorated:     bool,
     hide_on_close: bool,
 
     #[cfg(feature = "layer-shell")]
     is_layer_shell: bool,
     #[cfg(feature = "layer-shell")]
-    layer: Layer,
+    layer:          Layer,
     #[cfg(feature = "layer-shell")]
     exclusive_zone: Exclusive,
     #[cfg(feature = "layer-shell")]
-    monitor: Option<u32>,
+    monitor:        Option<u32>,
     #[cfg(feature = "layer-shell")]
-    margin_top: i32,
+    margin_top:     i32,
     #[cfg(feature = "layer-shell")]
-    margin_right: i32,
+    margin_right:   i32,
     #[cfg(feature = "layer-shell")]
-    margin_bottom: i32,
+    margin_bottom:  i32,
     #[cfg(feature = "layer-shell")]
-    margin_left: i32,
+    margin_left:    i32,
     #[cfg(feature = "layer-shell")]
-    anchor_top: bool,
+    anchor_top:     bool,
     #[cfg(feature = "layer-shell")]
-    anchor_right: bool,
+    anchor_right:   bool,
     #[cfg(feature = "layer-shell")]
-    anchor_bottom: bool,
+    anchor_bottom:  bool,
     #[cfg(feature = "layer-shell")]
-    anchor_left: bool,
+    anchor_left:    bool,
 }
 
 #[cfg(feature = "layer-shell")]
@@ -231,8 +231,8 @@ where
     V: View<T>,
 {
     window: gtk4::ApplicationWindow,
-    child: V::Element,
-    state: V::State,
+    child:  V::Element,
+    state:  V::State,
 }
 
 impl<V> ori::ViewMarker for Window<V> {}

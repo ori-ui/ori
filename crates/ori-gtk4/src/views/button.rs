@@ -15,7 +15,7 @@ enum ButtonEvent {
 
 #[must_use]
 pub struct Button<V, T> {
-    content: V,
+    content:  V,
     on_click: Box<dyn FnMut(&mut T) -> ori::Action>,
 }
 

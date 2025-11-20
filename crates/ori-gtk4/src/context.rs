@@ -5,7 +5,7 @@ use gtk4::gio::prelude::ApplicationExt as _;
 
 #[derive(Clone)]
 pub struct Context {
-    app: gtk4::glib::WeakRef<gtk4::Application>,
+    app:    gtk4::glib::WeakRef<gtk4::Application>,
     sender: UnboundedSender<Event>,
 }
 

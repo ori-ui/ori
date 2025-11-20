@@ -56,9 +56,9 @@ macro_rules! include_css {
 }
 
 pub struct App {
-    id: Option<String>,
-    theme: Option<String>,
-    css_paths: Vec<PathBuf>,
+    id:          Option<String>,
+    theme:       Option<String>,
+    css_paths:   Vec<PathBuf>,
     css_strings: Vec<String>,
 }
 
@@ -71,9 +71,9 @@ impl Default for App {
 impl App {
     pub fn new() -> Self {
         Self {
-            id: None,
-            theme: None,
-            css_paths: Vec::new(),
+            id:          None,
+            theme:       None,
+            css_paths:   Vec::new(),
             css_strings: Vec::new(),
         }
     }
@@ -214,12 +214,12 @@ type UiBuilder<T> = Box<dyn FnMut(&mut T) -> AnyEffect<T>>;
 
 struct AppState<T> {
     main_context: gtk4::glib::MainContext,
-    builder: UiBuilder<T>,
-    view: AnyEffect<T>,
-    state: Box<dyn Any>,
-    watcher: notify::PollWatcher,
-    context: Context,
-    css_paths: HashMap<PathBuf, gtk4::CssProvider>,
+    builder:      UiBuilder<T>,
+    view:         AnyEffect<T>,
+    state:        Box<dyn Any>,
+    watcher:      notify::PollWatcher,
+    context:      Context,
+    css_paths:    HashMap<PathBuf, gtk4::CssProvider>,
 }
 
 impl<T> AppState<T> {

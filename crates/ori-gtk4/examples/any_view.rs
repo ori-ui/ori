@@ -2,7 +2,7 @@ use ori_gtk4::prelude::*;
 
 struct Data {
     toggle: bool,
-    text: String,
+    text:   String,
 }
 
 fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
@@ -37,7 +37,7 @@ fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
 fn main() {
     let data = Data {
         toggle: false,
-        text: String::new(),
+        text:   String::new(),
     };
 
     App::new().run(data, ui).unwrap();

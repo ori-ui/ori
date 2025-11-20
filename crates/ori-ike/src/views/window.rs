@@ -1,6 +1,10 @@
-use ike::Windows as _;
+use ike::AnyWidgetId;
 
 use crate::{Context, View};
+
+pub fn window<V>(content: V) -> Window<V> {
+    Window { content }
+}
 
 pub struct Window<V> {
     content: V,
@@ -12,45 +16,52 @@ where
     V: View<T>,
 {
     type Element = ori::NoElement;
-    type State = (ike::WindowId, V::State);
+    type State = (ike::WindowId, V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (element, state) = self.content.build(cx, data);
+        let (content, state) = self.content.build(cx, data);
 
-        let window = cx.windows.create();
-        window.set_content(element);
+        let window = cx.app.create_window(content.upcast());
 
         let id = window.id();
-        (ori::NoElement, (id, state))
+        (ori::NoElement, (id, content, state))
     }
 
     fn rebuild(
         &mut self,
         _element: &mut Self::Element,
-        _state: &mut Self::State,
-        _cx: &mut Context,
-        _data: &mut T,
-        _old: &mut Self,
+        (_, content, state): &mut Self::State,
+        cx: &mut Context,
+        data: &mut T,
+        old: &mut Self,
     ) {
+        self.content.rebuild(
+            content,
+            state,
+            cx,
+            data,
+            &mut old.content,
+        );
     }
 
     fn teardown(
         &mut self,
         _element: Self::Element,
-        _state: Self::State,
-        _cx: &mut Context,
+        (window, _, _): Self::State,
+        cx: &mut Context,
         _data: &mut T,
     ) {
+        cx.app.remove_window(window);
     }
 
     fn event(
         &mut self,
         _element: &mut Self::Element,
-        _state: &mut Self::State,
-        _cx: &mut Context,
-        _data: &mut T,
-        _event: &mut ori::Event,
+        (_, content, state): &mut Self::State,
+        cx: &mut Context,
+        data: &mut T,
+        event: &mut ori::Event,
     ) -> ori::Action {
-        ori::Action::new()
+        self.content.event(content, state, cx, data, event)
     }
 }

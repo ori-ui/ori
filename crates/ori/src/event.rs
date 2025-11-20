@@ -10,8 +10,8 @@ use std::{
 /// [`View::event`](crate::View::event) for more information.
 pub struct Event {
     target: Option<Key>,
-    item: Option<Box<dyn Any + Send>>,
-    name: &'static str,
+    item:   Option<Box<dyn Any + Send>>,
+    name:   &'static str,
 }
 
 impl Event {
@@ -19,8 +19,8 @@ impl Event {
     pub fn new<T: Any + Send>(item: T, target: impl Into<Option<Key>>) -> Self {
         Self {
             target: target.into(),
-            item: Some(Box::new(item)),
-            name: std::any::type_name::<T>(),
+            item:   Some(Box::new(item)),
+            name:   std::any::type_name::<T>(),
         }
     }
 

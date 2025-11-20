@@ -1,1 +1,2 @@
 fn_call_width = 40
+struct_field_align_threshold = 30

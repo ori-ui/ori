@@ -98,7 +98,7 @@ pub enum Align {
 }
 
 pub struct Prop<V> {
-    content: V,
+    content:  V,
     property: Property,
 }
 

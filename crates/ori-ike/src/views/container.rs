@@ -149,8 +149,8 @@ where
             &mut old.content,
         );
 
-        if !cx.is_parent(&element, &content) {
-            ike::widgets::Container::set_child(cx, *element, content);
+        if !cx.is_parent(*element, *content) {
+            ike::widgets::Container::set_child(cx, *element, *content);
         }
 
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
@@ -206,8 +206,8 @@ where
     ) -> ori::Action {
         let action = self.content.event(content, state, cx, data, event);
 
-        if !cx.is_parent(&element, &content) {
-            ike::widgets::Container::set_child(cx, *element, content);
+        if !cx.is_parent(*element, *content) {
+            ike::widgets::Container::set_child(cx, *element, *content);
         }
 
         action

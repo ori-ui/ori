@@ -1,5 +1,5 @@
 use ike::{
-    AnyWidgetId, BuildCx, CastWidgetId,
+    AnyWidgetId, BuildCx,
     widgets::{Align, Axis, Justify},
 };
 use ori::ElementSeq;
@@ -258,7 +258,7 @@ where
 
 impl<S> ori::Super<Context, S> for Flex<ike::WidgetId>
 where
-    S: AnyWidgetId + CastWidgetId,
+    S: AnyWidgetId,
 {
     fn upcast(_cx: &mut Context, sub: S) -> Self {
         Flex {
@@ -279,7 +279,7 @@ where
 
 impl<S> ori::Super<Context, Flex<S>> for Flex<ike::WidgetId>
 where
-    S: AnyWidgetId + CastWidgetId,
+    S: AnyWidgetId,
 {
     fn upcast(_cx: &mut Context, sub: Flex<S>) -> Self {
         Self {

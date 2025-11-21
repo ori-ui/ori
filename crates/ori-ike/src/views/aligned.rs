@@ -48,8 +48,8 @@ where
             &mut old.content,
         );
 
-        if !cx.is_parent(*element, &content) {
-            ike::widgets::Aligned::set_child(cx, *element, content);
+        if !cx.is_parent(*element, *content) {
+            ike::widgets::Aligned::set_child(cx, *element, *content);
         }
 
         if self.x != old.x || self.y != old.y {
@@ -78,8 +78,8 @@ where
     ) -> ori::Action {
         let action = self.content.event(content, state, cx, data, event);
 
-        if !cx.is_parent(*element, &content) {
-            ike::widgets::Aligned::set_child(cx, *element, content);
+        if !cx.is_parent(*element, *content) {
+            ike::widgets::Aligned::set_child(cx, *element, *content);
         }
 
         action

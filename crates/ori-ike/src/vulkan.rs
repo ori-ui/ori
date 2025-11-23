@@ -109,6 +109,7 @@ pub(crate) struct VulkanWindow {
     skia_context:     skia_safe::gpu::DirectContext,
     surface:          vk::SurfaceKHR,
     capabilities:     vk::SurfaceCapabilitiesKHR,
+    present_mode:     vk::PresentModeKHR,
     format:           vk::Format,
     swapchain:        vk::SwapchainKHR,
     pre_transform:    vk::SurfaceTransformFlagsKHR,
@@ -201,10 +202,25 @@ impl VulkanWindow {
         };
 
         let instance = ash::khr::surface::Instance::new(&context.entry, &context.instance);
+
         let capabilities = unsafe {
             instance
                 .get_physical_device_surface_capabilities(context.physical, surface)
                 .unwrap()
+        };
+
+        let present_modes = unsafe {
+            instance
+                .get_physical_device_surface_present_modes(context.physical, surface)
+                .unwrap()
+        };
+
+        let present_mode = if present_modes.contains(&vk::PresentModeKHR::MAILBOX) {
+            vk::PresentModeKHR::MAILBOX
+        } else if present_modes.contains(&vk::PresentModeKHR::IMMEDIATE) {
+            vk::PresentModeKHR::IMMEDIATE
+        } else {
+            vk::PresentModeKHR::FIFO
         };
 
         let format = unsafe {
@@ -245,6 +261,7 @@ impl VulkanWindow {
             skia_context,
             surface,
             capabilities,
+            present_mode,
             format,
             swapchain: vk::SwapchainKHR::null(),
             pre_transform: capabilities.current_transform,
@@ -273,9 +290,7 @@ impl VulkanWindow {
 
         let device = ash::khr::swapchain::Device::new(&self.instance, &self.device);
 
-        unsafe {
-            device.destroy_swapchain(self.swapchain, None);
-        }
+        unsafe { device.destroy_swapchain(self.swapchain, None) };
 
         let swapchain_info = vk::SwapchainCreateInfoKHR::default()
             .surface(self.surface)
@@ -284,11 +299,11 @@ impl VulkanWindow {
             .image_format(self.format)
             .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
             .image_extent(vk::Extent2D { width, height })
-            .image_usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
+            .image_usage(vk::ImageUsageFlags::TRANSFER_DST)
             .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
             .pre_transform(self.pre_transform)
             .composite_alpha(self.composite_alpha)
-            .present_mode(vk::PresentModeKHR::MAILBOX);
+            .present_mode(self.present_mode);
 
         self.swapchain = unsafe { device.create_swapchain(&swapchain_info, None).unwrap() };
         self.swapchain_images = unsafe { device.get_swapchain_images(self.swapchain).unwrap() };

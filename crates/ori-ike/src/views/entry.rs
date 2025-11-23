@@ -1,16 +1,16 @@
 use ike::{
-    BuildCx, Color, FontStretch, FontStyle, FontWeight, Paragraph, TextAlign, TextStyle, TextWrap,
-    widgets::{NewlineBehaviour, SubmitBehaviour},
+    BorderWidth, BuildCx, Color, CornerRadius, FontStretch, FontStyle, FontWeight, Padding,
+    Paragraph, TextAlign, TextStyle, TextWrap, widgets::NewlineBehaviour,
 };
 use ori::{AsyncContext, ProviderContext, Proxy};
 
 use crate::{Context, Palette, views::TextTheme};
 
-pub fn text_area<T>() -> TextArea<T> {
-    TextArea::new()
+pub fn entry<T>() -> Entry<T> {
+    Entry::new()
 }
 
-pub struct TextArea<T> {
+pub struct Entry<T> {
     text:         Option<String>,
     font_size:    Option<f32>,
     font_family:  Option<String>,
@@ -22,11 +22,18 @@ pub struct TextArea<T> {
     wrap:         Option<TextWrap>,
     color:        Option<Color>,
 
+    min_width:         f32,
+    max_width:         f32,
+    padding:           Padding,
+    border_width:      BorderWidth,
+    corner_radius:     CornerRadius,
+    background_color:  Option<Color>,
+    border_color:      Option<Color>,
+    focus_color:       Option<Color>,
     cursor_color:      Option<Color>,
     selection_color:   Option<Color>,
     blink_rate:        f32,
     newline_behaviour: NewlineBehaviour,
-    submit_behaviour:  SubmitBehaviour,
 
     #[allow(clippy::type_complexity)]
     on_change: Box<dyn FnMut(&mut T, String) -> ori::Action>,
@@ -34,13 +41,13 @@ pub struct TextArea<T> {
     on_submit: Box<dyn FnMut(&mut T, String) -> ori::Action>,
 }
 
-impl<T> Default for TextArea<T> {
+impl<T> Default for Entry<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> TextArea<T> {
+impl<T> Entry<T> {
     pub fn new() -> Self {
         Self {
             text:         None,
@@ -54,11 +61,18 @@ impl<T> TextArea<T> {
             wrap:         None,
             color:        None,
 
+            min_width:         100.0,
+            max_width:         f32::INFINITY,
+            padding:           Padding::all(8.0),
+            border_width:      BorderWidth::all(1.0),
+            corner_radius:     CornerRadius::all(8.0),
+            background_color:  None,
+            border_color:      None,
+            focus_color:       None,
             cursor_color:      None,
             selection_color:   None,
             blink_rate:        5.0,
-            newline_behaviour: NewlineBehaviour::Enter,
-            submit_behaviour:  SubmitBehaviour::FocusNext,
+            newline_behaviour: NewlineBehaviour::Never,
 
             on_change: Box::new(|_, _| ori::Action::new()),
             on_submit: Box::new(|_, _| ori::Action::new()),
@@ -115,6 +129,46 @@ impl<T> TextArea<T> {
         self
     }
 
+    pub fn min_width(mut self, min_width: f32) -> Self {
+        self.min_width = min_width;
+        self
+    }
+
+    pub fn max_width(mut self, max_width: f32) -> Self {
+        self.max_width = max_width;
+        self
+    }
+
+    pub fn padding(mut self, padding: Padding) -> Self {
+        self.padding = padding;
+        self
+    }
+
+    pub fn border_width(mut self, border_width: BorderWidth) -> Self {
+        self.border_width = border_width;
+        self
+    }
+
+    pub fn corner_radius(mut self, corner_radius: CornerRadius) -> Self {
+        self.corner_radius = corner_radius;
+        self
+    }
+
+    pub fn border_color(mut self, color: Color) -> Self {
+        self.border_color = Some(color);
+        self
+    }
+
+    pub fn background_color(mut self, color: Color) -> Self {
+        self.background_color = Some(color);
+        self
+    }
+
+    pub fn focus_color(mut self, color: Color) -> Self {
+        self.focus_color = Some(color);
+        self
+    }
+
     pub fn selection_color(mut self, color: Color) -> Self {
         self.selection_color = Some(color);
         self
@@ -135,11 +189,6 @@ impl<T> TextArea<T> {
         self
     }
 
-    pub fn submit_behaviour(mut self, behaviour: SubmitBehaviour) -> Self {
-        self.submit_behaviour = behaviour;
-        self
-    }
-
     pub fn on_change<A>(mut self, mut on_change: impl FnMut(&mut T, String) -> A + 'static) -> Self
     where
         A: ori::IntoAction,
@@ -157,7 +206,7 @@ impl<T> TextArea<T> {
     }
 }
 
-impl<T> TextArea<T> {
+impl<T> Entry<T> {
     fn build_paragraph(&self, text: &str, palette: &Palette, theme: &TextTheme) -> Paragraph {
         let style = TextStyle {
             font_size:    self.font_size.unwrap_or(theme.font_size),
@@ -186,14 +235,14 @@ impl<T> TextArea<T> {
     }
 }
 
-enum TextAreaEvent {
+enum EntryEvent {
     Change(String),
     Submit(String),
 }
 
-impl<T> ori::ViewMarker for TextArea<T> {}
-impl<T> ori::View<Context, T> for TextArea<T> {
-    type Element = ike::WidgetId<ike::widgets::TextArea>;
+impl<T> ori::ViewMarker for Entry<T> {}
+impl<T> ori::View<Context, T> for Entry<T> {
+    type Element = ike::WidgetId<ike::widgets::Entry>;
     type State = ori::ViewId;
 
     fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
@@ -203,36 +252,47 @@ impl<T> ori::View<Context, T> for TextArea<T> {
         let text = self.text.as_deref().unwrap_or("");
         let paragraph = self.build_paragraph(text, &palette, &theme);
 
-        let element = ike::widgets::TextArea::new(cx, paragraph, true);
+        let element = ike::widgets::Entry::new(cx, paragraph);
 
+        let background_color = self.background_color.unwrap_or_else(|| palette.surface(-1));
+        let border_color = self.border_color.unwrap_or(palette.outline);
+        let focus_color = self.focus_color.unwrap_or(palette.info);
         let cursor_color = self.cursor_color.unwrap_or(palette.contrast);
         let selection_color = self.selection_color.unwrap_or(palette.info);
 
-        ike::widgets::TextArea::set_cursor_color(cx, element, cursor_color);
-        ike::widgets::TextArea::set_selection_color(cx, element, selection_color);
-        ike::widgets::TextArea::set_blink_rate(cx, element, self.blink_rate);
-        ike::widgets::TextArea::set_newline_behaviour(cx, element, self.newline_behaviour);
+        ike::widgets::Entry::set_min_width(cx, element, self.min_width);
+        ike::widgets::Entry::set_max_width(cx, element, self.max_width);
+        ike::widgets::Entry::set_padding(cx, element, self.padding);
+        ike::widgets::Entry::set_border_width(cx, element, self.border_width);
+        ike::widgets::Entry::set_corner_radius(cx, element, self.corner_radius);
+        ike::widgets::Entry::set_background_color(cx, element, background_color);
+        ike::widgets::Entry::set_border_color(cx, element, border_color);
+        ike::widgets::Entry::set_focus_color(cx, element, focus_color);
+        ike::widgets::Entry::set_cursor_color(cx, element, cursor_color);
+        ike::widgets::Entry::set_selection_color(cx, element, selection_color);
+        ike::widgets::Entry::set_blink_rate(cx, element, self.blink_rate);
+        ike::widgets::Entry::set_newline_behaviour(cx, element, self.newline_behaviour);
 
         let id = ori::ViewId::next();
         let proxy = cx.proxy();
 
-        ike::widgets::TextArea::set_on_change(cx, element, {
+        ike::widgets::Entry::set_on_change(cx, element, {
             let proxy = proxy.clone();
 
             move |text| {
                 proxy.event(ori::Event::new(
-                    TextAreaEvent::Change(text.into()),
+                    EntryEvent::Change(text.into()),
                     id,
                 ))
             }
         });
 
-        ike::widgets::TextArea::set_on_submit(cx, element, {
+        ike::widgets::Entry::set_on_submit(cx, element, {
             let proxy = proxy.clone();
 
             move |text| {
                 proxy.event(ori::Event::new(
-                    TextAreaEvent::Submit(text.into()),
+                    EntryEvent::Submit(text.into()),
                     id,
                 ))
             }
@@ -244,7 +304,7 @@ impl<T> ori::View<Context, T> for TextArea<T> {
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        _state: &mut Self::State,
+        _id: &mut Self::State,
         cx: &mut Context,
         _data: &mut T,
         old: &mut Self,
@@ -267,35 +327,70 @@ impl<T> ori::View<Context, T> for TextArea<T> {
             let text = self
                 .text
                 .as_deref()
-                .unwrap_or_else(|| ike::widgets::TextArea::get_text(cx, *element));
+                .unwrap_or_else(|| ike::widgets::Entry::get_text(cx, *element));
 
             let paragraph = self.build_paragraph(text, &palette, &theme);
-            ike::widgets::TextArea::set_paragraph(cx, *element, paragraph);
+            ike::widgets::Entry::set_paragraph(cx, *element, paragraph);
+        }
+
+        if self.min_width != old.min_width {
+            ike::widgets::Entry::set_min_width(cx, *element, self.min_width);
+        }
+
+        if self.max_width != old.max_width {
+            ike::widgets::Entry::set_max_width(cx, *element, self.max_width);
+        }
+
+        if self.padding != old.padding {
+            ike::widgets::Entry::set_padding(cx, *element, self.padding);
+        }
+
+        if self.border_width != old.border_width {
+            ike::widgets::Entry::set_border_width(cx, *element, self.border_width);
+        }
+
+        if self.corner_radius != old.corner_radius {
+            ike::widgets::Entry::set_corner_radius(cx, *element, self.corner_radius);
+        }
+
+        if self.background_color != old.background_color {
+            let background_color = self.background_color.unwrap_or_else(|| palette.surface(-1));
+            ike::widgets::Entry::set_background_color(cx, *element, background_color);
+        }
+
+        if self.border_color != old.border_color {
+            let border_color = self.border_color.unwrap_or(palette.outline);
+            ike::widgets::Entry::set_border_color(cx, *element, border_color);
+        }
+
+        if self.focus_color != old.focus_color {
+            let focus_color = self.focus_color.unwrap_or(palette.info);
+            ike::widgets::Entry::set_focus_color(cx, *element, focus_color);
         }
 
         if self.cursor_color != old.cursor_color {
             let cursor_color = self.cursor_color.unwrap_or(palette.contrast);
-            ike::widgets::TextArea::set_cursor_color(cx, *element, cursor_color);
+            ike::widgets::Entry::set_cursor_color(cx, *element, cursor_color);
         }
 
         if self.selection_color != old.selection_color {
             let selection_color = self.selection_color.unwrap_or(palette.info);
-            ike::widgets::TextArea::set_selection_color(cx, *element, selection_color);
+            ike::widgets::Entry::set_selection_color(cx, *element, selection_color);
         }
 
         if self.blink_rate != old.blink_rate {
-            ike::widgets::TextArea::set_blink_rate(cx, *element, self.blink_rate);
+            ike::widgets::Entry::set_blink_rate(cx, *element, self.blink_rate);
         }
 
         if self.newline_behaviour != old.newline_behaviour {
-            ike::widgets::TextArea::set_newline_behaviour(cx, *element, self.newline_behaviour);
+            ike::widgets::Entry::set_newline_behaviour(cx, *element, self.newline_behaviour);
         }
     }
 
     fn teardown(
         &mut self,
         element: Self::Element,
-        _state: Self::State,
+        _id: Self::State,
         cx: &mut Context,
         _data: &mut T,
     ) {
@@ -311,8 +406,8 @@ impl<T> ori::View<Context, T> for TextArea<T> {
         event: &mut ori::Event,
     ) -> ori::Action {
         match event.take_targeted(*id) {
-            Some(TextAreaEvent::Change(text)) => (self.on_change)(data, text),
-            Some(TextAreaEvent::Submit(text)) => (self.on_submit)(data, text),
+            Some(EntryEvent::Change(text)) => (self.on_change)(data, text),
+            Some(EntryEvent::Submit(text)) => (self.on_submit)(data, text),
             None => ori::Action::new(),
         }
     }

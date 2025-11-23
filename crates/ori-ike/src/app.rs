@@ -1,30 +1,15 @@
-use std::{any::Any, ffi, mem, num::NonZeroU32, time::Instant};
+use std::{any::Any, sync::mpsc::Receiver, time::Instant};
 
-use glutin::{
-    config::{Config as GlConfig, ConfigTemplateBuilder, GlConfig as _},
-    context::{ContextAttributes, PossiblyCurrentContext as GlContext},
-    display::GetGlDisplay,
-    prelude::{GlDisplay, NotCurrentGlContext, PossiblyCurrentGlContext},
-    surface::{GlSurface, Surface, SurfaceAttributesBuilder, WindowSurface},
-};
-use glutin_winit::DisplayBuilder;
 use ori::AsyncContext;
-use skia_safe::gpu::gl::FramebufferInfo;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
     event::{ElementState, MouseButton, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
-    raw_window_handle::HasWindowHandle,
     window::{Window, WindowId},
 };
 
-use crate::{
-    Context, Effect,
-    context::Event,
-    key::convert_winit_key,
-    skia::{SkiaCanvas, SkiaFonts},
-};
+use crate::{Context, Effect, context::Event, key::convert_winit_key};
 
 pub struct App {}
 
@@ -46,6 +31,9 @@ impl App {
     {
         let event_loop = EventLoop::with_user_event().build().unwrap();
 
+        #[cfg(feature = "vulkan")]
+        let vulkan = unsafe { crate::vulkan::VulkanContext::new(&event_loop) };
+
         let rt;
         let _rt_guard = if tokio::runtime::Handle::try_current().is_err() {
             rt = Some(tokio::runtime::Runtime::new().unwrap());
@@ -59,11 +47,15 @@ impl App {
         let mut build: UiBuilder<T> = Box::new(move |data| Box::new(ui(data)));
         let view = build(data);
 
-        let fonts = SkiaFonts::new();
+        #[cfg(feature = "vulkan")]
+        let fonts = crate::skia::SkiaFonts::new();
+
+        let (sender, receiver) = std::sync::mpsc::channel();
         let context = Context {
-            app:      ike::App::new(),
-            proxy:    event_loop.create_proxy(),
+            app: ike::App::new(),
+            proxy: event_loop.create_proxy(),
             contexts: Vec::new(),
+            sender,
         };
 
         let mut state = AppState {
@@ -74,11 +66,15 @@ impl App {
             state: None,
 
             runtime,
+            receiver,
 
+            #[cfg(feature = "vulkan")]
             fonts,
             context,
             windows: Vec::new(),
-            gl_state: None,
+
+            #[cfg(feature = "vulkan")]
+            vulkan,
         };
 
         event_loop.run_app(&mut state).unwrap();
@@ -92,38 +88,33 @@ struct AppState<'a, T> {
     view:  AnyEffect<T>,
     state: Option<Box<dyn Any>>,
 
-    runtime: tokio::runtime::Handle,
+    runtime:  tokio::runtime::Handle,
+    receiver: Receiver<Event>,
 
-    fonts:    SkiaFonts,
-    context:  Context,
-    windows:  Vec<WindowState>,
-    gl_state: Option<GlState>,
+    #[cfg(feature = "vulkan")]
+    fonts:   crate::skia::SkiaFonts,
+    context: Context,
+    windows: Vec<WindowState>,
+
+    #[cfg(feature = "vulkan")]
+    vulkan: crate::vulkan::VulkanContext,
 }
 
 struct WindowState {
-    fb_info:      FramebufferInfo,
-    skia_surface: skia_safe::Surface,
-    skia_context: skia_safe::gpu::DirectContext,
-    gl_surface:   Surface<WindowSurface>,
-
     animate: Option<Instant>,
+
+    #[cfg(feature = "vulkan")]
+    vulkan: crate::vulkan::VulkanWindow,
 
     id:     ike::WindowId,
     window: Window,
 }
 
-struct GlState {
-    config:  GlConfig,
-    context: GlContext,
-}
-
-impl<T> ApplicationHandler<Event> for AppState<'_, T> {
+impl<T> ApplicationHandler for AppState<'_, T> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.state.is_some() {
             return;
         }
-
-        self.create_gl_context(event_loop);
 
         let (_, state) = ori::View::build(
             &mut self.view,
@@ -157,38 +148,42 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
                     window.animate = Some(Instant::now());
                 }
 
-                let gl = self.gl_state.as_ref().unwrap();
-                gl.context.make_current(&window.gl_surface).unwrap();
+                #[cfg(feature = "vulkan")]
+                let new_window_size = unsafe {
+                    let scale = window.window.scale_factor();
 
-                let ike = self.context.app.get_window(window.id).unwrap();
+                    window.vulkan.draw(|canvas| {
+                        let ike = self.context.app.get_window(window.id).unwrap();
 
-                let scale = window.window.scale_factor();
-                let canvas = window.skia_surface.canvas();
-                canvas.clear(skia_safe::Color::from_argb(
-                    f32::round(ike.color.a * 255.0) as u8,
-                    f32::round(ike.color.r * 255.0) as u8,
-                    f32::round(ike.color.g * 255.0) as u8,
-                    f32::round(ike.color.b * 255.0) as u8,
-                ));
-                canvas.save();
-                canvas.scale((scale as f32, scale as f32));
+                        canvas.reset_matrix();
+                        canvas.clear(skia_safe::Color::from_argb(
+                            f32::round(ike.color.a * 255.0) as u8,
+                            f32::round(ike.color.r * 255.0) as u8,
+                            f32::round(ike.color.g * 255.0) as u8,
+                            f32::round(ike.color.b * 255.0) as u8,
+                        ));
+                        canvas.scale((scale as f32, scale as f32));
 
-                let mut skia_canvas = SkiaCanvas {
-                    fonts: &mut self.fonts,
-                    canvas,
+                        let mut skia_canvas = crate::skia::SkiaCanvas {
+                            fonts: &mut self.fonts,
+                            canvas,
+                        };
+
+                        self.context.app.draw(window.id, &mut skia_canvas)
+                    })
                 };
 
-                self.context.app.draw(window.id, &mut skia_canvas);
+                if let Some(size) = new_window_size {
+                    let size = LogicalSize::new(size.width, size.height);
 
-                canvas.restore();
-
-                window.skia_context.flush_and_submit();
-                window.gl_surface.swap_buffers(&gl.context).unwrap();
+                    window.window.set_min_inner_size(Some(size));
+                    window.window.set_max_inner_size(Some(size));
+                }
             }
 
             WindowEvent::Resized(..) | WindowEvent::ScaleFactorChanged { .. } => {
-                let gl = self.gl_state.as_ref().unwrap();
-                window.resize(gl);
+                #[cfg(feature = "vulkan")]
+                window.resize();
 
                 let scale = window.window.scale_factor();
                 let size = window.window.inner_size().to_logical(scale);
@@ -206,6 +201,10 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
 
                     _ => unreachable!(),
                 }
+            }
+
+            WindowEvent::Focused(is_focused) => {
+                self.context.app.window_focused(window.id, is_focused);
             }
 
             WindowEvent::CursorEntered { device_id } => {
@@ -297,6 +296,8 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
             _ => {}
         }
 
+        self.handle_events();
+
         for window in &mut self.windows {
             if self.context.app.window_needs_animate(window.id) && window.animate.is_none() {
                 window.window.request_redraw();
@@ -309,39 +310,8 @@ impl<T> ApplicationHandler<Event> for AppState<'_, T> {
         }
     }
 
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: Event) {
-        match event {
-            Event::Rebuild => {
-                let mut view = (self.build)(self.data);
-                ori::View::rebuild(
-                    &mut view,
-                    &mut ori::NoElement,
-                    self.state.as_mut().unwrap(),
-                    &mut self.context,
-                    self.data,
-                    &mut self.view,
-                );
-
-                self.view = view;
-            }
-
-            Event::Event(mut event) => {
-                let action = ori::View::event(
-                    &mut self.view,
-                    &mut ori::NoElement,
-                    self.state.as_mut().unwrap(),
-                    &mut self.context,
-                    self.data,
-                    &mut event,
-                );
-
-                self.context.send_action(action);
-            }
-
-            Event::Spawn(future) => {
-                self.runtime.spawn(future);
-            }
-        }
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, _event: ()) {
+        self.handle_events();
 
         for window in &self.windows {
             if self.context.app.window_needs_draw(window.id) {
@@ -355,45 +325,54 @@ type AnyEffect<T> = Box<dyn ori::AnyView<Context, T, ori::NoElement>>;
 type UiBuilder<T> = Box<dyn FnMut(&mut T) -> AnyEffect<T>>;
 
 impl<T> AppState<'_, T> {
-    fn create_gl_context(&mut self, event_loop: &ActiveEventLoop) {
-        let (_, gl_config) = DisplayBuilder::new()
-            .build(
-                event_loop,
-                ConfigTemplateBuilder::new(),
-                |configs| {
-                    configs
-                        .reduce(
-                            |acc, cfg| match cfg.num_samples() > acc.num_samples() {
-                                true => cfg,
-                                false => acc,
-                            },
-                        )
-                        .unwrap()
-                },
-            )
-            .unwrap();
+    fn handle_events(&mut self) {
+        for event in self.receiver.try_iter() {
+            match event {
+                Event::Rebuild => {
+                    let mut view = (self.build)(self.data);
+                    ori::View::rebuild(
+                        &mut view,
+                        &mut ori::NoElement,
+                        self.state.as_mut().unwrap(),
+                        &mut self.context,
+                        self.data,
+                        &mut self.view,
+                    );
 
-        let attrs = ContextAttributes::default();
+                    self.view = view;
+                }
 
-        let gl_context = unsafe {
-            gl_config
-                .display()
-                .create_context(&gl_config, &attrs)
-                .unwrap()
-                .treat_as_possibly_current()
-        };
+                Event::Event(mut event) => {
+                    let action = ori::View::event(
+                        &mut self.view,
+                        &mut ori::NoElement,
+                        self.state.as_mut().unwrap(),
+                        &mut self.context,
+                        self.data,
+                        &mut event,
+                    );
 
-        self.gl_state = Some(GlState {
-            config:  gl_config,
-            context: gl_context,
-        });
+                    self.context.send_action(action);
+                }
+
+                Event::Spawn(future) => {
+                    self.runtime.spawn(future);
+                }
+            }
+        }
     }
 
-    fn update_windows(&mut self, event_loop: &ActiveEventLoop) {
-        for window in self.context.app.windows() {
-            if !self.windows.iter().any(|w| w.id == window.id()) {
-                let gl = self.gl_state.as_ref().unwrap();
-                self.windows.push(WindowState::new(gl, event_loop, window));
+    fn update_windows(&mut self, #[allow(unused_variables)] event_loop: &ActiveEventLoop) {
+        for desc in self.context.app.windows() {
+            if let Some(window) = self.windows.iter().find(|w| w.id == desc.id()) {
+                window.update(desc);
+            } else {
+                #[cfg(feature = "vulkan")]
+                self.windows.push(WindowState::new(
+                    &mut self.vulkan,
+                    event_loop,
+                    desc,
+                ));
             }
         }
 
@@ -408,119 +387,93 @@ impl<T> AppState<'_, T> {
 }
 
 impl WindowState {
-    fn new(gl: &GlState, event_loop: &ActiveEventLoop, window: &ike::Window) -> Self {
-        let attrs = Window::default_attributes().with_inner_size(LogicalSize::new(
-            window.size.width,
-            window.size.height,
-        ));
+    #[cfg(feature = "vulkan")]
+    fn new(
+        vulkan: &mut crate::vulkan::VulkanContext,
+        event_loop: &ActiveEventLoop,
+        desc: &ike::Window,
+    ) -> Self {
+        use winit::dpi::LogicalSize;
 
-        let win = event_loop.create_window(attrs).unwrap();
-
-        let size = win.inner_size();
-
-        let handle = win.window_handle().unwrap().as_raw();
-        let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
-            handle,
-            NonZeroU32::new(size.width).unwrap_or(NonZeroU32::MIN),
-            NonZeroU32::new(size.height).unwrap_or(NonZeroU32::MIN),
-        );
-
-        let gl_surface = unsafe {
-            gl.config
-                .display()
-                .create_window_surface(&gl.config, &attrs)
-                .unwrap()
-        };
-
-        gl.context.make_current(&gl_surface).unwrap();
-
-        let interface = skia_safe::gpu::gl::Interface::new_load_with_cstr(|name| {
-            if name == c"eglGetCurrentDisplay" {
-                return std::ptr::null();
-            }
-
-            gl.config.display().get_proc_address(name)
-        })
-        .unwrap();
-
-        let mut skia_context = skia_safe::gpu::direct_contexts::make_gl(interface, None).unwrap();
-
-        let fb_info = unsafe {
-            let mut fboid: ffi::c_int = 0;
-
-            let get_intergerv = gl.config.display().get_proc_address(c"glGetIntegerv");
-            assert!(!get_intergerv.is_null());
-
-            let get_intergerv: unsafe extern "C" fn(ffi::c_uint, *mut ffi::c_int) =
-                mem::transmute(get_intergerv);
-
-            get_intergerv(0x8ca6, &mut fboid);
-
-            FramebufferInfo {
-                fboid: fboid as u32,
-                format: skia_safe::gpu::gl::Format::RGBA8.into(),
-                ..Default::default()
+        let size = match desc.sizing {
+            ike::WindowSizing::FitContent => LogicalSize::new(
+                desc.current_size().width,
+                desc.current_size().height,
+            ),
+            ike::WindowSizing::Resizable { default_size, .. } => {
+                LogicalSize::new(default_size.width, default_size.height)
             }
         };
 
-        let render_target = skia_safe::gpu::backend_render_targets::make_gl(
-            (size.width as i32, size.height as i32),
-            gl.config.num_samples() as usize,
-            gl.config.stencil_size() as usize,
-            fb_info,
-        );
+        let min_size = match desc.sizing {
+            ike::WindowSizing::FitContent => size,
+            ike::WindowSizing::Resizable { min_size, .. } => {
+                LogicalSize::new(min_size.width, min_size.height)
+            }
+        };
 
-        let skia_surface = skia_safe::gpu::surfaces::wrap_backend_render_target(
-            &mut skia_context,
-            &render_target,
-            skia_safe::gpu::SurfaceOrigin::BottomLeft,
-            skia_safe::ColorType::RGBA8888,
-            None,
-            None,
-        )
-        .unwrap();
+        let max_size = match desc.sizing {
+            ike::WindowSizing::FitContent => size,
+            ike::WindowSizing::Resizable { max_size, .. } => {
+                LogicalSize::new(max_size.width, max_size.height)
+            }
+        };
 
-        gl_surface.swap_buffers(&gl.context).unwrap();
+        let attributes = Window::default_attributes()
+            .with_title(&desc.title)
+            .with_visible(desc.visible)
+            .with_decorations(desc.decorated)
+            .with_transparent(true)
+            .with_min_inner_size(min_size)
+            .with_max_inner_size(max_size)
+            .with_inner_size(size)
+            .with_resizable(matches!(
+                desc.sizing,
+                ike::WindowSizing::Resizable { .. }
+            ));
 
-        WindowState {
-            fb_info,
-            skia_surface,
-            skia_context,
-            gl_surface,
+        let window = event_loop.create_window(attributes).unwrap();
 
+        let vulkan = unsafe { crate::vulkan::VulkanWindow::new(vulkan, &window) };
+
+        Self {
             animate: None,
-
-            id: window.id(),
-            window: win,
+            id: desc.id(),
+            vulkan,
+            window,
         }
     }
 
-    fn resize(&mut self, gl: &GlState) {
+    fn update(&self, desc: &ike::Window) {
+        if self.window.title() != desc.title {
+            self.window.set_title(&desc.title);
+        }
+
+        if let ike::WindowSizing::Resizable {
+            min_size, max_size, ..
+        } = desc.sizing
+        {
+            self.window.set_min_inner_size(Some(LogicalSize::new(
+                min_size.width,
+                min_size.height,
+            )));
+
+            self.window.set_max_inner_size(Some(LogicalSize::new(
+                max_size.width,
+                max_size.height,
+            )));
+        }
+
+        self.window.set_decorations(desc.decorated);
+        self.window.set_visible(desc.visible);
+    }
+
+    #[cfg(feature = "vulkan")]
+    fn resize(&mut self) {
         let size = self.window.inner_size();
 
-        gl.context.make_current(&self.gl_surface).unwrap();
-
-        let render_target = skia_safe::gpu::backend_render_targets::make_gl(
-            (size.width as i32, size.height as i32),
-            gl.config.num_samples() as usize,
-            gl.config.stencil_size() as usize,
-            self.fb_info,
-        );
-
-        self.skia_surface = skia_safe::gpu::surfaces::wrap_backend_render_target(
-            &mut self.skia_context,
-            &render_target,
-            skia_safe::gpu::SurfaceOrigin::BottomLeft,
-            skia_safe::ColorType::RGBA8888,
-            None,
-            None,
-        )
-        .unwrap();
-
-        self.gl_surface.resize(
-            &gl.context,
-            NonZeroU32::new(size.width).unwrap_or(NonZeroU32::MIN),
-            NonZeroU32::new(size.height).unwrap_or(NonZeroU32::MIN),
-        );
+        unsafe {
+            (self.vulkan).recreate_swapchain(size.width, size.height);
+        }
     }
 }

@@ -6,5 +6,6 @@ members = ["crates/*"]
 edition = "2024"
 
 [workspace.dependencies]
-ori      = { path = "crates/ori" }
+ori      = { path = "crates/ori"      }
 ori-gtk4 = { path = "crates/ori-gtk4" }
+ori-ike  = { path = "crates/ori-ike"  }

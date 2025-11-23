@@ -118,7 +118,7 @@ where
 
 /// [`View`] that uses context provided by [`provider`].
 pub fn using<U, C, T, V>(
-    build: impl FnOnce(&mut T, &mut U) -> V,
+    build: impl FnOnce(&mut T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
@@ -134,7 +134,7 @@ where
 
 /// [`View`] that uses context provided by [`provider`].
 pub fn try_using<U, C, T, V>(
-    build: impl FnOnce(&mut T, Option<&mut U>) -> V,
+    build: impl FnOnce(&mut T, Option<&U>) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
@@ -147,7 +147,7 @@ where
 /// [`View`] that uses context provided by [`Provider`].
 pub struct Using<F, U> {
     build:  Option<F>,
-    marker: PhantomData<fn(&mut U)>,
+    marker: PhantomData<fn(&U)>,
 }
 
 impl<F, U> Using<F, U> {
@@ -163,7 +163,7 @@ impl<F, U> Using<F, U> {
 impl<F, U> ViewMarker for Using<F, U> {}
 impl<F, U, C, T, V> View<C, T> for Using<F, U>
 where
-    F: FnOnce(&mut T, Option<&mut U>) -> V,
+    F: FnOnce(&mut T, Option<&U>) -> V,
     U: Any,
     C: ProviderContext,
     V: View<C, T>,
@@ -172,7 +172,7 @@ where
     type State = (V, V::State);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let context = cx.get_context_mut::<U>();
+        let context = cx.get_context::<U>();
 
         let build = self.build.take().unwrap();
         let mut view = build(data, context);
@@ -189,7 +189,7 @@ where
         data: &mut T,
         _old: &mut Self,
     ) {
-        let context = cx.get_context_mut::<U>();
+        let context = cx.get_context::<U>();
 
         if let Some(build) = self.build.take() {
             let mut new_view = build(data, context);

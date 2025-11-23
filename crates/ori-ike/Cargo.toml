@@ -3,14 +3,25 @@ name = "ori-ike"
 version = "0.1.0"
 edition.workspace = true
 
+[features]
+default = ["vulkan"]
+vulkan = ["dep:ash", "dep:ash-window"]
+
 [dependencies]
 ori.workspace = true
 
-glutin = "0.32"
-glutin-winit = "0.5"
+raw-window-handle = "0.6"
+
+[dependencies.ash]
+version = "0.38"
+optional = true
+
+[dependencies.ash-window]
+version = "0.13"
+optional = true
 
 [dependencies.ike]
-path = "../../../ike"
+git = "https://github.com/ori-ui/ike.git"
 
 [dependencies.tokio]
 version = "1"
@@ -23,8 +34,16 @@ features = [
   "wayland",
   "wayland-dlopen",
   "x11",
+  "rwh_06",
 ]
 
 [dependencies.skia-safe]
 version = "0.90"
-features = ["gl", "textlayout"]
+default-features = false
+features = [
+  "binary-cache",
+  "embed-icudtl",
+  "pdf",
+  "vulkan",
+  "textlayout",
+]

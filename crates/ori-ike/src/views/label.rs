@@ -6,18 +6,7 @@ use ori::ProviderContext;
 use crate::{Context, Palette, views::TextTheme};
 
 pub fn label(text: impl ToString) -> Label {
-    Label {
-        text:         text.to_string(),
-        font_size:    None,
-        font_family:  None,
-        font_weight:  None,
-        font_stretch: None,
-        font_style:   None,
-        line_height:  None,
-        align:        None,
-        wrap:         None,
-        color:        None,
-    }
+    Label::new(text)
 }
 
 pub struct Label {
@@ -34,6 +23,66 @@ pub struct Label {
 }
 
 impl Label {
+    pub fn new(text: impl ToString) -> Self {
+        Self {
+            text:         text.to_string(),
+            font_size:    None,
+            font_family:  None,
+            font_weight:  None,
+            font_stretch: None,
+            font_style:   None,
+            line_height:  None,
+            align:        None,
+            wrap:         None,
+            color:        None,
+        }
+    }
+
+    pub fn font_size(mut self, font_size: f32) -> Self {
+        self.font_size = Some(font_size);
+        self
+    }
+
+    pub fn font_family(mut self, font_family: impl ToString) -> Self {
+        self.font_family = Some(font_family.to_string());
+        self
+    }
+
+    pub fn font_weight(mut self, font_weight: FontWeight) -> Self {
+        self.font_weight = Some(font_weight);
+        self
+    }
+
+    pub fn font_stretch(mut self, font_stretch: FontStretch) -> Self {
+        self.font_stretch = Some(font_stretch);
+        self
+    }
+
+    pub fn font_style(mut self, font_style: FontStyle) -> Self {
+        self.font_style = Some(font_style);
+        self
+    }
+
+    pub fn line_height(mut self, line_height: f32) -> Self {
+        self.line_height = Some(line_height);
+        self
+    }
+
+    pub fn align(mut self, align: TextAlign) -> Self {
+        self.align = Some(align);
+        self
+    }
+
+    pub fn wrap(mut self, wrap: TextWrap) -> Self {
+        self.wrap = Some(wrap);
+        self
+    }
+
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = Some(color);
+        self
+    }
+
     fn build_paragraph(&self, palette: &Palette, theme: &TextTheme) -> Paragraph {
         let style = TextStyle {
             font_size:    self.font_size.unwrap_or(theme.font_size),
@@ -64,7 +113,7 @@ impl Label {
 
 impl ori::ViewMarker for Label {}
 impl<T> ori::View<Context, T> for Label {
-    type Element = ike::WidgetId<ike::widgets::Text>;
+    type Element = ike::WidgetId<ike::widgets::Label>;
     type State = ();
 
     fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
@@ -72,7 +121,7 @@ impl<T> ori::View<Context, T> for Label {
         let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
 
         let paragraph = self.build_paragraph(&palette, &theme);
-        let element = ike::widgets::Text::new(cx, paragraph);
+        let element = ike::widgets::Label::new(cx, paragraph);
 
         (element, ())
     }
@@ -100,7 +149,7 @@ impl<T> ori::View<Context, T> for Label {
             let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
 
             let paragraph = self.build_paragraph(&palette, &theme);
-            ike::widgets::Text::set_paragraph(cx, *element, paragraph);
+            ike::widgets::Label::set_paragraph(cx, *element, paragraph);
         }
     }
 

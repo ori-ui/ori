@@ -1,19 +1,22 @@
 use std::{
     any::{Any, TypeId},
     pin::Pin,
+    sync::mpsc::Sender,
 };
 
 use winit::event_loop::EventLoopProxy;
 
 pub struct Context {
     pub(crate) app:      ike::App,
-    pub(crate) proxy:    EventLoopProxy<Event>,
+    pub(crate) proxy:    EventLoopProxy<()>,
     pub(crate) contexts: Vec<Box<dyn Any>>,
+    pub(crate) sender:   Sender<Event>,
 }
 
 #[derive(Clone)]
 pub struct Proxy {
-    pub(crate) proxy: EventLoopProxy<Event>,
+    pub(crate) sender: Sender<Event>,
+    pub(crate) proxy:  EventLoopProxy<()>,
 }
 
 pub enum Event {
@@ -41,7 +44,8 @@ impl ori::AsyncContext for Context {
 
     fn proxy(&mut self) -> Self::Proxy {
         Proxy {
-            proxy: self.proxy.clone(),
+            sender: self.sender.clone(),
+            proxy:  self.proxy.clone(),
         }
     }
 }
@@ -74,14 +78,17 @@ impl ori::ProviderContext for Context {
 
 impl ori::Proxy for Proxy {
     fn rebuild(&self) {
-        let _ = self.proxy.send_event(Event::Rebuild);
+        let _ = self.sender.send(Event::Rebuild);
+        let _ = self.proxy.send_event(());
     }
 
     fn event(&self, event: ori::Event) {
-        let _ = self.proxy.send_event(Event::Event(event));
+        let _ = self.sender.send(Event::Event(event));
+        let _ = self.proxy.send_event(());
     }
 
     fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>) {
-        let _ = self.proxy.send_event(Event::Spawn(future));
+        let _ = self.sender.send(Event::Spawn(future));
+        let _ = self.proxy.send_event(());
     }
 }

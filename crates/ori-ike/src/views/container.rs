@@ -9,21 +9,21 @@ pub fn container<V>(content: V) -> Container<V> {
 
 #[derive(Clone, Debug)]
 pub struct ContainerTheme {
-    pub padding:       Padding,
-    pub border_width:  BorderWidth,
-    pub corner_radius: CornerRadius,
-    pub background:    Option<Color>,
-    pub border_color:  Option<Color>,
+    pub padding:          Padding,
+    pub border_width:     BorderWidth,
+    pub corner_radius:    CornerRadius,
+    pub background_color: Option<Color>,
+    pub border_color:     Option<Color>,
 }
 
 impl Default for ContainerTheme {
     fn default() -> Self {
         Self {
-            padding:       Padding::all(8.0),
-            border_width:  BorderWidth::all(1.0),
-            corner_radius: CornerRadius::all(8.0),
-            background:    None,
-            border_color:  None,
+            padding:          Padding::all(8.0),
+            border_width:     BorderWidth::all(1.0),
+            corner_radius:    CornerRadius::all(8.0),
+            background_color: None,
+            border_color:     None,
         }
     }
 }
@@ -31,11 +31,11 @@ impl Default for ContainerTheme {
 pub struct Container<V> {
     content: V,
 
-    padding:       Option<Padding>,
-    border_width:  Option<BorderWidth>,
-    corner_radius: Option<CornerRadius>,
-    background:    Option<Color>,
-    border_color:  Option<Color>,
+    padding:          Option<Padding>,
+    border_width:     Option<BorderWidth>,
+    corner_radius:    Option<CornerRadius>,
+    background_color: Option<Color>,
+    border_color:     Option<Color>,
 }
 
 impl<V> Container<V> {
@@ -46,7 +46,7 @@ impl<V> Container<V> {
             padding: None,
             border_width: None,
             corner_radius: None,
-            background: None,
+            background_color: None,
             border_color: None,
         }
     }
@@ -66,8 +66,8 @@ impl<V> Container<V> {
         self
     }
 
-    pub fn background(mut self, color: Color) -> Self {
-        self.background = Some(color);
+    pub fn background_color(mut self, color: Color) -> Self {
+        self.background_color = Some(color);
         self
     }
 
@@ -88,9 +88,9 @@ impl<V> Container<V> {
         self.corner_radius.unwrap_or(theme.corner_radius)
     }
 
-    fn get_background(&self, theme: &ContainerTheme, palette: &Palette) -> Color {
-        self.background
-            .unwrap_or_else(|| theme.background.unwrap_or(palette.surface))
+    fn get_background_color(&self, theme: &ContainerTheme, palette: &Palette) -> Color {
+        self.background_color
+            .unwrap_or_else(|| theme.background_color.unwrap_or(palette.surface))
     }
 
     fn get_border_color(&self, theme: &ContainerTheme, palette: &Palette) -> Color {
@@ -121,7 +121,7 @@ where
         let padding = Self::get_padding(self, &theme);
         let border_width = Self::get_border_width(self, &theme);
         let corner_radius = Self::get_corner_radius(self, &theme);
-        let background = Self::get_background(self, &theme, &palette);
+        let background = Self::get_background_color(self, &theme, &palette);
         let border_color = Self::get_border_color(self, &theme, &palette);
 
         ike::widgets::Container::set_padding(cx, element, padding);
@@ -174,8 +174,8 @@ where
             ike::widgets::Container::set_corner_radius(cx, *element, corner_radius);
         }
 
-        if self.background != old.background {
-            let background = Self::get_background(self, &theme, &palette);
+        if self.background_color != old.background_color {
+            let background = Self::get_background_color(self, &theme, &palette);
             ike::widgets::Container::set_background(cx, *element, background);
         }
 

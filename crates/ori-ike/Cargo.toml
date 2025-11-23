@@ -21,7 +21,8 @@ version = "0.13"
 optional = true
 
 [dependencies.ike]
-git = "https://github.com/ori-ui/ike.git"
+#git = "https://github.com/ori-ui/ike.git"
+path = "../../../ike"
 
 [dependencies.tokio]
 version = "1"

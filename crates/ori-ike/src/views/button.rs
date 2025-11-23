@@ -164,10 +164,12 @@ where
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (content, state) = self.content.build(cx, data);
 
-        let element = ike::widgets::Button::new(cx, content.upcast());
-
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx.get_context::<ButtonTheme>().cloned().unwrap_or_default();
+        let proxy = cx.proxy();
+        let id = ori::ViewId::next();
+
+        let mut element = ike::widgets::Button::new(cx, content.upcast());
 
         let padding = self.get_padding(&theme);
         let border_width = self.get_border_width(&theme);
@@ -178,26 +180,23 @@ where
         let border_color = self.get_border_color(&theme, &palette);
         let focus_color = self.get_focus_color(&theme, &palette);
 
-        ike::widgets::Button::set_padding(cx, element, padding);
-        ike::widgets::Button::set_border_width(cx, element, border_width);
-        ike::widgets::Button::set_corner_radius(cx, element, corner_radius);
-        ike::widgets::Button::set_color(cx, element, color);
-        ike::widgets::Button::set_hovered_color(cx, element, hovered_color);
-        ike::widgets::Button::set_active_color(cx, element, active_color);
-        ike::widgets::Button::set_border_color(cx, element, border_color);
-        ike::widgets::Button::set_focus_color(cx, element, focus_color);
+        ike::widgets::Button::set_padding(&mut element, padding);
+        ike::widgets::Button::set_border_width(&mut element, border_width);
+        ike::widgets::Button::set_corner_radius(&mut element, corner_radius);
+        ike::widgets::Button::set_color(&mut element, color);
+        ike::widgets::Button::set_hovered_color(&mut element, hovered_color);
+        ike::widgets::Button::set_active_color(&mut element, active_color);
+        ike::widgets::Button::set_border_color(&mut element, border_color);
+        ike::widgets::Button::set_focus_color(&mut element, focus_color);
 
-        let id = ori::ViewId::next();
-        let proxy = cx.proxy();
-
-        ike::widgets::Button::set_on_click(cx, element, move || {
+        ike::widgets::Button::set_on_click(&mut element, move || {
             proxy.event(ori::Event::new(
                 ButtonEvent::Clicked,
                 id,
             ));
         });
 
-        (element, (id, content, state))
+        (element.id(), (id, content, state))
     }
 
     fn rebuild(
@@ -216,51 +215,53 @@ where
             &mut old.content,
         );
 
-        if !cx.is_parent(*element, *content) {
-            ike::widgets::Button::set_child(cx, *element, *content);
-        }
-
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx.get_context::<ButtonTheme>().cloned().unwrap_or_default();
 
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Button::set_child(&mut widget, *content);
+        }
+
         if self.padding != old.padding {
             let padding = self.get_padding(&theme);
-            ike::widgets::Button::set_padding(cx, *element, padding);
+            ike::widgets::Button::set_padding(&mut widget, padding);
         }
 
         if self.border_width != old.border_width {
             let border_width = self.get_border_width(&theme);
-            ike::widgets::Button::set_border_width(cx, *element, border_width);
+            ike::widgets::Button::set_border_width(&mut widget, border_width);
         }
 
         if self.corner_radius != old.corner_radius {
             let corner_radius = self.get_corner_radius(&theme);
-            ike::widgets::Button::set_corner_radius(cx, *element, corner_radius);
+            ike::widgets::Button::set_corner_radius(&mut widget, corner_radius);
         }
 
         if self.color != old.color {
             let color = self.get_color(&theme, &palette);
-            ike::widgets::Button::set_color(cx, *element, color);
+            ike::widgets::Button::set_color(&mut widget, color);
         }
 
         if self.hovered_color != old.hovered_color {
             let hovered_color = self.get_hovered_color(&theme, &palette);
-            ike::widgets::Button::set_hovered_color(cx, *element, hovered_color);
+            ike::widgets::Button::set_hovered_color(&mut widget, hovered_color);
         }
 
         if self.active_color != old.active_color {
             let active_color = self.get_active_color(&theme, &palette);
-            ike::widgets::Button::set_active_color(cx, *element, active_color);
+            ike::widgets::Button::set_active_color(&mut widget, active_color);
         }
 
         if self.border_color != old.border_color {
             let border_color = self.get_border_color(&theme, &palette);
-            ike::widgets::Button::set_border_color(cx, *element, border_color);
+            ike::widgets::Button::set_border_color(&mut widget, border_color);
         }
 
         if self.focus_color != old.focus_color {
             let focus_color = self.get_focus_color(&theme, &palette);
-            ike::widgets::Button::set_focus_color(cx, *element, focus_color);
+            ike::widgets::Button::set_focus_color(&mut widget, focus_color);
         }
     }
 
@@ -285,8 +286,10 @@ where
     ) -> ori::Action {
         let action = self.content.event(content, state, cx, data, event);
 
-        if !cx.is_parent(*element, *content) {
-            ike::widgets::Button::set_child(cx, *element, *content);
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Button::set_child(&mut widget, *content);
         }
 
         match event.get_targeted(*id) {

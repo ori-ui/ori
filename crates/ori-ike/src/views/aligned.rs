@@ -29,7 +29,7 @@ where
 
         let element = ike::widgets::Aligned::new(cx, self.x, self.y, content.upcast());
 
-        (element, (content, state))
+        (element.id(), (content, state))
     }
 
     fn rebuild(
@@ -48,12 +48,14 @@ where
             &mut old.content,
         );
 
-        if !cx.is_parent(*element, *content) {
-            ike::widgets::Aligned::set_child(cx, *element, *content);
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Aligned::set_child(&mut widget, *content);
         }
 
         if self.x != old.x || self.y != old.y {
-            ike::widgets::Aligned::set_alignment(cx, *element, self.x, self.y);
+            ike::widgets::Aligned::set_alignment(&mut widget, self.x, self.y);
         }
     }
 
@@ -78,8 +80,10 @@ where
     ) -> ori::Action {
         let action = self.content.event(content, state, cx, data, event);
 
-        if !cx.is_parent(*element, *content) {
-            ike::widgets::Aligned::set_child(cx, *element, *content);
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Aligned::set_child(&mut widget, *content);
         }
 
         action

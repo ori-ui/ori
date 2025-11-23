@@ -110,27 +110,27 @@ where
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (content, state) = self.content.build(cx, data);
 
-        let element = ike::widgets::Container::new(cx, content.upcast());
-
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx
             .get_context::<ContainerTheme>()
             .cloned()
             .unwrap_or_default();
 
+        let mut widget = ike::widgets::Container::new(cx, content.upcast());
+
         let padding = Self::get_padding(self, &theme);
         let border_width = Self::get_border_width(self, &theme);
         let corner_radius = Self::get_corner_radius(self, &theme);
-        let background = Self::get_background_color(self, &theme, &palette);
+        let background_color = Self::get_background_color(self, &theme, &palette);
         let border_color = Self::get_border_color(self, &theme, &palette);
 
-        ike::widgets::Container::set_padding(cx, element, padding);
-        ike::widgets::Container::set_border_width(cx, element, border_width);
-        ike::widgets::Container::set_corner_radius(cx, element, corner_radius);
-        ike::widgets::Container::set_background(cx, element, background);
-        ike::widgets::Container::set_border_color(cx, element, border_color);
+        ike::widgets::Container::set_padding(&mut widget, padding);
+        ike::widgets::Container::set_border_width(&mut widget, border_width);
+        ike::widgets::Container::set_corner_radius(&mut widget, corner_radius);
+        ike::widgets::Container::set_background_color(&mut widget, background_color);
+        ike::widgets::Container::set_border_color(&mut widget, border_color);
 
-        (element, (content, state))
+        (widget.id(), (content, state))
     }
 
     fn rebuild(
@@ -149,39 +149,41 @@ where
             &mut old.content,
         );
 
-        if !cx.is_parent(*element, *content) {
-            ike::widgets::Container::set_child(cx, *element, *content);
-        }
-
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx
             .get_context::<ContainerTheme>()
             .cloned()
             .unwrap_or_default();
 
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Container::set_child(&mut widget, *content);
+        }
+
         if self.padding != old.padding {
             let padding = Self::get_padding(self, &theme);
-            ike::widgets::Container::set_padding(cx, *element, padding);
+            ike::widgets::Container::set_padding(&mut widget, padding);
         }
 
         if self.border_width != old.border_width {
             let border_width = Self::get_border_width(self, &theme);
-            ike::widgets::Container::set_border_width(cx, *element, border_width);
+            ike::widgets::Container::set_border_width(&mut widget, border_width);
         }
 
         if self.corner_radius != old.corner_radius {
             let corner_radius = Self::get_corner_radius(self, &theme);
-            ike::widgets::Container::set_corner_radius(cx, *element, corner_radius);
+            ike::widgets::Container::set_corner_radius(&mut widget, corner_radius);
         }
 
         if self.background_color != old.background_color {
             let background = Self::get_background_color(self, &theme, &palette);
-            ike::widgets::Container::set_background(cx, *element, background);
+            ike::widgets::Container::set_background_color(&mut widget, background);
         }
 
         if self.border_color != old.border_color {
             let border_color = Self::get_border_color(self, &theme, &palette);
-            ike::widgets::Container::set_border_color(cx, *element, border_color);
+            ike::widgets::Container::set_border_color(&mut widget, border_color);
         }
     }
 
@@ -206,8 +208,10 @@ where
     ) -> ori::Action {
         let action = self.content.event(content, state, cx, data, event);
 
-        if !cx.is_parent(*element, *content) {
-            ike::widgets::Container::set_child(cx, *element, *content);
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Container::set_child(&mut widget, *content);
         }
 
         action

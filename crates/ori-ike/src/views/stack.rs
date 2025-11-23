@@ -1,5 +1,5 @@
 use ike::{
-    AnyWidgetId, BuildCx,
+    AnyWidgetId, BuildCx, WidgetMut,
     widgets::{Align, Axis, Justify},
 };
 use ori::ElementSeq;
@@ -64,19 +64,19 @@ where
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (children, states) = self.content.seq_build(cx, data);
 
-        let element = ike::widgets::Stack::new(cx);
+        let mut widget = ike::widgets::Stack::new(cx);
 
-        ike::widgets::Stack::set_axis(cx, element, self.axis);
-        ike::widgets::Stack::set_justify(cx, element, self.justify);
-        ike::widgets::Stack::set_align(cx, element, self.align);
-        ike::widgets::Stack::set_gap(cx, element, self.gap);
+        ike::widgets::Stack::set_axis(&mut widget, self.axis);
+        ike::widgets::Stack::set_justify(&mut widget, self.justify);
+        ike::widgets::Stack::set_align(&mut widget, self.align);
+        ike::widgets::Stack::set_gap(&mut widget, self.gap);
 
         for (i, child) in children.iter().enumerate() {
-            cx.add_child(element, child.content);
-            ike::widgets::Stack::set_flex(cx, element, i, child.flex, child.tight);
+            widget.add_child(child.content);
+            ike::widgets::Stack::set_flex(&mut widget, i, child.flex, child.tight);
         }
 
-        (element, (children, states))
+        (widget.id(), (children, states))
     }
 
     fn rebuild(
@@ -95,22 +95,23 @@ where
             &mut old.content,
         );
 
-        update_children(cx, *element, children);
+        let mut widget = cx.get_mut(*element);
+        update_children(&mut widget, children);
 
         if self.axis != old.axis {
-            ike::widgets::Stack::set_axis(cx, *element, self.axis);
+            ike::widgets::Stack::set_axis(&mut widget, self.axis);
         }
 
         if self.justify != old.justify {
-            ike::widgets::Stack::set_justify(cx, *element, self.justify);
+            ike::widgets::Stack::set_justify(&mut widget, self.justify);
         }
 
         if self.align != old.align {
-            ike::widgets::Stack::set_align(cx, *element, self.align);
+            ike::widgets::Stack::set_align(&mut widget, self.align);
         }
 
         if self.gap != old.gap {
-            ike::widgets::Stack::set_gap(cx, *element, self.gap);
+            ike::widgets::Stack::set_gap(&mut widget, self.gap);
         }
     }
 
@@ -135,39 +136,39 @@ where
     ) -> ori::Action {
         let action = self.content.seq_event(children, states, cx, data, event);
 
-        update_children(cx, *element, children);
+        let mut widget = cx.get_mut(*element);
+        update_children(&mut widget, children);
 
         action
     }
 }
 
 fn update_children(
-    cx: &mut impl BuildCx,
-    element: ike::WidgetId<ike::widgets::Stack>,
+    widget: &mut WidgetMut<ike::widgets::Stack>,
     children: &mut impl ElementSeq<Flex<ike::WidgetId>>,
 ) {
     for child in children.iter() {
-        if !cx.is_parent(element, child.content) {
-            cx.add_child(element, child.content);
+        if !widget.is_child(child.content) {
+            widget.add_child(child.content);
         }
     }
 
     for (i, child) in children.iter().enumerate() {
-        if cx.children(element)[i] != child.content {
-            cx.swap_children(element, i, i + 1);
+        if widget.children()[i] != child.content {
+            widget.swap_children(i, i + 1);
         }
 
-        let (flex, tight) = ike::widgets::Stack::get_flex(cx, element, i);
+        let (flex, tight) = ike::widgets::Stack::get_flex(widget, i);
 
         if child.flex != flex || child.tight != tight {
-            ike::widgets::Stack::set_flex(cx, element, i, child.flex, child.tight);
+            ike::widgets::Stack::set_flex(widget, i, child.flex, child.tight);
         }
     }
 
-    let count = cx.children(element).len();
+    let count = widget.children().len();
 
     for i in (children.count()..count).rev() {
-        cx.remove_child(element, i);
+        widget.remove_child(i);
     }
 }
 

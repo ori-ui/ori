@@ -12,6 +12,7 @@ pub fn entry<T>() -> Entry<T> {
 
 pub struct Entry<T> {
     text:         Option<String>,
+    placeholder:  String,
     font_size:    Option<f32>,
     font_family:  Option<String>,
     font_weight:  Option<FontWeight>,
@@ -51,6 +52,7 @@ impl<T> Entry<T> {
     pub fn new() -> Self {
         Self {
             text:         None,
+            placeholder:  String::from("..."),
             font_size:    None,
             font_family:  None,
             font_weight:  None,
@@ -81,6 +83,11 @@ impl<T> Entry<T> {
 
     pub fn text(mut self, text: impl Into<String>) -> Self {
         self.text = Some(text.into());
+        self
+    }
+
+    pub fn placeholder(mut self, text: impl Into<String>) -> Self {
+        self.placeholder = text.into();
         self
     }
 
@@ -233,6 +240,33 @@ impl<T> Entry<T> {
         paragraph.push(text, style);
         paragraph
     }
+
+    fn build_placeholder(&self, text: &str, palette: &Palette, theme: &TextTheme) -> Paragraph {
+        let style = TextStyle {
+            font_size:    self.font_size.unwrap_or(theme.font_size),
+            font_weight:  self.font_weight.unwrap_or(theme.font_weight),
+            font_stretch: self.font_stretch.unwrap_or(theme.font_stretch),
+            font_style:   self.font_style.unwrap_or(theme.font_style),
+
+            font_family: self
+                .font_family
+                .clone()
+                .unwrap_or_else(|| theme.font_family.clone().into_owned()),
+
+            color: self
+                .color
+                .unwrap_or_else(|| theme.color.unwrap_or(palette.contrast_low())),
+        };
+
+        let mut paragraph = Paragraph::new(
+            self.line_height.unwrap_or(theme.line_height),
+            self.align.unwrap_or(theme.align),
+            self.wrap.unwrap_or(theme.wrap),
+        );
+
+        paragraph.push(text, style);
+        paragraph
+    }
 }
 
 enum EntryEvent {
@@ -248,11 +282,14 @@ impl<T> ori::View<Context, T> for Entry<T> {
     fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+        let proxy = cx.proxy();
+        let id = ori::ViewId::next();
 
         let text = self.text.as_deref().unwrap_or("");
         let paragraph = self.build_paragraph(text, &palette, &theme);
+        let placeholder = self.build_placeholder(&self.placeholder, &palette, &theme);
 
-        let element = ike::widgets::Entry::new(cx, paragraph);
+        let mut widget = ike::widgets::Entry::new(cx, paragraph);
 
         let background_color = self.background_color.unwrap_or_else(|| palette.surface(-1));
         let border_color = self.border_color.unwrap_or(palette.outline);
@@ -260,23 +297,21 @@ impl<T> ori::View<Context, T> for Entry<T> {
         let cursor_color = self.cursor_color.unwrap_or(palette.contrast);
         let selection_color = self.selection_color.unwrap_or(palette.info);
 
-        ike::widgets::Entry::set_min_width(cx, element, self.min_width);
-        ike::widgets::Entry::set_max_width(cx, element, self.max_width);
-        ike::widgets::Entry::set_padding(cx, element, self.padding);
-        ike::widgets::Entry::set_border_width(cx, element, self.border_width);
-        ike::widgets::Entry::set_corner_radius(cx, element, self.corner_radius);
-        ike::widgets::Entry::set_background_color(cx, element, background_color);
-        ike::widgets::Entry::set_border_color(cx, element, border_color);
-        ike::widgets::Entry::set_focus_color(cx, element, focus_color);
-        ike::widgets::Entry::set_cursor_color(cx, element, cursor_color);
-        ike::widgets::Entry::set_selection_color(cx, element, selection_color);
-        ike::widgets::Entry::set_blink_rate(cx, element, self.blink_rate);
-        ike::widgets::Entry::set_newline_behaviour(cx, element, self.newline_behaviour);
+        ike::widgets::Entry::set_placeholder(&mut widget, placeholder);
+        ike::widgets::Entry::set_min_width(&mut widget, self.min_width);
+        ike::widgets::Entry::set_max_width(&mut widget, self.max_width);
+        ike::widgets::Entry::set_padding(&mut widget, self.padding);
+        ike::widgets::Entry::set_border_width(&mut widget, self.border_width);
+        ike::widgets::Entry::set_corner_radius(&mut widget, self.corner_radius);
+        ike::widgets::Entry::set_background_color(&mut widget, background_color);
+        ike::widgets::Entry::set_border_color(&mut widget, border_color);
+        ike::widgets::Entry::set_focus_color(&mut widget, focus_color);
+        ike::widgets::Entry::set_cursor_color(&mut widget, cursor_color);
+        ike::widgets::Entry::set_selection_color(&mut widget, selection_color);
+        ike::widgets::Entry::set_blink_rate(&mut widget, self.blink_rate);
+        ike::widgets::Entry::set_newline_behaviour(&mut widget, self.newline_behaviour);
 
-        let id = ori::ViewId::next();
-        let proxy = cx.proxy();
-
-        ike::widgets::Entry::set_on_change(cx, element, {
+        ike::widgets::Entry::set_on_change(&mut widget, {
             let proxy = proxy.clone();
 
             move |text| {
@@ -287,7 +322,7 @@ impl<T> ori::View<Context, T> for Entry<T> {
             }
         });
 
-        ike::widgets::Entry::set_on_submit(cx, element, {
+        ike::widgets::Entry::set_on_submit(&mut widget, {
             let proxy = proxy.clone();
 
             move |text| {
@@ -298,7 +333,7 @@ impl<T> ori::View<Context, T> for Entry<T> {
             }
         });
 
-        (element, id)
+        (widget.id(), id)
     }
 
     fn rebuild(
@@ -310,6 +345,9 @@ impl<T> ori::View<Context, T> for Entry<T> {
         old: &mut Self,
     ) {
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
+        let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+
+        let mut widget = cx.get_mut(*element);
 
         if self.text != old.text
             || self.font_size != old.font_size
@@ -322,68 +360,73 @@ impl<T> ori::View<Context, T> for Entry<T> {
             || self.wrap != old.wrap
             || self.color != old.color
         {
-            let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+            let text = match self.text {
+                Some(ref text) => text.clone(),
+                None => ike::widgets::Entry::text_area(&widget.as_ref())
+                    .text()
+                    .to_owned(),
+            };
 
-            let text = self
-                .text
-                .as_deref()
-                .unwrap_or_else(|| ike::widgets::Entry::get_text(cx, *element));
+            let paragraph = self.build_paragraph(&text, &palette, &theme);
+            ike::widgets::Entry::set_text(&mut widget, paragraph);
+        }
 
-            let paragraph = self.build_paragraph(text, &palette, &theme);
-            ike::widgets::Entry::set_paragraph(cx, *element, paragraph);
+        if self.placeholder != old.placeholder {
+            let placeholder = self.build_placeholder(&self.placeholder, &palette, &theme);
+            ike::widgets::Entry::set_placeholder(&mut widget, placeholder);
         }
 
         if self.min_width != old.min_width {
-            ike::widgets::Entry::set_min_width(cx, *element, self.min_width);
+            ike::widgets::Entry::set_min_width(&mut widget, self.min_width);
         }
 
         if self.max_width != old.max_width {
-            ike::widgets::Entry::set_max_width(cx, *element, self.max_width);
+            ike::widgets::Entry::set_max_width(&mut widget, self.max_width);
         }
 
         if self.padding != old.padding {
-            ike::widgets::Entry::set_padding(cx, *element, self.padding);
+            ike::widgets::Entry::set_padding(&mut widget, self.padding);
         }
 
         if self.border_width != old.border_width {
-            ike::widgets::Entry::set_border_width(cx, *element, self.border_width);
+            ike::widgets::Entry::set_border_width(&mut widget, self.border_width);
         }
 
         if self.corner_radius != old.corner_radius {
-            ike::widgets::Entry::set_corner_radius(cx, *element, self.corner_radius);
+            ike::widgets::Entry::set_corner_radius(&mut widget, self.corner_radius);
         }
 
         if self.background_color != old.background_color {
             let background_color = self.background_color.unwrap_or_else(|| palette.surface(-1));
-            ike::widgets::Entry::set_background_color(cx, *element, background_color);
+            ike::widgets::Entry::set_background_color(&mut widget, background_color);
         }
 
         if self.border_color != old.border_color {
             let border_color = self.border_color.unwrap_or(palette.outline);
-            ike::widgets::Entry::set_border_color(cx, *element, border_color);
+            ike::widgets::Entry::set_border_color(&mut widget, border_color);
         }
 
         if self.focus_color != old.focus_color {
             let focus_color = self.focus_color.unwrap_or(palette.info);
-            ike::widgets::Entry::set_focus_color(cx, *element, focus_color);
+            ike::widgets::Entry::set_focus_color(&mut widget, focus_color);
         }
 
         if self.cursor_color != old.cursor_color {
             let cursor_color = self.cursor_color.unwrap_or(palette.contrast);
-            ike::widgets::Entry::set_cursor_color(cx, *element, cursor_color);
+            ike::widgets::Entry::set_cursor_color(&mut widget, cursor_color);
         }
 
         if self.selection_color != old.selection_color {
             let selection_color = self.selection_color.unwrap_or(palette.info);
-            ike::widgets::Entry::set_selection_color(cx, *element, selection_color);
+            ike::widgets::Entry::set_selection_color(&mut widget, selection_color);
         }
 
         if self.blink_rate != old.blink_rate {
-            ike::widgets::Entry::set_blink_rate(cx, *element, self.blink_rate);
+            ike::widgets::Entry::set_blink_rate(&mut widget, self.blink_rate);
         }
 
         if self.newline_behaviour != old.newline_behaviour {
-            ike::widgets::Entry::set_newline_behaviour(cx, *element, self.newline_behaviour);
+            ike::widgets::Entry::set_newline_behaviour(&mut widget, self.newline_behaviour);
         }
     }
 

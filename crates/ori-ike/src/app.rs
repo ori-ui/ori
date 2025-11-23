@@ -1,11 +1,16 @@
-use std::{any::Any, sync::mpsc::Receiver, time::Instant};
+use std::{
+    any::Any,
+    sync::mpsc::Receiver,
+    time::{Duration, Instant},
+};
 
+use ike::Size;
 use ori::AsyncContext;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, MouseButton, WindowEvent},
-    event_loop::{ActiveEventLoop, EventLoop},
+    event::{ElementState, MouseButton, StartCause, WindowEvent},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::{Window, WindowId},
 };
 
@@ -106,8 +111,10 @@ struct WindowState {
     #[cfg(feature = "vulkan")]
     vulkan: crate::vulkan::VulkanWindow,
 
-    id:     ike::WindowId,
-    window: Window,
+    id:       ike::WindowId,
+    window:   Window,
+    min_size: Size,
+    max_size: Size,
 }
 
 impl<T> ApplicationHandler for AppState<'_, T> {
@@ -138,21 +145,11 @@ impl<T> ApplicationHandler for AppState<'_, T> {
 
         match event {
             WindowEvent::RedrawRequested => {
-                if let Some(animate) = window.animate.take() {
-                    let delta_time = animate.elapsed();
-                    self.context.app.animate(window.id, delta_time);
-                }
-
-                if self.context.app.window_needs_animate(window.id) {
-                    window.window.request_redraw();
-                    window.animate = Some(Instant::now());
-                }
-
                 #[cfg(feature = "vulkan")]
                 let new_window_size = unsafe {
                     let scale = window.window.scale_factor();
 
-                    window.vulkan.draw(|canvas| {
+                    window.vulkan.draw(&window.window, |canvas| {
                         let ike = self.context.app.get_window(window.id).unwrap();
 
                         canvas.reset_matrix();
@@ -173,7 +170,7 @@ impl<T> ApplicationHandler for AppState<'_, T> {
                     })
                 };
 
-                if let Some(size) = new_window_size {
+                if let Some(size) = new_window_size.flatten() {
                     let size = LogicalSize::new(size.width, size.height);
 
                     window.window.set_min_inner_size(Some(size));
@@ -297,27 +294,18 @@ impl<T> ApplicationHandler for AppState<'_, T> {
         }
 
         self.handle_events();
+        self.update_windows(event_loop);
+    }
 
-        for window in &mut self.windows {
-            if self.context.app.window_needs_animate(window.id) && window.animate.is_none() {
-                window.window.request_redraw();
-                window.animate = Some(Instant::now());
-            }
-
-            if self.context.app.window_needs_draw(window.id) {
-                window.window.request_redraw();
-            }
+    fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
+        if let StartCause::ResumeTimeReached { .. } = cause {
+            self.update_windows(event_loop);
         }
     }
 
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, _event: ()) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: ()) {
         self.handle_events();
-
-        for window in &self.windows {
-            if self.context.app.window_needs_draw(window.id) {
-                window.window.request_redraw();
-            }
-        }
+        self.update_windows(event_loop);
     }
 }
 
@@ -364,15 +352,45 @@ impl<T> AppState<'_, T> {
 
     fn update_windows(&mut self, #[allow(unused_variables)] event_loop: &ActiveEventLoop) {
         for desc in self.context.app.windows() {
-            if let Some(window) = self.windows.iter().find(|w| w.id == desc.id()) {
-                window.update(desc);
-            } else {
-                #[cfg(feature = "vulkan")]
-                self.windows.push(WindowState::new(
-                    &mut self.vulkan,
-                    event_loop,
-                    desc,
+            match self.windows.iter_mut().find(|w| w.id == desc.id()) {
+                Some(window) => window.update(desc),
+
+                None => {
+                    #[cfg(feature = "vulkan")]
+                    self.windows.push(WindowState::new(
+                        &mut self.vulkan,
+                        event_loop,
+                        desc,
+                    ));
+                }
+            }
+        }
+
+        for window in &mut self.windows {
+            if let Some(animate) = window.animate.take() {
+                let delta_time = animate.elapsed();
+                self.context.app.animate(window.id, delta_time);
+            }
+
+            if self.context.app.window_needs_animate(window.id) {
+                let now = Instant::now();
+                window.animate = Some(now);
+
+                let refresh_time = window
+                    .window
+                    .current_monitor()
+                    .and_then(|monitor| monitor.refresh_rate_millihertz())
+                    .map_or(Duration::from_millis(10), |ms| {
+                        Duration::from_millis(ms as u64)
+                    });
+
+                event_loop.set_control_flow(ControlFlow::WaitUntil(
+                    now + refresh_time,
                 ));
+            }
+
+            if self.context.app.window_needs_draw(window.id) {
+                window.window.request_redraw();
             }
         }
 
@@ -436,15 +454,24 @@ impl WindowState {
 
         let vulkan = unsafe { crate::vulkan::VulkanWindow::new(vulkan, &window) };
 
+        let (min_size, max_size) = match desc.sizing {
+            ike::WindowSizing::FitContent => (Size::default(), Size::default()),
+            ike::WindowSizing::Resizable {
+                min_size, max_size, ..
+            } => (min_size, max_size),
+        };
+
         Self {
             animate: None,
             id: desc.id(),
             vulkan,
             window,
+            min_size,
+            max_size,
         }
     }
 
-    fn update(&self, desc: &ike::Window) {
+    fn update(&mut self, desc: &ike::Window) {
         if self.window.title() != desc.title {
             self.window.set_title(&desc.title);
         }
@@ -453,15 +480,21 @@ impl WindowState {
             min_size, max_size, ..
         } = desc.sizing
         {
-            self.window.set_min_inner_size(Some(LogicalSize::new(
-                min_size.width,
-                min_size.height,
-            )));
+            if self.min_size != min_size {
+                self.window.set_min_inner_size(Some(LogicalSize::new(
+                    min_size.width,
+                    min_size.height,
+                )));
+                self.min_size = min_size;
+            }
 
-            self.window.set_max_inner_size(Some(LogicalSize::new(
-                max_size.width,
-                max_size.height,
-            )));
+            if self.max_size != max_size {
+                self.window.set_max_inner_size(Some(LogicalSize::new(
+                    max_size.width,
+                    max_size.height,
+                )));
+                self.max_size = max_size;
+            }
         }
 
         self.window.set_decorations(desc.decorated);

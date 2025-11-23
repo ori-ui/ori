@@ -117,12 +117,12 @@ where
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (content, state) = self.content.build(cx, data);
 
-        let element = ike::widgets::Constrain::new(cx, content);
+        let mut widget = ike::widgets::Constrain::new(cx, content);
 
-        ike::widgets::Constrain::set_min_size(cx, element, self.min_size);
-        ike::widgets::Constrain::set_max_size(cx, element, self.max_size);
+        ike::widgets::Constrain::set_min_size(&mut widget, self.min_size);
+        ike::widgets::Constrain::set_max_size(&mut widget, self.max_size);
 
-        (element, (content, state))
+        (widget.id(), (content, state))
     }
 
     fn rebuild(
@@ -141,12 +141,18 @@ where
             &mut old.content,
         );
 
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Constrain::set_child(&mut widget, *content);
+        }
+
         if self.min_size != old.min_size {
-            ike::widgets::Constrain::set_min_size(cx, *element, self.min_size);
+            ike::widgets::Constrain::set_min_size(&mut widget, self.min_size);
         }
 
         if self.max_size != old.max_size {
-            ike::widgets::Constrain::set_max_size(cx, *element, self.max_size);
+            ike::widgets::Constrain::set_max_size(&mut widget, self.max_size);
         }
     }
 
@@ -163,12 +169,20 @@ where
 
     fn event(
         &mut self,
-        _element: &mut Self::Element,
+        element: &mut Self::Element,
         (content, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        self.content.event(content, state, cx, data, event)
+        let action = self.content.event(content, state, cx, data, event);
+
+        let mut widget = cx.get_mut(*element);
+
+        if !widget.is_child(*content) {
+            ike::widgets::Constrain::set_child(&mut widget, *content);
+        }
+
+        action
     }
 }

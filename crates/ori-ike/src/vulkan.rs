@@ -1,3 +1,5 @@
+use std::slice;
+
 use ash::vk::{self, Handle};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 use winit::{event_loop::EventLoop, window::Window};
@@ -32,7 +34,11 @@ impl VulkanContext {
             .api_version(vk::make_api_version(0, 1, 4, 0));
 
         let extensions = ash_window::enumerate_required_extensions(raw_display).unwrap();
-        let layers = [c"VK_LAYER_KHRONOS_validation".as_ptr()];
+        let validation_layers = [c"VK_LAYER_KHRONOS_validation"];
+        let validation_layer_names = validation_layers
+            .into_iter()
+            .map(|n| n.as_ptr())
+            .collect::<Vec<_>>();
 
         let mut instance_info = vk::InstanceCreateInfo::default()
             .application_info(&app_info)
@@ -40,17 +46,19 @@ impl VulkanContext {
 
         if cfg!(debug_assertions) {
             let is_validation_supported = unsafe {
-                entry
-                    .enumerate_instance_layer_properties()
-                    .is_ok_and(|properties| {
-                        properties
-                            .iter()
-                            .any(|p| p.layer_name_as_c_str() == Ok(c"VK_LAYER_KHRONOS_validation"))
-                    })
+                validation_layers.iter().all(|name| {
+                    entry
+                        .enumerate_instance_layer_properties()
+                        .is_ok_and(|properties| {
+                            properties
+                                .iter()
+                                .any(|p| p.layer_name_as_c_str() == Ok(*name))
+                        })
+                })
             };
 
             if is_validation_supported {
-                instance_info = instance_info.enabled_layer_names(&layers);
+                instance_info = instance_info.enabled_layer_names(&validation_layer_names);
             }
         }
 
@@ -94,39 +102,33 @@ impl VulkanContext {
 }
 
 pub(crate) struct VulkanWindow {
-    entry:           ash::Entry,
-    instance:        ash::Instance,
-    device:          ash::Device,
-    queue:           vk::Queue,
-    skia_context:    skia_safe::gpu::DirectContext,
-    surface:         vk::SurfaceKHR,
-    capabilities:    vk::SurfaceCapabilitiesKHR,
-    format:          vk::Format,
-    swapchain:       vk::SwapchainKHR,
-    pre_transform:   vk::SurfaceTransformFlagsKHR,
-    composite_alpha: vk::CompositeAlphaFlagsKHR,
-    command_pool:    vk::CommandPool,
-    command_buffer:  vk::CommandBuffer,
-    image_available: Vec<vk::Semaphore>,
-    render_finished: Vec<vk::Semaphore>,
-    in_flight:       vk::Fence,
-    images:          Vec<vk::Image>,
-    surfaces:        Vec<Option<skia_safe::Surface>>,
-    current_frame:   u32,
-    width:           u32,
-    height:          u32,
+    entry:            ash::Entry,
+    instance:         ash::Instance,
+    device:           ash::Device,
+    queue:            vk::Queue,
+    skia_context:     skia_safe::gpu::DirectContext,
+    surface:          vk::SurfaceKHR,
+    capabilities:     vk::SurfaceCapabilitiesKHR,
+    format:           vk::Format,
+    swapchain:        vk::SwapchainKHR,
+    pre_transform:    vk::SurfaceTransformFlagsKHR,
+    composite_alpha:  vk::CompositeAlphaFlagsKHR,
+    command_pool:     vk::CommandPool,
+    command_buffers:  Vec<vk::CommandBuffer>,
+    image_available:  Vec<vk::Semaphore>,
+    render_finished:  Vec<vk::Semaphore>,
+    in_flight:        Vec<vk::Fence>,
+    swapchain_images: Vec<vk::Image>,
+    skia_surfaces:    Vec<(skia_safe::Surface, vk::Image)>,
+    current_frame:    u32,
+    width:            u32,
+    height:           u32,
 }
 
 impl Drop for VulkanWindow {
     fn drop(&mut self) {
         unsafe {
-            self.surfaces.clear();
-
-            self.skia_context.flush_and_submit();
-            self.skia_context.submit(None);
-
             let _ = self.device.device_wait_idle();
-            let _ = self.device.queue_wait_idle(self.queue);
 
             let device = ash::khr::swapchain::Device::new(&self.instance, &self.device);
             device.destroy_swapchain(self.swapchain, None);
@@ -139,7 +141,11 @@ impl Drop for VulkanWindow {
                 self.device.destroy_semaphore(render_finished, None);
             }
 
-            self.device.destroy_fence(self.in_flight, None);
+            for &in_flight in &self.in_flight {
+                self.device.destroy_fence(in_flight, None);
+            }
+
+            self.skia_surfaces.clear();
             self.device.destroy_command_pool(self.command_pool, None);
 
             let instance = ash::khr::surface::Instance::new(&self.entry, &self.instance);
@@ -220,29 +226,6 @@ impl VulkanWindow {
             vk::CompositeAlphaFlagsKHR::OPAQUE
         };
 
-        let size = window.inner_size();
-        let device = ash::khr::swapchain::Device::new(&context.instance, &context.device);
-        let swapchain_info = vk::SwapchainCreateInfoKHR::default()
-            .surface(surface)
-            .min_image_count(capabilities.min_image_count.max(2))
-            .image_array_layers(1)
-            .image_format(format)
-            .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
-            .image_extent(vk::Extent2D {
-                width:  size.width,
-                height: size.height,
-            })
-            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
-            .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .pre_transform(capabilities.current_transform)
-            .composite_alpha(composite_alpha)
-            .present_mode(vk::PresentModeKHR::FIFO);
-
-        let swapchain = unsafe { device.create_swapchain(&swapchain_info, None).unwrap() };
-
-        let fence_info = vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED);
-        let in_flight = unsafe { context.device.create_fence(&fence_info, None).unwrap() };
-
         let pool_info = vk::CommandPoolCreateInfo::default()
             .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
 
@@ -253,21 +236,7 @@ impl VulkanWindow {
                 .unwrap()
         };
 
-        let buffer_info = vk::CommandBufferAllocateInfo::default()
-            .command_pool(command_pool)
-            .command_buffer_count(1)
-            .level(vk::CommandBufferLevel::PRIMARY);
-
-        let command_buffer = unsafe {
-            context
-                .device
-                .allocate_command_buffers(&buffer_info)
-                .unwrap()
-                .into_iter()
-                .next()
-                .unwrap()
-        };
-
+        let size = window.inner_size();
         let mut this = Self {
             entry: context.entry.clone(),
             instance: context.instance.clone(),
@@ -277,16 +246,16 @@ impl VulkanWindow {
             surface,
             capabilities,
             format,
-            swapchain,
+            swapchain: vk::SwapchainKHR::null(),
             pre_transform: capabilities.current_transform,
             composite_alpha,
             command_pool,
-            command_buffer,
+            command_buffers: Vec::new(),
             image_available: Vec::new(),
             render_finished: Vec::new(),
-            in_flight,
-            images: Vec::new(),
-            surfaces: Vec::new(),
+            in_flight: Vec::new(),
+            swapchain_images: Vec::new(),
+            skia_surfaces: Vec::new(),
             current_frame: 0,
             width: size.width,
             height: size.height,
@@ -298,9 +267,9 @@ impl VulkanWindow {
     }
 
     pub(crate) unsafe fn recreate_swapchain(&mut self, width: u32, height: u32) {
-        self.surfaces.clear();
-
         unsafe { self.device.device_wait_idle().unwrap() };
+
+        self.skia_surfaces.clear();
 
         let device = ash::khr::swapchain::Device::new(&self.instance, &self.device);
 
@@ -315,19 +284,28 @@ impl VulkanWindow {
             .image_format(self.format)
             .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
             .image_extent(vk::Extent2D { width, height })
-            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+            .image_usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
             .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
             .pre_transform(self.pre_transform)
             .composite_alpha(self.composite_alpha)
-            .present_mode(vk::PresentModeKHR::FIFO);
+            .present_mode(vk::PresentModeKHR::MAILBOX);
 
         self.swapchain = unsafe { device.create_swapchain(&swapchain_info, None).unwrap() };
-        self.images = unsafe { device.get_swapchain_images(self.swapchain).unwrap() };
-        self.surfaces = vec![None; self.images.len()];
+        self.swapchain_images = unsafe { device.get_swapchain_images(self.swapchain).unwrap() };
         self.width = width;
         self.height = height;
 
-        while self.image_available.len() < self.images.len() {
+        if self.command_buffers.len() < self.swapchain_images.len() {
+            let buffer_info = vk::CommandBufferAllocateInfo::default()
+                .command_pool(self.command_pool)
+                .command_buffer_count(self.swapchain_images.len() as u32)
+                .level(vk::CommandBufferLevel::PRIMARY);
+
+            self.command_buffers =
+                unsafe { self.device.allocate_command_buffers(&buffer_info).unwrap() };
+        }
+
+        while self.image_available.len() < self.swapchain_images.len() {
             let image_available = unsafe {
                 self.device
                     .create_semaphore(&Default::default(), None)
@@ -337,7 +315,7 @@ impl VulkanWindow {
             self.image_available.push(image_available);
         }
 
-        while self.render_finished.len() < self.images.len() {
+        while self.render_finished.len() < self.swapchain_images.len() {
             let render_finished = unsafe {
                 self.device
                     .create_semaphore(&Default::default(), None)
@@ -346,231 +324,220 @@ impl VulkanWindow {
 
             self.render_finished.push(render_finished);
         }
-    }
 
-    fn get_skia_surface(&mut self, index: u32) -> &mut skia_safe::Surface {
-        if self.surfaces[index as usize].is_some() {
-            return self.surfaces[index as usize].as_mut().unwrap();
+        while self.in_flight.len() < self.swapchain_images.len() {
+            let fence_info = vk::FenceCreateInfo::default().flags(vk::FenceCreateFlags::SIGNALED);
+            let in_flight = unsafe { self.device.create_fence(&fence_info, None).unwrap() };
+
+            self.in_flight.push(in_flight);
         }
 
-        let (format, color_type) = match self.format {
-            vk::Format::B8G8R8A8_UNORM => (
-                skia_safe::gpu::vk::Format::B8G8R8A8_UNORM,
-                skia_safe::ColorType::BGRA8888,
-            ),
-            vk::Format::R16G16B16A16_SFLOAT => (
-                skia_safe::gpu::vk::Format::R16G16B16A16_SFLOAT,
-                skia_safe::ColorType::RGBAF16,
-            ),
-            _ => todo!(),
-        };
+        while self.skia_surfaces.len() < self.swapchain_images.len() {
+            let color_type = match self.format {
+                vk::Format::R16G16B16A16_SFLOAT => skia_safe::ColorType::RGBAF16,
+                vk::Format::B8G8R8A8_UNORM => skia_safe::ColorType::BGRA8888,
+                _ => panic!(
+                    "unsupported format: `{:?}`",
+                    self.format
+                ),
+            };
 
-        let image_info = unsafe {
-            skia_safe::gpu::vk::ImageInfo::new(
-                self.images[index as usize].as_raw() as _,
-                skia_safe::gpu::vk::Alloc::default(),
-                skia_safe::gpu::vk::ImageTiling::OPTIMAL,
-                skia_safe::gpu::vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-                format,
-                1,
+            let image_info = skia_safe::ImageInfo::new(
+                skia_safe::ISize::new(width as i32, height as i32),
+                color_type,
+                skia_safe::AlphaType::Premul,
                 None,
+            );
+
+            let mut surface = skia_safe::gpu::surfaces::render_target(
+                &mut self.skia_context,
+                skia_safe::gpu::Budgeted::Yes,
+                &image_info,
+                Some(4),
+                skia_safe::gpu::SurfaceOrigin::TopLeft,
                 None,
-                None,
+                false,
                 None,
             )
-        };
+            .unwrap();
 
-        let render_target = skia_safe::gpu::backend_render_targets::make_vk(
-            (self.width as i32, self.height as i32),
-            &image_info,
-        );
+            let target = skia_safe::gpu::surfaces::get_backend_render_target(
+                &mut surface,
+                skia_safe::surface::BackendHandleAccess::FlushRead,
+            )
+            .unwrap();
 
-        let surface = skia_safe::gpu::surfaces::wrap_backend_render_target(
-            &mut self.skia_context,
-            &render_target,
-            skia_safe::gpu::SurfaceOrigin::TopLeft,
-            color_type,
-            None,
-            None,
-        )
-        .unwrap();
+            let image = vk::Image::from_raw(*target.vulkan_image_info().unwrap().image() as _);
 
-        self.surfaces[index as usize] = Some(surface);
-        self.surfaces[index as usize].as_mut().unwrap()
+            self.skia_surfaces.push((surface, image));
+        }
     }
 
-    pub(crate) unsafe fn draw<T>(&mut self, f: impl FnOnce(&skia_safe::Canvas) -> T) -> T {
+    pub(crate) unsafe fn draw<T>(
+        &mut self,
+        window: &Window,
+        f: impl FnOnce(&skia_safe::Canvas) -> T,
+    ) -> Option<T> {
+        let command_buffer = self.command_buffers[self.current_frame as usize];
+        let image_available = self.image_available[self.current_frame as usize];
+        let in_flight = self.in_flight[self.current_frame as usize];
+
         unsafe {
+            // wait for resources to be available
             self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
+                .wait_for_fences(&[in_flight], true, u64::MAX)
                 .unwrap();
 
-            self.device.reset_fences(&[self.in_flight]).unwrap();
-        }
+            self.device.reset_fences(&[in_flight]).unwrap();
 
-        let device = ash::khr::swapchain::Device::new(&self.instance, &self.device);
+            // acquire swapchain image
+            let device = ash::khr::swapchain::Device::new(&self.instance, &self.device);
 
-        let (index, suboptimal) = unsafe {
-            device
-                .acquire_next_image(
-                    self.swapchain,
-                    u64::MAX,
-                    self.image_available[self.current_frame as usize],
-                    vk::Fence::null(),
-                )
-                .unwrap()
-        };
+            let (image_index, suboptimal) = match device.acquire_next_image(
+                self.swapchain,
+                u64::MAX,
+                image_available,
+                vk::Fence::null(),
+            ) {
+                Ok(image) => image,
+                Err(err) => {
+                    println!("err: {err:?}");
+                    return None;
+                }
+            };
 
-        if suboptimal {
-            println!("suboptimal");
-        }
+            if suboptimal {
+                println!("suboptimal");
+            }
 
-        unsafe {
-            self.transition_before(
-                self.image_available[self.current_frame as usize],
-                index,
-            )
-        };
+            let swapchain_image = self.swapchain_images[image_index as usize];
+            let render_finished = self.render_finished[image_index as usize];
 
-        let surface = self.get_skia_surface(index);
-        let canvas = surface.canvas();
+            // do rendering
+            let (surface, skia_image) = &mut self.skia_surfaces[image_index as usize];
+            let canvas = surface.canvas();
 
-        let output = f(canvas);
+            let output = f(canvas);
 
-        self.skia_context.flush_and_submit();
+            // IMPORTANT: resolve skia msaa
+            skia_safe::gpu::surfaces::resolve_msaa(surface);
+            self.skia_context.flush_and_submit();
 
-        unsafe {
-            self.transition_after(
-                self.render_finished[self.current_frame as usize],
-                index,
-            )
-        };
+            // record command buffer
+            let begin_info = vk::CommandBufferBeginInfo::default()
+                .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
 
-        let swapchains = [self.swapchain];
-        let indices = [index];
-        let semaphores = [self.render_finished[self.current_frame as usize]];
-        let present_info = vk::PresentInfoKHR::default()
-            .swapchains(&swapchains)
-            .image_indices(&indices)
-            .wait_semaphores(&semaphores);
+            self.device
+                .begin_command_buffer(command_buffer, &begin_info)
+                .unwrap();
 
-        unsafe {
+            let range = vk::ImageSubresourceRange::default()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .layer_count(1)
+                .level_count(1);
+
+            let skia_to_transfer_src = vk::ImageMemoryBarrier::default()
+                .image(*skia_image)
+                .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+                .src_access_mask(vk::AccessFlags::NONE)
+                .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
+                .subresource_range(range);
+
+            let swapchain_to_transfer_dst = vk::ImageMemoryBarrier::default()
+                .image(swapchain_image)
+                .old_layout(vk::ImageLayout::UNDEFINED)
+                .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .src_access_mask(vk::AccessFlags::TRANSFER_READ)
+                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                .subresource_range(range);
+
+            self.device.cmd_pipeline_barrier(
+                command_buffer,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[skia_to_transfer_src, swapchain_to_transfer_dst],
+            );
+
+            self.device.cmd_copy_image(
+                command_buffer,
+                *skia_image,
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                swapchain_image,
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[vk::ImageCopy::default()
+                    .src_offset(Default::default())
+                    .src_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .layer_count(1),
+                    )
+                    .dst_offset(Default::default())
+                    .dst_subresource(
+                        vk::ImageSubresourceLayers::default()
+                            .aspect_mask(vk::ImageAspectFlags::COLOR)
+                            .layer_count(1),
+                    )
+                    .extent(
+                        vk::Extent3D::default()
+                            .width(self.width)
+                            .height(self.height)
+                            .depth(1),
+                    )],
+            );
+
+            let skia_to_transfer_dst = vk::ImageMemoryBarrier::default()
+                .image(*skia_image)
+                .old_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+                .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .src_access_mask(vk::AccessFlags::TRANSFER_READ)
+                .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
+                .subresource_range(range);
+
+            let swapchain_to_present = vk::ImageMemoryBarrier::default()
+                .image(swapchain_image)
+                .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
+                .src_access_mask(vk::AccessFlags::TRANSFER_READ)
+                .dst_access_mask(vk::AccessFlags::TRANSFER_READ)
+                .subresource_range(range);
+
+            self.device.cmd_pipeline_barrier(
+                command_buffer,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::DependencyFlags::empty(),
+                &[],
+                &[],
+                &[skia_to_transfer_dst, swapchain_to_present],
+            );
+
+            self.device.end_command_buffer(command_buffer).unwrap();
+
+            let submit = vk::SubmitInfo::default()
+                .wait_semaphores(slice::from_ref(&image_available))
+                .wait_dst_stage_mask(&[vk::PipelineStageFlags::TRANSFER])
+                .command_buffers(slice::from_ref(&command_buffer))
+                .signal_semaphores(slice::from_ref(&render_finished));
+
+            self.device
+                .queue_submit(self.queue, &[submit], in_flight)
+                .unwrap();
+
+            let present_info = vk::PresentInfoKHR::default()
+                .swapchains(slice::from_ref(&self.swapchain))
+                .image_indices(slice::from_ref(&image_index))
+                .wait_semaphores(slice::from_ref(&render_finished));
+
+            window.pre_present_notify();
             device.queue_present(self.queue, &present_info).unwrap();
-        };
 
-        self.current_frame = (self.current_frame + 1) % self.images.len() as u32;
+            self.current_frame = (self.current_frame + 1) % self.swapchain_images.len() as u32;
 
-        output
-    }
-
-    unsafe fn transition_before(&self, semaphore: vk::Semaphore, image_index: u32) {
-        let begin_info = vk::CommandBufferBeginInfo::default()
-            .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
-
-        unsafe {
-            self.device
-                .begin_command_buffer(self.command_buffer, &begin_info)
-                .unwrap()
-        };
-
-        let barrier = vk::ImageMemoryBarrier::default()
-            .image(self.images[image_index as usize])
-            .src_access_mask(vk::AccessFlags::empty())
-            .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
-            .old_layout(vk::ImageLayout::UNDEFINED)
-            .new_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-            .subresource_range(vk::ImageSubresourceRange {
-                aspect_mask:      vk::ImageAspectFlags::COLOR,
-                base_mip_level:   0,
-                level_count:      1,
-                base_array_layer: 0,
-                layer_count:      1,
-            });
-
-        unsafe {
-            self.device.cmd_pipeline_barrier(
-                self.command_buffer,
-                vk::PipelineStageFlags::TOP_OF_PIPE,
-                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[barrier],
-            );
-        }
-
-        unsafe {
-            self.device.end_command_buffer(self.command_buffer).unwrap();
-        }
-
-        let buffer = [self.command_buffer];
-        let semaphores = [semaphore];
-        let submit = vk::SubmitInfo::default()
-            .command_buffers(&buffer)
-            .wait_semaphores(&semaphores)
-            .wait_dst_stage_mask(&[vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT]);
-
-        unsafe {
-            self.device
-                .queue_submit(self.queue, &[submit], self.in_flight)
-                .unwrap();
-
-            self.device
-                .wait_for_fences(&[self.in_flight], true, u64::MAX)
-                .unwrap();
-
-            self.device.reset_fences(&[self.in_flight]).unwrap();
-        }
-    }
-
-    unsafe fn transition_after(&self, semaphore: vk::Semaphore, image_index: u32) {
-        let begin_info = vk::CommandBufferBeginInfo::default()
-            .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
-
-        unsafe {
-            self.device
-                .begin_command_buffer(self.command_buffer, &begin_info)
-                .unwrap()
-        };
-
-        let barrier = vk::ImageMemoryBarrier::default()
-            .image(self.images[image_index as usize])
-            .src_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
-            .dst_access_mask(vk::AccessFlags::empty())
-            .old_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-            .new_layout(vk::ImageLayout::PRESENT_SRC_KHR)
-            .subresource_range(vk::ImageSubresourceRange {
-                aspect_mask:      vk::ImageAspectFlags::COLOR,
-                base_mip_level:   0,
-                level_count:      1,
-                base_array_layer: 0,
-                layer_count:      1,
-            });
-
-        unsafe {
-            self.device.cmd_pipeline_barrier(
-                self.command_buffer,
-                vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT,
-                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-                vk::DependencyFlags::empty(),
-                &[],
-                &[],
-                &[barrier],
-            );
-
-            self.device.end_command_buffer(self.command_buffer).unwrap();
-        }
-
-        let buffer = [self.command_buffer];
-        let semaphores = [semaphore];
-        let submit = vk::SubmitInfo::default()
-            .command_buffers(&buffer)
-            .signal_semaphores(&semaphores);
-
-        unsafe {
-            self.device
-                .queue_submit(self.queue, &[submit], self.in_flight)
-                .unwrap();
+            Some(output)
         }
     }
 }

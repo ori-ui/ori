@@ -199,24 +199,23 @@ impl<T> ori::View<Context, T> for TextArea<T> {
     fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+        let proxy = cx.proxy();
+        let id = ori::ViewId::next();
 
         let text = self.text.as_deref().unwrap_or("");
         let paragraph = self.build_paragraph(text, &palette, &theme);
 
-        let element = ike::widgets::TextArea::new(cx, paragraph, true);
+        let mut widget = ike::widgets::TextArea::new(cx, paragraph, true);
 
         let cursor_color = self.cursor_color.unwrap_or(palette.contrast);
         let selection_color = self.selection_color.unwrap_or(palette.info);
 
-        ike::widgets::TextArea::set_cursor_color(cx, element, cursor_color);
-        ike::widgets::TextArea::set_selection_color(cx, element, selection_color);
-        ike::widgets::TextArea::set_blink_rate(cx, element, self.blink_rate);
-        ike::widgets::TextArea::set_newline_behaviour(cx, element, self.newline_behaviour);
+        ike::widgets::TextArea::set_cursor_color(&mut widget, cursor_color);
+        ike::widgets::TextArea::set_selection_color(&mut widget, selection_color);
+        ike::widgets::TextArea::set_blink_rate(&mut widget, self.blink_rate);
+        ike::widgets::TextArea::set_newline_behaviour(&mut widget, self.newline_behaviour);
 
-        let id = ori::ViewId::next();
-        let proxy = cx.proxy();
-
-        ike::widgets::TextArea::set_on_change(cx, element, {
+        ike::widgets::TextArea::set_on_change(&mut widget, {
             let proxy = proxy.clone();
 
             move |text| {
@@ -227,7 +226,7 @@ impl<T> ori::View<Context, T> for TextArea<T> {
             }
         });
 
-        ike::widgets::TextArea::set_on_submit(cx, element, {
+        ike::widgets::TextArea::set_on_submit(&mut widget, {
             let proxy = proxy.clone();
 
             move |text| {
@@ -238,7 +237,7 @@ impl<T> ori::View<Context, T> for TextArea<T> {
             }
         });
 
-        (element, id)
+        (widget.id(), id)
     }
 
     fn rebuild(
@@ -250,6 +249,9 @@ impl<T> ori::View<Context, T> for TextArea<T> {
         old: &mut Self,
     ) {
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
+        let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+
+        let mut widget = cx.get_mut(*element);
 
         if self.text != old.text
             || self.font_size != old.font_size
@@ -262,33 +264,28 @@ impl<T> ori::View<Context, T> for TextArea<T> {
             || self.wrap != old.wrap
             || self.color != old.color
         {
-            let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
-
-            let text = self
-                .text
-                .as_deref()
-                .unwrap_or_else(|| ike::widgets::TextArea::get_text(cx, *element));
+            let text = self.text.as_deref().unwrap_or_else(|| widget.text());
 
             let paragraph = self.build_paragraph(text, &palette, &theme);
-            ike::widgets::TextArea::set_paragraph(cx, *element, paragraph);
+            ike::widgets::TextArea::set_text(&mut widget, paragraph);
         }
 
         if self.cursor_color != old.cursor_color {
             let cursor_color = self.cursor_color.unwrap_or(palette.contrast);
-            ike::widgets::TextArea::set_cursor_color(cx, *element, cursor_color);
+            ike::widgets::TextArea::set_cursor_color(&mut widget, cursor_color);
         }
 
         if self.selection_color != old.selection_color {
             let selection_color = self.selection_color.unwrap_or(palette.info);
-            ike::widgets::TextArea::set_selection_color(cx, *element, selection_color);
+            ike::widgets::TextArea::set_selection_color(&mut widget, selection_color);
         }
 
         if self.blink_rate != old.blink_rate {
-            ike::widgets::TextArea::set_blink_rate(cx, *element, self.blink_rate);
+            ike::widgets::TextArea::set_blink_rate(&mut widget, self.blink_rate);
         }
 
         if self.newline_behaviour != old.newline_behaviour {
-            ike::widgets::TextArea::set_newline_behaviour(cx, *element, self.newline_behaviour);
+            ike::widgets::TextArea::set_newline_behaviour(&mut widget, self.newline_behaviour);
         }
     }
 

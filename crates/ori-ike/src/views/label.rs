@@ -121,9 +121,9 @@ impl<T> ori::View<Context, T> for Label {
         let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
 
         let paragraph = self.build_paragraph(&palette, &theme);
-        let element = ike::widgets::Label::new(cx, paragraph);
+        let widget = ike::widgets::Label::new(cx, paragraph);
 
-        (element, ())
+        (widget.id(), ())
     }
 
     fn rebuild(
@@ -147,9 +147,10 @@ impl<T> ori::View<Context, T> for Label {
         {
             let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
             let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+            let mut widget = cx.get_mut(*element);
 
             let paragraph = self.build_paragraph(&palette, &theme);
-            ike::widgets::Label::set_paragraph(cx, *element, paragraph);
+            ike::widgets::Label::set_text(&mut widget, paragraph);
         }
     }
 

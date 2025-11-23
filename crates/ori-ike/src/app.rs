@@ -1,16 +1,12 @@
-use std::{
-    any::Any,
-    sync::mpsc::Receiver,
-    time::{Duration, Instant},
-};
+use std::{any::Any, sync::mpsc::Receiver, time::Instant};
 
 use ike::Size;
 use ori::AsyncContext;
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, MouseButton, StartCause, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    event::{ElementState, MouseButton, WindowEvent},
+    event_loop::{ActiveEventLoop, EventLoop},
     window::{Window, WindowId},
 };
 
@@ -297,12 +293,6 @@ impl<T> ApplicationHandler for AppState<'_, T> {
         self.update_windows(event_loop);
     }
 
-    fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
-        if let StartCause::ResumeTimeReached { .. } = cause {
-            self.update_windows(event_loop);
-        }
-    }
-
     fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: ()) {
         self.handle_events();
         self.update_windows(event_loop);
@@ -375,18 +365,7 @@ impl<T> AppState<'_, T> {
             if self.context.app.window_needs_animate(window.id) {
                 let now = Instant::now();
                 window.animate = Some(now);
-
-                let refresh_time = window
-                    .window
-                    .current_monitor()
-                    .and_then(|monitor| monitor.refresh_rate_millihertz())
-                    .map_or(Duration::from_millis(10), |ms| {
-                        Duration::from_millis(ms as u64)
-                    });
-
-                event_loop.set_control_flow(ControlFlow::WaitUntil(
-                    now + refresh_time,
-                ));
+                window.window.request_redraw();
             }
 
             if self.context.app.window_needs_draw(window.id) {

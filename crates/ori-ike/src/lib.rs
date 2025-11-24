@@ -24,7 +24,7 @@ pub mod prelude {
     pub use ike::{
         BorderWidth, Color, CornerRadius, FontStretch, FontStyle, FontWeight, Padding, TextAlign,
         TextWrap,
-        widgets::{NewlineBehaviour, SubmitBehaviour},
+        widgets::{Align, Axis, Justify, NewlineBehaviour, SubmitBehaviour},
     };
 
     pub use ori::{Action, Event, Proxy, ViewId, views::*};

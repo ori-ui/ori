@@ -1,6 +1,7 @@
 use ike::{
     BorderWidth, BuildCx, Color, CornerRadius, FontStretch, FontStyle, FontWeight, Padding,
-    Paragraph, TextAlign, TextStyle, TextWrap, widgets::NewlineBehaviour,
+    Paragraph, TextAlign, TextStyle, TextWrap,
+    widgets::{NewlineBehaviour, SubmitBehaviour},
 };
 use ori::{AsyncContext, ProviderContext, Proxy};
 
@@ -35,6 +36,7 @@ pub struct Entry<T> {
     selection_color:   Option<Color>,
     blink_rate:        f32,
     newline_behaviour: NewlineBehaviour,
+    submit_behaviour:  SubmitBehaviour,
 
     #[allow(clippy::type_complexity)]
     on_change: Box<dyn FnMut(&mut T, String) -> ori::Action>,
@@ -75,6 +77,7 @@ impl<T> Entry<T> {
             selection_color:   None,
             blink_rate:        5.0,
             newline_behaviour: NewlineBehaviour::Never,
+            submit_behaviour:  SubmitBehaviour::default(),
 
             on_change: Box::new(|_, _| ori::Action::new()),
             on_submit: Box::new(|_, _| ori::Action::new()),
@@ -196,6 +199,11 @@ impl<T> Entry<T> {
         self
     }
 
+    pub fn submit_behaviour(mut self, behaviour: SubmitBehaviour) -> Self {
+        self.submit_behaviour = behaviour;
+        self
+    }
+
     pub fn on_change<A>(mut self, mut on_change: impl FnMut(&mut T, String) -> A + 'static) -> Self
     where
         A: ori::IntoAction,
@@ -310,6 +318,7 @@ impl<T> ori::View<Context, T> for Entry<T> {
         ike::widgets::Entry::set_selection_color(&mut widget, selection_color);
         ike::widgets::Entry::set_blink_rate(&mut widget, self.blink_rate);
         ike::widgets::Entry::set_newline_behaviour(&mut widget, self.newline_behaviour);
+        ike::widgets::Entry::set_submit_behaviour(&mut widget, self.submit_behaviour);
 
         ike::widgets::Entry::set_on_change(&mut widget, {
             let proxy = proxy.clone();
@@ -427,6 +436,10 @@ impl<T> ori::View<Context, T> for Entry<T> {
 
         if self.newline_behaviour != old.newline_behaviour {
             ike::widgets::Entry::set_newline_behaviour(&mut widget, self.newline_behaviour);
+        }
+
+        if self.submit_behaviour != old.submit_behaviour {
+            ike::widgets::Entry::set_submit_behaviour(&mut widget, self.submit_behaviour);
         }
     }
 

@@ -58,7 +58,7 @@ impl<T> TextArea<T> {
             selection_color:   None,
             blink_rate:        5.0,
             newline_behaviour: NewlineBehaviour::Enter,
-            submit_behaviour:  SubmitBehaviour::FocusNext,
+            submit_behaviour:  SubmitBehaviour::default(),
 
             on_change: Box::new(|_, _| ori::Action::new()),
             on_submit: Box::new(|_, _| ori::Action::new()),
@@ -214,6 +214,7 @@ impl<T> ori::View<Context, T> for TextArea<T> {
         ike::widgets::TextArea::set_selection_color(&mut widget, selection_color);
         ike::widgets::TextArea::set_blink_rate(&mut widget, self.blink_rate);
         ike::widgets::TextArea::set_newline_behaviour(&mut widget, self.newline_behaviour);
+        ike::widgets::TextArea::set_submit_behaviour(&mut widget, self.submit_behaviour);
 
         ike::widgets::TextArea::set_on_change(&mut widget, {
             let proxy = proxy.clone();
@@ -286,6 +287,10 @@ impl<T> ori::View<Context, T> for TextArea<T> {
 
         if self.newline_behaviour != old.newline_behaviour {
             ike::widgets::TextArea::set_newline_behaviour(&mut widget, self.newline_behaviour);
+        }
+
+        if self.submit_behaviour != old.submit_behaviour {
+            ike::widgets::TextArea::set_submit_behaviour(&mut widget, self.submit_behaviour);
         }
     }
 

@@ -5,20 +5,10 @@ edition.workspace = true
 
 [features]
 default = ["vulkan"]
-vulkan = ["dep:ash", "dep:ash-window"]
+vulkan = ["dep:ash", "dep:ash-window", "dep:raw-window-handle"]
 
 [dependencies]
 ori.workspace = true
-
-raw-window-handle = "0.6"
-
-[dependencies.ash]
-version = "0.38"
-optional = true
-
-[dependencies.ash-window]
-version = "0.13"
-optional = true
 
 [dependencies.ike]
 #git = "https://github.com/ori-ui/ike.git"
@@ -48,3 +38,22 @@ features = [
   "vulkan",
   "textlayout",
 ]
+
+[dependencies.ash]
+version = "0.38"
+optional = true
+
+[dependencies.ash-window]
+version = "0.13"
+optional = true
+
+[dependencies.raw-window-handle]
+version = "0.6"
+optional = true
+
+[dependencies.tracing]
+version = "0.1"
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+features = ["env-filter"]

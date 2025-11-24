@@ -59,6 +59,7 @@ impl VulkanContext {
 
             if is_validation_supported {
                 instance_info = instance_info.enabled_layer_names(&validation_layer_names);
+                tracing::debug!("initializing with validation layers");
             }
         }
 
@@ -252,6 +253,14 @@ impl VulkanWindow {
             vk::CompositeAlphaFlagsKHR::OPAQUE
         };
 
+        tracing::debug!(
+            ?present_mode,
+            format = ?surface_format.format,
+            color_space = ?surface_format.color_space,
+            ?composite_alpha,
+            "creating vulkan window",
+        );
+
         let pool_info = vk::CommandPoolCreateInfo::default()
             .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
 
@@ -426,14 +435,17 @@ impl VulkanWindow {
                 vk::Fence::null(),
             ) {
                 Ok(image) => image,
-                Err(err) => {
-                    println!("err: {err:?}");
+                Err(error) => {
+                    tracing::error!(
+                        ?error,
+                        "error acquiring swapchain image"
+                    );
                     return None;
                 }
             };
 
             if suboptimal {
-                println!("suboptimal");
+                tracing::trace!("swapchain suboptimal");
             }
 
             let swapchain_image = self.swapchain_images[image_index as usize];

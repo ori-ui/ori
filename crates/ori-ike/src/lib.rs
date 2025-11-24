@@ -14,6 +14,7 @@ mod vulkan;
 pub mod views;
 pub use ike::*;
 pub use ori::*;
+pub use tracing;
 
 pub use app::App;
 pub use context::Context;
@@ -28,6 +29,10 @@ pub mod prelude {
     };
 
     pub use ori::{Action, Event, Proxy, ViewId, views::*};
+    pub use tracing::{
+        debug, debug_span, error, error_span, info, info_span, span, trace, trace_span, warn,
+        warn_span,
+    };
 
     pub use crate::{App, Effect, View, ViewSeq, views::*};
 }

@@ -2,6 +2,7 @@ use std::{any::Any, sync::mpsc::Receiver, time::Instant};
 
 use ike::Size;
 use ori::AsyncContext;
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
@@ -25,11 +26,34 @@ impl App {
         Self {}
     }
 
+    pub fn init_log() {
+        let mut filter = EnvFilter::default();
+
+        if cfg!(debug_assertions) {
+            filter = filter.add_directive(tracing::Level::DEBUG.into());
+        }
+
+        if let Ok(env) = std::env::var("RUST_LOG")
+            && let Ok(env) = env.parse()
+        {
+            filter = filter.add_directive(env);
+        }
+
+        let subscriber = tracing_subscriber::registry().with(filter);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let subscriber = subscriber.with(tracing_subscriber::fmt::layer());
+
+        let _ = tracing::subscriber::set_global_default(subscriber);
+    }
+
     pub fn run<T, V>(self, data: &mut T, mut ui: impl FnMut(&mut T) -> V + 'static)
     where
         V: Effect<T> + 'static,
         V::State: 'static,
     {
+        Self::init_log();
+
         let event_loop = EventLoop::with_user_event().build().unwrap();
 
         #[cfg(feature = "vulkan")]

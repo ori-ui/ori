@@ -110,7 +110,7 @@ pub(crate) struct VulkanWindow {
     surface:          vk::SurfaceKHR,
     capabilities:     vk::SurfaceCapabilitiesKHR,
     present_mode:     vk::PresentModeKHR,
-    format:           vk::Format,
+    surface_format:   vk::SurfaceFormatKHR,
     swapchain:        vk::SwapchainKHR,
     pre_transform:    vk::SurfaceTransformFlagsKHR,
     composite_alpha:  vk::CompositeAlphaFlagsKHR,
@@ -223,14 +223,24 @@ impl VulkanWindow {
             vk::PresentModeKHR::FIFO
         };
 
-        let format = unsafe {
+        let formats = unsafe {
             instance
                 .get_physical_device_surface_formats(context.physical, surface)
                 .unwrap()
-                .into_iter()
-                .next()
-                .unwrap()
-                .format
+        };
+
+        let brga8srgb = vk::SurfaceFormatKHR {
+            format:      vk::Format::B8G8R8A8_UNORM,
+            color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR,
+        };
+
+        let surface_format = if let Some(&format) = formats
+            .iter()
+            .find(|f| f.format == vk::Format::R16G16B16A16_SFLOAT)
+        {
+            format
+        } else {
+            brga8srgb
         };
 
         let composite_alpha = if capabilities
@@ -262,7 +272,7 @@ impl VulkanWindow {
             surface,
             capabilities,
             present_mode,
-            format,
+            surface_format,
             swapchain: vk::SwapchainKHR::null(),
             pre_transform: capabilities.current_transform,
             composite_alpha,
@@ -296,7 +306,7 @@ impl VulkanWindow {
             .surface(self.surface)
             .min_image_count(self.capabilities.min_image_count.max(2))
             .image_array_layers(1)
-            .image_format(self.format)
+            .image_format(self.surface_format.format)
             .image_color_space(vk::ColorSpaceKHR::SRGB_NONLINEAR)
             .image_extent(vk::Extent2D { width, height })
             .image_usage(vk::ImageUsageFlags::TRANSFER_DST)
@@ -348,12 +358,13 @@ impl VulkanWindow {
         }
 
         while self.skia_surfaces.len() < self.swapchain_images.len() {
-            let color_type = match self.format {
+            let color_type = match self.surface_format.format {
                 vk::Format::R16G16B16A16_SFLOAT => skia_safe::ColorType::RGBAF16,
                 vk::Format::B8G8R8A8_UNORM => skia_safe::ColorType::BGRA8888,
+                vk::Format::R8G8B8A8_UNORM => skia_safe::ColorType::RGBA8888,
                 _ => panic!(
                     "unsupported format: `{:?}`",
-                    self.format
+                    self.surface_format
                 ),
             };
 

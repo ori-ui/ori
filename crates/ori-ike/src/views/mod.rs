@@ -9,7 +9,10 @@ mod text;
 mod text_area;
 mod window;
 
-pub use aligned::{Aligned, align, center};
+pub use aligned::{
+    Aligned, align, bottom, bottom_left, bottom_right, center, left, right, top, top_left,
+    top_right,
+};
 pub use button::{Button, ButtonTheme, button};
 pub use constrain::{
     Constrain, constrain, height, max_height, max_size, max_width, min_height, min_size, min_width,

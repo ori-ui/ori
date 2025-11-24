@@ -6,8 +6,40 @@ pub fn align<V>(x: f32, y: f32, content: V) -> Aligned<V> {
     Aligned { content, x, y }
 }
 
+pub fn top_left<V>(content: V) -> Aligned<V> {
+    align(0.0, 0.0, content)
+}
+
+pub fn top<V>(content: V) -> Aligned<V> {
+    align(0.5, 0.0, content)
+}
+
+pub fn top_right<V>(content: V) -> Aligned<V> {
+    align(1.0, 0.0, content)
+}
+
+pub fn left<V>(content: V) -> Aligned<V> {
+    align(0.0, 0.5, content)
+}
+
 pub fn center<V>(content: V) -> Aligned<V> {
     align(0.5, 0.5, content)
+}
+
+pub fn right<V>(content: V) -> Aligned<V> {
+    align(1.0, 0.5, content)
+}
+
+pub fn bottom_left<V>(content: V) -> Aligned<V> {
+    align(0.0, 1.0, content)
+}
+
+pub fn bottom<V>(content: V) -> Aligned<V> {
+    align(0.5, 1.0, content)
+}
+
+pub fn bottom_right<V>(content: V) -> Aligned<V> {
+    align(1.0, 1.0, content)
 }
 
 pub struct Aligned<V> {

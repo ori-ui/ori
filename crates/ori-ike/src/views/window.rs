@@ -3,12 +3,12 @@ use ori::ProviderContext;
 
 use crate::{Context, Palette, View};
 
-pub fn window<V>(content: V) -> Window<V> {
-    Window::new(content)
+pub fn window<V>(contents: V) -> Window<V> {
+    Window::new(contents)
 }
 
 pub struct Window<V> {
-    content:   V,
+    contents:  V,
     title:     String,
     sizing:    WindowSizing,
     visible:   bool,
@@ -17,9 +17,9 @@ pub struct Window<V> {
 }
 
 impl<V> Window<V> {
-    pub fn new(content: V) -> Self {
+    pub fn new(contents: V) -> Self {
         Self {
-            content,
+            contents,
             title: String::new(),
             sizing: WindowSizing::Resizable {
                 default_size: Size::new(800.0, 600.0),
@@ -57,10 +57,10 @@ where
     type State = (ike::WindowId, V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (content, state) = self.content.build(cx, data);
+        let (contents, state) = self.contents.build(cx, data);
 
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
-        let window = cx.app.create_window(content.upcast());
+        let window = cx.app.create_window(contents.upcast());
 
         window.title = self.title.clone();
         window.sizing = self.sizing;
@@ -69,23 +69,23 @@ where
         window.color = self.color.unwrap_or(palette.background);
 
         let id = window.id();
-        (ori::NoElement, (id, content, state))
+        (ori::NoElement, (id, contents, state))
     }
 
     fn rebuild(
         &mut self,
         _element: &mut Self::Element,
-        (id, content, state): &mut Self::State,
+        (id, contents, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content.rebuild(
-            content,
+        self.contents.rebuild(
+            contents,
             state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
@@ -112,11 +112,11 @@ where
     fn event(
         &mut self,
         _element: &mut Self::Element,
-        (_, content, state): &mut Self::State,
+        (_, contents, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        self.content.event(content, state, cx, data, event)
+        self.contents.event(contents, state, cx, data, event)
     }
 }

@@ -2,11 +2,11 @@ use gtk4::prelude::ButtonExt as _;
 
 use crate::{Context, View};
 
-pub fn button<V, T, A>(content: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<V, T>
+pub fn button<V, T, A>(contents: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<V, T>
 where
     A: ori::IntoAction,
 {
-    Button::new(content).on_click(on_click)
+    Button::new(contents).on_click(on_click)
 }
 
 enum ButtonEvent {
@@ -15,14 +15,14 @@ enum ButtonEvent {
 
 #[must_use]
 pub struct Button<V, T> {
-    content:  V,
+    contents: V,
     on_click: Box<dyn FnMut(&mut T) -> ori::Action>,
 }
 
 impl<V, T> Button<V, T> {
-    pub fn new(content: V) -> Self {
+    pub fn new(contents: V) -> Self {
         Self {
-            content,
+            contents,
             on_click: Box::new(|_| ori::Action::new()),
         }
     }
@@ -42,7 +42,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
     type State = (ori::ViewId, V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (child, state) = self.content.build(cx, data);
+        let (child, state) = self.contents.build(cx, data);
 
         let id = ori::ViewId::next();
 
@@ -66,8 +66,13 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content
-            .rebuild(child, state, cx, data, &mut old.content);
+        self.contents.rebuild(
+            child,
+            state,
+            cx,
+            data,
+            &mut old.contents,
+        );
 
         if !super::is_parent(element, child) {
             element.set_child(Some(child));
@@ -81,7 +86,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(child, state, cx, data);
+        self.contents.teardown(child, state, cx, data);
     }
 
     fn event(
@@ -92,7 +97,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        let action = self.content.event(child, state, cx, data, event);
+        let action = self.contents.event(child, state, cx, data, event);
 
         if !super::is_parent(element, child) {
             element.set_child(Some(child));

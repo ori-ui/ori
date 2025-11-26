@@ -214,8 +214,8 @@ where
 
     fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::States) {
         match self {
-            Some(content) => {
-                let (children, states) = content.seq_build(cx, data);
+            Some(contents) => {
+                let (children, states) = contents.seq_build(cx, data);
                 (Some(children), Some(states))
             }
 
@@ -241,17 +241,17 @@ where
                 old.seq_teardown(elements, states, cx, data);
             }
 
-            (Some(content), None) => {
-                let (new_elements, new_states) = content.seq_build(cx, data);
+            (Some(contents), None) => {
+                let (new_elements, new_states) = contents.seq_build(cx, data);
                 *elements = Some(new_elements);
                 *states = Some(new_states);
             }
 
-            (Some(content), Some(old)) => {
+            (Some(contents), Some(old)) => {
                 let elements = elements.as_mut().unwrap();
                 let states = states.as_mut().unwrap();
 
-                content.seq_rebuild(elements, states, cx, data, old);
+                contents.seq_rebuild(elements, states, cx, data, old);
             }
         }
     }
@@ -263,10 +263,10 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        if let Some(content) = self {
+        if let Some(contents) = self {
             let element = elements.unwrap();
             let state = state.unwrap();
-            content.seq_teardown(element, state, cx, data);
+            contents.seq_teardown(element, state, cx, data);
         }
     }
 
@@ -279,10 +279,10 @@ where
         event: &mut Event,
     ) -> Action {
         match self {
-            Some(content) => {
+            Some(contents) => {
                 let elements = elements.as_mut().unwrap();
                 let state = state.as_mut().unwrap();
-                content.seq_event(elements, state, cx, data, event)
+                contents.seq_event(elements, state, cx, data, event)
             }
 
             None => Action::new(),

@@ -2,28 +2,28 @@ use gtk4::prelude::OrientableExt;
 
 use crate::{Context, View, views::Axis};
 
-pub fn clamp<V>(axis: Axis, size: u32, content: V) -> Clamp<V> {
-    Clamp::new(axis, size, content)
+pub fn clamp<V>(axis: Axis, size: u32, contents: V) -> Clamp<V> {
+    Clamp::new(axis, size, contents)
 }
 
-pub fn clamp_width<V>(size: u32, content: V) -> Clamp<V> {
-    Clamp::new(Axis::Horizontal, size, content)
+pub fn clamp_width<V>(size: u32, contents: V) -> Clamp<V> {
+    Clamp::new(Axis::Horizontal, size, contents)
 }
 
-pub fn clamp_height<V>(size: u32, content: V) -> Clamp<V> {
-    Clamp::new(Axis::Vertical, size, content)
+pub fn clamp_height<V>(size: u32, contents: V) -> Clamp<V> {
+    Clamp::new(Axis::Vertical, size, contents)
 }
 
 pub struct Clamp<V> {
-    content: V,
-    axis:    Axis,
-    size:    u32,
+    contents: V,
+    axis:     Axis,
+    size:     u32,
 }
 
 impl<V> Clamp<V> {
-    pub fn new(axis: Axis, size: u32, content: V) -> Self {
+    pub fn new(axis: Axis, size: u32, contents: V) -> Self {
         Self {
-            content,
+            contents,
             axis,
             size,
         }
@@ -39,7 +39,7 @@ where
     type State = (V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (child, state) = self.content.build(cx, data);
+        let (child, state) = self.contents.build(cx, data);
 
         let element = libadwaita::Clamp::new();
         element.set_child(Some(&child));
@@ -57,8 +57,13 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content
-            .rebuild(child, state, cx, data, &mut old.content);
+        self.contents.rebuild(
+            child,
+            state,
+            cx,
+            data,
+            &mut old.contents,
+        );
 
         if !super::is_parent(element, child) {
             element.set_child(Some(child));
@@ -80,7 +85,7 @@ where
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(child, state, cx, data);
+        self.contents.teardown(child, state, cx, data);
     }
 
     fn event(
@@ -91,7 +96,7 @@ where
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        let action = self.content.event(child, state, cx, data, event);
+        let action = self.contents.event(child, state, cx, data, event);
 
         if !super::is_parent(element, child) {
             element.set_child(Some(child));

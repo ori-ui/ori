@@ -73,7 +73,9 @@ impl App {
         let view = build(data);
 
         #[cfg(feature = "vulkan")]
-        let fonts = crate::skia::SkiaFonts::new();
+        let mut painter = crate::skia::SkiaPainter::new();
+        #[cfg(feature = "vulkan")]
+        painter.load_font(include_bytes!("Ubuntu-Light.ttf"), None);
 
         let (sender, receiver) = std::sync::mpsc::channel();
         let context = Context {
@@ -94,7 +96,7 @@ impl App {
             receiver,
 
             #[cfg(feature = "vulkan")]
-            fonts,
+            painter,
             context,
             windows: Vec::new(),
 
@@ -117,7 +119,7 @@ struct AppState<'a, T> {
     receiver: Receiver<Event>,
 
     #[cfg(feature = "vulkan")]
-    fonts:   crate::skia::SkiaFonts,
+    painter: crate::skia::SkiaPainter,
     context: Context,
     windows: Vec<WindowState>,
 
@@ -165,6 +167,16 @@ impl<T> ApplicationHandler for AppState<'_, T> {
 
         match event {
             WindowEvent::RedrawRequested => {
+                if let Some(animate) = window.animate.take() {
+                    let delta_time = animate.elapsed();
+                    self.context.app.animate(window.id, delta_time);
+
+                    if self.context.app.window_needs_animate(window.id) {
+                        window.animate = Some(Instant::now());
+                        window.window.request_redraw();
+                    }
+                }
+
                 #[cfg(feature = "vulkan")]
                 let new_window_size = unsafe {
                     let scale = window.window.scale_factor();
@@ -182,7 +194,7 @@ impl<T> ApplicationHandler for AppState<'_, T> {
                         canvas.scale((scale as f32, scale as f32));
 
                         let mut skia_canvas = crate::skia::SkiaCanvas {
-                            fonts: &mut self.fonts,
+                            painter: &mut self.painter,
                             canvas,
                         };
 
@@ -321,6 +333,10 @@ impl<T> ApplicationHandler for AppState<'_, T> {
         self.handle_events();
         self.update_windows(event_loop);
     }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        self.painter.cleanup();
+    }
 }
 
 type AnyEffect<T> = Box<dyn ori::AnyView<Context, T, ori::NoElement>>;
@@ -381,14 +397,8 @@ impl<T> AppState<'_, T> {
         }
 
         for window in &mut self.windows {
-            if let Some(animate) = window.animate.take() {
-                let delta_time = animate.elapsed();
-                self.context.app.animate(window.id, delta_time);
-            }
-
-            if self.context.app.window_needs_animate(window.id) {
-                let now = Instant::now();
-                window.animate = Some(now);
+            if self.context.app.window_needs_animate(window.id) && window.animate.is_none() {
+                window.animate = Some(Instant::now());
                 window.window.request_redraw();
             }
 

@@ -19,5 +19,5 @@ pub use freeze::{Freeze, freeze};
 pub use handler::{Handler, handler, on_event};
 pub use map::{Map, map};
 pub use memo::{Memo, hash_memo, memo};
-pub use provide::{Provide, Using, provide, try_using, using};
+pub use provide::{Provide, Using, provide, try_using, using, using_or_default};
 pub use suspense::{Suspense, suspense};

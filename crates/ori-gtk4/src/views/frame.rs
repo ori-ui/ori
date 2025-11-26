@@ -2,20 +2,20 @@ use gtk4::prelude::FrameExt as _;
 
 use crate::{Context, View};
 
-pub fn frame<V>(content: V) -> Frame<V> {
-    Frame::new(content)
+pub fn frame<V>(contents: V) -> Frame<V> {
+    Frame::new(contents)
 }
 
 #[must_use]
 pub struct Frame<V> {
-    content: V,
-    label:   Option<String>,
+    contents: V,
+    label:    Option<String>,
 }
 
 impl<V> Frame<V> {
-    pub fn new(content: V) -> Self {
+    pub fn new(contents: V) -> Self {
         Self {
-            content,
+            contents,
             label: None,
         }
     }
@@ -32,7 +32,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Frame<V> {
     type State = (V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (child, state) = self.content.build(cx, data);
+        let (child, state) = self.contents.build(cx, data);
 
         let element = gtk4::Frame::new(self.label.as_deref());
         element.set_child(Some(&child));
@@ -48,8 +48,13 @@ impl<T, V: View<T>> ori::View<Context, T> for Frame<V> {
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content
-            .rebuild(child, state, cx, data, &mut old.content);
+        self.contents.rebuild(
+            child,
+            state,
+            cx,
+            data,
+            &mut old.contents,
+        );
 
         if !super::is_parent(element, child) {
             element.set_child(Some(child));
@@ -67,7 +72,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Frame<V> {
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(child, state, cx, data);
+        self.contents.teardown(child, state, cx, data);
     }
 
     fn event(
@@ -78,7 +83,7 @@ impl<T, V: View<T>> ori::View<Context, T> for Frame<V> {
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        let action = self.content.event(child, state, cx, data, event);
+        let action = self.contents.event(child, state, cx, data, event);
 
         if !super::is_parent(element, child) {
             element.set_child(Some(child));

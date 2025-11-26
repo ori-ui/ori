@@ -436,9 +436,9 @@ impl VulkanWindow {
             ) {
                 Ok(image) => image,
                 Err(error) => {
-                    tracing::error!(
+                    tracing::warn!(
                         ?error,
-                        "error acquiring swapchain image"
+                        "error acquiring swapchain image",
                     );
                     return None;
                 }

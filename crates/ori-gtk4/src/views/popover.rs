@@ -6,8 +6,8 @@ use ori::ViewId;
 
 use crate::{Context, View};
 
-pub fn popover<V, P>(key: ViewId, content: V, popover: P) -> Popover<V, P> {
-    Popover::new(key, content, popover)
+pub fn popover<V, P>(key: ViewId, contents: V, popover: P) -> Popover<V, P> {
+    Popover::new(key, contents, popover)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,7 +26,7 @@ pub enum Position {
 
 pub struct Popover<V, P> {
     key:       ViewId,
-    content:   V,
+    contents:  V,
     popover:   P,
     autohide:  bool,
     has_arrow: bool,
@@ -34,10 +34,10 @@ pub struct Popover<V, P> {
 }
 
 impl<V, P> Popover<V, P> {
-    pub fn new(key: ViewId, content: V, popover: P) -> Self {
+    pub fn new(key: ViewId, contents: V, popover: P) -> Self {
         Self {
             key,
-            content,
+            contents,
             popover,
             autohide: true,
             has_arrow: true,
@@ -66,11 +66,11 @@ where
     V: View<T>,
     P: View<T>,
 {
-    content_element: V::Element,
-    content_state:   V::State,
-    popover_element: P::Element,
-    popover_state:   P::State,
-    popover:         gtk4::Popover,
+    contents_element: V::Element,
+    contents_state:   V::State,
+    popover_element:  P::Element,
+    popover_state:    P::State,
+    popover:          gtk4::Popover,
 }
 
 impl<V, P> ori::ViewMarker for Popover<V, P> {}
@@ -83,7 +83,7 @@ where
     type State = PopoverState<T, V, P>;
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (content_element, content_state) = self.content.build(cx, data);
+        let (contents_element, contents_state) = self.contents.build(cx, data);
         let (popover_element, popover_state) = self.popover.build(cx, data);
 
         let popover = gtk4::Popover::new();
@@ -99,12 +99,12 @@ where
         });
 
         let element = PopoverReceiver::new();
-        element.set_child(&content_element);
+        element.set_child(&contents_element);
         element.set_popover(&popover);
 
         let state = PopoverState {
-            content_element,
-            content_state,
+            contents_element,
+            contents_state,
             popover_element,
             popover_state,
             popover,
@@ -121,16 +121,16 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content.rebuild(
-            &mut state.content_element,
-            &mut state.content_state,
+        self.contents.rebuild(
+            &mut state.contents_element,
+            &mut state.contents_state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
-        if !super::is_parent(element, &state.content_element) {
-            element.set_child(&state.content_element);
+        if !super::is_parent(element, &state.contents_element) {
+            element.set_child(&state.contents_element);
         }
 
         self.popover.rebuild(
@@ -170,9 +170,9 @@ where
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(
-            state.content_element,
-            state.content_state,
+        self.contents.teardown(
+            state.contents_element,
+            state.contents_state,
             cx,
             data,
         );
@@ -205,16 +205,16 @@ where
             None => {}
         }
 
-        let content_action = self.content.event(
-            &mut state.content_element,
-            &mut state.content_state,
+        let contents_action = self.contents.event(
+            &mut state.contents_element,
+            &mut state.contents_state,
             cx,
             data,
             event,
         );
 
-        if !super::is_parent(element, &state.content_element) {
-            element.set_child(&state.content_element);
+        if !super::is_parent(element, &state.contents_element) {
+            element.set_child(&state.contents_element);
         }
 
         let popover_action = self.popover.event(
@@ -229,7 +229,7 @@ where
             state.popover.set_child(Some(&state.popover_element));
         }
 
-        content_action | popover_action
+        contents_action | popover_action
     }
 }
 

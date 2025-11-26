@@ -23,9 +23,9 @@ pub use view::{Effect, View};
 
 pub mod prelude {
     pub use ike::{
-        BorderWidth, Color, CornerRadius, FontStretch, FontStyle, FontWeight, Padding, TextAlign,
-        TextWrap,
-        widgets::{Align, Axis, Justify, NewlineBehaviour, SubmitBehaviour},
+        BorderWidth, Color, CornerRadius, FontStretch, FontStyle, FontWeight, Padding, Svg,
+        TextAlign, TextWrap, Transition, include_svg,
+        widgets::{Align, Axis, Fit, Justify, NewlineBehaviour, SubmitBehaviour},
     };
 
     pub use ori::{Action, Event, Proxy, ViewId, views::*};
@@ -34,5 +34,5 @@ pub mod prelude {
         warn_span,
     };
 
-    pub use crate::{App, Effect, View, ViewSeq, views::*};
+    pub use crate::{App, Effect, Palette, View, ViewSeq, views::*};
 }

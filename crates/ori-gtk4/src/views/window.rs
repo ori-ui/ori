@@ -2,14 +2,14 @@ use gtk4::prelude::{GtkWindowExt as _, WidgetExt as _};
 
 use crate::{Context, View};
 
-pub fn window<V>(content: V) -> Window<V> {
-    Window::new(content)
+pub fn window<V>(contents: V) -> Window<V> {
+    Window::new(contents)
 }
 
 #[allow(unused)]
 #[derive(Debug)]
 pub struct Window<V> {
-    content:       V,
+    contents:      V,
     id:            Option<ori::ViewId>,
     title:         String,
     width:         Option<u32>,
@@ -62,9 +62,9 @@ pub enum Exclusive {
 }
 
 impl<V> Window<V> {
-    pub fn new(content: V) -> Self {
+    pub fn new(contents: V) -> Self {
         Self {
-            content,
+            contents,
             id: None,
             title: String::from("Ori Gtk4 App"),
             width: None,
@@ -244,7 +244,7 @@ where
     type State = WindowState<T, V>;
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (child, state) = self.content.build(cx, data);
+        let (child, state) = self.contents.build(cx, data);
 
         let window = gtk4::ApplicationWindow::default();
 
@@ -274,12 +274,12 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content.rebuild(
+        self.contents.rebuild(
             &mut state.child,
             &mut state.state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
         if !super::is_parent(&state.window, &state.child) {
@@ -296,7 +296,7 @@ where
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(state.child, state.state, cx, data);
+        self.contents.teardown(state.child, state.state, cx, data);
     }
 
     fn event(
@@ -307,7 +307,7 @@ where
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        let action = self.content.event(
+        let action = self.contents.event(
             &mut state.child,
             &mut state.state,
             cx,

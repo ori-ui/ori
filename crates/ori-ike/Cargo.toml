@@ -37,6 +37,8 @@ features = [
   "pdf",
   "vulkan",
   "textlayout",
+  "svg",
+  "webp",
 ]
 
 [dependencies.ash]

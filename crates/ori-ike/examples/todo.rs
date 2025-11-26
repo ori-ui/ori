@@ -33,9 +33,18 @@ fn name_entry() -> impl View<Data> + use<> {
 fn todo(i: usize, todo: &Todo) -> impl View<Data> + use<> {
     container(
         hstack((
-            button(label("x"), move |data: &mut Data| {
-                data.todos.remove(i);
-            }),
+            button(
+                size(
+                    [16.0, 16.0],
+                    using_or_default(|_, palette: &Palette| {
+                        picture(Fit::Contain, include_svg!("xmark.svg")).color(palette.contrast)
+                    }),
+                ),
+                move |data: &mut Data| {
+                    data.todos.remove(i);
+                },
+            )
+            .padding(Padding::all(2.0)),
             center(label(&todo.name)),
         ))
         .gap(12.0),

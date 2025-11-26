@@ -4,28 +4,28 @@ use crate::{Action, Event, View, ViewMarker};
 
 /// [`View`] that maps one type of data to another.
 pub fn map<C, T, U, E>(
-    content: impl View<C, U, Element = E>,
+    contents: impl View<C, U, Element = E>,
     map: impl FnMut(&mut T, &mut dyn FnMut(&mut U)),
 ) -> impl View<C, T, Element = E> {
-    Map::new(content, map)
+    Map::new(contents, map)
 }
 
 /// [`View`] that maps one type of data to another.
 #[must_use]
 pub struct Map<F, U, V> {
-    content: V,
-    map:     F,
-    marker:  PhantomData<fn(&U)>,
+    contents: V,
+    map:      F,
+    marker:   PhantomData<fn(&U)>,
 }
 
 impl<F, U, V> Map<F, U, V> {
     /// Create a [`Map`].
-    pub fn new<T>(content: V, map: F) -> Self
+    pub fn new<T>(contents: V, map: F) -> Self
     where
         F: FnMut(&mut T, &mut dyn FnMut(&mut U)),
     {
         Self {
-            content,
+            contents,
             map,
             marker: PhantomData,
         }
@@ -45,7 +45,7 @@ where
         let mut state = None;
 
         (self.map)(data, &mut |data| {
-            state = Some(self.content.build(cx, data));
+            state = Some(self.contents.build(cx, data));
         });
 
         state.expect("map calls lens")
@@ -62,12 +62,12 @@ where
         let mut called = false;
 
         (self.map)(data, &mut |data| {
-            self.content.rebuild(
+            self.contents.rebuild(
                 element,
                 state,
                 cx,
                 data,
-                &mut old.content,
+                &mut old.contents,
             );
 
             called = true;
@@ -82,7 +82,7 @@ where
 
         (self.map)(data, &mut |data| {
             if let (Some(element), Some(state)) = (element.take(), state.take()) {
-                self.content.teardown(element, state, cx, data);
+                self.contents.teardown(element, state, cx, data);
                 called = true;
             }
         });
@@ -99,7 +99,7 @@ where
         let mut action = None;
 
         (self.map)(data, &mut |data| {
-            action = Some(self.content.event(element, state, cx, data, event));
+            action = Some(self.contents.event(element, state, cx, data, event));
         });
 
         action.unwrap_or(Action::new())

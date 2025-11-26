@@ -1,14 +1,14 @@
-use ike::{AnyWidgetId, BorderWidth, BuildCx, Color, CornerRadius, Padding};
+use ike::{AnyWidgetId, BorderWidth, BuildCx, Color, CornerRadius, Padding, Transition};
 use ori::{AsyncContext, ProviderContext, Proxy};
 
 use crate::{Context, Palette, View};
 
-pub fn button<T, A, V>(content: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<T, V>
+pub fn button<T, A, V>(contents: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<T, V>
 where
     A: ori::IntoAction,
     V: View<T>,
 {
-    Button::new(content, on_click)
+    Button::new(contents, on_click)
 }
 
 #[derive(Clone, Debug)]
@@ -21,6 +21,7 @@ pub struct ButtonTheme {
     pub active_color:  Option<Color>,
     pub border_color:  Option<Color>,
     pub focus_color:   Option<Color>,
+    pub transition:    Transition,
 }
 
 impl Default for ButtonTheme {
@@ -34,40 +35,43 @@ impl Default for ButtonTheme {
             active_color:  None,
             border_color:  None,
             focus_color:   None,
+            transition:    Transition::ease(0.1),
         }
     }
 }
 
 pub struct Button<T, V> {
-    content:  V,
+    contents: V,
     on_click: Box<dyn FnMut(&mut T) -> ori::Action>,
 
     padding:       Option<Padding>,
     border_width:  Option<BorderWidth>,
     corner_radius: Option<CornerRadius>,
-    color:         Option<Color>,
+    idle_color:    Option<Color>,
     hovered_color: Option<Color>,
     active_color:  Option<Color>,
     border_color:  Option<Color>,
     focus_color:   Option<Color>,
+    transition:    Option<Transition>,
 }
 
 impl<T, V> Button<T, V> {
-    pub fn new<A>(content: V, mut on_click: impl FnMut(&mut T) -> A + 'static) -> Self
+    pub fn new<A>(contents: V, mut on_click: impl FnMut(&mut T) -> A + 'static) -> Self
     where
         A: ori::IntoAction,
     {
         Button {
-            content,
+            contents,
             on_click: Box::new(move |data| on_click(data).into_action()),
             padding: None,
             border_width: None,
             corner_radius: None,
-            color: None,
+            idle_color: None,
             hovered_color: None,
             active_color: None,
             border_color: None,
             focus_color: None,
+            transition: None,
         }
     }
 
@@ -87,7 +91,7 @@ impl<T, V> Button<T, V> {
     }
 
     pub fn color(mut self, color: Color) -> Self {
-        self.color = Some(color);
+        self.idle_color = Some(color);
         self
     }
 
@@ -123,8 +127,8 @@ impl<T, V> Button<T, V> {
         self.corner_radius.unwrap_or(theme.corner_radius)
     }
 
-    fn get_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
-        self.color
+    fn get_idle_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
+        self.idle_color
             .unwrap_or_else(|| theme.color.unwrap_or_else(|| palette.surface(1)))
     }
 
@@ -147,6 +151,10 @@ impl<T, V> Button<T, V> {
         self.focus_color
             .unwrap_or_else(|| theme.focus_color.unwrap_or(palette.info))
     }
+
+    fn get_transition(&self, theme: &ButtonTheme) -> Transition {
+        self.transition.unwrap_or(theme.transition)
+    }
 }
 
 enum ButtonEvent {
@@ -162,57 +170,59 @@ where
     type State = (ori::ViewId, V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (content, state) = self.content.build(cx, data);
+        let (contents, state) = self.contents.build(cx, data);
 
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx.get_context::<ButtonTheme>().cloned().unwrap_or_default();
         let proxy = cx.proxy();
         let id = ori::ViewId::next();
 
-        let mut element = ike::widgets::Button::new(cx, content.upcast());
+        let mut widget = ike::widgets::Button::new(cx, contents.upcast());
 
         let padding = self.get_padding(&theme);
         let border_width = self.get_border_width(&theme);
         let corner_radius = self.get_corner_radius(&theme);
-        let color = self.get_color(&theme, &palette);
+        let idle_color = self.get_idle_color(&theme, &palette);
         let hovered_color = self.get_hovered_color(&theme, &palette);
         let active_color = self.get_active_color(&theme, &palette);
         let border_color = self.get_border_color(&theme, &palette);
         let focus_color = self.get_focus_color(&theme, &palette);
+        let transition = self.get_transition(&theme);
 
-        ike::widgets::Button::set_padding(&mut element, padding);
-        ike::widgets::Button::set_border_width(&mut element, border_width);
-        ike::widgets::Button::set_corner_radius(&mut element, corner_radius);
-        ike::widgets::Button::set_color(&mut element, color);
-        ike::widgets::Button::set_hovered_color(&mut element, hovered_color);
-        ike::widgets::Button::set_active_color(&mut element, active_color);
-        ike::widgets::Button::set_border_color(&mut element, border_color);
-        ike::widgets::Button::set_focus_color(&mut element, focus_color);
+        ike::widgets::Button::set_padding(&mut widget, padding);
+        ike::widgets::Button::set_border_width(&mut widget, border_width);
+        ike::widgets::Button::set_corner_radius(&mut widget, corner_radius);
+        ike::widgets::Button::set_idle_color(&mut widget, idle_color);
+        ike::widgets::Button::set_hovered_color(&mut widget, hovered_color);
+        ike::widgets::Button::set_active_color(&mut widget, active_color);
+        ike::widgets::Button::set_border_color(&mut widget, border_color);
+        ike::widgets::Button::set_focus_color(&mut widget, focus_color);
+        ike::widgets::Button::set_transition(&mut widget, transition);
 
-        ike::widgets::Button::set_on_click(&mut element, move || {
+        ike::widgets::Button::set_on_click(&mut widget, move || {
             proxy.event(ori::Event::new(
                 ButtonEvent::Clicked,
                 id,
             ));
         });
 
-        (element.id(), (id, content, state))
+        (widget.id(), (id, contents, state))
     }
 
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        (_id, content, state): &mut Self::State,
+        (_id, contents, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content.rebuild(
-            content,
+        self.contents.rebuild(
+            contents,
             state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
@@ -220,8 +230,8 @@ where
 
         let mut widget = cx.get_mut(*element);
 
-        if !widget.is_child(*content) {
-            ike::widgets::Button::set_child(&mut widget, *content);
+        if !widget.is_child(*contents) {
+            ike::widgets::Button::set_child(&mut widget, *contents);
         }
 
         if self.padding != old.padding {
@@ -239,9 +249,9 @@ where
             ike::widgets::Button::set_corner_radius(&mut widget, corner_radius);
         }
 
-        if self.color != old.color {
-            let color = self.get_color(&theme, &palette);
-            ike::widgets::Button::set_color(&mut widget, color);
+        if self.idle_color != old.idle_color {
+            let idle_color = self.get_idle_color(&theme, &palette);
+            ike::widgets::Button::set_idle_color(&mut widget, idle_color);
         }
 
         if self.hovered_color != old.hovered_color {
@@ -263,33 +273,38 @@ where
             let focus_color = self.get_focus_color(&theme, &palette);
             ike::widgets::Button::set_focus_color(&mut widget, focus_color);
         }
+
+        if self.transition != old.transition {
+            let transition = self.get_transition(&theme);
+            ike::widgets::Button::set_transition(&mut widget, transition);
+        }
     }
 
     fn teardown(
         &mut self,
         element: Self::Element,
-        (_id, content, state): Self::State,
+        (_id, contents, state): Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(content, state, cx, data);
+        self.contents.teardown(contents, state, cx, data);
         cx.remove(element);
     }
 
     fn event(
         &mut self,
         element: &mut Self::Element,
-        (id, content, state): &mut Self::State,
+        (id, contents, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        let action = self.content.event(content, state, cx, data, event);
+        let action = self.contents.event(contents, state, cx, data, event);
 
         let mut widget = cx.get_mut(*element);
 
-        if !widget.is_child(*content) {
-            ike::widgets::Button::set_child(&mut widget, *content);
+        if !widget.is_child(*contents) {
+            ike::widgets::Button::set_child(&mut widget, *contents);
         }
 
         match event.get_targeted(*id) {

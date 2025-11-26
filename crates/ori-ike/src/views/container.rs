@@ -3,8 +3,8 @@ use ori::ProviderContext;
 
 use crate::{Context, Palette, View};
 
-pub fn container<V>(content: V) -> Container<V> {
-    Container::new(content)
+pub fn container<V>(contents: V) -> Container<V> {
+    Container::new(contents)
 }
 
 #[derive(Clone, Debug)]
@@ -29,7 +29,7 @@ impl Default for ContainerTheme {
 }
 
 pub struct Container<V> {
-    content: V,
+    contents: V,
 
     padding:          Option<Padding>,
     border_width:     Option<BorderWidth>,
@@ -39,9 +39,9 @@ pub struct Container<V> {
 }
 
 impl<V> Container<V> {
-    pub fn new(content: V) -> Self {
+    pub fn new(contents: V) -> Self {
         Self {
-            content,
+            contents,
 
             padding: None,
             border_width: None,
@@ -108,7 +108,7 @@ where
     type State = (V::Element, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (content, state) = self.content.build(cx, data);
+        let (contents, state) = self.contents.build(cx, data);
 
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let theme = cx
@@ -116,7 +116,7 @@ where
             .cloned()
             .unwrap_or_default();
 
-        let mut widget = ike::widgets::Container::new(cx, content.upcast());
+        let mut widget = ike::widgets::Container::new(cx, contents.upcast());
 
         let padding = Self::get_padding(self, &theme);
         let border_width = Self::get_border_width(self, &theme);
@@ -130,23 +130,23 @@ where
         ike::widgets::Container::set_background_color(&mut widget, background_color);
         ike::widgets::Container::set_border_color(&mut widget, border_color);
 
-        (widget.id(), (content, state))
+        (widget.id(), (contents, state))
     }
 
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        (content, state): &mut Self::State,
+        (contents, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content.rebuild(
-            content,
+        self.contents.rebuild(
+            contents,
             state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
@@ -157,8 +157,8 @@ where
 
         let mut widget = cx.get_mut(*element);
 
-        if !widget.is_child(*content) {
-            ike::widgets::Container::set_child(&mut widget, *content);
+        if !widget.is_child(*contents) {
+            ike::widgets::Container::set_child(&mut widget, *contents);
         }
 
         if self.padding != old.padding {
@@ -190,28 +190,28 @@ where
     fn teardown(
         &mut self,
         element: Self::Element,
-        (content, state): Self::State,
+        (contents, state): Self::State,
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(content, state, cx, data);
+        self.contents.teardown(contents, state, cx, data);
         cx.remove(element);
     }
 
     fn event(
         &mut self,
         element: &mut Self::Element,
-        (content, state): &mut Self::State,
+        (contents, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        let action = self.content.event(content, state, cx, data, event);
+        let action = self.contents.event(contents, state, cx, data, event);
 
         let mut widget = cx.get_mut(*element);
 
-        if !widget.is_child(*content) {
-            ike::widgets::Container::set_child(&mut widget, *content);
+        if !widget.is_child(*contents) {
+            ike::widgets::Container::set_child(&mut widget, *contents);
         }
 
         action

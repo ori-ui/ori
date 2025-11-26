@@ -4,6 +4,7 @@ mod constrain;
 mod container;
 mod entry;
 mod label;
+mod picture;
 mod stack;
 mod text;
 mod text_area;
@@ -21,6 +22,7 @@ pub use constrain::{
 pub use container::{Container, ContainerTheme, container};
 pub use entry::{Entry, entry};
 pub use label::{Label, label};
+pub use picture::{Picture, picture};
 pub use stack::{Flex, Stack, expand, flex, hstack, stack, vstack};
 pub use text::TextTheme;
 pub use text_area::{TextArea, text_area};

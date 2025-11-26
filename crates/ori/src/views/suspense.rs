@@ -66,7 +66,7 @@ where
     F: View<C, T>,
 {
     Fallback(V::State),
-    Content(F, F::State),
+    Contents(F, F::State),
 }
 
 impl<V, F> ViewMarker for Suspense<V, F> {}
@@ -94,8 +94,8 @@ where
             let proxy = cx.proxy();
 
             cx.proxy().spawn(async move {
-                let content = future.await;
-                proxy.event(Event::new(SuspenseFuture(content), id));
+                let contents = future.await;
+                proxy.event(Event::new(SuspenseFuture(contents), id));
             });
         }
 
@@ -117,8 +117,11 @@ where
             let key = *id;
 
             cx.proxy().spawn(async move {
-                let content = future.await;
-                proxy.event(Event::new(SuspenseFuture(content), key));
+                let contents = future.await;
+                proxy.event(Event::new(
+                    SuspenseFuture(contents),
+                    key,
+                ));
             });
         }
 
@@ -133,7 +136,7 @@ where
                 );
             }),
 
-            SuspenseState::Content(_, _) => {}
+            SuspenseState::Contents(_, _) => {}
         }
     }
 
@@ -154,10 +157,10 @@ where
                 );
             }
 
-            SuspenseState::Content(mut content, content_state) => {
-                content.teardown(
+            SuspenseState::Contents(mut contents, contents_state) => {
+                contents.teardown(
                     element.downcast(),
-                    content_state,
+                    contents_state,
                     cx,
                     data,
                 );
@@ -173,19 +176,19 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        if let Some(SuspenseFuture::<F::Output>(mut content)) = event.take_targeted(*id) {
+        if let Some(SuspenseFuture::<F::Output>(mut contents)) = event.take_targeted(*id) {
             match state {
                 SuspenseState::Fallback(_) => {
-                    let (content_element, content_state) = content.build(cx, data);
+                    let (contents_element, contents_state) = contents.build(cx, data);
 
                     let fallback_element = mem::replace(
                         element,
-                        C::Element::upcast(cx, content_element),
+                        C::Element::upcast(cx, contents_element),
                     );
 
                     let SuspenseState::Fallback(fallback_state) = mem::replace(
                         state,
-                        SuspenseState::Content(content, content_state),
+                        SuspenseState::Contents(contents, contents_state),
                     ) else {
                         unreachable!()
                     };
@@ -198,18 +201,18 @@ where
                     );
                 }
 
-                SuspenseState::Content(old_content, content_state) => {
+                SuspenseState::Contents(old_contents, contents_state) => {
                     element.downcast_with(|element| {
-                        content.rebuild(
+                        contents.rebuild(
                             element,
-                            content_state,
+                            contents_state,
                             cx,
                             data,
-                            old_content,
+                            old_contents,
                         );
                     });
 
-                    *old_content = content;
+                    *old_contents = contents;
                 }
             }
         };
@@ -220,9 +223,9 @@ where
                     .event(element, fallback_state, cx, data, event)
             }),
 
-            SuspenseState::Content(content, content_state) => {
+            SuspenseState::Contents(contents, contents_state) => {
                 element.downcast_with(|element| {
-                    content.event(element, content_state, cx, data, event)
+                    contents.event(element, contents_state, cx, data, event)
                     //
                 })
             }

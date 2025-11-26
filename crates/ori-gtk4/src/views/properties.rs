@@ -98,7 +98,7 @@ pub enum Align {
 }
 
 pub struct Prop<V> {
-    content:  V,
+    contents: V,
     property: Property,
 }
 
@@ -106,13 +106,13 @@ impl<V> Deref for Prop<V> {
     type Target = V;
 
     fn deref(&self) -> &Self::Target {
-        &self.content
+        &self.contents
     }
 }
 
 impl<V> DerefMut for Prop<V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.content
+        &mut self.contents
     }
 }
 
@@ -134,8 +134,8 @@ pub enum Property {
 }
 
 impl<V> Prop<V> {
-    fn new(content: V, property: Property) -> Self {
-        Self { content, property }
+    fn new(contents: V, property: Property) -> Self {
+        Self { contents, property }
     }
 }
 
@@ -148,7 +148,7 @@ where
     type State = (Property, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (element, state) = self.content.build(cx, data);
+        let (element, state) = self.contents.build(cx, data);
 
         // record the current state of the property and apply it
         let prev = self.property.get(&element);
@@ -170,12 +170,12 @@ where
         // before rebuilding.
         prev.set(element);
 
-        self.content.rebuild(
+        self.contents.rebuild(
             element,
             state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
         // we now record the state of the new property and apply it
@@ -190,7 +190,7 @@ where
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.teardown(element, state, cx, data);
+        self.contents.teardown(element, state, cx, data);
     }
 
     fn event(
@@ -204,7 +204,7 @@ where
         // same idea as rebuild
         prev.set(element);
 
-        let action = self.content.event(element, state, cx, data, event);
+        let action = self.contents.event(element, state, cx, data, event);
 
         *prev = self.property.get(element);
         self.property.set(element);

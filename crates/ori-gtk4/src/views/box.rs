@@ -5,25 +5,25 @@ use ori::{ElementSeq, Event};
 
 use crate::{Context, views::Axis};
 
-pub fn hbox<V>(content: V) -> GtkBox<V> {
-    GtkBox::new(Axis::Horizontal, content)
+pub fn hbox<V>(contents: V) -> GtkBox<V> {
+    GtkBox::new(Axis::Horizontal, contents)
 }
 
-pub fn vbox<V>(content: V) -> GtkBox<V> {
-    GtkBox::new(Axis::Vertical, content)
+pub fn vbox<V>(contents: V) -> GtkBox<V> {
+    GtkBox::new(Axis::Vertical, contents)
 }
 
 #[must_use]
 pub struct GtkBox<V> {
-    content: V,
-    spacing: u32,
-    axis:    Axis,
+    contents: V,
+    spacing:  u32,
+    axis:     Axis,
 }
 
 impl<V> GtkBox<V> {
-    pub fn new(axis: Axis, content: V) -> Self {
+    pub fn new(axis: Axis, contents: V) -> Self {
         Self {
-            content,
+            contents,
             spacing: 0,
             axis,
         }
@@ -39,13 +39,13 @@ impl<V> Deref for GtkBox<V> {
     type Target = V;
 
     fn deref(&self) -> &Self::Target {
-        &self.content
+        &self.contents
     }
 }
 
 impl<V> DerefMut for GtkBox<V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.content
+        &mut self.contents
     }
 }
 
@@ -58,7 +58,7 @@ where
     type State = (V::Elements, V::States);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
-        let (mut children, state) = self.content.seq_build(cx, data);
+        let (mut children, state) = self.contents.seq_build(cx, data);
 
         let element = gtk4::Box::default();
         element.set_orientation(self.axis.into());
@@ -79,12 +79,12 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        self.content.seq_rebuild(
+        self.contents.seq_rebuild(
             children,
             state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
         update_children(element, children);
@@ -106,7 +106,7 @@ where
         cx: &mut Context,
         data: &mut T,
     ) {
-        self.content.seq_teardown(children, state, cx, data);
+        self.contents.seq_teardown(children, state, cx, data);
     }
 
     fn event(
@@ -117,7 +117,7 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> ori::Action {
-        let action = self.content.seq_event(children, state, cx, data, event);
+        let action = self.contents.seq_event(children, state, cx, data, event);
 
         update_children(element, children);
 

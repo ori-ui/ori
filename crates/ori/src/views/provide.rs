@@ -2,9 +2,9 @@ use std::{any::Any, marker::PhantomData};
 
 use crate::{Action, Event, ProviderContext, View, ViewMarker};
 
-/// [`View`] that provides a context to a content view, see [`using`] for how to use contexts.
+/// [`View`] that provides a context to a contents view, see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
-    content: V,
+    contents: V,
     initial: impl FnMut(&mut T) -> U,
 ) -> impl View<C, T, Element = V::Element>
 where
@@ -12,24 +12,24 @@ where
     C: ProviderContext,
     V: View<C, T>,
 {
-    Provide::new(content, initial)
+    Provide::new(contents, initial)
 }
 
-/// [`View`] that provides a context to a content view, see [`Using`] for how to use contexts.
+/// [`View`] that provides a context to a contents view, see [`Using`] for how to use contexts.
 pub struct Provide<F, U, V> {
-    content: V,
-    initial: F,
-    marker:  PhantomData<fn() -> U>,
+    contents: V,
+    initial:  F,
+    marker:   PhantomData<fn() -> U>,
 }
 
 impl<F, U, V> Provide<F, U, V> {
     /// Create a [`Provide`].
-    pub fn new<T>(content: V, initial: F) -> Self
+    pub fn new<T>(contents: V, initial: F) -> Self
     where
         F: FnMut(&mut T) -> U,
     {
         Self {
-            content,
+            contents,
             initial,
             marker: PhantomData,
         }
@@ -51,7 +51,7 @@ where
         let context = (self.initial)(data);
 
         cx.push_context(Box::new(context));
-        let (element, state) = self.content.build(cx, data);
+        let (element, state) = self.contents.build(cx, data);
         let context = cx.pop_context();
 
         (element, (context, state))
@@ -69,12 +69,12 @@ where
             cx.push_context(context);
         }
 
-        self.content.rebuild(
+        self.contents.rebuild(
             element,
             state,
             cx,
             data,
-            &mut old.content,
+            &mut old.contents,
         );
 
         *context = cx.pop_context();
@@ -91,7 +91,7 @@ where
             cx.push_context(context);
         }
 
-        self.content.teardown(element, state, cx, data);
+        self.contents.teardown(element, state, cx, data);
 
         cx.pop_context::<U>();
     }
@@ -108,7 +108,7 @@ where
             cx.push_context(context);
         }
 
-        let action = self.content.event(element, state, cx, data, event);
+        let action = self.contents.event(element, state, cx, data, event);
 
         *context = cx.pop_context();
 
@@ -126,9 +126,26 @@ where
     V: View<C, T>,
 {
     try_using(move |data, context| {
-        let context = context.expect("`using` expects that context is provided");
+        let context = context.expect(
+            "`using` expects context to be provided, try providing it with `provide` or use `using_or_default` or `try_using` instead",
+        );
 
         build(data, context)
+    })
+}
+
+/// [`View`] that uses context provided by [`provider`].
+pub fn using_or_default<U, C, T, V>(
+    build: impl FnOnce(&mut T, &U) -> V,
+) -> impl View<C, T, Element = V::Element>
+where
+    U: Any + Default,
+    C: ProviderContext,
+    V: View<C, T>,
+{
+    try_using(move |data, context| match context {
+        Some(context) => build(data, context),
+        None => build(data, &Default::default()),
     })
 }
 

@@ -1,28 +1,83 @@
+use std::collections::HashMap;
+
 use ike::{
-    Affine, BorderWidth, Canvas, CornerRadius, FontStretch, FontStyle, Fonts, GlyphCluster, Offset,
-    Paint, Paragraph, Point, Rect, Shader, Size, TextDirection, TextLayoutLine, TextStyle,
-    TextWrap,
+    Affine, BorderWidth, Canvas, CornerRadius, FontStretch, FontStyle, GlyphCluster, Offset, Paint,
+    Painter, Paragraph, Point, Rect, Shader, Size, Svg, TextDirection, TextLayoutLine, TextStyle,
+    TextWrap, WeakSvg,
 };
 
-pub(crate) struct SkiaFonts {
-    pub(crate) collection: skia_safe::textlayout::FontCollection,
+pub(crate) struct SkiaPainter {
+    pub(crate) provider: skia_safe::textlayout::TypefaceFontProvider,
+    pub(crate) manager:  skia_safe::FontMgr,
+    pub(crate) fonts:    skia_safe::textlayout::FontCollection,
+    pub(crate) svgs:     HashMap<WeakSvg, Option<skia_safe::svg::Dom>>,
 }
 
-impl Default for SkiaFonts {
+impl Default for SkiaPainter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl SkiaFonts {
+impl SkiaPainter {
     pub(crate) fn new() -> Self {
-        let mut collection = skia_safe::textlayout::FontCollection::new();
-        collection.set_dynamic_font_manager(Some(skia_safe::FontMgr::new()));
+        let provider = skia_safe::textlayout::TypefaceFontProvider::new();
+        let manager = skia_safe::FontMgr::new();
+        let mut fonts = skia_safe::textlayout::FontCollection::new();
+        fonts.set_dynamic_font_manager(skia_safe::FontMgr::clone(&provider));
+        fonts.set_default_font_manager(manager.clone(), None);
 
-        Self { collection }
+        Self {
+            provider,
+            manager,
+            fonts,
+            svgs: HashMap::new(),
+        }
     }
 
-    fn build_font_style(style: &TextStyle) -> skia_safe::FontStyle {
+    pub(crate) fn cleanup(&mut self) {
+        self.svgs.retain(|k, _| k.strong_count() > 0);
+    }
+
+    pub(crate) fn load_font(&mut self, bytes: &[u8], alias: Option<&str>) {
+        if let Some(typeface) = self.manager.new_from_data(bytes, None) {
+            self.provider.register_typeface(typeface, alias);
+        } else {
+            tracing::warn!("loading font failed");
+        }
+    }
+
+    fn create_svg(&mut self, svg: &Svg) -> Option<skia_safe::svg::Dom> {
+        let weak = Svg::downgrade(svg);
+
+        self.svgs
+            .entry(weak)
+            .or_insert_with(|| {
+                let dom = skia_safe::svg::Dom::from_bytes(
+                    svg.bytes(),
+                    skia_safe::FontMgr::default(),
+                )
+                .ok()?;
+
+                let mut svg = dom.root();
+
+                if svg.intrinsic_size().is_zero() {
+                    svg.set_height(skia_safe::svg::Length::new(
+                        1.0,
+                        skia_safe::svg::LengthUnit::PX,
+                    ));
+                    svg.set_width(skia_safe::svg::Length::new(
+                        1.0,
+                        skia_safe::svg::LengthUnit::PX,
+                    ));
+                }
+
+                Some(dom)
+            })
+            .clone()
+    }
+
+    fn crate_font_style(style: &TextStyle) -> skia_safe::FontStyle {
         let weight = skia_safe::font_style::Weight::from(style.font_weight.0 as i32);
 
         let width = match style.font_stretch {
@@ -42,13 +97,11 @@ impl SkiaFonts {
             FontStyle::Italic => skia_safe::font_style::Slant::Italic,
             FontStyle::Oblique => skia_safe::font_style::Slant::Oblique,
         };
+
         skia_safe::FontStyle::new(weight, width, slant)
     }
 
-    pub(crate) fn build_paragraph(
-        &mut self,
-        paragraph: &Paragraph,
-    ) -> skia_safe::textlayout::Paragraph {
+    fn crate_paragraph(&mut self, paragraph: &Paragraph) -> skia_safe::textlayout::Paragraph {
         let mut style = skia_safe::textlayout::ParagraphStyle::new();
 
         let align = match paragraph.align {
@@ -64,14 +117,14 @@ impl SkiaFonts {
             style.set_max_lines(1);
         }
 
-        let mut builder = skia_safe::textlayout::ParagraphBuilder::new(&style, &self.collection);
+        let mut builder = skia_safe::textlayout::ParagraphBuilder::new(&style, &self.fonts);
 
         for (text, style) in paragraph.sections() {
             let mut skia_style = skia_safe::textlayout::TextStyle::new();
 
             skia_style.set_font_size(style.font_size);
             skia_style.set_font_families(&[&style.font_family]);
-            skia_style.set_font_style(Self::build_font_style(style));
+            skia_style.set_font_style(Self::crate_font_style(style));
             skia_style.set_color(skia_safe::Color::from_argb(
                 f32::round(style.color.a * 255.0) as u8,
                 f32::round(style.color.r * 255.0) as u8,
@@ -89,8 +142,8 @@ impl SkiaFonts {
 }
 
 pub(crate) struct SkiaCanvas<'a> {
-    pub(crate) canvas: &'a skia_safe::Canvas,
-    pub(crate) fonts:  &'a mut SkiaFonts,
+    pub(crate) canvas:  &'a skia_safe::Canvas,
+    pub(crate) painter: &'a mut SkiaPainter,
 }
 
 impl<'a> SkiaCanvas<'a> {
@@ -109,18 +162,39 @@ impl<'a> SkiaCanvas<'a> {
             }
         }
 
+        let blend = match paint.blend {
+            ike::BlendMode::Clear => skia_safe::BlendMode::Clear,
+            ike::BlendMode::Src => skia_safe::BlendMode::Src,
+            ike::BlendMode::Dst => skia_safe::BlendMode::Dst,
+            ike::BlendMode::SrcOver => skia_safe::BlendMode::SrcOver,
+            ike::BlendMode::DstOver => skia_safe::BlendMode::DstOver,
+            ike::BlendMode::SrcATop => skia_safe::BlendMode::SrcATop,
+            ike::BlendMode::DstATop => skia_safe::BlendMode::DstATop,
+        };
+
+        skia_paint.set_blend_mode(blend);
+
         skia_paint
     }
 }
 
-impl Fonts for SkiaFonts {
-    fn measure(&mut self, paragraph: &Paragraph, max_width: f32) -> Size {
+impl Painter for SkiaPainter {
+    fn measure_svg(&mut self, svg: &Svg) -> Size {
+        if let Some(skia_dom) = self.create_svg(svg) {
+            let size = skia_dom.root().intrinsic_size();
+            Size::new(size.width, size.height)
+        } else {
+            Size::ZERO
+        }
+    }
+
+    fn measure_text(&mut self, paragraph: &Paragraph, max_width: f32) -> Size {
         let mut min_height = 0.0;
 
         if let Some((_, style)) = paragraph.sections().next() {
-            let typefaces = self.collection.find_typefaces(
+            let typefaces = self.fonts.find_typefaces(
                 &[&style.font_family],
-                Self::build_font_style(style),
+                Self::crate_font_style(style),
             );
 
             if let Some(typeface) = typefaces.first() {
@@ -131,7 +205,7 @@ impl Fonts for SkiaFonts {
             }
         }
 
-        let mut paragraph = self.build_paragraph(paragraph);
+        let mut paragraph = self.crate_paragraph(paragraph);
         paragraph.layout(max_width);
 
         Size {
@@ -140,8 +214,8 @@ impl Fonts for SkiaFonts {
         }
     }
 
-    fn layout(&mut self, paragraph: &Paragraph, max_width: f32) -> Vec<ike::TextLayoutLine> {
-        let mut skia = self.build_paragraph(paragraph);
+    fn layout_text(&mut self, paragraph: &Paragraph, max_width: f32) -> Vec<ike::TextLayoutLine> {
+        let mut skia = self.crate_paragraph(paragraph);
         skia.layout(max_width);
 
         let mut lines = Vec::new();
@@ -225,8 +299,8 @@ impl Fonts for SkiaFonts {
 }
 
 impl Canvas for SkiaCanvas<'_> {
-    fn fonts(&mut self) -> &mut dyn Fonts {
-        self.fonts
+    fn painter(&mut self) -> &mut dyn Painter {
+        self.painter
     }
 
     fn transform(&mut self, affine: Affine, f: &mut dyn FnMut(&mut dyn Canvas)) {
@@ -248,6 +322,17 @@ impl Canvas for SkiaCanvas<'_> {
         f(self);
 
         self.canvas.restore();
+    }
+
+    fn layer(&mut self, f: &mut dyn FnMut(&mut dyn Canvas)) {
+        self.canvas.save_layer_alpha_f(None, 1.0);
+        f(self);
+        self.canvas.restore();
+    }
+
+    fn fill(&mut self, paint: &Paint) {
+        let paint = self.create_paint(paint);
+        self.canvas.draw_paint(&paint);
     }
 
     fn draw_rect(&mut self, rect: Rect, radius: CornerRadius, paint: &Paint) {
@@ -304,8 +389,14 @@ impl Canvas for SkiaCanvas<'_> {
     }
 
     fn draw_text(&mut self, paragraph: &Paragraph, max_width: f32, offset: Offset) {
-        let mut paragraph = self.fonts.build_paragraph(paragraph);
+        let mut paragraph = self.painter.crate_paragraph(paragraph);
         paragraph.layout(max_width + 1.0);
         paragraph.paint(self.canvas, (offset.x, offset.y));
+    }
+
+    fn draw_svg(&mut self, svg: &Svg) {
+        if let Some(skia_dom) = self.painter.create_svg(svg) {
+            skia_dom.render(self.canvas);
+        }
     }
 }

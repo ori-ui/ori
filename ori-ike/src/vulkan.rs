@@ -224,24 +224,9 @@ impl VulkanWindow {
             vk::PresentModeKHR::FIFO
         };
 
-        let formats = unsafe {
-            instance
-                .get_physical_device_surface_formats(context.physical, surface)
-                .unwrap()
-        };
-
-        let brga8srgb = vk::SurfaceFormatKHR {
+        let surface_format = vk::SurfaceFormatKHR {
             format:      vk::Format::B8G8R8A8_UNORM,
             color_space: vk::ColorSpaceKHR::SRGB_NONLINEAR,
-        };
-
-        let surface_format = if let Some(&format) = formats
-            .iter()
-            .find(|f| f.format == vk::Format::R16G16B16A16_SFLOAT)
-        {
-            format
-        } else {
-            brga8srgb
         };
 
         let composite_alpha = if capabilities
@@ -367,19 +352,9 @@ impl VulkanWindow {
         }
 
         while self.skia_surfaces.len() < self.swapchain_images.len() {
-            let color_type = match self.surface_format.format {
-                vk::Format::R16G16B16A16_SFLOAT => skia_safe::ColorType::RGBAF16,
-                vk::Format::B8G8R8A8_UNORM => skia_safe::ColorType::BGRA8888,
-                vk::Format::R8G8B8A8_UNORM => skia_safe::ColorType::RGBA8888,
-                _ => panic!(
-                    "unsupported format: `{:?}`",
-                    self.surface_format
-                ),
-            };
-
             let image_info = skia_safe::ImageInfo::new(
                 skia_safe::ISize::new(width as i32, height as i32),
-                color_type,
+                skia_safe::ColorType::BGRA8888,
                 skia_safe::AlphaType::Premul,
                 None,
             );

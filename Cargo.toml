@@ -1,11 +1,15 @@
+[package]
+name = "ori"
+version = "0.1.0"
+edition.workspace = true
+
 [workspace]
-resolver = "3"
-members = ["crates/*"]
+members = ["ori-gtk4", "ori-ike"]
 
 [workspace.package]
 edition = "2024"
 
 [workspace.dependencies]
-ori      = { path = "crates/ori"      }
-ori-gtk4 = { path = "crates/ori-gtk4" }
-ori-ike  = { path = "crates/ori-ike"  }
+ori      = { path = "."        }
+ori-ike  = { path = "ori-ike"  }
+ori-gtk4 = { path = "ori-gtk4" }

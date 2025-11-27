@@ -12,7 +12,7 @@ ori.workspace = true
 
 [dependencies.ike]
 #git = "https://github.com/ori-ui/ike.git"
-path = "../../../ike"
+path = "../../ike"
 
 [dependencies.tokio]
 version = "1"

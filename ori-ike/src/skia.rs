@@ -122,6 +122,7 @@ impl SkiaPainter {
         for (text, style) in paragraph.sections() {
             let mut skia_style = skia_safe::textlayout::TextStyle::new();
 
+            skia_style.set_subpixel(true);
             skia_style.set_font_size(style.font_size);
             skia_style.set_font_families(&[&style.font_family]);
             skia_style.set_font_style(Self::crate_font_style(style));

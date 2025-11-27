@@ -55,7 +55,7 @@ fn todo_done(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
 
 fn todo_remove(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
     let xmark = using_or_default(|_, palette: &Palette| {
-        picture(Fit::Contain, include_svg!("xmark.svg")).color(palette.contrast)
+        picture(Fit::Contain, include_svg!("xmark.svg")).color(palette.danger)
     });
 
     button(
@@ -70,10 +70,14 @@ fn todo_remove(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
 fn todo(i: usize, todo: &Todo) -> impl View<Data> + use<> {
     container(
         hstack((
-            todo_done(i, todo),
+            hstack((
+                todo_done(i, todo),
+                center(label(&todo.name)),
+            ))
+            .gap(12.0),
             todo_remove(i, todo),
-            center(label(&todo.name)),
         ))
+        .justify(Justify::SpaceBetween)
         .gap(12.0),
     )
 }
@@ -90,7 +94,7 @@ fn todos(data: &mut Data) -> impl View<Data> + use<> {
 }
 
 fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
-    window(center(width(
+    window(center(min_width(
         200.0,
         vstack((name_entry(), todos(data))),
     )))

@@ -168,6 +168,8 @@ impl<'a> SkiaCanvas<'a> {
             ike::BlendMode::Dst => skia_safe::BlendMode::Dst,
             ike::BlendMode::SrcOver => skia_safe::BlendMode::SrcOver,
             ike::BlendMode::DstOver => skia_safe::BlendMode::DstOver,
+            ike::BlendMode::SrcIn => skia_safe::BlendMode::SrcIn,
+            ike::BlendMode::DstIn => skia_safe::BlendMode::DstIn,
             ike::BlendMode::SrcATop => skia_safe::BlendMode::SrcATop,
             ike::BlendMode::DstATop => skia_safe::BlendMode::DstATop,
         };

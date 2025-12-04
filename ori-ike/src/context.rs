@@ -7,10 +7,18 @@ use std::{
 use winit::event_loop::EventLoopProxy;
 
 pub struct Context {
-    pub(crate) app:      ike::App,
-    pub(crate) proxy:    EventLoopProxy<()>,
-    pub(crate) contexts: Vec<Box<dyn Any>>,
-    pub(crate) sender:   Sender<Event>,
+    pub(crate) app:     ike::App,
+    pub(crate) proxy:   EventLoopProxy<()>,
+    pub(crate) entries: Vec<Entry>,
+    pub(crate) sender:  Sender<Event>,
+
+    pub(crate) use_type_names_unsafe: bool,
+}
+
+pub(crate) struct Entry {
+    value:     Box<dyn Any>,
+    type_id:   TypeId,
+    type_name: &'static str,
 }
 
 #[derive(Clone)]
@@ -52,27 +60,45 @@ impl ori::AsyncContext for Context {
 
 impl ori::ProviderContext for Context {
     fn push_context<T: Any>(&mut self, context: Box<T>) {
-        self.contexts.push(Box::new(context))
+        self.entries.push(Entry {
+            value:     context,
+            type_id:   TypeId::of::<T>(),
+            type_name: std::any::type_name::<T>(),
+        })
     }
 
     fn pop_context<T: Any>(&mut self) -> Option<Box<T>> {
-        self.contexts.pop()?.downcast().ok()
+        self.entries.pop()?.value.downcast().ok()
     }
 
-    fn get_context<T: Any>(&mut self) -> Option<&T> {
-        self.contexts
-            .iter()
-            .rfind(|c| c.as_ref().type_id() == TypeId::of::<T>())?
-            .as_ref()
-            .downcast_ref()
+    fn get_context<T: Any>(&self) -> Option<&T> {
+        let entry = match self.use_type_names_unsafe {
+            true => self
+                .entries
+                .iter()
+                .rfind(|e| e.type_name == std::any::type_name::<T>())?,
+            false => self
+                .entries
+                .iter()
+                .rfind(|e| e.type_id == TypeId::of::<T>())?,
+        };
+
+        Some(unsafe { &*(entry.value.as_ref() as *const _ as *const T) })
     }
 
     fn get_context_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.contexts
-            .iter_mut()
-            .rfind(|c| c.as_ref().type_id() == TypeId::of::<T>())?
-            .as_mut()
-            .downcast_mut()
+        let entry = match self.use_type_names_unsafe {
+            true => self
+                .entries
+                .iter_mut()
+                .rfind(|e| e.type_name == std::any::type_name::<T>())?,
+            false => self
+                .entries
+                .iter_mut()
+                .rfind(|e| e.type_id == TypeId::of::<T>())?,
+        };
+
+        Some(unsafe { &mut *(entry.value.as_mut() as *mut _ as *mut T) })
     }
 }
 

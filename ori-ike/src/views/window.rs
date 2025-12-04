@@ -59,7 +59,7 @@ where
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (contents, state) = self.contents.build(cx, data);
 
-        let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
+        let palette = cx.get_context::<Palette>().cloned().unwrap();
         let window = cx.app.create_window(contents.upcast());
 
         window.title = self.title.clone();
@@ -91,6 +91,7 @@ where
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
 
         if let Some(window) = cx.app.get_window_mut(*id) {
+            window.contents = contents.upcast();
             window.title = self.title.clone();
             window.sizing = self.sizing;
             window.visible = self.visible;
@@ -112,11 +113,17 @@ where
     fn event(
         &mut self,
         _element: &mut Self::Element,
-        (_, contents, state): &mut Self::State,
+        (id, contents, state): &mut Self::State,
         cx: &mut Context,
         data: &mut T,
         event: &mut ori::Event,
     ) -> ori::Action {
-        self.contents.event(contents, state, cx, data, event)
+        let action = self.contents.event(contents, state, cx, data, event);
+
+        if let Some(window) = cx.app.get_window_mut(*id) {
+            window.contents = contents.upcast();
+        }
+
+        action
     }
 }

@@ -11,7 +11,18 @@ mod skia;
 #[cfg(feature = "vulkan")]
 mod vulkan;
 
-pub mod views;
+#[doc(hidden)]
+#[cfg(feature = "reload")]
+pub mod reload;
+
+#[path = "views/mod.rs"]
+mod ori_ike_views;
+
+pub mod views {
+    pub use crate::ori_ike_views::*;
+    pub use ori::views::*;
+}
+
 pub use ike::*;
 pub use ori::*;
 pub use tracing;
@@ -28,11 +39,11 @@ pub mod prelude {
         widgets::{Align, Axis, Fit, Justify, NewlineBehaviour, SubmitBehaviour},
     };
 
-    pub use ori::{Action, Event, Proxy, ViewId, views::*};
+    pub use ori::{Action, Event, Proxy, ViewId};
     pub use tracing::{
         debug, debug_span, error, error_span, info, info_span, span, trace, trace_span, warn,
         warn_span,
     };
 
-    pub use crate::{App, Effect, Palette, View, ViewSeq, views::*};
+    pub use crate::{App, Effect, Palette, View, ViewSeq, WindowSizing, views::*};
 }

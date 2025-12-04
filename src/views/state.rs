@@ -6,7 +6,10 @@ use crate::{Action, Event, View, ViewMarker};
 pub fn map<C, T, U, E>(
     contents: impl View<C, U, Element = E>,
     map: impl FnMut(&mut T, &mut dyn FnMut(&mut U)),
-) -> impl View<C, T, Element = E> {
+) -> impl View<C, T, Element = E>
+where
+    T: ?Sized,
+{
     Map::new(contents, map)
 }
 
@@ -44,6 +47,7 @@ impl<F, U, V> Map<F, U, V> {
     /// Create a [`Map`].
     pub fn new<T>(contents: V, map: F) -> Self
     where
+        T: ?Sized,
         F: FnMut(&mut T, &mut dyn FnMut(&mut U)),
     {
         Self {
@@ -57,6 +61,7 @@ impl<F, U, V> Map<F, U, V> {
 impl<F, U, V> ViewMarker for Map<F, U, V> {}
 impl<C, T, U, V, F> View<C, T> for Map<F, U, V>
 where
+    T: ?Sized,
     V: View<C, U>,
     F: FnMut(&mut T, &mut dyn FnMut(&mut U)),
 {

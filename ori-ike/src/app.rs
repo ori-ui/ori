@@ -81,8 +81,10 @@ impl App {
         let context = Context {
             app: ike::App::new(),
             proxy: event_loop.create_proxy(),
-            contexts: Vec::new(),
+            entries: Vec::new(),
             sender,
+
+            use_type_names_unsafe: false,
         };
 
         let mut state = AppState {
@@ -418,9 +420,8 @@ impl<T> AppState<'_, T> {
 }
 
 impl WindowState {
-    #[cfg(feature = "vulkan")]
     fn new(
-        vulkan: &mut crate::vulkan::VulkanContext,
+        #[cfg(feature = "vulkan")] vulkan: &mut crate::vulkan::VulkanContext,
         event_loop: &ActiveEventLoop,
         desc: &ike::Window,
     ) -> Self {
@@ -465,6 +466,7 @@ impl WindowState {
 
         let window = event_loop.create_window(attributes).unwrap();
 
+        #[cfg(feature = "vulkan")]
         let vulkan = unsafe { crate::vulkan::VulkanWindow::new(vulkan, &window) };
 
         let (min_size, max_size) = match desc.sizing {

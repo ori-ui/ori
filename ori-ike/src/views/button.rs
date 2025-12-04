@@ -16,7 +16,7 @@ pub struct ButtonTheme {
     pub padding:       Padding,
     pub border_width:  BorderWidth,
     pub corner_radius: CornerRadius,
-    pub color:         Option<Color>,
+    pub idle_color:    Option<Color>,
     pub hovered_color: Option<Color>,
     pub active_color:  Option<Color>,
     pub border_color:  Option<Color>,
@@ -30,7 +30,7 @@ impl Default for ButtonTheme {
             padding:       Padding::all(8.0),
             border_width:  BorderWidth::all(1.0),
             corner_radius: CornerRadius::all(8.0),
-            color:         None,
+            idle_color:    None,
             hovered_color: None,
             active_color:  None,
             border_color:  None,
@@ -75,18 +75,18 @@ impl<T, V> Button<T, V> {
         }
     }
 
-    pub fn padding(mut self, padding: Padding) -> Self {
-        self.padding = Some(padding);
+    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+        self.padding = Some(padding.into());
         self
     }
 
-    pub fn border_width(mut self, border_width: BorderWidth) -> Self {
-        self.border_width = Some(border_width);
+    pub fn border_width(mut self, border_width: impl Into<BorderWidth>) -> Self {
+        self.border_width = Some(border_width.into());
         self
     }
 
-    pub fn corner_radius(mut self, corner_radius: CornerRadius) -> Self {
-        self.corner_radius = Some(corner_radius);
+    pub fn corner_radius(mut self, corner_radius: impl Into<CornerRadius>) -> Self {
+        self.corner_radius = Some(corner_radius.into());
         self
     }
 
@@ -129,7 +129,7 @@ impl<T, V> Button<T, V> {
 
     fn get_idle_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
         self.idle_color
-            .unwrap_or_else(|| theme.color.unwrap_or_else(|| palette.surface(1)))
+            .unwrap_or_else(|| theme.idle_color.unwrap_or_else(|| palette.surface(1)))
     }
 
     fn get_hovered_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {

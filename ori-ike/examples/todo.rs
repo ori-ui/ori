@@ -44,13 +44,13 @@ fn todo_done(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
         },
     );
 
-    button(
-        size([16.0, 16.0], checkmark),
-        move |data: &mut Data| {
-            data.todos[i].done = !data.todos[i].done;
-        },
-    )
-    .padding(Padding::all(2.0))
+    let button = button(checkmark, move |data: &mut Data| {
+        data.todos[i].done = !data.todos[i].done;
+    })
+    .padding(2.0)
+    .corner_radius(12.0);
+
+    size([24.0, 24.0], button)
 }
 
 fn todo_remove(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
@@ -58,13 +58,12 @@ fn todo_remove(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
         picture(Fit::Contain, include_svg!("xmark.svg")).color(palette.danger)
     });
 
-    button(
-        size([16.0, 16.0], xmark),
-        move |data: &mut Data| {
-            data.todos.remove(i);
-        },
-    )
-    .padding(Padding::all(2.0))
+    let button = button(xmark, move |data: &mut Data| {
+        data.todos.remove(i);
+    })
+    .padding(2.0);
+
+    size([24.0, 24.0], button)
 }
 
 fn todo(i: usize, todo: &Todo) -> impl View<Data> + use<> {

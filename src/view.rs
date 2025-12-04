@@ -4,7 +4,10 @@ use crate::{Action, Event};
 pub trait ViewMarker {}
 
 /// Snapshot of the state of a retained UI.
-pub trait View<C, T>: ViewMarker {
+pub trait View<C, T>: ViewMarker
+where
+    T: ?Sized,
+{
     /// The element this view produces.
     type Element;
 

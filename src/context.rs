@@ -33,7 +33,7 @@ pub trait ProviderContext {
     fn pop_context<T: Any>(&mut self) -> Option<Box<T>>;
 
     /// Get the previously inserted context of type `T`.
-    fn get_context<T: Any>(&mut self) -> Option<&T>;
+    fn get_context<T: Any>(&self) -> Option<&T>;
 
     /// Get a mutable reference to the previously inserted context of type `T`.
     fn get_context_mut<T: Any>(&mut self) -> Option<&mut T>;

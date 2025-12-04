@@ -6,6 +6,7 @@ edition.workspace = true
 [features]
 default = ["vulkan"]
 vulkan = ["dep:ash", "dep:ash-window", "dep:raw-window-handle"]
+reload = ["dep:libloading", "dep:rand", "dep:json"]
 
 [dependencies]
 ori.workspace = true
@@ -53,9 +54,22 @@ optional = true
 version = "0.6"
 optional = true
 
+[dependencies.libloading]
+version = "0.9"
+optional = true
+
+[dependencies.rand]
+version = "0.9"
+optional = true
+
+[dependencies.json]
+version = "0.12"
+optional = true
+
 [dependencies.tracing]
 version = "0.1"
 
 [dependencies.tracing-subscriber]
 version = "0.3"
 features = ["env-filter"]
+

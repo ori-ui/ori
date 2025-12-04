@@ -6,7 +6,10 @@ use crate::{Action, Event, Super, View, ViewMarker};
 ///
 /// Note that this generic over `E` which should be treated as a [`Super`] element of the elements
 /// supported by this implementation.
-pub trait AnyView<C, T, E> {
+pub trait AnyView<C, T, E>
+where
+    T: ?Sized,
+{
     /// Get `self` as `&mut dyn Any`.
     ///
     /// This unfortunately is still necessary, even after the stabilization of casting `dyn` trait
@@ -42,8 +45,9 @@ pub trait AnyView<C, T, E> {
 
 impl<C, T, E, V> AnyView<C, T, E> for V
 where
-    V: View<C, T> + Any,
+    T: ?Sized,
     E: Super<C, V::Element>,
+    V: View<C, T> + Any,
     V::State: Any,
 {
     fn as_mut_any(&mut self) -> &mut dyn Any {
@@ -104,8 +108,11 @@ where
     }
 }
 
-impl<C, T, E> ViewMarker for Box<dyn AnyView<C, T, E>> {}
-impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>> {
+impl<C, T, E> ViewMarker for Box<dyn AnyView<C, T, E>> where T: ?Sized {}
+impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>>
+where
+    T: ?Sized,
+{
     type Element = E;
     type State = Box<dyn Any>;
 

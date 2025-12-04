@@ -17,6 +17,12 @@ pub struct Palette {
 
 impl Default for Palette {
     fn default() -> Self {
+        Self::dark()
+    }
+}
+
+impl Palette {
+    pub const fn dark() -> Self {
         Palette {
             background: Color::hex("#1e1e1e"),
             surface:    Color::hex("#242424"),
@@ -31,9 +37,23 @@ impl Default for Palette {
             info:       Color::hex("#639ff7"),
         }
     }
-}
 
-impl Palette {
+    pub const fn paper() -> Self {
+        Self {
+            background: Color::hex("#fdf6e3"),
+            surface:    Color::hex("#fdf6e3"),
+            outline:    Color::hex("#323d43"),
+            contrast:   Color::hex("#323d43"),
+            primary:    Color::hex("#e68183"),
+            secondary:  Color::hex("#7fbbb3"),
+            accent:     Color::hex("#d699b6"),
+            danger:     Color::hex("#e68183"),
+            success:    Color::hex("#a7c080"),
+            warning:    Color::hex("#dbbc7f"),
+            info:       Color::hex("#3a94c5"),
+        }
+    }
+
     /// Get the surface color with a specific level.
     ///
     /// Common levels are:

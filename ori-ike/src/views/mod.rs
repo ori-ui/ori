@@ -20,10 +20,10 @@ pub use constrain::{
     size, width,
 };
 pub use container::{Container, ContainerTheme, container};
-pub use entry::{Entry, entry};
+pub use entry::{Entry, EntryTheme, entry};
 pub use label::{Label, label};
 pub use picture::{Picture, picture};
 pub use stack::{Flex, Stack, expand, flex, hstack, stack, vstack};
 pub use text::TextTheme;
-pub use text_area::{TextArea, text_area};
+pub use text_area::{TextArea, TextAreaTheme, text_area};
 pub use window::{Window, window};

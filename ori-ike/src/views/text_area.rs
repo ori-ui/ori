@@ -6,25 +6,59 @@ use ori::{AsyncContext, ProviderContext, Proxy};
 
 use crate::{Context, Palette, views::TextTheme};
 
+#[derive(Clone, Debug)]
+pub struct TextAreaTheme {
+    pub font_size:       Option<f32>,
+    pub font_family:     Option<String>,
+    pub font_weight:     Option<FontWeight>,
+    pub font_stretch:    Option<FontStretch>,
+    pub font_style:      Option<FontStyle>,
+    pub line_height:     Option<f32>,
+    pub align:           Option<TextAlign>,
+    pub wrap:            Option<TextWrap>,
+    pub color:           Option<Color>,
+    pub cursor_color:    Option<Color>,
+    pub selection_color: Option<Color>,
+    pub blink_rate:      f32,
+}
+
+impl Default for TextAreaTheme {
+    fn default() -> Self {
+        Self {
+            font_size:       None,
+            font_family:     None,
+            font_weight:     None,
+            font_stretch:    None,
+            font_style:      None,
+            line_height:     None,
+            align:           None,
+            wrap:            None,
+            color:           None,
+            cursor_color:    None,
+            selection_color: None,
+            blink_rate:      5.0,
+        }
+    }
+}
+
 pub fn text_area<T>() -> TextArea<T> {
     TextArea::new()
 }
 
 pub struct TextArea<T> {
-    text:         Option<String>,
-    font_size:    Option<f32>,
-    font_family:  Option<String>,
-    font_weight:  Option<FontWeight>,
-    font_stretch: Option<FontStretch>,
-    font_style:   Option<FontStyle>,
-    line_height:  Option<f32>,
-    align:        Option<TextAlign>,
-    wrap:         Option<TextWrap>,
-    color:        Option<Color>,
-
+    text:              Option<String>,
+    font_size:         Option<f32>,
+    font_family:       Option<String>,
+    font_weight:       Option<FontWeight>,
+    font_stretch:      Option<FontStretch>,
+    font_style:        Option<FontStyle>,
+    line_height:       Option<f32>,
+    align:             Option<TextAlign>,
+    wrap:              Option<TextWrap>,
+    color:             Option<Color>,
     cursor_color:      Option<Color>,
     selection_color:   Option<Color>,
-    blink_rate:        f32,
+    blink_rate:        Option<f32>,
     newline_behaviour: NewlineBehaviour,
     submit_behaviour:  SubmitBehaviour,
 
@@ -56,7 +90,7 @@ impl<T> TextArea<T> {
 
             cursor_color:      None,
             selection_color:   None,
-            blink_rate:        5.0,
+            blink_rate:        None,
             newline_behaviour: NewlineBehaviour::Enter,
             submit_behaviour:  SubmitBehaviour::default(),
 
@@ -126,7 +160,7 @@ impl<T> TextArea<T> {
     }
 
     pub fn blink_rate(mut self, rate: f32) -> Self {
-        self.blink_rate = rate;
+        self.blink_rate = Some(rate);
         self
     }
 
@@ -158,31 +192,72 @@ impl<T> TextArea<T> {
 }
 
 impl<T> TextArea<T> {
-    fn build_paragraph(&self, text: &str, palette: &Palette, theme: &TextTheme) -> Paragraph {
+    fn build_paragraph(
+        &self,
+        text: &str,
+        palette: &Palette,
+        text_theme: &TextTheme,
+        text_area_theme: &TextAreaTheme,
+    ) -> Paragraph {
         let style = TextStyle {
-            font_size:    self.font_size.unwrap_or(theme.font_size),
-            font_weight:  self.font_weight.unwrap_or(theme.font_weight),
-            font_stretch: self.font_stretch.unwrap_or(theme.font_stretch),
-            font_style:   self.font_style.unwrap_or(theme.font_style),
+            font_size: self
+                .font_size
+                .unwrap_or_else(|| text_area_theme.font_size.unwrap_or(text_theme.font_size)),
 
-            font_family: self
-                .font_family
-                .clone()
-                .unwrap_or_else(|| theme.font_family.clone().into_owned()),
+            font_weight: self.font_weight.unwrap_or_else(|| {
+                text_area_theme
+                    .font_weight
+                    .unwrap_or(text_theme.font_weight)
+            }),
 
-            color: self
-                .color
-                .unwrap_or_else(|| theme.color.unwrap_or(palette.contrast)),
+            font_stretch: self.font_stretch.unwrap_or_else(|| {
+                text_area_theme
+                    .font_stretch
+                    .unwrap_or(text_theme.font_stretch)
+            }),
+
+            font_style: self
+                .font_style
+                .unwrap_or_else(|| text_area_theme.font_style.unwrap_or(text_theme.font_style)),
+
+            font_family: self.font_family.clone().unwrap_or_else(|| {
+                text_area_theme
+                    .font_family
+                    .clone()
+                    .unwrap_or_else(|| text_theme.font_family.clone().into_owned())
+            }),
+
+            color: self.color.unwrap_or_else(|| {
+                text_area_theme
+                    .color
+                    .unwrap_or_else(|| text_theme.color.unwrap_or(palette.contrast_low()))
+            }),
         };
 
         let mut paragraph = Paragraph::new(
-            self.line_height.unwrap_or(theme.line_height),
-            self.align.unwrap_or(theme.align),
-            self.wrap.unwrap_or(theme.wrap),
+            self.line_height.unwrap_or_else(|| {
+                text_area_theme
+                    .line_height
+                    .unwrap_or(text_theme.line_height)
+            }),
+            self.align
+                .unwrap_or_else(|| text_area_theme.align.unwrap_or(text_theme.align)),
+            self.wrap
+                .unwrap_or_else(|| text_area_theme.wrap.unwrap_or(text_theme.wrap)),
         );
 
         paragraph.push(text, style);
         paragraph
+    }
+
+    fn get_cursor_color(&self, palette: &Palette, theme: &TextAreaTheme) -> Color {
+        self.cursor_color
+            .unwrap_or_else(|| theme.cursor_color.unwrap_or(palette.contrast))
+    }
+
+    fn get_selection_color(&self, palette: &Palette, theme: &TextAreaTheme) -> Color {
+        self.selection_color
+            .unwrap_or_else(|| theme.selection_color.unwrap_or(palette.info))
     }
 }
 
@@ -198,21 +273,26 @@ impl<T> ori::View<Context, T> for TextArea<T> {
 
     fn build(&mut self, cx: &mut Context, _data: &mut T) -> (Self::Element, Self::State) {
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
-        let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+        let text_theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+        let theme = cx
+            .get_context::<TextAreaTheme>()
+            .cloned()
+            .unwrap_or_default();
         let proxy = cx.proxy();
         let id = ori::ViewId::next();
 
         let text = self.text.as_deref().unwrap_or("");
-        let paragraph = self.build_paragraph(text, &palette, &theme);
+        let paragraph = self.build_paragraph(text, &palette, &text_theme, &theme);
 
         let mut widget = ike::widgets::TextArea::new(cx, paragraph, true);
 
-        let cursor_color = self.cursor_color.unwrap_or(palette.contrast);
-        let selection_color = self.selection_color.unwrap_or(palette.info);
+        let cursor_color = self.get_cursor_color(&palette, &theme);
+        let selection_color = self.get_selection_color(&palette, &theme);
+        let blink_rate = self.blink_rate.unwrap_or(theme.blink_rate);
 
         ike::widgets::TextArea::set_cursor_color(&mut widget, cursor_color);
         ike::widgets::TextArea::set_selection_color(&mut widget, selection_color);
-        ike::widgets::TextArea::set_blink_rate(&mut widget, self.blink_rate);
+        ike::widgets::TextArea::set_blink_rate(&mut widget, blink_rate);
         ike::widgets::TextArea::set_newline_behaviour(&mut widget, self.newline_behaviour);
         ike::widgets::TextArea::set_submit_behaviour(&mut widget, self.submit_behaviour);
 
@@ -250,7 +330,11 @@ impl<T> ori::View<Context, T> for TextArea<T> {
         old: &mut Self,
     ) {
         let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
-        let theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+        let text_theme = cx.get_context::<TextTheme>().cloned().unwrap_or_default();
+        let theme = cx
+            .get_context::<TextAreaTheme>()
+            .cloned()
+            .unwrap_or_default();
 
         let mut widget = cx.get_mut(*element);
 
@@ -267,7 +351,7 @@ impl<T> ori::View<Context, T> for TextArea<T> {
         {
             let text = self.text.as_deref().unwrap_or_else(|| widget.text());
 
-            let paragraph = self.build_paragraph(text, &palette, &theme);
+            let paragraph = self.build_paragraph(text, &palette, &text_theme, &theme);
             ike::widgets::TextArea::set_text(&mut widget, paragraph);
         }
 
@@ -282,7 +366,8 @@ impl<T> ori::View<Context, T> for TextArea<T> {
         }
 
         if self.blink_rate != old.blink_rate {
-            ike::widgets::TextArea::set_blink_rate(&mut widget, self.blink_rate);
+            let blink_rate = self.blink_rate.unwrap_or(theme.blink_rate);
+            ike::widgets::TextArea::set_blink_rate(&mut widget, blink_rate);
         }
 
         if self.newline_behaviour != old.newline_behaviour {

@@ -355,8 +355,6 @@ impl Canvas for SkiaCanvas<'_> {
     }
 
     fn draw_border(&mut self, rect: Rect, width: BorderWidth, radius: CornerRadius, paint: &Paint) {
-        let mut path = skia_safe::Path::new();
-
         let inner = skia_safe::RRect::new_nine_patch(
             skia_safe::Rect::new(
                 rect.min.x + width.left,
@@ -380,15 +378,9 @@ impl Canvas for SkiaCanvas<'_> {
             radius.bottom_left,
         );
 
-        path.add_rrect(
-            inner,
-            Some((skia_safe::PathDirection::CCW, 0)),
-        );
-        path.add_rrect(outer, None);
-
         let paint = self.create_paint(paint);
 
-        self.canvas.draw_path(&path, &paint);
+        self.canvas.draw_drrect(outer, inner, &paint);
     }
 
     fn draw_text(&mut self, paragraph: &Paragraph, max_width: f32, offset: Offset) {

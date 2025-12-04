@@ -29,8 +29,7 @@ impl Default for ContainerTheme {
 }
 
 pub struct Container<V> {
-    contents: V,
-
+    contents:         V,
     padding:          Option<Padding>,
     border_width:     Option<BorderWidth>,
     corner_radius:    Option<CornerRadius>,
@@ -51,18 +50,18 @@ impl<V> Container<V> {
         }
     }
 
-    pub fn padding(mut self, padding: Padding) -> Self {
-        self.padding = Some(padding);
+    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+        self.padding = Some(padding.into());
         self
     }
 
-    pub fn border_width(mut self, border_width: BorderWidth) -> Self {
-        self.border_width = Some(border_width);
+    pub fn border_width(mut self, border_width: impl Into<BorderWidth>) -> Self {
+        self.border_width = Some(border_width.into());
         self
     }
 
-    pub fn corner_radius(mut self, corner_radius: CornerRadius) -> Self {
-        self.corner_radius = Some(corner_radius);
+    pub fn corner_radius(mut self, corner_radius: impl Into<CornerRadius>) -> Self {
+        self.corner_radius = Some(corner_radius.into());
         self
     }
 
@@ -118,11 +117,11 @@ where
 
         let mut widget = ike::widgets::Container::new(cx, contents.upcast());
 
-        let padding = Self::get_padding(self, &theme);
-        let border_width = Self::get_border_width(self, &theme);
-        let corner_radius = Self::get_corner_radius(self, &theme);
-        let background_color = Self::get_background_color(self, &theme, &palette);
-        let border_color = Self::get_border_color(self, &theme, &palette);
+        let padding = self.get_padding(&theme);
+        let border_width = self.get_border_width(&theme);
+        let corner_radius = self.get_corner_radius(&theme);
+        let background_color = self.get_background_color(&theme, &palette);
+        let border_color = self.get_border_color(&theme, &palette);
 
         ike::widgets::Container::set_padding(&mut widget, padding);
         ike::widgets::Container::set_border_width(&mut widget, border_width);
@@ -162,27 +161,27 @@ where
         }
 
         if self.padding != old.padding {
-            let padding = Self::get_padding(self, &theme);
+            let padding = self.get_padding(&theme);
             ike::widgets::Container::set_padding(&mut widget, padding);
         }
 
         if self.border_width != old.border_width {
-            let border_width = Self::get_border_width(self, &theme);
+            let border_width = self.get_border_width(&theme);
             ike::widgets::Container::set_border_width(&mut widget, border_width);
         }
 
         if self.corner_radius != old.corner_radius {
-            let corner_radius = Self::get_corner_radius(self, &theme);
+            let corner_radius = self.get_corner_radius(&theme);
             ike::widgets::Container::set_corner_radius(&mut widget, corner_radius);
         }
 
         if self.background_color != old.background_color {
-            let background = Self::get_background_color(self, &theme, &palette);
+            let background = self.get_background_color(&theme, &palette);
             ike::widgets::Container::set_background_color(&mut widget, background);
         }
 
         if self.border_color != old.border_color {
-            let border_color = Self::get_border_color(self, &theme, &palette);
+            let border_color = self.get_border_color(&theme, &palette);
             ike::widgets::Container::set_border_color(&mut widget, border_color);
         }
     }

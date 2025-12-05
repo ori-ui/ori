@@ -1,16 +1,20 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::BuildHasherDefault};
 
 use ike::{
     Affine, BorderWidth, Canvas, CornerRadius, FontStretch, FontStyle, GlyphCluster, Offset, Paint,
     Painter, Paragraph, Point, Rect, Shader, Size, Svg, TextDirection, TextLayoutLine, TextStyle,
-    TextWrap, WeakSvg,
+    TextWrap, WeakParagraph, WeakSvg,
 };
 
+type FastHasher = BuildHasherDefault<seahash::SeaHasher>;
+
 pub(crate) struct SkiaPainter {
-    pub(crate) provider: skia_safe::textlayout::TypefaceFontProvider,
-    pub(crate) manager:  skia_safe::FontMgr,
-    pub(crate) fonts:    skia_safe::textlayout::FontCollection,
-    pub(crate) svgs:     HashMap<WeakSvg, Option<skia_safe::svg::Dom>>,
+    pub(crate) provider:   skia_safe::textlayout::TypefaceFontProvider,
+    pub(crate) manager:    skia_safe::FontMgr,
+    pub(crate) fonts:      skia_safe::textlayout::FontCollection,
+    pub(crate) svgs:       HashMap<WeakSvg, Option<skia_safe::svg::Dom>, FastHasher>,
+    pub(crate) paragraphs: HashMap<WeakParagraph, skia_safe::textlayout::Paragraph, FastHasher>,
+    pub(crate) paints:     HashMap<Paint, skia_safe::Paint, FastHasher>,
 }
 
 impl Default for SkiaPainter {
@@ -31,12 +35,16 @@ impl SkiaPainter {
             provider,
             manager,
             fonts,
-            svgs: HashMap::new(),
+            svgs: HashMap::default(),
+            paragraphs: HashMap::default(),
+            paints: HashMap::default(),
         }
     }
 
     pub(crate) fn cleanup(&mut self) {
         self.svgs.retain(|k, _| k.strong_count() > 0);
+        self.paragraphs.retain(|k, _| k.strong_count() > 0);
+        self.paints.clear();
     }
 
     pub(crate) fn load_font(&mut self, bytes: &[u8], alias: Option<&str>) {
@@ -101,84 +109,90 @@ impl SkiaPainter {
         skia_safe::FontStyle::new(weight, width, slant)
     }
 
-    fn crate_paragraph(&mut self, paragraph: &Paragraph) -> skia_safe::textlayout::Paragraph {
-        let mut style = skia_safe::textlayout::ParagraphStyle::new();
+    fn crate_paragraph(&mut self, paragraph: &Paragraph) -> &mut skia_safe::textlayout::Paragraph {
+        let weak = Paragraph::downgrade(paragraph);
 
-        let align = match paragraph.align {
-            ike::TextAlign::Start => skia_safe::textlayout::TextAlign::Start,
-            ike::TextAlign::Center => skia_safe::textlayout::TextAlign::Center,
-            ike::TextAlign::End => skia_safe::textlayout::TextAlign::End,
-        };
+        self.paragraphs.entry(weak).or_insert_with(|| {
+            let mut style = skia_safe::textlayout::ParagraphStyle::new();
 
-        style.set_height(paragraph.line_height);
-        style.set_text_align(align);
+            let align = match paragraph.align {
+                ike::TextAlign::Start => skia_safe::textlayout::TextAlign::Start,
+                ike::TextAlign::Center => skia_safe::textlayout::TextAlign::Center,
+                ike::TextAlign::End => skia_safe::textlayout::TextAlign::End,
+            };
 
-        if let TextWrap::None = paragraph.wrap {
-            style.set_max_lines(1);
-        }
+            style.set_height(paragraph.line_height);
+            style.set_text_align(align);
 
-        let mut builder = skia_safe::textlayout::ParagraphBuilder::new(&style, &self.fonts);
+            if let TextWrap::None = paragraph.wrap {
+                style.set_max_lines(1);
+            }
 
-        for (text, style) in paragraph.sections() {
-            let mut skia_style = skia_safe::textlayout::TextStyle::new();
+            let mut builder = skia_safe::textlayout::ParagraphBuilder::new(&style, &self.fonts);
 
-            skia_style.set_subpixel(true);
-            skia_style.set_font_size(style.font_size);
-            skia_style.set_font_families(&[&style.font_family]);
-            skia_style.set_font_style(Self::crate_font_style(style));
-            skia_style.set_color(skia_safe::Color::from_argb(
-                f32::round(style.color.a * 255.0) as u8,
-                f32::round(style.color.r * 255.0) as u8,
-                f32::round(style.color.g * 255.0) as u8,
-                f32::round(style.color.b * 255.0) as u8,
-            ));
+            for (text, style) in paragraph.sections() {
+                let mut skia_style = skia_safe::textlayout::TextStyle::new();
 
-            builder.push_style(&skia_style);
-            builder.add_text(text);
-            builder.pop();
-        }
+                skia_style.set_subpixel(true);
+                skia_style.set_font_size(style.font_size);
+                skia_style.set_font_families(&[&style.font_family]);
+                skia_style.set_font_style(Self::crate_font_style(style));
+                skia_style.set_font_hinting(skia_safe::FontHinting::Full);
+                skia_style.foreground().set_anti_alias(true);
+                skia_style.set_color(skia_safe::Color::from_argb(
+                    f32::round(style.color.a * 255.0) as u8,
+                    f32::round(style.color.r * 255.0) as u8,
+                    f32::round(style.color.g * 255.0) as u8,
+                    f32::round(style.color.b * 255.0) as u8,
+                ));
 
-        builder.build()
+                builder.push_style(&skia_style);
+                builder.add_text(text);
+                builder.pop();
+            }
+
+            builder.build()
+        })
+    }
+
+    fn create_paint(&mut self, paint: &Paint) -> &skia_safe::Paint {
+        self.paints.entry(paint.clone()).or_insert_with(|| {
+            let mut skia_paint = skia_safe::Paint::default();
+            skia_paint.set_anti_alias(true);
+
+            match paint.shader {
+                Shader::Solid(color) => {
+                    skia_paint.set_color(skia_safe::Color::from_argb(
+                        f32::round(color.a * 255.0) as u8,
+                        f32::round(color.r * 255.0) as u8,
+                        f32::round(color.g * 255.0) as u8,
+                        f32::round(color.b * 255.0) as u8,
+                    ));
+                }
+            }
+
+            let blend = match paint.blend {
+                ike::BlendMode::Clear => skia_safe::BlendMode::Clear,
+                ike::BlendMode::Src => skia_safe::BlendMode::Src,
+                ike::BlendMode::Dst => skia_safe::BlendMode::Dst,
+                ike::BlendMode::SrcOver => skia_safe::BlendMode::SrcOver,
+                ike::BlendMode::DstOver => skia_safe::BlendMode::DstOver,
+                ike::BlendMode::SrcIn => skia_safe::BlendMode::SrcIn,
+                ike::BlendMode::DstIn => skia_safe::BlendMode::DstIn,
+                ike::BlendMode::SrcATop => skia_safe::BlendMode::SrcATop,
+                ike::BlendMode::DstATop => skia_safe::BlendMode::DstATop,
+            };
+
+            skia_paint.set_blend_mode(blend);
+
+            skia_paint
+        })
     }
 }
 
 pub(crate) struct SkiaCanvas<'a> {
     pub(crate) canvas:  &'a skia_safe::Canvas,
     pub(crate) painter: &'a mut SkiaPainter,
-}
-
-impl<'a> SkiaCanvas<'a> {
-    fn create_paint(&self, paint: &Paint) -> skia_safe::Paint {
-        let mut skia_paint = skia_safe::Paint::default();
-        skia_paint.set_anti_alias(true);
-
-        match paint.shader {
-            Shader::Solid(color) => {
-                skia_paint.set_color(skia_safe::Color::from_argb(
-                    f32::round(color.a * 255.0) as u8,
-                    f32::round(color.r * 255.0) as u8,
-                    f32::round(color.g * 255.0) as u8,
-                    f32::round(color.b * 255.0) as u8,
-                ));
-            }
-        }
-
-        let blend = match paint.blend {
-            ike::BlendMode::Clear => skia_safe::BlendMode::Clear,
-            ike::BlendMode::Src => skia_safe::BlendMode::Src,
-            ike::BlendMode::Dst => skia_safe::BlendMode::Dst,
-            ike::BlendMode::SrcOver => skia_safe::BlendMode::SrcOver,
-            ike::BlendMode::DstOver => skia_safe::BlendMode::DstOver,
-            ike::BlendMode::SrcIn => skia_safe::BlendMode::SrcIn,
-            ike::BlendMode::DstIn => skia_safe::BlendMode::DstIn,
-            ike::BlendMode::SrcATop => skia_safe::BlendMode::SrcATop,
-            ike::BlendMode::DstATop => skia_safe::BlendMode::DstATop,
-        };
-
-        skia_paint.set_blend_mode(blend);
-
-        skia_paint
-    }
 }
 
 impl Painter for SkiaPainter {
@@ -208,7 +222,7 @@ impl Painter for SkiaPainter {
             }
         }
 
-        let mut paragraph = self.crate_paragraph(paragraph);
+        let paragraph = self.crate_paragraph(paragraph);
         paragraph.layout(max_width);
 
         Size {
@@ -218,7 +232,7 @@ impl Painter for SkiaPainter {
     }
 
     fn layout_text(&mut self, paragraph: &Paragraph, max_width: f32) -> Vec<ike::TextLayoutLine> {
-        let mut skia = self.crate_paragraph(paragraph);
+        let skia = self.crate_paragraph(paragraph);
         skia.layout(max_width);
 
         let mut lines = Vec::new();
@@ -334,8 +348,8 @@ impl Canvas for SkiaCanvas<'_> {
     }
 
     fn fill(&mut self, paint: &Paint) {
-        let paint = self.create_paint(paint);
-        self.canvas.draw_paint(&paint);
+        let paint = self.painter.create_paint(paint);
+        self.canvas.draw_paint(paint);
     }
 
     fn draw_rect(&mut self, rect: Rect, radius: CornerRadius, paint: &Paint) {
@@ -349,9 +363,8 @@ impl Canvas for SkiaCanvas<'_> {
             radius.bottom_left,
         );
 
-        let paint = self.create_paint(paint);
-
-        self.canvas.draw_rrect(rect, &paint);
+        let paint = self.painter.create_paint(paint);
+        self.canvas.draw_rrect(rect, paint);
     }
 
     fn draw_border(&mut self, rect: Rect, width: BorderWidth, radius: CornerRadius, paint: &Paint) {
@@ -378,13 +391,12 @@ impl Canvas for SkiaCanvas<'_> {
             radius.bottom_left,
         );
 
-        let paint = self.create_paint(paint);
-
-        self.canvas.draw_drrect(outer, inner, &paint);
+        let paint = self.painter.create_paint(paint);
+        self.canvas.draw_drrect(outer, inner, paint);
     }
 
     fn draw_text(&mut self, paragraph: &Paragraph, max_width: f32, offset: Offset) {
-        let mut paragraph = self.painter.crate_paragraph(paragraph);
+        let paragraph = self.painter.crate_paragraph(paragraph);
         paragraph.layout(max_width + 1.0);
         paragraph.paint(self.canvas, (offset.x, offset.y));
     }

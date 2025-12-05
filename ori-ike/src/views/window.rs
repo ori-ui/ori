@@ -32,6 +32,11 @@ impl<V> Window<V> {
         }
     }
 
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = title.into();
+        self
+    }
+
     pub fn color(mut self, color: Color) -> Self {
         self.color = Some(color);
         self
@@ -44,6 +49,16 @@ impl<V> Window<V> {
 
     pub fn fit_content(mut self) -> Self {
         self.sizing = WindowSizing::FitContent;
+        self
+    }
+
+    pub fn visible(mut self, visible: bool) -> Self {
+        self.visible = visible;
+        self
+    }
+
+    pub fn decorated(mut self, decorated: bool) -> Self {
+        self.decorated = decorated;
         self
     }
 }
@@ -59,7 +74,7 @@ where
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (contents, state) = self.contents.build(cx, data);
 
-        let palette = cx.get_context::<Palette>().cloned().unwrap();
+        let palette = cx.get_context::<Palette>().cloned().unwrap_or_default();
         let window = cx.app.create_window(contents.upcast());
 
         window.title = self.title.clone();

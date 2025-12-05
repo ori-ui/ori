@@ -11,6 +11,8 @@ reload = ["dep:libloading", "dep:rand", "dep:json"]
 [dependencies]
 ori.workspace = true
 
+seahash = "4"
+
 [dependencies.ike]
 #git = "https://github.com/ori-ui/ike.git"
 path = "../../ike"

@@ -9,51 +9,53 @@ use crate::{Context, Palette, views::TextTheme};
 
 #[derive(Clone, Debug)]
 pub struct EntryTheme {
-    pub font_size:        Option<f32>,
-    pub font_family:      Option<String>,
-    pub font_weight:      Option<FontWeight>,
-    pub font_stretch:     Option<FontStretch>,
-    pub font_style:       Option<FontStyle>,
-    pub line_height:      Option<f32>,
-    pub align:            Option<TextAlign>,
-    pub wrap:             Option<TextWrap>,
-    pub color:            Option<Color>,
-    pub min_width:        f32,
-    pub max_width:        f32,
-    pub padding:          Padding,
-    pub border_width:     BorderWidth,
-    pub corner_radius:    CornerRadius,
-    pub background_color: Option<Color>,
-    pub border_color:     Option<Color>,
-    pub focus_color:      Option<Color>,
-    pub cursor_color:     Option<Color>,
-    pub selection_color:  Option<Color>,
-    pub blink_rate:       f32,
+    pub font_size:         Option<f32>,
+    pub font_family:       Option<String>,
+    pub font_weight:       Option<FontWeight>,
+    pub font_stretch:      Option<FontStretch>,
+    pub font_style:        Option<FontStyle>,
+    pub line_height:       Option<f32>,
+    pub align:             Option<TextAlign>,
+    pub wrap:              Option<TextWrap>,
+    pub color:             Option<Color>,
+    pub placeholder_color: Option<Color>,
+    pub min_width:         f32,
+    pub max_width:         f32,
+    pub padding:           Padding,
+    pub border_width:      BorderWidth,
+    pub corner_radius:     CornerRadius,
+    pub background_color:  Option<Color>,
+    pub border_color:      Option<Color>,
+    pub focus_color:       Option<Color>,
+    pub cursor_color:      Option<Color>,
+    pub selection_color:   Option<Color>,
+    pub blink_rate:        f32,
 }
 
 impl Default for EntryTheme {
     fn default() -> Self {
         Self {
-            font_size:        None,
-            font_family:      None,
-            font_weight:      None,
-            font_stretch:     None,
-            font_style:       None,
-            line_height:      None,
-            align:            None,
-            wrap:             None,
-            color:            None,
-            min_width:        100.0,
-            max_width:        f32::INFINITY,
-            padding:          Padding::all(8.0),
-            border_width:     BorderWidth::all(1.0),
-            corner_radius:    CornerRadius::all(8.0),
-            background_color: None,
-            border_color:     None,
-            focus_color:      None,
-            cursor_color:     None,
-            selection_color:  None,
-            blink_rate:       5.0,
+            font_size:         None,
+            font_family:       None,
+            font_weight:       None,
+            font_stretch:      None,
+            font_style:        None,
+            line_height:       None,
+            align:             None,
+            wrap:              None,
+            color:             None,
+            placeholder_color: None,
+            min_width:         100.0,
+            max_width:         f32::INFINITY,
+            padding:           Padding::all(8.0),
+            border_width:      BorderWidth::all(1.0),
+            corner_radius:     CornerRadius::all(8.0),
+            background_color:  None,
+            border_color:      None,
+            focus_color:       None,
+            cursor_color:      None,
+            selection_color:   None,
+            blink_rate:        5.0,
         }
     }
 }
@@ -74,6 +76,7 @@ pub struct Entry<T> {
     align:             Option<TextAlign>,
     wrap:              Option<TextWrap>,
     color:             Option<Color>,
+    placeholder_color: Option<Color>,
     min_width:         Option<f32>,
     max_width:         Option<f32>,
     padding:           Option<Padding>,
@@ -114,6 +117,7 @@ impl<T> Entry<T> {
             align:             None,
             wrap:              None,
             color:             None,
+            placeholder_color: None,
             min_width:         None,
             max_width:         None,
             padding:           None,
@@ -185,6 +189,11 @@ impl<T> Entry<T> {
 
     pub fn color(mut self, color: Color) -> Self {
         self.color = Some(color);
+        self
+    }
+
+    pub fn placeholder_color(mut self, color: Color) -> Self {
+        self.placeholder_color = Some(color);
         self
     }
 
@@ -274,6 +283,7 @@ impl<T> Entry<T> {
     fn build_paragraph(
         &self,
         text: &str,
+        color: Color,
         palette: &Palette,
         text_theme: &TextTheme,
         entry_theme: &EntryTheme,
@@ -302,11 +312,7 @@ impl<T> Entry<T> {
                     .unwrap_or_else(|| text_theme.font_family.clone().into_owned())
             }),
 
-            color: self.color.unwrap_or_else(|| {
-                entry_theme
-                    .color
-                    .unwrap_or_else(|| text_theme.color.unwrap_or(palette.contrast_low()))
-            }),
+            color,
         };
 
         let mut paragraph = Paragraph::new(
@@ -320,6 +326,22 @@ impl<T> Entry<T> {
 
         paragraph.push(text, style);
         paragraph
+    }
+
+    fn get_color(&self, palette: &Palette, text_theme: &TextTheme, theme: &EntryTheme) -> Color {
+        self.color.unwrap_or_else(|| {
+            theme
+                .color
+                .unwrap_or_else(|| text_theme.color.unwrap_or(palette.contrast))
+        })
+    }
+
+    fn get_placeholder_color(&self, palette: &Palette, theme: &EntryTheme) -> Color {
+        self.placeholder_color.unwrap_or_else(|| {
+            theme
+                .placeholder_color
+                .unwrap_or_else(|| palette.contrast_low())
+        })
     }
 
     fn get_background_color(&self, palette: &Palette, theme: &EntryTheme) -> Color {
@@ -368,10 +390,20 @@ impl<T> ori::View<Context, T> for Entry<T> {
         let proxy = cx.proxy();
         let id = ori::ViewId::next();
 
+        let color = self.get_color(&palette, &text_theme, &theme);
+        let placeholder_color = self.get_placeholder_color(&palette, &theme);
+
         let text = self.text.as_deref().unwrap_or("");
-        let paragraph = self.build_paragraph(text, &palette, &text_theme, &theme);
+        let paragraph = self.build_paragraph(
+            text,
+            color,
+            &palette,
+            &text_theme,
+            &theme,
+        );
         let placeholder = self.build_paragraph(
             &self.placeholder,
+            placeholder_color,
             &palette,
             &text_theme,
             &theme,
@@ -463,13 +495,22 @@ impl<T> ori::View<Context, T> for Entry<T> {
                     .to_owned(),
             };
 
-            let paragraph = self.build_paragraph(&text, &palette, &text_theme, &theme);
+            let color = self.get_color(&palette, &text_theme, &theme);
+            let paragraph = self.build_paragraph(
+                &text,
+                color,
+                &palette,
+                &text_theme,
+                &theme,
+            );
             ike::widgets::Entry::set_text(&mut widget, paragraph);
         }
 
-        if self.placeholder != old.placeholder {
+        if self.placeholder != old.placeholder || self.placeholder_color != placeholder_color {
+            let placeholder_color = self.get_placeholder_color(&palette, &theme);
             let placeholder = self.build_paragraph(
                 &self.placeholder,
+                placeholder_color,
                 &palette,
                 &text_theme,
                 &theme,

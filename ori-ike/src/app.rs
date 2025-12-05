@@ -75,7 +75,10 @@ impl App {
         #[cfg(feature = "vulkan")]
         let mut painter = crate::skia::SkiaPainter::new();
         #[cfg(feature = "vulkan")]
-        painter.load_font(include_bytes!("Ubuntu-Light.ttf"), None);
+        painter.load_font(
+            include_bytes!("InterVariable.ttf"),
+            None,
+        );
 
         let (sender, receiver) = std::sync::mpsc::channel();
         let context = Context {

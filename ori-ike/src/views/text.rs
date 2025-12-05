@@ -19,8 +19,8 @@ impl Default for TextTheme {
     fn default() -> Self {
         Self {
             font_size:    16.0,
-            font_family:  Cow::Borrowed("Ubuntu Light"),
-            font_weight:  FontWeight::LIGHT,
+            font_family:  Cow::Borrowed("Inter Variable"),
+            font_weight:  FontWeight::NORMAL,
             font_stretch: FontStretch::Normal,
             font_style:   FontStyle::Normal,
             line_height:  1.0,

@@ -137,7 +137,6 @@ impl SkiaPainter {
                 skia_style.set_font_size(style.font_size);
                 skia_style.set_font_families(&[&style.font_family]);
                 skia_style.set_font_style(Self::crate_font_style(style));
-                skia_style.set_font_hinting(skia_safe::FontHinting::Full);
                 skia_style.foreground().set_anti_alias(true);
                 skia_style.set_color(skia_safe::Color::from_argb(
                     f32::round(style.color.a * 255.0) as u8,
@@ -206,7 +205,7 @@ impl Painter for SkiaPainter {
     }
 
     fn measure_text(&mut self, paragraph: &Paragraph, max_width: f32) -> Size {
-        let mut min_height = 0.0;
+        let mut line_height = 0.0;
 
         if let Some((_, style)) = paragraph.sections().next() {
             let typefaces = self.fonts.find_typefaces(
@@ -218,7 +217,7 @@ impl Painter for SkiaPainter {
                 let font = skia_safe::Font::new(typeface, style.font_size);
                 let (_, metrics) = font.metrics();
 
-                min_height = metrics.descent - metrics.ascent + metrics.leading;
+                line_height = metrics.descent - metrics.ascent + metrics.leading;
             }
         }
 
@@ -227,7 +226,7 @@ impl Painter for SkiaPainter {
 
         Size {
             width:  paragraph.max_intrinsic_width(),
-            height: paragraph.height().max(min_height),
+            height: paragraph.get_line_metrics().len().max(1) as f32 * line_height,
         }
     }
 

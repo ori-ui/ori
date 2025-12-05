@@ -284,7 +284,6 @@ impl<T> Entry<T> {
         &self,
         text: &str,
         color: Color,
-        palette: &Palette,
         text_theme: &TextTheme,
         entry_theme: &EntryTheme,
     ) -> Paragraph {
@@ -394,17 +393,10 @@ impl<T> ori::View<Context, T> for Entry<T> {
         let placeholder_color = self.get_placeholder_color(&palette, &theme);
 
         let text = self.text.as_deref().unwrap_or("");
-        let paragraph = self.build_paragraph(
-            text,
-            color,
-            &palette,
-            &text_theme,
-            &theme,
-        );
+        let paragraph = self.build_paragraph(text, color, &text_theme, &theme);
         let placeholder = self.build_paragraph(
             &self.placeholder,
             placeholder_color,
-            &palette,
             &text_theme,
             &theme,
         );
@@ -496,22 +488,15 @@ impl<T> ori::View<Context, T> for Entry<T> {
             };
 
             let color = self.get_color(&palette, &text_theme, &theme);
-            let paragraph = self.build_paragraph(
-                &text,
-                color,
-                &palette,
-                &text_theme,
-                &theme,
-            );
+            let paragraph = self.build_paragraph(&text, color, &text_theme, &theme);
             ike::widgets::Entry::set_text(&mut widget, paragraph);
         }
 
-        if self.placeholder != old.placeholder || self.placeholder_color != placeholder_color {
+        if self.placeholder != old.placeholder || self.placeholder_color != old.placeholder_color {
             let placeholder_color = self.get_placeholder_color(&palette, &theme);
             let placeholder = self.build_paragraph(
                 &self.placeholder,
                 placeholder_color,
-                &palette,
                 &text_theme,
                 &theme,
             );

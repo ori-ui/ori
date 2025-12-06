@@ -1,13 +1,21 @@
 use ori_ike::prelude::*;
 
 struct Data {
-    todos: Vec<Todo>,
+    todos:  Vec<Todo>,
+    filter: Filter,
 }
 
 impl Data {
     fn add_todo(&mut self, name: String) {
         self.todos.push(Todo::new(name));
     }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Filter {
+    Done,
+    Pending,
+    All,
 }
 
 struct Todo {
@@ -90,20 +98,64 @@ fn todos(data: &mut Data) -> impl View<Data> + use<> {
             .iter()
             .enumerate()
             .rev()
+            .filter(|(_, t)| match data.filter {
+                Filter::Done => t.done,
+                Filter::Pending => !t.done,
+                Filter::All => true,
+            })
             .map(|(i, t)| todo(i, t))
             .collect::<Vec<_>>(),
     )
 }
 
+fn filter(kind: Filter, name: &'static str) -> impl View<Data> + use<> {
+    using_or_default(
+        move |data: &mut Data, palette: &Palette| {
+            button(
+                label(name).font_size(12.0).color(if data.filter == kind {
+                    palette.success
+                } else {
+                    palette.contrast
+                }),
+                move |data: &mut Data| {
+                    data.filter = kind;
+                },
+            )
+            .padding(4.0)
+        },
+    )
+}
+
+fn filters() -> impl View<Data> + use<> {
+    container(
+        hstack((
+            filter(Filter::Done, "done"),
+            filter(Filter::Pending, "pending"),
+            filter(Filter::All, "all"),
+        ))
+        .justify(Justify::SpaceAround),
+    )
+    .padding(4.0)
+    .border_width([1.0, 0.0, 1.0, 1.0])
+    .corner_radius(0.0)
+}
+
 fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
     window(center(width(
         300.0,
-        vstack((name_entry(), todos(data))),
+        vstack((
+            name_entry(),
+            todos(data),
+            width(200.0, filters()),
+        )),
     )))
 }
 
 fn main() {
-    let mut data = Data { todos: Vec::new() };
+    let mut data = Data {
+        todos:  Vec::new(),
+        filter: Filter::All,
+    };
 
     App::new().run(&mut data, ui);
 }

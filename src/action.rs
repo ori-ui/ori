@@ -1,5 +1,6 @@
 use std::{
     fmt,
+    marker::PhantomData,
     ops::{BitOr, BitOrAssign},
     pin::Pin,
 };
@@ -62,7 +63,7 @@ impl Action {
     }
 
     /// Spawn a future that emits an action.
-    pub fn spawn(fut: impl Future<Output: IntoAction> + Send + 'static) -> Self {
+    pub fn spawn<I>(fut: impl Future<Output: IntoAction<I>> + Send + 'static) -> Self {
         let fut = Box::pin(async { fut.await.into_action() });
 
         Self {
@@ -83,7 +84,7 @@ impl Action {
     }
 
     /// Add a future that emits an action.
-    pub fn add_spawn(&mut self, fut: impl Future<Output: IntoAction> + Send + 'static) {
+    pub fn add_spawn<I>(&mut self, fut: impl Future<Output: IntoAction<I>> + Send + 'static) {
         self.futures.push(Box::pin(async {
             fut.await.into_action()
         }));
@@ -102,7 +103,10 @@ impl Action {
     }
 
     /// Add a future that emits an action.
-    pub fn with_spawn(mut self, fut: impl Future<Output: IntoAction> + Send + 'static) -> Self {
+    pub fn with_spawn<I>(
+        mut self,
+        fut: impl Future<Output: IntoAction<I>> + Send + 'static,
+    ) -> Self {
         self.futures.push(Box::pin(async {
             fut.await.into_action()
         }));
@@ -143,25 +147,38 @@ impl BitOrAssign for Action {
 }
 
 /// Trait for types that can be converted to an [`Action`].
-pub trait IntoAction {
+pub trait IntoAction<I> {
     /// Convert `self` in an `Action`.
     fn into_action(self) -> Action;
 }
 
-impl IntoAction for Action {
+impl IntoAction<Action> for Action {
     fn into_action(self) -> Action {
         self
     }
 }
 
-impl IntoAction for () {
+impl IntoAction<()> for () {
     fn into_action(self) -> Action {
         Action::rebuild()
     }
 }
 
-impl IntoAction for Event {
+impl IntoAction<Event> for Event {
     fn into_action(self) -> Action {
         Action::event(self)
     }
 }
+
+const _: () = {
+    pub struct FutImpl<F, A, I>(PhantomData<(F, A, I)>);
+    impl<F, A, I> IntoAction<FutImpl<F, A, I>> for F
+    where
+        F: Future<Output = A> + Send + 'static,
+        A: IntoAction<I>,
+    {
+        fn into_action(self) -> Action {
+            Action::spawn(self)
+        }
+    }
+};

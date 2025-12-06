@@ -2,9 +2,9 @@ use gtk4::prelude::ButtonExt as _;
 
 use crate::{Context, View};
 
-pub fn button<V, T, A>(contents: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<V, T>
+pub fn button<V, T, A, I>(contents: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<V, T>
 where
-    A: ori::IntoAction,
+    A: ori::IntoAction<I>,
 {
     Button::new(contents).on_click(on_click)
 }
@@ -27,9 +27,9 @@ impl<V, T> Button<V, T> {
         }
     }
 
-    pub fn on_click<A>(mut self, mut on_click: impl FnMut(&mut T) -> A + 'static) -> Self
+    pub fn on_click<A, I>(mut self, mut on_click: impl FnMut(&mut T) -> A + 'static) -> Self
     where
-        A: ori::IntoAction,
+        A: ori::IntoAction<I>,
     {
         self.on_click = Box::new(move |data| on_click(data).into_action());
         self

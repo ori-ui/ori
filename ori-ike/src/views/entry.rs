@@ -262,17 +262,23 @@ impl<T> Entry<T> {
         self
     }
 
-    pub fn on_change<A>(mut self, mut on_change: impl FnMut(&mut T, String) -> A + 'static) -> Self
+    pub fn on_change<A, I>(
+        mut self,
+        mut on_change: impl FnMut(&mut T, String) -> A + 'static,
+    ) -> Self
     where
-        A: ori::IntoAction,
+        A: ori::IntoAction<I>,
     {
         self.on_change = Box::new(move |data, text| on_change(data, text).into_action());
         self
     }
 
-    pub fn on_submit<A>(mut self, mut on_submit: impl FnMut(&mut T, String) -> A + 'static) -> Self
+    pub fn on_submit<A, I>(
+        mut self,
+        mut on_submit: impl FnMut(&mut T, String) -> A + 'static,
+    ) -> Self
     where
-        A: ori::IntoAction,
+        A: ori::IntoAction<I>,
     {
         self.on_submit = Box::new(move |data, text| on_submit(data, text).into_action());
         self

@@ -12,7 +12,7 @@ where
 }
 
 /// [`View`] that spawns a task when built.
-pub fn task<C, T>(task: impl Future<Output: IntoAction> + Send + 'static) -> impl Effect<C, T>
+pub fn task<C, T, I>(task: impl Future<Output: IntoAction<I>> + Send + 'static) -> impl Effect<C, T>
 where
     C: AsyncContext,
 {
@@ -20,10 +20,11 @@ where
 }
 
 /// [`View`] that spawns a task with a proxy when built.
-pub fn task_with_proxy<C, T, F>(task: impl FnOnce(C::Proxy) -> F) -> impl Effect<C, T>
+pub fn task_with_proxy<C, T, F, I>(task: impl FnOnce(C::Proxy) -> F) -> impl Effect<C, T>
 where
     C: AsyncContext,
-    F: Future<Output: IntoAction> + Send + 'static,
+    F: Future + Send + 'static,
+    F::Output: IntoAction<I>,
 {
     build_with_context(|cx: &mut C, _| self::task(task(cx.proxy())))
 }

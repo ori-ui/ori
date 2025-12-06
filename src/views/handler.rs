@@ -1,4 +1,4 @@
-use crate::{Action, Effect, Event, NoElement, View, ViewMarker};
+use crate::{Action, Effect, Event, IntoAction, NoElement, View, ViewMarker};
 
 /// Create a new [`Handler`].
 pub fn handler() -> Handler<()> {
@@ -6,8 +6,23 @@ pub fn handler() -> Handler<()> {
 }
 
 /// [`View`] that handles events.
-pub fn on_event<C, T>(on_event: impl FnMut(&mut T, &mut Event) -> Action) -> impl Effect<C, T> {
+pub fn on_any_event<C, T>(on_event: impl FnMut(&mut T, &mut Event) -> Action) -> impl Effect<C, T> {
     Handler::new().on_event(on_event)
+}
+
+/// [`View`] that handles events.
+pub fn on_event<C, T, E, A, I>(mut on_event: impl FnMut(&mut T, E) -> A) -> impl Effect<C, T>
+where
+    E: Send + 'static,
+    A: IntoAction<I>,
+{
+    on_any_event(move |data, event| {
+        if let Some(event) = event.take() {
+            on_event(data, event).into_action()
+        } else {
+            Action::new()
+        }
+    })
 }
 
 /// [`View`] that handles events.

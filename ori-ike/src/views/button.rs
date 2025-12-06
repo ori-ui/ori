@@ -3,9 +3,9 @@ use ori::{AsyncContext, ProviderContext, Proxy};
 
 use crate::{Context, Palette, View};
 
-pub fn button<T, A, V>(contents: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<T, V>
+pub fn button<T, A, I, V>(contents: V, on_click: impl FnMut(&mut T) -> A + 'static) -> Button<T, V>
 where
-    A: ori::IntoAction,
+    A: ori::IntoAction<I>,
     V: View<T>,
 {
     Button::new(contents, on_click)
@@ -56,9 +56,9 @@ pub struct Button<T, V> {
 }
 
 impl<T, V> Button<T, V> {
-    pub fn new<A>(contents: V, mut on_click: impl FnMut(&mut T) -> A + 'static) -> Self
+    pub fn new<A, I>(contents: V, mut on_click: impl FnMut(&mut T) -> A + 'static) -> Self
     where
-        A: ori::IntoAction,
+        A: ori::IntoAction<I>,
     {
         Button {
             contents,

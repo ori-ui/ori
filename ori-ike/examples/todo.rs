@@ -29,6 +29,7 @@ fn name_entry() -> impl View<Data> + use<> {
             keep_focus: true,
             clear_text: true,
         })
+        .corner_radius(0.0)
 }
 
 fn todo_done(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
@@ -79,6 +80,8 @@ fn todo(i: usize, todo: &Todo) -> impl View<Data> + use<> {
         .justify(Justify::SpaceBetween)
         .gap(12.0),
     )
+    .border_width([1.0, 0.0, 1.0, 1.0])
+    .corner_radius(0.0)
 }
 
 fn todos(data: &mut Data) -> impl View<Data> + use<> {
@@ -93,8 +96,8 @@ fn todos(data: &mut Data) -> impl View<Data> + use<> {
 }
 
 fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
-    window(center(min_width(
-        200.0,
+    window(center(width(
+        300.0,
         vstack((name_entry(), todos(data))),
     )))
 }

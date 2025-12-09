@@ -4,15 +4,15 @@ use crate::{Action, Event, ProviderContext, View, ViewMarker};
 
 /// [`View`] that provides a context to a contents view, see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
-    contents: V,
     initial: impl FnMut(&mut T) -> U,
+    contents: V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
     C: ProviderContext,
     V: View<C, T>,
 {
-    Provide::new(contents, initial)
+    Provide::new(initial, contents)
 }
 
 /// [`View`] that provides a context to a contents view, see [`Using`] for how to use contexts.
@@ -24,7 +24,7 @@ pub struct Provide<F, U, V> {
 
 impl<F, U, V> Provide<F, U, V> {
     /// Create a [`Provide`].
-    pub fn new<T>(contents: V, initial: F) -> Self
+    pub fn new<T>(initial: F, contents: V) -> Self
     where
         F: FnMut(&mut T) -> U,
     {

@@ -141,14 +141,17 @@ fn filters() -> impl View<Data> + use<> {
 }
 
 fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
-    window(center(width(
-        300.0,
-        vstack((
-            name_entry(),
-            todos(data),
-            width(200.0, filters()),
-        )),
-    )))
+    provide(
+        |_| Palette::paper(),
+        window(center(width(
+            300.0,
+            vstack((
+                name_entry(),
+                todos(data),
+                width(200.0, filters()),
+            )),
+        ))),
+    )
 }
 
 fn main() {

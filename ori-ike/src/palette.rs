@@ -54,78 +54,80 @@ impl Palette {
         }
     }
 
-    /// Get the surface color with a specific level.
-    ///
-    /// Common levels are:
-    /// - `-2`: very low
-    /// - `-1`: low
-    /// - `0`: normal
-    /// - `1`: high
-    /// - `2`: very high
-    pub fn surface(&self, level: i8) -> Color {
+    fn level(color: Color, is_light: bool, level: i8) -> Color {
         let level = level as f32;
+        let (h, s, l, a) = color.to_okhsla();
 
-        if self.is_light() {
-            self.surface.darken(level * 0.025).saturate(level * 0.015)
+        if is_light {
+            Color::okhsla(
+                h,
+                s - level * 0.025,
+                l + level * 0.015,
+                a,
+            )
         } else {
-            self.surface.lighten(level * 0.04).saturate(level * 0.02)
+            Color::okhsla(h, s - level * 0.04, l + level * 0.02, a)
         }
     }
 
-    /// Get the low contrast outline color.
-    pub fn outline_low(&self) -> Color {
-        Self::low(self.outline, self.is_light())
-    }
+    fn level_low(color: Color, is_light: bool, level: i8) -> Color {
+        let level = level as f32;
+        let (h, s, l, a) = color.to_okhsla();
 
-    /// Get the low contrast contrast color.
-    pub fn contrast_low(&self) -> Color {
-        Self::low(self.contrast, self.is_light())
-    }
-
-    /// Get the low contrast primary color.
-    pub fn primary_low(&self) -> Color {
-        Self::low(self.primary, self.is_light())
-    }
-
-    /// Get the low contrast secondary color.
-    pub fn secondary_low(&self) -> Color {
-        Self::low(self.secondary, self.is_light())
-    }
-
-    /// Get the low contrast accent color.
-    pub fn accent_low(&self) -> Color {
-        Self::low(self.accent, self.is_light())
-    }
-
-    /// Get the low contrast danger color.
-    pub fn danger_low(&self) -> Color {
-        Self::low(self.danger, self.is_light())
-    }
-
-    /// Get the low contrast success color.
-    pub fn success_low(&self) -> Color {
-        Self::low(self.success, self.is_light())
-    }
-
-    /// Get the low contrast warning color.
-    pub fn warning_low(&self) -> Color {
-        Self::low(self.warning, self.is_light())
-    }
-
-    /// Get the low contrast info color.
-    pub fn info_low(&self) -> Color {
-        Self::low(self.info, self.is_light())
-    }
-
-    fn low(color: Color, is_light: bool) -> Color {
         if is_light {
-            color.lighten(0.2).desaturate(0.1)
+            Color::okhsla(
+                h,
+                s - level * 0.025 - 0.1,
+                l + level * 0.015 + 0.2,
+                a,
+            )
         } else {
-            color.darken(0.2).desaturate(0.1)
+            Color::okhsla(
+                h,
+                s - level * 0.04 - 0.1,
+                l + level * 0.02 - 0.2,
+                a,
+            )
         }
     }
 
     fn is_light(&self) -> bool {
         self.background.luminocity() > 0.5
     }
+}
+
+macro_rules! palette_levels {
+    ($($field:ident $(/ $field_low:ident)?),* $(,)?) => {
+        impl Palette {$(
+            /// Get the `
+            #[doc = stringify!($field)]
+            /// ` color at a specific `level`.
+            pub fn $field(&self, level: i8) -> Color {
+                Self::level(self.$field, self.is_light(), level)
+            }
+
+            $(
+                /// Get the low contrast `
+                #[doc = stringify!($field)]
+                /// ` color at a specific `level`.
+                pub fn $field_low(&self, level: i8) -> Color {
+                    Self::level_low(self.$field, self.is_light(), level)
+                }
+            )?
+        )*}
+    };
+}
+
+palette_levels! {
+    background,
+    surface,
+    outline/outline_low,
+    contrast/contrast_low,
+    primary/primary_low,
+    secondary/secondary_low,
+    accent/accent_low,
+    danger/danger_low,
+    success/success_low,
+    warning/warning_low,
+    info/info_low,
 }

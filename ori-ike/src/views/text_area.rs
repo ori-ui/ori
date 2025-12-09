@@ -236,7 +236,7 @@ impl<T> TextArea<T> {
             color: self.color.unwrap_or_else(|| {
                 text_area_theme
                     .color
-                    .unwrap_or_else(|| text_theme.color.unwrap_or(palette.contrast_low()))
+                    .unwrap_or_else(|| text_theme.color.unwrap_or(palette.contrast_low(0)))
             }),
         };
 

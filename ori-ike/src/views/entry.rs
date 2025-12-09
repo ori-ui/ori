@@ -345,7 +345,7 @@ impl<T> Entry<T> {
         self.placeholder_color.unwrap_or_else(|| {
             theme
                 .placeholder_color
-                .unwrap_or_else(|| palette.contrast_low())
+                .unwrap_or_else(|| palette.contrast_low(0))
         })
     }
 

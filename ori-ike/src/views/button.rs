@@ -35,7 +35,7 @@ impl Default for ButtonTheme {
             active_color:  None,
             border_color:  None,
             focus_color:   None,
-            transition:    Transition::ease(0.1),
+            transition:    Transition::ease(0.05),
         }
     }
 }
@@ -91,6 +91,13 @@ impl<T, V> Button<T, V> {
     }
 
     pub fn color(mut self, color: Color) -> Self {
+        self.idle_color = Some(color);
+        self.hovered_color = Some(color.lighten(0.05).desaturate(0.1));
+        self.active_color = Some(color.darken(0.05).desaturate(0.1));
+        self
+    }
+
+    pub fn idle_color(mut self, color: Color) -> Self {
         self.idle_color = Some(color);
         self
     }

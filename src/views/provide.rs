@@ -116,7 +116,7 @@ where
     }
 }
 
-/// [`View`] that uses context provided by [`provider`].
+/// [`View`] that uses context provided by [`provide`].
 pub fn using<U, C, T, V>(
     build: impl FnOnce(&mut T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
@@ -134,7 +134,7 @@ where
     })
 }
 
-/// [`View`] that uses context provided by [`provider`].
+/// [`View`] that uses context provided by [`provide`].
 pub fn using_or_default<U, C, T, V>(
     build: impl FnOnce(&mut T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
@@ -149,7 +149,7 @@ where
     })
 }
 
-/// [`View`] that uses context provided by [`provider`].
+/// [`View`] that uses context provided by [`provide`].
 pub fn try_using<U, C, T, V>(
     build: impl FnOnce(&mut T, Option<&U>) -> V,
 ) -> impl View<C, T, Element = V::Element>
@@ -161,7 +161,7 @@ where
     Using::new(build)
 }
 
-/// [`View`] that uses context provided by [`Provider`].
+/// [`View`] that uses context provided by [`Provide`].
 pub struct Using<F, U> {
     build:  Option<F>,
     marker: PhantomData<fn(&U)>,

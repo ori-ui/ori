@@ -92,8 +92,8 @@ impl<T, V> Button<T, V> {
 
     pub fn color(mut self, color: Color) -> Self {
         self.idle_color = Some(color);
-        self.hovered_color = Some(color.lighten(0.05).desaturate(0.1));
-        self.active_color = Some(color.darken(0.05).desaturate(0.1));
+        self.hovered_color = Some(color.lighten(0.04).desaturate(0.02));
+        self.active_color = Some(color.darken(0.04).desaturate(0.02));
         self
     }
 
@@ -136,17 +136,23 @@ impl<T, V> Button<T, V> {
 
     fn get_idle_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
         self.idle_color
-            .unwrap_or_else(|| theme.idle_color.unwrap_or_else(|| palette.surface(1)))
+            .unwrap_or_else(|| theme.idle_color.unwrap_or_else(|| palette.surface(0)))
     }
 
     fn get_hovered_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
-        self.hovered_color
-            .unwrap_or_else(|| theme.hovered_color.unwrap_or_else(|| palette.surface(0)))
+        self.hovered_color.unwrap_or_else(|| {
+            theme
+                .hovered_color
+                .unwrap_or_else(|| palette.surface(0).lighten(0.04).desaturate(0.02))
+        })
     }
 
     fn get_active_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {
-        self.active_color
-            .unwrap_or_else(|| theme.active_color.unwrap_or_else(|| palette.surface(-1)))
+        self.active_color.unwrap_or_else(|| {
+            theme
+                .active_color
+                .unwrap_or_else(|| palette.surface(0).darken(0.04).desaturate(0.02))
+        })
     }
 
     fn get_border_color(&self, theme: &ButtonTheme, palette: &Palette) -> Color {

@@ -108,21 +108,28 @@ fn todos(data: &mut Data) -> impl View<Data> + use<> {
     )
 }
 
-fn filter(kind: Filter, name: &'static str) -> impl View<Data> + use<> {
-    using_or_default(
-        move |data: &mut Data, palette: &Palette| {
-            button(
-                label(name).font_size(12.0).color(if data.filter == kind {
-                    palette.success
-                } else {
-                    palette.contrast
-                }),
-                move |data: &mut Data| {
-                    data.filter = kind;
-                },
-            )
-            .padding(4.0)
-        },
+fn filter(kind: Filter, name: &'static str) -> Flex<impl View<Data> + use<>> {
+    expand(
+        1.0,
+        using_or_default(
+            move |data: &mut Data, palette: &Palette| {
+                button(
+                    center(
+                        label(name).color(if data.filter == kind {
+                            palette.success
+                        } else {
+                            palette.contrast
+                        }),
+                    ),
+                    move |data: &mut Data| {
+                        data.filter = kind;
+                    },
+                )
+                .color(palette.surface(0))
+                .border_width([0.0, 0.0, 1.0, 0.0])
+                .corner_radius(0.0)
+            },
+        ),
     )
 }
 
@@ -135,8 +142,8 @@ fn filters() -> impl View<Data> + use<> {
         ))
         .justify(Justify::SpaceAround),
     )
-    .padding(4.0)
-    .border_width([1.0, 0.0, 1.0, 1.0])
+    .padding(0.0)
+    .border_width([1.0, 0.0, 0.0, 1.0])
     .corner_radius(0.0)
 }
 
@@ -148,7 +155,7 @@ fn ui(data: &mut Data) -> impl Effect<Data> + use<> {
             vstack((
                 name_entry(),
                 todos(data),
-                width(200.0, filters()),
+                width(240.0, filters()),
             )),
         ))),
     )

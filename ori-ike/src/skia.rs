@@ -7,13 +7,14 @@ use ike::{
 };
 
 type FastHasher = BuildHasherDefault<seahash::SeaHasher>;
+type CachedParagraph = (f32, skia_safe::textlayout::Paragraph);
 
 pub(crate) struct SkiaPainter {
     pub(crate) provider:   skia_safe::textlayout::TypefaceFontProvider,
     pub(crate) manager:    skia_safe::FontMgr,
     pub(crate) fonts:      skia_safe::textlayout::FontCollection,
     pub(crate) svgs:       HashMap<WeakSvg, Option<skia_safe::svg::Dom>, FastHasher>,
-    pub(crate) paragraphs: HashMap<WeakParagraph, skia_safe::textlayout::Paragraph, FastHasher>,
+    pub(crate) paragraphs: HashMap<WeakParagraph, CachedParagraph, FastHasher>,
     pub(crate) paints:     HashMap<Paint, skia_safe::Paint, FastHasher>,
 }
 
@@ -109,10 +110,14 @@ impl SkiaPainter {
         skia_safe::FontStyle::new(weight, width, slant)
     }
 
-    fn crate_paragraph(&mut self, paragraph: &Paragraph) -> &mut skia_safe::textlayout::Paragraph {
+    fn crate_paragraph(
+        &mut self,
+        paragraph: &Paragraph,
+        max_width: f32,
+    ) -> &mut skia_safe::textlayout::Paragraph {
         let weak = Paragraph::downgrade(paragraph);
 
-        self.paragraphs.entry(weak).or_insert_with(|| {
+        let (current_max_width, paragraph) = self.paragraphs.entry(weak).or_insert_with(|| {
             let mut style = skia_safe::textlayout::ParagraphStyle::new();
 
             let align = match paragraph.align {
@@ -150,8 +155,18 @@ impl SkiaPainter {
                 builder.pop();
             }
 
-            builder.build()
-        })
+            let mut paragraph = builder.build();
+            paragraph.layout(max_width);
+
+            (max_width, paragraph)
+        });
+
+        if *current_max_width != max_width {
+            paragraph.layout(max_width);
+            *current_max_width = max_width;
+        }
+
+        paragraph
     }
 
     fn create_paint(&mut self, paint: &Paint) -> &skia_safe::Paint {
@@ -221,7 +236,7 @@ impl Painter for SkiaPainter {
             }
         }
 
-        let paragraph = self.crate_paragraph(paragraph);
+        let paragraph = self.crate_paragraph(paragraph, max_width);
         paragraph.layout(max_width);
 
         Size {
@@ -231,7 +246,7 @@ impl Painter for SkiaPainter {
     }
 
     fn layout_text(&mut self, paragraph: &Paragraph, max_width: f32) -> Vec<ike::TextLayoutLine> {
-        let skia = self.crate_paragraph(paragraph);
+        let skia = self.crate_paragraph(paragraph, max_width);
         skia.layout(max_width);
 
         let mut lines = Vec::new();
@@ -367,6 +382,10 @@ impl Canvas for SkiaCanvas<'_> {
     }
 
     fn draw_border(&mut self, rect: Rect, width: BorderWidth, radius: CornerRadius, paint: &Paint) {
+        if width == BorderWidth::all(0.0) {
+            return;
+        }
+
         let inner = skia_safe::RRect::new_nine_patch(
             skia_safe::Rect::new(
                 rect.min.x + width.left,
@@ -395,7 +414,7 @@ impl Canvas for SkiaCanvas<'_> {
     }
 
     fn draw_text(&mut self, paragraph: &Paragraph, max_width: f32, offset: Offset) {
-        let paragraph = self.painter.crate_paragraph(paragraph);
+        let paragraph = self.painter.crate_paragraph(paragraph, max_width);
         paragraph.layout(max_width + 1.0);
         paragraph.paint(self.canvas, (offset.x, offset.y));
     }

@@ -64,7 +64,7 @@ impl SkiaPainter {
             .or_insert_with(|| {
                 let dom = skia_safe::svg::Dom::from_bytes(
                     svg.bytes(),
-                    skia_safe::FontMgr::default(),
+                    self.manager.clone(), // use the default font provider
                 )
                 .ok()?;
 

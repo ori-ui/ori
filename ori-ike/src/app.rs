@@ -462,6 +462,7 @@ impl WindowState {
             .with_min_inner_size(min_size)
             .with_max_inner_size(max_size)
             .with_inner_size(size)
+            .with_cursor(desc.cursor())
             .with_resizable(matches!(
                 desc.sizing,
                 ike::WindowSizing::Resizable { .. }
@@ -517,6 +518,7 @@ impl WindowState {
 
         self.window.set_decorations(desc.decorated);
         self.window.set_visible(desc.visible);
+        self.window.set_cursor(desc.cursor());
     }
 
     #[cfg(feature = "vulkan")]

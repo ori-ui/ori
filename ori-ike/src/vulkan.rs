@@ -365,7 +365,10 @@ impl VulkanWindow {
                 &image_info,
                 Some(4),
                 skia_safe::gpu::SurfaceOrigin::TopLeft,
-                None,
+                Some(&skia_safe::SurfaceProps::new(
+                    skia_safe::SurfacePropsFlags::DYNAMIC_MSAA,
+                    skia_safe::PixelGeometry::RGBH,
+                )),
                 false,
                 None,
             )

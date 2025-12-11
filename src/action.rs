@@ -5,7 +5,13 @@ use std::{
     pin::Pin,
 };
 
-use crate::Event;
+use crate::{Event, Proxy};
+
+/// [`Future`] that to be run by an [`Action`].
+pub type ActionFuture = Pin<Box<dyn Future<Output = Action> + Send>>;
+
+/// [`Callback`] to be run by an [`Action`].
+pub type ActionCallback = Box<dyn FnOnce(&dyn Proxy)>;
 
 /// Action to be taken as a result of [`View::event`].
 ///
@@ -25,7 +31,10 @@ pub struct Action {
     pub events: Vec<Event>,
 
     /// Futures to spawned by this action.
-    pub futures: Vec<Pin<Box<dyn Future<Output = Action> + Send>>>,
+    pub futures: Vec<ActionFuture>,
+
+    /// Callback that may use a proxy.
+    pub callbacks: Vec<ActionCallback>,
 }
 
 impl Default for Action {
@@ -38,27 +47,30 @@ impl Action {
     /// New empty action, does nothing.
     pub const fn new() -> Self {
         Self {
-            rebuild: false,
-            events:  Vec::new(),
-            futures: Vec::new(),
+            rebuild:   false,
+            events:    Vec::new(),
+            futures:   Vec::new(),
+            callbacks: Vec::new(),
         }
     }
 
     /// Request a rebuild of the [`View`](crate::View) tree.
     pub const fn rebuild() -> Self {
         Self {
-            rebuild: true,
-            events:  Vec::new(),
-            futures: Vec::new(),
+            rebuild:   true,
+            events:    Vec::new(),
+            futures:   Vec::new(),
+            callbacks: Vec::new(),
         }
     }
 
     /// Request a rebuild and emit an event.
     pub fn event(event: Event) -> Self {
         Self {
-            rebuild: true,
-            events:  vec![event],
-            futures: Vec::new(),
+            rebuild:   true,
+            events:    vec![event],
+            futures:   Vec::new(),
+            callbacks: Vec::new(),
         }
     }
 
@@ -67,9 +79,20 @@ impl Action {
         let fut = Box::pin(async { fut.await.into_action() });
 
         Self {
-            rebuild: false,
-            events:  Vec::new(),
-            futures: vec![fut],
+            rebuild:   false,
+            events:    Vec::new(),
+            futures:   vec![fut],
+            callbacks: Vec::new(),
+        }
+    }
+
+    /// Run a callback that takes a [`Proxy`].
+    pub fn proxy(callback: impl FnOnce(&dyn Proxy) + 'static) -> Self {
+        Self {
+            rebuild:   false,
+            events:    Vec::new(),
+            futures:   Vec::new(),
+            callbacks: vec![Box::new(callback)],
         }
     }
 
@@ -88,6 +111,11 @@ impl Action {
         self.futures.push(Box::pin(async {
             fut.await.into_action()
         }));
+    }
+
+    /// Add a callback that takes a [`Proxy`].
+    pub fn add_proxy(&mut self, callback: impl FnOnce(&dyn Proxy) + 'static) {
+        self.callbacks.push(Box::new(callback));
     }
 
     /// Set whether a rebuild is requested.
@@ -114,11 +142,18 @@ impl Action {
         self
     }
 
+    /// Add a callback that takes a [`Proxy`].
+    pub fn with_proxy(mut self, callback: impl FnOnce(&dyn Proxy) + 'static) -> Self {
+        self.add_proxy(callback);
+        self
+    }
+
     /// Merge `self` with `other`.
     pub fn merge(&mut self, mut other: Self) {
         self.rebuild |= other.rebuild;
         self.events.append(&mut other.events);
         self.futures.append(&mut other.futures);
+        self.callbacks.append(&mut other.callbacks);
     }
 }
 

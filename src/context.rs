@@ -41,6 +41,9 @@ pub trait ProviderContext {
 
 /// A proxy for [`Action`]s.
 pub trait Proxy: Send + Sync + 'static {
+    /// Clone `self` into an [`Arc`].
+    fn clone(&self) -> Arc<dyn Proxy>;
+
     /// Request a rebuild of the [`View`](crate::View) tree.
     fn rebuild(&self);
 
@@ -73,28 +76,22 @@ pub trait Proxy: Send + Sync + 'static {
 
         for future in action.futures {
             self.spawn_boxed({
-                let proxy = self.clone();
+                let proxy = Clone::clone(self);
                 Box::pin(async move { proxy.action(future.await) })
             });
+        }
+
+        for callback in action.callbacks {
+            callback(self);
         }
     }
 }
 
-impl Proxy for Box<dyn Proxy> {
-    fn rebuild(&self) {
-        self.as_ref().rebuild();
-    }
-
-    fn event(&self, event: Event) {
-        self.as_ref().event(event);
-    }
-
-    fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>) {
-        self.as_ref().spawn_boxed(future);
-    }
-}
-
 impl Proxy for Arc<dyn Proxy> {
+    fn clone(&self) -> Arc<dyn Proxy> {
+        Clone::clone(self)
+    }
+
     fn rebuild(&self) {
         self.as_ref().rebuild();
     }

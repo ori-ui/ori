@@ -1,4 +1,4 @@
-use std::{any::Any, path::PathBuf, pin::Pin};
+use std::{any::Any, path::PathBuf, pin::Pin, sync::Arc};
 
 use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender, unbounded};
 use gtk4::gio::prelude::ApplicationExt as _;
@@ -58,6 +58,10 @@ impl ori::AsyncContext for Context {
 }
 
 impl ori::Proxy for Proxy {
+    fn clone(&self) -> Arc<dyn ori::Proxy> {
+        Arc::new(Clone::clone(self))
+    }
+
     fn rebuild(&self) {
         self.sender.unbounded_send(Event::Rebuild).unwrap();
     }

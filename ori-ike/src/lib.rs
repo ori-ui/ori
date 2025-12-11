@@ -33,9 +33,9 @@ pub use view::{Effect, View};
 
 pub mod prelude {
     pub use ike::{
-        BorderWidth, Color, CornerRadius, FontStretch, FontStyle, FontWeight, Padding, Svg,
+        Axis, BorderWidth, Color, CornerRadius, FontStretch, FontStyle, FontWeight, Padding, Svg,
         TextAlign, TextWrap, Transition, include_svg,
-        widgets::{Align, Axis, Fit, Justify, NewlineBehaviour, SubmitBehaviour},
+        widgets::{Align, Fit, Justify, NewlineBehaviour, SubmitBehaviour},
     };
 
     pub use ori::{Action, Event, Proxy, ViewId};

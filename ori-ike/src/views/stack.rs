@@ -1,6 +1,6 @@
 use ike::{
-    AnyWidgetId, BuildCx, WidgetMut,
-    widgets::{Align, Axis, Justify},
+    AnyWidgetId, Axis, BuildCx, WidgetMut,
+    widgets::{Align, Justify},
 };
 use ori::ElementSeq;
 

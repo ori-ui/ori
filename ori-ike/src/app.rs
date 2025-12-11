@@ -1,12 +1,11 @@
 use std::{any::Any, sync::mpsc::Receiver, time::Instant};
 
-use ike::Size;
 use ori::AsyncContext;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt};
 use winit::{
     application::ApplicationHandler,
     dpi::LogicalSize,
-    event::{ElementState, MouseButton, WindowEvent},
+    event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     window::{Window, WindowId},
 };
@@ -140,8 +139,8 @@ struct WindowState {
 
     id:       ike::WindowId,
     window:   Window,
-    min_size: Size,
-    max_size: Size,
+    min_size: ike::Size,
+    max_size: ike::Size,
 }
 
 impl<T> ApplicationHandler for AppState<'_, T> {
@@ -262,6 +261,18 @@ impl<T> ApplicationHandler for AppState<'_, T> {
                     window.id,
                     ike::PointerId::from_hash(device_id),
                     position,
+                );
+            }
+
+            WindowEvent::MouseWheel {
+                device_id,
+                delta: MouseScrollDelta::PixelDelta(delta),
+                ..
+            } => {
+                self.context.app.pointer_scrolled(
+                    window.id,
+                    ike::Offset::new(delta.x as f32, delta.y as f32),
+                    ike::PointerId::from_hash(device_id),
                 );
             }
 
@@ -474,7 +485,7 @@ impl WindowState {
         let vulkan = unsafe { crate::vulkan::VulkanWindow::new(vulkan, &window) };
 
         let (min_size, max_size) = match desc.sizing {
-            ike::WindowSizing::FitContent => (Size::default(), Size::default()),
+            ike::WindowSizing::FitContent => (ike::Size::ZERO, ike::Size::ZERO),
             ike::WindowSizing::Resizable {
                 min_size, max_size, ..
             } => (min_size, max_size),

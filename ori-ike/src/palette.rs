@@ -55,6 +55,10 @@ impl Palette {
     }
 
     fn level(color: Color, is_light: bool, level: i8) -> Color {
+        if level == 0 {
+            return color;
+        }
+
         let level = level as f32;
         let (h, s, l, a) = color.to_okhsla();
 

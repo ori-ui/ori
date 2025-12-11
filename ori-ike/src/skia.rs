@@ -1,9 +1,9 @@
 use std::{collections::HashMap, hash::BuildHasherDefault};
 
 use ike::{
-    Affine, BorderWidth, Canvas, CornerRadius, FontStretch, FontStyle, GlyphCluster, Offset, Paint,
-    Painter, Paragraph, Point, Rect, Shader, Size, Svg, TextDirection, TextLayoutLine, TextStyle,
-    TextWrap, WeakParagraph, WeakSvg,
+    Affine, BorderWidth, Canvas, Clip, CornerRadius, FontStretch, FontStyle, GlyphCluster, Offset,
+    Paint, Painter, Paragraph, Point, Rect, Shader, Size, Svg, TextDirection, TextLayoutLine,
+    TextStyle, TextWrap, WeakParagraph, WeakSvg,
 };
 
 type FastHasher = BuildHasherDefault<seahash::SeaHasher>;
@@ -358,6 +358,28 @@ impl Canvas for SkiaCanvas<'_> {
     fn layer(&mut self, f: &mut dyn FnMut(&mut dyn Canvas)) {
         self.canvas.save_layer_alpha_f(None, 1.0);
         f(self);
+        self.canvas.restore();
+    }
+
+    fn clip(&mut self, clip: &Clip, f: &mut dyn FnMut(&mut dyn Canvas)) {
+        self.canvas.save();
+
+        match clip {
+            Clip::Rect(rect) => {
+                let rect = skia_safe::Rect::new(
+                    rect.min.x, rect.min.y, rect.max.x, rect.max.y,
+                );
+
+                self.canvas.clip_rect(
+                    rect,
+                    skia_safe::ClipOp::Intersect,
+                    true, // enable anti aliasing
+                );
+            }
+        }
+
+        f(self);
+
         self.canvas.restore();
     }
 

@@ -75,37 +75,55 @@ fn todo_remove(i: usize, _todo: &Todo) -> impl View<Data> + use<> {
     size([24.0, 24.0], button)
 }
 
-fn todo(i: usize, todo: &Todo) -> impl View<Data> + use<> {
+fn todo(i: usize, todo: &Todo, is_last: bool) -> impl View<Data> + use<> {
     container(
         hstack((
-            hstack((
-                todo_done(i, todo),
-                center(label(&todo.name)),
-            ))
-            .gap(12.0),
+            expand(
+                1.0,
+                hstack((
+                    todo_done(i, todo),
+                    expand(1.0, label(&todo.name)),
+                ))
+                .gap(12.0),
+            ),
             todo_remove(i, todo),
         ))
         .justify(Justify::SpaceBetween)
         .gap(12.0),
     )
-    .border_width([1.0, 0.0, 1.0, 1.0])
+    .border_width([if !is_last { 1.0 } else { 0.0 }, 1.0, 0.0, 0.0])
     .corner_radius(0.0)
 }
 
-fn todos(data: &mut Data) -> impl View<Data> + use<> {
-    vstack(
-        data.todos
-            .iter()
-            .enumerate()
-            .rev()
-            .filter(|(_, t)| match data.filter {
-                Filter::Done => t.done,
-                Filter::Pending => !t.done,
-                Filter::All => true,
-            })
-            .map(|(i, t)| todo(i, t))
-            .collect::<Vec<_>>(),
-    )
+fn todos(data: &Data) -> Option<Flex<impl View<Data> + use<>>> {
+    let todos = data
+        .todos
+        .iter()
+        .enumerate()
+        .rev()
+        .filter(|(_, t)| match data.filter {
+            Filter::Done => t.done,
+            Filter::Pending => !t.done,
+            Filter::All => true,
+        })
+        .enumerate()
+        .map(|(j, (i, t))| todo(i, t, j == 0))
+        .collect::<Vec<_>>();
+
+    if todos.is_empty() {
+        return None;
+    }
+
+    Some(expand(
+        1.0,
+        container(max_height(
+            400.0,
+            vscroll(vstack(todos)).bar_border_width(0.0),
+        ))
+        .padding(0.0)
+        .border_width([0.0, 1.0, 1.0, 1.0])
+        .corner_radius(0.0),
+    ))
 }
 
 fn filter(kind: Filter, name: &'static str) -> Flex<impl View<Data> + use<>> {
@@ -126,7 +144,7 @@ fn filter(kind: Filter, name: &'static str) -> Flex<impl View<Data> + use<>> {
                     },
                 )
                 .color(palette.surface(0))
-                .border_width([0.0, 0.0, 1.0, 0.0])
+                .border_width([0.0, 0.0, 0.0, 1.0])
                 .corner_radius(0.0)
             },
         ),
@@ -143,7 +161,7 @@ fn filters() -> impl View<Data> + use<> {
         .justify(Justify::SpaceAround),
     )
     .padding(0.0)
-    .border_width([1.0, 0.0, 0.0, 1.0])
+    .border_width([0.0, 1.0, 1.0, 0.0])
     .corner_radius(0.0)
 }
 

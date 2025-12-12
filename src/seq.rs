@@ -235,10 +235,9 @@ where
             (None, None) => {}
 
             (None, Some(old)) => {
-                let elements = elements.take().unwrap();
-                let states = states.take().unwrap();
-
-                old.seq_teardown(elements, states, cx, data);
+                if let (Some(elements), Some(states)) = (elements.take(), states.take()) {
+                    old.seq_teardown(elements, states, cx, data);
+                }
             }
 
             (Some(contents), None) => {
@@ -248,10 +247,9 @@ where
             }
 
             (Some(contents), Some(old)) => {
-                let elements = elements.as_mut().unwrap();
-                let states = states.as_mut().unwrap();
-
-                contents.seq_rebuild(elements, states, cx, data, old);
+                if let (Some(elements), Some(states)) = (elements.as_mut(), states.as_mut()) {
+                    contents.seq_rebuild(elements, states, cx, data, old);
+                }
             }
         }
     }
@@ -259,14 +257,14 @@ where
     fn seq_teardown(
         &mut self,
         elements: Self::Elements,
-        state: Self::States,
+        states: Self::States,
         cx: &mut C,
         data: &mut T,
     ) {
-        if let Some(contents) = self {
-            let element = elements.unwrap();
-            let state = state.unwrap();
-            contents.seq_teardown(element, state, cx, data);
+        if let Some(contents) = self
+            && let (Some(elements), Some(states)) = (elements, states)
+        {
+            contents.seq_teardown(elements, states, cx, data);
         }
     }
 
@@ -280,9 +278,11 @@ where
     ) -> Action {
         match self {
             Some(contents) => {
-                let elements = elements.as_mut().unwrap();
-                let state = state.as_mut().unwrap();
-                contents.seq_event(elements, state, cx, data, event)
+                if let (Some(elements), Some(state)) = (elements.as_mut(), state.as_mut()) {
+                    contents.seq_event(elements, state, cx, data, event)
+                } else {
+                    Action::new()
+                }
             }
 
             None => Action::new(),

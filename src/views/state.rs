@@ -13,7 +13,7 @@ where
     Map::new(contents, map)
 }
 
-/// [`View`] that attaches extra `data` to it's contents.
+/// [`View`] that attaches extra `data` to its contents.
 pub fn with<C, T, U, V>(
     init: impl FnOnce(&mut T) -> U + 'static,
     build: impl FnOnce(&mut T, &mut U) -> V + 'static,
@@ -24,7 +24,7 @@ where
     With::new(init, build)
 }
 
-/// [`View`] that attaches extra `data` using it's [`Default`] to it's contents.
+/// [`View`] that attaches extra `data` using its [`Default`] to its contents.
 pub fn with_default<C, T, U, V>(
     build: impl FnOnce(&mut T, &mut U) -> V + 'static,
 ) -> impl View<C, T, Element = V::Element>
@@ -75,7 +75,7 @@ where
             state = Some(self.contents.build(cx, data));
         });
 
-        state.expect("map calls lens")
+        state.expect("map should always call its `map`")
     }
 
     fn rebuild(
@@ -133,7 +133,7 @@ where
     }
 }
 
-/// [`View`] that attaches extra `data` to it's contents.
+/// [`View`] that attaches extra `data` to its contents.
 pub struct With<F, G> {
     init:  Option<F>,
     build: Option<G>,

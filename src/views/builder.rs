@@ -55,7 +55,7 @@ where
     type State = (V, V::State);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let build = self.build.take().unwrap();
+        let build = self.build.take().expect("build should only be called once");
         let mut view = build(cx, data);
         let (element, state) = view.build(cx, data);
 
@@ -70,10 +70,11 @@ where
         data: &mut T,
         _old: &mut Self,
     ) {
-        let build = self.build.take().unwrap();
-        let mut new_view = build(cx, data);
-        new_view.rebuild(element, state, cx, data, view);
-        *view = new_view;
+        if let Some(build) = self.build.take() {
+            let mut new_view = build(cx, data);
+            new_view.rebuild(element, state, cx, data, view);
+            *view = new_view;
+        }
     }
 
     fn teardown(

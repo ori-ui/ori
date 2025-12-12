@@ -70,8 +70,9 @@ where
     ) {
         match old.as_mut_any().downcast_mut::<V>() {
             Some(old) => element.downcast_with(|element| {
-                let state = state.downcast_mut().unwrap();
-                self.rebuild(element, state, cx, data, old);
+                if let Some(state) = state.downcast_mut() {
+                    self.rebuild(element, state, cx, data, old);
+                }
             }),
 
             None => {
@@ -102,8 +103,11 @@ where
         event: &mut Event,
     ) -> Action {
         element.downcast_with(|element| {
-            let state = state.downcast_mut().unwrap();
-            self.event(element, state, cx, data, event)
+            if let Some(state) = state.downcast_mut() {
+                self.event(element, state, cx, data, event)
+            } else {
+                Action::new()
+            }
         })
     }
 }

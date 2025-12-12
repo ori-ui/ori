@@ -191,7 +191,7 @@ where
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let context = cx.get_context::<U>();
 
-        let build = self.build.take().unwrap();
+        let build = self.build.take().expect("build should only be called once");
         let mut view = build(data, context);
         let (element, state) = view.build(cx, data);
 

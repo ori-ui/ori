@@ -8,17 +8,6 @@ where
     build_with_context(move |_, data| build(data))
 }
 
-/// [`View`] that is built from a callback with a [`Proxy`](crate::Proxy).
-pub fn build_with_proxy<C, T, V>(
-    build: impl FnOnce(&mut T, C::Proxy) -> V,
-) -> impl View<C, T, Element = V::Element>
-where
-    C: AsyncContext,
-    V: View<C, T>,
-{
-    build_with_context(move |cx: &mut C, data| build(data, cx.proxy()))
-}
-
 /// [`View`] that is built from a callback with access to the context.
 pub fn build_with_context<C, T, V>(
     build: impl FnOnce(&mut C, &mut T) -> V,
@@ -29,13 +18,16 @@ where
     Builder::new(build)
 }
 
-/// [`View`] that emits an action when it is built.
-pub fn action<C, T, I>(task: impl IntoAction<I>) -> impl Effect<C, T>
+/// [`Effect`] that runs a task with access to a [`Proxy`] when it's built.
+pub fn task<C, T, A, I>(task: impl FnOnce(&mut T, C::Proxy) -> A) -> impl Effect<C, T>
 where
     C: AsyncContext,
+    A: IntoAction<I>,
 {
-    build_with_context(move |cx: &mut C, _| {
-        cx.send_action(task.into_action());
+    build_with_context(|cx: &mut C, data| {
+        let action = task(data, cx.proxy());
+        cx.send_action(action.into_action());
+
         effects(())
     })
 }

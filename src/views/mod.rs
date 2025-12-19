@@ -11,7 +11,7 @@ mod state;
 mod suspense;
 
 pub use any::any;
-pub use builder::{Builder, action, build, build_with_context, build_with_proxy};
+pub use builder::{Builder, build, build_with_context, task};
 pub use effect::{Effects, WithEffect, effects, with_effect};
 pub use freeze::{Freeze, freeze};
 pub use handler::{Handler, handler, on_any_event, on_event};

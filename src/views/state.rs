@@ -160,8 +160,15 @@ where
     type State = (U, V, V::State);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let init = self.init.take().unwrap();
-        let build = self.build.take().unwrap();
+        let init = self
+            .init
+            .take()
+            .expect("`build` should only be called once");
+
+        let build = self
+            .build
+            .take()
+            .expect("`build` should only be called once");
 
         let mut with = init(data);
         let mut view = build(data, &mut with);
@@ -182,19 +189,20 @@ where
         data: &mut T,
         _old: &mut Self,
     ) {
-        let build = self.build.take().unwrap();
-        let mut new_view = build(data, with);
+        if let Some(build) = self.build.take() {
+            let mut new_view = build(data, with);
 
-        let mut data_with = DataWith::new(data, with);
-        new_view.rebuild(
-            element,
-            state,
-            cx,
-            &mut data_with.data_with,
-            view,
-        );
+            let mut data_with = DataWith::new(data, with);
+            new_view.rebuild(
+                element,
+                state,
+                cx,
+                &mut data_with.data_with,
+                view,
+            );
 
-        *view = new_view;
+            *view = new_view;
+        }
     }
 
     fn teardown(

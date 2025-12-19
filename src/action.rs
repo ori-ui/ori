@@ -10,7 +10,7 @@ use crate::{Event, Proxy};
 /// [`Future`] that to be run by an [`Action`].
 pub type ActionFuture = Pin<Box<dyn Future<Output = Action> + Send>>;
 
-/// [`Callback`] to be run by an [`Action`].
+/// Callback to be run by an [`Action`].
 pub type ActionCallback = Box<dyn FnOnce(&dyn Proxy)>;
 
 /// Action to be taken as a result of [`View::event`].

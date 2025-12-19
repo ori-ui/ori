@@ -56,15 +56,15 @@ impl Event {
     /// Get the item in `self` if `key` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_targeted<T: Any + Send>(&self, key: ViewId) -> Option<&T> {
-        self.get().filter(|_| self.is_target(key))
+    pub fn get_targeted<T: Any + Send>(&self, id: ViewId) -> Option<&T> {
+        self.get().filter(|_| self.is_target(id))
     }
 
     /// Get the item in `self` mutably if `key` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_mut_targeted<T: Any + Send>(&mut self, key: ViewId) -> Option<&mut T> {
-        let is_target = self.is_target(key);
+    pub fn get_mut_targeted<T: Any + Send>(&mut self, id: ViewId) -> Option<&mut T> {
+        let is_target = self.is_target(id);
         self.get_mut().filter(|_| is_target)
     }
 
@@ -84,8 +84,8 @@ impl Event {
     /// Take the item out of `self` if `key` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn take_targeted<T: Any + Send>(&mut self, key: ViewId) -> Option<T> {
-        self.is_target(key).then(|| self.take()).flatten()
+    pub fn take_targeted<T: Any + Send>(&mut self, id: ViewId) -> Option<T> {
+        self.is_target(id).then(|| self.take()).flatten()
     }
 }
 

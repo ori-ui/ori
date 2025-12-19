@@ -1,4 +1,6 @@
-use crate::{Action, AsyncContext, Effect, Event, IntoAction, View, ViewMarker, views::effects};
+use crate::{
+    Action, AsyncContext, Effect, Event, IntoAction, Proxy, View, ViewMarker, views::effects,
+};
 
 /// [`View`] that is built from a callback.
 pub fn build<C, T, V>(build: impl FnOnce(&mut T) -> V) -> impl View<C, T, Element = V::Element>
@@ -19,14 +21,15 @@ where
 }
 
 /// [`Effect`] that runs a task with access to a [`Proxy`] when it's built.
-pub fn task<C, T, A, I>(task: impl FnOnce(&mut T, C::Proxy) -> A) -> impl Effect<C, T>
+pub fn task<C, T, A, I>(task: impl FnOnce(&mut T, &dyn Proxy) -> A) -> impl Effect<C, T>
 where
     C: AsyncContext,
     A: IntoAction<I>,
 {
     build_with_context(|cx: &mut C, data| {
-        let action = task(data, cx.proxy());
-        cx.send_action(action.into_action());
+        let proxy = cx.proxy();
+        let action = task(data, &proxy);
+        proxy.clone().action(action.into_action());
 
         effects(())
     })

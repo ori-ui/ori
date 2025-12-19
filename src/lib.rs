@@ -8,6 +8,7 @@ mod context;
 mod effect;
 mod element;
 mod event;
+mod future;
 mod seq;
 mod view;
 

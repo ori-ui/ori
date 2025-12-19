@@ -2,6 +2,7 @@ use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
     Action, AsyncContext, Effect, Event, IntoAction, NoElement, Proxy, View, ViewId, ViewMarker,
+    future::{Abortable, Aborter},
 };
 
 /// [`Effect`](crate::Effect) that spawns a `task` that emits events to a `handler`.
@@ -60,7 +61,7 @@ where
     H: Future<Output = ()> + Send + 'static,
 {
     type Element = NoElement;
-    type State = ViewId;
+    type State = (ViewId, Aborter);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let task = self.task.take().expect("build should only be called once");
@@ -73,10 +74,10 @@ where
             marker: PhantomData,
         };
 
-        let future = task(data, sink);
+        let (future, handle) = Abortable::new(task(data, sink));
         proxy.spawn(future);
 
-        (NoElement, id)
+        (NoElement, (id, handle))
     }
 
     fn rebuild(
@@ -92,16 +93,17 @@ where
     fn teardown(
         &mut self,
         _element: Self::Element,
-        _state: Self::State,
+        (_, handle): Self::State,
         _cx: &mut C,
         _data: &mut T,
     ) {
+        handle.abort();
     }
 
     fn event(
         &mut self,
         _element: &mut Self::Element,
-        id: &mut Self::State,
+        (id, _): &mut Self::State,
         _cx: &mut C,
         data: &mut T,
         event: &mut Event,

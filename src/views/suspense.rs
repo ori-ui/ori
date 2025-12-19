@@ -1,6 +1,9 @@
 use std::mem;
 
-use crate::{Action, AsyncContext, BaseElement, Event, Proxy, Super, View, ViewId, ViewMarker};
+use crate::{
+    Action, AsyncContext, BaseElement, Event, Proxy, Super, View, ViewId, ViewMarker,
+    future::{Abortable, Aborter},
+};
 
 struct SuspenseFuture<V>(V);
 
@@ -82,6 +85,7 @@ where
     type Element = C::Element;
     type State = (
         ViewId,
+        Option<Aborter>,
         SuspenseState<C, T, V, F::Output>,
     );
 
@@ -90,39 +94,48 @@ where
 
         let id = ViewId::next();
 
-        if let Some(future) = self.future.take() {
+        let handle = if let Some(future) = self.future.take() {
             let proxy = cx.proxy();
 
-            cx.proxy().spawn(async move {
+            let (future, handle) = Abortable::new(async move {
                 let contents = future.await;
                 proxy.event(Event::new(SuspenseFuture(contents), id));
             });
-        }
+
+            cx.proxy().spawn(future);
+            Some(handle)
+        } else {
+            None
+        };
 
         let element = C::Element::upcast(cx, fallback_element);
         let state = SuspenseState::Fallback(fallback_state);
-        (element, (id, state))
+        (element, (id, handle, state))
     }
 
     fn rebuild(
         &mut self,
         element: &mut Self::Element,
-        (id, state): &mut Self::State,
+        (id, handle, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
     ) {
+        if let Some(handle) = handle.take() {
+            handle.abort();
+        }
+
         if let Some(future) = self.future.take() {
             let proxy = cx.proxy();
-            let key = *id;
+            let id = *id;
 
-            cx.proxy().spawn(async move {
+            let (future, new_handle) = Abortable::new(async move {
                 let contents = future.await;
-                proxy.event(Event::new(
-                    SuspenseFuture(contents),
-                    key,
-                ));
+                proxy.event(Event::new(SuspenseFuture(contents), id));
             });
+
+            cx.proxy().spawn(future);
+            *handle = Some(new_handle);
         }
 
         match state {
@@ -143,10 +156,14 @@ where
     fn teardown(
         &mut self,
         element: Self::Element,
-        (_id, state): Self::State,
+        (_id, handle, state): Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
+        if let Some(handle) = handle {
+            handle.abort();
+        }
+
         match state {
             SuspenseState::Fallback(fallback_state) => {
                 self.fallback.teardown(
@@ -171,7 +188,7 @@ where
     fn event(
         &mut self,
         element: &mut Self::Element,
-        (id, state): &mut Self::State,
+        (id, _handle, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,

@@ -42,7 +42,7 @@ pub trait ProviderContext {
 /// A proxy for [`Action`]s.
 pub trait Proxy: Send + Sync + 'static {
     /// Clone `self` into an [`Arc`].
-    fn clone(&self) -> Arc<dyn Proxy>;
+    fn cloned(&self) -> Arc<dyn Proxy>;
 
     /// Request a rebuild of the [`View`](crate::View) tree.
     fn rebuild(&self);
@@ -88,7 +88,7 @@ pub trait Proxy: Send + Sync + 'static {
 }
 
 impl Proxy for Arc<dyn Proxy> {
-    fn clone(&self) -> Arc<dyn Proxy> {
+    fn cloned(&self) -> Arc<dyn Proxy> {
         Clone::clone(self)
     }
 

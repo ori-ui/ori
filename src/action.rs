@@ -226,7 +226,7 @@ const _: () = {
         fn into_action(self) -> Action {
             Action::proxy(|proxy| {
                 let action = self(proxy);
-                proxy.clone().action(action.into_action());
+                proxy.cloned().action(action.into_action());
             })
         }
     }

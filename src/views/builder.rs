@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     Action, AsyncContext, Effect, Event, IntoAction, Proxy, View, ViewMarker, views::effects,
 };
@@ -21,15 +23,15 @@ where
 }
 
 /// [`Effect`] that runs a task with access to a [`Proxy`] when it's built.
-pub fn task<C, T, A, I>(task: impl FnOnce(&mut T, &dyn Proxy) -> A) -> impl Effect<C, T>
+pub fn task<C, T, A, I>(task: impl FnOnce(&mut T, Arc<dyn Proxy>) -> A) -> impl Effect<C, T>
 where
     C: AsyncContext,
     A: IntoAction<I>,
 {
     build_with_context(|cx: &mut C, data| {
-        let proxy = cx.proxy();
-        let action = task(data, &proxy);
-        proxy.clone().action(action.into_action());
+        let proxy = cx.proxy().cloned();
+        let action = task(data, proxy.clone());
+        proxy.action(action.into_action());
 
         effects(())
     })

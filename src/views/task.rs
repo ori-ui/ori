@@ -39,7 +39,7 @@ where
     E: Send + 'static,
 {
     /// Send an `event` to the `handler` of the [`task`].
-    pub fn send(&mut self, event: E) {
+    pub fn send(&self, event: E) {
         self.proxy.event(Event::new(event, self.id))
     }
 }

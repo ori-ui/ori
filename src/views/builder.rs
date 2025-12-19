@@ -1,4 +1,4 @@
-use crate::{Action, AsyncContext, Event, View, ViewMarker};
+use crate::{Action, AsyncContext, Effect, Event, IntoAction, View, ViewMarker, views::effects};
 
 /// [`View`] that is built from a callback.
 pub fn build<C, T, V>(build: impl FnOnce(&mut T) -> V) -> impl View<C, T, Element = V::Element>
@@ -27,6 +27,17 @@ where
     V: View<C, T>,
 {
     Builder::new(build)
+}
+
+/// [`View`] that emits an action when it is built.
+pub fn action<C, T, I>(task: impl IntoAction<I>) -> impl Effect<C, T>
+where
+    C: AsyncContext,
+{
+    build_with_context(move |cx: &mut C, _| {
+        cx.send_action(task.into_action());
+        effects(())
+    })
 }
 
 /// [`View`] that is built from a callback.

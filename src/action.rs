@@ -205,15 +205,6 @@ impl IntoAction<Event> for Event {
     }
 }
 
-impl<F> IntoAction<F> for F
-where
-    F: FnOnce(&dyn Proxy) + 'static,
-{
-    fn into_action(self) -> Action {
-        Action::proxy(self)
-    }
-}
-
 const _: () = {
     pub struct FutImpl<F, A, I>(PhantomData<(F, A, I)>);
     impl<F, A, I> IntoAction<FutImpl<F, A, I>> for F
@@ -223,6 +214,20 @@ const _: () = {
     {
         fn into_action(self) -> Action {
             Action::spawn(self)
+        }
+    }
+
+    pub struct FnImpl<F, A, I>(PhantomData<(F, A, I)>);
+    impl<F, A, I> IntoAction<FnImpl<F, A, I>> for F
+    where
+        F: FnOnce(&dyn Proxy) -> A + 'static,
+        A: IntoAction<I>,
+    {
+        fn into_action(self) -> Action {
+            Action::proxy(|proxy| {
+                let action = self(proxy);
+                proxy.clone().action(action.into_action());
+            })
         }
     }
 };

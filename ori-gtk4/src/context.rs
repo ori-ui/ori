@@ -43,7 +43,7 @@ impl ori::BaseElement for Context {
     type Element = gtk4::Widget;
 }
 
-impl ori::Proxied for Context {
+impl ori::Proxyable for Context {
     type Proxy = Proxy;
 
     fn proxy(&mut self) -> Self::Proxy {

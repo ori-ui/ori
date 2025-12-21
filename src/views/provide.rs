@@ -2,7 +2,7 @@ use std::{any::Any, marker::PhantomData};
 
 use crate::{Action, Event, Providable, View, ViewMarker};
 
-/// [`View`] that provides a context to a contents view, see [`using`] for how to use contexts.
+/// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
     initial: impl FnMut(&mut T) -> U,
     contents: V,
@@ -15,7 +15,7 @@ where
     Provide::new(initial, contents)
 }
 
-/// [`View`] that provides a context to a contents view, see [`Using`] for how to use contexts.
+/// [`View`] that provides a `resource` to a [`View`], see [`Using`] for how to use contexts.
 pub struct Provide<F, U, V> {
     contents: V,
     initial:  F,
@@ -50,9 +50,9 @@ where
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let context = (self.initial)(data);
 
-        cx.push_context(Box::new(context));
+        cx.push(Box::new(context));
         let (element, state) = self.contents.build(cx, data);
-        let context = cx.pop_context();
+        let context = cx.pop();
 
         (element, (context, state))
     }
@@ -66,7 +66,7 @@ where
         old: &mut Self,
     ) {
         if let Some(context) = context.take() {
-            cx.push_context(context);
+            cx.push(context);
         }
 
         self.contents.rebuild(
@@ -77,7 +77,7 @@ where
             &mut old.contents,
         );
 
-        *context = cx.pop_context();
+        *context = cx.pop();
     }
 
     fn teardown(
@@ -88,12 +88,12 @@ where
         data: &mut T,
     ) {
         if let Some(context) = context {
-            cx.push_context(context);
+            cx.push(context);
         }
 
         self.contents.teardown(element, state, cx, data);
 
-        cx.pop_context::<U>();
+        cx.pop::<U>();
     }
 
     fn event(
@@ -105,18 +105,18 @@ where
         event: &mut Event,
     ) -> Action {
         if let Some(context) = context.take() {
-            cx.push_context(context);
+            cx.push(context);
         }
 
         let action = self.contents.event(element, state, cx, data, event);
 
-        *context = cx.pop_context();
+        *context = cx.pop();
 
         action
     }
 }
 
-/// [`View`] that uses context provided by [`provide`].
+/// [`View`] that uses `resource` provided by [`provide`].
 pub fn using<U, C, T, V>(
     build: impl FnOnce(&mut T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
@@ -134,7 +134,7 @@ where
     })
 }
 
-/// [`View`] that uses context provided by [`provide`].
+/// [`View`] that uses `resource` provided by [`provide`].
 pub fn using_or_default<U, C, T, V>(
     build: impl FnOnce(&mut T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
@@ -149,7 +149,7 @@ where
     })
 }
 
-/// [`View`] that uses context provided by [`provide`].
+/// [`View`] that uses `resource` provided by [`provide`].
 pub fn try_using<U, C, T, V>(
     build: impl FnOnce(&mut T, Option<&U>) -> V,
 ) -> impl View<C, T, Element = V::Element>
@@ -161,7 +161,7 @@ where
     Using::new(build)
 }
 
-/// [`View`] that uses context provided by [`Provide`].
+/// [`View`] that uses `resource` provided by [`Provide`].
 pub struct Using<F, U> {
     build:  Option<F>,
     marker: PhantomData<fn(&U)>,
@@ -189,7 +189,7 @@ where
     type State = (V, V::State);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let context = cx.get_context::<U>();
+        let context = cx.get::<U>();
 
         let build = self.build.take().expect("build should only be called once");
         let mut view = build(data, context);
@@ -206,7 +206,7 @@ where
         data: &mut T,
         _old: &mut Self,
     ) {
-        let context = cx.get_context::<U>();
+        let context = cx.get::<U>();
 
         if let Some(build) = self.build.take() {
             let mut new_view = build(data, context);

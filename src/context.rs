@@ -11,17 +11,25 @@ pub trait BaseElement {
 
 /// A context for keeping track of user contexts.
 pub trait Providable {
-    /// Push a context to the stack.
-    fn push_context<T: Any>(&mut self, context: Box<T>);
+    /// Push a `resource` to the stack.
+    fn push<T: Any>(&mut self, resource: Box<T>);
 
-    /// Pop the last context from the stack.
-    fn pop_context<T: Any>(&mut self) -> Option<Box<T>>;
+    /// Pop the last `resource` from the stack.
+    fn pop<T: Any>(&mut self) -> Option<Box<T>>;
 
-    /// Get the previously inserted context of type `T`.
-    fn get_context<T: Any>(&self) -> Option<&T>;
+    /// Get the latest inserted `resouce` of type `T`.
+    fn get<T: Any>(&self) -> Option<&T>;
 
-    /// Get a mutable reference to the previously inserted context of type `T`.
-    fn get_context_mut<T: Any>(&mut self) -> Option<&mut T>;
+    /// Get a mutable reference to the latest inserted `resource` of type `T`.
+    fn get_mut<T: Any>(&mut self) -> Option<&mut T>;
+
+    /// [`Self::get`] a resource or the [`Default::default`].
+    fn get_or_default<T>(&self) -> Option<T>
+    where
+        T: Any + Clone + Default,
+    {
+        self.get().cloned().unwrap_or_default()
+    }
 }
 
 /// A context for a [`View`](crate::View).

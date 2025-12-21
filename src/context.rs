@@ -24,7 +24,7 @@ pub trait Providable {
     fn get_mut<T: Any>(&mut self) -> Option<&mut T>;
 
     /// [`Self::get`] a resource or the [`Default::default`].
-    fn get_or_default<T>(&self) -> Option<T>
+    fn get_or_default<T>(&self) -> T
     where
         T: Any + Clone + Default,
     {

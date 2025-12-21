@@ -9,23 +9,8 @@ pub trait BaseElement {
     type Element;
 }
 
-/// A context for a [`View`](crate::View).
-pub trait AsyncContext {
-    /// [`Proxy`] associated
-    type Proxy: Proxy;
-
-    /// Create a [`Self::Proxy`].
-    fn proxy(&mut self) -> Self::Proxy;
-
-    /// Send an action using [`Self::Proxy`].
-    fn send_action(&mut self, action: Action) {
-        let proxy: Arc<dyn Proxy> = Arc::new(self.proxy());
-        proxy.action(action);
-    }
-}
-
 /// A context for keeping track of user contexts.
-pub trait ProviderContext {
+pub trait Provider {
     /// Push a context to the stack.
     fn push_context<T: Any>(&mut self, context: Box<T>);
 
@@ -37,6 +22,21 @@ pub trait ProviderContext {
 
     /// Get a mutable reference to the previously inserted context of type `T`.
     fn get_context_mut<T: Any>(&mut self) -> Option<&mut T>;
+}
+
+/// A context for a [`View`](crate::View).
+pub trait Proxied {
+    /// [`Proxy`] associated
+    type Proxy: Proxy;
+
+    /// Create a [`Self::Proxy`].
+    fn proxy(&mut self) -> Self::Proxy;
+
+    /// Send an action using [`Self::Proxy`].
+    fn send_action(&mut self, action: Action) {
+        let proxy: Arc<dyn Proxy> = Arc::new(self.proxy());
+        proxy.action(action);
+    }
 }
 
 /// A proxy for [`Action`]s.

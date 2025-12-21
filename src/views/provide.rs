@@ -1,6 +1,6 @@
 use std::{any::Any, marker::PhantomData};
 
-use crate::{Action, Event, ProviderContext, View, ViewMarker};
+use crate::{Action, Event, Provider, View, ViewMarker};
 
 /// [`View`] that provides a context to a contents view, see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
@@ -9,7 +9,7 @@ pub fn provide<U, C, T, V>(
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
-    C: ProviderContext,
+    C: Provider,
     V: View<C, T>,
 {
     Provide::new(initial, contents)
@@ -41,7 +41,7 @@ impl<F, U, C, T, V> View<C, T> for Provide<F, U, V>
 where
     F: FnMut(&mut T) -> U,
     U: Any,
-    C: ProviderContext,
+    C: Provider,
     V: View<C, T>,
 {
     type Element = V::Element;
@@ -122,7 +122,7 @@ pub fn using<U, C, T, V>(
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
-    C: ProviderContext,
+    C: Provider,
     V: View<C, T>,
 {
     try_using(move |data, context| {
@@ -140,7 +140,7 @@ pub fn using_or_default<U, C, T, V>(
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any + Default,
-    C: ProviderContext,
+    C: Provider,
     V: View<C, T>,
 {
     try_using(move |data, context| match context {
@@ -155,7 +155,7 @@ pub fn try_using<U, C, T, V>(
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
-    C: ProviderContext,
+    C: Provider,
     V: View<C, T>,
 {
     Using::new(build)
@@ -182,7 +182,7 @@ impl<F, U, C, T, V> View<C, T> for Using<F, U>
 where
     F: FnOnce(&mut T, Option<&U>) -> V,
     U: Any,
-    C: ProviderContext,
+    C: Provider,
     V: View<C, T>,
 {
     type Element = V::Element;

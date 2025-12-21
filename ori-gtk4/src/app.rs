@@ -14,7 +14,7 @@ use gtk4::{
     glib::clone::Downgrade as _,
 };
 use notify::Watcher as _;
-use ori::{AsyncContext as _, View as _};
+use ori::{Proxied as _, View as _};
 
 use crate::{Context, context::Event};
 

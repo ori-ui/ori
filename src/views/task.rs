@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    Action, AsyncContext, Effect, Event, IntoAction, NoElement, Proxy, View, ViewId, ViewMarker,
+    Action, Effect, Event, IntoAction, NoElement, Proxied, Proxy, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -11,7 +11,7 @@ pub fn task<C, T, E, F, A, I>(
     mut handler: impl FnMut(&mut T, E) -> A + 'static,
 ) -> impl Effect<C, T>
 where
-    C: AsyncContext,
+    C: Proxied,
     E: Send + 'static,
     F: Future<Output = ()> + Send + 'static,
     A: IntoAction<I>,
@@ -54,7 +54,7 @@ pub struct Task<E, F, G> {
 impl<E, F, G> ViewMarker for Task<E, F, G> {}
 impl<C, T, E, F, G, H> View<C, T> for Task<E, F, G>
 where
-    C: AsyncContext,
+    C: Proxied,
     E: Send + 'static,
     F: FnOnce(&mut T, Sink<E>) -> H,
     G: FnMut(&mut T, E) -> Action,

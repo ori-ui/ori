@@ -28,7 +28,7 @@ where
     W: EffectSeq<C, T>,
 {
     type Element = V::Element;
-    type State = (V::State, W::Elements, W::States);
+    type State = (V::State, W::Elements, W::State);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, contents) = self.contents.build(cx, data);
@@ -111,7 +111,7 @@ where
     V: EffectSeq<C, T>,
 {
     type Element = NoElement;
-    type State = (V::Elements, V::States);
+    type State = (V::Elements, V::State);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (children, states) = self.contents.seq_build(cx, data);

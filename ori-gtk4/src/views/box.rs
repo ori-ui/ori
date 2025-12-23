@@ -55,7 +55,7 @@ where
     V: ori::ViewSeq<Context, T, gtk4::Widget>,
 {
     type Element = gtk4::Box;
-    type State = (V::Elements, V::States);
+    type State = (V::Elements, V::State);
 
     fn build(&mut self, cx: &mut Context, data: &mut T) -> (Self::Element, Self::State) {
         let (mut children, state) = self.contents.seq_build(cx, data);

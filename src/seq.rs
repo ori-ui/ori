@@ -5,16 +5,16 @@ pub trait ViewSeq<C, T, E> {
     /// The elements this view produces.
     type Elements: ElementSeq<E>;
     /// State of the sequence.
-    type States;
+    type State;
 
-    /// Build [`Self::Elements`] and [`Self::States`], see [`View::build`] for more information.
-    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::States);
+    /// Build [`Self::Elements`] and [`Self::state`], see [`View::build`] for more information.
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::State);
 
     /// Rebuild the sequence, see [`View::rebuild`] for more information.
     fn seq_rebuild(
         &mut self,
         elements: &mut Self::Elements,
-        states: &mut Self::States,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
@@ -24,7 +24,7 @@ pub trait ViewSeq<C, T, E> {
     fn seq_teardown(
         &mut self,
         elements: Self::Elements,
-        states: Self::States,
+        state: Self::State,
         cx: &mut C,
         data: &mut T,
     );
@@ -36,7 +36,7 @@ pub trait ViewSeq<C, T, E> {
     fn seq_event(
         &mut self,
         elements: &mut Self::Elements,
-        states: &mut Self::States,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
@@ -163,9 +163,9 @@ where
     E: Super<C, V::Element>,
 {
     type Elements = One<E>;
-    type States = V::State;
+    type State = V::State;
 
-    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::States) {
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::State) {
         let (element, state) = self.build(cx, data);
         let elements = One(E::upcast(cx, element));
 
@@ -175,7 +175,7 @@ where
     fn seq_rebuild(
         &mut self,
         One(element): &mut Self::Elements,
-        state: &mut Self::States,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
@@ -186,7 +186,7 @@ where
     fn seq_teardown(
         &mut self,
         One(element): Self::Elements,
-        state: Self::States,
+        state: Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
@@ -196,7 +196,7 @@ where
     fn seq_event(
         &mut self,
         One(elements): &mut Self::Elements,
-        state: &mut Self::States,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
@@ -210,13 +210,13 @@ where
     V: ViewSeq<C, T, E>,
 {
     type Elements = Option<V::Elements>;
-    type States = Option<V::States>;
+    type State = Option<V::State>;
 
-    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::States) {
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::State) {
         match self {
             Some(contents) => {
-                let (children, states) = contents.seq_build(cx, data);
-                (Some(children), Some(states))
+                let (children, state) = contents.seq_build(cx, data);
+                (Some(children), Some(state))
             }
 
             None => (None, None),
@@ -226,7 +226,7 @@ where
     fn seq_rebuild(
         &mut self,
         elements: &mut Self::Elements,
-        states: &mut Self::States,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
@@ -235,20 +235,20 @@ where
             (None, None) => {}
 
             (None, Some(old)) => {
-                if let (Some(elements), Some(states)) = (elements.take(), states.take()) {
-                    old.seq_teardown(elements, states, cx, data);
+                if let (Some(elements), Some(state)) = (elements.take(), state.take()) {
+                    old.seq_teardown(elements, state, cx, data);
                 }
             }
 
             (Some(contents), None) => {
-                let (new_elements, new_states) = contents.seq_build(cx, data);
+                let (new_elements, new_state) = contents.seq_build(cx, data);
                 *elements = Some(new_elements);
-                *states = Some(new_states);
+                *state = Some(new_state);
             }
 
             (Some(contents), Some(old)) => {
-                if let (Some(elements), Some(states)) = (elements.as_mut(), states.as_mut()) {
-                    contents.seq_rebuild(elements, states, cx, data, old);
+                if let (Some(elements), Some(state)) = (elements.as_mut(), state.as_mut()) {
+                    contents.seq_rebuild(elements, state, cx, data, old);
                 }
             }
         }
@@ -257,21 +257,21 @@ where
     fn seq_teardown(
         &mut self,
         elements: Self::Elements,
-        states: Self::States,
+        state: Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
         if let Some(contents) = self
-            && let (Some(elements), Some(states)) = (elements, states)
+            && let (Some(elements), Some(state)) = (elements, state)
         {
-            contents.seq_teardown(elements, states, cx, data);
+            contents.seq_teardown(elements, state, cx, data);
         }
     }
 
     fn seq_event(
         &mut self,
         elements: &mut Self::Elements,
-        state: &mut Self::States,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
@@ -295,9 +295,9 @@ where
     V: ViewSeq<C, T, E>,
 {
     type Elements = Vec<V::Elements>;
-    type States = Vec<V::States>;
+    type State = Vec<V::State>;
 
-    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::States) {
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::State) {
         let mut elements = Vec::with_capacity(self.len());
         let mut states = Vec::with_capacity(self.len());
 
@@ -313,7 +313,7 @@ where
     fn seq_rebuild(
         &mut self,
         elements: &mut Self::Elements,
-        states: &mut Self::States,
+        states: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
@@ -359,19 +359,19 @@ where
     fn seq_teardown(
         &mut self,
         elements: Self::Elements,
-        states: Self::States,
+        state: Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
-        for ((view, elements), states) in self.iter_mut().zip(elements).zip(states) {
-            view.seq_teardown(elements, states, cx, data);
+        for ((view, elements), state) in self.iter_mut().zip(elements).zip(state) {
+            view.seq_teardown(elements, state, cx, data);
         }
     }
 
     fn seq_event(
         &mut self,
         elements: &mut Self::Elements,
-        states: &mut Self::States,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
@@ -381,7 +381,7 @@ where
         for (i, view) in self.iter_mut().enumerate() {
             action |= view.seq_event(
                 &mut elements[i],
-                &mut states[i],
+                &mut state[i],
                 cx,
                 data,
                 event,
@@ -423,13 +423,13 @@ macro_rules! impl_tuple {
             $($name: ViewSeq<C, T, E>,)*
         {
             type Elements = ($($name::Elements,)*);
-            type States = ($($name::States,)*);
+            type State = ($($name::State,)*);
 
             fn seq_build(
                 &mut self,
                 cx: &mut C,
                 data: &mut T,
-            ) -> (Self::Elements, Self::States) {
+            ) -> (Self::Elements, Self::State) {
                 let pairs = ($(self.$index.seq_build(cx, data),)*);
 
                 (($(pairs.$index.0,)*), ($(pairs.$index.1,)*))
@@ -438,7 +438,7 @@ macro_rules! impl_tuple {
             fn seq_rebuild(
                 &mut self,
                 elements: &mut Self::Elements,
-                state: &mut Self::States,
+                state: &mut Self::State,
                 cx: &mut C,
                 data: &mut T,
                 old: &mut Self,
@@ -457,7 +457,7 @@ macro_rules! impl_tuple {
             fn seq_teardown(
                 &mut self,
                 elements: Self::Elements,
-                state: Self::States,
+                state: Self::State,
                 cx: &mut C,
                 data: &mut T,
             ) {
@@ -474,7 +474,7 @@ macro_rules! impl_tuple {
             fn seq_event(
                 &mut self,
                 elements: &mut Self::Elements,
-                state: &mut Self::States,
+                state: &mut Self::State,
                 cx: &mut C,
                 data: &mut T,
                 event: &mut Event,

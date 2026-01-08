@@ -320,13 +320,15 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        for ((old, element), state) in old
-            .iter_mut()
-            .skip(self.len())
-            .zip(elements.drain(self.len()..))
-            .zip(states.drain(self.len()..))
-        {
-            old.seq_teardown(element, state, cx, data);
+        if self.len() < old.len() {
+            for ((old, element), state) in old
+                .iter_mut()
+                .skip(self.len())
+                .zip(elements.drain(self.len()..))
+                .zip(states.drain(self.len()..))
+            {
+                old.seq_teardown(element, state, cx, data);
+            }
         }
 
         elements.truncate(self.len());
@@ -461,8 +463,16 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        for (i, (key, seq)) in self.pairs.iter_mut().enumerate() {
-            let Some(&index) = state.indices.get(key) else {
+        for (key, seq) in self.pairs.iter_mut() {
+            if let Some(&index) = state.indices.get(key) {
+                let element = &mut elements[index];
+                let state = &mut state.states[index];
+
+                let (old_key, old_seq) = &mut old.pairs[index];
+                debug_assert!(old_key == key);
+
+                seq.seq_rebuild(element, state, cx, data, old_seq);
+            } else {
                 let (element, child_state) = seq.seq_build(cx, data);
                 let index = elements.len();
 
@@ -470,29 +480,21 @@ where
                 state.states.push(child_state);
                 state.keys.push(key.clone());
                 state.indices.insert(key.clone(), index);
-
-                continue;
-            };
-
-            {
-                let element = &mut elements[i];
-                let state = &mut state.states[i];
-
-                let (old_key, old_seq) = &mut old.pairs[index];
-                debug_assert!(old_key == key);
-
-                seq.seq_rebuild(element, state, cx, data, old_seq);
             }
+        }
+
+        for (i, (key, _)) in self.pairs.iter_mut().enumerate() {
+            let index = state.indices[key];
 
             if index != i {
-                let other_key = state.keys[index].clone();
+                let other_key = state.keys[i].clone();
 
                 elements.swap(i, index);
                 state.states.swap(i, index);
                 state.keys.swap(i, index);
 
-                state.indices.insert(key.clone(), index);
-                state.indices.insert(other_key, i);
+                state.indices.insert(key.clone(), i);
+                state.indices.insert(other_key, index);
             }
         }
 

@@ -474,6 +474,16 @@ where
                 continue;
             };
 
+            {
+                let element = &mut elements[i];
+                let state = &mut state.states[i];
+
+                let (old_key, old_seq) = &mut old.pairs[index];
+                debug_assert!(old_key == key);
+
+                seq.seq_rebuild(element, state, cx, data, old_seq);
+            }
+
             if index != i {
                 let other_key = state.keys[index].clone();
 
@@ -484,14 +494,6 @@ where
                 state.indices.insert(key.clone(), index);
                 state.indices.insert(other_key, i);
             }
-
-            let element = &mut elements[i];
-            let state = &mut state.states[i];
-
-            let (old_key, old_seq) = &mut old.pairs[index];
-            debug_assert!(old_key == key);
-
-            seq.seq_rebuild(element, state, cx, data, old_seq);
         }
 
         for (key, seq) in old.pairs.iter_mut().skip(self.pairs.len()).rev() {

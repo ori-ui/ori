@@ -405,6 +405,15 @@ impl<K, V> Keyed<K, V> {
     }
 }
 
+impl<K, V> FromIterator<(K, V)> for Keyed<K, V> {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = (K, V)>,
+    {
+        Self::new(iter)
+    }
+}
+
 #[doc(hidden)]
 pub struct KeyedState<K, S> {
     states:  Vec<S>,

@@ -1,3 +1,5 @@
+use std::{collections::HashMap, hash::Hash};
+
 use crate::{Action, Event, Super, View};
 
 /// A sequence of [`View`]s.
@@ -318,25 +320,17 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        let mut diff = Vec::new();
-
-        if self.len() < old.len() {
-            for ((old, element), state) in old
-                .iter_mut()
-                .skip(self.len())
-                .zip(elements.drain(self.len()..))
-                .zip(states.drain(self.len()..))
-            {
-                for _ in 0..element.count() {
-                    diff.push(self.len());
-                }
-
-                old.seq_teardown(element, state, cx, data);
-            }
-
-            elements.truncate(self.len());
-            states.truncate(self.len());
+        for ((old, element), state) in old
+            .iter_mut()
+            .skip(self.len())
+            .zip(elements.drain(self.len()..))
+            .zip(states.drain(self.len()..))
+        {
+            old.seq_teardown(element, state, cx, data);
         }
+
+        elements.truncate(self.len());
+        states.truncate(self.len());
 
         for (i, view) in self.iter_mut().enumerate() {
             if let Some(old) = old.get_mut(i) {
@@ -382,6 +376,152 @@ where
             action |= view.seq_event(
                 &mut elements[i],
                 &mut state[i],
+                cx,
+                data,
+                event,
+            );
+        }
+
+        action
+    }
+}
+
+/// Create new [`Keyed`].
+pub fn keyed<K, V>(pairs: impl IntoIterator<Item = (K, V)>) -> Keyed<K, V> {
+    Keyed::new(pairs)
+}
+
+/// [`ViewSeq`] that orders contents to match a list of keys.
+pub struct Keyed<K, V> {
+    pairs: Vec<(K, V)>,
+}
+
+impl<K, V> Keyed<K, V> {
+    /// Create new [`Keyed`].
+    pub fn new(pairs: impl IntoIterator<Item = (K, V)>) -> Self {
+        Self {
+            pairs: pairs.into_iter().collect(),
+        }
+    }
+}
+
+#[doc(hidden)]
+pub struct KeyedState<K, S> {
+    states:  Vec<S>,
+    keys:    Vec<K>,
+    indices: HashMap<K, usize>,
+}
+
+impl<C, T, E, K, V> ViewSeq<C, T, E> for Keyed<K, V>
+where
+    K: Clone + Hash + Eq,
+    V: ViewSeq<C, T, E>,
+{
+    type Elements = Vec<V::Elements>;
+    type State = KeyedState<K, V::State>;
+
+    fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::State) {
+        let mut elements = Vec::with_capacity(self.pairs.len());
+        let mut states = Vec::with_capacity(self.pairs.len());
+        let mut keys = Vec::with_capacity(self.pairs.len());
+        let mut indices = HashMap::with_capacity(self.pairs.len());
+
+        for (i, (key, value)) in self.pairs.iter_mut().enumerate() {
+            let (element, state) = value.seq_build(cx, data);
+
+            elements.push(element);
+            states.push(state);
+            keys.push(key.clone());
+            indices.insert(key.clone(), i);
+        }
+
+        let state = KeyedState {
+            states,
+            keys,
+            indices,
+        };
+
+        (elements, state)
+    }
+
+    fn seq_rebuild(
+        &mut self,
+        elements: &mut Self::Elements,
+        state: &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+        old: &mut Self,
+    ) {
+        for (i, (key, seq)) in self.pairs.iter_mut().enumerate() {
+            let Some(&index) = state.indices.get(key) else {
+                let (element, child_state) = seq.seq_build(cx, data);
+                let index = elements.len();
+
+                elements.push(element);
+                state.states.push(child_state);
+                state.keys.push(key.clone());
+                state.indices.insert(key.clone(), index);
+
+                continue;
+            };
+
+            if index != i {
+                let other_key = state.keys[index].clone();
+
+                elements.swap(i, index);
+                state.states.swap(i, index);
+                state.keys.swap(i, index);
+
+                state.indices.insert(key.clone(), i);
+                state.indices.insert(other_key, i);
+            }
+
+            let element = &mut elements[i];
+            let state = &mut state.states[i];
+
+            let (old_key, old_seq) = &mut old.pairs[index];
+            debug_assert!(old_key == key);
+
+            seq.seq_rebuild(element, state, cx, data, old_seq);
+        }
+
+        for (key, seq) in old.pairs.iter_mut().skip(self.pairs.len()).rev() {
+            state.keys.pop();
+            state.indices.remove(key);
+
+            let element = elements.pop().expect("old len > self len");
+            let state = state.states.pop().expect("old len > self len");
+
+            seq.seq_teardown(element, state, cx, data);
+        }
+    }
+
+    fn seq_teardown(
+        &mut self,
+        elements: Self::Elements,
+        state: Self::State,
+        cx: &mut C,
+        data: &mut T,
+    ) {
+        for (((_, seq), elements), state) in self.pairs.iter_mut().zip(elements).zip(state.states) {
+            seq.seq_teardown(elements, state, cx, data);
+        }
+    }
+
+    fn seq_event(
+        &mut self,
+        elements: &mut Self::Elements,
+        state: &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+        event: &mut Event,
+    ) -> Action {
+        let mut action = Action::new();
+
+        for (i, (_, seq)) in self.pairs.iter_mut().enumerate() {
+            action |= seq.seq_event(
+                &mut elements[i],
+                &mut state.states[i],
                 cx,
                 data,
                 event,

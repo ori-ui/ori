@@ -481,7 +481,7 @@ where
                 state.states.swap(i, index);
                 state.keys.swap(i, index);
 
-                state.indices.insert(key.clone(), i);
+                state.indices.insert(key.clone(), index);
                 state.indices.insert(other_key, i);
             }
 

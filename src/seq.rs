@@ -498,14 +498,20 @@ where
             }
         }
 
-        for (key, seq) in old.pairs.iter_mut().skip(self.pairs.len()).rev() {
-            state.keys.pop();
-            state.indices.remove(key);
+        for _ in self.pairs.len()..old.pairs.len() {
+            let key = state.keys.pop().expect("old len > self len");
+            state.indices.remove(&key);
 
             let element = elements.pop().expect("old len > self len");
             let state = state.states.pop().expect("old len > self len");
 
-            seq.seq_teardown(element, state, cx, data);
+            let (_, old_seq) = old
+                .pairs
+                .iter_mut()
+                .find(|(k, _)| *k == key)
+                .expect("should be contained");
+
+            old_seq.seq_teardown(element, state, cx, data);
         }
     }
 

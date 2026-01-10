@@ -13,7 +13,7 @@ where
 }
 
 /// [`View`] that is only rebuilt when the hash of `data` changes.
-pub fn hash_memo<C, T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
+pub fn memo_hashed<C, T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
 where
     V: View<C, T>,
     F: FnOnce(&mut T) -> V,

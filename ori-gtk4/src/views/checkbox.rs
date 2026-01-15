@@ -2,9 +2,9 @@ use gtk4::prelude::CheckButtonExt;
 
 use crate::Context;
 
-pub fn checkbox<T, A, I>(on_change: impl FnMut(&mut T, bool) -> A + 'static) -> Checkbox<T>
+pub fn checkbox<T, A>(on_change: impl FnMut(&mut T, bool) -> A + 'static) -> Checkbox<T>
 where
-    A: ori::IntoAction<I>,
+    A: Into<ori::Action>,
 {
     Checkbox::new(on_change)
 }
@@ -21,14 +21,14 @@ pub struct Checkbox<T> {
 
 impl<T> Checkbox<T> {
     /// Create a new [`Checkbox`].
-    pub fn new<A, I>(mut on_change: impl FnMut(&mut T, bool) -> A + 'static) -> Self
+    pub fn new<A>(mut on_change: impl FnMut(&mut T, bool) -> A + 'static) -> Self
     where
-        A: ori::IntoAction<I>,
+        A: Into<ori::Action>,
     {
         Self {
             checked:   None,
             label:     None,
-            on_change: Box::new(move |data, checked| on_change(data, checked).into_action()),
+            on_change: Box::new(move |data, checked| on_change(data, checked).into()),
         }
     }
 

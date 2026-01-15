@@ -1,8 +1,8 @@
 use std::{
     fmt,
-    marker::PhantomData,
     ops::{BitOr, BitOrAssign},
     pin::Pin,
+    sync::Arc,
 };
 
 use crate::{Event, Proxy};
@@ -66,34 +66,20 @@ impl Action {
 
     /// Request a rebuild and emit an event.
     pub fn event(event: Event) -> Self {
-        Self {
-            rebuild:   true,
-            events:    vec![event],
-            futures:   Vec::new(),
-            callbacks: Vec::new(),
-        }
+        Self::new().with_event(event)
     }
 
     /// Spawn a future that emits an action.
-    pub fn spawn<I>(fut: impl Future<Output: IntoAction<I>> + Send + 'static) -> Self {
-        let fut = Box::pin(async { fut.await.into_action() });
-
-        Self {
-            rebuild:   false,
-            events:    Vec::new(),
-            futures:   vec![fut],
-            callbacks: Vec::new(),
-        }
+    pub fn spawn(fut: impl Future<Output: Into<Action>> + Send + 'static) -> Self {
+        Self::new().with_spawn(fut)
     }
 
-    /// Run a callback that takes a [`Proxy`].
-    pub fn proxy(callback: impl FnOnce(&dyn Proxy) + 'static) -> Self {
-        Self {
-            rebuild:   false,
-            events:    Vec::new(),
-            futures:   Vec::new(),
-            callbacks: vec![Box::new(callback)],
-        }
+    /// Add a task that has access to a proxy.
+    pub fn task<F>(task: impl FnOnce(Arc<dyn Proxy>) -> F + 'static) -> Self
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        Self::new().with_task(task)
     }
 
     /// Set whether a rebuild is requested.
@@ -107,15 +93,20 @@ impl Action {
     }
 
     /// Add a future that emits an action.
-    pub fn add_spawn<I>(&mut self, fut: impl Future<Output: IntoAction<I>> + Send + 'static) {
-        self.futures.push(Box::pin(async {
-            fut.await.into_action()
-        }));
+    pub fn add_spawn(&mut self, fut: impl Future<Output: Into<Action>> + Send + 'static) {
+        self.futures.push(Box::pin(async { fut.await.into() }));
     }
 
-    /// Add a callback that takes a [`Proxy`].
-    pub fn add_proxy(&mut self, callback: impl FnOnce(&dyn Proxy) + 'static) {
-        self.callbacks.push(Box::new(callback));
+    /// Add a task that has access to a proxy.
+    pub fn add_task<F>(&mut self, task: impl FnOnce(Arc<dyn Proxy>) -> F + 'static)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.callbacks.push(Box::new(|proxy| {
+            let proxy = proxy.cloned();
+            let future = task(proxy.clone());
+            proxy.spawn(future);
+        }))
     }
 
     /// Set whether a rebuild is requested.
@@ -126,25 +117,22 @@ impl Action {
 
     /// Add an event to the action.
     pub fn with_event(mut self, event: Event) -> Self {
-        self.events.push(event);
+        self.add_event(event);
         self
     }
 
     /// Add a future that emits an action.
-    pub fn with_spawn<I>(
-        mut self,
-        fut: impl Future<Output: IntoAction<I>> + Send + 'static,
-    ) -> Self {
-        self.futures.push(Box::pin(async {
-            fut.await.into_action()
-        }));
-
+    pub fn with_spawn(mut self, fut: impl Future<Output: Into<Action>> + Send + 'static) -> Self {
+        self.add_spawn(fut);
         self
     }
 
-    /// Add a callback that takes a [`Proxy`].
-    pub fn with_proxy(mut self, callback: impl FnOnce(&dyn Proxy) + 'static) -> Self {
-        self.add_proxy(callback);
+    /// Add a task that has access to a proxy.
+    pub fn with_task<F>(mut self, task: impl FnOnce(Arc<dyn Proxy>) -> F + 'static) -> Self
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.add_task(task);
         self
     }
 
@@ -181,53 +169,14 @@ impl BitOrAssign for Action {
     }
 }
 
-/// Trait for types that can be converted to an [`Action`].
-pub trait IntoAction<I> {
-    /// Convert `self` in an `Action`.
-    fn into_action(self) -> Action;
-}
-
-impl IntoAction<Action> for Action {
-    fn into_action(self) -> Action {
-        self
-    }
-}
-
-impl IntoAction<()> for () {
-    fn into_action(self) -> Action {
+impl From<()> for Action {
+    fn from((): ()) -> Self {
         Action::rebuild()
     }
 }
 
-impl IntoAction<Event> for Event {
-    fn into_action(self) -> Action {
-        Action::event(self)
+impl From<Event> for Action {
+    fn from(event: Event) -> Self {
+        Action::event(event)
     }
 }
-
-const _: () = {
-    pub struct FutImpl<F, A, I>(PhantomData<(F, A, I)>);
-    impl<F, A, I> IntoAction<FutImpl<F, A, I>> for F
-    where
-        F: Future<Output = A> + Send + 'static,
-        A: IntoAction<I>,
-    {
-        fn into_action(self) -> Action {
-            Action::spawn(self)
-        }
-    }
-
-    pub struct FnImpl<F, A, I>(PhantomData<(F, A, I)>);
-    impl<F, A, I> IntoAction<FnImpl<F, A, I>> for F
-    where
-        F: FnOnce(&dyn Proxy) -> A + 'static,
-        A: IntoAction<I>,
-    {
-        fn into_action(self) -> Action {
-            Action::proxy(|proxy| {
-                let action = self(proxy);
-                proxy.cloned().action(action.into_action());
-            })
-        }
-    }
-};

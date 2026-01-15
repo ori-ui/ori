@@ -1,12 +1,12 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    Action, Effect, Event, IntoAction, NoElement, Proxied, Proxy, View, ViewId, ViewMarker,
+    Action, Effect, Event, NoElement, Proxied, Proxy, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
 /// [`Effect`](crate::Effect) that spawns a `task` that emits events to a `handler`.
-pub fn task<C, T, E, F, A, I>(
+pub fn task<C, T, E, F, A>(
     task: impl FnOnce(&mut T, Sink<E>) -> F + 'static,
     mut handler: impl FnMut(&mut T, E) -> A + 'static,
 ) -> impl Effect<C, T>
@@ -14,11 +14,11 @@ where
     C: Proxied,
     E: Send + 'static,
     F: Future<Output = ()> + Send + 'static,
-    A: IntoAction<I>,
+    A: Into<Action>,
 {
     Task {
         task:    Some(task),
-        handler: move |data: &mut T, event| handler(data, event).into_action(),
+        handler: move |data: &mut T, event| handler(data, event).into(),
         marker:  PhantomData,
     }
 }

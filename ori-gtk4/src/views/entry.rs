@@ -48,25 +48,19 @@ impl<T> Entry<T> {
         self
     }
 
-    pub fn on_change<A, I>(
-        mut self,
-        mut on_change: impl FnMut(&mut T, String) -> A + 'static,
-    ) -> Self
+    pub fn on_change<A>(mut self, mut on_change: impl FnMut(&mut T, String) -> A + 'static) -> Self
     where
-        A: ori::IntoAction<I>,
+        A: Into<ori::Action>,
     {
-        self.on_change = Box::new(move |d, t| on_change(d, t).into_action());
+        self.on_change = Box::new(move |d, t| on_change(d, t).into());
         self
     }
 
-    pub fn on_submit<A, I>(
-        mut self,
-        mut on_submit: impl FnMut(&mut T, String) -> A + 'static,
-    ) -> Self
+    pub fn on_submit<A>(mut self, mut on_submit: impl FnMut(&mut T, String) -> A + 'static) -> Self
     where
-        A: ori::IntoAction<I>,
+        A: Into<ori::Action>,
     {
-        self.on_submit = Box::new(move |d, t| on_submit(d, t).into_action());
+        self.on_submit = Box::new(move |d, t| on_submit(d, t).into());
         self
     }
 }

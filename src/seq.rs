@@ -9,7 +9,7 @@ pub trait ViewSeq<C, T, E> {
     /// State of the sequence.
     type State;
 
-    /// Build [`Self::Elements`] and [`Self::state`], see [`View::build`] for more information.
+    /// Build [`Self::Elements`] and [`Self::State`], see [`View::build`] for more information.
     fn seq_build(&mut self, cx: &mut C, data: &mut T) -> (Self::Elements, Self::State);
 
     /// Rebuild the sequence, see [`View::rebuild`] for more information.

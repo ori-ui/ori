@@ -16,7 +16,7 @@ pub type ActionCallback = Box<dyn FnOnce(&dyn Proxy)>;
 /// Action to be taken as a result of [`View::event`].
 ///
 /// Callbacks from [`View`]s will usually return one of these, note that `()` implements
-/// [`IntoAction`], which means that if no action is explicitly return by a callback, the default
+/// `Into<Action>`, which means that if no action is explicitly return by a callback, the default
 /// action is [`Action::rebuild`]. If this behaviour is not desired, callbacks should explicitly
 /// return [`Action::new`].
 ///

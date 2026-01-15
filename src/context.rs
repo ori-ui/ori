@@ -10,7 +10,7 @@ pub trait BaseElement {
 }
 
 /// A context for keeping track of user contexts.
-pub trait Providable {
+pub trait Provider {
     /// Push a `resource` to the stack.
     fn push<T: Any>(&mut self, resource: Box<T>);
 
@@ -33,7 +33,7 @@ pub trait Providable {
 }
 
 /// A context for a [`View`](crate::View).
-pub trait Proxyable {
+pub trait Proxied {
     /// [`Proxy`] associated
     type Proxy: Proxy;
 

@@ -4,7 +4,7 @@ use crate::{Action, Event, Provider, View, ViewMarker};
 
 /// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
-    initial: impl FnMut(&mut T) -> U,
+    initial: impl FnMut(&T) -> U,
     contents: V,
 ) -> impl View<C, T, Element = V::Element>
 where
@@ -26,7 +26,7 @@ impl<F, U, V> Provide<F, U, V> {
     /// Create a [`Provide`].
     pub fn new<T>(initial: F, contents: V) -> Self
     where
-        F: FnMut(&mut T) -> U,
+        F: FnMut(&T) -> U,
     {
         Self {
             contents,
@@ -39,7 +39,7 @@ impl<F, U, V> Provide<F, U, V> {
 impl<F, U, V> ViewMarker for Provide<F, U, V> {}
 impl<F, U, C, T, V> View<C, T> for Provide<F, U, V>
 where
-    F: FnMut(&mut T) -> U,
+    F: FnMut(&T) -> U,
     U: Any,
     C: Provider,
     V: View<C, T>,
@@ -117,9 +117,7 @@ where
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
-pub fn using<U, C, T, V>(
-    build: impl FnOnce(&mut T, &U) -> V,
-) -> impl View<C, T, Element = V::Element>
+pub fn using<U, C, T, V>(build: impl FnOnce(&T, &U) -> V) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
     C: Provider,
@@ -136,7 +134,7 @@ where
 
 /// [`View`] that uses `resource` provided by [`provide`].
 pub fn using_or_default<U, C, T, V>(
-    build: impl FnOnce(&mut T, &U) -> V,
+    build: impl FnOnce(&T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any + Default,
@@ -151,7 +149,7 @@ where
 
 /// [`View`] that uses `resource` provided by [`provide`].
 pub fn try_using<U, C, T, V>(
-    build: impl FnOnce(&mut T, Option<&U>) -> V,
+    build: impl FnOnce(&T, Option<&U>) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
@@ -180,7 +178,7 @@ impl<F, U> Using<F, U> {
 impl<F, U> ViewMarker for Using<F, U> {}
 impl<F, U, C, T, V> View<C, T> for Using<F, U>
 where
-    F: FnOnce(&mut T, Option<&U>) -> V,
+    F: FnOnce(&T, Option<&U>) -> V,
     U: Any,
     C: Provider,
     V: View<C, T>,

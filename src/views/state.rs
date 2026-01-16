@@ -15,8 +15,8 @@ where
 
 /// [`View`] that attaches extra `data` to its contents.
 pub fn with<C, T, U, V>(
-    init: impl FnOnce(&mut T) -> U + 'static,
-    build: impl FnOnce(&mut T, &mut U) -> V + 'static,
+    init: impl FnOnce(&T) -> U + 'static,
+    build: impl FnOnce(&T, &U) -> V + 'static,
 ) -> impl View<C, T, Element = V::Element>
 where
     V: View<C, (T, U)>,
@@ -26,13 +26,13 @@ where
 
 /// [`View`] that attaches extra `data` using its [`Default`] to its contents.
 pub fn with_default<C, T, U, V>(
-    build: impl FnOnce(&mut T, &mut U) -> V + 'static,
+    build: impl FnOnce(&T, &U) -> V + 'static,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Default,
     V: View<C, (T, U)>,
 {
-    With::new(|_: &mut T| Default::default(), build)
+    With::new(|_: &T| Default::default(), build)
 }
 
 /// [`View`] that maps one type of data to another.
@@ -152,8 +152,8 @@ impl<F, G> With<F, G> {
 impl<F, G> ViewMarker for With<F, G> {}
 impl<F, G, C, T, U, V> View<C, T> for With<F, G>
 where
-    F: FnOnce(&mut T) -> U,
-    G: FnOnce(&mut T, &mut U) -> V,
+    F: FnOnce(&T) -> U,
+    G: FnOnce(&T, &U) -> V,
     V: View<C, (T, U)>,
 {
     type Element = V::Element;
@@ -171,7 +171,7 @@ where
             .expect("`build` should only be called once");
 
         let mut with = init(data);
-        let mut view = build(data, &mut with);
+        let mut view = build(data, &with);
 
         let (element, state) = {
             let mut data_with = DataWith::new(data, &mut with);

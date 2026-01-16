@@ -6,7 +6,7 @@ use crate::{Action, Event, View, ViewMarker};
 pub fn memo<C, T, V, F, D>(data: D, build: F) -> Memo<F, D>
 where
     V: View<C, T>,
-    F: FnOnce(&mut T) -> V,
+    F: FnOnce(&T) -> V,
     D: PartialEq,
 {
     Memo::new(data, build)
@@ -16,7 +16,7 @@ where
 pub fn memo_hashed<C, T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
 where
     V: View<C, T>,
-    F: FnOnce(&mut T) -> V,
+    F: FnOnce(&T) -> V,
     D: Hash + ?Sized,
 {
     let mut hasher = DefaultHasher::new();
@@ -38,7 +38,7 @@ impl<F, D> Memo<F, D> {
     pub fn new<C, T, V>(data: D, build: F) -> Self
     where
         V: View<C, T>,
-        F: FnOnce(&mut T) -> V,
+        F: FnOnce(&T) -> V,
         D: PartialEq,
     {
         Self {
@@ -52,7 +52,7 @@ impl<F, D> ViewMarker for Memo<F, D> {}
 impl<C, T, V, F, D> View<C, T> for Memo<F, D>
 where
     V: View<C, T>,
-    F: FnOnce(&mut T) -> V,
+    F: FnOnce(&T) -> V,
     D: PartialEq,
 {
     type Element = V::Element;

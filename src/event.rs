@@ -36,7 +36,7 @@ impl Event {
 
     /// Check if `self` is taken, in which case, propagation should stop.
     pub fn is_taken(&self) -> bool {
-        self.item.is_some()
+        self.item.is_none()
     }
 
     /// Check if the item in `self` is an instance of `T`.

@@ -203,6 +203,10 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> Action {
+        if event.is_taken() {
+            return Action::new();
+        }
+
         elements.downcast_with(|element| self.event(element, state, cx, data, event))
     }
 }

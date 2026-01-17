@@ -123,6 +123,10 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> Action {
+        if event.is_taken() {
+            return Action::new();
+        }
+
         let mut action = None;
 
         (self.map)(data, &mut |data| {

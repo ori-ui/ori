@@ -34,6 +34,11 @@ impl Event {
         self.target() == Some(id)
     }
 
+    /// Check if `self` is taken, in which case, propagation should stop.
+    pub fn is_taken(&self) -> bool {
+        self.item.is_some()
+    }
+
     /// Check if the item in `self` is an instance of `T`.
     pub fn is<T: Any + Send>(&self) -> bool {
         self.item.as_ref().is_some_and(|item| item.is::<T>())

@@ -96,18 +96,26 @@ impl Event {
 
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let item = self.item.is_some().then_some(&self.name);
+
         f.debug_struct("Event")
             .field("target", &self.target)
-            .field("item", &self.name)
+            .field("item", &item)
             .finish()
     }
 }
 
 /// Unique key for targeting [`Event`]s.
 #[repr(transparent)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViewId {
     data: i64,
+}
+
+impl fmt::Debug for ViewId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:x}", self.data)
+    }
 }
 
 impl ViewId {

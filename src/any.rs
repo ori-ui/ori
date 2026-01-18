@@ -30,7 +30,7 @@ where
     );
 
     /// Tear down in a type erased manner, see [`View::teardown`] for more details.
-    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C, data: &mut T);
+    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C);
 
     /// Handle event in a type erased manner, see [`View::event`] for more details.
     fn any_event(
@@ -82,15 +82,14 @@ where
                     mem::replace(element, E::upcast(cx, new_element)),
                     mem::replace(state, Box::new(new_state)),
                     cx,
-                    data,
                 );
             }
         }
     }
 
-    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C, data: &mut T) {
+    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C) {
         if let Ok(state) = state.downcast() {
-            self.teardown(element.downcast(), *state, cx, data);
+            self.teardown(element.downcast(), *state, cx);
         }
     }
 
@@ -136,8 +135,8 @@ where
             .any_rebuild(element, state, cx, data, old.as_mut());
     }
 
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
-        self.as_mut().any_teardown(element, state, cx, data);
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C) {
+        self.as_mut().any_teardown(element, state, cx);
     }
 
     fn event(

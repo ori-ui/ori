@@ -163,25 +163,17 @@ where
         }
     }
 
-    fn teardown(
-        &mut self,
-        _element: Self::Element,
-        state: Self::State,
-        cx: &mut Context,
-        data: &mut T,
-    ) {
+    fn teardown(&mut self, _element: Self::Element, state: Self::State, cx: &mut Context) {
         self.contents.teardown(
             state.contents_element,
             state.contents_state,
             cx,
-            data,
         );
 
         self.popover.teardown(
             state.popover_element,
             state.popover_state,
             cx,
-            data,
         );
     }
 

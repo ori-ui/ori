@@ -78,14 +78,8 @@ where
         }
     }
 
-    fn teardown(
-        &mut self,
-        _element: Self::Element,
-        (child, state): Self::State,
-        cx: &mut Context,
-        data: &mut T,
-    ) {
-        self.contents.teardown(child, state, cx, data);
+    fn teardown(&mut self, _element: Self::Element, (child, state): Self::State, cx: &mut Context) {
+        self.contents.teardown(child, state, cx);
     }
 
     fn event(

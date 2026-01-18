@@ -289,14 +289,8 @@ where
         update_state(&state.window, self, old);
     }
 
-    fn teardown(
-        &mut self,
-        _element: Self::Element,
-        state: Self::State,
-        cx: &mut Context,
-        data: &mut T,
-    ) {
-        self.contents.teardown(state.child, state.state, cx, data);
+    fn teardown(&mut self, _element: Self::Element, state: Self::State, cx: &mut Context) {
+        self.contents.teardown(state.child, state.state, cx);
     }
 
     fn event(

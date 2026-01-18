@@ -153,34 +153,18 @@ where
         }
     }
 
-    fn teardown(
-        &mut self,
-        element: Self::Element,
-        (_id, handle, state): Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn teardown(&mut self, element: Self::Element, (_id, handle, state): Self::State, cx: &mut C) {
         if let Some(handle) = handle {
             handle.abort();
         }
 
         match state {
             SuspenseState::Fallback(fallback_state) => {
-                self.fallback.teardown(
-                    element.downcast(),
-                    fallback_state,
-                    cx,
-                    data,
-                );
+                (self.fallback).teardown(element.downcast(), fallback_state, cx);
             }
 
             SuspenseState::Contents(mut contents, contents_state) => {
-                contents.teardown(
-                    element.downcast(),
-                    contents_state,
-                    cx,
-                    data,
-                );
+                contents.teardown(element.downcast(), contents_state, cx);
             }
         }
     }
@@ -214,7 +198,6 @@ where
                         fallback_element.downcast(),
                         fallback_state,
                         cx,
-                        data,
                     );
                 }
 

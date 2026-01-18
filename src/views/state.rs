@@ -86,8 +86,6 @@ where
         data: &mut T,
         old: &mut Self,
     ) {
-        let mut called = false;
-
         (self.map)(data, &mut |data| {
             self.contents.rebuild(
                 element,
@@ -96,23 +94,11 @@ where
                 data,
                 &mut old.contents,
             );
-
-            called = true;
         });
     }
 
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T) {
-        let mut called = false;
-
-        let mut element = Some(element);
-        let mut state = Some(state);
-
-        (self.map)(data, &mut |data| {
-            if let (Some(element), Some(state)) = (element.take(), state.take()) {
-                self.contents.teardown(element, state, cx, data);
-                called = true;
-            }
-        });
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C) {
+        self.contents.teardown(element, state, cx);
     }
 
     fn event(
@@ -209,20 +195,8 @@ where
         }
     }
 
-    fn teardown(
-        &mut self,
-        element: Self::Element,
-        (mut with, mut view, state): Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
-        let mut data_with = DataWith::new(data, &mut with);
-        view.teardown(
-            element,
-            state,
-            cx,
-            &mut data_with.data_with,
-        );
+    fn teardown(&mut self, element: Self::Element, (_, mut view, state): Self::State, cx: &mut C) {
+        view.teardown(element, state, cx);
     }
 
     fn event(

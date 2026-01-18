@@ -67,10 +67,9 @@ where
         element: Self::Element,
         (contents, elements, with): Self::State,
         cx: &mut C,
-        data: &mut T,
     ) {
-        self.contents.teardown(element, contents, cx, data);
-        self.effect.seq_teardown(elements, with, cx, data);
+        self.contents.teardown(element, contents, cx);
+        self.effect.seq_teardown(elements, with, cx);
     }
 
     fn event(
@@ -135,14 +134,8 @@ where
         );
     }
 
-    fn teardown(
-        &mut self,
-        _element: Self::Element,
-        (children, state): Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
-        self.contents.seq_teardown(children, state, cx, data);
+    fn teardown(&mut self, _element: Self::Element, (children, state): Self::State, cx: &mut C) {
+        self.contents.seq_teardown(children, state, cx);
     }
 
     fn event(

@@ -49,14 +49,8 @@ where
         *view = Box::new(new_view);
     }
 
-    fn teardown(
-        &mut self,
-        element: Self::Element,
-        (mut view, state): Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
-        view.as_mut().any_teardown(element, state, cx, data);
+    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
+        view.as_mut().any_teardown(element, state, cx);
     }
 
     fn event(

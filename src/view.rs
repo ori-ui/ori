@@ -32,7 +32,7 @@ where
     /// Tear down the UI built by the [`View`].
     ///
     /// This is expected to be called only once per instance of [`View`].
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C, data: &mut T);
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C);
 
     /// Handle an [`Event`].
     ///

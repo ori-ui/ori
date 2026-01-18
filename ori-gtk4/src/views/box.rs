@@ -104,9 +104,8 @@ where
         _element: Self::Element,
         (children, state): Self::State,
         cx: &mut Context,
-        data: &mut T,
     ) {
-        self.contents.seq_teardown(children, state, cx, data);
+        self.contents.seq_teardown(children, state, cx);
     }
 
     fn event(

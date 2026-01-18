@@ -23,13 +23,7 @@ pub trait ViewSeq<C, T, E> {
     );
 
     /// Tear down the sequence, see [`View::teardown`] for more information.
-    fn seq_teardown(
-        &mut self,
-        elements: Self::Elements,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    );
+    fn seq_teardown(&mut self, elements: Self::Elements, state: Self::State, cx: &mut C);
 
     /// Handle an event for the sequence, see [`View::event`] for more information.
     ///
@@ -185,14 +179,8 @@ where
         element.downcast_with(|element| self.rebuild(element, state, cx, data, old));
     }
 
-    fn seq_teardown(
-        &mut self,
-        One(element): Self::Elements,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
-        self.teardown(element.downcast(), state, cx, data);
+    fn seq_teardown(&mut self, One(element): Self::Elements, state: Self::State, cx: &mut C) {
+        self.teardown(element.downcast(), state, cx);
     }
 
     fn seq_event(
@@ -242,7 +230,7 @@ where
 
             (None, Some(old)) => {
                 if let (Some(elements), Some(state)) = (elements.take(), state.take()) {
-                    old.seq_teardown(elements, state, cx, data);
+                    old.seq_teardown(elements, state, cx);
                 }
             }
 
@@ -260,17 +248,11 @@ where
         }
     }
 
-    fn seq_teardown(
-        &mut self,
-        elements: Self::Elements,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn seq_teardown(&mut self, elements: Self::Elements, state: Self::State, cx: &mut C) {
         if let Some(contents) = self
             && let (Some(elements), Some(state)) = (elements, state)
         {
-            contents.seq_teardown(elements, state, cx, data);
+            contents.seq_teardown(elements, state, cx);
         }
     }
 
@@ -331,7 +313,7 @@ where
                 .zip(elements.drain(self.len()..))
                 .zip(states.drain(self.len()..))
             {
-                old.seq_teardown(element, state, cx, data);
+                old.seq_teardown(element, state, cx);
             }
         }
 
@@ -356,15 +338,9 @@ where
         }
     }
 
-    fn seq_teardown(
-        &mut self,
-        elements: Self::Elements,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn seq_teardown(&mut self, elements: Self::Elements, state: Self::State, cx: &mut C) {
         for ((view, elements), state) in self.iter_mut().zip(elements).zip(state) {
-            view.seq_teardown(elements, state, cx, data);
+            view.seq_teardown(elements, state, cx);
         }
     }
 
@@ -515,19 +491,13 @@ where
                 .find(|(k, _)| *k == key)
                 .expect("should be contained");
 
-            old_seq.seq_teardown(element, state, cx, data);
+            old_seq.seq_teardown(element, state, cx);
         }
     }
 
-    fn seq_teardown(
-        &mut self,
-        elements: Self::Elements,
-        state: Self::State,
-        cx: &mut C,
-        data: &mut T,
-    ) {
+    fn seq_teardown(&mut self, elements: Self::Elements, state: Self::State, cx: &mut C) {
         for (((_, seq), elements), state) in self.pairs.iter_mut().zip(elements).zip(state.states) {
-            seq.seq_teardown(elements, state, cx, data);
+            seq.seq_teardown(elements, state, cx);
         }
     }
 
@@ -622,14 +592,12 @@ macro_rules! impl_tuple {
                 elements: Self::Elements,
                 state: Self::State,
                 cx: &mut C,
-                data: &mut T,
             ) {
                 $({
                     self.$index.seq_teardown(
                         elements.$index,
                         state.$index,
                         cx,
-                        data,
                     );
                 })*
             }

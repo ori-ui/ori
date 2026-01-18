@@ -84,9 +84,8 @@ impl<T, V: View<T>> ori::View<Context, T> for Button<V, T> {
         _element: Self::Element,
         (_key, child, state): Self::State,
         cx: &mut Context,
-        data: &mut T,
     ) {
-        self.contents.teardown(child, state, cx, data);
+        self.contents.teardown(child, state, cx);
     }
 
     fn event(

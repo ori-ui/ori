@@ -90,13 +90,7 @@ where
     ) {
     }
 
-    fn teardown(
-        &mut self,
-        _element: Self::Element,
-        (_, handle): Self::State,
-        _cx: &mut C,
-        _data: &mut T,
-    ) {
+    fn teardown(&mut self, _element: Self::Element, (_, handle): Self::State, _cx: &mut C) {
         handle.abort();
     }
 

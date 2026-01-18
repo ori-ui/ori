@@ -74,14 +74,7 @@ where
     ) {
     }
 
-    fn teardown(
-        &mut self,
-        _element: Self::Element,
-        _state: Self::State,
-        _cx: &mut C,
-        _data: &mut T,
-    ) {
-    }
+    fn teardown(&mut self, _element: Self::Element, _state: Self::State, _cx: &mut C) {}
 
     fn event(
         &mut self,

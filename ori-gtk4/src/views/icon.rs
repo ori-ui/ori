@@ -45,14 +45,7 @@ impl<T> ori::View<Context, T> for Icon {
         }
     }
 
-    fn teardown(
-        &mut self,
-        _element: Self::Element,
-        _state: Self::State,
-        _cx: &mut Context,
-        _data: &mut T,
-    ) {
-    }
+    fn teardown(&mut self, _element: Self::Element, _state: Self::State, _cx: &mut Context) {}
 
     fn event(
         &mut self,

@@ -1,4 +1,4 @@
-use crate::{Action, EffectSeq, Event, NoElement, View, ViewMarker};
+use crate::{Action, EffectSeq, Event, Mut, NoElement, NoElements, View, ViewMarker};
 
 /// [`View`] that attaches an [`Effect`](crate::Effect) to a [`View`].
 pub const fn with_effect<V, W>(contents: V, with: W) -> WithEffect<V, W> {
@@ -28,19 +28,19 @@ where
     W: EffectSeq<C, T>,
 {
     type Element = V::Element;
-    type State = (V::State, W::Elements, W::State);
+    type State = (V::State, W::State);
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, contents) = self.contents.build(cx, data);
-        let (elements, with) = self.effect.seq_build(cx, data);
+        let with = self.effect.seq_build(&mut NoElements, cx, data);
 
-        (element, (contents, elements, with))
+        (element, (contents, with))
     }
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
-        (contents, elements, with): &mut Self::State,
+        element: Mut<C, Self::Element>,
+        (contents, with): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
@@ -54,7 +54,7 @@ where
         );
 
         self.effect.seq_rebuild(
-            elements,
+            &mut NoElements,
             with,
             cx,
             data,
@@ -62,28 +62,25 @@ where
         );
     }
 
-    fn teardown(
-        &mut self,
-        element: Self::Element,
-        (contents, elements, with): Self::State,
-        cx: &mut C,
-    ) {
-        self.contents.teardown(element, contents, cx);
-        self.effect.seq_teardown(elements, with, cx);
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
-        (contents, elements, with): &mut Self::State,
+        element: Mut<C, Self::Element>,
+        (contents, with): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        let contents_action = self.effect.seq_event(elements, with, cx, data, event);
+        let contents_action = self
+            .effect
+            .seq_event(&mut NoElements, with, cx, data, event);
         let effect_action = self.contents.event(element, contents, cx, data, event);
 
         contents_action | effect_action
+    }
+
+    fn teardown(&mut self, element: Self::Element, (contents, with): Self::State, cx: &mut C) {
+        self.contents.teardown(element, contents, cx);
+        self.effect.seq_teardown(&mut NoElements, with, cx);
     }
 }
 
@@ -110,23 +107,23 @@ where
     V: EffectSeq<C, T>,
 {
     type Element = NoElement;
-    type State = (V::Elements, V::State);
+    type State = V::State;
 
     fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let (children, states) = self.contents.seq_build(cx, data);
-        (NoElement, (children, states))
+        let states = self.contents.seq_build(&mut NoElements, cx, data);
+        (NoElement, states)
     }
 
     fn rebuild(
         &mut self,
-        _element: &mut Self::Element,
-        (children, state): &mut Self::State,
+        _element: Mut<C, Self::Element>,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
     ) {
         self.contents.seq_rebuild(
-            children,
+            &mut NoElements,
             state,
             cx,
             data,
@@ -134,18 +131,18 @@ where
         );
     }
 
-    fn teardown(&mut self, _element: Self::Element, (children, state): Self::State, cx: &mut C) {
-        self.contents.seq_teardown(children, state, cx);
-    }
-
     fn event(
         &mut self,
-        _element: &mut Self::Element,
-        (children, state): &mut Self::State,
+        _element: Mut<C, Self::Element>,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        self.contents.seq_event(children, state, cx, data, event)
+        (self.contents).seq_event(&mut NoElements, state, cx, data, event)
+    }
+
+    fn teardown(&mut self, _element: Self::Element, state: Self::State, cx: &mut C) {
+        self.contents.seq_teardown(&mut NoElements, state, cx);
     }
 }

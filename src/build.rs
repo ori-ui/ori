@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use crate::{Action, AnyView, BaseElement, Event, View, ViewMarker};
+use crate::{Action, AnyView, BaseElement, Event, Mut, View, ViewMarker};
 
 /// Marker view for types implementing [`Build`].
 pub trait BuildMarker {}
@@ -38,7 +38,7 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -49,18 +49,18 @@ where
         *view = Box::new(new_view);
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.as_mut().any_teardown(element, state, cx);
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
         view.as_mut().any_event(element, state, cx, data, event)
+    }
+
+    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
+        view.as_mut().any_teardown(element, state, cx);
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Action, Effect, Event, NoElement, View, ViewMarker};
+use crate::{Action, Effect, Event, Mut, NoElement, View, ViewMarker};
 
 /// Create a new [`Handler`].
 pub fn handler() -> Handler<()> {
@@ -66,7 +66,7 @@ where
 
     fn rebuild(
         &mut self,
-        _element: &mut Self::Element,
+        _element: Mut<C, Self::Element>,
         _state: &mut Self::State,
         _cx: &mut C,
         _data: &mut T,
@@ -74,11 +74,9 @@ where
     ) {
     }
 
-    fn teardown(&mut self, _element: Self::Element, _state: Self::State, _cx: &mut C) {}
-
     fn event(
         &mut self,
-        _element: &mut Self::Element,
+        _element: Mut<C, Self::Element>,
         _state: &mut Self::State,
         _cx: &mut C,
         data: &mut T,
@@ -86,4 +84,6 @@ where
     ) -> Action {
         (self.on_event)(data, event)
     }
+
+    fn teardown(&mut self, _element: Self::Element, _state: Self::State, _cx: &mut C) {}
 }

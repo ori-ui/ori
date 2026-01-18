@@ -1,4 +1,4 @@
-use crate::{Action, Event};
+use crate::{Action, Element, Event, Mut};
 
 /// Trait restricting implementations of [`View`].
 pub trait ViewMarker {}
@@ -9,7 +9,7 @@ where
     T: ?Sized,
 {
     /// The element this view produces.
-    type Element;
+    type Element: Element<C>;
 
     /// The state of this view.
     type State;
@@ -22,17 +22,12 @@ where
     /// Rebuild the UI, applying the differences between `self` and `old`.
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
     );
-
-    /// Tear down the UI built by the [`View`].
-    ///
-    /// This is expected to be called only once per instance of [`View`].
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C);
 
     /// Handle an [`Event`].
     ///
@@ -40,10 +35,15 @@ where
     /// relation as well as an [`Action`] to execute.
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action;
+
+    /// Tear down the UI built by the [`View`].
+    ///
+    /// This is expected to be called only once per instance of [`View`].
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C);
 }

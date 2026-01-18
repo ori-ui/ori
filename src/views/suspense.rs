@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    Action, BaseElement, Event, Proxied, Proxy, Super, View, ViewId, ViewMarker,
+    Action, BaseElement, Event, Mut, Proxied, Proxy, Super, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -115,7 +115,7 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (id, handle, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -139,39 +139,25 @@ where
         }
 
         match state {
-            SuspenseState::Fallback(fallback_state) => element.downcast_with(|element| {
-                self.fallback.rebuild(
-                    element,
-                    fallback_state,
-                    cx,
-                    data,
-                    &mut old.fallback,
-                );
-            }),
+            SuspenseState::Fallback(fallback_state) => {
+                <Self::Element as Super<_, V::Element>>::downcast_with(element, |element| {
+                    self.fallback.rebuild(
+                        element,
+                        fallback_state,
+                        cx,
+                        data,
+                        &mut old.fallback,
+                    );
+                })
+            }
 
             SuspenseState::Contents(_, _) => {}
         }
     }
 
-    fn teardown(&mut self, element: Self::Element, (_id, handle, state): Self::State, cx: &mut C) {
-        if let Some(handle) = handle {
-            handle.abort();
-        }
-
-        match state {
-            SuspenseState::Fallback(fallback_state) => {
-                (self.fallback).teardown(element.downcast(), fallback_state, cx);
-            }
-
-            SuspenseState::Contents(mut contents, contents_state) => {
-                contents.teardown(element.downcast(), contents_state, cx);
-            }
-        }
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (id, _handle, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -182,10 +168,8 @@ where
                 SuspenseState::Fallback(_) => {
                     let (contents_element, contents_state) = contents.build(cx, data);
 
-                    let fallback_element = mem::replace(
-                        element,
-                        C::Element::upcast(cx, contents_element),
-                    );
+                    let fallback_element =
+                        <Self::Element as Super<_, _>>::replace(cx, element, contents_element);
 
                     let SuspenseState::Fallback(fallback_state) = mem::replace(
                         state,
@@ -202,32 +186,55 @@ where
                 }
 
                 SuspenseState::Contents(old_contents, contents_state) => {
-                    element.downcast_with(|element| {
-                        contents.rebuild(
-                            element,
-                            contents_state,
-                            cx,
-                            data,
-                            old_contents,
-                        );
-                    });
+                    <Self::Element as Super<_, <F::Output as View<C, T>>::Element>>::downcast_with(
+                        element,
+                        |element| {
+                            contents.rebuild(
+                                element,
+                                contents_state,
+                                cx,
+                                data,
+                                old_contents,
+                            );
+                        },
+                    );
 
                     *old_contents = contents;
                 }
             }
+
+            return Action::new();
         };
 
         match state {
-            SuspenseState::Fallback(fallback_state) => element.downcast_with(|element| {
-                self.fallback
-                    .event(element, fallback_state, cx, data, event)
-            }),
+            SuspenseState::Fallback(fallback_state) => {
+                <Self::Element as Super<_, V::Element>>::downcast_with(element, |element| {
+                    self.fallback
+                        .event(element, fallback_state, cx, data, event)
+                })
+            }
 
             SuspenseState::Contents(contents, contents_state) => {
-                element.downcast_with(|element| {
-                    contents.event(element, contents_state, cx, data, event)
-                    //
-                })
+                <Self::Element as Super<_, <F::Output as View<C, T>>::Element>>::downcast_with(
+                    element,
+                    |element| contents.event(element, contents_state, cx, data, event),
+                )
+            }
+        }
+    }
+
+    fn teardown(&mut self, element: Self::Element, (_id, handle, state): Self::State, cx: &mut C) {
+        if let Some(handle) = handle {
+            handle.abort();
+        }
+
+        match state {
+            SuspenseState::Fallback(fallback_state) => {
+                (self.fallback).teardown(element.downcast(), fallback_state, cx);
+            }
+
+            SuspenseState::Contents(mut contents, contents_state) => {
+                contents.teardown(element.downcast(), contents_state, cx);
             }
         }
     }

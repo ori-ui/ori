@@ -1,12 +1,12 @@
 use std::{any::Any, pin::Pin, sync::Arc};
 
-use crate::{Action, Event};
+use crate::{Action, Element, Event};
 
 /// A context with a common base element, that is [`Super`](crate::Super) to all elements in the
 /// context.
-pub trait BaseElement {
+pub trait BaseElement: Sized {
     /// The base element.
-    type Element;
+    type Element: Element<Self>;
 }
 
 /// A context for keeping track of user contexts.

@@ -1,4 +1,4 @@
-use crate::{Action, Event, View, ViewMarker};
+use crate::{Action, Event, Mut, View, ViewMarker};
 
 /// [`View`] that doesn't rebuild when state changes.
 pub fn freeze<V>(build: impl FnOnce() -> V) -> Freeze<impl FnOnce() -> V> {
@@ -40,7 +40,7 @@ where
 
     fn rebuild(
         &mut self,
-        _element: &mut Self::Element,
+        _element: Mut<C, Self::Element>,
         _state: &mut Self::State,
         _cx: &mut C,
         _data: &mut T,
@@ -48,18 +48,18 @@ where
     ) {
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
         view.event(element, state, cx, data, event)
+    }
+
+    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
+        view.teardown(element, state, cx);
     }
 }

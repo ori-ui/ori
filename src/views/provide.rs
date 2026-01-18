@@ -1,6 +1,6 @@
 use std::{any::Any, marker::PhantomData};
 
-use crate::{Action, Event, Provider, View, ViewMarker};
+use crate::{Action, Event, Mut, Provider, View, ViewMarker};
 
 /// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
@@ -59,7 +59,7 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (context, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -80,19 +80,9 @@ where
         *context = cx.pop();
     }
 
-    fn teardown(&mut self, element: Self::Element, (context, state): Self::State, cx: &mut C) {
-        if let Some(context) = context {
-            cx.push(context);
-        }
-
-        self.contents.teardown(element, state, cx);
-
-        cx.pop::<U>();
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (context, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -107,6 +97,16 @@ where
         *context = cx.pop();
 
         action
+    }
+
+    fn teardown(&mut self, element: Self::Element, (context, state): Self::State, cx: &mut C) {
+        if let Some(context) = context {
+            cx.push(context);
+        }
+
+        self.contents.teardown(element, state, cx);
+
+        cx.pop::<U>();
     }
 }
 
@@ -192,7 +192,7 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -207,18 +207,18 @@ where
         }
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
         view.event(element, state, cx, data, event)
+    }
+
+    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
+        view.teardown(element, state, cx);
     }
 }

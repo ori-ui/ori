@@ -1,6 +1,6 @@
 use std::{any::Any, mem};
 
-use crate::{Action, Event, Super, View, ViewMarker};
+use crate::{Action, Element, Event, Mut, Super, View, ViewMarker};
 
 /// A type erased [`View`].
 ///
@@ -9,6 +9,7 @@ use crate::{Action, Event, Super, View, ViewMarker};
 pub trait AnyView<C, T, E>
 where
     T: ?Sized,
+    E: Element<C>,
 {
     /// Get `self` as `&mut dyn Any`.
     ///
@@ -22,25 +23,25 @@ where
     /// Rebuild in a type erased manner, see [`View::rebuild`] for more details.
     fn any_rebuild(
         &mut self,
-        element: &mut E,
+        element: E::Mut<'_>,
         state: &mut Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
         old: &mut dyn AnyView<C, T, E>,
     );
 
-    /// Tear down in a type erased manner, see [`View::teardown`] for more details.
-    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C);
-
     /// Handle event in a type erased manner, see [`View::event`] for more details.
     fn any_event(
         &mut self,
-        element: &mut E,
+        element: E::Mut<'_>,
         state: &mut Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action;
+
+    /// Tear down in a type erased manner, see [`View::teardown`] for more details.
+    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C);
 }
 
 impl<C, T, E, V> AnyView<C, T, E> for V
@@ -62,14 +63,14 @@ where
 
     fn any_rebuild(
         &mut self,
-        element: &mut E,
+        element: E::Mut<'_>,
         state: &mut Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
         old: &mut dyn AnyView<C, T, E>,
     ) {
         match old.as_mut_any().downcast_mut::<V>() {
-            Some(old) => element.downcast_with(|element| {
+            Some(old) => E::downcast_with(element, |element| {
                 if let Some(state) = state.downcast_mut() {
                     self.rebuild(element, state, cx, data, old);
                 }
@@ -79,7 +80,7 @@ where
                 let (new_element, new_state) = self.build(cx, data);
 
                 old.any_teardown(
-                    mem::replace(element, E::upcast(cx, new_element)),
+                    E::replace(cx, element, new_element),
                     mem::replace(state, Box::new(new_state)),
                     cx,
                 );
@@ -87,21 +88,15 @@ where
         }
     }
 
-    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C) {
-        if let Ok(state) = state.downcast() {
-            self.teardown(element.downcast(), *state, cx);
-        }
-    }
-
     fn any_event(
         &mut self,
-        element: &mut E,
+        element: E::Mut<'_>,
         state: &mut Box<dyn Any>,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        element.downcast_with(|element| {
+        E::downcast_with(element, |element| {
             if let Some(state) = state.downcast_mut() {
                 self.event(element, state, cx, data, event)
             } else {
@@ -109,12 +104,19 @@ where
             }
         })
     }
+
+    fn any_teardown(&mut self, element: E, state: Box<dyn Any>, cx: &mut C) {
+        if let Ok(state) = state.downcast() {
+            self.teardown(element.downcast(), *state, cx);
+        }
+    }
 }
 
 impl<C, T, E> ViewMarker for Box<dyn AnyView<C, T, E>> where T: ?Sized {}
 impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>>
 where
     T: ?Sized,
+    E: Element<C>,
 {
     type Element = E;
     type State = Box<dyn Any>;
@@ -125,7 +127,7 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -135,18 +137,18 @@ where
             .any_rebuild(element, state, cx, data, old.as_mut());
     }
 
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C) {
-        self.as_mut().any_teardown(element, state, cx);
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
         self.as_mut().any_event(element, state, cx, data, event)
+    }
+
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C) {
+        self.as_mut().any_teardown(element, state, cx);
     }
 }

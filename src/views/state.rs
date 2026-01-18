@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, mem::ManuallyDrop, ptr};
 
-use crate::{Action, Event, View, ViewMarker};
+use crate::{Action, Element, Event, Mut, View, ViewMarker};
 
 /// [`View`] that maps one type of data to another.
 pub fn map<C, T, U, E>(
@@ -9,6 +9,7 @@ pub fn map<C, T, U, E>(
 ) -> impl View<C, T, Element = E>
 where
     T: ?Sized,
+    E: Element<C>,
 {
     Map::new(contents, map)
 }
@@ -80,30 +81,30 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         old: &mut Self,
     ) {
-        (self.map)(data, &mut |data| {
-            self.contents.rebuild(
-                element,
-                state,
-                cx,
-                data,
-                &mut old.contents,
-            );
-        });
-    }
+        let mut element = Some(element);
 
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C) {
-        self.contents.teardown(element, state, cx);
+        (self.map)(data, &mut |data| {
+            if let Some(element) = element.take() {
+                self.contents.rebuild(
+                    element,
+                    state,
+                    cx,
+                    data,
+                    &mut old.contents,
+                );
+            }
+        });
     }
 
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -114,12 +115,19 @@ where
         }
 
         let mut action = None;
+        let mut element = Some(element);
 
         (self.map)(data, &mut |data| {
-            action = Some(self.contents.event(element, state, cx, data, event));
+            if let Some(element) = element.take() {
+                action.replace(self.contents.event(element, state, cx, data, event));
+            }
         });
 
         action.unwrap_or(Action::new())
+    }
+
+    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C) {
+        self.contents.teardown(element, state, cx);
     }
 }
 
@@ -173,7 +181,7 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (with, view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -195,13 +203,9 @@ where
         }
     }
 
-    fn teardown(&mut self, element: Self::Element, (_, mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (with, view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -215,6 +219,10 @@ where
             &mut data_with.data_with,
             event,
         )
+    }
+
+    fn teardown(&mut self, element: Self::Element, (_, mut view, state): Self::State, cx: &mut C) {
+        view.teardown(element, state, cx);
     }
 }
 

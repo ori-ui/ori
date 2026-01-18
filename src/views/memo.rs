@@ -1,6 +1,6 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-use crate::{Action, Event, View, ViewMarker};
+use crate::{Action, Event, Mut, View, ViewMarker};
 
 /// [`View`] that is only rebuilt when `data` changes.
 pub fn memo<C, T, V, F, D>(data: D, build: F) -> Memo<F, D>
@@ -67,7 +67,7 @@ where
 
     fn rebuild(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -82,18 +82,18 @@ where
         }
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
-    }
-
     fn event(
         &mut self,
-        element: &mut Self::Element,
+        element: Mut<C, Self::Element>,
         (view, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
         view.event(element, state, cx, data, event)
+    }
+
+    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
+        view.teardown(element, state, cx);
     }
 }

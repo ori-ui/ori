@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    Action, Effect, Event, NoElement, Proxied, Proxy, View, ViewId, ViewMarker,
+    Action, Effect, Event, Mut, NoElement, Proxied, Proxy, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -82,7 +82,7 @@ where
 
     fn rebuild(
         &mut self,
-        _element: &mut Self::Element,
+        _element: Mut<C, Self::Element>,
         _state: &mut Self::State,
         _cx: &mut C,
         _data: &mut T,
@@ -90,13 +90,9 @@ where
     ) {
     }
 
-    fn teardown(&mut self, _element: Self::Element, (_, handle): Self::State, _cx: &mut C) {
-        handle.abort();
-    }
-
     fn event(
         &mut self,
-        _element: &mut Self::Element,
+        _element: Mut<C, Self::Element>,
         (id, _): &mut Self::State,
         _cx: &mut C,
         data: &mut T,
@@ -107,5 +103,9 @@ where
         } else {
             Action::new()
         }
+    }
+
+    fn teardown(&mut self, _element: Self::Element, (_, handle): Self::State, _cx: &mut C) {
+        handle.abort();
     }
 }

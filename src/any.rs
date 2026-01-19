@@ -55,6 +55,9 @@ where
                 let old_element = E::replace(cx, element, new_element);
                 let old_state = mem::replace(&mut state.state, Box::new(new_state));
                 (state.teardown)(old_element, old_state, cx);
+
+                state.event = AnyState::<C, T, E>::event::<V>;
+                state.teardown = AnyState::<C, T, E>::teardown::<V>;
             }
         }
     }

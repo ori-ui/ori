@@ -29,8 +29,8 @@ where
 /// [`View`] that is only rebuilt when `data` changes.
 #[must_use]
 pub struct Memo<F, D> {
-    data:  D,
-    build: Option<F>,
+    key:   D,
+    build: F,
 }
 
 impl<F, D> Memo<F, D> {
@@ -41,10 +41,7 @@ impl<F, D> Memo<F, D> {
         F: FnOnce(&T) -> V,
         D: PartialEq,
     {
-        Self {
-            data,
-            build: Some(build),
-        }
+        Self { key: data, build }
     }
 }
 
@@ -56,44 +53,39 @@ where
     D: PartialEq,
 {
     type Element = V::Element;
-    type State = (V, V::State);
+    type State = (D, V::State);
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let build = self.build.take().expect("build should only be called once");
-        let mut view = build(data);
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let view = (self.build)(data);
         let (element, state) = view.build(cx, data);
-        (element, (view, state))
+        (element, (self.key, state))
     }
 
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        (key, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        old: &mut Self,
     ) {
-        if self.data != old.data
-            && let Some(build) = self.build.take()
-        {
-            let mut new_view = build(data);
-            new_view.rebuild(element, state, cx, data, view);
-            *view = new_view;
+        if self.key != *key {
+            let view = (self.build)(data);
+            view.rebuild(element, state, cx, data);
+            *key = self.key;
         }
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        (_, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        view.event(element, state, cx, data, event)
+        V::event(element, state, cx, data, event)
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
+    fn teardown(element: Self::Element, (_, state): Self::State, cx: &mut C) {
+        V::teardown(element, state, cx);
     }
 }

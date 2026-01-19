@@ -58,32 +58,30 @@ where
     E: FnMut(&mut T, &mut Event) -> Action,
 {
     type Element = NoElement;
-    type State = ();
+    type State = E;
 
-    fn build(&mut self, _cx: &mut C, _data: &mut T) -> (Self::Element, Self::State) {
-        (NoElement, ())
+    fn build(self, _cx: &mut C, _data: &mut T) -> (Self::Element, Self::State) {
+        (NoElement, self.on_event)
     }
 
     fn rebuild(
-        &mut self,
+        self,
         _element: Mut<C, Self::Element>,
         _state: &mut Self::State,
         _cx: &mut C,
         _data: &mut T,
-        _old: &mut Self,
     ) {
     }
 
     fn event(
-        &mut self,
         _element: Mut<C, Self::Element>,
-        _state: &mut Self::State,
+        on_event: &mut Self::State,
         _cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        (self.on_event)(data, event)
+        on_event(data, event)
     }
 
-    fn teardown(&mut self, _element: Self::Element, _state: Self::State, _cx: &mut C) {}
+    fn teardown(_element: Self::Element, _state: Self::State, _cx: &mut C) {}
 }

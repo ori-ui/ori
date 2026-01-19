@@ -1,6 +1,4 @@
-use std::any::Any;
-
-use crate::{Action, AnyView, BaseElement, Event, Mut, View, ViewMarker};
+use crate::{Action, AnyState, AnyView, BaseElement, Event, Mut, View, ViewMarker};
 
 /// Marker view for types implementing [`Build`].
 pub trait BuildMarker {}
@@ -11,7 +9,7 @@ where
     C: BaseElement,
 {
     /// Build the [`View`] of this builder.
-    fn build(&mut self) -> impl AnyView<C, T, C::Element> + 'static;
+    fn build(self) -> impl AnyView<C, T, C::Element>;
 }
 
 impl<V> ViewMarker for V where V: BuildMarker {}
@@ -22,45 +20,35 @@ where
     B: Build<C, T>,
 {
     type Element = C::Element;
-    type State = (
-        Box<dyn AnyView<C, T, C::Element>>,
-        Box<dyn Any>,
-    );
+    type State = AnyState<C, T, C::Element>;
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let mut view = self.build();
-        let (element, state) = view.any_build(cx, data);
-
-        let view = Box::new(view);
-        let state = Box::new(state);
-        (element, (view, state))
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let view = self.build();
+        AnyView::build(Box::new(view), cx, data)
     }
 
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        _old: &mut Self,
     ) {
-        let mut new_view = self.build();
-        new_view.any_rebuild(element, state, cx, data, view.as_mut());
-        *view = Box::new(new_view);
+        let view = self.build();
+        AnyView::rebuild(Box::new(view), element, state, cx, data);
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        view.as_mut().any_event(element, state, cx, data, event)
+        Box::<dyn AnyView<C, T, C::Element>>::event(element, state, cx, data, event)
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.as_mut().any_teardown(element, state, cx);
+    fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
+        Box::<dyn AnyView<C, T, C::Element>>::teardown(element, state, cx);
     }
 }

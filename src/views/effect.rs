@@ -30,7 +30,7 @@ where
     type Element = V::Element;
     type State = (V::State, W::State);
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, contents) = self.contents.build(cx, data);
         let with = self.effect.seq_build(&mut NoElements, cx, data);
 
@@ -38,49 +38,32 @@ where
     }
 
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
         (contents, with): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        old: &mut Self,
     ) {
-        self.contents.rebuild(
-            element,
-            contents,
-            cx,
-            data,
-            &mut old.contents,
-        );
-
-        self.effect.seq_rebuild(
-            &mut NoElements,
-            with,
-            cx,
-            data,
-            &mut old.effect,
-        );
+        self.contents.rebuild(element, contents, cx, data);
+        self.effect.seq_rebuild(&mut NoElements, with, cx, data);
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
         (contents, with): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        let contents_action = self
-            .effect
-            .seq_event(&mut NoElements, with, cx, data, event);
-        let effect_action = self.contents.event(element, contents, cx, data, event);
+        let contents_action = V::event(element, contents, cx, data, event);
+        let effect_action = W::seq_event(&mut NoElements, with, cx, data, event);
 
         contents_action | effect_action
     }
 
-    fn teardown(&mut self, element: Self::Element, (contents, with): Self::State, cx: &mut C) {
-        self.contents.teardown(element, contents, cx);
-        self.effect.seq_teardown(&mut NoElements, with, cx);
+    fn teardown(element: Self::Element, (contents, with): Self::State, cx: &mut C) {
+        V::teardown(element, contents, cx);
+        W::seq_teardown(&mut NoElements, with, cx);
     }
 }
 
@@ -109,40 +92,32 @@ where
     type Element = NoElement;
     type State = V::State;
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let states = self.contents.seq_build(&mut NoElements, cx, data);
         (NoElement, states)
     }
 
     fn rebuild(
-        &mut self,
+        self,
         _element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        old: &mut Self,
     ) {
-        self.contents.seq_rebuild(
-            &mut NoElements,
-            state,
-            cx,
-            data,
-            &mut old.contents,
-        );
+        self.contents.seq_rebuild(&mut NoElements, state, cx, data);
     }
 
     fn event(
-        &mut self,
         _element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        (self.contents).seq_event(&mut NoElements, state, cx, data, event)
+        V::seq_event(&mut NoElements, state, cx, data, event)
     }
 
-    fn teardown(&mut self, _element: Self::Element, state: Self::State, cx: &mut C) {
-        self.contents.seq_teardown(&mut NoElements, state, cx);
+    fn teardown(_element: Self::Element, state: Self::State, cx: &mut C) {
+        V::seq_teardown(&mut NoElements, state, cx);
     }
 }

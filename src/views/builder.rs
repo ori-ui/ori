@@ -20,7 +20,7 @@ where
 
 /// [`View`] that is built from a callback.
 pub struct Builder<F> {
-    build: Option<F>,
+    build: F,
 }
 
 impl<F> Builder<F> {
@@ -30,7 +30,7 @@ impl<F> Builder<F> {
         F: FnOnce(&C, &T) -> V,
         V: View<C, T>,
     {
-        Self { build: Some(build) }
+        Self { build }
     }
 }
 
@@ -41,43 +41,35 @@ where
     V: View<C, T>,
 {
     type Element = V::Element;
-    type State = (V, V::State);
+    type State = V::State;
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let build = self.build.take().expect("build should only be called once");
-        let mut view = build(cx, data);
-        let (element, state) = view.build(cx, data);
-
-        (element, (view, state))
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let view = (self.build)(cx, data);
+        view.build(cx, data)
     }
 
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        _old: &mut Self,
     ) {
-        if let Some(build) = self.build.take() {
-            let mut new_view = build(cx, data);
-            new_view.rebuild(element, state, cx, data, view);
-            *view = new_view;
-        }
+        let view = (self.build)(cx, data);
+        view.rebuild(element, state, cx, data);
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        view.event(element, state, cx, data, event)
+        V::event(element, state, cx, data, event)
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
+    fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
+        V::teardown(element, state, cx);
     }
 }

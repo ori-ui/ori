@@ -67,45 +67,46 @@ where
     F: FnMut(&mut T, &mut dyn FnMut(&mut U)),
 {
     type Element = V::Element;
-    type State = V::State;
+    type State = (F, V::State);
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+    fn build(mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let mut contents = Some(self.contents);
         let mut state = None;
 
         (self.map)(data, &mut |data| {
-            state = Some(self.contents.build(cx, data));
+            if let Some(contents) = contents.take() {
+                state = Some(contents.build(cx, data));
+            }
         });
 
-        state.expect("map should always call its `map`")
+        let (element, state) = state.expect("map should always call its `map`");
+        (element, (self.map, state))
     }
 
     fn rebuild(
-        &mut self,
+        mut self,
         element: Mut<C, Self::Element>,
-        state: &mut Self::State,
+        (map, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        old: &mut Self,
     ) {
+        let mut contents = Some(self.contents);
         let mut element = Some(element);
 
         (self.map)(data, &mut |data| {
-            if let Some(element) = element.take() {
-                self.contents.rebuild(
-                    element,
-                    state,
-                    cx,
-                    data,
-                    &mut old.contents,
-                );
+            if let Some(contents) = contents.take()
+                && let Some(element) = element.take()
+            {
+                contents.rebuild(element, state, cx, data);
             }
         });
+
+        *map = self.map;
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
-        state: &mut Self::State,
+        (map, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
@@ -117,33 +118,32 @@ where
         let mut action = None;
         let mut element = Some(element);
 
-        (self.map)(data, &mut |data| {
+        map(data, &mut |data| {
             if let Some(element) = element.take() {
-                action.replace(self.contents.event(element, state, cx, data, event));
+                action.replace(V::event(
+                    element, state, cx, data, event,
+                ));
             }
         });
 
         action.unwrap_or(Action::new())
     }
 
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C) {
-        self.contents.teardown(element, state, cx);
+    fn teardown(element: Self::Element, (_, state): Self::State, cx: &mut C) {
+        V::teardown(element, state, cx);
     }
 }
 
 /// [`View`] that attaches extra `data` to its contents.
 pub struct With<F, G> {
-    init:  Option<F>,
-    build: Option<G>,
+    init:  F,
+    build: G,
 }
 
 impl<F, G> With<F, G> {
     /// Create a [`With`].
     pub fn new(init: F, build: G) -> Self {
-        Self {
-            init:  Some(init),
-            build: Some(build),
-        }
+        Self { init, build }
     }
 }
 
@@ -155,64 +155,47 @@ where
     V: View<C, (T, U)>,
 {
     type Element = V::Element;
-    type State = (U, V, V::State);
+    type State = (U, V::State);
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let init = self
-            .init
-            .take()
-            .expect("`build` should only be called once");
-
-        let build = self
-            .build
-            .take()
-            .expect("`build` should only be called once");
-
-        let mut with = init(data);
-        let mut view = build(data, &with);
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let mut with = (self.init)(data);
+        let view = (self.build)(data, &with);
 
         let (element, state) = {
             let mut data_with = DataWith::new(data, &mut with);
             view.build(cx, &mut data_with.data_with)
         };
 
-        (element, (with, view, state))
+        (element, (with, state))
     }
 
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
-        (with, view, state): &mut Self::State,
+        (with, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        _old: &mut Self,
     ) {
-        if let Some(build) = self.build.take() {
-            let mut new_view = build(data, with);
+        let view = (self.build)(data, with);
 
-            let mut data_with = DataWith::new(data, with);
-            new_view.rebuild(
-                element,
-                state,
-                cx,
-                &mut data_with.data_with,
-                view,
-            );
-
-            *view = new_view;
-        }
+        let mut data_with = DataWith::new(data, with);
+        view.rebuild(
+            element,
+            state,
+            cx,
+            &mut data_with.data_with,
+        );
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
-        (with, view, state): &mut Self::State,
+        (with, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
         let mut data_with = DataWith::new(data, with);
-        view.event(
+        V::event(
             element,
             state,
             cx,
@@ -221,8 +204,8 @@ where
         )
     }
 
-    fn teardown(&mut self, element: Self::Element, (_, mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
+    fn teardown(element: Self::Element, (_, state): Self::State, cx: &mut C) {
+        V::teardown(element, state, cx);
     }
 }
 

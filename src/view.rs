@@ -17,16 +17,15 @@ where
     /// Create [`Self::Element`] and [`Self::State`].
     ///
     /// This is expected to be called only once per instance of [`View`].
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State);
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State);
 
     /// Rebuild the UI, applying the differences between `self` and `old`.
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        old: &mut Self,
     );
 
     /// Handle an [`Event`].
@@ -34,7 +33,6 @@ where
     /// Returns whether the element has changed in a way that might invalidate the parent child
     /// relation as well as an [`Action`] to execute.
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
@@ -45,5 +43,5 @@ where
     /// Tear down the UI built by the [`View`].
     ///
     /// This is expected to be called only once per instance of [`View`].
-    fn teardown(&mut self, element: Self::Element, state: Self::State, cx: &mut C);
+    fn teardown(element: Self::Element, state: Self::State, cx: &mut C);
 }

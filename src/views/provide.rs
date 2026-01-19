@@ -4,7 +4,7 @@ use crate::{Action, Event, Mut, Provider, View, ViewMarker};
 
 /// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
-    initial: impl FnMut(&T) -> U,
+    initial: impl FnOnce(&T) -> U,
     contents: V,
 ) -> impl View<C, T, Element = V::Element>
 where
@@ -26,7 +26,7 @@ impl<F, U, V> Provide<F, U, V> {
     /// Create a [`Provide`].
     pub fn new<T>(initial: F, contents: V) -> Self
     where
-        F: FnMut(&T) -> U,
+        F: FnOnce(&T) -> U,
     {
         Self {
             contents,
@@ -39,7 +39,7 @@ impl<F, U, V> Provide<F, U, V> {
 impl<F, U, V> ViewMarker for Provide<F, U, V> {}
 impl<F, U, C, T, V> View<C, T> for Provide<F, U, V>
 where
-    F: FnMut(&T) -> U,
+    F: FnOnce(&T) -> U,
     U: Any,
     C: Provider,
     V: View<C, T>,
@@ -47,7 +47,7 @@ where
     type Element = V::Element;
     type State = (Option<Box<U>>, V::State);
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let context = (self.initial)(data);
 
         cx.push(Box::new(context));
@@ -58,30 +58,22 @@ where
     }
 
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
         (context, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        old: &mut Self,
     ) {
         if let Some(context) = context.take() {
             cx.push(context);
         }
 
-        self.contents.rebuild(
-            element,
-            state,
-            cx,
-            data,
-            &mut old.contents,
-        );
+        self.contents.rebuild(element, state, cx, data);
 
         *context = cx.pop();
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
         (context, state): &mut Self::State,
         cx: &mut C,
@@ -92,19 +84,19 @@ where
             cx.push(context);
         }
 
-        let action = self.contents.event(element, state, cx, data, event);
+        let action = V::event(element, state, cx, data, event);
 
         *context = cx.pop();
 
         action
     }
 
-    fn teardown(&mut self, element: Self::Element, (context, state): Self::State, cx: &mut C) {
+    fn teardown(element: Self::Element, (context, state): Self::State, cx: &mut C) {
         if let Some(context) = context {
             cx.push(context);
         }
 
-        self.contents.teardown(element, state, cx);
+        V::teardown(element, state, cx);
 
         cx.pop::<U>();
     }
@@ -155,7 +147,7 @@ where
 
 /// [`View`] that uses `resource` provided by [`Provide`].
 pub struct Using<F, U> {
-    build:  Option<F>,
+    build:  F,
     marker: PhantomData<fn(&U)>,
 }
 
@@ -163,7 +155,7 @@ impl<F, U> Using<F, U> {
     /// Create a [`Using`].
     pub fn new(build: F) -> Self {
         Self {
-            build:  Some(build),
+            build,
             marker: PhantomData,
         }
     }
@@ -178,47 +170,38 @@ where
     V: View<C, T>,
 {
     type Element = V::Element;
-    type State = (V, V::State);
+    type State = V::State;
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let context = cx.get::<U>();
 
-        let build = self.build.take().expect("build should only be called once");
-        let mut view = build(data, context);
-        let (element, state) = view.build(cx, data);
-
-        (element, (view, state))
+        let view = (self.build)(data, context);
+        view.build(cx, data)
     }
 
     fn rebuild(
-        &mut self,
+        self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        _old: &mut Self,
     ) {
         let context = cx.get::<U>();
-
-        if let Some(build) = self.build.take() {
-            let mut new_view = build(data, context);
-            new_view.rebuild(element, state, cx, data, view);
-            *view = new_view;
-        }
+        let view = (self.build)(data, context);
+        view.rebuild(element, state, cx, data);
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        view.event(element, state, cx, data, event)
+        V::event(element, state, cx, data, event)
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
+    fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
+        V::teardown(element, state, cx);
     }
 }

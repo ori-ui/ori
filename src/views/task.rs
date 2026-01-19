@@ -17,9 +17,9 @@ where
     A: Into<Action>,
 {
     Task {
-        task:    Some(task),
+        task,
         handler: move |data: &mut T, event| handler(data, event).into(),
-        marker:  PhantomData,
+        marker: PhantomData,
     }
 }
 
@@ -46,7 +46,7 @@ where
 
 /// [`Effect`](crate::Effect) that spawns a `task` that send events to a `handler`.
 pub struct Task<E, F, G> {
-    task:    Option<F>,
+    task:    F,
     handler: G,
     marker:  PhantomData<fn(E)>,
 }
@@ -61,11 +61,9 @@ where
     H: Future<Output = ()> + Send + 'static,
 {
     type Element = NoElement;
-    type State = (ViewId, Aborter);
+    type State = (G, ViewId, Aborter);
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let task = self.task.take().expect("build should only be called once");
-
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let id = ViewId::next();
         let proxy = cx.proxy();
         let sink = Sink {
@@ -74,38 +72,37 @@ where
             marker: PhantomData,
         };
 
-        let (future, handle) = Abortable::new(task(data, sink));
+        let task = (self.task)(data, sink);
+        let (future, handle) = Abortable::new(task);
         proxy.spawn(future);
 
-        (NoElement, (id, handle))
+        (NoElement, (self.handler, id, handle))
     }
 
     fn rebuild(
-        &mut self,
+        self,
         _element: Mut<C, Self::Element>,
         _state: &mut Self::State,
         _cx: &mut C,
         _data: &mut T,
-        _old: &mut Self,
     ) {
     }
 
     fn event(
-        &mut self,
         _element: Mut<C, Self::Element>,
-        (id, _): &mut Self::State,
+        (handler, id, _): &mut Self::State,
         _cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
         if let Some(event) = event.take_targeted(*id) {
-            (self.handler)(data, event)
+            handler(data, event)
         } else {
             Action::new()
         }
     }
 
-    fn teardown(&mut self, _element: Self::Element, (_, handle): Self::State, _cx: &mut C) {
+    fn teardown(_element: Self::Element, (_, _, handle): Self::State, _cx: &mut C) {
         handle.abort();
     }
 }

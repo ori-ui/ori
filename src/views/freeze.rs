@@ -8,7 +8,7 @@ pub fn freeze<V>(build: impl FnOnce() -> V) -> Freeze<impl FnOnce() -> V> {
 /// [`View`] that doesn't rebuild when state changes.
 #[must_use]
 pub struct Freeze<F> {
-    build: Option<F>,
+    build: F,
 }
 
 impl<F> Freeze<F> {
@@ -17,7 +17,7 @@ impl<F> Freeze<F> {
     where
         F: FnOnce() -> V,
     {
-        Self { build: Some(build) }
+        Self { build }
     }
 }
 
@@ -28,38 +28,33 @@ where
     F: FnOnce() -> V,
 {
     type Element = V::Element;
-    type State = (V, V::State);
+    type State = V::State;
 
-    fn build(&mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let build = self.build.take().expect("build should only be called once");
-        let mut view = build();
-        let (element, state) = view.build(cx, data);
-
-        (element, (view, state))
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let view = (self.build)();
+        view.build(cx, data)
     }
 
     fn rebuild(
-        &mut self,
+        self,
         _element: Mut<C, Self::Element>,
         _state: &mut Self::State,
         _cx: &mut C,
         _data: &mut T,
-        _old: &mut Self,
     ) {
     }
 
     fn event(
-        &mut self,
         element: Mut<C, Self::Element>,
-        (view, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        view.event(element, state, cx, data, event)
+        V::event(element, state, cx, data, event)
     }
 
-    fn teardown(&mut self, element: Self::Element, (mut view, state): Self::State, cx: &mut C) {
-        view.teardown(element, state, cx);
+    fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
+        V::teardown(element, state, cx);
     }
 }

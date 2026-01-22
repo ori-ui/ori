@@ -18,6 +18,6 @@ pub use freeze::{Freeze, freeze};
 pub use handler::{Handler, handler, on_any_event, on_event};
 pub use memo::{Memo, memo, memo_hashed};
 pub use provide::{Provide, Using, provide, try_using, using, using_or_default};
-pub use state::{Map, With, map, with, with_default};
+pub use state::{Map, With, map, map_with, with, with_default};
 pub use suspense::{Suspense, suspense};
 pub use task::{Sink, Task, task};

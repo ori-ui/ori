@@ -14,24 +14,42 @@ where
     Map::new(contents, map)
 }
 
+/// [`View`] that maps one type of data to two types of data.
+pub fn map_with<C, T, U, V, E>(
+    contents: impl View<C, (U, V), Element = E>,
+    mut map: impl FnMut(&mut T, &mut dyn FnMut(&mut U, &mut V)),
+) -> impl View<C, T, Element = E>
+where
+    T: ?Sized,
+    E: Element<C>,
+{
+    self::map(contents, move |data, inner| {
+        map(data, &mut |with, data| {
+            with_data(with, data, |with_data| {
+                inner(with_data);
+            });
+        });
+    })
+}
+
 /// [`View`] that attaches extra `data` to its contents.
 pub fn with<C, T, U, V>(
     init: impl FnOnce(&T) -> U + 'static,
-    build: impl FnOnce(&T, &U) -> V + 'static,
+    build: impl FnOnce(&U, &T) -> V + 'static,
 ) -> impl View<C, T, Element = V::Element>
 where
-    V: View<C, (T, U)>,
+    V: View<C, (U, T)>,
 {
     With::new(init, build)
 }
 
 /// [`View`] that attaches extra `data` using its [`Default`] to its contents.
 pub fn with_default<C, T, U, V>(
-    build: impl FnOnce(&T, &U) -> V + 'static,
+    build: impl FnOnce(&U, &T) -> V + 'static,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Default,
-    V: View<C, (T, U)>,
+    V: View<C, (U, T)>,
 {
     With::new(|_: &T| Default::default(), build)
 }
@@ -151,20 +169,19 @@ impl<F, G> ViewMarker for With<F, G> {}
 impl<F, G, C, T, U, V> View<C, T> for With<F, G>
 where
     F: FnOnce(&T) -> U,
-    G: FnOnce(&T, &U) -> V,
-    V: View<C, (T, U)>,
+    G: FnOnce(&U, &T) -> V,
+    V: View<C, (U, T)>,
 {
     type Element = V::Element;
     type State = (U, V::State);
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let mut with = (self.init)(data);
-        let view = (self.build)(data, &with);
+        let view = (self.build)(&with, data);
 
-        let (element, state) = {
-            let mut data_with = DataWith::new(data, &mut with);
-            view.build(cx, &mut data_with.data_with)
-        };
+        let (element, state) = with_data(&mut with, data, |data_with| {
+            view.build(cx, data_with)
+        });
 
         (element, (with, state))
     }
@@ -176,15 +193,11 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        let view = (self.build)(data, with);
+        let view = (self.build)(with, data);
 
-        let mut data_with = DataWith::new(data, with);
-        view.rebuild(
-            element,
-            state,
-            cx,
-            &mut data_with.data_with,
-        );
+        with_data(with, data, |data_with| {
+            view.rebuild(element, state, cx, data_with);
+        });
     }
 
     fn event(
@@ -194,18 +207,20 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        let mut data_with = DataWith::new(data, with);
-        V::event(
-            element,
-            state,
-            cx,
-            &mut data_with.data_with,
-            event,
-        )
+        with_data(with, data, |data_with| {
+            V::event(element, state, cx, data_with, event)
+        })
     }
 
     fn teardown(element: Self::Element, (_, state): Self::State, cx: &mut C) {
         V::teardown(element, state, cx);
+    }
+}
+
+fn with_data<T, U, V>(data: &mut T, with: &mut U, f: impl FnOnce(&mut (T, U)) -> V) -> V {
+    unsafe {
+        let mut data_with = DataWith::new(data, with);
+        f(&mut data_with.data_with)
     }
 }
 
@@ -217,7 +232,11 @@ struct DataWith<'a, T, U> {
 }
 
 impl<'a, T, U> DataWith<'a, T, U> {
-    fn new(data: &'a mut T, with: &'a mut U) -> Self {
+    /// Do not use directly, use [`with_data`].
+    ///
+    /// # Safety
+    /// - [`Self`] must be dropped, it cannot be forgotten.
+    unsafe fn new(data: &'a mut T, with: &'a mut U) -> Self {
         let data = data as *mut T;
         let with = with as *mut U;
 

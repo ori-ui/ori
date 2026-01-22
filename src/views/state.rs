@@ -23,10 +23,10 @@ where
     T: ?Sized,
     E: Element<C>,
 {
-    self::map(contents, move |data, inner| {
+    Map::new(contents, move |data, outer| {
         map(data, &mut |with, data| {
             with_data(with, data, |with_data| {
-                inner(with_data);
+                outer(with_data);
             });
         });
     })

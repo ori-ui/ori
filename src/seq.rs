@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::{Action, Element, Event, NoElement, Super, View};
+use crate::{Action, Element, Event, NoElement, Sub, View};
 
 /// A sequence of [`View`]s.
 pub trait ViewSeq<C, T, E>
@@ -77,8 +77,9 @@ impl<C> Elements<C, NoElement> for NoElements {
 
 impl<C, T, E, V> ViewSeq<C, T, E> for V
 where
-    E: Super<C, V::Element>,
+    E: Element<C>,
     V: View<C, T>,
+    V::Element: Sub<C, E>,
 {
     type State = V::State;
 
@@ -89,7 +90,7 @@ where
         data: &mut T,
     ) -> Self::State {
         let (element, state) = self.build(cx, data);
-        let element = E::upcast(cx, element);
+        let element = V::Element::upcast(cx, element);
         elements.insert(cx, element);
         state
     }
@@ -102,7 +103,7 @@ where
         data: &mut T,
     ) {
         if let Some(element) = elements.next(cx) {
-            E::downcast_with(element, |element| {
+            V::Element::downcast_mut(cx, element, |cx, element| {
                 self.rebuild(element, state, cx, data);
             });
         }
@@ -120,17 +121,19 @@ where
         }
 
         if let Some(element) = elements.next(cx) {
-            E::downcast_with(element, |element| {
+            V::Element::downcast_mut(cx, element, |cx, element| {
                 V::event(element, state, cx, data, event)
             })
+            .unwrap_or(Action::new())
         } else {
             Action::new()
         }
     }
 
     fn seq_teardown(elements: &mut impl Elements<C, E>, state: Self::State, cx: &mut C) {
-        if let Some(element) = elements.remove(cx) {
-            let element = E::downcast(element);
+        if let Some(element) = elements.remove(cx)
+            && let Some(element) = V::Element::downcast(cx, element)
+        {
             V::teardown(element, state, cx);
         }
     }
@@ -311,9 +314,10 @@ pub struct KeyedState<K, S> {
 
 impl<C, T, E, K, V> ViewSeq<C, T, E> for Keyed<K, V>
 where
-    E: Super<C, V::Element>,
+    E: Element<C>,
     K: Clone + Hash + Eq,
     V: View<C, T>,
+    V::Element: Sub<C, E>,
 {
     type State = KeyedState<K, V::State>;
 

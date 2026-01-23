@@ -1,23 +1,23 @@
 /// Trait for defining subtype relations between [`View::Element`](crate::View::Element)s.
-pub trait Super<C, S>: Element<C>
+pub trait Sub<C, S>: Element<C> + Sized
 where
     S: Element<C>,
 {
     /// Replace this element with another.
-    fn replace(cx: &mut C, this: Mut<C, Self>, other: S) -> Self;
+    fn replace(cx: &mut C, other: Mut<C, S>, this: Self) -> S;
 
-    /// Upcast sub type `S` to the super type `Self`.
-    fn upcast(cx: &mut C, sub: S) -> Self;
+    /// Upcast this to the base.
+    fn upcast(cx: &mut C, this: Self) -> S;
 
-    /// Downcast self to the sub type `S`.
-    ///
-    /// This is expected to panic when `self` is not an instance of `S`.
-    fn downcast(self) -> S;
+    /// Try to downcast a base element to the specific [`Self`].
+    fn downcast(cx: &mut C, this: S) -> Option<Self>;
 
-    /// Downcast self to the sub type `S`, and call `f` with it.
-    ///
-    /// This is expected to panic when `self` is not an instance of `S`.
-    fn downcast_with<T>(this: Mut<C, Self>, f: impl FnOnce(Mut<C, S>) -> T) -> T;
+    /// Try to downcast a mutable base element to the specific [`Self`].
+    fn downcast_mut<T>(
+        cx: &mut C,
+        this: Mut<C, S>,
+        f: impl FnOnce(&mut C, Mut<C, Self>) -> T,
+    ) -> Option<T>;
 }
 
 /// An element maintained by a [`View`](crate::View).
@@ -35,21 +35,25 @@ pub type Mut<'a, C, T> = <T as Element<C>>::Mut<'a>;
 #[derive(Debug)]
 pub struct NoElement;
 
-impl<C> Super<C, NoElement> for NoElement {
-    fn replace(_cx: &mut C, _this: Mut<C, Self>, _other: NoElement) -> Self {
+impl<C> Sub<C, NoElement> for NoElement {
+    fn replace(_cx: &mut C, _other: Mut<C, Self>, _this: Self) -> Self {
         Self
     }
 
-    fn upcast(_cx: &mut C, _sub: NoElement) -> Self {
-        NoElement
+    fn upcast(_cx: &mut C, _this: Self) -> Self {
+        Self
     }
 
-    fn downcast(self) -> NoElement {
-        NoElement
+    fn downcast(_cx: &mut C, _this: Self) -> Option<Self> {
+        Some(Self)
     }
 
-    fn downcast_with<T>(_this: Mut<C, Self>, f: impl FnOnce(Mut<'_, C, Self>) -> T) -> T {
-        f(())
+    fn downcast_mut<T>(
+        cx: &mut C,
+        _this: Mut<C, NoElement>,
+        f: impl FnOnce(&mut C, Mut<C, Self>) -> T,
+    ) -> Option<T> {
+        Some(f(cx, ()))
     }
 }
 

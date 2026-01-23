@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    Action, Effect, Event, Mut, NoElement, Proxied, Proxy, View, ViewId, ViewMarker,
+    Action, Effect, Event, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -60,7 +60,7 @@ where
     G: FnMut(&mut T, E) -> Action,
     H: Future<Output = ()> + Send + 'static,
 {
-    type Element = NoElement;
+    type Element = ();
     type State = (G, ViewId, Aborter);
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
@@ -76,7 +76,7 @@ where
         let (future, handle) = Abortable::new(task);
         proxy.spawn(future);
 
-        (NoElement, (self.handler, id, handle))
+        ((), (self.handler, id, handle))
     }
 
     fn rebuild(

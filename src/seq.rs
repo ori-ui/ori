@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::{Action, Element, Event, NoElement, Sub, View};
+use crate::{Action, Element, Event, Sub, View};
 
 /// A sequence of [`View`]s.
 pub trait ViewSeq<C, T, E>
@@ -57,19 +57,15 @@ where
     fn swap(&mut self, cx: &mut C, offset: usize);
 }
 
-/// There are no [`Elements`].
-#[derive(Debug)]
-pub struct NoElements;
-
-impl<C> Elements<C, NoElement> for NoElements {
-    fn next(&mut self, _cx: &mut C) -> Option<<NoElement as Element<C>>::Mut<'_>> {
+impl<C> Elements<C, ()> for () {
+    fn next(&mut self, _cx: &mut C) -> Option<()> {
         Some(())
     }
 
-    fn insert(&mut self, _cx: &mut C, _element: NoElement) {}
+    fn insert(&mut self, _cx: &mut C, _element: ()) {}
 
-    fn remove(&mut self, _cx: &mut C) -> Option<NoElement> {
-        Some(NoElement)
+    fn remove(&mut self, _cx: &mut C) -> Option<()> {
+        Some(())
     }
 
     fn swap(&mut self, _cx: &mut C, _offset: usize) {}

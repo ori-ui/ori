@@ -1,4 +1,4 @@
-use crate::{Action, EffectSeq, Event, Mut, NoElement, NoElements, View, ViewMarker};
+use crate::{Action, EffectSeq, Event, Mut, View, ViewMarker};
 
 /// [`View`] that attaches an [`Effect`](crate::Effect) to a [`View`].
 pub const fn with_effect<V, W>(contents: V, with: W) -> WithEffect<V, W> {
@@ -32,7 +32,7 @@ where
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, contents) = self.contents.build(cx, data);
-        let with = self.effect.seq_build(&mut NoElements, cx, data);
+        let with = self.effect.seq_build(&mut (), cx, data);
 
         (element, (contents, with))
     }
@@ -45,7 +45,7 @@ where
         data: &mut T,
     ) {
         self.contents.rebuild(element, contents, cx, data);
-        self.effect.seq_rebuild(&mut NoElements, with, cx, data);
+        self.effect.seq_rebuild(&mut (), with, cx, data);
     }
 
     fn event(
@@ -56,14 +56,14 @@ where
         event: &mut Event,
     ) -> Action {
         let contents_action = V::event(element, contents, cx, data, event);
-        let effect_action = W::seq_event(&mut NoElements, with, cx, data, event);
+        let effect_action = W::seq_event(&mut (), with, cx, data, event);
 
         contents_action | effect_action
     }
 
     fn teardown(element: Self::Element, (contents, with): Self::State, cx: &mut C) {
         V::teardown(element, contents, cx);
-        W::seq_teardown(&mut NoElements, with, cx);
+        W::seq_teardown(&mut (), with, cx);
     }
 }
 
@@ -89,12 +89,12 @@ impl<C, T, V> View<C, T> for Effects<V>
 where
     V: EffectSeq<C, T>,
 {
-    type Element = NoElement;
+    type Element = ();
     type State = V::State;
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let states = self.contents.seq_build(&mut NoElements, cx, data);
-        (NoElement, states)
+        let states = self.contents.seq_build(&mut (), cx, data);
+        ((), states)
     }
 
     fn rebuild(
@@ -104,7 +104,7 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        self.contents.seq_rebuild(&mut NoElements, state, cx, data);
+        self.contents.seq_rebuild(&mut (), state, cx, data);
     }
 
     fn event(
@@ -114,10 +114,10 @@ where
         data: &mut T,
         event: &mut Event,
     ) -> Action {
-        V::seq_event(&mut NoElements, state, cx, data, event)
+        V::seq_event(&mut (), state, cx, data, event)
     }
 
     fn teardown(_element: Self::Element, state: Self::State, cx: &mut C) {
-        V::seq_teardown(&mut NoElements, state, cx);
+        V::seq_teardown(&mut (), state, cx);
     }
 }

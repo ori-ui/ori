@@ -31,32 +31,24 @@ pub trait Element<C> {
 /// A shorthand for [`Element::Mut`].
 pub type Mut<'a, C, T> = <T as Element<C>>::Mut<'a>;
 
-/// Not an element.
-#[derive(Debug)]
-pub struct NoElement;
+impl<C> Sub<C, ()> for () {
+    fn replace(_cx: &mut C, _other: Mut<C, Self>, _this: Self) -> Self {}
 
-impl<C> Sub<C, NoElement> for NoElement {
-    fn replace(_cx: &mut C, _other: Mut<C, Self>, _this: Self) -> Self {
-        Self
-    }
-
-    fn upcast(_cx: &mut C, _this: Self) -> Self {
-        Self
-    }
+    fn upcast(_cx: &mut C, _this: Self) -> Self {}
 
     fn downcast(_cx: &mut C, _this: Self) -> Option<Self> {
-        Some(Self)
+        Some(())
     }
 
     fn downcast_mut<T>(
         cx: &mut C,
-        _this: Mut<C, NoElement>,
+        _this: Mut<C, ()>,
         f: impl FnOnce(&mut C, Mut<C, Self>) -> T,
     ) -> Option<T> {
         Some(f(cx, ()))
     }
 }
 
-impl<C> Element<C> for NoElement {
+impl<C> Element<C> for () {
     type Mut<'a> = ();
 }

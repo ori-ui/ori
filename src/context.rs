@@ -4,7 +4,7 @@ use crate::{Action, Element, Event};
 
 /// A context with a common base element, that is [`Super`](crate::Super) to all elements in the
 /// context.
-pub trait BaseElement: Sized {
+pub trait Base: Sized {
     /// The base element.
     type Element: Element<Self>;
 }

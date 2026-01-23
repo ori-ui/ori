@@ -1,4 +1,4 @@
-use crate::{Action, AnyState, AnyView, BaseElement, Event, Mut, View, ViewMarker};
+use crate::{Action, AnyState, AnyView, Base, Event, Mut, View, ViewMarker};
 
 /// Marker view for types implementing [`Build`].
 pub trait BuildMarker {}
@@ -6,7 +6,7 @@ pub trait BuildMarker {}
 /// Helper trait for implementing the builder pattern for [`View`]s.
 pub trait Build<C, T>: BuildMarker
 where
-    C: BaseElement,
+    C: Base,
 {
     /// Build the [`View`] of this builder.
     fn build(self) -> impl AnyView<C, T, C::Element>;
@@ -16,7 +16,7 @@ impl<V> ViewMarker for V where V: BuildMarker {}
 
 impl<C, T, B> View<C, T> for B
 where
-    C: BaseElement,
+    C: Base,
     B: Build<C, T>,
 {
     type Element = C::Element;

@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    Action, BaseElement, Event, Mut, Proxied, Proxy, Sub, View, ViewId, ViewMarker,
+    Action, Base, Event, Mut, Proxied, Proxy, Sub, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -72,7 +72,7 @@ where
 impl<V, F> ViewMarker for Suspense<V, F> {}
 impl<C, T, V, F> View<C, T> for Suspense<V, F>
 where
-    C: Proxied + BaseElement,
+    C: Proxied + Base,
     V: View<C, T>,
     F: Future + Send + 'static,
     F::Output: View<C, T> + Send,

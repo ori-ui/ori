@@ -22,7 +22,7 @@ where
 
 /// An element maintained by a [`View`](crate::View).
 pub trait Element<C> {
-    /// A handle to the element through, e.g. a lock guard.
+    /// A handle to the element to mutate through, e.g. a lock guard.
     type Mut<'a>
     where
         Self: 'a;

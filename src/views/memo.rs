@@ -63,7 +63,7 @@ where
 
     fn rebuild(
         self,
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (key, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -76,7 +76,7 @@ where
     }
 
     fn event(
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (_, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,

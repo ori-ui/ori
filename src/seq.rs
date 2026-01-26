@@ -1,11 +1,11 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::{Action, Element, Event, Sub, View};
+use crate::{Action, Element, Event, Is, View};
 
 /// A sequence of [`View`]s.
 pub trait ViewSeq<C, T, E>
 where
-    E: Element<C>,
+    E: Element,
 {
     /// State of the sequence.
     type State;
@@ -42,7 +42,7 @@ where
 /// A iterator of elements, see [`ViewSeq`] for more details.
 pub trait Elements<C, E>
 where
-    E: Element<C>,
+    E: Element,
 {
     /// Get the next [`Element`].
     fn next(&mut self, cx: &mut C) -> Option<E::Mut<'_>>;
@@ -73,9 +73,9 @@ impl<C> Elements<C, ()> for () {
 
 impl<C, T, E, V> ViewSeq<C, T, E> for V
 where
-    E: Element<C>,
+    E: Element,
     V: View<C, T>,
-    V::Element: Sub<C, E>,
+    V::Element: Is<C, E>,
 {
     type State = V::State;
 
@@ -98,10 +98,10 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        if let Some(element) = elements.next(cx) {
-            V::Element::downcast_mut(cx, element, |cx, element| {
-                self.rebuild(element, state, cx, data);
-            });
+        if let Some(element) = elements.next(cx)
+            && let Ok(element) = V::Element::downcast_mut(element)
+        {
+            self.rebuild(element, state, cx, data);
         }
     }
 
@@ -116,11 +116,10 @@ where
             return Action::new();
         }
 
-        if let Some(element) = elements.next(cx) {
-            V::Element::downcast_mut(cx, element, |cx, element| {
-                V::event(element, state, cx, data, event)
-            })
-            .unwrap_or(Action::new())
+        if let Some(element) = elements.next(cx)
+            && let Ok(element) = V::Element::downcast_mut(element)
+        {
+            V::event(element, state, cx, data, event)
         } else {
             Action::new()
         }
@@ -128,7 +127,7 @@ where
 
     fn seq_teardown(elements: &mut impl Elements<C, E>, state: Self::State, cx: &mut C) {
         if let Some(element) = elements.remove(cx)
-            && let Some(element) = V::Element::downcast(cx, element)
+            && let Ok(element) = V::Element::downcast(element)
         {
             V::teardown(element, state, cx);
         }
@@ -137,7 +136,7 @@ where
 
 impl<C, T, E, V> ViewSeq<C, T, E> for Option<V>
 where
-    E: Element<C>,
+    E: Element,
     V: ViewSeq<C, T, E>,
 {
     type State = Option<V::State>;
@@ -200,7 +199,7 @@ where
 
 impl<C, T, E, V> ViewSeq<C, T, E> for Vec<V>
 where
-    E: Element<C>,
+    E: Element,
     V: ViewSeq<C, T, E>,
 {
     type State = Vec<V::State>;
@@ -310,10 +309,10 @@ pub struct KeyedState<K, S> {
 
 impl<C, T, E, K, V> ViewSeq<C, T, E> for Keyed<K, V>
 where
-    E: Element<C>,
+    E: Element,
     K: Clone + Hash + Eq,
     V: View<C, T>,
-    V::Element: Sub<C, E>,
+    V::Element: Is<C, E>,
 {
     type State = KeyedState<K, V::State>;
 
@@ -424,7 +423,7 @@ macro_rules! impl_tuple {
         #[allow(unused)]
         impl<C, T, E, $($name),*> ViewSeq<C, T, E> for ($($name,)*)
         where
-            E: Element<C>,
+            E: Element,
             $($name: ViewSeq<C, T, E>,)*
         {
             type State = ($($name::State,)*);

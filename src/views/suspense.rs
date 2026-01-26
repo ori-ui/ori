@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    Action, Base, Event, Mut, Proxied, Proxy, Sub, View, ViewId, ViewMarker,
+    Action, Base, Event, Is, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -76,8 +76,8 @@ where
     V: View<C, T>,
     F: Future + Send + 'static,
     F::Output: View<C, T> + Send,
-    V::Element: Sub<C, C::Element>,
-    <F::Output as View<C, T>>::Element: Sub<C, C::Element>,
+    V::Element: Is<C, C::Element>,
+    <F::Output as View<C, T>>::Element: Is<C, C::Element>,
 {
     type Element = C::Element;
     type State = (
@@ -107,7 +107,7 @@ where
 
     fn rebuild(
         self,
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (id, handle, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -127,9 +127,9 @@ where
 
         match state {
             SuspenseState::Fallback(fallback_state) => {
-                V::Element::downcast_mut(cx, element, |cx, element| {
+                if let Ok(element) = V::Element::downcast_mut(element) {
                     self.fallback.rebuild(element, fallback_state, cx, data);
-                });
+                }
             }
 
             SuspenseState::Contents(_) => {}
@@ -137,7 +137,7 @@ where
     }
 
     fn event(
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (id, _handle, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -147,7 +147,7 @@ where
             match state {
                 SuspenseState::Fallback(_) => {
                     let (contents_element, contents_state) = contents.build(cx, data);
-                    let fallback_element = Sub::replace(cx, element, contents_element);
+                    let fallback_element = Is::replace(cx, element, contents_element);
 
                     let SuspenseState::Fallback(fallback_state) = mem::replace(
                         state,
@@ -156,17 +156,16 @@ where
                         unreachable!()
                     };
 
-                    if let Some(fallback_element) = Sub::downcast(cx, fallback_element) {
+                    if let Ok(fallback_element) = Is::downcast(fallback_element) {
                         V::teardown(fallback_element, fallback_state, cx);
                     }
                 }
 
                 SuspenseState::Contents(contents_state) => {
-                    <<F::Output as View<_, _>>::Element>::downcast_mut(
-                        cx,
-                        element,
-                        |cx, element| contents.rebuild(element, contents_state, cx, data),
-                    );
+                    if let Ok(element) = <<F::Output as View<_, _>>::Element>::downcast_mut(element)
+                    {
+                        contents.rebuild(element, contents_state, cx, data);
+                    }
                 }
             }
 
@@ -175,17 +174,19 @@ where
 
         match state {
             SuspenseState::Fallback(fallback_state) => {
-                V::Element::downcast_mut(cx, element, |cx, element| {
+                if let Ok(element) = V::Element::downcast_mut(element) {
                     V::event(element, fallback_state, cx, data, event)
-                })
-                .unwrap_or(Action::new())
+                } else {
+                    Action::new()
+                }
             }
 
             SuspenseState::Contents(contents_state) => {
-                <<F::Output as View<_, _>>::Element>::downcast_mut(cx, element, |cx, element| {
+                if let Ok(element) = <<F::Output as View<_, _>>::Element>::downcast_mut(element) {
                     <F::Output as View<_, _>>::event(element, contents_state, cx, data, event)
-                })
-                .unwrap_or(Action::new())
+                } else {
+                    Action::new()
+                }
             }
         }
     }
@@ -195,13 +196,13 @@ where
 
         match state {
             SuspenseState::Fallback(fallback_state) => {
-                if let Some(element) = Sub::downcast(cx, element) {
+                if let Ok(element) = Is::downcast(element) {
                     V::teardown(element, fallback_state, cx);
                 }
             }
 
             SuspenseState::Contents(contents_state) => {
-                if let Some(element) = Sub::downcast(cx, element) {
+                if let Ok(element) = Is::downcast(element) {
                     <F::Output as View<C, T>>::teardown(element, contents_state, cx);
                 }
             }

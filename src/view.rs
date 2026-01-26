@@ -9,7 +9,7 @@ where
     T: ?Sized,
 {
     /// The element this view produces.
-    type Element: Element<C>;
+    type Element: Element;
 
     /// The state of this view.
     type State;
@@ -22,7 +22,7 @@ where
     /// Rebuild the UI, applying the differences between `self` and `old`.
     fn rebuild(
         self,
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -33,7 +33,7 @@ where
     /// Returns whether the element has changed in a way that might invalidate the parent child
     /// relation as well as an [`Action`] to execute.
     fn event(
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,

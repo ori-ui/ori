@@ -9,7 +9,7 @@ pub fn map<C, T, U, E>(
 ) -> impl View<C, T, Element = E>
 where
     T: ?Sized,
-    E: Element<C>,
+    E: Element,
 {
     Map::new(contents, map)
 }
@@ -21,7 +21,7 @@ pub fn map_with<C, T, U, V, E>(
 ) -> impl View<C, T, Element = E>
 where
     T: ?Sized,
-    E: Element<C>,
+    E: Element,
 {
     Map::new(contents, move |data, outer| {
         map(data, &mut |with, data| {
@@ -103,7 +103,7 @@ where
 
     fn rebuild(
         mut self,
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (map, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -123,7 +123,7 @@ where
     }
 
     fn event(
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (map, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -188,7 +188,7 @@ where
 
     fn rebuild(
         self,
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (with, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -201,7 +201,7 @@ where
     }
 
     fn event(
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         (with, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,

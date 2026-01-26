@@ -6,7 +6,7 @@ use crate::{Action, Element, Event};
 /// context.
 pub trait Base: Sized {
     /// The base element.
-    type Element: Element<Self>;
+    type Element: Element;
 }
 
 /// A context for keeping track of user contexts.

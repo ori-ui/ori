@@ -1,4 +1,4 @@
-use crate::{AnyView, Base, Sub, View};
+use crate::{AnyView, Base, Is, View};
 
 /// Type erased [`View`].
 #[must_use]
@@ -7,7 +7,7 @@ where
     C: Base,
     V: View<C, T> + 'static,
     V::State: 'static,
-    V::Element: Sub<C, C::Element>,
+    V::Element: Is<C, C::Element>,
 {
     Box::new(view)
 }

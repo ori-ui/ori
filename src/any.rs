@@ -1,11 +1,11 @@
 use std::{any::Any, mem};
 
-use crate::{Action, Element, Event, Mut, Sub, View, ViewMarker};
+use crate::{Action, Element, Event, Is, Mut, View, ViewMarker};
 
 /// Type erased [`View`].
 pub trait AnyView<C, T, E>
 where
-    E: Element<C>,
+    E: Element,
 {
     /// Build type erased state.
     fn build(self: Box<Self>, cx: &mut C, data: &mut T) -> (E, AnyState<C, T, E>);
@@ -13,7 +13,7 @@ where
     /// Rebuild type erased state.
     fn rebuild(
         self: Box<Self>,
-        element: Mut<C, E>,
+        element: E::Mut<'_>,
         state: &mut AnyState<C, T, E>,
         cx: &mut C,
         data: &mut T,
@@ -22,10 +22,10 @@ where
 
 impl<C, T, E, V> AnyView<C, T, E> for V
 where
-    E: Element<C>,
+    E: Element,
     V: View<C, T>,
     V::State: 'static,
-    V::Element: Sub<C, E>,
+    V::Element: Is<C, E>,
 {
     fn build(self: Box<Self>, cx: &mut C, data: &mut T) -> (E, AnyState<C, T, E>) {
         let (element, state) = V::build(*self, cx, data);
@@ -41,27 +41,23 @@ where
 
     fn rebuild(
         self: Box<Self>,
-        element: Mut<C, E>,
+        element: E::Mut<'_>,
         state: &mut AnyState<C, T, E>,
         cx: &mut C,
         data: &mut T,
     ) {
-        match state.state.downcast_mut() {
-            Some(view_state) => {
-                V::Element::downcast_mut(cx, element, |cx, element| {
-                    V::rebuild(*self, element, view_state, cx, data);
-                });
+        if let Some(view_state) = state.state.downcast_mut::<V::State>() {
+            if let Ok(element) = V::Element::downcast_mut(element) {
+                V::rebuild(*self, element, view_state, cx, data);
             }
+        } else {
+            let (new_element, new_state) = V::build(*self, cx, data);
+            let old_element = V::Element::replace(cx, element, new_element);
+            let old_state = mem::replace(&mut state.state, Box::new(new_state));
+            (state.teardown)(old_element, old_state, cx);
 
-            None => {
-                let (new_element, new_state) = V::build(*self, cx, data);
-                let old_element = V::Element::replace(cx, element, new_element);
-                let old_state = mem::replace(&mut state.state, Box::new(new_state));
-                (state.teardown)(old_element, old_state, cx);
-
-                state.event = AnyState::<C, T, E>::event::<V>;
-                state.teardown = AnyState::<C, T, E>::teardown::<V>;
-            }
+            state.event = AnyState::<C, T, E>::event::<V>;
+            state.teardown = AnyState::<C, T, E>::teardown::<V>;
         }
     }
 }
@@ -70,19 +66,19 @@ where
 #[allow(clippy::type_complexity)]
 pub struct AnyState<C, T, E>
 where
-    E: Element<C>,
+    E: Element,
 {
     state:    Box<dyn Any>,
-    event:    fn(Mut<C, E>, &mut dyn Any, &mut C, &mut T, &mut Event) -> Action,
+    event:    fn(Mut<'_, E>, &mut dyn Any, &mut C, &mut T, &mut Event) -> Action,
     teardown: fn(E, Box<dyn Any>, &mut C),
 }
 
 impl<C, T, E> AnyState<C, T, E>
 where
-    E: Element<C>,
+    E: Element,
 {
     fn event<V>(
-        element: Mut<C, E>,
+        element: Mut<'_, E>,
         state: &mut dyn Any,
         cx: &mut C,
         data: &mut T,
@@ -91,13 +87,12 @@ where
     where
         V: View<C, T>,
         V::State: 'static,
-        V::Element: Sub<C, E>,
+        V::Element: Is<C, E>,
     {
-        if let Some(state) = state.downcast_mut() {
-            V::Element::downcast_mut(cx, element, |cx, element| {
-                V::event(element, state, cx, data, event)
-            })
-            .unwrap_or(Action::new())
+        if let Some(state) = state.downcast_mut()
+            && let Ok(element) = V::Element::downcast_mut(element)
+        {
+            V::event(element, state, cx, data, event)
         } else {
             Action::new()
         }
@@ -107,10 +102,10 @@ where
     where
         V: View<C, T>,
         V::State: 'static,
-        V::Element: Sub<C, E>,
+        V::Element: Is<C, E>,
     {
-        if let Some(element) = V::Element::downcast(cx, element)
-            && let Ok(state) = state.downcast()
+        if let Ok(state) = state.downcast()
+            && let Ok(element) = V::Element::downcast(element)
         {
             V::teardown(element, *state, cx);
         }
@@ -120,7 +115,7 @@ where
 impl<C, T, E> ViewMarker for Box<dyn AnyView<C, T, E>> {}
 impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>>
 where
-    E: Element<C>,
+    E: Element,
 {
     type Element = E;
     type State = AnyState<C, T, E>;
@@ -131,7 +126,7 @@ where
 
     fn rebuild(
         self,
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
@@ -140,7 +135,7 @@ where
     }
 
     fn event(
-        element: Mut<C, Self::Element>,
+        element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,

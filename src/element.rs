@@ -1,27 +1,23 @@
 /// Trait for defining subtype relations between [`View::Element`](crate::View::Element)s.
-pub trait Sub<C, S>: Element<C> + Sized
+pub trait Is<C, S>: Element + Sized + 'static
 where
-    S: Element<C>,
+    S: Element,
 {
     /// Replace this element with another.
-    fn replace(cx: &mut C, other: Mut<C, S>, this: Self) -> S;
+    fn replace(cx: &mut C, other: Mut<'_, S>, this: Self) -> S;
 
     /// Upcast this to the base.
     fn upcast(cx: &mut C, this: Self) -> S;
 
     /// Try to downcast a base element to the specific [`Self`].
-    fn downcast(cx: &mut C, this: S) -> Option<Self>;
+    fn downcast(this: S) -> Result<Self, S>;
 
     /// Try to downcast a mutable base element to the specific [`Self`].
-    fn downcast_mut<T>(
-        cx: &mut C,
-        this: Mut<C, S>,
-        f: impl FnOnce(&mut C, Mut<C, Self>) -> T,
-    ) -> Option<T>;
+    fn downcast_mut(this: S::Mut<'_>) -> Result<Self::Mut<'_>, S::Mut<'_>>;
 }
 
 /// An element maintained by a [`View`](crate::View).
-pub trait Element<C> {
+pub trait Element {
     /// A handle to the element to mutate through, e.g. a lock guard.
     type Mut<'a>
     where
@@ -29,26 +25,22 @@ pub trait Element<C> {
 }
 
 /// A shorthand for [`Element::Mut`].
-pub type Mut<'a, C, T> = <T as Element<C>>::Mut<'a>;
+pub type Mut<'a, T> = <T as Element>::Mut<'a>;
 
-impl<C> Sub<C, ()> for () {
-    fn replace(_cx: &mut C, _other: Mut<C, Self>, _this: Self) -> Self {}
+impl<C> Is<C, ()> for () {
+    fn replace(_cx: &mut C, _other: Mut<'_, Self>, _this: Self) -> Self {}
 
     fn upcast(_cx: &mut C, _this: Self) -> Self {}
 
-    fn downcast(_cx: &mut C, _this: Self) -> Option<Self> {
-        Some(())
+    fn downcast(_this: ()) -> Result<Self, ()> {
+        Ok(())
     }
 
-    fn downcast_mut<T>(
-        cx: &mut C,
-        _this: Mut<C, ()>,
-        f: impl FnOnce(&mut C, Mut<C, Self>) -> T,
-    ) -> Option<T> {
-        Some(f(cx, ()))
+    fn downcast_mut(_this: Mut<'_, ()>) -> Result<Mut<'_, Self>, Mut<'_, ()>> {
+        Ok(())
     }
 }
 
-impl<C> Element<C> for () {
+impl Element for () {
     type Mut<'a> = ();
 }

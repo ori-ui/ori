@@ -1,4 +1,4 @@
-use crate::{Action, Event, Mut, View, ViewMarker};
+use crate::{Action, Message, Mut, View, ViewMarker};
 
 /// [`View`] that is built from a callback.
 pub fn build<C, T, V>(build: impl FnOnce(&T) -> V) -> impl View<C, T, Element = V::Element>
@@ -59,14 +59,14 @@ where
         view.rebuild(element, state, cx, data);
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        V::event(element, state, cx, data, event)
+        V::message(element, state, cx, data, message)
     }
 
     fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {

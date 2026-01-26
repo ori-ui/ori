@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::{Action, Element, Event, Is, View};
+use crate::{Action, Element, Is, Message, View};
 
 /// A sequence of [`View`]s.
 pub trait ViewSeq<C, T, E>
@@ -23,16 +23,13 @@ where
         data: &mut T,
     );
 
-    /// Handle an event for the sequence, see [`View::event`] for more information.
-    ///
-    /// Returns a list of indices of elements that have change in a way that might invalidate the
-    /// parent child relation.
-    fn seq_event(
+    /// Handle a message for the sequence, see [`View::message`] for more information.
+    fn seq_message(
         elements: &mut impl Elements<C, E>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action;
 
     /// Tear down the sequence, see [`View::teardown`] for more information.
@@ -105,21 +102,21 @@ where
         }
     }
 
-    fn seq_event(
+    fn seq_message(
         elements: &mut impl Elements<C, E>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        if event.is_taken() {
+        if message.is_taken() {
             return Action::new();
         }
 
         if let Some(element) = elements.next(cx)
             && let Ok(element) = V::Element::downcast_mut(element)
         {
-            V::event(element, state, cx, data, event)
+            V::message(element, state, cx, data, message)
         } else {
             Action::new()
         }
@@ -177,15 +174,15 @@ where
         }
     }
 
-    fn seq_event(
+    fn seq_message(
         elements: &mut impl Elements<C, E>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
         match state {
-            Some(state) => V::seq_event(elements, state, cx, data, event),
+            Some(state) => V::seq_message(elements, state, cx, data, message),
             _ => Action::new(),
         }
     }
@@ -249,17 +246,17 @@ where
         }
     }
 
-    fn seq_event(
+    fn seq_message(
         elements: &mut impl Elements<C, E>,
         states: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
         let mut action = Action::new();
 
         for state in states.iter_mut() {
-            action |= V::seq_event(elements, state, cx, data, event);
+            action |= V::seq_message(elements, state, cx, data, message);
         }
 
         action
@@ -395,17 +392,17 @@ where
         }
     }
 
-    fn seq_event(
+    fn seq_message(
         elements: &mut impl Elements<C, E>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
         let mut action = Action::new();
 
         for state in state.states.iter_mut() {
-            action |= V::seq_event(elements, state, cx, data, event);
+            action |= V::seq_message(elements, state, cx, data, message);
         }
 
         action
@@ -455,22 +452,22 @@ macro_rules! impl_tuple {
                 })*
             }
 
-            fn seq_event(
+            fn seq_message(
                 elements: &mut impl Elements<C, E>,
                 state: &mut Self::State,
                 cx: &mut C,
                 data: &mut T,
-                event: &mut Event,
+                message: &mut Message,
             ) -> Action {
                 let mut action = Action::new();
 
                 $({
-                    action |= $name::seq_event(
+                    action |= $name::seq_message(
                         elements,
                         &mut state.$index,
                         cx,
                         data,
-                        event,
+                        message,
                     );
                 })*
 

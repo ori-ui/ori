@@ -1,6 +1,6 @@
 use std::{any::Any, marker::PhantomData};
 
-use crate::{Action, Event, Mut, Provider, View, ViewMarker};
+use crate::{Action, Message, Mut, Provider, View, ViewMarker};
 
 /// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
 pub fn provide<U, C, T, V>(
@@ -73,18 +73,18 @@ where
         *context = cx.pop();
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         (context, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
         if let Some(context) = context.take() {
             cx.push(context);
         }
 
-        let action = V::event(element, state, cx, data, event);
+        let action = V::message(element, state, cx, data, message);
 
         *context = cx.pop();
 
@@ -191,14 +191,14 @@ where
         view.rebuild(element, state, cx, data);
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        V::event(element, state, cx, data, event)
+        V::message(element, state, cx, data, message)
     }
 
     fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {

@@ -1,4 +1,4 @@
-use crate::{Action, EffectSeq, Event, Mut, View, ViewMarker};
+use crate::{Action, EffectSeq, Message, Mut, View, ViewMarker};
 
 /// [`View`] that attaches an [`Effect`](crate::Effect) to a [`View`].
 pub const fn with_effect<V, W>(contents: V, with: W) -> WithEffect<V, W> {
@@ -48,15 +48,15 @@ where
         self.effect.seq_rebuild(&mut (), with, cx, data);
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         (contents, with): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        let contents_action = V::event(element, contents, cx, data, event);
-        let effect_action = W::seq_event(&mut (), with, cx, data, event);
+        let contents_action = V::message(element, contents, cx, data, message);
+        let effect_action = W::seq_message(&mut (), with, cx, data, message);
 
         contents_action | effect_action
     }
@@ -107,14 +107,14 @@ where
         self.contents.seq_rebuild(&mut (), state, cx, data);
     }
 
-    fn event(
+    fn message(
         _element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        V::seq_event(&mut (), state, cx, data, event)
+        V::seq_message(&mut (), state, cx, data, message)
     }
 
     fn teardown(_element: Self::Element, state: Self::State, cx: &mut C) {

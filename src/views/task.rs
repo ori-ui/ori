@@ -1,11 +1,11 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    Action, Effect, Event, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
+    Action, Effect, Message, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
-/// [`Effect`](crate::Effect) that spawns a `task` that emits events to a `handler`.
+/// [`Effect`](crate::Effect) that spawns a `task` that emits messages to a `handler`.
 pub fn task<C, T, E, F, A>(
     task: impl FnOnce(&mut T, Sink<E>) -> F + 'static,
     mut handler: impl FnMut(&mut T, E) -> A + 'static,
@@ -18,7 +18,7 @@ where
 {
     Task {
         task,
-        handler: move |data: &mut T, event| handler(data, event).into(),
+        handler: move |data: &mut T, message| handler(data, message).into(),
         marker: PhantomData,
     }
 }
@@ -38,13 +38,13 @@ impl<E> Sink<E>
 where
     E: Send + 'static,
 {
-    /// Send an `event` to the `handler` of the [`task`].
-    pub fn send(&self, event: E) {
-        self.proxy.event(Event::new(event, self.id))
+    /// Send a `message` to the `handler` of the [`task`].
+    pub fn send(&self, message: E) {
+        self.proxy.message(Message::new(message, self.id))
     }
 }
 
-/// [`Effect`](crate::Effect) that spawns a `task` that send events to a `handler`.
+/// [`Effect`](crate::Effect) that spawns a `task` that send messages to a `handler`.
 pub struct Task<E, F, G> {
     task:    F,
     handler: G,
@@ -88,15 +88,15 @@ where
     ) {
     }
 
-    fn event(
+    fn message(
         _element: Mut<'_, Self::Element>,
         (handler, id, _): &mut Self::State,
         _cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        if let Some(event) = event.take_targeted(*id) {
-            handler(data, event)
+        if let Some(message) = message.take_targeted(*id) {
+            handler(data, message)
         } else {
             Action::new()
         }

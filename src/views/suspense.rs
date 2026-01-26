@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    Action, Base, Event, Is, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
+    Action, Base, Is, Message, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -95,7 +95,10 @@ where
 
         let (future, handle) = Abortable::new(async move {
             let contents = self.future.await;
-            proxy.event(Event::new(SuspenseFuture(contents), id));
+            proxy.message(Message::new(
+                SuspenseFuture(contents),
+                id,
+            ));
         });
 
         cx.proxy().spawn(future);
@@ -119,7 +122,10 @@ where
 
         let (future, new_handle) = Abortable::new(async move {
             let contents = self.future.await;
-            proxy.event(Event::new(SuspenseFuture(contents), id));
+            proxy.message(Message::new(
+                SuspenseFuture(contents),
+                id,
+            ));
         });
 
         cx.proxy().spawn(future);
@@ -136,14 +142,14 @@ where
         }
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         (id, _handle, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        if let Some(SuspenseFuture::<F::Output>(contents)) = event.take_targeted(*id) {
+        if let Some(SuspenseFuture::<F::Output>(contents)) = message.take_targeted(*id) {
             match state {
                 SuspenseState::Fallback(_) => {
                     let (contents_element, contents_state) = contents.build(cx, data);
@@ -175,7 +181,13 @@ where
         match state {
             SuspenseState::Fallback(fallback_state) => {
                 if let Ok(element) = V::Element::downcast_mut(element) {
-                    V::event(element, fallback_state, cx, data, event)
+                    V::message(
+                        element,
+                        fallback_state,
+                        cx,
+                        data,
+                        message,
+                    )
                 } else {
                     Action::new()
                 }
@@ -183,7 +195,13 @@ where
 
             SuspenseState::Contents(contents_state) => {
                 if let Ok(element) = <<F::Output as View<_, _>>::Element>::downcast_mut(element) {
-                    <F::Output as View<_, _>>::event(element, contents_state, cx, data, event)
+                    <F::Output as View<_, _>>::message(
+                        element,
+                        contents_state,
+                        cx,
+                        data,
+                        message,
+                    )
                 } else {
                     Action::new()
                 }

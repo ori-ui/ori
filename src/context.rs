@@ -1,6 +1,6 @@
 use std::{any::Any, pin::Pin, sync::Arc};
 
-use crate::{Action, Element, Event};
+use crate::{Action, Element, Message};
 
 /// A context with a common base element, that is [`Super`](crate::Super) to all elements in the
 /// context.
@@ -55,8 +55,8 @@ pub trait Proxy: Send + Sync + 'static {
     /// Request a rebuild of the [`View`](crate::View) tree.
     fn rebuild(&self);
 
-    /// Send an [`Event`] to the [`View`](crate::View) tree.
-    fn event(&self, event: Event);
+    /// Send a [`Message`] to the [`View`](crate::View) tree.
+    fn message(&self, message: Message);
 
     /// Spawn a boxed future.
     fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>);
@@ -69,7 +69,7 @@ pub trait Proxy: Send + Sync + 'static {
         self.spawn_boxed(Box::pin(future));
     }
 
-    /// Send an action using [`Self::rebuild`], [`Self::event`], and [`Self::spawn`].
+    /// Send an action using [`Self::rebuild`], [`Self::message`], and [`Self::spawn`].
     fn action(&self, action: Action)
     where
         Self: Clone,
@@ -78,8 +78,8 @@ pub trait Proxy: Send + Sync + 'static {
             self.rebuild();
         }
 
-        for event in action.events {
-            self.event(event);
+        for message in action.messages {
+            self.message(message);
         }
 
         for future in action.futures {
@@ -104,8 +104,8 @@ impl Proxy for Arc<dyn Proxy> {
         self.as_ref().rebuild();
     }
 
-    fn event(&self, event: Event) {
-        self.as_ref().event(event);
+    fn message(&self, message: Message) {
+        self.as_ref().message(message);
     }
 
     fn spawn_boxed(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>) {

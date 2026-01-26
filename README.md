@@ -23,7 +23,7 @@ fn counter(data: &Data) -> impl View<Data> + use<> {
     // A button is created, taking a closure mutating our `Data` when the button is clicked. Note
     // that this closure returns a type that can be converted into an `Action`. The default
     // `Action`, i.e. `()` the unit value, is to rebuild the UI by calling the `ui` function. Other
-    // actions include sending `Events` or spawning futures.
+    // actions include sending `Messages` or spawning futures.
     button(text, |data: &mut Data| data.count += 1)
         .halign(Align::Center)
         .valign(Align::Center)

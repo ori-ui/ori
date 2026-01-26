@@ -8,8 +8,8 @@ mod build;
 mod context;
 mod effect;
 mod element;
-mod event;
 mod future;
+mod message;
 mod seq;
 mod view;
 
@@ -21,6 +21,6 @@ pub use build::*;
 pub use context::*;
 pub use effect::*;
 pub use element::*;
-pub use event::*;
+pub use message::*;
 pub use seq::*;
 pub use view::*;

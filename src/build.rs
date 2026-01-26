@@ -1,4 +1,4 @@
-use crate::{Action, AnyState, AnyView, Base, Event, Mut, View, ViewMarker};
+use crate::{Action, AnyState, AnyView, Base, Message, Mut, View, ViewMarker};
 
 /// Marker view for types implementing [`Build`].
 pub trait BuildMarker {}
@@ -38,14 +38,14 @@ where
         AnyView::rebuild(Box::new(view), element, state, cx, data);
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        Box::<dyn AnyView<C, T, C::Element>>::event(element, state, cx, data, event)
+        Box::<dyn AnyView<C, T, C::Element>>::message(element, state, cx, data, message)
     }
 
     fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {

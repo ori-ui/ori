@@ -4,18 +4,18 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
 };
 
-/// An event in an application.
+/// An message to an [`View`].
 ///
 /// This is the primary way [`View`](crate::View)s communicate with each other, see
-/// [`View::event`](crate::View::event) for more information.
-pub struct Event {
+/// [`View::message`](crate::View::message) for more information.
+pub struct Message {
     target: Option<ViewId>,
     item:   Option<Box<dyn Any + Send>>,
     name:   &'static str,
 }
 
-impl Event {
-    /// Create a new [`Event`] with over an `item` and an optional `target`.
+impl Message {
+    /// Create a new [`Message`] with over an `item` and an optional `target`.
     pub fn new<T: Any + Send>(item: T, target: impl Into<Option<ViewId>>) -> Self {
         Self {
             target: target.into(),
@@ -94,18 +94,18 @@ impl Event {
     }
 }
 
-impl fmt::Debug for Event {
+impl fmt::Debug for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let item = self.item.is_some().then_some(&self.name);
+        let r#type = self.item.is_some().then_some(&self.name);
 
-        f.debug_struct("Event")
+        f.debug_struct("Message")
             .field("target", &self.target)
-            .field("item", &item)
+            .field("type", &r#type)
             .finish()
     }
 }
 
-/// Unique key for targeting [`Event`]s.
+/// Unique key for targeting [`Message`]s.
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViewId {

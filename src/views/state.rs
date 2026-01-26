@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, mem::ManuallyDrop, ptr};
 
-use crate::{Action, Element, Event, Mut, View, ViewMarker};
+use crate::{Action, Element, Message, Mut, View, ViewMarker};
 
 /// [`View`] that maps one type of data to another.
 pub fn map<C, T, U, E>(
@@ -122,14 +122,14 @@ where
         *map = self.map;
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         (map, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        if event.is_taken() {
+        if message.is_taken() {
             return Action::new();
         }
 
@@ -138,8 +138,8 @@ where
 
         map(data, &mut |data| {
             if let Some(element) = element.take() {
-                action.replace(V::event(
-                    element, state, cx, data, event,
+                action.replace(V::message(
+                    element, state, cx, data, message,
                 ));
             }
         });
@@ -200,15 +200,15 @@ where
         });
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         (with, state): &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
         with_data(with, data, |data_with| {
-            V::event(element, state, cx, data_with, event)
+            V::message(element, state, cx, data_with, message)
         })
     }
 

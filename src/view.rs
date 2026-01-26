@@ -1,4 +1,4 @@
-use crate::{Action, Element, Event, Mut};
+use crate::{Action, Element, Message, Mut};
 
 /// Trait restricting implementations of [`View`].
 pub trait ViewMarker {}
@@ -19,7 +19,7 @@ where
     /// This is expected to be called only once per instance of [`View`].
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State);
 
-    /// Rebuild the UI, applying the differences between `self` and `old`.
+    /// Rebuild the UI to match the new view tree.
     fn rebuild(
         self,
         element: Mut<'_, Self::Element>,
@@ -28,16 +28,13 @@ where
         data: &mut T,
     );
 
-    /// Handle an [`Event`].
-    ///
-    /// Returns whether the element has changed in a way that might invalidate the parent child
-    /// relation as well as an [`Action`] to execute.
-    fn event(
+    /// Handle a [`Message`].
+    fn message(
         element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action;
 
     /// Tear down the UI built by the [`View`].

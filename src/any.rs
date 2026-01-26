@@ -1,6 +1,6 @@
 use std::{any::Any, mem};
 
-use crate::{Action, Element, Event, Is, Mut, View, ViewMarker};
+use crate::{Action, Element, Is, Message, Mut, View, ViewMarker};
 
 /// Type erased [`View`].
 pub trait AnyView<C, T, E>
@@ -32,7 +32,7 @@ where
         let element = V::Element::upcast(cx, element);
         let state = AnyState {
             state:    Box::new(state),
-            event:    AnyState::<C, T, E>::event::<V>,
+            message:  AnyState::<C, T, E>::message::<V>,
             teardown: AnyState::<C, T, E>::teardown::<V>,
         };
 
@@ -56,7 +56,7 @@ where
             let old_state = mem::replace(&mut state.state, Box::new(new_state));
             (state.teardown)(old_element, old_state, cx);
 
-            state.event = AnyState::<C, T, E>::event::<V>;
+            state.message = AnyState::<C, T, E>::message::<V>;
             state.teardown = AnyState::<C, T, E>::teardown::<V>;
         }
     }
@@ -69,7 +69,7 @@ where
     E: Element,
 {
     state:    Box<dyn Any>,
-    event:    fn(Mut<'_, E>, &mut dyn Any, &mut C, &mut T, &mut Event) -> Action,
+    message:  fn(Mut<'_, E>, &mut dyn Any, &mut C, &mut T, &mut Message) -> Action,
     teardown: fn(E, Box<dyn Any>, &mut C),
 }
 
@@ -77,12 +77,12 @@ impl<C, T, E> AnyState<C, T, E>
 where
     E: Element,
 {
-    fn event<V>(
+    fn message<V>(
         element: Mut<'_, E>,
         state: &mut dyn Any,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action
     where
         V: View<C, T>,
@@ -92,7 +92,7 @@ where
         if let Some(state) = state.downcast_mut()
             && let Ok(element) = V::Element::downcast_mut(element)
         {
-            V::event(element, state, cx, data, event)
+            V::message(element, state, cx, data, message)
         } else {
             Action::new()
         }
@@ -134,19 +134,19 @@ where
         AnyView::rebuild(self, element, state, cx, data)
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        (state.event)(
+        (state.message)(
             element,
             state.state.as_mut(),
             cx,
             data,
-            event,
+            message,
         )
     }
 

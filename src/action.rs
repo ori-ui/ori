@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{Event, Proxy};
+use crate::{Message, Proxy};
 
 /// [`Future`] that to be run by an [`Action`].
 pub type ActionFuture = Pin<Box<dyn Future<Output = Action> + Send>>;
@@ -13,7 +13,7 @@ pub type ActionFuture = Pin<Box<dyn Future<Output = Action> + Send>>;
 /// Callback to be run by an [`Action`].
 pub type ActionCallback = Box<dyn FnOnce(&dyn Proxy)>;
 
-/// Action to be taken as a result of [`View::event`].
+/// Action to be taken as a result of [`View::message`].
 ///
 /// Callbacks from [`View`]s will usually return one of these, note that `()` implements
 /// `Into<Action>`, which means that if no action is explicitly return by a callback, the default
@@ -21,14 +21,14 @@ pub type ActionCallback = Box<dyn FnOnce(&dyn Proxy)>;
 /// return [`Action::new`].
 ///
 /// [`View`]: crate::View
-/// [`View::event`]: crate::View::event
+/// [`View::message`]: crate::View::event
 #[must_use]
 pub struct Action {
     /// Whether the action requests a rebuild.
     pub rebuild: bool,
 
-    /// Events to be triggered by this action.
-    pub events: Vec<Event>,
+    /// Messages to be sent by this action.
+    pub messages: Vec<Message>,
 
     /// Futures to spawned by this action.
     pub futures: Vec<ActionFuture>,
@@ -48,7 +48,7 @@ impl Action {
     pub const fn new() -> Self {
         Self {
             rebuild:   false,
-            events:    Vec::new(),
+            messages:  Vec::new(),
             futures:   Vec::new(),
             callbacks: Vec::new(),
         }
@@ -58,15 +58,15 @@ impl Action {
     pub const fn rebuild() -> Self {
         Self {
             rebuild:   true,
-            events:    Vec::new(),
+            messages:  Vec::new(),
             futures:   Vec::new(),
             callbacks: Vec::new(),
         }
     }
 
-    /// Request a rebuild and emit an event.
-    pub fn event(event: Event) -> Self {
-        Self::new().with_event(event)
+    /// Request a rebuild and emit an message.
+    pub fn message(message: Message) -> Self {
+        Self::new().with_message(message)
     }
 
     /// Spawn a future that emits an action.
@@ -87,9 +87,9 @@ impl Action {
         self.rebuild |= rebuild;
     }
 
-    /// Add an event to the action.
-    pub fn add_event(&mut self, event: Event) {
-        self.events.push(event);
+    /// Add an message to the action.
+    pub fn add_message(&mut self, message: Message) {
+        self.messages.push(message);
     }
 
     /// Add a future that emits an action.
@@ -115,9 +115,9 @@ impl Action {
         self
     }
 
-    /// Add an event to the action.
-    pub fn with_event(mut self, event: Event) -> Self {
-        self.add_event(event);
+    /// Add an message to the action.
+    pub fn with_message(mut self, message: Message) -> Self {
+        self.add_message(message);
         self
     }
 
@@ -139,7 +139,7 @@ impl Action {
     /// Merge `self` with `other`.
     pub fn merge(&mut self, mut other: Self) {
         self.rebuild |= other.rebuild;
-        self.events.append(&mut other.events);
+        self.messages.append(&mut other.messages);
         self.futures.append(&mut other.futures);
         self.callbacks.append(&mut other.callbacks);
     }
@@ -149,7 +149,7 @@ impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Action")
             .field("rebuild", &self.rebuild)
-            .field("events", &self.events)
+            .field("messages", &self.messages)
             .finish()
     }
 }
@@ -175,8 +175,8 @@ impl From<()> for Action {
     }
 }
 
-impl From<Event> for Action {
-    fn from(event: Event) -> Self {
-        Action::event(event)
+impl From<Message> for Action {
+    fn from(message: Message) -> Self {
+        Action::message(message)
     }
 }

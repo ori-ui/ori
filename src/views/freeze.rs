@@ -1,4 +1,4 @@
-use crate::{Action, Event, Mut, View, ViewMarker};
+use crate::{Action, Message, Mut, View, ViewMarker};
 
 /// [`View`] that doesn't rebuild when state changes.
 pub fn freeze<V>(build: impl FnOnce() -> V) -> Freeze<impl FnOnce() -> V> {
@@ -44,14 +44,14 @@ where
     ) {
     }
 
-    fn event(
+    fn message(
         element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
-        event: &mut Event,
+        message: &mut Message,
     ) -> Action {
-        V::event(element, state, cx, data, event)
+        V::message(element, state, cx, data, message)
     }
 
     fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {

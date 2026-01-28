@@ -37,8 +37,8 @@ where
 /// [`View`] that attaches extra `data` to its contents.
 #[must_use]
 pub fn with<C, T, U, V>(
-    init: impl FnOnce(&T) -> U + 'static,
-    build: impl FnOnce(&U, &T) -> V + 'static,
+    init: impl FnOnce(&T) -> U,
+    build: impl FnOnce(&U, &T) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     V: View<C, (U, T)>,
@@ -49,7 +49,7 @@ where
 /// [`View`] that attaches extra `data` using its [`Default`] to its contents.
 #[must_use]
 pub fn with_default<C, T, U, V>(
-    build: impl FnOnce(&U, &T) -> V + 'static,
+    build: impl FnOnce(&U, &T) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Default,

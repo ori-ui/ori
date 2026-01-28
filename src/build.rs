@@ -4,7 +4,7 @@ use crate::{Action, AnyState, AnyView, Base, Message, Mut, View, ViewMarker};
 pub trait BuildMarker {}
 
 /// Helper trait for implementing the builder pattern for [`View`]s.
-pub trait Build<C, T>: BuildMarker
+pub trait BuildView<C, T>: BuildMarker
 where
     C: Base,
 {
@@ -17,7 +17,7 @@ impl<V> ViewMarker for V where V: BuildMarker {}
 impl<C, T, B> View<C, T> for B
 where
     C: Base,
-    B: Build<C, T>,
+    B: BuildView<C, T>,
 {
     type Element = C::Element;
     type State = AnyState<C, T, C::Element>;

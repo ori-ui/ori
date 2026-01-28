@@ -3,6 +3,7 @@ use std::{any::Any, marker::PhantomData};
 use crate::{Action, Message, Mut, Provider, View, ViewMarker};
 
 /// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
+#[must_use]
 pub fn provide<U, C, T, V>(
     initial: impl FnOnce(&T) -> U,
     contents: V,
@@ -15,7 +16,54 @@ where
     Provide::new(initial, contents)
 }
 
+/// [`View`] that uses `resource` provided by [`provide`].
+#[must_use]
+pub fn using<U, C, T, V>(build: impl FnOnce(&T, &U) -> V) -> impl View<C, T, Element = V::Element>
+where
+    U: Any,
+    C: Provider,
+    V: View<C, T>,
+{
+    try_using(move |data, context| {
+        let context = context.expect(
+            "`using` expects context to be provided, try providing it with `provide` or use `using_or_default` or `try_using` instead",
+        );
+
+        build(data, context)
+    })
+}
+
+/// [`View`] that uses `resource` provided by [`provide`].
+#[must_use]
+pub fn using_or_default<U, C, T, V>(
+    build: impl FnOnce(&T, &U) -> V,
+) -> impl View<C, T, Element = V::Element>
+where
+    U: Any + Default,
+    C: Provider,
+    V: View<C, T>,
+{
+    try_using(move |data, context| match context {
+        Some(context) => build(data, context),
+        None => build(data, &Default::default()),
+    })
+}
+
+/// [`View`] that uses `resource` provided by [`provide`].
+#[must_use]
+pub fn try_using<U, C, T, V>(
+    build: impl FnOnce(&T, Option<&U>) -> V,
+) -> impl View<C, T, Element = V::Element>
+where
+    U: Any,
+    C: Provider,
+    V: View<C, T>,
+{
+    Using::new(build)
+}
+
 /// [`View`] that provides a `resource` to a [`View`], see [`Using`] for how to use contexts.
+#[must_use]
 pub struct Provide<F, U, V> {
     contents: V,
     initial:  F,
@@ -102,50 +150,8 @@ where
     }
 }
 
-/// [`View`] that uses `resource` provided by [`provide`].
-pub fn using<U, C, T, V>(build: impl FnOnce(&T, &U) -> V) -> impl View<C, T, Element = V::Element>
-where
-    U: Any,
-    C: Provider,
-    V: View<C, T>,
-{
-    try_using(move |data, context| {
-        let context = context.expect(
-            "`using` expects context to be provided, try providing it with `provide` or use `using_or_default` or `try_using` instead",
-        );
-
-        build(data, context)
-    })
-}
-
-/// [`View`] that uses `resource` provided by [`provide`].
-pub fn using_or_default<U, C, T, V>(
-    build: impl FnOnce(&T, &U) -> V,
-) -> impl View<C, T, Element = V::Element>
-where
-    U: Any + Default,
-    C: Provider,
-    V: View<C, T>,
-{
-    try_using(move |data, context| match context {
-        Some(context) => build(data, context),
-        None => build(data, &Default::default()),
-    })
-}
-
-/// [`View`] that uses `resource` provided by [`provide`].
-pub fn try_using<U, C, T, V>(
-    build: impl FnOnce(&T, Option<&U>) -> V,
-) -> impl View<C, T, Element = V::Element>
-where
-    U: Any,
-    C: Provider,
-    V: View<C, T>,
-{
-    Using::new(build)
-}
-
 /// [`View`] that uses `resource` provided by [`Provide`].
+#[must_use]
 pub struct Using<F, U> {
     build:  F,
     marker: PhantomData<fn(&U)>,

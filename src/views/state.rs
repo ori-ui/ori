@@ -3,6 +3,7 @@ use std::{marker::PhantomData, mem::ManuallyDrop, ptr};
 use crate::{Action, Element, Message, Mut, View, ViewMarker};
 
 /// [`View`] that maps one type of data to another.
+#[must_use]
 pub fn map<C, T, U, E>(
     contents: impl View<C, U, Element = E>,
     map: impl FnMut(&mut T, &mut dyn FnMut(&mut U)),
@@ -15,6 +16,7 @@ where
 }
 
 /// [`View`] that maps one type of data to two types of data.
+#[must_use]
 pub fn map_with<C, T, U, V, E>(
     contents: impl View<C, (U, V), Element = E>,
     mut map: impl FnMut(&mut T, &mut dyn FnMut(&mut U, &mut V)),
@@ -33,6 +35,7 @@ where
 }
 
 /// [`View`] that attaches extra `data` to its contents.
+#[must_use]
 pub fn with<C, T, U, V>(
     init: impl FnOnce(&T) -> U + 'static,
     build: impl FnOnce(&U, &T) -> V + 'static,
@@ -44,6 +47,7 @@ where
 }
 
 /// [`View`] that attaches extra `data` using its [`Default`] to its contents.
+#[must_use]
 pub fn with_default<C, T, U, V>(
     build: impl FnOnce(&U, &T) -> V + 'static,
 ) -> impl View<C, T, Element = V::Element>
@@ -153,6 +157,7 @@ where
 }
 
 /// [`View`] that attaches extra `data` to its contents.
+#[must_use]
 pub struct With<F, G> {
     init:  F,
     build: G,

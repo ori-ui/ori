@@ -6,6 +6,7 @@ use crate::{
 };
 
 /// [`Effect`](crate::Effect) that spawns a `task` that emits messages to a `handler`.
+#[must_use]
 pub fn task<C, T, E, F, A>(
     task: impl FnOnce(&mut T, Sink<E>) -> F + 'static,
     mut handler: impl FnMut(&mut T, E) -> A + 'static,
@@ -45,6 +46,7 @@ where
 }
 
 /// [`Effect`](crate::Effect) that spawns a `task` that send messages to a `handler`.
+#[must_use]
 pub struct Task<E, F, G> {
     task:    F,
     handler: G,

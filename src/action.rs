@@ -1,5 +1,5 @@
 use std::{
-    fmt,
+    fmt, mem,
     ops::{BitOr, BitOrAssign},
     pin::Pin,
     sync::Arc,
@@ -134,6 +134,11 @@ impl Action {
     {
         self.add_task(task);
         self
+    }
+
+    /// Take the `rebuild` flag, and handle it now.
+    pub fn take_rebuild(&mut self) -> bool {
+        mem::replace(&mut self.rebuild, false)
     }
 
     /// Merge `self` with `other`.

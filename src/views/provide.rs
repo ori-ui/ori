@@ -5,7 +5,7 @@ use crate::{Action, Message, Mut, Provider, View, ViewMarker};
 /// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
 #[must_use]
 pub fn provide<U, C, T, V>(
-    initial: impl FnOnce(&T) -> U,
+    state: impl FnOnce(&T) -> U,
     contents: V,
 ) -> impl View<C, T, Element = V::Element>
 where
@@ -13,7 +13,7 @@ where
     C: Provider,
     V: View<C, T>,
 {
-    Provide::new(initial, contents)
+    Provide::new(state, contents)
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
@@ -64,28 +64,23 @@ where
 
 /// [`View`] that provides a `resource` to a [`View`], see [`Using`] for how to use contexts.
 #[must_use]
-pub struct Provide<F, U, V> {
+pub struct Provide<F, V> {
+    state:    F,
     contents: V,
-    initial:  F,
-    marker:   PhantomData<fn() -> U>,
 }
 
-impl<F, U, V> Provide<F, U, V> {
+impl<F, V> Provide<F, V> {
     /// Create a [`Provide`].
-    pub fn new<T>(initial: F, contents: V) -> Self
+    pub fn new<T, U>(state: F, contents: V) -> Self
     where
         F: FnOnce(&T) -> U,
     {
-        Self {
-            contents,
-            initial,
-            marker: PhantomData,
-        }
+        Self { contents, state }
     }
 }
 
-impl<F, U, V> ViewMarker for Provide<F, U, V> {}
-impl<F, U, C, T, V> View<C, T> for Provide<F, U, V>
+impl<F, V> ViewMarker for Provide<F, V> {}
+impl<F, U, C, T, V> View<C, T> for Provide<F, V>
 where
     F: FnOnce(&T) -> U,
     U: Any,
@@ -96,7 +91,7 @@ where
     type State = (Option<Box<U>>, V::State);
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let context = (self.initial)(data);
+        let context = (self.state)(data);
 
         cx.push(Box::new(context));
         let (element, state) = self.contents.build(cx, data);
@@ -112,6 +107,11 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
+        match context {
+            Some(context) => **context = (self.state)(data),
+            None => *context = Some(Box::new((self.state)(data))),
+        }
+
         if let Some(context) = context.take() {
             cx.push(context);
         }

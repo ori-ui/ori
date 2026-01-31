@@ -1,36 +1,6 @@
-use std::{any::Any, pin::Pin, sync::Arc};
+use std::{pin::Pin, sync::Arc};
 
-use crate::{Action, Element, Message};
-
-/// A context with a common base element, that is [`Super`](crate::Super) to all elements in the
-/// context.
-pub trait Base: Sized {
-    /// The base element.
-    type Element: Element;
-}
-
-/// A context for keeping track of user contexts.
-pub trait Provider {
-    /// Push a `resource` to the stack.
-    fn push<T: Any>(&mut self, resource: Box<T>);
-
-    /// Pop the last `resource` from the stack.
-    fn pop<T: Any>(&mut self) -> Option<Box<T>>;
-
-    /// Get the latest inserted `resouce` of type `T`.
-    fn get<T: Any>(&self) -> Option<&T>;
-
-    /// Get a mutable reference to the latest inserted `resource` of type `T`.
-    fn get_mut<T: Any>(&mut self) -> Option<&mut T>;
-
-    /// [`Self::get`] a resource or the [`Default::default`].
-    fn get_or_default<T>(&self) -> T
-    where
-        T: Any + Clone + Default,
-    {
-        self.get().cloned().unwrap_or_default()
-    }
-}
+use crate::{Action, Message};
 
 /// A context for a [`View`](crate::View).
 pub trait Proxied {

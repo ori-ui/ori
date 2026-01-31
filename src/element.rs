@@ -1,3 +1,10 @@
+/// A context with a common base element, that is [`Super`](crate::Super) to all elements in the
+/// context.
+pub trait Base: Sized {
+    /// The base element.
+    type Element: Element;
+}
+
 /// Trait for defining subtype relations between [`View::Element`](crate::View::Element)s.
 pub trait Is<C, S>: Element + Sized + 'static
 where

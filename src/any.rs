@@ -112,8 +112,8 @@ where
     }
 }
 
-impl<C, T, E> ViewMarker for Box<dyn AnyView<C, T, E>> {}
-impl<C, T, E> View<C, T> for Box<dyn AnyView<C, T, E>>
+impl<'a, C, T, E> ViewMarker for Box<dyn AnyView<C, T, E> + 'a> {}
+impl<'a, C, T, E> View<C, T> for Box<dyn AnyView<C, T, E> + 'a>
 where
     E: Element,
 {

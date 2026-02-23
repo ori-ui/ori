@@ -9,7 +9,7 @@ use crate::{
 #[must_use]
 pub fn task<C, T, E, F, A>(
     task: impl FnOnce(&mut T, Sink<E>) -> F,
-    mut handler: impl FnMut(&mut T, E) -> A,
+    mut handler: impl FnMut(&mut T, Sink<E>, E) -> A,
 ) -> impl Effect<C, T>
 where
     C: Proxied,
@@ -19,7 +19,7 @@ where
 {
     Task {
         task,
-        handler: move |data: &mut T, message| handler(data, message).into(),
+        handler: move |data: &mut T, sink, message| handler(data, sink, message).into(),
         marker: PhantomData,
     }
 }
@@ -71,7 +71,7 @@ where
     C: Proxied,
     E: Send + 'static,
     F: FnOnce(&mut T, Sink<E>) -> H,
-    G: FnMut(&mut T, E) -> Action,
+    G: FnMut(&mut T, Sink<E>, E) -> Action,
     H: Future<Output = ()> + Send + 'static,
 {
     type Element = ();
@@ -105,12 +105,18 @@ where
     fn message(
         _element: Mut<'_, Self::Element>,
         (handler, id, _): &mut Self::State,
-        _cx: &mut C,
+        cx: &mut C,
         data: &mut T,
         message: &mut Message,
     ) -> Action {
         if let Some(message) = message.take_targeted(*id) {
-            handler(data, message)
+            let sink = Sink {
+                id:     *id,
+                proxy:  cx.proxy().cloned(),
+                marker: PhantomData,
+            };
+
+            handler(data, sink, message)
         } else {
             Action::new()
         }

@@ -25,7 +25,6 @@ where
 }
 
 /// Sink for sending events to the `handler` of a [`task`].
-#[derive(Clone)]
 pub struct Sink<E>
 where
     E: Send + 'static,
@@ -33,6 +32,19 @@ where
     id:     ViewId,
     proxy:  Arc<dyn Proxy>,
     marker: PhantomData<fn(E)>,
+}
+
+impl<E> Clone for Sink<E>
+where
+    E: Send + 'static,
+{
+    fn clone(&self) -> Self {
+        Self {
+            id:     self.id,
+            proxy:  self.proxy.clone(),
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<E> Sink<E>

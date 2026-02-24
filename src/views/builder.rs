@@ -10,7 +10,7 @@ where
 
 /// [`View`] that is built from a callback with access to the context.
 pub fn build_with_context<C, T, V>(
-    build: impl FnOnce(&C, &T) -> V,
+    build: impl FnOnce(&mut C, &T) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     V: View<C, T>,
@@ -27,7 +27,7 @@ impl<F> Builder<F> {
     /// Create a [`Builder`].
     pub fn new<C, T, V>(build: F) -> Self
     where
-        F: FnOnce(&C, &T) -> V,
+        F: FnOnce(&mut C, &T) -> V,
         V: View<C, T>,
     {
         Self { build }
@@ -37,7 +37,7 @@ impl<F> Builder<F> {
 impl<F> ViewMarker for Builder<F> {}
 impl<C, T, V, F> View<C, T> for Builder<F>
 where
-    F: FnOnce(&C, &T) -> V,
+    F: FnOnce(&mut C, &T) -> V,
     V: View<C, T>,
 {
     type Element = V::Element;

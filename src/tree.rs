@@ -171,26 +171,3 @@ impl Tree {
         node
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn tree() {
-        let mut tree = Tree::new();
-
-        tree.push();
-        tree.pop();
-        tree.push();
-        tree.push();
-        tree.pop();
-        tree.push();
-        tree.pop();
-        tree.pop();
-        tree.push();
-        tree.pop();
-
-        panic!("{tree}");
-    }
-}

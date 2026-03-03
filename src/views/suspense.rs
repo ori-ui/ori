@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    Action, Base, Is, Message, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
+    Action, Base, Is, Message, Mut, Proxied, Proxy, Tracker, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -72,7 +72,7 @@ where
 impl<V, F> ViewMarker for Suspense<V, F> {}
 impl<C, T, V, F> View<C, T> for Suspense<V, F>
 where
-    C: Proxied + Base,
+    C: Tracker + Proxied + Base,
     V: View<C, T>,
     F: Future + Send + 'static,
     F::Output: View<C, T> + Send,
@@ -90,6 +90,7 @@ where
         let (fallback_element, fallback_state) = self.fallback.build(cx, data);
 
         let id = ViewId::next();
+        cx.register(id);
 
         let proxy = cx.proxy();
 
@@ -209,7 +210,8 @@ where
         }
     }
 
-    fn teardown(element: Self::Element, (_id, handle, state): Self::State, cx: &mut C) {
+    fn teardown(element: Self::Element, (id, handle, state): Self::State, cx: &mut C) {
+        cx.unregister(id);
         handle.abort();
 
         match state {

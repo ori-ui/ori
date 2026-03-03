@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::{Action, Element, Is, Message, View};
+use crate::{Action, Element, Is, Message, Tracker, View};
 
 /// A sequence of [`View`]s.
 pub trait ViewSeq<C, T, E>
@@ -70,6 +70,7 @@ impl<C> Elements<C, ()> for () {
 
 impl<C, T, E, V> ViewSeq<C, T, E> for V
 where
+    C: Tracker,
     E: Element,
     V: View<C, T>,
     V::Element: Is<C, E>,
@@ -82,9 +83,14 @@ where
         cx: &mut C,
         data: &mut T,
     ) -> Self::State {
+        cx.tree().push();
+
         let (element, state) = self.build(cx, data);
         let element = V::Element::upcast(cx, element);
         elements.insert(cx, element);
+
+        cx.tree().pop();
+
         state
     }
 
@@ -98,7 +104,11 @@ where
         if let Some(element) = elements.next(cx)
             && let Ok(element) = V::Element::downcast_mut(element)
         {
+            cx.tree().push();
+
             self.rebuild(element, state, cx, data);
+
+            cx.tree().pop();
         }
     }
 
@@ -116,7 +126,19 @@ where
         if let Some(element) = elements.next(cx)
             && let Ok(element) = V::Element::downcast_mut(element)
         {
-            V::message(element, state, cx, data, message)
+            cx.tree().push();
+
+            let action = if let Some(id) = message.target()
+                && !cx.tree().contains(id)
+            {
+                Action::new()
+            } else {
+                V::message(element, state, cx, data, message)
+            };
+
+            cx.tree().pop();
+
+            action
         } else {
             Action::new()
         }
@@ -126,7 +148,12 @@ where
         if let Some(element) = elements.remove(cx)
             && let Ok(element) = V::Element::downcast(element)
         {
+            cx.tree().push();
+
             V::teardown(element, state, cx);
+
+            cx.tree().pop();
+            cx.tree().remove();
         }
     }
 }
@@ -367,6 +394,7 @@ pub struct KeyedState<K, S> {
 
 impl<C, T, E, K, V> ViewSeq<C, T, E> for Keyed<K, V>
 where
+    C: Tracker,
     E: Element,
     K: Clone + Hash + Eq,
     V: View<C, T>,

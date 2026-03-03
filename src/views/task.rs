@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use crate::{
-    Action, Effect, Message, Mut, Proxied, Proxy, View, ViewId, ViewMarker,
+    Action, Effect, Message, Mut, Proxied, Proxy, Tracker, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -12,7 +12,7 @@ pub fn task<C, T, E, F, A>(
     mut handler: impl FnMut(&mut T, Sink<E>, E) -> A,
 ) -> impl Effect<C, T>
 where
-    C: Proxied,
+    C: Tracker + Proxied,
     E: Send + 'static,
     F: Future<Output = ()> + Send + 'static,
     A: Into<Action>,
@@ -68,7 +68,7 @@ pub struct Task<E, F, G> {
 impl<E, F, G> ViewMarker for Task<E, F, G> {}
 impl<C, T, E, F, G, H> View<C, T> for Task<E, F, G>
 where
-    C: Proxied,
+    C: Tracker + Proxied,
     E: Send + 'static,
     F: FnOnce(&mut T, Sink<E>) -> H,
     G: FnMut(&mut T, Sink<E>, E) -> Action,
@@ -85,6 +85,8 @@ where
             proxy: proxy.cloned(),
             marker: PhantomData,
         };
+
+        cx.register(id);
 
         let task = (self.task)(data, sink);
         let (future, handle) = Abortable::new(task);
@@ -122,7 +124,8 @@ where
         }
     }
 
-    fn teardown(_element: Self::Element, (_, _, handle): Self::State, _cx: &mut C) {
+    fn teardown(_element: Self::Element, (_, id, handle): Self::State, cx: &mut C) {
+        cx.unregister(id);
         handle.abort();
     }
 }

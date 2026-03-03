@@ -12,6 +12,7 @@ mod message;
 mod provider;
 mod proxy;
 mod seq;
+mod tree;
 mod view;
 
 pub mod views;
@@ -25,4 +26,5 @@ pub use message::*;
 pub use provider::*;
 pub use proxy::*;
 pub use seq::*;
+pub use tree::*;
 pub use view::*;

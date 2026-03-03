@@ -194,6 +194,67 @@ where
     }
 }
 
+impl<C, T, E, V, const N: usize> ViewSeq<C, T, E> for [V; N]
+where
+    E: Element,
+    V: ViewSeq<C, T, E>,
+{
+    type State = [Option<V::State>; N];
+
+    fn seq_build(
+        self,
+        elements: &mut impl Elements<C, E>,
+        cx: &mut C,
+        data: &mut T,
+    ) -> Self::State {
+        let mut states = [const { None }; N];
+
+        for (i, view) in self.into_iter().enumerate() {
+            let state = view.seq_build(elements, cx, data);
+            states[i] = Some(state);
+        }
+
+        states
+    }
+
+    fn seq_rebuild(
+        self,
+        elements: &mut impl Elements<C, E>,
+        state: &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+    ) {
+        for (i, view) in self.into_iter().enumerate() {
+            let state = state[i].as_mut().expect("all states are `Some`");
+            view.seq_rebuild(elements, state, cx, data);
+        }
+    }
+
+    fn seq_message(
+        elements: &mut impl Elements<C, E>,
+        state: &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+        message: &mut Message,
+    ) -> Action {
+        let mut action = Action::new();
+
+        for state in state.iter_mut() {
+            let state = state.as_mut().expect("all states are `Some`");
+            action |= V::seq_message(elements, state, cx, data, message);
+        }
+
+        action
+    }
+
+    fn seq_teardown(elements: &mut impl Elements<C, E>, state: Self::State, cx: &mut C) {
+        for state in state.into_iter() {
+            let state = state.expect("all states are `Some`");
+            V::seq_teardown(elements, state, cx);
+        }
+    }
+}
+
 impl<C, T, E, V> ViewSeq<C, T, E> for Vec<V>
 where
     E: Element,

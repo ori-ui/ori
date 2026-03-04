@@ -113,6 +113,16 @@ impl Tree {
         }
     }
 
+    pub(crate) fn insert(&mut self) {
+        let index = self
+            .stack
+            .last()
+            .copied()
+            .expect("these is always one element in the stack");
+
+        self.current_mut().nodes.insert(index, Node::new());
+    }
+
     pub(crate) fn remove(&mut self) {
         let index = self
             .stack
@@ -123,6 +133,16 @@ impl Tree {
         let index = *index;
 
         self.current_mut().nodes.remove(index);
+    }
+
+    pub(crate) fn swap(&mut self, offset: usize) {
+        let index = self
+            .stack
+            .last()
+            .copied()
+            .expect("these is always one element in the stack");
+
+        self.current_mut().nodes.swap(index, index + offset);
     }
 
     pub(crate) fn contains(&self, id: ViewId) -> bool {

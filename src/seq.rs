@@ -441,6 +441,7 @@ where
             let Some(index) = state.indices.get_mut(&key) else {
                 let view_state = view.seq_build(elements, cx, data);
 
+                cx.tree().insert();
                 state.states.insert(i, view_state);
                 state.keys.insert(i, key.clone());
                 state.indices.insert(key.clone(), i);
@@ -456,12 +457,13 @@ where
             if j != i {
                 let other_key = state.keys[i].clone();
 
+                cx.tree().swap(j - i);
                 elements.swap(cx, j - i);
                 state.states.swap(i, j);
                 state.keys.swap(i, j);
 
                 state.indices.insert(key.clone(), i);
-                state.indices.insert(other_key, j);
+                state.indices.insert(other_key, j - offset);
             }
 
             view.seq_rebuild(elements, &mut state.states[i], cx, data);

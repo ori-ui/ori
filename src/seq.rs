@@ -83,6 +83,7 @@ where
         cx: &mut C,
         data: &mut T,
     ) -> Self::State {
+        cx.tree().insert();
         cx.tree().push();
 
         let (element, state) = self.build(cx, data);
@@ -441,7 +442,6 @@ where
             let Some(index) = state.indices.get_mut(&key) else {
                 let view_state = view.seq_build(elements, cx, data);
 
-                cx.tree().insert();
                 state.states.insert(i, view_state);
                 state.keys.insert(i, key.clone());
                 state.indices.insert(key.clone(), i);

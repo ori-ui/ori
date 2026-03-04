@@ -91,17 +91,6 @@ impl Tree {
     }
 
     pub(crate) fn push(&mut self) {
-        let index = self
-            .stack
-            .last()
-            .copied()
-            .expect("these is always one element in the stack");
-
-        let current = self.current_mut();
-        if current.nodes.len() <= index {
-            current.nodes.push(Node::new());
-        }
-
         self.stack.push(0);
     }
 

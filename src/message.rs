@@ -4,7 +4,7 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
 };
 
-/// An message to an [`View`].
+/// A message to an [`View`](crate::View).
 ///
 /// This is the primary way [`View`](crate::View)s communicate with each other, see
 /// [`View::message`](crate::View::message) for more information.

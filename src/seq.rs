@@ -1,4 +1,9 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{
+    collections::HashMap,
+    hash::{BuildHasherDefault, Hash},
+};
+
+use seahash::SeaHasher;
 
 use crate::{Action, Element, Is, Message, Tracker, View};
 
@@ -390,7 +395,7 @@ impl<K, V> FromIterator<(K, V)> for Keyed<K, V> {
 pub struct KeyedState<K, S> {
     states:  Vec<S>,
     keys:    Vec<K>,
-    indices: HashMap<K, usize>,
+    indices: HashMap<K, usize, BuildHasherDefault<SeaHasher>>,
 }
 
 impl<C, T, E, K, V> ViewSeq<C, T, E> for Keyed<K, V>
@@ -411,7 +416,7 @@ where
     ) -> Self::State {
         let mut states = Vec::with_capacity(self.pairs.len());
         let mut keys = Vec::with_capacity(self.pairs.len());
-        let mut indices = HashMap::with_capacity(self.pairs.len());
+        let mut indices = HashMap::with_capacity_and_hasher(self.pairs.len(), Default::default());
 
         for (i, (key, view)) in self.pairs.into_iter().enumerate() {
             let state = view.seq_build(elements, cx, data);

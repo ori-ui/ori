@@ -1,4 +1,6 @@
-use std::{collections::HashSet, fmt};
+use std::{collections::HashSet, fmt, hash::BuildHasherDefault};
+
+use seahash::SeaHasher;
 
 use crate::ViewId;
 
@@ -60,14 +62,14 @@ impl fmt::Display for Tree {
 #[derive(Clone, Debug, Default)]
 struct Node {
     nodes: Vec<Node>,
-    views: HashSet<ViewId>,
+    views: HashSet<ViewId, BuildHasherDefault<SeaHasher>>,
 }
 
 impl Node {
     fn new() -> Self {
         Self {
             nodes: Vec::new(),
-            views: HashSet::new(),
+            views: HashSet::default(),
         }
     }
 }

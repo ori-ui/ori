@@ -12,7 +12,7 @@ mod suspense;
 mod task;
 
 pub use any::any;
-pub use builder::{Builder, build, build_with_context};
+pub use builder::{Builder, build, context};
 pub use effect::{Effects, WithEffect, effects, with_effect};
 pub use freeze::{Freeze, freeze};
 pub use memo::{Memo, memo, memo_hashed};

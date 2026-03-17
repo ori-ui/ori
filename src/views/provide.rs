@@ -15,41 +15,41 @@ where
 
 /// [`View`] that uses `resource` provided by [`provide`].
 #[must_use]
-pub fn using<C, T, U, V>(build: impl FnOnce(&U, &T) -> V) -> impl View<C, T, Element = V::Element>
+pub fn using<C, T, U, V>(build: impl FnOnce(&T, &U) -> V) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
     C: Provider,
     V: View<C, T>,
 {
-    try_using(move |context, data| {
-        let context = context.expect(
-            "`using` expects context to be provided, try providing it with `provide` or use `using_or_default` or `try_using` instead",
+    try_using(move |data, resource| {
+        let resource = resource.expect(
+            "`using` expects resource to be provided, try providing it with `provide` or use `using_or_default` or `try_using` instead",
         );
 
-        build(context, data)
+        build(data, resource)
     })
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
 #[must_use]
 pub fn using_or_default<C, T, U, V>(
-    build: impl FnOnce(&U, &T) -> V,
+    build: impl FnOnce(&T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any + Default,
     C: Provider,
     V: View<C, T>,
 {
-    try_using(move |context, data| match context {
-        Some(context) => build(context, data),
-        None => build(&Default::default(), data),
+    try_using(move |data, resource| match resource {
+        Some(resource) => build(data, resource),
+        None => build(data, &Default::default()),
     })
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
 #[must_use]
 pub fn try_using<C, T, U, V>(
-    build: impl FnOnce(Option<&U>, &T) -> V,
+    build: impl FnOnce(&T, Option<&U>) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
@@ -163,7 +163,7 @@ impl<F, U> Using<F, U> {
 impl<F, U> ViewMarker for Using<F, U> {}
 impl<F, C, T, U, V> View<C, T> for Using<F, U>
 where
-    F: FnOnce(Option<&U>, &T) -> V,
+    F: FnOnce(&T, Option<&U>) -> V,
     C: Provider,
     U: Any,
     V: View<C, T>,
@@ -172,9 +172,9 @@ where
     type State = V::State;
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let context = cx.get::<U>();
+        let resource = cx.get::<U>();
 
-        let view = (self.build)(context, data);
+        let view = (self.build)(data, resource);
         view.build(cx, data)
     }
 
@@ -185,8 +185,8 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        let context = cx.get::<U>();
-        let view = (self.build)(context, data);
+        let resource = cx.get::<U>();
+        let view = (self.build)(data, resource);
         view.rebuild(element, state, cx, data);
     }
 

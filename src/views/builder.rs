@@ -5,12 +5,12 @@ pub fn build<C, T, V>(build: impl FnOnce(&T) -> V) -> impl View<C, T, Element = 
 where
     V: View<C, T>,
 {
-    build_with_context(move |_, data| build(data))
+    context(move |data, _| build(data))
 }
 
 /// [`View`] that is built from a callback with access to the context.
-pub fn build_with_context<C, T, V>(
-    build: impl FnOnce(&mut C, &T) -> V,
+pub fn context<C, T, V>(
+    build: impl FnOnce(&T, &mut C) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
     V: View<C, T>,
@@ -27,7 +27,7 @@ impl<F> Builder<F> {
     /// Create a [`Builder`].
     pub fn new<C, T, V>(build: F) -> Self
     where
-        F: FnOnce(&mut C, &T) -> V,
+        F: FnOnce(&T, &mut C) -> V,
         V: View<C, T>,
     {
         Self { build }
@@ -37,14 +37,14 @@ impl<F> Builder<F> {
 impl<F> ViewMarker for Builder<F> {}
 impl<C, T, V, F> View<C, T> for Builder<F>
 where
-    F: FnOnce(&mut C, &T) -> V,
+    F: FnOnce(&T, &mut C) -> V,
     V: View<C, T>,
 {
     type Element = V::Element;
     type State = V::State;
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let view = (self.build)(cx, data);
+        let view = (self.build)(data, cx);
         view.build(cx, data)
     }
 
@@ -55,7 +55,7 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        let view = (self.build)(cx, data);
+        let view = (self.build)(data, cx);
         view.rebuild(element, state, cx, data);
     }
 

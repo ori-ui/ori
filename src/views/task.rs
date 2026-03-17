@@ -9,7 +9,7 @@ use crate::{
 #[must_use]
 pub fn task<C, T, E, F, A>(
     task: impl FnOnce(&mut T, Sink<E>) -> F,
-    mut handler: impl FnMut(&mut T, Sink<E>, E) -> A,
+    mut handle: impl FnMut(&mut T, Sink<E>, E) -> A,
 ) -> impl Effect<C, T>
 where
     C: Tracker + Proxied,
@@ -19,7 +19,7 @@ where
 {
     Task {
         task,
-        handler: move |data: &mut T, sink, message| handler(data, sink, message).into(),
+        handle: move |data: &mut T, sink, message| handle(data, sink, message).into(),
         marker: PhantomData,
     }
 }
@@ -60,9 +60,9 @@ where
 /// [`Effect`](crate::Effect) that spawns a `task` that send messages to a `handler`.
 #[must_use]
 pub struct Task<E, F, G> {
-    task:    F,
-    handler: G,
-    marker:  PhantomData<fn(E)>,
+    task:   F,
+    handle: G,
+    marker: PhantomData<fn(E)>,
 }
 
 impl<E, F, G> ViewMarker for Task<E, F, G> {}
@@ -92,7 +92,7 @@ where
         let (future, handle) = Abortable::new(task);
         proxy.spawn(future);
 
-        ((), (self.handler, id, handle))
+        ((), (self.handle, id, handle))
     }
 
     fn rebuild(

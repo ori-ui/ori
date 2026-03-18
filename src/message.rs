@@ -24,6 +24,11 @@ impl Message {
         }
     }
 
+    /// Get the name of the inner type.
+    pub fn type_name(&self) -> &'static str {
+        self.name
+    }
+
     /// Get the target of `self`.
     pub fn target(&self) -> Option<ViewId> {
         self.target

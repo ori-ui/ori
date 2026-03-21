@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{Message, Proxy};
+use crate::{Message, Proxy, ViewId};
 
 /// [`Future`] that to be run by an [`Action`].
 pub type ActionFuture = Pin<Box<dyn Future<Output = Action> + Send>>;
@@ -64,9 +64,12 @@ impl Action {
         }
     }
 
-    /// Request a rebuild and emit an message.
-    pub fn message(message: Message) -> Self {
-        Self::new().with_message(message)
+    /// Request emit a message.
+    pub fn message<T>(item: T, target: impl Into<Option<ViewId>>) -> Self
+    where
+        T: Send + 'static,
+    {
+        Self::new().with_message(item, target)
     }
 
     /// Spawn a future that emits an action.
@@ -82,14 +85,17 @@ impl Action {
         Self::new().with_task(task)
     }
 
-    /// Set whether a rebuild is requested.
+    /// Set whether to request a rebuild.
     pub fn set_rebuild(&mut self, rebuild: bool) {
         self.rebuild |= rebuild;
     }
 
-    /// Add an message to the action.
-    pub fn add_message(&mut self, message: Message) {
-        self.messages.push(message);
+    /// Add a message to emit.
+    pub fn add_message<T>(&mut self, item: T, target: impl Into<Option<ViewId>>)
+    where
+        T: Send + 'static,
+    {
+        self.messages.push(Message::new(item, target));
     }
 
     /// Add a future that emits an action.
@@ -109,15 +115,18 @@ impl Action {
         }))
     }
 
-    /// Set whether a rebuild is requested.
+    /// Set whether to request a rebuild.
     pub fn with_rebuild(mut self, rebuild: bool) -> Self {
         self.set_rebuild(rebuild);
         self
     }
 
-    /// Add an message to the action.
-    pub fn with_message(mut self, message: Message) -> Self {
-        self.add_message(message);
+    /// Add a message to emit.
+    pub fn with_message<T>(mut self, item: T, target: impl Into<Option<ViewId>>) -> Self
+    where
+        T: Send + 'static,
+    {
+        self.add_message(item, target);
         self
     }
 
@@ -182,6 +191,9 @@ impl From<()> for Action {
 
 impl From<Message> for Action {
     fn from(message: Message) -> Self {
-        Action::message(message)
+        Action {
+            messages: vec![message],
+            ..Action::new()
+        }
     }
 }

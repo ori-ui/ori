@@ -1,7 +1,7 @@
 use crate::{Action, EffectSeq, Message, Mut, View, ViewMarker};
 
 /// [`View`] that attaches an [`Effect`](crate::Effect) to a [`View`].
-pub const fn with_effect<V, W>(contents: V, with: W) -> WithEffect<V, W> {
+pub const fn effect<V, W>(contents: V, with: W) -> WithEffect<V, W> {
     WithEffect::new(contents, with)
 }
 

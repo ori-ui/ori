@@ -13,7 +13,7 @@ mod task;
 
 pub use any::any;
 pub use builder::{Builder, build, context};
-pub use effect::{Effects, WithEffect, effects, with_effect};
+pub use effect::{Effects, WithEffect, effect, effects};
 pub use freeze::{Freeze, freeze};
 pub use memo::{Memo, memo, memo_hashed};
 pub use provide::{Provide, Using, provide, try_using, using, using_or_default};

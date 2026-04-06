@@ -5,7 +5,7 @@ use std::{
 
 use seahash::SeaHasher;
 
-use crate::{Action, Element, Is, Message, Tracker, View};
+use crate::{Action, Element, Is, Message, NodeId, Tracker, View};
 
 /// A sequence of [`View`]s.
 pub trait ViewSeq<C, T, E>
@@ -80,7 +80,7 @@ where
     V: View<C, T>,
     V::Element: Is<C, E>,
 {
-    type State = V::State;
+    type State = (V::State, NodeId);
 
     fn seq_build(
         self,
@@ -88,8 +88,10 @@ where
         cx: &mut C,
         data: &mut T,
     ) -> Self::State {
-        cx.tree().insert();
-        cx.tree().push();
+        let id = NodeId::next();
+
+        cx.tree().insert(id);
+        cx.tree().push(id);
 
         let (element, state) = self.build(cx, data);
         let element = V::Element::upcast(cx, element);
@@ -97,20 +99,20 @@ where
 
         cx.tree().pop();
 
-        state
+        (state, id)
     }
 
     fn seq_rebuild(
         self,
         elements: &mut impl Elements<C, E>,
-        state: &mut Self::State,
+        (state, id): &mut Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
         if let Some(element) = elements.next(cx)
             && let Ok(element) = V::Element::downcast_mut(element)
         {
-            cx.tree().push();
+            cx.tree().push(*id);
 
             self.rebuild(element, state, cx, data);
 
@@ -120,7 +122,7 @@ where
 
     fn seq_message(
         elements: &mut impl Elements<C, E>,
-        state: &mut Self::State,
+        (state, id): &mut Self::State,
         cx: &mut C,
         data: &mut T,
         message: &mut Message,
@@ -132,7 +134,7 @@ where
         if let Some(element) = elements.next(cx)
             && let Ok(element) = V::Element::downcast_mut(element)
         {
-            cx.tree().push();
+            cx.tree().push(*id);
 
             let action = if let Some(id) = message.target()
                 && !cx.tree().contains(id)
@@ -150,16 +152,16 @@ where
         }
     }
 
-    fn seq_teardown(elements: &mut impl Elements<C, E>, state: Self::State, cx: &mut C) {
+    fn seq_teardown(elements: &mut impl Elements<C, E>, (state, id): Self::State, cx: &mut C) {
         if let Some(element) = elements.remove(cx)
             && let Ok(element) = V::Element::downcast(element)
         {
-            cx.tree().push();
+            cx.tree().push(id);
 
             V::teardown(element, state, cx);
 
             cx.tree().pop();
-            cx.tree().remove();
+            cx.tree().remove(id);
         }
     }
 }
@@ -406,7 +408,7 @@ where
     V: View<C, T>,
     V::Element: Is<C, E>,
 {
-    type State = KeyedState<K, V::State>;
+    type State = KeyedState<K, (V::State, NodeId)>;
 
     fn seq_build(
         self,
@@ -462,7 +464,6 @@ where
             if j != i {
                 let other_key = state.keys[i].clone();
 
-                cx.tree().swap(j - i);
                 elements.swap(cx, j - i);
                 state.states.swap(i, j);
                 state.keys.swap(i, j);

@@ -1,4 +1,8 @@
-use std::{collections::HashSet, fmt, hash::BuildHasherDefault};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::BuildHasherDefault,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use seahash::SeaHasher;
 
@@ -22,163 +26,142 @@ pub trait Tracker {
     }
 }
 
+/// Identifier of a node in a [`Tree`].
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NodeId {
+    id: u64,
+}
+
+impl NodeId {
+    /// Get the next [`NodeId`].
+    pub fn next() -> Self {
+        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+
+        Self {
+            id: NEXT_ID.fetch_add(1, Ordering::SeqCst),
+        }
+    }
+}
+
 /// A tree of [`ViewId`]s.
 ///
 /// This is an acceleration structure used to cull redundant branches when sending
 /// [`Message`](crate::Message)s.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Tree {
-    root:  Node,
-    stack: Vec<usize>,
-}
-
-impl fmt::Display for Tree {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn recurse(f: &mut fmt::Formatter<'_>, node: &Node, indent: usize) -> fmt::Result {
-            write!(
-                f,
-                "{}node: {}",
-                "  ".repeat(indent),
-                node.views
-                    .iter()
-                    .map(|id| format!("v{id:?}"))
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            )?;
-
-            for node in &node.nodes {
-                writeln!(f)?;
-                recurse(f, node, indent + 1)?;
-            }
-
-            Ok(())
-        }
-
-        writeln!(f, "tree:")?;
-        recurse(f, &self.root, 1)
-    }
+    nodes:   Vec<Node>,
+    current: usize,
 }
 
 #[derive(Clone, Debug, Default)]
 struct Node {
-    nodes: Vec<Node>,
-    views: HashSet<ViewId, BuildHasherDefault<SeaHasher>>,
+    parent: usize,
+    nodes:  HashMap<NodeId, usize, BuildHasherDefault<SeaHasher>>,
+    views:  HashSet<ViewId, BuildHasherDefault<SeaHasher>>,
 }
 
-impl Node {
-    fn new() -> Self {
-        Self {
-            nodes: Vec::new(),
-            views: HashSet::default(),
-        }
+impl Default for Tree {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl Tree {
-    /// Create a new [`Tree`].
+    /// Create new [`Tree`].
     pub fn new() -> Self {
         Self {
-            root:  Node::new(),
-            stack: vec![0],
+            nodes: vec![Node {
+                parent: 0,
+                nodes:  HashMap::default(),
+                views:  HashSet::default(),
+            }],
+
+            current: 0,
         }
     }
 
-    /// Reset the state of the [`Tree`].
-    ///
-    /// The platform implementation will call this before calling methods on the root
-    /// [`View`](crate::View).
-    pub fn reset(&mut self) {
-        self.stack.clear();
-        self.stack.push(0);
+    /// Add a child to the current node.
+    pub fn insert(&mut self, id: NodeId) {
+        // get the index of the new node
+        let index = self.nodes.len();
+
+        // insert the new node
+        self.nodes.push(Node {
+            parent: self.current,
+            nodes:  HashMap::default(),
+            views:  HashSet::default(),
+        });
+
+        let node = &mut self.nodes[self.current];
+
+        if cfg!(debug_assertions) && node.nodes.contains_key(&id) {
+            panic!("node with id {id:?} already exists");
+        }
+
+        // insert the new node as a child of the current
+        node.nodes.insert(id, index);
     }
 
-    pub(crate) fn push(&mut self) {
-        self.stack.push(0);
+    /// Remove a child from the current node.
+    pub fn remove(&mut self, id: NodeId) {
+        self.nodes[self.current].nodes.remove(&id);
     }
 
-    pub(crate) fn pop(&mut self) {
-        self.stack.pop();
-
-        if let Some(index) = self.stack.last_mut() {
-            *index += 1;
+    /// Swap two children of the current node.
+    pub fn swap(&mut self, a: NodeId, b: NodeId) {
+        if let Some(index_a) = self.nodes[self.current].nodes.remove(&a)
+            && let Some(index_b) = self.nodes[self.current].nodes.remove(&b)
+        {
+            self.nodes[self.current].nodes.insert(a, index_b);
+            self.nodes[self.current].nodes.insert(b, index_a);
+        } else if cfg!(debug_assertions) {
+            panic!("current node does not contain both {a:?} and {b:?}");
         }
     }
 
-    pub(crate) fn insert(&mut self) {
-        let index = self
-            .stack
-            .last()
-            .copied()
-            .expect("these is always one element in the stack");
-
-        self.current_mut().nodes.insert(index, Node::new());
+    /// Change the current node to a child of the current node.
+    pub fn push(&mut self, id: NodeId) {
+        if let Some(index) = self.nodes[self.current].nodes.get(&id) {
+            self.current = *index;
+        } else if cfg!(debug_assertions) {
+            panic!("current node does not contain {id:?}");
+        }
     }
 
-    pub(crate) fn remove(&mut self) {
-        let index = self
-            .stack
-            .last_mut()
-            .expect("these is always one element in the stack");
-
-        *index -= 1;
-        let index = *index;
-
-        self.current_mut().nodes.remove(index);
-    }
-
-    pub(crate) fn swap(&mut self, offset: usize) {
-        let index = self
-            .stack
-            .last()
-            .copied()
-            .expect("these is always one element in the stack");
-
-        self.current_mut().nodes.swap(index, index + offset);
-    }
-
-    pub(crate) fn contains(&self, id: ViewId) -> bool {
-        self.current().views.contains(&id)
-    }
-
-    fn register(&mut self, id: ViewId) {
-        let mut node = &mut self.root;
-
-        for index in self.stack.iter().take(self.stack.len() - 1).copied() {
-            node.views.insert(id);
-            node = &mut node.nodes[index];
+    /// Change the current node to its parent.
+    pub fn pop(&mut self) {
+        if cfg!(debug_assertions) && self.current == 0 {
+            panic!("the root cannot be popped");
         }
 
-        node.views.insert(id);
+        self.current = self.nodes[self.current].parent;
     }
 
-    fn unregister(&mut self, id: ViewId) {
-        let mut node = &mut self.root;
-
-        for index in self.stack.iter().take(self.stack.len() - 1).copied() {
-            node.views.remove(&id);
-            node = &mut node.nodes[index];
-        }
-
-        node.views.remove(&id);
+    /// Check whether the current node contains a [`ViewId`].
+    pub fn contains(&mut self, id: ViewId) -> bool {
+        self.nodes[self.current].views.contains(&id)
     }
 
-    fn current(&self) -> &Node {
-        let mut node = &self.root;
+    /// Register a [`ViewId`] in the current node.
+    pub fn register(&mut self, id: ViewId) {
+        let mut current = self.current;
+        self.nodes[current].views.insert(id);
 
-        for index in self.stack.iter().take(self.stack.len() - 1).copied() {
-            node = &node.nodes[index];
+        while current != 0 {
+            current = self.nodes[current].parent;
+            self.nodes[current].views.insert(id);
         }
-
-        node
     }
 
-    fn current_mut(&mut self) -> &mut Node {
-        let mut node = &mut self.root;
+    /// Unregister a [`ViewId`] from the current node.
+    pub fn unregister(&mut self, id: ViewId) {
+        let mut current = self.current;
+        self.nodes[current].views.remove(&id);
 
-        for index in self.stack.iter().take(self.stack.len() - 1).copied() {
-            node = &mut node.nodes[index];
+        while current != 0 {
+            current = self.nodes[current].parent;
+            self.nodes[current].views.remove(&id);
         }
-
-        node
     }
 }

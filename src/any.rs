@@ -139,24 +139,28 @@ where
     where
         U: 'static,
     {
-        if self.is::<U>() {
-            let ptr = Box::into_raw(self.state) as *mut _ as *mut U;
-            Ok(unsafe { Box::from_raw(ptr) })
-        } else {
-            Err(self)
+        if !self.is::<U>() {
+            return Err(self);
         }
+
+        let ptr = Box::into_raw(self.state) as *mut _ as *mut U;
+
+        // SAFETY: type was checked above
+        Ok(unsafe { Box::from_raw(ptr) })
     }
 
     fn downcast_mut<U>(&mut self) -> Option<&mut U>
     where
         U: 'static,
     {
-        if self.is::<U>() {
-            let ptr = self.state.as_mut() as *mut _ as *mut U;
-            Some(unsafe { &mut *ptr })
-        } else {
-            None
+        if !self.is::<U>() {
+            return None;
         }
+
+        let ptr = self.state.as_mut() as *mut _ as *mut U;
+
+        // SAFETY: type was checked above
+        Some(unsafe { &mut *ptr })
     }
 }
 

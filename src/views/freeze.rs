@@ -24,15 +24,15 @@ impl<F> Freeze<F> {
 impl<F> ViewMarker for Freeze<F> {}
 impl<C, T, F, V> View<C, T> for Freeze<F>
 where
-    V: View<C, T>,
+    V: View<C, ()>,
     F: FnOnce() -> V,
 {
     type Element = V::Element;
     type State = V::State;
 
-    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+    fn build(self, cx: &mut C, _data: &mut T) -> (Self::Element, Self::State) {
         let view = (self.build)();
-        view.build(cx, data)
+        view.build(cx, &mut ())
     }
 
     fn rebuild(
@@ -48,10 +48,10 @@ where
         element: Mut<'_, Self::Element>,
         state: &mut Self::State,
         cx: &mut C,
-        data: &mut T,
+        _data: &mut T,
         message: &mut Message,
     ) -> Action {
-        V::message(element, state, cx, data, message)
+        V::message(element, state, cx, &mut (), message)
     }
 
     fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {

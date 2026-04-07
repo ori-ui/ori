@@ -1,4 +1,4 @@
-use crate::{Action, AnyState, AnyView, Base, Message, Mut, View, ViewMarker};
+use crate::{Action, AnyView, Base, Message, Mut, View, ViewMarker};
 
 /// Marker view for types implementing [`Build`].
 pub trait BuildMarker {}
@@ -20,7 +20,7 @@ where
     B: BuildView<C, T>,
 {
     type Element = C::Element;
-    type State = AnyState<C, T, C::Element>;
+    type State = <Box<dyn AnyView<C, T, C::Element>> as View<C, T>>::State;
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let view = self.build();

@@ -1,4 +1,7 @@
-use std::{any::Any, mem};
+use std::{
+    any::{Any, TypeId},
+    mem,
+};
 
 use crate::{Action, Element, Is, Message, Mut, View, ViewMarker};
 
@@ -30,11 +33,7 @@ where
     fn build(self: Box<Self>, cx: &mut C, data: &mut T) -> (E, AnyState<C, T, E>) {
         let (element, state) = V::build(*self, cx, data);
         let element = V::Element::upcast(cx, element);
-        let state = AnyState {
-            state:    Box::new(state),
-            message:  AnyState::<C, T, E>::message::<V>,
-            teardown: AnyState::<C, T, E>::teardown::<V>,
-        };
+        let state = AnyState::new::<V>(state);
 
         (element, state)
     }
@@ -46,40 +45,53 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        if let Some(view_state) = state.state.downcast_mut::<V::State>() {
+        if let Some(view_state) = state.downcast_mut::<V::State>() {
             if let Ok(element) = V::Element::downcast_mut(element) {
                 V::rebuild(*self, element, view_state, cx, data);
             }
         } else {
             let (new_element, new_state) = V::build(*self, cx, data);
             let old_element = V::Element::replace(cx, element, new_element);
-            let old_state = mem::replace(&mut state.state, Box::new(new_state));
+            let old_state = mem::replace(state, AnyState::new::<V>(new_state));
             (state.teardown)(old_element, old_state, cx);
-
-            state.message = AnyState::<C, T, E>::message::<V>;
-            state.teardown = AnyState::<C, T, E>::teardown::<V>;
         }
     }
 }
 
-/// Type erased state, see [`AnyView`].
 #[allow(clippy::type_complexity)]
 pub struct AnyState<C, T, E>
 where
     E: Element,
 {
-    state:    Box<dyn Any>,
-    message:  fn(Mut<'_, E>, &mut dyn Any, &mut C, &mut T, &mut Message) -> Action,
-    teardown: fn(E, Box<dyn Any>, &mut C),
+    type_id:   TypeId,
+    type_name: &'static str,
+    state:     Box<dyn Any>,
+    message:   fn(Mut<'_, E>, &mut Self, &mut C, &mut T, &mut Message) -> Action,
+    teardown:  fn(E, Self, &mut C),
 }
 
 impl<C, T, E> AnyState<C, T, E>
 where
     E: Element,
 {
+    fn new<V>(state: V::State) -> Self
+    where
+        V: View<C, T>,
+        V::State: 'static,
+        V::Element: Is<C, E>,
+    {
+        Self {
+            type_id:   TypeId::of::<V::State>(),
+            type_name: std::any::type_name::<V::State>(),
+            state:     Box::new(state),
+            message:   AnyState::<C, T, E>::message::<V>,
+            teardown:  AnyState::<C, T, E>::teardown::<V>,
+        }
+    }
+
     fn message<V>(
         element: Mut<'_, E>,
-        state: &mut dyn Any,
+        state: &mut Self,
         cx: &mut C,
         data: &mut T,
         message: &mut Message,
@@ -98,7 +110,7 @@ where
         }
     }
 
-    fn teardown<V>(element: E, state: Box<dyn Any>, cx: &mut C)
+    fn teardown<V>(element: E, state: Self, cx: &mut C)
     where
         V: View<C, T>,
         V::State: 'static,
@@ -108,6 +120,42 @@ where
             && let Ok(element) = V::Element::downcast(element)
         {
             V::teardown(element, *state, cx);
+        }
+    }
+
+    fn is<U>(&self) -> bool
+    where
+        U: 'static,
+    {
+        #[cfg(debug_assertions)]
+        if crate::get_relaxed_type_check() {
+            return self.type_name == std::any::type_name::<U>();
+        }
+
+        self.type_id == TypeId::of::<U>()
+    }
+
+    fn downcast<U>(self) -> Result<Box<U>, Self>
+    where
+        U: 'static,
+    {
+        if self.is::<U>() {
+            let ptr = Box::into_raw(self.state) as *mut _ as *mut U;
+            Ok(unsafe { Box::from_raw(ptr) })
+        } else {
+            Err(self)
+        }
+    }
+
+    fn downcast_mut<U>(&mut self) -> Option<&mut U>
+    where
+        U: 'static,
+    {
+        if self.is::<U>() {
+            let ptr = self.state.as_mut() as *mut _ as *mut U;
+            Some(unsafe { &mut *ptr })
+        } else {
+            None
         }
     }
 }
@@ -141,16 +189,10 @@ where
         data: &mut T,
         message: &mut Message,
     ) -> Action {
-        (state.message)(
-            element,
-            state.state.as_mut(),
-            cx,
-            data,
-            message,
-        )
+        (state.message)(element, state, cx, data, message)
     }
 
     fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
-        (state.teardown)(element, state.state, cx)
+        (state.teardown)(element, state, cx)
     }
 }

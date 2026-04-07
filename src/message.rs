@@ -1,5 +1,5 @@
 use std::{
-    any::Any,
+    any::{Any, TypeId},
     fmt,
     sync::atomic::{AtomicI64, Ordering},
 };
@@ -9,24 +9,26 @@ use std::{
 /// This is the primary way [`View`](crate::View)s communicate with each other, see
 /// [`View::message`](crate::View::message) for more information.
 pub struct Message {
-    target: Option<ViewId>,
-    item:   Option<Box<dyn Any + Send>>,
-    name:   &'static str,
+    target:    Option<ViewId>,
+    item:      Option<Box<dyn Any + Send>>,
+    type_id:   TypeId,
+    type_name: &'static str,
 }
 
 impl Message {
     /// Create a new [`Message`] with over an `item` and an optional `target`.
     pub fn new<T: Any + Send>(item: T, target: impl Into<Option<ViewId>>) -> Self {
         Self {
-            target: target.into(),
-            item:   Some(Box::new(item)),
-            name:   std::any::type_name::<T>(),
+            target:    target.into(),
+            item:      Some(Box::new(item)),
+            type_id:   TypeId::of::<T>(),
+            type_name: std::any::type_name::<T>(),
         }
     }
 
     /// Get the name of the inner type.
     pub fn type_name(&self) -> &'static str {
-        self.name
+        self.type_name
     }
 
     /// Get the target of `self`.
@@ -46,28 +48,50 @@ impl Message {
 
     /// Check if the item in `self` is an instance of `T`.
     pub fn is<T: Any + Send>(&self) -> bool {
-        self.item.as_ref().is_some_and(|item| item.is::<T>())
+        #[cfg(debug_assertions)]
+        if crate::get_relaxed_type_check() {
+            return self.type_name == std::any::type_name::<T>();
+        }
+
+        self.type_id == TypeId::of::<T>()
     }
 
     /// Get the item in `self`.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
     pub fn get<T: Any + Send>(&self) -> Option<&T> {
-        self.item.as_ref().and_then(|item| item.downcast_ref())
+        if !self.is::<T>() {
+            return None;
+        }
+
+        let item = self.item.as_ref()?;
+        let ptr = item.as_ref() as *const _ as *const T;
+
+        // SAFETY: type was checked above
+        Some(unsafe { &*ptr })
     }
 
     /// Get the item in `self` mutably.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
     pub fn get_mut<T: Any + Send>(&mut self) -> Option<&mut T> {
-        self.item.as_mut().and_then(|item| item.downcast_mut())
+        if !self.is::<T>() {
+            return None;
+        }
+
+        let item = self.item.as_mut()?;
+        let ptr = item.as_mut() as *mut _ as *mut T;
+
+        // SAFETY: type was checked above
+        Some(unsafe { &mut *ptr })
     }
 
     /// Get the item in `self` if `key` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
     pub fn get_targeted<T: Any + Send>(&self, id: ViewId) -> Option<&T> {
-        self.get().filter(|_| self.is_target(id))
+        let is_target = self.is_target(id);
+        self.get().filter(|_| is_target)
     }
 
     /// Get the item in `self` mutably if `key` is the target.
@@ -82,13 +106,15 @@ impl Message {
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
     pub fn take<T: Any + Send>(&mut self) -> Option<T> {
-        match self.item.take()?.downcast() {
-            Ok(item) => Some(*item),
-            Err(item) => {
-                self.item = Some(item);
-                None
-            }
+        if !self.is::<T>() {
+            return None;
         }
+
+        let item = self.item.take()?;
+        let ptr = Box::into_raw(item) as *mut _ as *mut T;
+
+        // SAFETY: type was checked above
+        Some(unsafe { *Box::from_raw(ptr) })
     }
 
     /// Take the item out of `self` if `key` is the target.
@@ -101,7 +127,7 @@ impl Message {
 
 impl fmt::Debug for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let r#type = self.item.is_some().then_some(&self.name);
+        let r#type = self.item.is_some().then_some(&self.type_name);
 
         f.debug_struct("Message")
             .field("target", &self.target)

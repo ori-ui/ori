@@ -3,9 +3,8 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use crate::{Action, Message, Mut, View, ViewMarker};
 
 /// [`View`] that is only rebuilt when `data` changes.
-pub fn memo<C, T, V, F, D>(data: D, build: F) -> Memo<F, D>
+pub fn memo<T, V, F, D>(data: D, build: F) -> Memo<F, D>
 where
-    V: View<C, T>,
     F: FnOnce(&T) -> V,
     D: PartialEq,
 {
@@ -13,9 +12,8 @@ where
 }
 
 /// [`View`] that is only rebuilt when the hash of `data` changes.
-pub fn memo_hashed<C, T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
+pub fn memo_hashed<T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
 where
-    V: View<C, T>,
     F: FnOnce(&T) -> V,
     D: Hash + ?Sized,
 {
@@ -35,9 +33,8 @@ pub struct Memo<F, D> {
 
 impl<F, D> Memo<F, D> {
     /// Crate new [`Memo`].
-    pub fn new<C, T, V>(data: D, build: F) -> Self
+    pub fn new<T, V>(data: D, build: F) -> Self
     where
-        V: View<C, T>,
         F: FnOnce(&T) -> V,
         D: PartialEq,
     {

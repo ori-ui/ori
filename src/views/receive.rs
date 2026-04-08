@@ -1,47 +1,56 @@
-use crate::{Action, Effect, Message, Mut, View, ViewMarker};
+use crate::{Action, Effect, Message, Mut, View, ViewId, ViewMarker};
 
 /// [`View`] that receives message.
-pub fn receive_any<C, T>(
+pub fn receive_all<C, T>(
     on_message: impl FnMut(&mut T, &mut Message) -> Action,
 ) -> impl Effect<C, T> {
     Receive::new(on_message)
 }
 
 /// [`View`] that receives messages.
-pub fn receive<C, T, E, A>(mut on_message: impl FnMut(&mut T, E) -> A) -> impl Effect<C, T>
+pub fn receive<C, T, E, A>(
+    view_id: impl Into<Option<ViewId>>,
+    mut on_message: impl FnMut(&mut T, E) -> A,
+) -> impl Effect<C, T>
 where
     E: Send + 'static,
     A: Into<Action>,
 {
-    receive_any(move |data, event| {
-        if let Some(message) = event.take() {
-            on_message(data, message).into()
-        } else {
-            Action::new()
+    let view_id = view_id.into();
+
+    receive_all(move |data, event| {
+        let message = match view_id {
+            Some(id) => event.take_targeted(id),
+            None => event.take(),
+        };
+
+        match message {
+            Some(message) => on_message(data, message).into(),
+            None => Action::new(),
         }
     })
 }
 
 /// [`View`] that receives messages.
 #[must_use]
-pub struct Receive<E> {
-    on_message: E,
+pub struct Receive<F> {
+    on_message: F,
 }
 
-impl<E> Receive<E> {
+impl<F> Receive<F> {
     /// Create new [`Receive`].
-    pub const fn new(on_message: E) -> Self {
+    pub const fn new(on_message: F) -> Self {
         Receive { on_message }
     }
 }
 
 impl<F> ViewMarker for Receive<F> {}
-impl<C, T, E> View<C, T> for Receive<E>
+impl<C, T, F> View<C, T> for Receive<F>
 where
-    E: FnMut(&mut T, &mut Message) -> Action,
+    F: FnMut(&mut T, &mut Message) -> Action,
 {
     type Element = ();
-    type State = E;
+    type State = F;
 
     fn build(self, _cx: &mut C, _data: &mut T) -> (Self::Element, Self::State) {
         ((), self.on_message)

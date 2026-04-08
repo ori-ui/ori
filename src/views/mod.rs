@@ -17,7 +17,7 @@ pub use effect::{Effects, WithEffect, effect, effects};
 pub use freeze::{Freeze, freeze};
 pub use memo::{Memo, memo, memo_hashed};
 pub use provide::{Provide, Using, provide, try_using, using, using_or_default};
-pub use receive::{Receive, receive, receive_any};
+pub use receive::{Receive, receive, receive_all};
 pub use state::{Map, With, map, map_with, with, with_default};
 pub use suspense::{Suspense, suspense};
 pub use task::{Sink, Task, task};

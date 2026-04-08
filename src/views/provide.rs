@@ -3,7 +3,6 @@ use std::{any::Any, marker::PhantomData};
 use crate::{Action, Message, Mut, Provider, View, ViewMarker};
 
 /// [`View`] that provides a `resource` to a [`View`], see [`using`] for how to use contexts.
-#[must_use]
 pub fn provide<C, T, U, V>(state: U, contents: V) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
@@ -14,7 +13,6 @@ where
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
-#[must_use]
 pub fn using<C, T, U, V>(build: impl FnOnce(&T, &U) -> V) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
@@ -31,7 +29,6 @@ where
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
-#[must_use]
 pub fn using_or_default<C, T, U, V>(
     build: impl FnOnce(&T, &U) -> V,
 ) -> impl View<C, T, Element = V::Element>
@@ -47,7 +44,6 @@ where
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
-#[must_use]
 pub fn try_using<C, T, U, V>(
     build: impl FnOnce(&T, Option<&U>) -> V,
 ) -> impl View<C, T, Element = V::Element>

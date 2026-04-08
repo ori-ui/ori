@@ -8,6 +8,7 @@ use seahash::SeaHasher;
 use crate::{Action, Element, Is, Message, NodeId, Tracker, View};
 
 /// A sequence of [`View`]s.
+#[must_use]
 pub trait ViewSeq<C, T, E>
 where
     E: Element,

@@ -1,4 +1,4 @@
-#![warn(missing_docs, clippy::unwrap_used)]
+#![warn(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
 
 //! Ori provides primitives for building Ori UI model.
 

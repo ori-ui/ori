@@ -4,6 +4,7 @@ use crate::{Action, Element, Message, Mut};
 pub trait ViewMarker {}
 
 /// Snapshot of the state of a retained UI.
+#[must_use]
 pub trait View<C, T>: ViewMarker
 where
     T: ?Sized,

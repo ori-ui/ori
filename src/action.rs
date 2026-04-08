@@ -1,17 +1,13 @@
 use std::{
     fmt, mem,
     ops::{BitOr, BitOrAssign},
-    pin::Pin,
     sync::Arc,
 };
 
 use crate::{Message, Proxy, ViewId};
 
-/// [`Future`] that to be run by an [`Action`].
-pub type ActionFuture = Pin<Box<dyn Future<Output = Action> + Send>>;
-
 /// Callback to be run by an [`Action`].
-pub type ActionCallback = Box<dyn FnOnce(&dyn Proxy)>;
+pub type Callback = Box<dyn FnOnce(&dyn Proxy)>;
 
 /// Action to be taken as a result of [`View::message`].
 ///
@@ -30,11 +26,8 @@ pub struct Action {
     /// Messages to be sent by this action.
     pub messages: Vec<Message>,
 
-    /// Futures to spawned by this action.
-    pub futures: Vec<ActionFuture>,
-
     /// Callback that may use a proxy.
-    pub callbacks: Vec<ActionCallback>,
+    pub callbacks: Vec<Callback>,
 }
 
 impl Default for Action {
@@ -49,7 +42,6 @@ impl Action {
         Self {
             rebuild:   false,
             messages:  Vec::new(),
-            futures:   Vec::new(),
             callbacks: Vec::new(),
         }
     }
@@ -59,7 +51,6 @@ impl Action {
         Self {
             rebuild:   true,
             messages:  Vec::new(),
-            futures:   Vec::new(),
             callbacks: Vec::new(),
         }
     }
@@ -100,7 +91,16 @@ impl Action {
 
     /// Add a future that emits an action.
     pub fn add_spawn(&mut self, fut: impl Future<Output: Into<Action>> + Send + 'static) {
-        self.futures.push(Box::pin(async { fut.await.into() }));
+        self.callbacks.push(Box::new(|proxy| {
+            proxy.spawn_boxed({
+                let proxy = proxy.cloned();
+
+                Box::pin(async move {
+                    let action = fut.await.into();
+                    proxy.action(action);
+                })
+            });
+        }));
     }
 
     /// Add a task that has access to a proxy.
@@ -154,7 +154,6 @@ impl Action {
     pub fn merge(&mut self, mut other: Self) {
         self.rebuild |= other.rebuild;
         self.messages.append(&mut other.messages);
-        self.futures.append(&mut other.futures);
         self.callbacks.append(&mut other.callbacks);
     }
 }

@@ -12,7 +12,7 @@ pub trait Proxied {
 
     /// Send an action using [`Self::Proxy`].
     fn send_action(&mut self, action: Action) {
-        let proxy: Arc<dyn Proxy> = Arc::new(self.proxy());
+        let proxy = self.proxy().cloned();
         proxy.action(action);
     }
 }
@@ -42,7 +42,7 @@ pub trait Proxy: Send + Sync + 'static {
     /// Send an action using [`Self::rebuild`], [`Self::message`], and [`Self::spawn`].
     fn action(&self, action: Action)
     where
-        Self: Clone,
+        Self: Sized,
     {
         if action.rebuild {
             self.rebuild();
@@ -50,13 +50,6 @@ pub trait Proxy: Send + Sync + 'static {
 
         for message in action.messages {
             self.message(message);
-        }
-
-        for future in action.futures {
-            self.spawn_boxed({
-                let proxy = Clone::clone(self);
-                Box::pin(async move { proxy.action(future.await) })
-            });
         }
 
         for callback in action.callbacks {

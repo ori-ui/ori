@@ -18,7 +18,7 @@ mod view;
 
 pub mod views;
 
-pub use action::{Action, ActionCallback, ActionFuture};
+pub use action::{Action, Callback};
 pub use any::AnyView;
 pub use build::{BuildMarker, BuildView};
 pub use effect::{Effect, EffectSeq};

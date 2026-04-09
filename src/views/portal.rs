@@ -96,6 +96,12 @@ where
         for _ in &state.views {
             elements.next(cx);
         }
+
+        if state.view_id != self.view_id {
+            cx.unregister(state.view_id);
+            cx.register(self.view_id);
+            state.view_id = self.view_id;
+        }
     }
 
     fn seq_message(

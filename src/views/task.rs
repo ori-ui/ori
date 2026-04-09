@@ -111,7 +111,7 @@ where
         data: &mut T,
         message: &mut Message,
     ) -> Action {
-        if let Some(message) = message.take_targeted(*id) {
+        if let Some(message) = message.take(*id) {
             let sink = Sink {
                 id:     *id,
                 proxy:  cx.proxy().cloned(),

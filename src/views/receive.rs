@@ -20,8 +20,8 @@ where
 
     receive_all(move |data, event| {
         let message = match view_id {
-            Some(id) => event.take_targeted(id),
-            None => event.take(),
+            Some(id) => event.take(id),
+            None => event.take_untargeted(),
         };
 
         match message {

@@ -86,26 +86,10 @@ impl Message {
         Some(unsafe { &mut *ptr })
     }
 
-    /// Get the item in `self` if `key` is the target.
-    ///
-    /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_targeted<T: Any + Send>(&self, id: ViewId) -> Option<&T> {
-        let is_target = self.is_target(id);
-        self.get().filter(|_| is_target)
-    }
-
-    /// Get the item in `self` mutably if `key` is the target.
-    ///
-    /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn get_mut_targeted<T: Any + Send>(&mut self, id: ViewId) -> Option<&mut T> {
-        let is_target = self.is_target(id);
-        self.get_mut().filter(|_| is_target)
-    }
-
     /// Take the item out of `self`.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn take<T: Any + Send>(&mut self) -> Option<T> {
+    pub fn take_untargeted<T: Any + Send>(&mut self) -> Option<T> {
         if !self.is::<T>() {
             return None;
         }
@@ -117,11 +101,11 @@ impl Message {
         Some(unsafe { *Box::from_raw(ptr) })
     }
 
-    /// Take the item out of `self` if `key` is the target.
+    /// Take the item out of `self` if `id` is the target.
     ///
     /// Returns [`None`] if the item is not an instance of `T` or has been taken.
-    pub fn take_targeted<T: Any + Send>(&mut self, id: ViewId) -> Option<T> {
-        self.is_target(id).then(|| self.take()).flatten()
+    pub fn take<T: Any + Send>(&mut self, id: ViewId) -> Option<T> {
+        self.is_target(id).then(|| self.take_untargeted()).flatten()
     }
 }
 

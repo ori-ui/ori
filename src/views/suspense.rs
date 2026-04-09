@@ -69,6 +69,8 @@ where
     Contents(F::State),
 }
 
+type FutElement<F, C, T> = <<F as Future>::Output as View<C, T>>::Element;
+
 impl<V, F> ViewMarker for Suspense<V, F> {}
 impl<C, T, V, F> View<C, T> for Suspense<V, F>
 where
@@ -77,7 +79,7 @@ where
     F: Future + Send + 'static,
     F::Output: View<C, T> + Send,
     V::Element: Is<C, C::Element>,
-    <F::Output as View<C, T>>::Element: Is<C, C::Element>,
+    FutElement<F, C, T>: Is<C, C::Element>,
 {
     type Element = C::Element;
     type State = (
@@ -150,7 +152,7 @@ where
         data: &mut T,
         message: &mut Message,
     ) -> Action {
-        if let Some(SuspenseFuture::<F::Output>(contents)) = message.take_targeted(*id) {
+        if let Some(SuspenseFuture::<F::Output>(contents)) = message.take(*id) {
             match state {
                 SuspenseState::Fallback(_) => {
                     let (contents_element, contents_state) = contents.build(cx, data);
@@ -169,8 +171,7 @@ where
                 }
 
                 SuspenseState::Contents(contents_state) => {
-                    if let Ok(element) = <<F::Output as View<_, _>>::Element>::downcast_mut(element)
-                    {
+                    if let Ok(element) = FutElement::<F, C, T>::downcast_mut(element) {
                         contents.rebuild(element, contents_state, cx, data);
                     }
                 }
@@ -195,8 +196,8 @@ where
             }
 
             SuspenseState::Contents(contents_state) => {
-                if let Ok(element) = <<F::Output as View<_, _>>::Element>::downcast_mut(element) {
-                    <F::Output as View<_, _>>::message(
+                if let Ok(element) = FutElement::<F, C, T>::downcast_mut(element) {
+                    F::Output::message(
                         element,
                         contents_state,
                         cx,
@@ -223,7 +224,7 @@ where
 
             SuspenseState::Contents(contents_state) => {
                 if let Ok(element) = Is::downcast(element) {
-                    <F::Output as View<C, T>>::teardown(element, contents_state, cx);
+                    F::Output::teardown(element, contents_state, cx);
                 }
             }
         }

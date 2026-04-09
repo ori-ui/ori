@@ -27,7 +27,7 @@ pub use element::{Base, Element, Is, Mut};
 pub use message::{Message, ViewId};
 pub use provider::Provider;
 pub use proxy::{Proxied, Proxy};
-pub use seq::{Elements, Keyed, ViewSeq, keyed};
+pub use seq::{Elements, ViewSeq};
 pub use teleport::{Split, Teleportable};
 pub use tree::{NodeId, Tracker, Tree};
 pub use r#type::{get_relaxed_type_check, set_relaxed_type_check};

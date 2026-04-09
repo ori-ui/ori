@@ -74,8 +74,8 @@ where
         _data: &mut T,
     ) -> Self::State {
         if cx.get::<Lefts<C::Left>>().is_none() {
-            let positives = Lefts::<C::Left>::default();
-            cx.push(Box::new(positives));
+            let left = Lefts::<C::Left>::default();
+            cx.push(Box::new(left));
         }
 
         cx.register(self.view_id);
@@ -117,10 +117,10 @@ where
                     elements.next(cx);
                 }
 
-                if let Some(positives) = cx.get_mut::<Lefts<C::Left>>()
-                    && let Some(positive) = positives.0.remove(&view_id)
+                if let Some(lefts) = cx.get_mut::<Lefts<C::Left>>()
+                    && let Some(left) = lefts.0.remove(&view_id)
                 {
-                    let element = C::Left::upcast(cx, positive);
+                    let element = C::Left::upcast(cx, left);
                     elements.insert(cx, element);
                     state.views.push(view_id);
                 }
@@ -173,18 +173,18 @@ where
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, state) = self.contents.build(cx, data);
-        let (shadow, negative) = element.split(cx);
+        let (left, right) = element.split(cx);
 
         let view_id = ViewId::next();
         cx.register(view_id);
 
         if cx.get::<Lefts<C::Left>>().is_none() {
-            let shadows = Lefts::<C::Left>::default();
-            cx.push(Box::new(shadows));
+            let lefts = Lefts::<C::Left>::default();
+            cx.push(Box::new(lefts));
         }
 
-        if let Some(shadows) = cx.get_mut::<Lefts<C::Left>>() {
-            shadows.0.insert(view_id, shadow);
+        if let Some(lefts) = cx.get_mut::<Lefts<C::Left>>() {
+            lefts.0.insert(view_id, left);
         }
 
         cx.proxy().message(Message::new(
@@ -195,7 +195,7 @@ where
         let state = TeleportState {
             view_id,
             portal: self.portal,
-            right: negative,
+            right,
             state,
         };
 

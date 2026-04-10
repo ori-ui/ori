@@ -4,6 +4,9 @@ use crate::{Action, Message, Mut, View, ViewMarker};
 ///
 /// This is an advanced [`View`] and should be used with care, and will `panic` if used
 /// incorrectly. `contents` must always be guaranteed to be [`Some`] when [`Maybe`] is built.
+///
+/// # Panics
+/// - If `contents` is [`None`] when [`Maybe`] is built.
 pub fn maybe<V>(contents: Option<V>) -> Maybe<V> {
     Maybe::new(contents)
 }
@@ -12,6 +15,9 @@ pub fn maybe<V>(contents: Option<V>) -> Maybe<V> {
 ///
 /// This is an advanced [`View`] and should be used with care, and will `panic` if used
 /// incorrectly. `contents` must always be guaranteed to be [`Some`] when [`Maybe`] is built.
+///
+/// # Panics
+/// - If `contents` is [`None`] when [`Maybe`] is built.
 pub struct Maybe<V> {
     contents: Option<V>,
 }

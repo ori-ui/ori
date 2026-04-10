@@ -13,6 +13,9 @@ where
 }
 
 /// [`View`] that uses `resource` provided by [`provide`].
+///
+/// # Panics
+/// - If resource `U` was not provided.
 pub fn using<C, T, U, V>(build: impl FnOnce(&T, &U) -> V) -> impl View<C, T, Element = V::Element>
 where
     U: Any,

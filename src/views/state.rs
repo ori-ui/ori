@@ -3,6 +3,9 @@ use std::{marker::PhantomData, mem::ManuallyDrop, ptr};
 use crate::{Action, Element, Message, Mut, View, ViewMarker};
 
 /// [`View`] that maps one type of data to another.
+///
+/// # Panics
+/// - If `map` argument is not not called.
 pub fn map<C, T, U, E>(
     contents: impl View<C, U, Element = E>,
     map: impl FnMut(&mut T, &mut dyn FnMut(&mut U)),
@@ -15,6 +18,9 @@ where
 }
 
 /// [`View`] that maps one type of data to two types of data.
+///
+/// # Panics
+/// - If `map` argument is not not called.
 pub fn map_with<C, T, U, V, E>(
     contents: impl View<C, (U, V), Element = E>,
     mut map: impl FnMut(&mut T, &mut dyn FnMut(&mut U, &mut V)),

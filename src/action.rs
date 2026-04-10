@@ -17,7 +17,7 @@ pub type Callback = Box<dyn FnOnce(&dyn Proxy)>;
 /// return [`Action::new`].
 ///
 /// [`View`]: crate::View
-/// [`View::message`]: crate::View::event
+/// [`View::message`]: crate::View::message
 #[must_use]
 pub struct Action {
     /// Whether the action requests a rebuild.

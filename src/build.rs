@@ -1,6 +1,6 @@
 use crate::{Action, AnyView, Base, Message, Mut, View, ViewMarker};
 
-/// Marker view for types implementing [`Build`].
+/// Marker view for types implementing [`BuildView`].
 pub trait BuildMarker {}
 
 /// Helper trait for implementing the builder pattern for [`View`]s.

@@ -4,7 +4,8 @@ thread_local! {
     static RELAXED_TYPE_CHECK: Cell<bool> = const { Cell::new(false) };
 }
 
-/// Set whether type checks should use [`type_name`](std::any::type_name) in stead of [`TypeId`].
+/// Set whether type checks should use [`type_name`](std::any::type_name) in stead of
+/// [`TypeId`](std::any::TypeId).
 ///
 /// This is useful for hot reloading.
 ///

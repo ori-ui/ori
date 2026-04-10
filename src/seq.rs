@@ -9,7 +9,7 @@ where
     /// State of the sequence.
     type State;
 
-    /// Build [`Self::Elements`] and [`Self::State`], see [`View::build`] for more information.
+    /// Populate `elements` and build [`Self::State`], see [`View::build`] for more information.
     fn seq_build(self, elements: &mut impl Elements<C, E>, cx: &mut C, data: &mut T)
     -> Self::State;
 
@@ -31,7 +31,7 @@ where
         message: &mut Message,
     ) -> Action;
 
-    /// Tear down the sequence, see [`View::teardown`] for more information.
+    /// Teardown the sequence, see [`View::teardown`] for more information.
     fn seq_teardown(elements: &mut impl Elements<C, E>, state: Self::State, cx: &mut C);
 }
 

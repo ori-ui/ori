@@ -23,7 +23,7 @@ pub use action::{Action, Callback};
 pub use any::AnyView;
 pub use build::{BuildMarker, BuildView};
 pub use effect::{Effect, EffectSeq};
-pub use element::{Base, Element, Is, Mut};
+pub use element::{Base, Element, Is, Mut, Sub};
 pub use message::{Message, ViewId};
 pub use provider::Provider;
 pub use proxy::{Proxied, Proxy};

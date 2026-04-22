@@ -63,7 +63,7 @@ where
 }
 
 /// An element maintained by a [`View`](crate::View).
-pub trait Element {
+pub trait Element: 'static {
     /// A handle to the element to mutate through, e.g. a lock guard.
     type Mut<'a>
     where

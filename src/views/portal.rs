@@ -225,7 +225,6 @@ where
         data: &mut T,
         message: &mut Message,
     ) -> Action {
-        C::message(&mut state.right, cx, message);
         C::with_mut(&mut state.right, cx, |cx, widget| {
             V::message(
                 widget,

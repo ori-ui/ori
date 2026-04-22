@@ -1,4 +1,4 @@
-use crate::{Element, Message};
+use crate::Element;
 
 /// A context that supportes teleporting [`Element`]s.
 ///
@@ -30,9 +30,6 @@ where
         cx: &mut Self,
         f: impl FnOnce(&mut Self, T::Mut<'a>) -> U,
     ) -> U;
-
-    /// Handle a [`Message`].
-    fn message(right: &mut Self::Right, cx: &mut Self, message: &mut Message);
 
     /// Teardown `right` returning the underlying [`Element`].
     fn teardown(right: Self::Right, cx: &mut Self) -> T;

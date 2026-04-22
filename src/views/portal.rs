@@ -46,7 +46,6 @@ enum PortalMessage {
 }
 
 struct Lefts<P>(HashMap<ViewId, P>);
-type Right<C, E> = <E as Split<C>>::Right;
 
 impl<P> Default for Lefts<P> {
     fn default() -> Self {
@@ -164,16 +163,16 @@ where
 impl<V> ViewMarker for Teleport<V> {}
 impl<C, T, V> View<C, T> for Teleport<V>
 where
-    C: Tracker + Provider + Proxied + Teleportable,
+    C: Tracker + Provider + Proxied,
+    C: Split<V::Element>,
     V: View<C, T>,
-    V::Element: Split<C>,
 {
     type Element = ();
     type State = TeleportState<C, T, V>;
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let (element, state) = self.contents.build(cx, data);
-        let (left, right) = element.split(cx);
+        let (left, right) = C::split(cx, element);
 
         let view_id = ViewId::next();
         cx.register(view_id);
@@ -209,12 +208,9 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        self.contents.rebuild(
-            V::Element::as_mut(&mut state.right, cx),
-            &mut state.state,
-            cx,
-            data,
-        );
+        C::with_mut(&mut state.right, cx, |cx, widget| {
+            self.contents.rebuild(widget, &mut state.state, cx, data);
+        });
 
         #[cfg(feature = "tracing")]
         if state.portal != self.portal {
@@ -229,15 +225,16 @@ where
         data: &mut T,
         message: &mut Message,
     ) -> Action {
-        V::Element::message(&mut state.right, cx, message);
-
-        V::message(
-            V::Element::as_mut(&mut state.right, cx),
-            &mut state.state,
-            cx,
-            data,
-            message,
-        )
+        C::message(&mut state.right, cx, message);
+        C::with_mut(&mut state.right, cx, |cx, widget| {
+            V::message(
+                widget,
+                &mut state.state,
+                cx,
+                data,
+                message,
+            )
+        })
     }
 
     fn teardown(_element: Self::Element, state: Self::State, cx: &mut C) {
@@ -246,7 +243,7 @@ where
             state.portal,
         ));
 
-        let element = V::Element::teardown(state.right, cx);
+        let element = C::teardown(state.right, cx);
         V::teardown(element, state.state, cx);
         cx.unregister(state.view_id);
     }
@@ -254,12 +251,11 @@ where
 
 pub struct TeleportState<C, T, V>
 where
-    C: Teleportable,
+    C: Split<V::Element>,
     V: View<C, T>,
-    V::Element: Split<C>,
 {
     view_id: ViewId,
     portal:  ViewId,
-    right:   Right<C, V::Element>,
+    right:   C::Right,
     state:   V::State,
 }

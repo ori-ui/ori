@@ -1,4 +1,4 @@
-use crate::{Element, Message, Mut};
+use crate::{Element, Message};
 
 /// A context that supportes teleporting [`Element`]s.
 ///
@@ -14,22 +14,26 @@ pub trait Teleportable {
 
 /// An [`Element`] that can be split into a `left` and `right` part, see [`Teleportable`] for more
 /// information.
-pub trait Split<C>: Element
+pub trait Split<T>: Teleportable
 where
-    C: Teleportable,
+    T: Element,
 {
     /// The right part of the split [`Element`].
     type Right;
 
     /// Split `self` into a `left` and `right` part.
-    fn split(self, cx: &mut C) -> (C::Left, Self::Right);
+    fn split(cx: &mut Self, widget: T) -> (Self::Left, Self::Right);
 
     /// Get a [`Mut`] of the underlying [`Element`].
-    fn as_mut<'a>(right: &'a mut Self::Right, cx: &mut C) -> Mut<'a, Self>;
+    fn with_mut<'a, U>(
+        right: &'a mut Self::Right,
+        cx: &mut Self,
+        f: impl FnOnce(&mut Self, T::Mut<'a>) -> U,
+    ) -> U;
 
     /// Handle a [`Message`].
-    fn message(right: &mut Self::Right, cx: &mut C, message: &mut Message);
+    fn message(right: &mut Self::Right, cx: &mut Self, message: &mut Message);
 
     /// Teardown `right` returning the underlying [`Element`].
-    fn teardown(right: Self::Right, cx: &mut C) -> Self;
+    fn teardown(right: Self::Right, cx: &mut Self) -> T;
 }

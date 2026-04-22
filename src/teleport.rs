@@ -25,10 +25,10 @@ where
     fn split(cx: &mut Self, widget: T) -> (Self::Left, Self::Right);
 
     /// Get a [`Mut`] of the underlying [`Element`].
-    fn with_mut<'a, U>(
-        right: &'a mut Self::Right,
+    fn with_mut<U>(
+        right: &mut Self::Right,
         cx: &mut Self,
-        f: impl FnOnce(&mut Self, T::Mut<'a>) -> U,
+        f: impl FnOnce(&mut Self, T::Mut<'_>) -> U,
     ) -> U;
 
     /// Teardown `right` returning the underlying [`Element`].

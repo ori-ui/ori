@@ -9,7 +9,7 @@ where
     C: Base,
 {
     /// Build the [`View`] of this builder.
-    fn build(self) -> impl AnyView<C, T, C::Element>;
+    fn build(self) -> Box<dyn AnyView<C, T, C::Element>>;
 }
 
 impl<V> ViewMarker for V where V: BuildMarker {}
@@ -24,7 +24,7 @@ where
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let view = self.build();
-        AnyView::build(Box::new(view), cx, data)
+        AnyView::build(view, cx, data)
     }
 
     fn rebuild(
@@ -35,7 +35,7 @@ where
         data: &mut T,
     ) {
         let view = self.build();
-        AnyView::rebuild(Box::new(view), element, state, cx, data);
+        AnyView::rebuild(view, element, state, cx, data);
     }
 
     fn message(

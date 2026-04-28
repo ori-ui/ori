@@ -53,7 +53,7 @@ where
             let (new_element, new_state) = V::build(*self, cx, data);
             let old_element = V::Element::replace(cx, element, new_element);
             let old_state = mem::replace(state, AnyState::new::<V>(new_state));
-            (state.teardown)(old_element, old_state, cx);
+            (old_state.teardown)(old_element, old_state, cx);
         }
     }
 }

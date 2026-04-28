@@ -60,6 +60,16 @@ where
     With::new(|_: &T| Default::default(), build)
 }
 
+/// [`View`] that unmaps extra `data` for its contents.
+pub fn without<C, T, U, E>(
+    contents: impl View<C, U, Element = E>,
+) -> impl View<C, (T, U), Element = E>
+where
+    E: Element,
+{
+    map(contents, |(_, state), map| map(state))
+}
+
 /// [`View`] that maps one type of data to another.
 pub struct Map<F, U, V> {
     contents: V,

@@ -24,6 +24,6 @@ pub use memo::{Memo, memo, memo_hashed};
 pub use portal::{Portal, Teleport, portal, teleport};
 pub use provide::{Provide, Using, provide, try_using, using, using_or_default};
 pub use receive::{Receive, receive, receive_all};
-pub use state::{Map, With, map, map_with, with, with_default};
+pub use state::{Map, With, map, map_with, with, with_default, without};
 pub use suspense::{Suspense, suspense};
 pub use task::{Sink, Task, task};

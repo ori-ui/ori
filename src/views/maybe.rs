@@ -7,6 +7,7 @@ use crate::{Action, Message, Mut, View, ViewMarker};
 ///
 /// # Panics
 /// - If `contents` is [`None`] when [`Maybe`] is built.
+#[track_caller]
 pub fn maybe<V>(contents: Option<V>) -> Maybe<V> {
     Maybe::new(contents)
 }
@@ -20,12 +21,19 @@ pub fn maybe<V>(contents: Option<V>) -> Maybe<V> {
 /// - If `contents` is [`None`] when [`Maybe`] is built.
 pub struct Maybe<V> {
     contents: Option<V>,
+    #[cfg(debug_assertions)]
+    location: &'static std::panic::Location<'static>,
 }
 
 impl<V> Maybe<V> {
     /// Create new [`Maybe`].
+    #[track_caller]
     pub fn new(contents: Option<V>) -> Self {
-        Self { contents }
+        Self {
+            contents,
+            #[cfg(debug_assertions)]
+            location: std::panic::Location::caller(),
+        }
     }
 }
 
@@ -38,9 +46,16 @@ where
     type State = V::State;
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let contents = self
-            .contents
-            .expect("contents of `maybe` must not be `None` during build");
+        let contents = self.contents.unwrap_or_else(|| {
+            #[cfg(debug_assertions)]
+            panic!(
+                "contents of `maybe` must not be `None` during build\n\n`maybe` called here: {}",
+                self.location
+            );
+
+            #[cfg(not(debug_assertions))]
+            panic!("contents of `maybe` must not be `None` during build");
+        });
 
         contents.build(cx, data)
     }

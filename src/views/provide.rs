@@ -15,17 +15,29 @@ where
 /// [`View`] that uses `resource` provided by [`provide`].
 ///
 /// # Panics
-/// - If resource `U` was not provided.
+/// - If resource `U` is not provided.
+#[track_caller]
 pub fn using<C, T, U, V>(build: impl FnOnce(&T, &U) -> V) -> impl View<C, T, Element = V::Element>
 where
     U: Any,
     C: Provider,
     V: View<C, T>,
 {
+    static MESSAGE: &str = "`using` expects resource to be provided, try providing it with `provide` or use `using_or_default` or `try_using` instead";
+
+    let location = std::panic::Location::caller();
+
     try_using(move |data, resource| {
-        let resource = resource.expect(
-            "`using` expects resource to be provided, try providing it with `provide` or use `using_or_default` or `try_using` instead",
-        );
+        let resource = resource.unwrap_or_else(|| {
+            #[cfg(debug_assertions)]
+            panic!(
+                "{}\n\nusing called here: {}",
+                MESSAGE, location,
+            );
+
+            #[cfg(not(debug_assertions))]
+            panic!("{MESSAGE}",);
+        });
 
         build(data, resource)
     })

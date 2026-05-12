@@ -3,6 +3,7 @@
 mod any;
 mod builder;
 mod effect;
+mod either;
 mod freeze;
 mod keyed;
 mod maybe;
@@ -17,6 +18,7 @@ mod task;
 pub use any::any;
 pub use builder::{Builder, build, context};
 pub use effect::{Effects, WithEffect, effect, effects};
+pub use either::Either;
 pub use freeze::{Freeze, freeze};
 pub use keyed::{Keyed, keyed};
 pub use maybe::{Maybe, maybe};

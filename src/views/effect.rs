@@ -31,8 +31,8 @@ where
     type State = (V::State, W::State);
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let (element, contents) = self.contents.build(cx, data);
         let with = self.effect.seq_build(&mut (), cx, data);
+        let (element, contents) = self.contents.build(cx, data);
 
         (element, (contents, with))
     }
@@ -44,8 +44,8 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        self.contents.rebuild(element, contents, cx, data);
         self.effect.seq_rebuild(&mut (), with, cx, data);
+        self.contents.rebuild(element, contents, cx, data);
     }
 
     fn message(
@@ -55,8 +55,8 @@ where
         data: &mut T,
         message: &mut Message,
     ) -> Action {
-        let contents_action = V::message(element, contents, cx, data, message);
         let effect_action = W::seq_message(&mut (), with, cx, data, message);
+        let contents_action = V::message(element, contents, cx, data, message);
 
         contents_action | effect_action
     }

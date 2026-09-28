@@ -29,6 +29,6 @@ pub use provider::Provider;
 pub use proxy::{Proxied, Proxy};
 pub use seq::{Elements, ViewSeq};
 pub use teleport::{Split, Teleportable};
-pub use tree::{NodeId, Tracker, Tree};
+pub use tree::{NodeId, Tracked, Tree};
 pub use r#type::{get_relaxed_type_check, set_relaxed_type_check};
 pub use view::{View, ViewMarker};

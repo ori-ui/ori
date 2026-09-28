@@ -9,7 +9,7 @@ use seahash::SeaHasher;
 use crate::ViewId;
 
 /// A context that tracks [`ViewId`]s.
-pub trait Tracker {
+pub trait Tracked {
     /// Get the underlying [`ViewId`] [`Tree`].
     ///
     /// This should only be used by platform implementation.

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     Action, Element, Elements, Is, Message, Mut, Provider, Proxied, Proxy, Split, Teleportable,
-    Tracker, View, ViewId, ViewMarker, ViewSeq,
+    Tracked, View, ViewId, ViewMarker, ViewSeq,
 };
 
 /// A [`ViewSeq`] that receives its [`Element`]s from [`teleport`].
@@ -60,7 +60,7 @@ pub struct PortalState {
 
 impl<C, T, E> ViewSeq<C, T, E> for Portal
 where
-    C: Tracker + Provider + Teleportable,
+    C: Tracked + Provider + Teleportable,
     E: Element,
     C::Left: Is<C, E>,
 {
@@ -163,7 +163,7 @@ where
 impl<V> ViewMarker for Teleport<V> {}
 impl<C, T, V> View<C, T> for Teleport<V>
 where
-    C: Tracker + Provider + Proxied,
+    C: Tracked + Provider + Proxied,
     C: Split<V::Element>,
     V: View<C, T>,
 {

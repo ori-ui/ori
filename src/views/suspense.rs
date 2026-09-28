@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    Action, Base, Is, Message, Mut, Proxied, Proxy, Tracker, View, ViewId, ViewMarker,
+    Action, Base, Is, Message, Mut, Proxied, Proxy, Tracked, View, ViewId, ViewMarker,
     future::{Abortable, Aborter},
 };
 
@@ -74,7 +74,7 @@ type FutElement<F, C, T> = <<F as Future>::Output as View<C, T>>::Element;
 impl<V, F> ViewMarker for Suspense<V, F> {}
 impl<C, T, V, F> View<C, T> for Suspense<V, F>
 where
-    C: Tracker + Proxied + Base,
+    C: Tracked + Proxied + Base,
     V: View<C, T>,
     F: Future + Send + 'static,
     F::Output: View<C, T> + Send,

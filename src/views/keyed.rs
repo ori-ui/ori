@@ -5,7 +5,7 @@ use std::{
 
 use seahash::SeaHasher;
 
-use crate::{Action, Element, Elements, Is, Message, NodeId, Tracker, View, ViewSeq};
+use crate::{Action, Element, Elements, Is, Message, NodeId, Tracked, View, ViewSeq};
 
 /// Create new [`Keyed`].
 pub fn keyed<K, V>(pairs: impl IntoIterator<Item = (K, V)>) -> Keyed<K, V> {
@@ -44,7 +44,7 @@ pub struct KeyedState<K, S> {
 
 impl<C, T, E, K, V> ViewSeq<C, T, E> for Keyed<K, V>
 where
-    C: Tracker,
+    C: Tracked,
     E: Element,
     K: Clone + Hash + Eq,
     V: View<C, T>,

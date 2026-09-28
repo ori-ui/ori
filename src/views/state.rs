@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, mem::ManuallyDrop, ptr};
 
-use crate::{Action, Element, Message, Mut, View, ViewMarker};
+use crate::{Action, Element, Message, Mut, Tracked, View, ViewId, ViewMarker};
 
 /// [`View`] that maps one type of data to another.
 ///
@@ -39,25 +39,31 @@ where
 }
 
 /// [`View`] that attaches extra `data` to its contents.
+#[allow(clippy::type_complexity)]
 pub fn with<C, T, U, V>(
     init: impl FnOnce(&T) -> U,
-    build: impl FnOnce(&U, &T) -> V,
+    update: impl FnOnce(&mut U, &T),
+    build: impl FnMut(&U, &T) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
+    C: Tracked,
     V: View<C, (U, T)>,
 {
-    With::new(init, build)
+    With::new(init, update, build)
 }
 
 /// [`View`] that attaches extra `data` using its [`Default`] to its contents.
+#[allow(clippy::type_complexity)]
 pub fn with_default<C, T, U, V>(
-    build: impl FnOnce(&U, &T) -> V,
+    update: impl FnOnce(&mut U, &T),
+    build: impl FnMut(&U, &T) -> V,
 ) -> impl View<C, T, Element = V::Element>
 where
+    C: Tracked,
     U: Default,
     V: View<C, (U, T)>,
 {
-    With::new(|_: &T| Default::default(), build)
+    with(|_| U::default(), update, build)
 }
 
 /// [`View`] that unmaps extra `data` for its contents.
@@ -169,67 +175,137 @@ where
 
 /// [`View`] that attaches extra `data` to its contents.
 #[must_use]
-pub struct With<F, G> {
-    init:  F,
-    build: G,
+pub struct With<F, G, H> {
+    init:   F,
+    update: G,
+    build:  H,
 }
 
-impl<F, G> With<F, G> {
+impl<F, G, H> With<F, G, H> {
     /// Create a [`With`].
-    pub fn new(init: F, build: G) -> Self {
-        Self { init, build }
+    pub fn new(init: F, update: G, build: H) -> Self {
+        Self {
+            init,
+            update,
+            build,
+        }
     }
 }
 
-impl<F, G> ViewMarker for With<F, G> {}
-impl<F, G, C, T, U, V> View<C, T> for With<F, G>
+pub struct WithState<H, C, T, U, V>
+where
+    V: View<C, (U, T)>,
+{
+    view_id: ViewId,
+    build:   H,
+    with:    U,
+    state:   V::State,
+    rebuild: bool,
+}
+
+impl<F, G, H> ViewMarker for With<F, G, H> {}
+impl<F, G, H, C, T, U, V> View<C, T> for With<F, G, H>
 where
     F: FnOnce(&T) -> U,
-    G: FnOnce(&U, &T) -> V,
+    G: FnOnce(&mut U, &T),
+    H: FnMut(&U, &T) -> V,
+    C: Tracked,
     V: View<C, (U, T)>,
 {
     type Element = V::Element;
-    type State = (U, V::State);
+    type State = WithState<H, C, T, U, V>;
 
-    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+    fn build(mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let mut with = (self.init)(data);
+        (self.update)(&mut with, data);
+
         let view = (self.build)(&with, data);
 
         let (element, state) = with_data(&mut with, data, |data_with| {
             view.build(cx, data_with)
         });
 
-        (element, (with, state))
+        let view_id = ViewId::next();
+        cx.register(view_id);
+
+        let state = WithState {
+            build: self.build,
+            rebuild: false,
+
+            view_id,
+            with,
+            state,
+        };
+
+        (element, state)
     }
 
     fn rebuild(
-        self,
+        mut self,
         element: Mut<'_, Self::Element>,
-        (with, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
     ) {
-        let view = (self.build)(with, data);
+        (self.update)(&mut state.with, data);
 
-        with_data(with, data, |data_with| {
-            view.rebuild(element, state, cx, data_with);
+        let view = (self.build)(&mut state.with, data);
+
+        with_data(&mut state.with, data, |data_with| {
+            view.rebuild(element, &mut state.state, cx, data_with);
         });
+
+        state.rebuild = false;
     }
 
     fn message(
         element: Mut<'_, Self::Element>,
-        (with, state): &mut Self::State,
+        state: &mut Self::State,
         cx: &mut C,
         data: &mut T,
         message: &mut Message,
     ) -> Action {
-        with_data(with, data, |data_with| {
-            V::message(element, state, cx, data_with, message)
+        struct RequestRebuild;
+
+        with_data(&mut state.with, data, |data_with| {
+            if let Some(RequestRebuild) = message.take(state.view_id) {
+                if state.rebuild {
+                    let view = (state.build)(&data_with.0, &data_with.1);
+
+                    V::rebuild(
+                        view,
+                        element,
+                        &mut state.state,
+                        cx,
+                        data_with,
+                    );
+
+                    state.rebuild = false;
+                }
+
+                Action::new()
+            } else {
+                let mut action = V::message(
+                    element,
+                    &mut state.state,
+                    cx,
+                    data_with,
+                    message,
+                );
+
+                if action.rebuild {
+                    action.add_message(RequestRebuild, state.view_id);
+                    state.rebuild = true;
+                }
+
+                action
+            }
         })
     }
 
-    fn teardown(element: Self::Element, (_, state): Self::State, cx: &mut C) {
-        V::teardown(element, state, cx);
+    fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
+        cx.unregister(state.view_id);
+        V::teardown(element, state.state, cx);
     }
 }
 

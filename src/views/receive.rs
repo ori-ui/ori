@@ -1,4 +1,4 @@
-use crate::{Action, Effect, Message, Mut, Tracker, View, ViewId, ViewMarker};
+use crate::{Action, Effect, Message, Mut, Tracked, View, ViewId, ViewMarker};
 
 /// [`View`] that receives message.
 pub fn receive_all<C, T>(
@@ -6,7 +6,7 @@ pub fn receive_all<C, T>(
     on_message: impl FnMut(&mut T, &mut Message) -> Action,
 ) -> impl Effect<C, T>
 where
-    C: Tracker,
+    C: Tracked,
 {
     Receive::new(view_id.into(), on_message)
 }
@@ -17,7 +17,7 @@ pub fn receive<C, T, E, A>(
     mut on_message: impl FnMut(&mut T, E) -> A,
 ) -> impl Effect<C, T>
 where
-    C: Tracker,
+    C: Tracked,
     E: Send + 'static,
     A: Into<Action>,
 {
@@ -56,7 +56,7 @@ impl<F> Receive<F> {
 impl<F> ViewMarker for Receive<F> {}
 impl<C, T, F> View<C, T> for Receive<F>
 where
-    C: Tracker,
+    C: Tracked,
     F: FnMut(&mut T, &mut Message) -> Action,
 {
     type Element = ();

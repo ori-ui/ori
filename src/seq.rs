@@ -1,4 +1,4 @@
-use crate::{Action, Element, Is, Message, NodeId, Tracker, View};
+use crate::{Action, Element, Is, Message, NodeId, Tracked, View};
 
 /// A sequence of [`View`]s.
 #[must_use = "views do nothing outside of the view tree"]
@@ -69,7 +69,7 @@ impl<C> Elements<C, ()> for () {
 
 impl<C, T, E, V> ViewSeq<C, T, E> for V
 where
-    C: Tracker,
+    C: Tracked,
     E: Element,
     V: View<C, T>,
     V::Element: Is<C, E>,

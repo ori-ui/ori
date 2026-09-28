@@ -38,8 +38,27 @@ where
     })
 }
 
+/// [`View`] that replaces `data` in its contents.
+pub fn data<C, T, U, V>(
+    init: impl FnOnce(&T) -> U,
+    mut build: impl FnMut(&U) -> V,
+) -> impl View<C, T, Element = V::Element>
+where
+    C: Tracked,
+    V: View<C, U>,
+{
+    with(
+        init,
+        |_, _| {},
+        move |state, _| {
+            map(build(state), |(state, _), map| {
+                map(state)
+            })
+        },
+    )
+}
+
 /// [`View`] that attaches extra `data` to its contents.
-#[allow(clippy::type_complexity)]
 pub fn with<C, T, U, V>(
     init: impl FnOnce(&T) -> U,
     update: impl FnOnce(&mut U, &T),
@@ -53,7 +72,6 @@ where
 }
 
 /// [`View`] that attaches extra `data` using its [`Default`] to its contents.
-#[allow(clippy::type_complexity)]
 pub fn with_default<C, T, U, V>(
     update: impl FnOnce(&mut U, &T),
     build: impl FnMut(&U, &T) -> V,

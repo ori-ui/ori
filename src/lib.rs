@@ -21,7 +21,7 @@ pub mod views;
 
 pub use action::{Action, Callback};
 pub use any::AnyView;
-pub use build::{BuildMarker, BuildView};
+pub use build::{Builder, BuilderMarker};
 pub use effect::{Effect, EffectSeq};
 pub use element::{Base, Element, Is, Mut, Sub};
 pub use message::{Message, ViewId};

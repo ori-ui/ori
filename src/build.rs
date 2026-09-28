@@ -1,10 +1,10 @@
 use crate::{Action, AnyView, Base, Message, Mut, View, ViewMarker};
 
-/// Marker view for types implementing [`BuildView`].
-pub trait BuildMarker {}
+/// Marker view for types implementing [`Builder`].
+pub trait BuilderMarker {}
 
 /// Helper trait for implementing the builder pattern for [`View`]s.
-pub trait BuildView<C, T>: BuildMarker
+pub trait Builder<C, T>: BuilderMarker
 where
     C: Base,
 {
@@ -12,12 +12,12 @@ where
     fn build(self) -> Box<dyn AnyView<C, T, C::Element>>;
 }
 
-impl<V> ViewMarker for V where V: BuildMarker {}
+impl<V> ViewMarker for V where V: BuilderMarker {}
 
 impl<C, T, B> View<C, T> for B
 where
     C: Base,
-    B: BuildView<C, T>,
+    B: Builder<C, T>,
 {
     type Element = C::Element;
     type State = <Box<dyn AnyView<C, T, C::Element>> as View<C, T>>::State;

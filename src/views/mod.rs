@@ -1,7 +1,8 @@
 //! Builtin [`View`](crate::View)s.
 
 mod any;
-mod builder;
+mod build;
+mod data;
 mod effect;
 mod either;
 mod freeze;
@@ -12,12 +13,12 @@ mod mutate;
 mod portal;
 mod provide;
 mod receive;
-mod state;
 mod suspense;
 mod task;
 
 pub use any::any;
-pub use builder::{Builder, build, context};
+pub use build::{Build, build, context};
+pub use data::{Map, With, data, map, map_with, with, with_default, without};
 pub use effect::{Effects, WithEffect, effect, effects};
 pub use either::Either;
 pub use freeze::{Freeze, freeze};
@@ -28,6 +29,5 @@ pub use mutate::{Mutate, mutate};
 pub use portal::{Portal, Teleport, portal, teleport};
 pub use provide::{Provide, Using, provide, try_using, using, using_or_default};
 pub use receive::{Receive, receive, receive_all};
-pub use state::{Map, With, map, map_with, with, with_default, without};
 pub use suspense::{Suspense, suspense};
 pub use task::{Sink, Task, task};

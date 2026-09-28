@@ -15,16 +15,16 @@ pub fn context<C, T, V>(
 where
     V: View<C, T>,
 {
-    Builder::new(build)
+    Build::new(build)
 }
 
 /// [`View`] that is built from a callback.
-pub struct Builder<F> {
+pub struct Build<F> {
     build: F,
 }
 
-impl<F> Builder<F> {
-    /// Create a [`Builder`].
+impl<F> Build<F> {
+    /// Create a [`Build`].
     pub fn new<C, T, V>(build: F) -> Self
     where
         F: FnOnce(&T, &mut C) -> V,
@@ -34,8 +34,8 @@ impl<F> Builder<F> {
     }
 }
 
-impl<F> ViewMarker for Builder<F> {}
-impl<C, T, V, F> View<C, T> for Builder<F>
+impl<F> ViewMarker for Build<F> {}
+impl<C, T, V, F> View<C, T> for Build<F>
 where
     F: FnOnce(&T, &mut C) -> V,
     V: View<C, T>,

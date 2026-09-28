@@ -24,7 +24,7 @@ where
     /// Split `self` into a `left` and `right` part.
     fn split(cx: &mut Self, widget: T) -> (Self::Left, Self::Right);
 
-    /// Get a [`Mut`] of the underlying [`Element`].
+    /// Get a [`Element::Mut`] of the underlying [`Element`].
     fn with_mut<U>(
         right: &mut Self::Right,
         cx: &mut Self,

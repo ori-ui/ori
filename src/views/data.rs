@@ -38,50 +38,24 @@ where
     })
 }
 
-/// [`View`] that replaces `data` in its contents.
-pub fn data<C, T, U, V>(
-    init: impl FnOnce(&T) -> U,
-    mut build: impl FnMut(&U) -> V,
-) -> impl View<C, T, Element = V::Element>
-where
-    C: Tracked,
-    V: View<C, U>,
-{
-    with(
-        init,
-        |_, _| {},
-        move |state, _| {
-            map(build(state), |(state, _), map| {
-                map(state)
-            })
-        },
-    )
-}
-
 /// [`View`] that attaches extra `data` to its contents.
-pub fn with<C, T, U, V>(
+pub fn with<T, U, V>(
     init: impl FnOnce(&T) -> U,
-    update: impl FnOnce(&mut U, &T),
     build: impl FnMut(&U, &T) -> V,
-) -> impl View<C, T, Element = V::Element>
+) -> With<impl FnOnce(&T) -> U, (), impl FnMut(&U, &T) -> V, T, U>
 where
-    C: Tracked,
-    V: View<C, (U, T)>,
 {
-    With::new(init, update, build)
+    With::new(init, (), build)
 }
 
 /// [`View`] that attaches extra `data` using its [`Default`] to its contents.
-pub fn with_default<C, T, U, V>(
-    update: impl FnOnce(&mut U, &T),
+pub fn with_default<T, U, V>(
     build: impl FnMut(&U, &T) -> V,
-) -> impl View<C, T, Element = V::Element>
+) -> With<impl FnOnce(&T) -> U, (), impl FnMut(&U, &T) -> V, T, U>
 where
-    C: Tracked,
     U: Default,
-    V: View<C, (U, T)>,
 {
-    with(|_| U::default(), update, build)
+    with(|_| U::default(), build)
 }
 
 /// [`View`] that unmaps extra `data` for its contents.
@@ -193,20 +167,87 @@ where
 
 /// [`View`] that attaches extra `data` to its contents.
 #[must_use]
-pub struct With<F, G, H> {
+pub struct With<F, G, H, T, U> {
     init:   F,
     update: G,
     build:  H,
+    marker: PhantomData<fn(&mut U, &mut T)>,
 }
 
-impl<F, G, H> With<F, G, H> {
+impl<F, G, H, T, U> With<F, G, H, T, U> {
     /// Create a [`With`].
     pub fn new(init: F, update: G, build: H) -> Self {
         Self {
             init,
             update,
             build,
+            marker: PhantomData,
         }
+    }
+
+    /// Set the `update` callback that updates the attached state when it is built.
+    pub fn update(
+        self,
+        update: impl FnOnce(&mut U, &T),
+    ) -> With<F, impl FnOnce(&mut U, &T), H, T, U> {
+        With {
+            update,
+
+            init: self.init,
+            build: self.build,
+            marker: PhantomData,
+        }
+    }
+
+    fn build<C, V>(
+        mut with: U,
+        mut build: H,
+        cx: &mut C,
+        data: &mut T,
+    ) -> (V::Element, WithState<H, C, T, U, V>)
+    where
+        C: Tracked,
+        H: FnMut(&U, &T) -> V,
+        V: View<C, (U, T)>,
+    {
+        let view = build(&with, data);
+
+        let (element, state) = with_data(&mut with, data, |data_with| {
+            view.build(cx, data_with)
+        });
+
+        let view_id = ViewId::next();
+        cx.register(view_id);
+
+        let state = WithState {
+            build,
+            rebuild: false,
+
+            view_id,
+            with,
+            state,
+        };
+
+        (element, state)
+    }
+
+    fn rebuild<C, V>(
+        build: &mut H,
+        element: Mut<'_, V::Element>,
+        state: &mut WithState<H, C, T, U, V>,
+        cx: &mut C,
+        data: &mut T,
+    ) where
+        H: FnMut(&U, &T) -> V,
+        V: View<C, (U, T)>,
+    {
+        let view = build(&mut state.with, data);
+
+        with_data(&mut state.with, data, |data_with| {
+            view.rebuild(element, &mut state.state, cx, data_with);
+        });
+
+        state.rebuild = false;
     }
 }
 
@@ -221,11 +262,11 @@ where
     rebuild: bool,
 }
 
-impl<F, G, H> ViewMarker for With<F, G, H> {}
-impl<F, G, H, C, T, U, V> View<C, T> for With<F, G, H>
+impl<F, G, H, T, U> ViewMarker for With<F, G, H, T, U> {}
+
+impl<F, H, C, T, U, V> View<C, T> for With<F, (), H, T, U>
 where
     F: FnOnce(&T) -> U,
-    G: FnOnce(&mut U, &T),
     H: FnMut(&U, &T) -> V,
     C: Tracked,
     V: View<C, (U, T)>,
@@ -233,29 +274,9 @@ where
     type Element = V::Element;
     type State = WithState<H, C, T, U, V>;
 
-    fn build(mut self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
-        let mut with = (self.init)(data);
-        (self.update)(&mut with, data);
-
-        let view = (self.build)(&with, data);
-
-        let (element, state) = with_data(&mut with, data, |data_with| {
-            view.build(cx, data_with)
-        });
-
-        let view_id = ViewId::next();
-        cx.register(view_id);
-
-        let state = WithState {
-            build: self.build,
-            rebuild: false,
-
-            view_id,
-            with,
-            state,
-        };
-
-        (element, state)
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let with = (self.init)(data);
+        Self::build(with, self.build, cx, data)
     }
 
     fn rebuild(
@@ -265,15 +286,13 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        (self.update)(&mut state.with, data);
-
-        let view = (self.build)(&mut state.with, data);
-
-        with_data(&mut state.with, data, |data_with| {
-            view.rebuild(element, &mut state.state, cx, data_with);
-        });
-
-        state.rebuild = false;
+        Self::rebuild(
+            &mut self.build,
+            element,
+            state,
+            cx,
+            data,
+        );
     }
 
     fn message(
@@ -324,6 +343,56 @@ where
     fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
         cx.unregister(state.view_id);
         V::teardown(element, state.state, cx);
+    }
+}
+
+impl<F, G, H, C, T, U, V> View<C, T> for With<F, G, H, T, U>
+where
+    F: FnOnce(&T) -> U,
+    G: FnOnce(&mut U, &T),
+    H: FnMut(&U, &T) -> V,
+    C: Tracked,
+    V: View<C, (U, T)>,
+{
+    type Element = V::Element;
+    type State = WithState<H, C, T, U, V>;
+
+    fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
+        let mut with = (self.init)(data);
+        (self.update)(&mut with, data);
+        Self::build(with, self.build, cx, data)
+    }
+
+    fn rebuild(
+        mut self,
+        element: Mut<'_, Self::Element>,
+        state: &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+    ) {
+        (self.update)(&mut state.with, data);
+
+        Self::rebuild(
+            &mut self.build,
+            element,
+            state,
+            cx,
+            data,
+        );
+    }
+
+    fn message(
+        element: Mut<'_, Self::Element>,
+        state: &mut Self::State,
+        cx: &mut C,
+        data: &mut T,
+        message: &mut Message,
+    ) -> Action {
+        With::<F, (), H, T, U>::message(element, state, cx, data, message)
+    }
+
+    fn teardown(element: Self::Element, state: Self::State, cx: &mut C) {
+        With::<F, (), H, T, U>::teardown(element, state, cx);
     }
 }
 

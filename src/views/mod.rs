@@ -18,7 +18,7 @@ mod task;
 
 pub use any::any;
 pub use build::{Build, build, context};
-pub use data::{Map, With, data, map, map_with, with, with_default, without};
+pub use data::{Map, With, map, map_with, with, with_default, without};
 pub use effect::{Effects, WithEffect, effect, effects};
 pub use either::Either;
 pub use freeze::{Freeze, freeze};

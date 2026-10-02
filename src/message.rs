@@ -1,6 +1,7 @@
 use std::{
     any::{Any, TypeId},
     fmt,
+    num::NonZero,
     sync::atomic::{AtomicI64, Ordering},
 };
 
@@ -124,7 +125,7 @@ impl fmt::Debug for Message {
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ViewId {
-    data: i64,
+    data: NonZero<i64>,
 }
 
 impl fmt::Debug for ViewId {
@@ -151,10 +152,14 @@ impl ViewId {
 
     /// Create a [`ViewId`] with a globally incremented id.
     pub fn next() -> Self {
-        static NEXT_ID: AtomicI64 = AtomicI64::new(0);
+        static NEXT_ID: AtomicI64 = AtomicI64::new(1);
 
-        Self {
-            data: NEXT_ID.fetch_sub(1, Ordering::SeqCst),
+        loop {
+            let next_id = NEXT_ID.fetch_sub(1, Ordering::SeqCst);
+
+            if let Some(data) = NonZero::new(next_id) {
+                break Self { data };
+            }
         }
     }
 
@@ -163,6 +168,11 @@ impl ViewId {
     pub const fn from_u64(data: u64) -> Self {
         assert!(data <= i64::MAX as u64);
 
-        Self { data: data as i64 }
+        Self {
+            data: match NonZero::new(data as i64) {
+                Some(data) => data,
+                None => NonZero::<i64>::MIN,
+            },
+        }
     }
 }

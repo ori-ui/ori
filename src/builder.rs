@@ -1,6 +1,6 @@
 use std::mem::ManuallyDrop;
 
-use crate::{Action, Element, Message, Mut, View, ViewMarker};
+use crate::{Action, Element, Is, Message, Mut, View, ViewMarker};
 
 /// Marker view for types implementing [`Builder`].
 pub trait BuilderMarker {}
@@ -11,7 +11,7 @@ pub trait Builder<C, T>: BuilderMarker {
     type Element: Element;
 
     /// Build the [`View`] of this builder.
-    fn build(self) -> impl View<C, T, Element = Self::Element>;
+    fn build(self) -> impl View<C, T, Element: Is<C, Self::Element>>;
 }
 
 // this implementation is truly sinful, and has to be this way. `Builder::build` returns an `impl
@@ -83,7 +83,8 @@ where
 {
     fn new<V>(view: V, cx: &mut C, data: &mut T) -> (E, Self)
     where
-        V: View<C, T, Element = E>,
+        V: View<C, T>,
+        V::Element: Is<C, E>,
     {
         let (element, state) = view.build(cx, data);
 
@@ -91,25 +92,36 @@ where
             state:    Box::into_raw(Box::new(state)).cast(),
             message:  |element, state, cx, data, message| {
                 let state = unsafe { &mut *state.cast::<V::State>() };
-                V::message(element, state, cx, data, message)
+
+                match V::Element::downcast_mut(element) {
+                    Ok(element) => V::message(element, state, cx, data, message),
+                    Err(_) => Action::new(),
+                }
             },
             teardown: |element, state, cx| {
                 let state = unsafe { Box::from_raw(state.cast()) };
-                V::teardown(element, *state, cx);
+
+                if let Ok(element) = V::Element::downcast(element) {
+                    V::teardown(element, *state, cx)
+                }
             },
             drop:     |ptr| unsafe {
                 let _ = Box::from_raw(ptr.cast::<V::State>());
             },
         };
 
-        (element, state)
+        (Is::upcast(cx, element), state)
     }
 
     unsafe fn rebuild<V>(view: V, element: Mut<'_, E>, state: *mut u8, cx: &mut C, data: &mut T)
     where
-        V: View<C, T, Element = E>,
+        V: View<C, T>,
+        V::Element: Is<C, E>,
     {
         let state = unsafe { &mut *state.cast() };
-        view.rebuild(element, state, cx, data);
+
+        if let Ok(element) = V::Element::downcast_mut(element) {
+            view.rebuild(element, state, cx, data);
+        }
     }
 }

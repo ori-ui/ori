@@ -4,7 +4,7 @@
 
 mod action;
 mod any;
-mod build;
+mod builder;
 mod effect;
 mod element;
 mod future;
@@ -21,7 +21,7 @@ pub mod views;
 
 pub use action::{Action, Callback};
 pub use any::AnyView;
-pub use build::{Builder, BuilderMarker};
+pub use builder::{Builder, BuilderMarker};
 pub use effect::{Effect, EffectSeq};
 pub use element::{Base, Element, Is, Mut, Sub};
 pub use message::{Message, ViewId};

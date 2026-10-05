@@ -23,7 +23,7 @@ pub use effect::{Effects, WithEffect, effect, effects};
 pub use either::Either;
 pub use freeze::{Freeze, freeze};
 pub use keyed::{Keyed, keyed};
-pub use maybe::{Maybe, maybe};
+pub use maybe::{Maybe, MaybeSeq, maybe, maybe_seq};
 pub use memo::{Memo, memo, memo_hashed};
 pub use mutate::{Mutate, mutate};
 pub use portal::{Portal, Teleport, portal, teleport};

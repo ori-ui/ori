@@ -40,6 +40,9 @@ pub trait Elements<C, E>
 where
     E: Element,
 {
+    /// Get the index of the next [`Element`].
+    fn index(&self) -> usize;
+
     /// Get the next [`Element`].
     fn next(&mut self, cx: &mut C) -> Option<E::Mut<'_>>;
 
@@ -54,6 +57,10 @@ where
 }
 
 impl<C> Elements<C, ()> for () {
+    fn index(&self) -> usize {
+        0
+    }
+
     fn next(&mut self, _cx: &mut C) -> Option<()> {
         Some(())
     }

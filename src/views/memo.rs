@@ -3,54 +3,54 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use crate::{Action, Message, Mut, View, ViewMarker};
 
 /// [`View`] that is only rebuilt when `data` changes.
-pub fn memo<T, V, F, D>(data: D, build: F) -> Memo<F, D>
+pub fn memo<T, V, F, K>(key: K, build: F) -> Memo<F, K>
 where
     F: FnOnce(&T) -> V,
-    D: PartialEq,
+    K: PartialEq,
 {
-    Memo::new(data, build)
+    Memo::new(key, build)
 }
 
 /// [`View`] that is only rebuilt when the hash of `data` changes.
-pub fn memo_hashed<T, V, F, D>(data: &D, build: F) -> Memo<F, u64>
+pub fn memo_hashed<T, V, F, K>(key: &K, build: F) -> Memo<F, u64>
 where
     F: FnOnce(&T) -> V,
-    D: Hash + ?Sized,
+    K: Hash + ?Sized,
 {
     let mut hasher = DefaultHasher::new();
 
-    data.hash(&mut hasher);
+    key.hash(&mut hasher);
 
     memo(hasher.finish(), build)
 }
 
 /// [`View`] that is only rebuilt when `data` changes.
 #[must_use]
-pub struct Memo<F, D> {
-    key:   D,
+pub struct Memo<F, K> {
+    key:   K,
     build: F,
 }
 
-impl<F, D> Memo<F, D> {
+impl<F, K> Memo<F, K> {
     /// Crate new [`Memo`].
-    pub fn new<T, V>(data: D, build: F) -> Self
+    pub fn new<T, V>(key: K, build: F) -> Self
     where
         F: FnOnce(&T) -> V,
-        D: PartialEq,
+        K: PartialEq,
     {
-        Self { key: data, build }
+        Self { key, build }
     }
 }
 
-impl<F, D> ViewMarker for Memo<F, D> {}
-impl<C, T, V, F, D> View<C, T> for Memo<F, D>
+impl<F, K> ViewMarker for Memo<F, K> {}
+impl<C, T, V, F, K> View<C, T> for Memo<F, K>
 where
     V: View<C, T>,
     F: FnOnce(&T) -> V,
-    D: PartialEq,
+    K: PartialEq,
 {
     type Element = V::Element;
-    type State = (D, V::State);
+    type State = (K, V::State);
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let view = (self.build)(data);

@@ -24,11 +24,11 @@ where
     B: Builder<C, T>,
 {
     type Element = B::Element;
-    type State = BuilderState<C, T, B::Element>;
+    type State = BuilderState<C, T, B>;
 
     fn build(self, cx: &mut C, data: &mut T) -> (Self::Element, Self::State) {
         let view = self.build();
-        BuilderState::new(view, cx, data)
+        BuilderState::<C, T, B>::new(view, cx, data)
     }
 
     fn rebuild(
@@ -39,7 +39,7 @@ where
         data: &mut T,
     ) {
         let view = self.build();
-        unsafe { BuilderState::rebuild(view, element, state.state, cx, data) };
+        unsafe { BuilderState::<C, T, B>::rebuild(view, element, state.state, cx, data) };
     }
 
     fn message(
@@ -58,33 +58,33 @@ where
     }
 }
 
-pub struct BuilderState<C, T, E>
+pub struct BuilderState<C, T, B>
 where
-    E: Element,
+    B: Builder<C, T>,
 {
     state:    *mut u8,
-    message:  unsafe fn(Mut<'_, E>, *mut u8, &mut C, &mut T, &mut Message) -> Action,
-    teardown: unsafe fn(E, *mut u8, &mut C),
+    message:  unsafe fn(Mut<'_, B::Element>, *mut u8, &mut C, &mut T, &mut Message) -> Action,
+    teardown: unsafe fn(B::Element, *mut u8, &mut C),
     drop:     unsafe fn(*mut u8),
 }
 
-impl<C, T, E> Drop for BuilderState<C, T, E>
+impl<C, T, B> Drop for BuilderState<C, T, B>
 where
-    E: Element,
+    B: Builder<C, T>,
 {
     fn drop(&mut self) {
         unsafe { (self.drop)(self.state) };
     }
 }
 
-impl<C, T, E> BuilderState<C, T, E>
+impl<C, T, B> BuilderState<C, T, B>
 where
-    E: Element,
+    B: Builder<C, T>,
 {
-    fn new<V>(view: V, cx: &mut C, data: &mut T) -> (E, Self)
+    fn new<V>(view: V, cx: &mut C, data: &mut T) -> (B::Element, Self)
     where
         V: View<C, T>,
-        V::Element: Is<C, E>,
+        V::Element: Is<C, B::Element>,
     {
         let (element, state) = view.build(cx, data);
 
@@ -113,10 +113,15 @@ where
         (Is::upcast(cx, element), state)
     }
 
-    unsafe fn rebuild<V>(view: V, element: Mut<'_, E>, state: *mut u8, cx: &mut C, data: &mut T)
-    where
+    unsafe fn rebuild<V>(
+        view: V,
+        element: Mut<'_, B::Element>,
+        state: *mut u8,
+        cx: &mut C,
+        data: &mut T,
+    ) where
         V: View<C, T>,
-        V::Element: Is<C, E>,
+        V::Element: Is<C, B::Element>,
     {
         let state = unsafe { &mut *state.cast() };
 

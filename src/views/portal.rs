@@ -120,7 +120,9 @@ where
                     && let Some(left) = lefts.0.remove(&view_id)
                 {
                     let element = C::Left::upcast(cx, left);
+
                     elements.insert(cx, element);
+
                     state.views.push(view_id);
                 }
 

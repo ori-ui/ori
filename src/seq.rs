@@ -43,7 +43,7 @@ where
     /// Get the index of the next [`Element`].
     fn index(&self) -> usize;
 
-    /// Get the next [`Element`].
+    /// Get the next [`Element`], and advance the current index by one.
     fn next(&mut self, cx: &mut C) -> Option<E::Mut<'_>>;
 
     /// Insert an [`Element`] at the current position.
@@ -96,6 +96,7 @@ where
 
         let (element, state) = self.build(cx, data);
         let element = V::Element::upcast(cx, element);
+
         elements.insert(cx, element);
 
         cx.tree().pop();
@@ -110,15 +111,25 @@ where
         cx: &mut C,
         data: &mut T,
     ) {
-        if let Some(element) = elements.next(cx)
-            && let Ok(element) = V::Element::downcast_mut(element)
-        {
-            cx.tree().push(*id);
+        let Some(element) = elements.next(cx) else {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to get next element");
 
-            self.rebuild(element, state, cx, data);
+            return;
+        };
 
-            cx.tree().pop();
-        }
+        let Ok(element) = V::Element::downcast_mut(element) else {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to downcast element");
+
+            return;
+        };
+
+        cx.tree().push(*id);
+
+        self.rebuild(element, state, cx, data);
+
+        cx.tree().pop();
     }
 
     fn seq_message(
@@ -132,38 +143,56 @@ where
             return Action::new();
         }
 
-        if let Some(element) = elements.next(cx)
-            && let Ok(element) = V::Element::downcast_mut(element)
+        let Some(element) = elements.next(cx) else {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to get next element");
+
+            return Action::new();
+        };
+
+        let Ok(element) = V::Element::downcast_mut(element) else {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to downcast element");
+
+            return Action::new();
+        };
+
+        cx.tree().push(*id);
+
+        let action = if let Some(id) = message.target()
+            && !cx.tree().contains(id)
         {
-            cx.tree().push(*id);
-
-            let action = if let Some(id) = message.target()
-                && !cx.tree().contains(id)
-            {
-                Action::new()
-            } else {
-                V::message(element, state, cx, data, message)
-            };
-
-            cx.tree().pop();
-
-            action
-        } else {
             Action::new()
-        }
+        } else {
+            V::message(element, state, cx, data, message)
+        };
+
+        cx.tree().pop();
+
+        action
     }
 
     fn seq_teardown(elements: &mut impl Elements<C, E>, (state, id): Self::State, cx: &mut C) {
-        if let Some(element) = elements.remove(cx)
-            && let Ok(element) = V::Element::downcast(element)
-        {
-            cx.tree().push(id);
+        let Some(element) = elements.remove(cx) else {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to get next element");
 
-            V::teardown(element, state, cx);
+            return;
+        };
 
-            cx.tree().pop();
-            cx.tree().remove(id);
-        }
+        let Ok(element) = V::Element::downcast(element) else {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to downcast element");
+
+            return;
+        };
+
+        cx.tree().push(id);
+
+        V::teardown(element, state, cx);
+
+        cx.tree().pop();
+        cx.tree().remove(id);
     }
 }
 

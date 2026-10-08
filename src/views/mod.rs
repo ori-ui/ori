@@ -3,6 +3,7 @@
 mod any;
 mod build;
 mod data;
+mod detach;
 mod effect;
 mod either;
 mod freeze;
@@ -19,6 +20,7 @@ mod task;
 pub use any::any;
 pub use build::{Build, build, context};
 pub use data::{Map, With, map, map_with, with, with_default, without};
+pub use detach::{Detach, Detachable, detach};
 pub use effect::{Effects, WithEffect, effect, effects};
 pub use either::Either;
 pub use freeze::{Freeze, freeze};

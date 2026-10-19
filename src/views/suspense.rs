@@ -172,10 +172,7 @@ where
         let waker = Self::waker(cx.proxy(), view_id);
         let mut future = Box::pin(self.future);
 
-        let (element, state) = match F::poll(
-            future.as_mut(),
-            &mut Context::from_waker(&waker),
-        ) {
+        let (element, state) = match future.as_mut().poll(&mut Context::from_waker(&waker)) {
             Poll::Pending => {
                 let (element, state) = self.fallback.build(cx, data);
 

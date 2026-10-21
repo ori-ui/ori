@@ -124,6 +124,8 @@ impl fmt::Debug for Message {
 /// Unique key for targeting [`Message`]s.
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
 pub struct ViewId {
     data: NonZero<i64>,
 }

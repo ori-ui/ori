@@ -5,6 +5,7 @@ edition = "2024"
 
 [features]
 tracing = ["dep:tracing"]
+serde = ["dep:serde"]
 
 [dependencies]
 seahash = "4"
@@ -12,4 +13,10 @@ seahash = "4"
 [dependencies.tracing]
 version = "0.1"
 default-features = false
+optional = true
+
+[dependencies.serde]
+version = "1"
+default-features = false
+features = ["derive", "std"]
 optional = true

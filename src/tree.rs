@@ -29,6 +29,8 @@ pub trait Tracked {
 /// Identifier of a node in a [`Tree`].
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
 pub struct NodeId {
     id: u64,
 }
@@ -49,12 +51,14 @@ impl NodeId {
 /// This is an acceleration structure used to cull redundant branches when sending
 /// [`Message`](crate::Message)s.
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Tree {
     nodes:   Vec<Node>,
     current: usize,
 }
 
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 struct Node {
     parent: usize,
     nodes:  HashMap<NodeId, usize, BuildHasherDefault<SeaHasher>>,
